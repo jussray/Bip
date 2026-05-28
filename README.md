@@ -58,7 +58,7 @@ sekret-bip/
 
 ```bash
 # Clone the repo
-git clone https://github.com/jussray/Bip.git
+# Clone your private repository
 cd Bip
 
 # Install dependencies
@@ -75,8 +75,7 @@ cp .env.example .env.local
 
 ```bash
 # Start the dev server
-npm start
-
+npx expo start
 # Run on iOS
 npm run ios
 
