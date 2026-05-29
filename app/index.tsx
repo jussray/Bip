@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import {
   View,
   ImageBackground,
@@ -40,18 +40,5 @@ const styles = StyleSheet.create({
     width: 250,
     height: 120,
     backgroundColor: 'transparent',
-  },
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#160028',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  text: {
-    color: '#fff',
-    fontSize: 24,
   },
 });
