@@ -26,6 +26,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#160028',
@@ -34,11 +35,15 @@ const styles = StyleSheet.create({
   },
 
   background: {
-    width: '85%',
-    height: '85%',
+    width: '70%',
+    height: '90%',
   },
 
   button: {
-    flex: 1,
+    position: 'absolute',
+    top: '25%',
+    width: 320,
+    height: 160,
+    backgroundColor: 'transparent',
   },
 });
