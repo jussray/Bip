@@ -133,4 +133,25 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: 'center',
   },
+  comfortModeCard: {
+  marginBottom: 18,
+  padding: 16,
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: '#9b2cff',
+  backgroundColor: 'rgba(155, 44, 255, 0.15)',
+},
+
+comfortModeTitle: {
+  color: '#ff8df7',
+  fontSize: 16,
+  fontWeight: '900',
+  marginBottom: 6,
+},
+
+comfortModeText: {
+  color: '#fff',
+  fontSize: 14,
+  lineHeight: 22,
+},
 });
