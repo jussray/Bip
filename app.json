@@ -7,12 +7,20 @@
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
     "splash": { "backgroundColor": "#160028" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.sekretbip.app" },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sekretbip.app"
+    },
     "android": {
       "adaptiveIcon": { "backgroundColor": "#160028" },
       "package": "com.sekretbip.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": ["expo-router"],
     "experiments": { "typedRoutes": true }
   }
 }
+
