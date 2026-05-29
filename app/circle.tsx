@@ -1,81 +1,136 @@
-import { useRef } from 'react';
-import { Animated } from 'react-native';
-import { SEKRET_PROFILES, COMFORT_MESSAGES, HOME_MESSAGES } from '@constants/theme';
-const [screen, setScreen]               = useState('home');
-const [journalText, setJournalText]     = useState('');
-const [voiceNotes, setVoiceNotes]       = useState<any[]>([]);
-const [circlePostText, setCirclePostText] = useState('');
-const [sekretMessage, setSekretMessage] = useState('');
-const [sekretReply, setSekretReply]     = useState("I see you. You did your best with what you had today.");
-const [isSekretTyping, setIsSekretTyping] = useState(false);
-const [comfortIdx, setComfortIdx]       = useState(0);
-const [homeMessageIndex, setHomeMessageIndex] = useState(0);
-const [isRecording, setIsRecording]     = useState(false);
-const [bridgeText, setBridgeText]       = useState('');
-const [selectedTone, setSelectedTone]   = useState('softStart');
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 
-const breatheAnim = useRef(new Animated.Value(1)).current;
-const pulseAnim   = useRef(new Animated.Value(1)).current;
-const pulseLoop   = useRef<any>(null);
+export default function CircleScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Se'kret Circle ♡</Text>
+      <Text style={styles.subtitle}>you're not alone. we show up.</Text>
 
-const currentSekret = SEKRET_PROFILES[selectedSekret];
-const voiceKey      = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
-const charName      = selectedSekret === 'rylane' ? 'Rylane' : 'Raylene';
-// Breathe animation
-useEffect(() => {
-  Animated.loop(Animated.sequence([
-    Animated.timing(breatheAnim, { toValue: 1.1, duration: 2200, useNativeDriver: true }),
-    Animated.timing(breatheAnim, { toValue: 1,   duration: 2200, useNativeDriver: true }),
-  ])).start();
-}, []);
+      <View style={styles.postCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>R</Text>
+        </View>
 
-// Rotate home messages
-useEffect(() => {
-  const i = setInterval(() => setHomeMessageIndex(p => (p + 1) % HOME_MESSAGES.length), 5000);
-  return () => clearInterval(i);
-}, []);
+        <Text style={styles.name}>Raylene ♡</Text>
+        <Text style={styles.mood}>Mood: alone 💜</Text>
 
-const selectMood = (m: string) => {
-  setMood(m);
-  setMoodHistory(h => [{ id: Date.now(), mood: m, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() }, ...h]);
-};
+        <Text style={styles.postText}>
+          some nights the thoughts are louder than everything else.
+        </Text>
 
-const saveEntry = () => {
-  if (!journalText.trim()) return;
-  setEntries(e => [{ id: Date.now(), text: journalText, mood, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() }, ...e]);
-  setJournalText('');
-};
+        <View style={styles.reactions}>
+          <TouchableOpacity style={styles.reaction}>
+            <Text style={styles.reactionText}>💜 46 felt this too</Text>
+          </TouchableOpacity>
 
-const saveCirclePost = () => {
-  if (!circlePostText.trim()) return;
-  setCirclePosts(p => [{ id: Date.now(), text: circlePostText, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 } }, ...p]);
-  setCirclePostText('');
-};
+          <TouchableOpacity style={styles.reaction}>
+            <Text style={styles.reactionText}>☁️ 31 sending comfort</Text>
+          </TouchableOpacity>
 
-const reactToPost = (id: number, type: string) => {
-  setCirclePosts(posts => posts.map(p => p.id === id ? { ...p, reactions: { ...p.reactions, [type]: p.reactions[type] + 1 } } : p));
-};
+          <TouchableOpacity style={styles.reaction}>
+            <Text style={styles.reactionText}>🌙 8 stayed with this</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-const getDynamicTags = () => {
-  if (selectedSekret === 'rylane') return ['focused','mind heavy','protecting my peace','trying harder','locked in','building myself'];
-  if (selectedSekret === 'soft')   return ['soft but strong','healing','trying my best','late night thoughts','emotional','peaceful'];
-  if (selectedSekret === 'cloud')  return ['resting','breathing','quiet','healing','calm','soft day'];
-  return ['good vibes','overthinking','protecting my peace','growing','learning myself','late night thoughts'];
-};
+      <View style={styles.sekretCard}>
+        <Text style={styles.sekretTitle}>☁️ Se'kret says...</Text>
+        <Text style={styles.sekretText}>
+          You don't have to carry this alone. 💜
+        </Text>
+      </View>
+    </View>
+  );
+}
 
-const startRecording = () => {
-  setIsRecording(true);
-  pulseLoop.current = Animated.loop(Animated.sequence([
-    Animated.timing(pulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
-    Animated.timing(pulseAnim, { toValue: 1,    duration: 600, useNativeDriver: true }),
-  ]));
-  pulseLoop.current.start();
-};
-
-const stopRecording = () => {
-  setIsRecording(false);
-  pulseLoop.current?.stop();
-  pulseAnim.setValue(1);
-  setVoiceNotes(n => [{ id: Date.now(), title: 'Voice Bip', date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), duration: '~30s' }, ...n]);
-};
-I need you to add these to using Se’kret 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#090014',
+    padding: 24,
+    paddingTop: 60,
+  },
+  title: {
+    color: '#ff4df3',
+    fontSize: 36,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: '#f5b3ff',
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 28,
+  },
+  postCard: {
+    backgroundColor: 'rgba(80, 0, 130, 0.45)',
+    borderColor: '#ff38df',
+    borderWidth: 1,
+    borderRadius: 28,
+    padding: 22,
+  },
+  avatar: {
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: '#ff38df',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  name: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  mood: {
+    color: '#d9a3ff',
+    marginTop: 4,
+  },
+  postText: {
+    color: '#fff',
+    fontSize: 22,
+    lineHeight: 32,
+    marginVertical: 24,
+  },
+  reactions: {
+    gap: 10,
+  },
+  reaction: {
+    borderColor: '#c026d3',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: 'rgba(255, 0, 200, 0.12)',
+  },
+  reactionText: {
+    color: '#ffd6ff',
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  sekretCard: {
+    marginTop: 22,
+    borderColor: '#9b2cff',
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 20,
+    backgroundColor: 'rgba(40, 0, 80, 0.55)',
+  },
+  sekretTitle: {
+    color: '#ff8df7',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  sekretText: {
+    color: '#fff',
+    fontSize: 22,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+});
