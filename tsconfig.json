@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -11,18 +15,48 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "types": ["react-native", "jest"],
+    "types": [
+      "react-native",
+      "jest"
+    ],
     "baseUrl": ".",
     "paths": {
-      "@components/*": ["components/*"],
-      "@screens/*": ["screens/*"],
-      "@utils/*": ["utils/*"],
-      "@hooks/*": ["hooks/*"],
-      "@constants/*": ["constants/*"],
-      "@types/*": ["types/*"]
+      "@components/*": [
+        "components/*"
+      ],
+      "@screens/*": [
+        "screens/*"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ],
+      "@hooks/*": [
+        "hooks/*"
+      ],
+      "@constants/*": [
+        "constants/*"
+      ],
+      "@types/*": [
+        "types/*"
+      ]
     },
     "jsx": "react-jsx"
   },
-  "include": ["app", "components", "screens", "utils", "hooks", "constants", "types"],
-  "exclude": ["node_modules", ".expo", "dist"]
+  "include": [
+    "app",
+    "components",
+    "screens",
+    "utils",
+    "hooks",
+    "constants",
+    "types",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".expo",
+    "dist"
+  ],
+  "extends": "expo/tsconfig.base"
 }
