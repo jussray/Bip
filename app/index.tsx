@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 
-export default function HomeScreen() {
+export default function SplashScreen() {
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -15,11 +15,11 @@ export default function HomeScreen() {
         style={styles.background}
         resizeMode="contain"
       >
+        {/* Tap zone over the glowing "Se'kret Bip ♡" pill button */}
         <TouchableOpacity
           style={styles.button}
-          onPress={() => {
-            router.push('/home');
-          }}
+          activeOpacity={0.7}
+          onPress={() => router.push('/home')}
         />
       </ImageBackground>
     </View>
@@ -29,22 +29,23 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#160028',
+    backgroundColor: '#060010',
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   background: {
-    width: '70%',
-    height: '90%',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
   },
-
+  // Sits over the glowing "Se'kret Bip ♡" pill ~78-88% down the image
   button: {
     position: 'absolute',
-    top: '20%',
+    bottom: '14%',
     alignSelf: 'center',
-    width: 320,
-    height: 180,
+    width: '75%',
+    height: 70,
     backgroundColor: 'transparent',
   },
 });
