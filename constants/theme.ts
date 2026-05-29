@@ -127,13 +127,13 @@ export const C = {
   borderPk: 'rgba(244,114,182,0.25)',
 };
 
-export const IMAGES = {
-  raylene: {
-    thinking: require('../assets/images/raylene-thinking.png'),
-    writing: require('../assets/images/raylene-writing.png'),
-    neutral: require('../assets/images/raylene-neutral.png'),
-    happy: require('../assets/images/raylene-happy.png'),
-    window: require('../assets/images/raylene-window.png'),
+export const IMAGES = 
+{
+ raylene-thinking.png
+raylene-writing.png
+raylene-neutral.png
+raylene-happy.png
+raylene-window.png,
   },
   rylane: {
     thinking: require('../assets/images/rylane-writing.png'),
