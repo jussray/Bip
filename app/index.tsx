@@ -4,8 +4,8 @@ import {
   ImageBackground,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
+import { router } from 'expo-router';
 
 export default function HomeScreen() {
   return (
@@ -17,7 +17,9 @@ export default function HomeScreen() {
       >
         <TouchableOpacity
           style={styles.button}
-          onPress={() => Alert.alert("Entering Se'kret Bip 💜")}
+          onPress={() => {
+            router.push('/home');
+          }}
         />
       </ImageBackground>
     </View>
