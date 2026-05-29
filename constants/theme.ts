@@ -111,43 +111,41 @@ export const HEAVY_WORDS = [
   'anxious',
   'panic',
 ];
-// ─── COLORS ───────────────────────────────────────────────────────────────────
+
 export const C = {
-  bg:      '#0d0914',
-  card:    '#130d1f',
-  card2:   '#1a1030',
-  purple:  '#7c3aed',
-  pink:    '#ec4899',
+  bg: '#0d0914',
+  card: '#130d1f',
+  card2: '#1a1030',
+  purple: '#7c3aed',
+  pink: '#ec4899',
   pinkHot: '#f472b6',
-  lavender:'#c4b5fd',
-  white:   '#f5f0ff',
-  muted:   '#7c6899',
+  lavender: '#c4b5fd',
+  white: '#f5f0ff',
+  muted: '#7c6899',
   mutedLt: '#a78cc0',
-  border:  'rgba(167,114,192,0.15)',
-  borderPk:'rgba(244,114,182,0.25)',
+  border: 'rgba(167,114,192,0.15)',
+  borderPk: 'rgba(244,114,182,0.25)',
 };
 
-// ─── ASSETS ───────────────────────────────────────────────────────────────────
 export const IMAGES = {
   raylene: {
-    thinking: require('../assets/images/F09FADBA-472B-49DC-A252-8375F3AAC824.png'),assets/images/raylene-thinking.png'),
-    writing:  require('../assets/images/raylene-writing.png'),
-    neutral:  require('../assets/images/raylene-neutral.png'),
-    happy:    require('../assets/images/raylene-happy.png'),
-    window:   require('../assets/images/raylene-window.png'),
+    thinking: require('../assets/images/raylene-thinking.png'),
+    writing: require('../assets/images/raylene-writing.png'),
+    neutral: require('../assets/images/raylene-neutral.png'),
+    happy: require('../assets/images/raylene-happy.png'),
+    window: require('../assets/images/raylene-window.png'),
   },
   rylane: {
     thinking: require('../assets/images/rylane-writing.png'),
-    writing:  require('../assets/images/rylane-writing.png'),
-    neutral:  require('../assets/images/rylane-neutral.png'),
-    happy:    require('../assets/images/rylane-neutral.png'),
-    window:   require('../assets/images/rylane-standing.png'),
+    writing: require('../assets/images/rylane-writing.png'),
+    neutral: require('../assets/images/rylane-neutral.png'),
+    happy: require('../assets/images/rylane-neutral.png'),
+    window: require('../assets/images/rylane-standing.png'),
   },
-  cloud:           require('../assets/images/cloud.png'),
+  cloud: require('../assets/images/cloud.png'),
   cloudHeadphones: require('../assets/images/cloud-headphones.png'),
-  cloudStormy:     require('../assets/images/cloud-stormy.png'),
-  roomBg:          require('../assets/images/room-bg.png'),
-  roomBgDark:      require('../assets/images/room-bg-dark.png'),
-  mom:             require('../assets/images/mom.png'),
+  cloudStormy: require('../assets/images/cloud-stormy.png'),
+  roomBg: require('../assets/images/room-bg.png'),
+  roomBgDark: require('../assets/images/room-bg-dark.png'),
+  mom: require('../assets/images/mom.png'),
 };
-
