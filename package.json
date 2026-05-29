@@ -2,7 +2,7 @@
   "name": "sekret-bip",
   "version": "1.0.0",
   "description": "A private emotional wellness and self-expression app built with React Native and Expo.",
-  "main": "expo-router/entry",
+  "main": "index.tsx"
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
