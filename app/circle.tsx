@@ -56,8 +56,7 @@ export default function CircleScreen() {
         </Text>
 
         <Image
-          source={require('../assets/images/circle-mockup.jpg')}
-          style={styles.mockupPreview}
+          source={require('../assets/images/9D7577CE-3E29-4D2D-AEC4-E7F9A3C054ED.png')}          style={styles.mockupPreview}
           resizeMode="cover"
         />
 
