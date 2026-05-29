@@ -49,7 +49,7 @@ export default function CircleScreen() {
       <StatusBar style="light" />
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Se'kret Circle ♡</Text>
+        <Text style={styles.title}>Se&apos;kret Circle ♡</Text>
 
         <Text style={styles.subtitle}>
           no likes. no ranking. just support.
@@ -60,6 +60,13 @@ export default function CircleScreen() {
           style={styles.mockupPreview}
           resizeMode="cover"
         />
+
+        <View style={styles.comfortModeCard}>
+          <Text style={styles.comfortModeTitle}>☁️ Comfort Only Mode</Text>
+          <Text style={styles.comfortModeText}>
+            Replies stay supportive. No advice. No fixing. Just comfort.
+          </Text>
+        </View>
 
         <View style={styles.writeCard}>
           <Text style={styles.writeLabel}>drop a soft Bip</Text>
@@ -84,9 +91,11 @@ export default function CircleScreen() {
           return (
             <View key={post.id} style={styles.postCard}>
               <View style={styles.topRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>♡</Text>
-                </View>
+                <Image
+                  source={require('../assets/images/cloud-headphones.png')}
+                  style={styles.cloudAvatar}
+                  resizeMode="contain"
+                />
 
                 <View>
                   <Text style={styles.name}>{post.name}</Text>
@@ -113,6 +122,20 @@ export default function CircleScreen() {
                     <Text style={styles.reactionText}>{reaction}</Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+
+              <View style={styles.replyBox}>
+                <Text style={styles.replyTitle}>respond gently...</Text>
+
+                <View style={styles.replyActions}>
+                  {['💜 Write', '🎙 Voice', '☁️ Comfort', '🌙 Stay'].map(
+                    (item) => (
+                      <TouchableOpacity key={item} style={styles.replyButton}>
+                        <Text style={styles.replyButtonText}>{item}</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
               </View>
 
               {isOwner && (
@@ -148,7 +171,7 @@ export default function CircleScreen() {
         })}
 
         <View style={styles.sekretCard}>
-          <Text style={styles.sekretTitle}>☁️ Se'kret says...</Text>
+          <Text style={styles.sekretTitle}>☁️ Se&apos;kret says...</Text>
           <Text style={styles.sekretText}>
             Everybody can support. Only the person who posted sees the numbers.
           </Text>
@@ -188,6 +211,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#9b2cff',
   },
+
+  comfortModeCard: {
+    marginBottom: 18,
+    padding: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#9b2cff',
+    backgroundColor: 'rgba(155, 44, 255, 0.15)',
+  },
+  comfortModeTitle: {
+    color: '#ff8df7',
+    fontSize: 16,
+    fontWeight: '900',
+    marginBottom: 6,
+  },
+  comfortModeText: {
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+
   writeCard: {
     backgroundColor: 'rgba(40, 0, 80, 0.65)',
     borderColor: '#9b2cff',
@@ -222,6 +266,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center',
   },
+
   postCard: {
     backgroundColor: 'rgba(80, 0, 130, 0.45)',
     borderColor: '#ff38df',
@@ -234,19 +279,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatar: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    backgroundColor: '#ff38df',
-    alignItems: 'center',
-    justifyContent: 'center',
+  cloudAvatar: {
+    width: 60,
+    height: 60,
     marginRight: 12,
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 26,
-    fontWeight: '900',
   },
   name: {
     color: '#fff',
@@ -263,6 +299,7 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     marginVertical: 20,
   },
+
   voiceBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -290,6 +327,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontWeight: '700',
   },
+
   reactions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -308,6 +346,39 @@ const styles = StyleSheet.create({
     color: '#ffd6ff',
     fontWeight: '700',
   },
+
+  replyBox: {
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  replyTitle: {
+    color: '#ff8df7',
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  replyActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  replyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,0,200,0.12)',
+    borderWidth: 1,
+    borderColor: '#c026d3',
+  },
+  replyButtonText: {
+    color: '#ffd6ff',
+    fontWeight: '700',
+  },
+
   ownerBox: {
     marginTop: 16,
     borderRadius: 18,
@@ -326,6 +397,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
+
   stayCard: {
     marginTop: 14,
     borderRadius: 18,
@@ -345,6 +417,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
   },
+
   sekretCard: {
     marginTop: 6,
     borderColor: '#9b2cff',
