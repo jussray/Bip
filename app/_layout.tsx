@@ -1,109 +1,193 @@
-import React from 'react';
-import {
-  View, Text, ScrollView, Image, ImageBackground,
-  TouchableOpacity, StyleSheet, Platform,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { useSekret } from './_layout';
-import BottomNav from '@components/BottomNav';
-import { C, IMAGES, COMFORT_MESSAGES } from '@constants/theme';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Animated } from 'react-native';
+import { Stack } from 'expo-router';
+import { SEKRET_PROFILES, COMFORT_MESSAGES } from '@constants/theme';
 
-export default function MoreScreen() {
-  const { userSide, setUserSide, voiceKey, comfortIdx } = useSekret();
+type UserSide = 'teen' | 'parent';
 
-  return (
-    <View style={styles.container}>
-      <StatusBar style="light" />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+const SekretContext = createContext<any>(null);
 
-        <View style={styles.heroWrap}>
-          <ImageBackground source={IMAGES.roomBgDark} style={styles.heroBg} resizeMode="cover">
-            <LinearGradient colors={['rgba(13,9,20,0.2)', 'rgba(13,9,20,0.92)']} style={StyleSheet.absoluteFill} />
-            <View style={styles.heroContent}>
-              <Text style={styles.heroTitle}>More ✨</Text>
-            </View>
-          </ImageBackground>
-        </View>
-
-        {/* Current side card */}
-        <View style={[styles.card, { flexDirection: 'column', overflow: 'hidden' }]}>
-          <LinearGradient colors={['rgba(76,29,149,0.3)', 'rgba(13,9,20,0.9)']} style={StyleSheet.absoluteFill} />
-          <View style={[styles.row, { marginBottom: 14 }]}>
-            <Image source={IMAGES[voiceKey].neutral} style={styles.sideAvatar} resizeMode="cover" />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.sideLabel}>current side</Text>
-              <Text style={styles.sideTitle}>{userSide === 'parent' ? '🌿 Parent Side' : '💜 Teen Side'}</Text>
-              <Text style={styles.sideSub}>{userSide === 'parent' ? 'Supporting with love.' : 'Your space. Always you.'}</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={() => setUserSide(userSide === 'parent' ? 'teen' : 'parent')}
-            style={styles.switchBtn}
-          >
-            <LinearGradient colors={['#7c3aed', '#ec4899']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.switchBtnInner}>
-              <Text style={styles.switchBtnText}>Switch to {userSide === 'parent' ? 'Teen Side 💜' : 'Parent Side 🌿'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick links */}
-        <View style={{ gap: 8, marginHorizontal: 16, marginBottom: 12 }}>
-          {[
-            { icon: '⚙️', label: 'Vibe Lab', sub: "themes, se'kret, and more", to: '/settings' },
-            { icon: '✨', label: 'Bippin2 / Insights', sub: 'growth tools and cycle tracker', to: '/bippin2' },
-            { icon: '🌉', label: userSide === 'parent' ? 'Parent Bridge' : 'Bridge', sub: "connect through se'kret", to: userSide === 'parent' ? '/parentBridge' : '/bridge' },
-            { icon: '🚨', label: 'Comfort Mode', sub: 'when things feel heavy', to: '/comfort' },
-            { icon: '🎙️', label: 'Voice Bip', sub: 'say it out loud', to: '/voiceBip' },
-          ].map(item => (
-            <TouchableOpacity key={item.label} onPress={() => router.push(item.to as any)} style={styles.linkCard}>
-              <View style={styles.linkIcon}><Text style={{ fontSize: 22 }}>{item.icon}</Text></View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.linkLabel}>{item.label}</Text>
-                <Text style={styles.linkSub}>{item.sub}</Text>
-              </View>
-              <Text style={{ color: C.muted, fontSize: 18 }}>›</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Se'kret says */}
-        <View style={[styles.card, { overflow: 'hidden', borderColor: 'rgba(168,85,247,0.2)' }]}>
-          <LinearGradient colors={['rgba(76,29,149,0.3)', 'rgba(13,9,20,0.9)']} style={StyleSheet.absoluteFill} />
-          <Image source={IMAGES.cloud} style={{ width: 44, height: 44, marginRight: 12 }} resizeMode="contain" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.sekretHeader}>Se'kret says 💜</Text>
-            <Text style={styles.sekretBody}>{COMFORT_MESSAGES[comfortIdx].emoji} {COMFORT_MESSAGES[comfortIdx].text}</Text>
-          </View>
-        </View>
-
-      </ScrollView>
-      <BottomNav userSide={userSide} />
-    </View>
-  );
+export function useSekret() {
+  return useContext(SekretContext);
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  scroll: { paddingBottom: 100 },
-  heroWrap: { marginHorizontal: 16, marginTop: Platform.OS === 'ios' ? 56 : 40, marginBottom: 12, borderRadius: 24, overflow: 'hidden' },
-  heroBg: { width: '100%', minHeight: 150 },
-  heroContent: { padding: 18, minHeight: 150, justifyContent: 'flex-end' },
-  heroTitle: { fontSize: 26, color: C.pinkHot, fontStyle: 'italic', fontWeight: '800' },
-  card: { marginHorizontal: 16, marginBottom: 12, backgroundColor: C.card, borderRadius: 20, borderWidth: 1, borderColor: C.border, padding: 16, flexDirection: 'row', alignItems: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  sideAvatar: { width: 60, height: 60, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(168,85,247,0.4)' },
-  sideLabel: { fontSize: 11, color: '#a855f7', marginBottom: 3 },
-  sideTitle: { fontSize: 16, color: C.white, fontWeight: '700' },
-  sideSub: { fontSize: 11, color: C.muted, marginTop: 2 },
-  switchBtn: { borderRadius: 14, overflow: 'hidden' },
-  switchBtnInner: { padding: 12, alignItems: 'center' },
-  switchBtnText: { fontSize: 13, color: '#fff', fontWeight: '700' },
-  linkCard: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 14 },
-  linkIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(124,58,237,0.2)', alignItems: 'center', justifyContent: 'center' },
-  linkLabel: { fontSize: 13, color: C.white, fontWeight: '600' },
-  linkSub: { fontSize: 11, color: C.muted },
-  sekretHeader: { fontSize: 11, color: C.pinkHot, fontWeight: '700', marginBottom: 4 },
-  sekretBody: { fontSize: 13, color: C.lavender, fontStyle: 'italic', lineHeight: 20 },
-});
+export default function RootLayout() {
+  const [userSide, setUserSide] = useState<UserSide>('teen');
+  const [theme, setTheme] = useState('neon');
+  const [selectedSekret, setSelectedSekret] = useState('raylene');
+
+  const [sekretMessage, setSekretMessage] = useState('');
+  const [sekretReply, setSekretReply] = useState("I'm here with you. 💜");
+  const [isSekretTyping, setIsSekretTyping] = useState(false);
+
+  const [comfortIdx, setComfortIdx] = useState(0);
+  const [bridgeText, setBridgeText] = useState('');
+  const [selectedTone, setSelectedTone] = useState('softStart');
+
+  const [circlePostText, setCirclePostText] = useState('');
+  const [circlePosts, setCirclePosts] = useState<any[]>([]);
+
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceNotes, setVoiceNotes] = useState<any[]>([]);
+
+  const breatheAnim = useRef(new Animated.Value(1)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const currentSekret =
+    SEKRET_PROFILES[selectedSekret] ||
+    SEKRET_PROFILES.raylene ||
+    Object.values(SEKRET_PROFILES)[0];
+
+  const voiceKey = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const charName = currentSekret?.name || 'Raylene';
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, {
+          toValue: 1.18,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breatheAnim, {
+          toValue: 1,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: isRecording ? 1.12 : 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, [isRecording]);
+
+  const sendSekretMessage = () => {
+    if (!sekretMessage.trim()) return;
+
+    setIsSekretTyping(true);
+
+    setTimeout(() => {
+      setSekretReply("I hear you. You don't have to hold all of that alone. 💜");
+      setSekretMessage('');
+      setIsSekretTyping(false);
+    }, 900);
+  };
+
+  const saveCirclePost = () => {
+    if (!circlePostText.trim()) return;
+
+    const newPost = {
+      id: Date.now(),
+      user: 'Anonymous Bip',
+      time: 'just now',
+      mood: 'soft 💜',
+      text: circlePostText,
+      hasVoice: false,
+      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
+    };
+
+    setCirclePosts(prev => [newPost, ...prev]);
+    setCirclePostText('');
+  };
+
+  const reactToPost = (postId: number, key: string) => {
+    setCirclePosts(prev =>
+      prev.map(post =>
+        post.id === postId
+          ? {
+              ...post,
+              reactions: {
+                ...post.reactions,
+                [key]: (post.reactions?.[key] || 0) + 1,
+              },
+            }
+          : post
+      )
+    );
+  };
+
+  const startRecording = () => {
+    setIsRecording(true);
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+
+    const newNote = {
+      id: Date.now(),
+      title: 'Voice Bip',
+      date: 'today',
+      duration: '0:42',
+    };
+
+    setVoiceNotes(prev => [newNote, ...prev]);
+    setIsSekretTyping(true);
+
+    setTimeout(() => {
+      setSekretReply("Thank you for letting that out. I'm proud of you. 💜");
+      setIsSekretTyping(false);
+    }, 900);
+  };
+
+  return (
+    <SekretContext.Provider
+      value={{
+        userSide,
+        setUserSide,
+
+        theme,
+        setTheme,
+
+        selectedSekret,
+        setSelectedSekret,
+        currentSekret,
+        voiceKey,
+        charName,
+
+        sekretMessage,
+        setSekretMessage,
+        sekretReply,
+        isSekretTyping,
+        sendSekretMessage,
+
+        comfortIdx,
+        setComfortIdx,
+
+        bridgeText,
+        setBridgeText,
+        selectedTone,
+        setSelectedTone,
+
+        circlePostText,
+        setCirclePostText,
+        circlePosts,
+        saveCirclePost,
+        reactToPost,
+
+        isRecording,
+        voiceNotes,
+        startRecording,
+        stopRecording,
+
+        breatheAnim,
+        pulseAnim,
+      }}
+    >
+      <Stack screenOptions={{ headerShown: false }} />
+    </SekretContext.Provider>
+  );
+}
