@@ -13,7 +13,7 @@ export default function SplashScreen() {
       <ImageBackground
         source={require('../assets/images/EB3C14B2-2137-43DB-A092-12C175F9F98C.png')}
         style={styles.background}
-        resizeMode="contain"
+        resizeMode="cover"
       >
         {/* Tap zone over the glowing "Se'kret Bip ♡" pill button */}
         <TouchableOpacity
@@ -30,16 +30,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#060010',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   background: {
+    flex: 1,
     width: '100%',
     height: '100%',
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  // Sits over the glowing "Se'kret Bip ♡" pill ~78-88% down the image
   button: {
     position: 'absolute',
     bottom: '14%',
