@@ -128,13 +128,16 @@ export const C = {
 };
 
 export const IMAGES = 
-{
- raylene-thinking.png
-raylene-writing.png
-raylene-neutral.png
-raylene-happy.png
-raylene-window.png,
+
+export const IMAGES = {
+  raylene: {
+    thinking: require('../assets/images/F097FADB-A72B-49DC-A252-8375F3AAC824.png'),
+    writing: require('../assets/images/IMG_0619.jpeg'),
+    neutral: require('../assets/images/IMG_0620.jpeg'),
+    happy: require('../assets/images/IMG_0621.jpeg'),
+    window: require('../assets/images/BA887C05-3A6B-46F3-8373-1DC58BEF592C.png'),
   },
+
   rylane: {
     thinking: require('../assets/images/rylane-writing.png'),
     writing: require('../assets/images/rylane-writing.png'),
