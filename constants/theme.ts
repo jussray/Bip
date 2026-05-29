@@ -127,8 +127,6 @@ export const C = {
   borderPk: 'rgba(244,114,182,0.25)',
 };
 
-export const IMAGES = 
-
 export const IMAGES = {
   raylene: {
     thinking: require('../assets/images/F097FADB-A72B-49DC-A252-8375F3AAC824.png'),
