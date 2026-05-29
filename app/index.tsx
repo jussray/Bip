@@ -11,7 +11,7 @@ export default function HomeScreen() {
     <ImageBackground
       source={require('../assets/images/EB3C14B2-2137-43DB-A092-12C175F9F98C.png')}
       style={styles.background}
-      resizeMode="cover"
+      resizeMode="contain"
     >
       <View style={styles.overlay}>
         <TouchableOpacity
