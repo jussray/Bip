@@ -4,6 +4,7 @@ import {
   ImageBackground,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 
 export default function HomeScreen() {
@@ -16,9 +17,7 @@ export default function HomeScreen() {
       >
         <TouchableOpacity
           style={styles.button}
-          onPress={() => {
-            alert("Next Screen Coming Soon 💜");
-          }}
+          onPress={() => Alert.alert("Entering Se'kret Bip 💜")}
         />
       </ImageBackground>
     </View>
@@ -26,7 +25,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
- const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#160028',
@@ -41,9 +39,10 @@ const styles = StyleSheet.create({
 
   button: {
     position: 'absolute',
-    top: '25%',
+    top: '20%',
+    alignSelf: 'center',
     width: 320,
-    height: 160,
+    height: 180,
     backgroundColor: 'transparent',
   },
 });
