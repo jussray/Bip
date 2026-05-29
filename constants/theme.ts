@@ -130,7 +130,7 @@ export const C = {
 // ─── ASSETS ───────────────────────────────────────────────────────────────────
 export const IMAGES = {
   raylene: {
-    thinking: require('../assets/images/raylene-thinking.png'),
+    thinking: require('../assets/images/F09FADBA-472B-49DC-A252-8375F3AAC824.png'),assets/images/raylene-thinking.png'),
     writing:  require('../assets/images/raylene-writing.png'),
     neutral:  require('../assets/images/raylene-neutral.png'),
     happy:    require('../assets/images/raylene-happy.png'),
