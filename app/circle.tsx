@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
+  Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -49,9 +50,16 @@ export default function CircleScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Se'kret Circle ♡</Text>
+
         <Text style={styles.subtitle}>
           no likes. no ranking. just support.
         </Text>
+
+        <Image
+          source={require('../assets/images/circle-mockup.jpg')}
+          style={styles.mockupPreview}
+          resizeMode="cover"
+        />
 
         <View style={styles.writeCard}>
           <Text style={styles.writeLabel}>drop a soft Bip</Text>
@@ -88,32 +96,52 @@ export default function CircleScreen() {
 
               <Text style={styles.postText}>{post.text}</Text>
 
+              <View style={styles.voiceBox}>
+                <Text style={styles.voicePlay}>▶</Text>
+                <View style={styles.waveLine} />
+                <Text style={styles.voiceTime}>0:42</Text>
+              </View>
+
               <View style={styles.reactions}>
-                {['💜 Felt This', '☁️ Comfort', '⭐ Proud', '🌙 Stay With Them'].map(
-                  (reaction) => (
-                    <TouchableOpacity key={reaction} style={styles.reaction}>
-                      <Text style={styles.reactionText}>{reaction}</Text>
-                    </TouchableOpacity>
-                  )
-                )}
+                {[
+                  '💜 Felt This',
+                  '☁️ Comfort',
+                  '⭐ Proud',
+                  '🌙 Stay With Them',
+                ].map((reaction) => (
+                  <TouchableOpacity key={reaction} style={styles.reaction}>
+                    <Text style={styles.reactionText}>{reaction}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
 
               {isOwner && (
-                <View style={styles.ownerBox}>
-                  <Text style={styles.ownerTitle}>only you can see this ✦</Text>
-                  <Text style={styles.ownerText}>
-                    💜 {post.supports.felt} people understood.
-                  </Text>
-                  <Text style={styles.ownerText}>
-                    ☁️ {post.supports.comfort} people sent comfort.
-                  </Text>
-                  <Text style={styles.ownerText}>
-                    ⭐ {post.supports.proud} people are proud of you.
-                  </Text>
-                  <Text style={styles.ownerText}>
-                    🌙 {post.supports.stay} people stayed with this feeling.
-                  </Text>
-                </View>
+                <>
+                  <View style={styles.ownerBox}>
+                    <Text style={styles.ownerTitle}>only you can see this ✦</Text>
+
+                    <Text style={styles.ownerText}>
+                      💜 {post.supports.felt} people understood.
+                    </Text>
+                    <Text style={styles.ownerText}>
+                      ☁️ {post.supports.comfort} people sent comfort.
+                    </Text>
+                    <Text style={styles.ownerText}>
+                      ⭐ {post.supports.proud} people are proud of you.
+                    </Text>
+                    <Text style={styles.ownerText}>
+                      🌙 {post.supports.stay} people stayed with this feeling.
+                    </Text>
+                  </View>
+
+                  <View style={styles.stayCard}>
+                    <Text style={styles.stayTitle}>🌙 Stay With Them</Text>
+                    <Text style={styles.stayText}>
+                      {post.supports.stay} people are sitting with this feeling
+                      tonight.
+                    </Text>
+                  </View>
+                </>
               )}
             </View>
           );
@@ -150,7 +178,15 @@ const styles = StyleSheet.create({
     color: '#f5b3ff',
     textAlign: 'center',
     marginTop: 6,
-    marginBottom: 22,
+    marginBottom: 16,
+  },
+  mockupPreview: {
+    width: '100%',
+    height: 220,
+    borderRadius: 24,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#9b2cff',
   },
   writeCard: {
     backgroundColor: 'rgba(40, 0, 80, 0.65)',
@@ -227,6 +263,33 @@ const styles = StyleSheet.create({
     lineHeight: 30,
     marginVertical: 20,
   },
+  voiceBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderColor: '#c026d3',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 12,
+    backgroundColor: 'rgba(255, 0, 200, 0.12)',
+    marginBottom: 16,
+  },
+  voicePlay: {
+    color: '#fff',
+    fontSize: 18,
+    marginRight: 10,
+  },
+  waveLine: {
+    flex: 1,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: '#ff4df3',
+    opacity: 0.8,
+  },
+  voiceTime: {
+    color: '#ffd6ff',
+    marginLeft: 10,
+    fontWeight: '700',
+  },
   reactions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -262,6 +325,25 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     lineHeight: 22,
+  },
+  stayCard: {
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#9b2cff',
+    backgroundColor: 'rgba(155, 44, 255, 0.18)',
+  },
+  stayTitle: {
+    color: '#ff8df7',
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 6,
+  },
+  stayText: {
+    color: '#fff',
+    fontSize: 16,
+    lineHeight: 24,
   },
   sekretCard: {
     marginTop: 6,
