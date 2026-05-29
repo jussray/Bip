@@ -1,128 +1,132 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React from ‘react’;
+import { View, Text, TouchableOpacity, StyleSheet } from ‘react-native’;
 
 export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>Se’kret Bip 💜</Text>
-      <Text style={styles.subtitle}>your space. your voice. always you.</Text>
-
-      <View style={styles.card}>
-        <Text style={styles.greeting}>Good evening, Raylene 🌙</Text>
-        <Text style={styles.message}>You made it through today. I’m proud of you.</Text>
-      </View>
-
-      <Text style={styles.question}>How’s your heart right now?</Text>
-
-      <View style={styles.moods}>
-        {['awful', 'sad', 'meh', 'okay', 'good', 'amazing'].map((mood) => (
-          <TouchableOpacity key={mood} style={styles.mood}>
-            <Text style={styles.moodEmoji}>☁️</Text>
-            <Text style={styles.moodText}>{mood}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.question}>What would you like to do?</Text>
-
-      <View style={styles.actions}>
-        {['Write It Out', 'Voice Bip', 'Calm Me', 'Circle'].map((item) => (
-          <TouchableOpacity key={item} style={styles.action}>
-            <Text style={styles.actionText}>{item}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+return (
+Se’kret Bip 💜
+your space. your voice. always you.
+  <View style={styles.card}>
+    <Text style={styles.cardTitle}>
+      How's your heart right now?
+    </Text>
+    <Text style={styles.cardText}>
+      No pressure. Just check in softly.
+    </Text>
+    <View style={styles.moodRow}>
+      {['😭', '😔', '😐', '🙂', '🥹', '✨'].map((mood) => (
+        <TouchableOpacity key={mood} style={styles.mood}>
+          <Text style={styles.moodText}>{mood}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
-  );
+  </View>
+  <View style={styles.actions}>
+    <TouchableOpacity style={styles.action}>
+      <Text style={styles.actionText}>Write It Out</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.action}>
+      <Text style={styles.actionText}>Voice Bip</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.action}>
+      <Text style={styles.actionText}>Calm Me</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.action}>
+      <Text style={styles.actionText}>Circle</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
+);
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#090014',
-    padding: 24,
-    justifyContent: 'center',
-  },
-  logo: {
-    color: '#ff4df3',
-    fontSize: 38,
-    fontWeight: '800',
-    textAlign: 'center',
-    textShadowColor: '#ff00dd',
-    textShadowRadius: 18,
-  },
-  subtitle: {
-    color: '#f5b3ff',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 28,
-  },
-  card: {
-    borderWidth: 1,
-    borderColor: '#9b2cff',
-    backgroundColor: 'rgba(80, 0, 120, 0.35)',
-    borderRadius: 24,
-    padding: 22,
-    marginBottom: 24,
-  },
-  greeting: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  message: {
-    color: '#f2c8ff',
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  question: {
-    color: '#ff8df7',
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginVertical: 14,
-  },
-  moods: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    justifyContent: 'center',
-  },
-  mood: {
-    width: 95,
-    padding: 12,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#8f2cff',
-    alignItems: 'center',
-    backgroundColor: 'rgba(20, 0, 40, 0.8)',
-  },
-  moodEmoji: {
-    fontSize: 24,
-  },
-  moodText: {
-    color: '#fff',
-    marginTop: 6,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    justifyContent: 'center',
-  },
-  action: {
-    width: 140,
-    padding: 18,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ff38df',
-    backgroundColor: 'rgba(255, 0, 200, 0.13)',
-  },
-  actionText: {
-    color: '#ffd6ff',
-    fontWeight: '700',
-    textAlign: 'center',
-  },
+container: {
+flex: 1,
+backgroundColor: ‘#090014’,
+padding: 24,
+justifyContent: ‘center’,
+},
+
+logo: {
+color: ‘#ff4df3’,
+fontSize: 38,
+fontWeight: ‘900’,
+textAlign: ‘center’,
+textShadowColor: ‘#ff00dd’,
+textShadowRadius: 18,
+},
+
+subtitle: {
+color: ‘#f5b3ff’,
+textAlign: ‘center’,
+marginTop: 8,
+marginBottom: 30,
+},
+
+card: {
+backgroundColor: ‘rgba(80, 0, 130, 0.42)’,
+borderColor: ‘#c026d3’,
+borderWidth: 1,
+borderRadius: 28,
+padding: 24,
+},
+
+cardTitle: {
+color: ‘#fff’,
+fontSize: 24,
+fontWeight: ‘800’,
+textAlign: ‘center’,
+},
+
+cardText: {
+color: ‘#f3c4ff’,
+textAlign: ‘center’,
+marginTop: 10,
+marginBottom: 20,
+},
+
+moodRow: {
+flexDirection: ‘row’,
+justifyContent: ‘center’,
+flexWrap: ‘wrap’,
+gap: 10,
+},
+
+mood: {
+width: 56,
+height: 56,
+borderRadius: 20,
+backgroundColor: ‘rgba(255,255,255,0.08)’,
+borderColor: ‘#ff38df’,
+borderWidth: 1,
+alignItems: ‘center’,
+justifyContent: ‘center’,
+},
+
+moodText: {
+fontSize: 26,
+},
+
+actions: {
+marginTop: 28,
+flexDirection: ‘row’,
+flexWrap: ‘wrap’,
+justifyContent: ‘center’,
+gap: 14,
+},
+
+action: {
+width: 145,
+paddingVertical: 18,
+borderRadius: 22,
+borderColor: ‘#ff38df’,
+borderWidth: 1,
+backgroundColor: ‘rgba(255, 0, 200, 0.14)’,
+},
+
+actionText: {
+color: ‘#ffd6ff’,
+fontWeight: ‘800’,
+textAlign: ‘center’,
+},
 });
