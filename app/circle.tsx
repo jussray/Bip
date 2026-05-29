@@ -1,45 +1,131 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+
+const currentUserId = 'me';
+
+const posts = [
+  {
+    id: '1',
+    authorId: 'me',
+    name: 'Anonymous Bip',
+    mood: 'heavy',
+    text: 'some nights the thoughts are louder than everything else.',
+    supports: {
+      felt: 46,
+      comfort: 31,
+      proud: 12,
+      stay: 8,
+    },
+  },
+  {
+    id: '2',
+    authorId: 'someoneElse',
+    name: 'Anonymous Bip',
+    mood: 'trying',
+    text: 'i did one small thing today and honestly that counts.',
+    supports: {
+      felt: 20,
+      comfort: 14,
+      proud: 9,
+      stay: 5,
+    },
+  },
+];
 
 export default function CircleScreen() {
+  const [draft, setDraft] = useState('');
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Se'kret Circle ♡</Text>
-      <Text style={styles.subtitle}>you're not alone. we show up.</Text>
+      <StatusBar style="light" />
 
-      <View style={styles.postCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>R</Text>
-        </View>
-
-        <Text style={styles.name}>Raylene ♡</Text>
-        <Text style={styles.mood}>Mood: alone 💜</Text>
-
-        <Text style={styles.postText}>
-          some nights the thoughts are louder than everything else.
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.title}>Se'kret Circle ♡</Text>
+        <Text style={styles.subtitle}>
+          no likes. no ranking. just support.
         </Text>
 
-        <View style={styles.reactions}>
-          <TouchableOpacity style={styles.reaction}>
-            <Text style={styles.reactionText}>💜 46 felt this too</Text>
-          </TouchableOpacity>
+        <View style={styles.writeCard}>
+          <Text style={styles.writeLabel}>drop a soft Bip</Text>
 
-          <TouchableOpacity style={styles.reaction}>
-            <Text style={styles.reactionText}>☁️ 31 sending comfort</Text>
-          </TouchableOpacity>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="what’s sitting on your heart?"
+            placeholderTextColor="#9f7bbd"
+            multiline
+            style={styles.input}
+          />
 
-          <TouchableOpacity style={styles.reaction}>
-            <Text style={styles.reactionText}>🌙 8 stayed with this</Text>
+          <TouchableOpacity style={styles.postButton}>
+            <Text style={styles.postButtonText}>post anonymous 💜</Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.sekretCard}>
-        <Text style={styles.sekretTitle}>☁️ Se'kret says...</Text>
-        <Text style={styles.sekretText}>
-          You don't have to carry this alone. 💜
-        </Text>
-      </View>
+        {posts.map((post) => {
+          const isOwner = post.authorId === currentUserId;
+
+          return (
+            <View key={post.id} style={styles.postCard}>
+              <View style={styles.topRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>♡</Text>
+                </View>
+
+                <View>
+                  <Text style={styles.name}>{post.name}</Text>
+                  <Text style={styles.mood}>mood: {post.mood} 💜</Text>
+                </View>
+              </View>
+
+              <Text style={styles.postText}>{post.text}</Text>
+
+              <View style={styles.reactions}>
+                {['💜 Felt This', '☁️ Comfort', '⭐ Proud', '🌙 Stay With Them'].map(
+                  (reaction) => (
+                    <TouchableOpacity key={reaction} style={styles.reaction}>
+                      <Text style={styles.reactionText}>{reaction}</Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </View>
+
+              {isOwner && (
+                <View style={styles.ownerBox}>
+                  <Text style={styles.ownerTitle}>only you can see this ✦</Text>
+                  <Text style={styles.ownerText}>
+                    💜 {post.supports.felt} people understood.
+                  </Text>
+                  <Text style={styles.ownerText}>
+                    ☁️ {post.supports.comfort} people sent comfort.
+                  </Text>
+                  <Text style={styles.ownerText}>
+                    ⭐ {post.supports.proud} people are proud of you.
+                  </Text>
+                  <Text style={styles.ownerText}>
+                    🌙 {post.supports.stay} people stayed with this feeling.
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })}
+
+        <View style={styles.sekretCard}>
+          <Text style={styles.sekretTitle}>☁️ Se'kret says...</Text>
+          <Text style={styles.sekretText}>
+            Everybody can support. Only the person who posted sees the numbers.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -48,12 +134,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#090014',
-    padding: 24,
+  },
+  scroll: {
+    padding: 20,
     paddingTop: 60,
+    paddingBottom: 40,
   },
   title: {
     color: '#ff4df3',
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: '900',
     textAlign: 'center',
   },
@@ -61,61 +150,121 @@ const styles = StyleSheet.create({
     color: '#f5b3ff',
     textAlign: 'center',
     marginTop: 6,
-    marginBottom: 28,
+    marginBottom: 22,
+  },
+  writeCard: {
+    backgroundColor: 'rgba(40, 0, 80, 0.65)',
+    borderColor: '#9b2cff',
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 18,
+  },
+  writeLabel: {
+    color: '#ff8df7',
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  input: {
+    minHeight: 90,
+    color: '#fff',
+    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 14,
+    textAlignVertical: 'top',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  postButton: {
+    marginTop: 12,
+    backgroundColor: '#c026d3',
+    borderRadius: 18,
+    padding: 13,
+  },
+  postButtonText: {
+    color: '#fff',
+    fontWeight: '900',
+    textAlign: 'center',
   },
   postCard: {
     backgroundColor: 'rgba(80, 0, 130, 0.45)',
     borderColor: '#ff38df',
     borderWidth: 1,
     borderRadius: 28,
-    padding: 22,
+    padding: 20,
+    marginBottom: 16,
+  },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   avatar: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: '#ff38df',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginRight: 12,
   },
   avatarText: {
     color: '#fff',
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
   },
   name: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
   },
   mood: {
     color: '#d9a3ff',
-    marginTop: 4,
+    marginTop: 3,
   },
   postText: {
     color: '#fff',
-    fontSize: 22,
-    lineHeight: 32,
-    marginVertical: 24,
+    fontSize: 20,
+    lineHeight: 30,
+    marginVertical: 20,
   },
   reactions: {
-    gap: 10,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   reaction: {
     borderColor: '#c026d3',
     borderWidth: 1,
     borderRadius: 18,
-    padding: 12,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
     backgroundColor: 'rgba(255, 0, 200, 0.12)',
+    marginRight: 8,
+    marginBottom: 8,
   },
   reactionText: {
     color: '#ffd6ff',
     fontWeight: '700',
-    textAlign: 'center',
+  },
+  ownerBox: {
+    marginTop: 16,
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  ownerTitle: {
+    color: '#ff8df7',
+    fontWeight: '900',
+    marginBottom: 8,
+  },
+  ownerText: {
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 22,
   },
   sekretCard: {
-    marginTop: 22,
+    marginTop: 6,
     borderColor: '#9b2cff',
     borderWidth: 1,
     borderRadius: 24,
@@ -129,7 +278,8 @@ const styles = StyleSheet.create({
   },
   sekretText: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 18,
+    lineHeight: 27,
     marginTop: 10,
     textAlign: 'center',
   },
