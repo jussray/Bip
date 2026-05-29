@@ -6,16 +6,20 @@ module.exports = function (api) {
       [
         'module-resolver',
         {
+          root: ['.'],
           alias: {
             '@components': './components',
             '@screens': './screens',
             '@utils': './utils',
             '@hooks': './hooks',
             '@constants': './constants',
-            '@types': './types',
+            // NOTE: '@types' removed — collides with TypeScript's @types/* namespace.
+            // Import types directly or use: '@appTypes': './types'
           },
+          extensions: ['.ios.js', '.android.js', '.js', '.jsx', '.ts', '.tsx', '.json'],
         },
       ],
     ],
   };
 };
+
