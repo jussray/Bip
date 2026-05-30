@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { registerRootComponent } from 'expo';
+import App from './app/index';
+
+registerRootComponent(App);
 import {
   Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, View, Animated, Platform, Image,
