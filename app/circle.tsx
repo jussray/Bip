@@ -19,7 +19,16 @@ const posts = [
     name: 'Anonymous Bip',
     mood: 'heavy',
     text: 'some nights the thoughts are louder than everything else.',
+<<<<<<< HEAD
     supports: { felt: 46, comfort: 31, proud: 12, stay: 8 },
+=======
+    supports: {
+      felt: 46,
+      comfort: 31,
+      proud: 12,
+      stay: 8,
+    },
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
   },
   {
     id: '2',
@@ -27,7 +36,16 @@ const posts = [
     name: 'Anonymous Bip',
     mood: 'trying',
     text: 'i did one small thing today and honestly that counts.',
+<<<<<<< HEAD
     supports: { felt: 20, comfort: 14, proud: 9, stay: 5 },
+=======
+    supports: {
+      felt: 20,
+      comfort: 14,
+      proud: 9,
+      stay: 5,
+    },
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
   },
 ];
 
@@ -40,6 +58,7 @@ export default function CircleScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Se&apos;kret Circle ♡</Text>
+<<<<<<< HEAD
         <Text style={styles.subtitle}>no likes. no ranking. just support.</Text>
 
         <Image
@@ -67,6 +86,37 @@ export default function CircleScreen() {
             style={styles.input}
           />
 
+=======
+
+        <Text style={styles.subtitle}>
+          no likes. no ranking. just support.
+        </Text>
+
+        <Image
+          source={require('../assets/images/9D7577CE-3E29-4D2D-AEC4-E7F9A3C054ED.png')}          style={styles.mockupPreview}
+          resizeMode="cover"
+        />
+
+        <View style={styles.comfortModeCard}>
+          <Text style={styles.comfortModeTitle}>☁️ Comfort Only Mode</Text>
+          <Text style={styles.comfortModeText}>
+            Replies stay supportive. No advice. No fixing. Just comfort.
+          </Text>
+        </View>
+
+        <View style={styles.writeCard}>
+          <Text style={styles.writeLabel}>drop a soft Bip</Text>
+
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="what’s sitting on your heart?"
+            placeholderTextColor="#9f7bbd"
+            multiline
+            style={styles.input}
+          />
+
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
           <TouchableOpacity style={styles.postButton}>
             <Text style={styles.postButtonText}>post anonymous 💜</Text>
           </TouchableOpacity>
@@ -78,9 +128,17 @@ export default function CircleScreen() {
           return (
             <View key={post.id} style={styles.postCard}>
               <View style={styles.topRow}>
+<<<<<<< HEAD
                 <View style={styles.avatar}>
                   <Text style={styles.avatarText}>♡</Text>
                 </View>
+=======
+                <Image
+                  source={require('../assets/images/cloud-headphones.png')}
+                  style={styles.cloudAvatar}
+                  resizeMode="contain"
+                />
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
 
                 <View>
                   <Text style={styles.name}>{post.name}</Text>
@@ -127,6 +185,10 @@ export default function CircleScreen() {
                 <>
                   <View style={styles.ownerBox}>
                     <Text style={styles.ownerTitle}>only you can see this ✦</Text>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
                     <Text style={styles.ownerText}>
                       💜 {post.supports.felt} people understood.
                     </Text>
@@ -166,9 +228,21 @@ export default function CircleScreen() {
 }
 
 const styles = StyleSheet.create({
+<<<<<<< HEAD
   container: { flex: 1, backgroundColor: '#090014' },
   scroll: { padding: 20, paddingTop: 60, paddingBottom: 40 },
 
+=======
+  container: {
+    flex: 1,
+    backgroundColor: '#090014',
+  },
+  scroll: {
+    padding: 20,
+    paddingTop: 60,
+    paddingBottom: 40,
+  },
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
   title: {
     color: '#ff4df3',
     fontSize: 34,
@@ -253,6 +327,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 16,
   },
+<<<<<<< HEAD
   topRow: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
     width: 54,
@@ -262,6 +337,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+=======
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cloudAvatar: {
+    width: 60,
+    height: 60,
+    marginRight: 12,
+  },
+  name: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  mood: {
+    color: '#d9a3ff',
+    marginTop: 3,
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
   },
   avatarText: { color: '#fff', fontSize: 26, fontWeight: '900' },
   name: { color: '#fff', fontSize: 18, fontWeight: '800' },
@@ -282,6 +376,41 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: 'rgba(255, 0, 200, 0.12)',
     marginBottom: 16,
+<<<<<<< HEAD
+=======
+  },
+  voicePlay: {
+    color: '#fff',
+    fontSize: 18,
+    marginRight: 10,
+  },
+  waveLine: {
+    flex: 1,
+    height: 8,
+    borderRadius: 8,
+    backgroundColor: '#ff4df3',
+    opacity: 0.8,
+  },
+  voiceTime: {
+    color: '#ffd6ff',
+    marginLeft: 10,
+    fontWeight: '700',
+  },
+
+  reactions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  reaction: {
+    borderColor: '#c026d3',
+    borderWidth: 1,
+    borderRadius: 18,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 0, 200, 0.12)',
+    marginRight: 8,
+    marginBottom: 8,
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
   },
   voicePlay: { color: '#fff', fontSize: 18, marginRight: 10 },
   waveLine: {
@@ -339,6 +468,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
+<<<<<<< HEAD
+=======
+  replyBox: {
+    marginTop: 14,
+    borderRadius: 18,
+    padding: 14,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  replyTitle: {
+    color: '#ff8df7',
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  replyActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  replyButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255,0,200,0.12)',
+    borderWidth: 1,
+    borderColor: '#c026d3',
+  },
+  replyButtonText: {
+    color: '#ffd6ff',
+    fontWeight: '700',
+  },
+
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
   ownerBox: {
     marginTop: 16,
     borderRadius: 18,
@@ -352,7 +516,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 8,
   },
+<<<<<<< HEAD
   ownerText: { color: '#fff', fontSize: 14, lineHeight: 22 },
+=======
+  ownerText: {
+    color: '#fff',
+    fontSize: 14,
+    lineHeight: 22,
+  },
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
 
   stayCard: {
     marginTop: 14,
@@ -368,7 +540,15 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 6,
   },
+<<<<<<< HEAD
   stayText: { color: '#fff', fontSize: 16, lineHeight: 24 },
+=======
+  stayText: {
+    color: '#fff',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+>>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
 
   sekretCard: {
     marginTop: 6,
