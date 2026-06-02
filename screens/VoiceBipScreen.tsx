@@ -1,12 +1,35 @@
 import React, { useState, useRef } from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  View, Animated, Image, StyleSheet,
+  View, Animated, Image, ImageBackground,
+  StyleSheet, Platform,
 } from 'react-native';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// IMAGES
+// ─────────────────────────────────────────────────────────────────────────────
+const IMAGES = {
+  // Time-aware voice art
+  rayleneVoiceDay:   require('../assets/images/raylene-voice-day.png'),
+  rayleneVoiceNight: require('../assets/images/raylene-voice-night.png'),
+  rylaneVoiceDay:    require('../assets/images/rylane-voice-day.png'),
+  rylaneVoiceNight:  require('../assets/images/rylane-voice-night.png'),
+  // Room background
+  roomBgDark:        require('../assets/images/room-bg-dark.png'),
+  // Cloud
+  cloudHeadphones:   require('../assets/images/cloud-headphones.png'),
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SE'KRET API
+// ─────────────────────────────────────────────────────────────────────────────
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
-async function fetchSekretReply(text: string, context = 'journal', mood?: string): Promise<string> {
+async function fetchSekretReply(
+  text: string,
+  context = 'journal',
+  mood?: string
+): Promise<string> {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
@@ -21,6 +44,9 @@ async function fetchSekretReply(text: string, context = 'journal', mood?: string
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
 interface VoiceNote {
   id: number;
   title: string;
@@ -37,6 +63,9 @@ interface VoiceBipScreenProps {
   setVoiceNotes: (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
   theme,
   setScreen,
@@ -51,10 +80,16 @@ export function VoiceBipScreen({
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pulseLoop = useRef<any>(null);
 
-  const heroArt = selectedSekret === 'rylane'
-    ? require('../assets/images/rylane-fullbody.png')
-    : require('../assets/images/raylene-fullbody.png');
+  // ── Time-aware hero art ──────────────────────────────────────────────────
+  const hour    = new Date().getHours();
+  const isNight = hour >= 18 || hour < 6;
 
+  const heroArt =
+    selectedSekret === 'rylane'
+      ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
+      : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
+
+  // ── Recording ────────────────────────────────────────────────────────────
   const startRecording = () => {
     setIsRecording(true);
     setRecorded(false);
@@ -82,7 +117,6 @@ export function VoiceBipScreen({
       duration: '~30s',
     };
 
-    // Update parent state — saveState is triggered by the useEffect in index.tsx
     setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
 
     setIsThinking(true);
@@ -94,123 +128,215 @@ export function VoiceBipScreen({
     setIsThinking(false);
   };
 
+  // ── Render ───────────────────────────────────────────────────────────────
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity onPress={() => setScreen('pages')} style={styles.backBtn}>
-        <Text style={styles.backText}>← Back to Pages</Text>
-      </TouchableOpacity>
-      <Text style={styles.logo}>Voice Bip 🎙️</Text>
-      <Text style={styles.subtitle}>Say it out loud. 30–60 seconds. Let it go.</Text>
+    <View style={[styles.root, { backgroundColor: theme.background }]}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
 
-      <Image source={heroArt} style={styles.artworkLarge} resizeMode="contain" />
-
-      {/* Record button */}
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, alignItems: 'center', paddingVertical: 32 }]}>
-        <Animated.View style={[
-          styles.recordCircle,
-          {
-            backgroundColor: isRecording ? theme.accent : theme.card,
-            borderColor: theme.accent,
-            transform: [{ scale: pulseAnim }],
-            shadowColor: theme.accent,
-            shadowOpacity: isRecording ? 0.8 : 0.3,
-            shadowRadius: 20,
-            elevation: 10,
-          },
-        ]}>
-          <Text style={{ fontSize: 48 }}>{isRecording ? '🔴' : '🎙️'}</Text>
-        </Animated.View>
-
-        <Text style={styles.recordLabel}>
-          {isRecording ? 'Recording...' : recorded ? 'Saved 💜' : 'Tap to Start'}
-        </Text>
-        <Text style={styles.recordSub}>
-          {isRecording ? 'Tap again to stop' : 'Say whatever you need to say'}
-        </Text>
-
-        <TouchableOpacity
-          style={[
-            styles.recordBtn,
-            { backgroundColor: isRecording ? '#EF4444' : theme.accent },
-          ]}
-          onPress={isRecording ? stopRecording : startRecording}
-        >
-          <Text style={styles.recordBtnText}>
-            {isRecording ? '⏹ Stop Recording' : '▶ Start Voice Bip'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Se'kret listening */}
-      {isThinking && (
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-          <Text style={[styles.replyLabel, { color: theme.soft }]}>Se'kret is listening... ☁️</Text>
-        </View>
-      )}
-
-      {/* Se'kret reply */}
-      {sekretReply ? (
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-          <Text style={[styles.replyLabel, { color: theme.soft }]}>Se'kret replied 💜</Text>
-          <Text style={styles.replyText}>{sekretReply}</Text>
-        </View>
-      ) : null}
-
-      {/* Tips */}
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-        <Text style={styles.tipsTitle}>Tips for Voice Bips 🌙</Text>
-        {[
-          "Find a private spot — car, room, bathroom, wherever",
-          "You don't need perfect words. Just talk.",
-          "It's okay to cry, pause, or start over",
-          "Se'kret listens without judgment, always",
-        ].map(tip => (
-          <Text key={tip} style={styles.tip}>• {tip}</Text>
-        ))}
-      </View>
-
-      {/* Saved voice bips */}
-      {voiceNotes.length > 0 && (
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-          <Text style={styles.tipsTitle}>Saved Voice Bips</Text>
-          {voiceNotes.slice(0, 5).map(n => (
-            <View key={n.id} style={styles.noteRow}>
-              <Text style={{ fontSize: 28 }}>🎙️</Text>
+        {/* ── Hero header — room background + time-aware character ── */}
+        <View style={styles.heroWrap}>
+          <ImageBackground
+            source={IMAGES.roomBgDark}
+            style={styles.heroBg}
+            resizeMode="cover"
+          >
+            {/* Dark overlay */}
+            <View style={styles.heroOverlay} />
+            <View style={styles.heroContent}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.noteTitle}>{n.title}</Text>
-                <Text style={styles.noteMeta}>{n.date} · {n.time} · {n.duration}</Text>
+                <Text style={styles.heroSub}>
+                  {isNight ? 'late night voice bip 🌙' : 'voice bip 🎙️'}
+                </Text>
+                <Text style={styles.heroTitle}>Voice Bip</Text>
+                <Text style={styles.heroMini}>
+                  Say it out loud. 30–60 seconds. Let it go.
+                </Text>
               </View>
-              <TouchableOpacity style={styles.playBtn}>
-                <Text style={styles.playBtnText}>▶ Play</Text>
-              </TouchableOpacity>
+              <Image
+                source={heroArt}
+                style={styles.heroChar}
+                resizeMode="cover"
+              />
             </View>
+          </ImageBackground>
+        </View>
+
+        {/* ── Record button ── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column', alignItems: 'center', paddingVertical: 32 }]}>
+          <Animated.View style={[
+            styles.recordCircle,
+            {
+              backgroundColor: isRecording
+                ? 'rgba(236,72,153,0.3)'
+                : 'rgba(124,58,237,0.3)',
+              borderColor: isRecording ? '#f472b6' : theme.accent,
+              transform: [{ scale: pulseAnim }],
+              shadowColor: isRecording ? '#f472b6' : theme.accent,
+              shadowOpacity: isRecording ? 0.8 : 0.3,
+              shadowRadius: 20,
+              elevation: 10,
+            },
+          ]}>
+            <Text style={{ fontSize: 48 }}>{isRecording ? '🔴' : '🎙️'}</Text>
+          </Animated.View>
+
+          <Text style={styles.recordLabel}>
+            {isRecording ? 'Recording...' : recorded ? 'Saved 💜' : 'Tap to Start'}
+          </Text>
+          <Text style={styles.recordSub}>
+            {isRecording ? 'Tap again to stop' : 'Say whatever you need to say'}
+          </Text>
+
+          <TouchableOpacity
+            onPress={isRecording ? stopRecording : startRecording}
+            style={styles.recordActionWrap}
+          >
+            <View style={[
+              styles.recordActionInner,
+              { backgroundColor: isRecording ? '#ef4444' : theme.accent },
+            ]}>
+              <Text style={styles.recordActionText}>
+                {isRecording ? '⏹ Stop Recording' : '▶ Start Voice Bip'}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Se'kret listening ── */}
+        {isThinking && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, gap: 12 }]}>
+            <Image
+              source={IMAGES.cloudHeadphones}
+              style={{ width: 40, height: 40 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.listeningText, { color: theme.soft }]}>
+              Se'kret is listening... ☁️
+            </Text>
+          </View>
+        )}
+
+        {/* ── Se'kret replied ── */}
+        {sekretReply && !isThinking && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: 'rgba(168,85,247,0.3)', flexDirection: 'column' }]}>
+            <Text style={styles.replyLabel}>Se'kret replied 💜</Text>
+            <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
+          </View>
+        )}
+
+        {/* ── Tips ── */}
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column' }]}>
+          <Text style={styles.cardTitle}>Tips for Voice Bips 🌙</Text>
+          {[
+            "Find a private spot — car, room, bathroom, wherever",
+            "You don't need perfect words. Just talk.",
+            "It's okay to cry, pause, or start over",
+            "Se'kret listens without judgment, always",
+          ].map(tip => (
+            <Text key={tip} style={styles.tip}>• {tip}</Text>
           ))}
         </View>
-      )}
-    </ScrollView>
+
+        {/* ── Saved voice bips ── */}
+        {voiceNotes.length > 0 && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column' }]}>
+            <Text style={[styles.cardTitle, { marginBottom: 12 }]}>Saved Voice Bips</Text>
+            {voiceNotes.slice(0, 5).map(n => (
+              <View key={n.id} style={styles.noteRow}>
+                <View style={[styles.noteIcon, { backgroundColor: 'rgba(124,58,237,0.3)' }]}>
+                  <Text style={{ fontSize: 16 }}>🎙️</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.noteTitle}>{n.title}</Text>
+                  <Text style={styles.noteMeta}>{n.date} · {n.time} · {n.duration}</Text>
+                </View>
+                <TouchableOpacity style={[styles.playBtn, { backgroundColor: 'rgba(124,58,237,0.25)' }]}>
+                  <Text style={styles.playBtnText}>▶ Play</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* ── Empty state ── */}
+        {voiceNotes.length === 0 && (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column', alignItems: 'center', padding: 20 }]}>
+            <Image
+              source={IMAGES.cloudHeadphones}
+              style={{ width: 48, height: 48, marginBottom: 10 }}
+              resizeMode="contain"
+            />
+            <Text style={styles.emptyText}>
+              No voice bips yet. Your first one is waiting. 🎙️
+            </Text>
+          </View>
+        )}
+
+        {/* ── Back button ── */}
+        <TouchableOpacity
+          onPress={() => setScreen('pages')}
+          style={styles.backBtn}
+        >
+          <Text style={styles.backBtnText}>← Back to Se'kret Pages</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+    </View>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STYLES
+// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:    { flexGrow: 1, padding: 20, paddingTop: 60 },
-  logo:         { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:     { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
-  card:         { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
-  backBtn:      { marginBottom: 12 },
-  backText:     { color: '#94A3B8', fontSize: 14 },
-  recordCircle: { width: 120, height: 120, borderRadius: 60, borderWidth: 3, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  recordLabel:  { color: '#fff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-  recordSub:    { color: '#94A3B8', fontSize: 13, marginBottom: 20 },
-  recordBtn:    { padding: 14, borderRadius: 18, width: 200, alignItems: 'center' },
-  recordBtnText:{ color: '#fff', fontSize: 15, fontWeight: 'bold' },
-  replyLabel:   { fontSize: 14, marginBottom: 6 },
-  replyText:    { color: '#fff', fontSize: 15, lineHeight: 22 },
-  tipsTitle:    { color: '#fff', fontWeight: 'bold', fontSize: 16, marginBottom: 10 },
-  tip:          { color: '#CBD5E1', fontSize: 14, marginBottom: 6 },
-  noteRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1E293B' },
-  noteTitle:    { color: '#fff', fontWeight: '600' },
-  noteMeta:     { color: '#94A3B8', fontSize: 12 },
-  playBtn:      { backgroundColor: '#334155', padding: 8, borderRadius: 10 },
-  playBtnText:  { color: '#fff', fontSize: 12 },
-  artworkLarge: { width: '100%', height: 280, marginBottom: 16, borderRadius: 20 },
+  root:              { flex: 1 },
+  scroll:            { paddingBottom: 100 },
+
+  // Hero
+  heroWrap:          { marginHorizontal: 16, marginTop: Platform.OS === 'ios' ? 56 : 40, marginBottom: 12, borderRadius: 24, overflow: 'hidden' },
+  heroBg:            { width: '100%', minHeight: 180 },
+  heroOverlay:       { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,9,20,0.55)' },
+  heroContent:       { padding: 18, minHeight: 180, justifyContent: 'flex-end', flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
+  heroSub:           { fontSize: 11, color: '#a855f7', letterSpacing: 1, marginBottom: 4 },
+  heroTitle:         { fontSize: 26, color: '#f472b6', fontStyle: 'italic', fontWeight: '800' },
+  heroMini:          { fontSize: 12, color: '#a78cc0', marginTop: 4 },
+  heroChar:          { width: 90, height: 90, borderRadius: 14, borderWidth: 2, borderColor: 'rgba(168,85,247,0.4)' },
+
+  // Card
+  card:              { marginHorizontal: 16, marginBottom: 12, borderRadius: 20, borderWidth: 1, padding: 16, flexDirection: 'row', alignItems: 'center' },
+  cardTitle:         { fontSize: 13, color: '#f5f0ff', fontWeight: '600', marginBottom: 10 },
+
+  // Record
+  recordCircle:      { width: 120, height: 120, borderRadius: 60, borderWidth: 3, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  recordLabel:       { color: '#f5f0ff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
+  recordSub:         { color: '#7c6899', fontSize: 13, marginBottom: 20 },
+  recordActionWrap:  { borderRadius: 50, overflow: 'hidden', width: 200 },
+  recordActionInner: { padding: 14, alignItems: 'center', borderRadius: 50 },
+  recordActionText:  { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Reply
+  listeningText:     { fontSize: 13, fontStyle: 'italic' },
+  replyLabel:        { fontSize: 10, color: '#a855f7', marginBottom: 6 },
+  replyText:         { fontSize: 13, lineHeight: 20 },
+
+  // Tips
+  tip:               { fontSize: 13, color: '#c4b5fd', marginBottom: 8, lineHeight: 20 },
+
+  // Notes list
+  noteRow:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(167,114,192,0.1)' },
+  noteIcon:          { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  noteTitle:         { color: '#f5f0ff', fontWeight: '600', fontSize: 13 },
+  noteMeta:          { color: '#7c6899', fontSize: 11 },
+  playBtn:           { borderRadius: 10, padding: 6 },
+  playBtnText:       { color: '#c4b5fd', fontSize: 12 },
+
+  // Empty
+  emptyText:         { fontSize: 13, color: '#7c6899', textAlign: 'center', fontStyle: 'italic' },
+
+  // Back
+  backBtn:           { marginHorizontal: 16, marginBottom: 12, padding: 12, alignItems: 'center' },
+  backBtnText:       { fontSize: 13, color: '#7c6899' },
 });
