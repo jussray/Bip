@@ -50,6 +50,10 @@ const IMAGES = {
   rylaneWriting:   require('../assets/images/rylane-writing.png'),
   rylaneWindow:    require('../assets/images/rylane-window.png'),
   rylaneFullbody:  require('../assets/images/rylane-fullbody.png'),
+rayleneVoiceDay: require('../assets/images/raylene-voice-day.png'),
+rayleneVoiceNight: require('../assets/images/raylene-voice-night.png'),
+rylaneVoiceDay: require('../assets/images/rylane-voice-day.png'),
+rylaneVoiceNight: require('../assets/images/rylane-voice-night.png'),
 };
 
 const HOME_MESSAGES = [
