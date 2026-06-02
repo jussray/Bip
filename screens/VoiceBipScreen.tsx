@@ -60,7 +60,7 @@ interface VoiceBipScreenProps {
   setScreen: (screen: string) => void;
   selectedSekret: string;
   voiceNotes: VoiceNote[];
-  setVoiceNotes: (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
+  setVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
