@@ -10,8 +10,12 @@ import {
   Platform,
   Image,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { loadState, saveState } from '@utils/storage';
+import { getMoodEngine } from '@utils/moodEngine';
+import { HomeScreen } from '../screens/HomeScreen';
+import { JournalScreen } from '../screens/JournalScreen';
+import { CalmScreen } from '../screens/CalmScreen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IMAGE ASSETS
@@ -67,7 +71,6 @@ const SEKRET_PROFILES: Record<string, any> = {
   night:  { name: "Night Se'kret", emoji: '🌙', title: 'Late-Night Listener', vibe: 'Minimal words, calm energy, safe space.',        greeting: "I'm here. You don't gotta explain perfectly." },
 };
 
-// Kept from Doc 1 — sekretModes used in settings / future expansion
 const SEKRET_MODES: Record<string, any> = {
   soft:     { emoji: '🌙', label: 'Soft',        description: 'Gentle comfort & reassurance' },
   realTalk: { emoji: '🧠', label: 'Real Talk',   description: 'Honest, caring, keeps it real' },
@@ -103,7 +106,6 @@ const MOODS = [
   { id: 'Tired', emoji: '😴' },
 ];
 
-// Dynamic mood tags per Se'kret — kept from Doc 1
 const getDynamicTags = (selectedSekret: string) => {
   if (selectedSekret === 'rylane') return ['focused', 'mind heavy', 'protecting my peace', 'trying harder', 'locked in', 'building myself'];
   if (selectedSekret === 'soft')   return ['soft but strong', 'healing', 'trying my best', 'late night thoughts', 'emotional', 'peaceful'];
@@ -111,7 +113,6 @@ const getDynamicTags = (selectedSekret: string) => {
   return ['good vibes', 'overthinking', 'protecting my peace', 'growing', 'learning myself', 'late night thoughts'];
 };
 
-// Hero text per mood — kept from Doc 1
 const getHeroText = (mood: string) => {
   if (mood === 'Happy') return "I'm glad\nyou're smiling\ntonight 🌤️";
   if (mood === 'Sad')   return "I'm here with\nyou tonight ☁️";
@@ -120,7 +121,6 @@ const getHeroText = (mood: string) => {
   return 'Welcome back 🌙';
 };
 
-// Heavy-word detector for Circle step-in
 const shouldSekretStepIn = (text: string) =>
   ['alone', 'hurt', 'tired', 'done', 'empty', 'cry', 'sad', 'scared', 'anxious', 'panic']
     .some(w => text.toLowerCase().includes(w));
@@ -166,7 +166,7 @@ function BottomNav({ screen, setScreen, userSide }: any) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PERIOD CALENDAR (extracted component — Doc 2)
+// PERIOD CALENDAR
 // ─────────────────────────────────────────────────────────────────────────────
 function PeriodCalendar({ theme, setScreen }: any) {
   const today = new Date();
@@ -176,13 +176,18 @@ function PeriodCalendar({ theme, setScreen }: any) {
   const [lastPeriodStart, setLastPeriodStart] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('periodDays').then(v => { if (v) setMarkedDays(JSON.parse(v)); });
-    AsyncStorage.getItem('lastPeriodStart').then(v => { if (v) setLastPeriodStart(v); });
+    // Load period data using the same keys as storage.ts
+    loadState().then(state => {
+      if (state.periodDays)      setMarkedDays(state.periodDays);
+      if (state.lastPeriodStart) setLastPeriodStart(state.lastPeriodStart);
+    });
   }, []);
 
   const save = async (days: Record<string, string>, start: string | null) => {
-    await AsyncStorage.setItem('periodDays', JSON.stringify(days));
-    if (start) await AsyncStorage.setItem('lastPeriodStart', start);
+    await saveState({
+      periodDays: days,
+      ...(start ? { lastPeriodStart: start } : {}),
+    });
   };
 
   const getDaysInMonth = (m: number, y: number) => new Date(y, m + 1, 0).getDate();
@@ -300,22 +305,17 @@ function PeriodCalendar({ theme, setScreen }: any) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// VOICE BIP (extracted component — Doc 2)
+// VOICE BIP
 // ─────────────────────────────────────────────────────────────────────────────
-function VoiceBip({ theme, setScreen, selectedSekret }: any) {
+function VoiceBip({ theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes }: any) {
   const [isRecording, setIsRecording] = useState(false);
   const [recorded, setRecorded]       = useState(false);
-  const [voiceNotes, setVoiceNotes]   = useState<any[]>([]);
   const [sekretReply, setSekretReply] = useState('');
   const [isThinking, setIsThinking]   = useState(false);
   const pulseAnim  = useRef(new Animated.Value(1)).current;
   const pulseLoop  = useRef<any>(null);
 
   const heroArt = selectedSekret === 'rylane' ? IMAGES.rylaneFullbody : IMAGES.rayleneFullbody;
-
-  useEffect(() => {
-    AsyncStorage.getItem('voiceNotes').then(v => { if (v) setVoiceNotes(JSON.parse(v)); });
-  }, []);
 
   const startRecording = () => {
     setIsRecording(true);
@@ -345,7 +345,9 @@ function VoiceBip({ theme, setScreen, selectedSekret }: any) {
     };
     const next = [note, ...voiceNotes];
     setVoiceNotes(next);
-    await AsyncStorage.setItem('voiceNotes', JSON.stringify(next));
+
+    // Save via saveState so voiceNotes is consistent with all other storage
+    await saveState({ voiceNotes: next });
 
     setIsThinking(true);
     const reply = await fetchSekretReply('I just recorded a voice bip. I had some feelings I needed to get out.', 'journal');
@@ -415,7 +417,7 @@ function VoiceBip({ theme, setScreen, selectedSekret }: any) {
       {voiceNotes.length > 0 && (
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
           <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16, marginBottom: 10 }}>Saved Voice Bips</Text>
-          {voiceNotes.slice(0, 5).map(n => (
+          {voiceNotes.slice(0, 5).map((n: any) => (
             <View key={n.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1E293B' }}>
               <Text style={{ fontSize: 28 }}>🎙️</Text>
               <View style={{ flex: 1 }}>
@@ -449,18 +451,19 @@ export default function App() {
   const [moodHistory, setMoodHistory]     = useState<any[]>([]);
   const [circlePosts, setCirclePosts]     = useState<any[]>([]);
   const [circlePostText, setCirclePostText] = useState('');
+  const [voiceNotes, setVoiceNotes]       = useState<any[]>([]);
   const [sekretMessage, setSekretMessage] = useState('');
   const [sekretReply, setSekretReply]     = useState("I see you. You did your best with what you had today. Wanna tell me what the hardest part was?");
   const [isSekretTyping, setIsSekretTyping] = useState(false);
   const [comfortIdx, setComfortIdx]       = useState(0);
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
+  const [isLoading, setIsLoading]         = useState(true);
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
   const currentSekret = SEKRET_PROFILES[selectedSekret];
   const isRylane      = selectedSekret === 'rylane';
 
-  // Per-screen artwork resolved from selected Se'kret
   const art = {
     neutral:  isRylane ? IMAGES.rylaneNeutral  : IMAGES.rayleneNeutral,
     happy:    isRylane ? IMAGES.rylaneHappy    : IMAGES.rayleneHappy,
@@ -470,43 +473,51 @@ export default function App() {
     fullbody: isRylane ? IMAGES.rylaneFullbody : IMAGES.rayleneFullbody,
   };
 
-  // ── PERSIST / LOAD ────────────────────────────────────────────────────────
+  // ── LOAD STATE ─────────────────────────────────────────────────────────────
+  // Uses loadState from utils/storage — same keys, same data, adds error handling
   useEffect(() => {
     (async () => {
-      const keys = ['theme', 'mood', 'userSide', 'selectedSekret', 'sekretMode', 'growthPath', 'journalText', 'entries', 'moodHistory', 'circlePosts'];
-      const vals = await AsyncStorage.multiGet(keys);
-      vals.forEach(([k, v]) => {
-        if (!v) return;
-        if (k === 'theme')          setTheme(v);
-        if (k === 'mood')           setMood(v);
-        if (k === 'userSide')       setUserSide(v);
-        if (k === 'selectedSekret') setSelectedSekret(v);
-        if (k === 'sekretMode')     setSekretMode(v);
-        if (k === 'growthPath')     setGrowthPath(v);
-        if (k === 'journalText')    setJournalText(v);
-        if (k === 'entries')        setEntries(JSON.parse(v));
-        if (k === 'moodHistory')    setMoodHistory(JSON.parse(v));
-        if (k === 'circlePosts')    setCirclePosts(JSON.parse(v));
-      });
+      const state = await loadState();
+      if (state.theme)          setTheme(state.theme);
+      if (state.mood)           setMood(state.mood);
+      if (state.userSide)       setUserSide(state.userSide);
+      if (state.selectedSekret) setSelectedSekret(state.selectedSekret);
+      if (state.sekretMode)     setSekretMode(state.sekretMode);
+      if (state.growthPath)     setGrowthPath(state.growthPath);
+      if (state.journalText)    setJournalText(state.journalText);
+      if (state.entries)        setEntries(state.entries);
+      if (state.moodHistory)    setMoodHistory(state.moodHistory);
+      if (state.circlePosts)    setCirclePosts(state.circlePosts);
+      if (state.voiceNotes)     setVoiceNotes(state.voiceNotes);
+      setIsLoading(false);
     })();
   }, []);
 
+  // ── SAVE STATE ─────────────────────────────────────────────────────────────
+  // Uses saveState from utils/storage — same keys, adds error handling + JSON auto-handling
+  // Guard on isLoading prevents saving defaults over real persisted data on first render
   useEffect(() => {
-    AsyncStorage.multiSet([
-      ['theme',          theme],
-      ['mood',           mood],
-      ['userSide',       userSide],
-      ['selectedSekret', selectedSekret],
-      ['sekretMode',     sekretMode],
-      ['growthPath',     growthPath],
-      ['journalText',    journalText],
-      ['entries',        JSON.stringify(entries)],
-      ['moodHistory',    JSON.stringify(moodHistory)],
-      ['circlePosts',    JSON.stringify(circlePosts)],
-    ]);
-  }, [theme, mood, userSide, selectedSekret, sekretMode, growthPath, journalText, entries, moodHistory, circlePosts]);
+    if (isLoading) return;
+    saveState({
+      theme,
+      mood,
+      userSide,
+      selectedSekret,
+      sekretMode,
+      growthPath,
+      journalText,
+      entries,
+      moodHistory,
+      circlePosts,
+      voiceNotes,
+    });
+  }, [
+    theme, mood, userSide, selectedSekret, sekretMode,
+    growthPath, journalText, entries, moodHistory,
+    circlePosts, voiceNotes, isLoading,
+  ]);
 
-  // ── ANIMATIONS ────────────────────────────────────────────────────────────
+  // ── ANIMATIONS ─────────────────────────────────────────────────────────────
   useEffect(() => {
     Animated.loop(Animated.sequence([
       Animated.timing(breatheAnim, { toValue: 1.1, duration: 2200, useNativeDriver: true }),
@@ -570,8 +581,10 @@ export default function App() {
     setIsSekretTyping(false);
   };
 
-  // Shared nav element
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
+
+  // Show nothing while loading so defaults don't flash before persisted state loads
+  if (isLoading) return null;
 
   // ─────────────────────────────────────────────────────────────────────────
   // PERIOD CALENDAR
@@ -581,184 +594,51 @@ export default function App() {
   // ─────────────────────────────────────────────────────────────────────────
   // VOICE BIP
   // ─────────────────────────────────────────────────────────────────────────
-  if (screen === 'voiceBip') return <VoiceBip theme={t} setScreen={setScreen} selectedSekret={selectedSekret} />;
+  if (screen === 'voiceBip') return (
+    <VoiceBip
+      theme={t}
+      setScreen={setScreen}
+      selectedSekret={selectedSekret}
+      voiceNotes={voiceNotes}
+      setVoiceNotes={setVoiceNotes}
+    />
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // HOME
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'home') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <StatusBar style="light" />
-      {userSide === 'parent' && (
-        <View style={styles.parentBadge}>
-          <Text style={{ color: '#6EE7B7', fontSize: 12 }}>🌿 PARENT SIDE</Text>
-        </View>
-      )}
-
-      <Text style={styles.logo}>Se'kret Bip {currentSekret.emoji}</Text>
-      <Text style={styles.subtitle}>your space. your voice. always you.</Text>
-
-      {/* Breathing cloud */}
-      <Animated.View style={[styles.cloudWrap, { transform: [{ scale: breatheAnim }] }]}>
-        <Image source={IMAGES.cloud} style={styles.cloudImg} resizeMode="contain" />
-      </Animated.View>
-
-      {/* Hero message card */}
-      <View style={card()}>
-        <Text style={{ color: t.soft, fontSize: 13, marginBottom: 4 }}>{currentSekret.name} says...</Text>
-        <Text style={styles.heroText}>{getHeroText(mood)}</Text>
-        <Text style={styles.entryText}>Your Se'kret is {currentSekret.name} energy.</Text>
-      </View>
-
-      {/* Tonight's rotating reminder */}
-      <View style={card()}>
-        <Text style={styles.cardText}>Tonight's Reminder ✨</Text>
-        <Text style={styles.entryText}>{HOME_MESSAGES[homeMessageIndex]}</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>How's your heart right now? 💜</Text>
-      <View style={styles.moodRow}>
-        {MOODS.map(m => (
-          <TouchableOpacity
-            key={m.id}
-            style={[
-              styles.moodBubble,
-              mood === m.id && { backgroundColor: t.accent, shadowColor: t.accent, shadowOpacity: 0.8, shadowRadius: 12, elevation: 8 },
-            ]}
-            onPress={() => selectMood(m.id)}
-          >
-            <Text style={styles.moodEmoji}>{m.emoji}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Se'kret sees you card — mood-aware responses from Doc 1 */}
-      <View style={card()}>
-        <Text style={styles.cardText}>Se'kret sees you 💜</Text>
-        <Text style={styles.entryText}>
-          {mood === 'Sad'   ? "Heavy nights don't last forever. I'm right here with you."  :
-           mood === 'Angry' ? "Your feelings make sense. You're safe to let it out here."  :
-           mood === 'Tired' ? "Rest is an act of self-love. You've done enough today."      :
-           "I read your energy tonight. You're doing better than you think."}
-        </Text>
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.smallButton} onPress={() => setScreen('sekret')}>
-            <Text style={styles.smallButtonText}>💬 Talk more</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.smallButton} onPress={() => setScreen('calm')}>
-            <Text style={styles.smallButtonText}>🌙 Calm me</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>Quick Actions ⚡</Text>
-      <View style={[styles.row, { flexWrap: 'wrap' }]}>
-        {[
-          ['✍️', 'Write It Out', 'pages'],
-          ['🎙️', 'Voice Bip',   'voiceBip'],
-          ['🌙', 'Calm',        'calm'],
-          ['🌐', 'Circle',      'circle'],
-          ['🌉', 'Bridge',      userSide === 'parent' ? 'parentBridge' : 'bridge'],
-        ].map(([e, l, to]) => (
-          <TouchableOpacity
-            key={l}
-            style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}
-            onPress={() => setScreen(to)}
-          >
-            <Text style={{ fontSize: 22, marginBottom: 4 }}>{e}</Text>
-            <Text style={styles.smallButtonText}>{l}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {nav}
-    </ScrollView>
+    <HomeScreen
+      mood={mood}
+      selectMood={selectMood}
+      t={t}
+      currentSekret={currentSekret}
+      homeMessageIndex={homeMessageIndex}
+      breatheAnim={breatheAnim}
+      userSide={userSide}
+      screen={screen}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // PAGES
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'pages') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Se'kret Pages 💜</Text>
-      <Text style={styles.subtitle}>Your thoughts deserve somewhere safe.</Text>
-
-      <Image source={art.writing} style={styles.artworkMedium} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>{currentSekret.emoji}</Text>
-        <Text style={styles.cardText}>Write freely.</Text>
-        <Text style={styles.entryText}>No pressure. No perfect wording. Just honesty.</Text>
-      </View>
-
-      <TextInput
-        style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent }]}
-        placeholder="Bip it out softly..."
-        placeholderTextColor="#94A3B8"
-        multiline
-        value={journalText}
-        onChangeText={setJournalText}
-      />
-
-      {/* Media Bip actions row */}
-      <View style={styles.row}>
-        <TouchableOpacity style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]} onPress={() => setScreen('voiceBip')}>
-          <Text style={styles.smallButtonText}>🎙️ Voice Bip</Text>
-          <Text style={styles.miniText}>30–60 sec</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={styles.smallButtonText}>📹 Video Bip</Text>
-          <Text style={styles.miniText}>30–60 sec</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={styles.smallButtonText}>🖼️ Photo</Text>
-          <Text style={styles.miniText}>optional</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Se'kret listening prompt — only shown when there's text (Doc 2) */}
-      {journalText.trim() ? (
-        <View style={card()}>
-          <Text style={{ color: t.soft, fontSize: 13, marginBottom: 6 }}>Se'kret is listening... 💜</Text>
-          <Text style={styles.entryText}>
-            That sounds heavy. You've been carrying a lot quietly. I'm glad you let some of it out.
-          </Text>
-          <View style={styles.row}>
-            {['💜 Talk more', '✨ Advice', '🫶 Comfort'].map(l => (
-              <TouchableOpacity key={l} style={styles.smallButton}>
-                <Text style={styles.smallButtonText}>{l}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <Text style={styles.sectionTitle}>Mood Tags</Text>
-      <View style={[styles.moodRow, { flexWrap: 'wrap' }]}>
-        {getDynamicTags(selectedSekret).map(tag => (
-          <TouchableOpacity key={tag} style={[styles.tagBubble, { backgroundColor: t.card, borderColor: t.accent }]}>
-            <Text style={{ color: '#fff', fontSize: 13 }}>{tag}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <TouchableOpacity style={btn()} onPress={saveEntry}>
-        <Text style={styles.buttonText}>Save Page 💜</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.sectionTitle}>Saved Pages</Text>
-      {entries.length === 0
-        ? <View style={card()}><Text style={styles.entryText}>No pages yet. Your truth has a place here.</Text></View>
-        : entries.map(e => (
-          <View key={e.id} style={card()}>
-            <Text style={styles.entryDate}>{e.date} • {e.time} • {e.mood}</Text>
-            <Text style={styles.journalSavedText}>"{e.text}"</Text>
-          </View>
-        ))
-      }
-
-      {nav}
-    </ScrollView>
+    <JournalScreen
+      journalText={journalText}
+      setJournalText={setJournalText}
+      entries={entries}
+      saveEntry={saveEntry}
+      mood={mood}
+      t={t}
+      currentSekret={currentSekret}
+      selectedSekret={selectedSekret}
+      art={art}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -897,7 +777,6 @@ export default function App() {
                 ))}
               </View>
 
-              {/* Se'kret step-in — heavy word detection from Doc 1 */}
               {shouldSekretStepIn(post.text) && (
                 <View style={[styles.card, { marginTop: 14, backgroundColor: '#111827', borderColor: t.accent }]}>
                   <Image source={IMAGES.cloudStormy} style={styles.artworkSmall} resizeMode="contain" />
@@ -945,9 +824,9 @@ export default function App() {
       <View style={card()}>
         <Text style={styles.sectionTitle}>Se'kret Suggestions ✨</Text>
         {[
-          ['🌙', 'Soft Start',           '"Hey… can we talk later tonight?"'],
-          ['💜', 'Honest Version',        '"I\'ve been overwhelmed and I miss feeling close."'],
-          ['🛡️', 'Calm Boundary',         '"I care about this, but I need calmer communication."'],
+          ['🌙', 'Soft Start',              '"Hey… can we talk later tonight?"'],
+          ['💜', 'Honest Version',           '"I\'ve been overwhelmed and I miss feeling close."'],
+          ['🛡️', 'Calm Boundary',            '"I care about this, but I need calmer communication."'],
           ['☁️', "Don't Know How To Say It", '"I don\'t fully know how to explain this yet."'],
         ].map(([e, l, q]) => (
           <TouchableOpacity key={l} style={styles.choiceButton}>
@@ -1043,6 +922,9 @@ export default function App() {
     const growthThink= isGirl ? IMAGES.rayleneThinking : IMAGES.rylaneThinking;
     const growthHappy= isGirl ? IMAGES.rayleneHappy    : IMAGES.rylaneHappy;
 
+    // getMoodEngine wired in — drives room name and action prompt dynamically
+    const moodEngine = getMoodEngine(mood);
+
     const featureItems: [string, string, () => void][] = isGirl ? [
       ['🩸', 'first period support', () => {}],
       ['🌙', 'cycle wellness',       () => setScreen('periodCalendar')],
@@ -1051,12 +933,12 @@ export default function App() {
       ['☁️', "ask Se'kret",          () => setScreen('sekret')],
       ['🔒', 'private journal',      () => setScreen('pages')],
     ] : [
-      ['🧍🏾', 'puberty guide',     () => {}],
-      ['💪🏾', 'body changes',      () => {}],
-      ['⭐',   'confidence boost',  () => {}],
+      ['🧍🏾', 'puberty guide',       () => {}],
+      ['💪🏾', 'body changes',        () => {}],
+      ['⭐',   'confidence boost',    () => {}],
       ['🧴',   'hygiene + self-care', () => {}],
-      ['🧠',   'mind check-in',    () => {}],
-      ['🔒',   'private journal',  () => setScreen('pages')],
+      ['🧠',   'mind check-in',      () => {}],
+      ['🔒',   'private journal',    () => setScreen('pages')],
     ];
 
     return (
@@ -1069,6 +951,14 @@ export default function App() {
         <Text style={styles.subtitle}>{isGirl ? 'growing at your own pace. 💜' : 'growing into yourself. 💙'}</Text>
 
         <Image source={growthHero} style={styles.artworkLarge} resizeMode="contain" />
+
+        {/* getMoodEngine — dynamic room + action based on current mood */}
+        <View style={[card(), { borderColor: t.accent }]}>
+          <Text style={{ color: t.soft, fontSize: 12, marginBottom: 4 }}>{moodEngine.room} {moodEngine.emoji}</Text>
+          <Text style={styles.cardText}>{moodEngine.title}</Text>
+          <Text style={styles.entryText}>{moodEngine.message}</Text>
+          <Text style={[styles.entryText, { color: t.soft, fontStyle: 'italic' }]}>→ {moodEngine.action}</Text>
+        </View>
 
         <View style={styles.duoRow}>
           <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
@@ -1095,7 +985,6 @@ export default function App() {
           ))}
         </View>
 
-        {/* Mood check-in row — from Doc 1 */}
         <View style={styles.sectionCard}>
           <Text style={styles.cardTitle}>{isGirl ? 'mood check-in' : 'mind check-in'}</Text>
           <Text style={styles.cardText}>How are you feeling right now?</Text>
@@ -1128,7 +1017,6 @@ export default function App() {
           </View>
         </View>
 
-        {/* Spotlight card — from Doc 1 */}
         <View style={styles.duoRow}>
           <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
             <Text style={styles.cardTitle}>{isGirl ? 'first period support' : 'body change spotlight'}</Text>
@@ -1241,7 +1129,7 @@ export default function App() {
       <View style={card()}>
         <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🌿' : '💜'}</Text>
         <Text style={styles.cardText}>Current Side: {userSide === 'parent' ? 'Parent Side' : 'Teen Side'}</Text>
-        <TouchableOpacity style={btn()} onPress={() => setUserSide(side => side === 'parent' ? 'teen' : 'parent')}>
+        <TouchableOpacity style={btn()} onPress={() => setUserSide((side: string) => side === 'parent' ? 'teen' : 'parent')}>
           <Text style={styles.buttonText}>Switch to {userSide === 'parent' ? 'Teen Side' : 'Parent Side'}</Text>
         </TouchableOpacity>
       </View>
@@ -1403,7 +1291,6 @@ const styles = StyleSheet.create({
   backBtn:          { marginBottom: 12 },
   backText:         { color: '#94A3B8', fontSize: 14 },
 
-  // Artwork sizes
   artworkLarge:     { width: '100%', height: 280, marginBottom: 16, borderRadius: 20 },
   artworkMedium:    { width: '100%', height: 200, marginBottom: 16, borderRadius: 16 },
   artworkPortrait:  { width: 180, height: 220, alignSelf: 'center', marginBottom: 16 },
