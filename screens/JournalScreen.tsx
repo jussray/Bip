@@ -1,18 +1,23 @@
 import React from 'react';
 import {
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  View,
-  Image,
-  StyleSheet,
-  Platform,
+  Text, TouchableOpacity, ScrollView,
+  TextInput, View, Image, StyleSheet, Platform,
 } from 'react-native';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS (local — kept in sync with index.tsx)
-// ─────────────────────────────────────────────────────────────────────────────
+// ── DEBUG ──────────────────────────────────────────────────────────────────
+const DEBUG_HOTSPOTS = false;
+
+// ── ROOM IMAGE (reuse Bippin2 day room as journal background) ─────────────
+const ROOM_DAY   = require('../assets/images/raylene-bippin2-day.png');
+const ROOM_NIGHT = require('../assets/images/raylene-bippin2-night.png');
+
+// ── HOTSPOTS ───────────────────────────────────────────────────────────────
+const HOTSPOTS = {
+  journal:  { bottom: '6%', left: '26%', width: '40%', height: '22%', label: 'Journal 📖' },
+  calendar: { top: '6%', right: '2%', width: '44%', height: '40%', label: 'Calendar 📅' },
+};
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
 const getDynamicTags = (selectedSekret: string) => {
   if (selectedSekret === 'rylane') return ['focused', 'mind heavy', 'protecting my peace', 'trying harder', 'locked in', 'building myself'];
   if (selectedSekret === 'soft')   return ['soft but strong', 'healing', 'trying my best', 'late night thoughts', 'emotional', 'peaceful'];
@@ -20,9 +25,6 @@ const getDynamicTags = (selectedSekret: string) => {
   return ['good vibes', 'overthinking', 'protecting my peace', 'growing', 'learning myself', 'late night thoughts'];
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROPS
-// ─────────────────────────────────────────────────────────────────────────────
 interface JournalEntry {
   id: number;
   text: string;
@@ -45,148 +47,191 @@ interface JournalScreenProps {
   BottomNav: React.ReactNode;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 export function JournalScreen({
-  journalText,
-  setJournalText,
-  entries,
-  saveEntry,
-  mood,
-  t,
-  currentSekret,
-  selectedSekret,
-  art,
-  setScreen,
-  BottomNav,
+  journalText, setJournalText, entries, saveEntry,
+  mood, t, currentSekret, selectedSekret, art,
+  setScreen, BottomNav,
 }: JournalScreenProps) {
-  const card = () => [styles.card, { backgroundColor: t.card, borderColor: t.accent }] as any;
-  const btn  = () => [styles.button, { backgroundColor: t.accent, shadowColor: t.accent }] as any;
+  const hour    = new Date().getHours();
+  const isNight = hour >= 18 || hour < 6;
+  const roomArt = isNight ? ROOM_NIGHT : ROOM_DAY;
+
+  const btn = () => [styles.btn, { backgroundColor: t.accent }] as any;
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Se'kret Pages 💜</Text>
-      <Text style={styles.subtitle}>Your thoughts deserve somewhere safe.</Text>
+    <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-      {/* Writing character art — switches with Se'kret selection */}
-      <Image source={art.writing} style={styles.artworkMedium} resizeMode="contain" />
+        {/* ── Room with hotspots ── */}
+        <View style={styles.roomWrap}>
+          <Image source={roomArt} style={styles.roomImage} resizeMode="cover" />
 
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>{currentSekret.emoji}</Text>
-        <Text style={styles.cardText}>Write freely.</Text>
-        <Text style={styles.entryText}>No pressure. No perfect wording. Just honesty.</Text>
-      </View>
+          {/* Dark gradient overlay at bottom */}
+          <View style={styles.roomGradient} />
 
-      {/* Journal input */}
-      <TextInput
-        style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent }]}
-        placeholder="Bip it out softly..."
-        placeholderTextColor="#94A3B8"
-        multiline
-        value={journalText}
-        onChangeText={setJournalText}
-      />
-
-      {/* Media bip options */}
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}
-          onPress={() => setScreen('voiceBip')}
-        >
-          <Text style={styles.smallButtonText}>🎙️ Voice Bip</Text>
-          <Text style={styles.miniText}>30–60 sec</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={styles.smallButtonText}>📹 Video Bip</Text>
-          <Text style={styles.miniText}>30–60 sec</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={styles.smallButtonText}>🖼️ Photo</Text>
-          <Text style={styles.miniText}>optional</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Se'kret listening — only shows when there's text */}
-      {journalText.trim() ? (
-        <View style={card()}>
-          <Text style={{ color: t.soft, fontSize: 13, marginBottom: 6 }}>
-            Se'kret is listening... 💜
-          </Text>
-          <Text style={styles.entryText}>
-            That sounds heavy. You've been carrying a lot quietly. I'm glad you let some of it out.
-          </Text>
-          <View style={styles.row}>
-            {['💜 Talk more', '✨ Advice', '🫶 Comfort'].map(l => (
-              <TouchableOpacity key={l} style={styles.smallButton}>
-                <Text style={styles.smallButtonText}>{l}</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeBadgeText}>{isNight ? '🌙 night' : '☀️ day'}</Text>
           </View>
-        </View>
-      ) : null}
 
-      {/* Mood tags — reactive to selected Se'kret */}
-      <Text style={styles.sectionTitle}>Mood Tags</Text>
-      <View style={[styles.moodRow, { flexWrap: 'wrap' }]}>
-        {getDynamicTags(selectedSekret).map(tag => (
+          {/* Room title */}
+          <View style={styles.roomTitle}>
+            <Text style={styles.roomTitleSub}>your thoughts deserve somewhere safe</Text>
+            <Text style={styles.roomTitleMain}>Se'kret Pages 💜</Text>
+          </View>
+
+          {/* HOTSPOT — Journal */}
           <TouchableOpacity
-            key={tag}
-            style={[styles.tagBubble, { backgroundColor: t.card, borderColor: t.accent }]}
+            activeOpacity={0.7}
+            style={[styles.hotspot, { bottom: HOTSPOTS.journal.bottom, left: HOTSPOTS.journal.left, width: HOTSPOTS.journal.width, height: HOTSPOTS.journal.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            onPress={() => {/* already on journal */}}
           >
-            <Text style={{ color: '#fff', fontSize: 13 }}>{tag}</Text>
+            {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.journal.label}</Text>}
           </TouchableOpacity>
-        ))}
-      </View>
 
-      {/* Save button */}
-      <TouchableOpacity style={btn()} onPress={saveEntry}>
-        <Text style={styles.buttonText}>Save Page 💜</Text>
-      </TouchableOpacity>
+          {/* HOTSPOT — Calendar */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.hotspot, { top: HOTSPOTS.calendar.top, right: HOTSPOTS.calendar.right, width: HOTSPOTS.calendar.width, height: HOTSPOTS.calendar.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            onPress={() => setScreen('bippin2')}
+          >
+            {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.calendar.label}</Text>}
+          </TouchableOpacity>
 
-      {/* Saved pages */}
-      <Text style={styles.sectionTitle}>Saved Pages</Text>
-      {entries.length === 0 ? (
-        <View style={card()}>
-          <Text style={styles.entryText}>No pages yet. Your truth has a place here.</Text>
+          {/* Floating hint */}
+          {!DEBUG_HOTSPOTS && (
+            <View style={[styles.hint, { top: '4%', right: '48%' }]}>
+              <Text style={styles.hintText}>tap calendar → Bippin2 📅</Text>
+            </View>
+          )}
         </View>
-      ) : (
-        entries.map(e => (
-          <View key={e.id} style={card()}>
-            <Text style={styles.entryDate}>{e.date} • {e.time} • {e.mood}</Text>
-            <Text style={styles.journalSavedText}>"{e.text}"</Text>
-          </View>
-        ))
-      )}
 
+        {/* ── Se'kret greeting card ── */}
+        <View style={[styles.floatCard, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
+          <Text style={[styles.floatCardEmoji]}>{currentSekret.emoji}</Text>
+          <Text style={[styles.floatCardText, { color: '#fff' }]}>Write freely.</Text>
+          <Text style={[styles.floatCardSub, { color: t.soft }]}>No pressure. No perfect wording. Just honesty.</Text>
+        </View>
+
+        {/* ── Journal input ── */}
+        <TextInput
+          style={[styles.journalInput, { backgroundColor: 'rgba(13,9,20,0.88)', borderColor: t.accent, color: '#fff' }]}
+          placeholder="Bip it out softly..."
+          placeholderTextColor="#4a3d6b"
+          multiline
+          value={journalText}
+          onChangeText={setJournalText}
+        />
+
+        {/* ── Media bip options ── */}
+        <View style={styles.mediaRow}>
+          <TouchableOpacity style={[styles.mediaBtn, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.82)' }]} onPress={() => setScreen('voiceBip')}>
+            <Text style={styles.mediaEmoji}>🎙️</Text>
+            <Text style={[styles.mediaBtnLabel, { color: t.soft }]}>Voice Bip</Text>
+            <Text style={styles.mediaBtnSub}>30–60 sec</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.mediaBtn, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.82)' }]}>
+            <Text style={styles.mediaEmoji}>📹</Text>
+            <Text style={[styles.mediaBtnLabel, { color: t.soft }]}>Video Bip</Text>
+            <Text style={styles.mediaBtnSub}>30–60 sec</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.mediaBtn, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.82)' }]}>
+            <Text style={styles.mediaEmoji}>🖼️</Text>
+            <Text style={[styles.mediaBtnLabel, { color: t.soft }]}>Photo</Text>
+            <Text style={styles.mediaBtnSub}>optional</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Se'kret listening — appears when there's text ── */}
+        {journalText.trim() ? (
+          <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.3)', backgroundColor: 'rgba(13,9,20,0.9)' }]}>
+            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>Se'kret is listening... 💜</Text>
+            <Text style={[styles.replyText, { color: t.soft }]}>
+              That sounds heavy. You've been carrying a lot quietly. I'm glad you let some of it out.
+            </Text>
+            <View style={styles.replyBtns}>
+              {['💜 Talk more', '✨ Advice', '🫶 Comfort'].map(l => (
+                <TouchableOpacity key={l} style={[styles.replyBtn, { borderColor: t.accent }]}>
+                  <Text style={[styles.replyBtnText, { color: t.soft }]}>{l}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {/* ── Mood tags ── */}
+        <Text style={[styles.sectionTitle, { color: '#fff' }]}>Mood Tags</Text>
+        <View style={styles.tagRow}>
+          {getDynamicTags(selectedSekret).map(tag => (
+            <TouchableOpacity key={tag} style={[styles.tag, { backgroundColor: 'rgba(13,9,20,0.82)', borderColor: t.accent }]}>
+              <Text style={[styles.tagText, { color: t.soft }]}>{tag}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Save button ── */}
+        <TouchableOpacity style={btn()} onPress={saveEntry}>
+          <Text style={styles.btnText}>Save Page 💜</Text>
+        </TouchableOpacity>
+
+        {/* ── Saved pages ── */}
+        <Text style={[styles.sectionTitle, { color: '#fff' }]}>Saved Pages</Text>
+        {entries.length === 0 ? (
+          <View style={[styles.floatCard, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.82)' }]}>
+            <Text style={[styles.emptyText, { color: '#7c6899' }]}>No pages yet. Your truth has a place here.</Text>
+          </View>
+        ) : (
+          entries.map(e => (
+            <View key={e.id} style={[styles.floatCard, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
+              <Text style={[styles.entryDate, { color: '#7c6899' }]}>{e.date} • {e.time} • {e.mood}</Text>
+              <Text style={[styles.entryText, { color: '#f5f0ff' }]}>"{e.text}"</Text>
+            </View>
+          ))
+        )}
+
+      </ScrollView>
       {BottomNav}
-    </ScrollView>
+    </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container:        { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  logo:             { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:         { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
-  sectionTitle:     { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 18 },
-  card:             { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
-  cardEmoji:        { fontSize: 32, marginBottom: 8 },
-  cardText:         { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  entryText:        { color: '#E2E8F0', fontSize: 14, marginBottom: 6, lineHeight: 20 },
-  entryDate:        { color: '#94A3B8', fontSize: 12, marginBottom: 8 },
-  journalSavedText: { color: '#fff', fontSize: 15, lineHeight: 24, fontStyle: 'italic' },
-  miniText:         { color: '#CBD5E1', fontSize: 12, textAlign: 'center' },
-  button:           { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center' },
-  buttonText:       { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  journalInput:     { color: '#fff', padding: 16, borderRadius: 18, minHeight: 130, textAlignVertical: 'top', marginBottom: 16, borderWidth: 1 },
-  row:              { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 14 },
-  smallAction:      { flex: 1, padding: 12, borderRadius: 16, alignItems: 'center', borderWidth: 1 },
-  smallButton:      { backgroundColor: '#334155', padding: 11, borderRadius: 14, marginTop: 8 },
-  smallButtonText:  { color: '#fff', textAlign: 'center', fontWeight: '600', fontSize: 13 },
-  moodRow:          { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 18, gap: 8 },
-  tagBubble:        { padding: 9, borderRadius: 14, borderWidth: 1, marginBottom: 8, marginRight: 8 },
-  artworkMedium:    { width: '100%', height: 200, marginBottom: 16, borderRadius: 16 },
+  root:          { flex: 1 },
+  scroll:        { paddingBottom: 100 },
+  roomWrap:      { position: 'relative', width: '100%', height: 220, marginBottom: 16, overflow: 'hidden' },
+  roomImage:     { width: '100%', height: '100%' },
+  roomGradient:  { position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, backgroundColor: 'rgba(13,9,20,0.6)' },
+  timeBadge:     { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  timeBadgeText: { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
+  roomTitle:     { position: 'absolute', bottom: 14, left: 16 },
+  roomTitleSub:  { fontSize: 10, color: '#a855f7', letterSpacing: 1, marginBottom: 2 },
+  roomTitleMain: { fontSize: 22, color: '#f472b6', fontWeight: '900', fontStyle: 'italic' },
+  hotspot:       { position: 'absolute' },
+  hotspotDebug:  { borderWidth: 2, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.18)' },
+  debugLabel:    { color: '#f472b6', fontSize: 9, fontWeight: '900', padding: 2 },
+  hint:          { position: 'absolute', backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  hintText:      { color: '#c4b5fd', fontSize: 10, fontWeight: '600' },
+  sectionTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 10, marginTop: 14, marginHorizontal: 16 },
+  floatCard:     { marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16 },
+  floatCardEmoji:{ fontSize: 28, marginBottom: 6 },
+  floatCardText: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  floatCardSub:  { fontSize: 13, lineHeight: 19 },
+  journalInput:  { marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 18, minHeight: 130, textAlignVertical: 'top', borderWidth: 1, fontSize: 14, lineHeight: 22 },
+  mediaRow:      { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginBottom: 14 },
+  mediaBtn:      { flex: 1, borderRadius: 14, borderWidth: 1, padding: 12, alignItems: 'center' },
+  mediaEmoji:    { fontSize: 20, marginBottom: 4 },
+  mediaBtnLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  mediaBtnSub:   { fontSize: 10, color: '#7c6899', marginTop: 2 },
+  replyLabel:    { fontSize: 10, marginBottom: 6, fontWeight: '700' },
+  replyText:     { fontSize: 13, lineHeight: 20, marginBottom: 12 },
+  replyBtns:     { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  replyBtn:      { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  replyBtnText:  { fontSize: 11, fontWeight: '600' },
+  tagRow:        { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 16, marginBottom: 14 },
+  tag:           { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  tagText:       { fontSize: 12, fontWeight: '600' },
+  btn:           { marginHorizontal: 16, marginBottom: 16, padding: 16, borderRadius: 18, alignItems: 'center' },
+  btnText:       { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  entryDate:     { fontSize: 11, marginBottom: 6 },
+  entryText:     { fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
+  emptyText:     { fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
 });
