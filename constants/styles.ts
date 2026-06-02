@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// constants/styles.ts — shared base styles, theme-aware
+// ─────────────────────────────────────────────────────────────────────────────
 import { StyleSheet, Platform } from 'react-native';
 
 export const createStyles = (theme: any) => {
@@ -39,29 +42,29 @@ export const createStyles = (theme: any) => {
       padding: 16,
       borderRadius: 18,
       marginBottom: 12,
-      alignItems: 'center',
+      alignItems: 'center' as const,
       backgroundColor: theme.accent,
     },
     buttonText: {
       color: '#fff',
       fontSize: 16,
-      fontWeight: 'bold',
-      textAlign: 'center',
+      fontWeight: 'bold' as const,
+      textAlign: 'center' as const,
     },
     journalInput: {
       color: '#fff',
       padding: 16,
       borderRadius: 18,
       minHeight: 130,
-      textAlignVertical: 'top',
+      textAlignVertical: 'top' as const,
       marginBottom: 16,
       borderWidth: 1,
       backgroundColor: theme.card,
       borderColor: theme.accent,
     },
     moodRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
+      flexDirection: 'row' as const,
+      justifyContent: 'space-around' as const,
       marginBottom: 18,
       gap: 8,
     },
@@ -70,19 +73,35 @@ export const createStyles = (theme: any) => {
       height: 66,
       borderRadius: 33,
       backgroundColor: '#1E293B',
-      justifyContent: 'center',
-      alignItems: 'center',
+      justifyContent: 'center' as const,
+      alignItems: 'center' as const,
     },
     bottomNav: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
+      flexDirection: 'row' as const,
+      justifyContent: 'space-around' as const,
       paddingVertical: 14,
       backgroundColor: '#111827',
       borderRadius: 20,
       marginTop: 28,
       marginBottom: 20,
-      flexWrap: 'wrap',
+      flexWrap: 'wrap' as const,
       gap: 8,
+    },
+    navItem: {
+      alignItems: 'center' as const,
+      minWidth: 48,
+    },
+    navIcon: {
+      fontSize: 20,
+      marginBottom: 3,
+    },
+    navText: {
+      color: '#94A3B8',
+      fontSize: 11,
+    },
+    activeNavText: {
+      color: '#fff',
+      fontWeight: 'bold' as const,
     },
   });
 };
