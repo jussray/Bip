@@ -11,8 +11,9 @@ import {
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { loadState, saveState } from '@utils/storage';
-import { getMoodEngine } from '@utils/moodEngine';
+import { loadState, saveState } from '../utils/storage';
+import { getMoodEngine } from '../utils/moodEngine';
+
 import { HomeScreen } from '../screens/HomeScreen';
 import { JournalScreen } from '../screens/JournalScreen';
 import { CalmScreen } from '../screens/CalmScreen';
