@@ -16,6 +16,15 @@ import { getMoodEngine } from '@utils/moodEngine';
 import { HomeScreen } from '../screens/HomeScreen';
 import { JournalScreen } from '../screens/JournalScreen';
 import { CalmScreen } from '../screens/CalmScreen';
+import { SekretScreen } from '../screens/SekretScreen';
+import { CircleScreen } from '../screens/CircleScreen';
+import { Bippin2Screen } from '../screens/Bippin2Screen';
+import { ComfortScreen } from '../screens/ComfortScreen';
+import { MindBodyResetScreen } from '../screens/MindBodyResetScreen';
+import { BridgeScreen } from '../screens/BridgeScreen';
+import { ParentBridgeScreen } from '../screens/ParentBridgeScreen';
+import { MoreScreen } from '../screens/MoreScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IMAGE ASSETS
@@ -645,570 +654,133 @@ export default function App() {
   // CALM
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'calm') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Se'kret Calm 🌙</Text>
-      <Text style={styles.subtitle}>Breathe. Reset. Come back to yourself.</Text>
-
-      <Image source={art.window} style={styles.artworkLarge} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>🌙</Text>
-        <Text style={styles.cardText}>Your nervous system deserves softness too.</Text>
-        <Text style={styles.entryText}>No pressure. Just one small calm moment at a time.</Text>
-      </View>
-
-      <Animated.View style={[
-        styles.circle,
-        { transform: [{ scale: breatheAnim }], backgroundColor: t.accent, shadowColor: t.accent, shadowOpacity: 0.6, shadowRadius: 25, elevation: 12 },
-      ]}>
-        <Image source={IMAGES.cloudHeadphones} style={styles.circleImg} resizeMode="contain" />
-        <Text style={styles.circleTextSmall}>Breathe</Text>
-      </Animated.View>
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>{COMFORT_MESSAGES[comfortIdx].emoji}</Text>
-        <Text style={styles.cardText}>{COMFORT_MESSAGES[comfortIdx].text}</Text>
-        <TouchableOpacity style={styles.smallButton} onPress={() => setComfortIdx(i => (i + 1) % COMFORT_MESSAGES.length)}>
-          <Text style={styles.smallButtonText}>Another Calm Thought ✨</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.sectionTitle}>Calm Tools</Text>
-      <TouchableOpacity style={btn()} onPress={() => setScreen('mindReset')}><Text style={styles.buttonText}>🌙 7-Min Mind Reset</Text></TouchableOpacity>
-      <TouchableOpacity style={btn()} onPress={() => setScreen('bodyReset')}><Text style={styles.buttonText}>🫧 7-Min Body Reset</Text></TouchableOpacity>
-      <TouchableOpacity style={btn()} onPress={() => setScreen('comfort')}><Text style={styles.buttonText}>🚨 Comfort Mode</Text></TouchableOpacity>
-
-      {nav}
-    </ScrollView>
+    <CalmScreen
+      t={t}
+      breatheAnim={breatheAnim}
+      comfortIdx={comfortIdx}
+      setComfortIdx={setComfortIdx}
+      art={art}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // SE'KRET CHAT
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'sekret') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Talk with Se'kret 💜</Text>
-      <Text style={styles.subtitle}>Your safe space. No pressure. Just real.</Text>
-
-      <Image source={art.neutral} style={styles.artworkPortrait} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>{currentSekret.emoji}</Text>
-        <Text style={styles.cardText}>{currentSekret.name}</Text>
-        <Text style={styles.entryText}>{currentSekret.title}</Text>
-        <Text style={styles.entryText}>{currentSekret.vibe}</Text>
-      </View>
-
-      <View style={card()}>
-        <Text style={styles.entryText}>You: today was a lot. i tried to hold it together...</Text>
-        <Text style={[styles.entryText, { color: t.soft }]}>
-          {isSekretTyping ? `${currentSekret.name} is typing... ☁️` : sekretReply}
-        </Text>
-      </View>
-
-      <TextInput
-        style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent }]}
-        placeholder="Talk to Se'kret..."
-        placeholderTextColor="#94A3B8"
-        multiline
-        value={sekretMessage}
-        onChangeText={setSekretMessage}
-      />
-      <TouchableOpacity style={btn()} onPress={sendSekretMessage}>
-        <Text style={styles.buttonText}>Send 💜</Text>
-      </TouchableOpacity>
-
-      {nav}
-    </ScrollView>
+    <SekretScreen
+      t={t}
+      currentSekret={currentSekret}
+      art={art}
+      selectedSekret={selectedSekret}
+      setSelectedSekret={setSelectedSekret}
+      sekretMessage={sekretMessage}
+      setSekretMessage={setSekretMessage}
+      sekretReply={sekretReply}
+      isSekretTyping={isSekretTyping}
+      sendSekretMessage={sendSekretMessage}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // CIRCLE
   // ─────────────────────────────────────────────────────────────────────────
-  if (screen === 'circle') {
-    const totalConnections = circlePosts.reduce(
-      (total, post) =>
-        total +
-        (post.reactions?.felt    || 0) +
-        (post.reactions?.comfort || 0) +
-        (post.reactions?.proud   || 0) +
-        (post.reactions?.stay    || 0),
-      0
-    );
-
-    return (
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-        <Text style={styles.logo}>Se'kret Circle 🌐</Text>
-        <Text style={styles.subtitle}>Community first. Se'kret only steps in when it feels heavy.</Text>
-
-        <Image source={IMAGES.cloudHappy} style={styles.artworkSmall} resizeMode="contain" />
-
-        <View style={card()}>
-          <Text style={styles.cardEmoji}>🌐</Text>
-          <Text style={styles.cardText}>You're not alone here.</Text>
-          <Text style={styles.entryText}>Connection Energy: {totalConnections}</Text>
-        </View>
-
-        <TextInput
-          style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent }]}
-          placeholder="Post a soft anonymous Bip..."
-          placeholderTextColor="#94A3B8"
-          multiline
-          value={circlePostText}
-          onChangeText={setCirclePostText}
-        />
-        <TouchableOpacity style={btn()} onPress={saveCirclePost}>
-          <Text style={styles.buttonText}>+ Post to Circle</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.sectionTitle}>Circle Bips</Text>
-        {circlePosts.length === 0
-          ? <View style={card()}><Text style={styles.entryText}>No Circle Bips yet. Start the vibe softly.</Text></View>
-          : circlePosts.map(post => (
-            <View key={post.id} style={card()}>
-              <Text style={styles.entryDate}>Anonymous Bip • {post.date} • {post.time}</Text>
-              <Text style={styles.cardText}>{post.text}</Text>
-
-              <View style={styles.reactionRow}>
-                {[['💜', 'felt'], ['☁️', 'comfort'], ['⭐', 'proud'], ['🌙', 'stay']].map(([e, type]) => (
-                  <TouchableOpacity key={type} onPress={() => reactToPost(post.id, type)} style={styles.reactionButton}>
-                    <Text style={styles.reactionText}>{e} {post.reactions?.[type] || 0}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {shouldSekretStepIn(post.text) && (
-                <View style={[styles.card, { marginTop: 14, backgroundColor: '#111827', borderColor: t.accent }]}>
-                  <Image source={IMAGES.cloudStormy} style={styles.artworkSmall} resizeMode="contain" />
-                  <Text style={styles.entryText}>☁️ Se'kret noticed this might be heavy.</Text>
-                  <Text style={styles.miniText}>"You don't have to hold everything by yourself tonight."</Text>
-                  <TouchableOpacity style={[styles.smallButton, { marginTop: 10 }]} onPress={() => setScreen('comfort')}>
-                    <Text style={styles.smallButtonText}>Open Comfort Mode 💙</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          ))
-        }
-        {nav}
-      </ScrollView>
-    );
-  }
+  if (screen === 'circle') return (
+    <CircleScreen
+      t={t}
+      circlePosts={circlePosts}
+      circlePostText={circlePostText}
+      setCirclePostText={setCirclePostText}
+      saveCirclePost={saveCirclePost}
+      reactToPost={reactToPost}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // BRIDGE
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'bridge') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Bridge 🌉</Text>
-      <Text style={styles.subtitle}>Real conversations. Softer connection.</Text>
-
-      <Image source={IMAGES.bridgeBg} style={styles.artworkLarge} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>{currentSekret.emoji}</Text>
-        <Text style={styles.cardText}>You don't gotta explain it perfectly.</Text>
-        <Text style={styles.entryText}>Se'kret helps you say hard things gently.</Text>
-      </View>
-
-      <View style={card()}>
-        <Text style={styles.sectionTitle}>What's sitting heavy?</Text>
-        <TextInput
-          style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent, minHeight: 90 }]}
-          placeholder="Write it how it feels..."
-          placeholderTextColor="#94A3B8"
-          multiline
-        />
-      </View>
-
-      <View style={card()}>
-        <Text style={styles.sectionTitle}>Se'kret Suggestions ✨</Text>
-        {[
-          ['🌙', 'Soft Start',              '"Hey… can we talk later tonight?"'],
-          ['💜', 'Honest Version',           '"I\'ve been overwhelmed and I miss feeling close."'],
-          ['🛡️', 'Calm Boundary',            '"I care about this, but I need calmer communication."'],
-          ['☁️', "Don't Know How To Say It", '"I don\'t fully know how to explain this yet."'],
-        ].map(([e, l, q]) => (
-          <TouchableOpacity key={l} style={styles.choiceButton}>
-            <Text style={styles.entryText}>{e} {l}</Text>
-            <Text style={styles.miniText}>{q}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={card()}>
-        <Text style={styles.cardText}>Se'kret says 💬</Text>
-        <Text style={styles.entryText}>Hard conversations don't make you difficult. Wanting understanding is human.</Text>
-      </View>
-
-      <TouchableOpacity style={btn()}><Text style={styles.buttonText}>I'm Ready to Send 💌</Text></TouchableOpacity>
-      {nav}
-    </ScrollView>
+    <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // PARENT BRIDGE
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'parentBridge') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Parent Bridge 🌿</Text>
-      <Text style={styles.subtitle}>Support without spying. Guidance without control.</Text>
-
-      <Image source={IMAGES.parentDashBg} style={styles.artworkLarge} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>🌉</Text>
-        <Text style={styles.cardText}>Connection over control.</Text>
-        <Text style={styles.entryText}>Parent Side gives gentle insight without exposing private teen pages.</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>Today's Support Signal</Text>
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>☁️</Text>
-        <Text style={styles.cardText}>Gentle check-in suggested</Text>
-        <Text style={styles.entryText}>Try comfort first, questions second, advice last.</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>Try Saying This</Text>
-      <View style={card()}>
-        {[
-          '"Thank you for trusting me with this."',
-          '"Do you want advice, comfort, or listening?"',
-          '"You don\'t have to explain it perfectly."',
-          '"I\'m here when you\'re ready."',
-        ].map(line => (
-          <View key={line} style={styles.choiceButton}>
-            <Text style={styles.entryText}>{line}</Text>
-          </View>
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>Privacy Promise</Text>
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>🔒</Text>
-        <Text style={styles.cardText}>Private stays private.</Text>
-        <Text style={styles.entryText}>Pages, voice bips, and personal posts stay hidden unless the teen chooses to share.</Text>
-      </View>
-
-      <TouchableOpacity style={btn()} onPress={() => setScreen('bridge')}>
-        <Text style={styles.buttonText}>View Teen Bridge Side 🌉</Text>
-      </TouchableOpacity>
-      {nav}
-    </ScrollView>
+    <ParentBridgeScreen t={t} setScreen={setScreen} BottomNav={nav} />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // BIPPIN2
   // ─────────────────────────────────────────────────────────────────────────
-  if (screen === 'bippin2') {
-    if (growthPath === 'preferNotToSay') return (
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-        <Text style={styles.logo}>Bippin2 ✨</Text>
-        <Text style={styles.subtitle}>Choose your growth space.</Text>
-        <View style={styles.choiceHero}><Text style={styles.bigEmoji}>🌱</Text></View>
-        <View style={card()}>
-          <Text style={styles.cardEmoji}>🌱</Text>
-          <Text style={styles.cardText}>This space adapts to you.</Text>
-          <Text style={styles.entryText}>Pick the version that feels right. You can change it later.</Text>
-        </View>
-        <TouchableOpacity style={btn()} onPress={() => setGrowthPath('girl')}><Text style={styles.buttonText}>🌙 Womanhood</Text></TouchableOpacity>
-        <TouchableOpacity style={btn()} onPress={() => setGrowthPath('boy')}><Text style={styles.buttonText}>⚡ Manhood</Text></TouchableOpacity>
-        {nav}
-      </ScrollView>
-    );
-
-    const isGirl     = growthPath === 'girl';
-    const growthHero = isGirl ? IMAGES.rayleneFullbody : IMAGES.rylaneFullbody;
-    const growthThink= isGirl ? IMAGES.rayleneThinking : IMAGES.rylaneThinking;
-    const growthHappy= isGirl ? IMAGES.rayleneHappy    : IMAGES.rylaneHappy;
-
-    // getMoodEngine wired in — drives room name and action prompt dynamically
-    const moodEngine = getMoodEngine(mood);
-
-    const featureItems: [string, string, () => void][] = isGirl ? [
-      ['🩸', 'first period support', () => {}],
-      ['🌙', 'cycle wellness',       () => setScreen('periodCalendar')],
-      ['💗', 'mood + body check-in', () => {}],
-      ['🪷', 'comfort mode',         () => setScreen('comfort')],
-      ['☁️', "ask Se'kret",          () => setScreen('sekret')],
-      ['🔒', 'private journal',      () => setScreen('pages')],
-    ] : [
-      ['🧍🏾', 'puberty guide',       () => {}],
-      ['💪🏾', 'body changes',        () => {}],
-      ['⭐',   'confidence boost',    () => {}],
-      ['🧴',   'hygiene + self-care', () => {}],
-      ['🧠',   'mind check-in',      () => {}],
-      ['🔒',   'private journal',    () => setScreen('pages')],
-    ];
-
-    return (
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-        <TouchableOpacity style={styles.smallButton} onPress={() => setGrowthPath('preferNotToSay')}>
-          <Text style={styles.smallButtonText}>↩️ Change Growth Space</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.logo}>{isGirl ? 'Bippin 2 Womanhood 🌙' : 'Bippin 2 Manhood ⚡'}</Text>
-        <Text style={styles.subtitle}>{isGirl ? 'growing at your own pace. 💜' : 'growing into yourself. 💙'}</Text>
-
-        <Image source={growthHero} style={styles.artworkLarge} resizeMode="contain" />
-
-        {/* getMoodEngine — dynamic room + action based on current mood */}
-        <View style={[card(), { borderColor: t.accent }]}>
-          <Text style={{ color: t.soft, fontSize: 12, marginBottom: 4 }}>{moodEngine.room} {moodEngine.emoji}</Text>
-          <Text style={styles.cardText}>{moodEngine.title}</Text>
-          <Text style={styles.entryText}>{moodEngine.message}</Text>
-          <Text style={[styles.entryText, { color: t.soft, fontStyle: 'italic' }]}>→ {moodEngine.action}</Text>
-        </View>
-
-        <View style={styles.duoRow}>
-          <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
-            <Text style={styles.cardTitle}>{isGirl ? 'Good night 💜' : 'Good night ⚡'}</Text>
-            <Text style={styles.cardText}>
-              {isGirl ? "Your body is changing. That's not something to fear or hide." : "Keep building the best version of you. You've got this."}
-            </Text>
-            <Image source={growthThink} style={styles.artworkSmall} resizeMode="contain" />
-          </View>
-          <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
-            <Text style={styles.cardTitle}>{isGirl ? 'connection streak' : 'focus streak'}</Text>
-            <Text style={styles.bigNumber}>{isGirl ? '7 days' : '9 days'}</Text>
-            <Text style={styles.cardText}>{isGirl ? "you're showing up for you." : 'consistency builds confidence.'}</Text>
-            <Image source={growthHappy} style={styles.artworkSmall} resizeMode="contain" />
-          </View>
-        </View>
-
-        <View style={styles.featureGrid}>
-          {featureItems.map(([e, l, fn]) => (
-            <TouchableOpacity key={l} style={[styles.featureCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]} onPress={fn}>
-              <Text style={styles.featureEmoji}>{e}</Text>
-              <Text style={styles.featureText}>{l}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.sectionCard}>
-          <Text style={styles.cardTitle}>{isGirl ? 'mood check-in' : 'mind check-in'}</Text>
-          <Text style={styles.cardText}>How are you feeling right now?</Text>
-          <View style={styles.moodRow}>
-            {(isGirl
-              ? ['😊', '🌿', '😴', '🥺', '💗', '🙂']
-              : ['🙂', '🌿', '⚡', '😤', '😴', '😌']
-            ).map(emoji => (
-              <Text key={emoji} style={styles.moodEmoji}>{emoji}</Text>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.duoRow}>
-          <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
-            <Text style={styles.cardTitle}>{isGirl ? 'cycle calendar' : 'goal tracker'}</Text>
-            <Text style={styles.cardText}>{isGirl ? 'Track your cycle with ease and privacy.' : 'Small steps. Big future. Track your goals.'}</Text>
-            <TouchableOpacity style={styles.smallButton} onPress={() => isGirl && setScreen('periodCalendar')}>
-              <Text style={styles.smallButtonText}>{isGirl ? 'view calendar' : 'view goals'}</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
-            <Text style={styles.cardTitle}>Se'kret says ☁️</Text>
-            <Text style={styles.cardText}>
-              {isGirl ? "Your body isn't something to hate. It's becoming YOU." : "Confidence isn't loud. It's built quietly every day."}
-            </Text>
-            <TouchableOpacity style={styles.smallButton} onPress={() => setScreen('sekret')}>
-              <Text style={styles.smallButtonText}>talk to Se'kret</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.duoRow}>
-          <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
-            <Text style={styles.cardTitle}>{isGirl ? 'first period support' : 'body change spotlight'}</Text>
-            <Text style={styles.cardText}>
-              {isGirl ? "It's okay to feel scared. You're not alone." : 'Voice changes are normal. It happens at different times for everyone.'}
-            </Text>
-            <TouchableOpacity style={styles.smallButton}><Text style={styles.smallButtonText}>learn more</Text></TouchableOpacity>
-          </View>
-          <View style={[styles.largeCard, { backgroundColor: t.card, borderColor: t.accent, borderWidth: 1 }]}>
-            <Text style={styles.cardTitle}>{isGirl ? 'comfort tip' : 'quick tip'}</Text>
-            <Text style={styles.cardText}>
-              {isGirl ? 'Use warmth for cramps, drink water, rest, and be gentle with yourself.' : 'Take care of your body, your mind, and your energy.'}
-            </Text>
-            <TouchableOpacity style={styles.smallButton}><Text style={styles.smallButtonText}>more tips</Text></TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.quoteBox}>
-          <Text style={styles.quoteText}>This space is private unless you choose to share it with a trusted adult.</Text>
-        </View>
-        {nav}
-      </ScrollView>
-    );
-  }
+  if (screen === 'bippin2') return (
+    <Bippin2Screen
+      t={t}
+      mood={mood}
+      growthPath={growthPath}
+      setGrowthPath={setGrowthPath}
+      art={art}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // COMFORT MODE
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'comfort') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Comfort Mode 🚨</Text>
-      <Text style={styles.subtitle}>When it feels heavy, Bip stays with you.</Text>
-
-      <Image source={IMAGES.cloudStormy} style={styles.artworkMedium} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>💙</Text>
-        <Text style={styles.cardText}>You are not alone in this moment.</Text>
-      </View>
-
-      <View style={card()}>
-        {[
-          '1. Put both feet on the floor.',
-          '2. Name 3 things you can see.',
-          '3. Take one slow breath.',
-          '4. Tap Calm if you need to breathe.',
-        ].map(step => (
-          <Text key={step} style={styles.entryText}>{step}</Text>
-        ))}
-      </View>
-
-      {nav}
-    </ScrollView>
+    <ComfortScreen t={t} BottomNav={nav} />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // MIND / BODY RESET
   // ─────────────────────────────────────────────────────────────────────────
-  if (screen === 'mindReset' || screen === 'bodyReset') {
-    const isMind = screen === 'mindReset';
-    const steps  = isMind
-      ? ['☁️ Unclench your jaw.', '🌙 Relax your shoulders.', '🫧 Take one slow breath in.', '💭 Let one thought pass without chasing it.', '🕯️ Your mind does not need to solve everything tonight.']
-      : ['🫧 Roll your shoulders slowly.', '🌿 Stretch your neck gently.', '💧 Drink a little water.', '🧍🏾 Unclench your hands.', '🌙 Let your body soften for a second.'];
-
-    return (
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-        <Text style={styles.logo}>{isMind ? '7-Min Mind Reset 🌙' : '7-Min Body Reset 🫧'}</Text>
-        <Text style={styles.subtitle}>{isMind ? 'Quiet the noise for a minute.' : 'Let your body breathe too.'}</Text>
-
-        <Image source={art.window} style={styles.artworkMedium} resizeMode="contain" />
-
-        <Animated.View style={[
-          styles.circle,
-          { transform: [{ scale: breatheAnim }], backgroundColor: t.accent, shadowColor: t.accent, shadowOpacity: 0.6, shadowRadius: 25, elevation: 12, marginBottom: 30 },
-        ]}>
-          <Image source={isMind ? IMAGES.cloudHeadphones : IMAGES.cloud} style={styles.circleImg} resizeMode="contain" />
-          <Text style={styles.circleTextSmall}>inhale • exhale</Text>
-        </Animated.View>
-
-        <View style={card()}>
-          <Text style={styles.cardText}>{isMind ? 'Mind Reset Steps' : 'Body Reset Steps'}</Text>
-          {steps.map(step => <Text key={step} style={styles.entryText}>{step}</Text>)}
-        </View>
-
-        <View style={card()}>
-          <Text style={styles.cardEmoji}>{isMind ? '🌙' : '💙'}</Text>
-          <Text style={styles.cardText}>{isMind ? 'Your thoughts can slow down now.' : 'Your body deserves gentleness too.'}</Text>
-          <Text style={styles.entryText}>{isMind ? 'You are allowed to rest without fixing everything.' : 'Tension lives in the body. Let some of it go.'}</Text>
-        </View>
-
-        <TouchableOpacity style={btn()} onPress={() => setScreen('comfort')}>
-          <Text style={styles.buttonText}>Open Comfort Mode 💙</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.smallButton} onPress={() => setScreen('calm')}>
-          <Text style={styles.smallButtonText}>Back to Calm 🌙</Text>
-        </TouchableOpacity>
-        {nav}
-      </ScrollView>
-    );
-  }
+  if (screen === 'mindReset' || screen === 'bodyReset') return (
+    <MindBodyResetScreen
+      screen={screen as 'mindReset' | 'bodyReset'}
+      t={t}
+      breatheAnim={breatheAnim}
+      art={art}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
+  );
 
   // ─────────────────────────────────────────────────────────────────────────
   // MORE
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'more') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>More ✨</Text>
-      <Text style={styles.subtitle}>Settings, growth tools, and extra Bip spaces.</Text>
-
-      <View style={card()}>
-        <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🌿' : '💜'}</Text>
-        <Text style={styles.cardText}>Current Side: {userSide === 'parent' ? 'Parent Side' : 'Teen Side'}</Text>
-        <TouchableOpacity style={btn()} onPress={() => setUserSide((side: string) => side === 'parent' ? 'teen' : 'parent')}>
-          <Text style={styles.buttonText}>Switch to {userSide === 'parent' ? 'Teen Side' : 'Parent Side'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={btn()} onPress={() => setScreen('settings')}><Text style={styles.buttonText}>⚙️ Vibe Lab</Text></TouchableOpacity>
-      <TouchableOpacity style={btn()} onPress={() => setScreen('bippin2')}><Text style={styles.buttonText}>✨ Bippin2 / Insights</Text></TouchableOpacity>
-      <TouchableOpacity style={btn()} onPress={() => setScreen(userSide === 'parent' ? 'parentBridge' : 'bridge')}>
-        <Text style={styles.buttonText}>{userSide === 'parent' ? '🌉 Parent Bridge' : '🌉 Bridge'}</Text>
-      </TouchableOpacity>
-
-      {nav}
-    </ScrollView>
+    <MoreScreen
+      t={t}
+      userSide={userSide}
+      setUserSide={setUserSide}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // SETTINGS / VIBE LAB
   // ─────────────────────────────────────────────────────────────────────────
   if (screen === 'settings') return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Vibe Lab 💜</Text>
-      <Text style={styles.subtitle}>Make Se'kret feel like yours.</Text>
-
-      <Image source={art.happy} style={styles.artworkPortrait} resizeMode="contain" />
-
-      <View style={card()}>
-        <Text style={styles.cardText}>Current Theme</Text>
-        <Text style={styles.entryText}>{t.emoji} {t.name}</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>Theme Packs</Text>
-      <View style={styles.themeRow}>
-        {Object.keys(THEME_PACKS).map(key => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.themeBubble, { backgroundColor: THEME_PACKS[key].card, borderColor: theme === key ? THEME_PACKS[key].accent : '#334155', borderWidth: theme === key ? 3 : 1 }]}
-            onPress={() => setTheme(key)}
-          >
-            <Text style={styles.themeEmoji}>{THEME_PACKS[key].emoji}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>Choose Your Se'kret</Text>
-      <View style={card()}>
-        {Object.keys(SEKRET_PROFILES).map(key => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.choiceButton, selectedSekret === key && { borderColor: t.accent, borderWidth: 2 }]}
-            onPress={() => setSelectedSekret(key)}
-          >
-            <Text style={styles.entryText}>{SEKRET_PROFILES[key].emoji} {SEKRET_PROFILES[key].name}</Text>
-            <Text style={styles.miniText}>{SEKRET_PROFILES[key].title}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>Se'kret Mode</Text>
-      <View style={card()}>
-        {Object.keys(SEKRET_MODES).map(key => (
-          <TouchableOpacity
-            key={key}
-            style={[styles.choiceButton, sekretMode === key && { borderColor: t.accent, borderWidth: 2 }]}
-            onPress={() => setSekretMode(key)}
-          >
-            <Text style={styles.entryText}>{SEKRET_MODES[key].emoji} {SEKRET_MODES[key].label}</Text>
-            <Text style={styles.miniText}>{SEKRET_MODES[key].description}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.sectionTitle}>Account Side</Text>
-      <View style={card()}>
-        <TouchableOpacity style={btn()} onPress={() => setUserSide('teen')}><Text style={styles.buttonText}>🧑 Teen Side</Text></TouchableOpacity>
-        <TouchableOpacity style={[btn(), { marginTop: 10 }]} onPress={() => setUserSide('parent')}><Text style={styles.buttonText}>👨‍👩‍👧 Parent Side</Text></TouchableOpacity>
-        <Text style={[styles.entryText, { marginTop: 10 }]}>Current: {userSide === 'parent' ? 'Parent 🌿' : 'Teen 💜'}</Text>
-      </View>
-
-      {nav}
-    </ScrollView>
+    <SettingsScreen
+      t={t}
+      theme={theme}
+      setTheme={setTheme}
+      selectedSekret={selectedSekret}
+      setSelectedSekret={setSelectedSekret}
+      sekretMode={sekretMode}
+      setSekretMode={setSekretMode}
+      userSide={userSide}
+      setUserSide={setUserSide}
+      art={art}
+      BottomNav={nav}
+    />
   );
 
   return null;
