@@ -3,7 +3,7 @@ import {
   Text, TouchableOpacity, ScrollView,
   View, Image, StyleSheet, Platform,
 } from 'react-native';
-import { getMoodEngine } from '@utils/moodEngine';
+import { getMoodEngine } from '../utils/moodEngine';
 
 interface Bippin2ScreenProps {
   t: Record<string, any>;
