@@ -2,13 +2,14 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "moduleResolution": "bundler",
     "paths": {
-      "@hooks/*": ["./hooks/*"],
-      "@utils/*": ["./utils/*"],
+      "@hooks/*":      ["./hooks/*"],
+      "@utils/*":      ["./utils/*"],
       "@components/*": ["./components/*"],
-      "@constants/*": ["./constants/*"],
-      "@screens/*": ["./screens/*"],
-      "@types/*": ["./types/*"]
+      "@constants/*":  ["./constants/*"],
+      "@screens/*":    ["./screens/*"],
+      "@types/*":      ["./types/*"]
     }
   }
 }
