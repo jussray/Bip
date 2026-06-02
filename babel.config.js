@@ -5,7 +5,7 @@ module.exports = function (api) {
     presets: ['babel-preset-expo'],
     plugins: [
       [
-        'module-resolver',
+        'babel-plugin-module-resolver',
         {
           root: ['.'],
           alias: {
