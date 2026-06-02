@@ -1,35 +1,37 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  Text, TouchableOpacity, ScrollView,
-  View, Animated, Image, ImageBackground,
-  StyleSheet, Platform,
+  Text, TouchableOpacity, ScrollView, View,
+  Animated, Image, ImageBackground, StyleSheet, Platform,
 } from 'react-native';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// IMAGES
-// ─────────────────────────────────────────────────────────────────────────────
-const IMAGES = {
-  // Time-aware voice art
-  rayleneVoiceDay:   require('../assets/images/raylene-voice-day.png'),
-  rayleneVoiceNight: require('../assets/images/raylene-voice-night.png'),
-  rylaneVoiceDay:    require('../assets/images/rylane-voice-day.png'),
-  rylaneVoiceNight:  require('../assets/images/rylane-voice-night.png'),
-  // Room background
-  roomBgDark:        require('../assets/images/room-bg-dark.png'),
-  // Cloud
-  cloudHeadphones:   require('../assets/images/cloud-headphones.png'),
+// ── DEBUG ──────────────────────────────────────────────────────────────────
+const DEBUG_HOTSPOTS = false;
+
+// ── ROOM IMAGES ────────────────────────────────────────────────────────────
+const ROOM_DAY   = require('../assets/images/raylene-voice-day.png');
+const ROOM_NIGHT = require('../assets/images/raylene-voice-night.png');
+const CLOUD_HP   = require('../assets/images/cloud-headphones.png');
+
+// ── HOTSPOTS ───────────────────────────────────────────────────────────────
+const HOTSPOTS = {
+  microphone:  { top: '18%', left: '30%',  width: '22%', height: '28%', label: 'Mic 🎙️' },
+  journal:     { bottom: '4%', left: '16%', width: '44%', height: '22%', label: 'Journal 📖' },
+  window:      { top: '4%',  right: '2%',  width: '38%', height: '40%', label: 'Window 🌙' },
+  crystalJar:  { bottom: '4%', right: '2%', width: '18%', height: '22%', label: 'Saved 💎' },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SE'KRET API
-// ─────────────────────────────────────────────────────────────────────────────
+// ── BIP TYPE MENU ──────────────────────────────────────────────────────────
+const BIP_TYPES = [
+  { id: 'voice',  emoji: '🎙️', label: 'Voice Bip',  sub: 'say it out loud' },
+  { id: 'video',  emoji: '📹', label: 'Video Bip',  sub: '30–60 seconds' },
+  { id: 'text',   emoji: '✍️', label: 'Text Bip',   sub: 'write it out' },
+  { id: 'cloud',  emoji: '☁️', label: 'Cloud Bip',  sub: 'send to the clouds' },
+];
+
+// ── API ────────────────────────────────────────────────────────────────────
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
-async function fetchSekretReply(
-  text: string,
-  context = 'journal',
-  mood?: string
-): Promise<string> {
+async function fetchSekretReply(text: string, context = 'journal', mood?: string): Promise<string> {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
@@ -44,15 +46,14 @@ async function fetchSekretReply(
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────────────────────────────────────
+// ── TYPES ──────────────────────────────────────────────────────────────────
 interface VoiceNote {
   id: number;
   title: string;
   date: string;
   time: string;
   duration: string;
+  type?: string;
 }
 
 interface VoiceBipScreenProps {
@@ -60,61 +61,119 @@ interface VoiceBipScreenProps {
   setScreen: (screen: string) => void;
   selectedSekret: string;
   voiceNotes: VoiceNote[];
-  setVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
+  setVoiceNotes: (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-export function VoiceBipScreen({
-  theme,
-  setScreen,
-  selectedSekret,
-  voiceNotes,
-  setVoiceNotes,
-}: VoiceBipScreenProps) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [recorded, setRecorded]       = useState(false);
-  const [sekretReply, setSekretReply] = useState('');
-  const [isThinking, setIsThinking]   = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulseLoop = useRef<any>(null);
+// ── COMPONENT ──────────────────────────────────────────────────────────────
+export function VoiceBipScreen({ theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes }: VoiceBipScreenProps) {
+  const [showBipMenu, setShowBipMenu]   = useState(false);
+  const [showArchive, setShowArchive]   = useState(false);
+  const [isRecording, setIsRecording]   = useState(false);
+  const [recorded, setRecorded]         = useState(false);
+  const [sekretReply, setSekretReply]   = useState('');
+  const [isThinking, setIsThinking]     = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [selectedBipType, setSelectedBipType] = useState<string | null>(null);
 
-  // ── Time-aware hero art ──────────────────────────────────────────────────
+  // Animations
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const glowAnim    = useRef(new Animated.Value(0)).current;
+  const pulseLoop   = useRef<any>(null);
+  const glowLoop    = useRef<any>(null);
+  const timerRef    = useRef<any>(null);
+
+  // Waveform bars — 12 bars
+  const waveAnims = useRef(
+    Array.from({ length: 12 }, () => new Animated.Value(0.3))
+  ).current;
+  const waveLoop = useRef<any>(null);
+
+  // Time-aware room
   const hour    = new Date().getHours();
   const isNight = hour >= 18 || hour < 6;
+  const roomArt = isNight ? ROOM_NIGHT : ROOM_DAY;
 
+  // Time-aware hero art
   const heroArt =
     selectedSekret === 'rylane'
-      ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
-      : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
+      ? (isNight ? require('../assets/images/rylane-voice-night.png') : require('../assets/images/rylane-voice-day.png'))
+      : (isNight ? require('../assets/images/raylene-voice-night.png') : require('../assets/images/raylene-voice-day.png'));
 
-  // ── Recording ────────────────────────────────────────────────────────────
+  // Format timer
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
   const startRecording = () => {
     setIsRecording(true);
     setRecorded(false);
     setSekretReply('');
+    setRecordingTime(0);
+    setShowBipMenu(false);
+
+    // Pulse animation
     pulseLoop.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.25, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.2, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,   duration: 600, useNativeDriver: true }),
       ])
     );
     pulseLoop.current.start();
+
+    // Purple glow animation
+    glowLoop.current = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1000, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0.3, duration: 1000, useNativeDriver: false }),
+      ])
+    );
+    glowLoop.current.start();
+
+    // Waveform animation — each bar animates independently
+    waveLoop.current = Animated.loop(
+      Animated.stagger(80,
+        waveAnims.map(anim =>
+          Animated.sequence([
+            Animated.timing(anim, {
+              toValue: 0.2 + Math.random() * 0.8,
+              duration: 200 + Math.random() * 300,
+              useNativeDriver: false,
+            }),
+            Animated.timing(anim, {
+              toValue: 0.2 + Math.random() * 0.4,
+              duration: 200 + Math.random() * 200,
+              useNativeDriver: false,
+            }),
+          ])
+        )
+      )
+    );
+    waveLoop.current.start();
+
+    // Timer
+    timerRef.current = setInterval(() => {
+      setRecordingTime(t => t + 1);
+    }, 1000);
   };
 
   const stopRecording = async () => {
     setIsRecording(false);
     setRecorded(true);
+
     pulseLoop.current?.stop();
+    glowLoop.current?.stop();
+    waveLoop.current?.stop();
+    clearInterval(timerRef.current);
+
     pulseAnim.setValue(1);
+    glowAnim.setValue(0);
+    waveAnims.forEach(a => a.setValue(0.3));
 
     const note: VoiceNote = {
       id: Date.now(),
-      title: 'Voice Bip',
+      title: selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      duration: '~30s',
+      duration: formatTime(recordingTime),
+      type: selectedBipType || 'voice',
     };
 
     setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
@@ -126,217 +185,284 @@ export function VoiceBipScreen({
     );
     setSekretReply(reply);
     setIsThinking(false);
+    setSelectedBipType(null);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      pulseLoop.current?.stop();
+      glowLoop.current?.stop();
+      waveLoop.current?.stop();
+      clearInterval(timerRef.current);
+    };
+  }, []);
+
   return (
-    <View style={[styles.root, { backgroundColor: theme.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
+    <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* ── Hero header — room background + time-aware character ── */}
-        <View style={styles.heroWrap}>
-          <ImageBackground
-            source={IMAGES.roomBgDark}
-            style={styles.heroBg}
-            resizeMode="cover"
-          >
-            {/* Dark overlay */}
-            <View style={styles.heroOverlay} />
-            <View style={styles.heroContent}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroSub}>
-                  {isNight ? 'late night voice bip 🌙' : 'voice bip 🎙️'}
-                </Text>
-                <Text style={styles.heroTitle}>Voice Bip</Text>
-                <Text style={styles.heroMini}>
-                  Say it out loud. 30–60 seconds. Let it go.
-                </Text>
-              </View>
-              <Image
-                source={heroArt}
-                style={styles.heroChar}
-                resizeMode="cover"
-              />
+        {/* ── Interactive Room ── */}
+        <View style={styles.roomWrap}>
+          <Image source={roomArt} style={styles.roomImage} resizeMode="cover" />
+
+          {/* Dark overlay when recording */}
+          {isRecording && (
+            <Animated.View style={[styles.recordingOverlay, { opacity: glowAnim }]} />
+          )}
+
+          {/* Time badge */}
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeBadgeText}>{isNight ? '🌙 night' : '☀️ day'}</Text>
+          </View>
+
+          {/* "Raylene is listening" label when recording */}
+          {isRecording && (
+            <View style={styles.listeningBadge}>
+              <Text style={styles.listeningBadgeText}>Raylene is listening... 💜</Text>
             </View>
-          </ImageBackground>
-        </View>
+          )}
 
-        {/* ── Record button ── */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column', alignItems: 'center', paddingVertical: 32 }]}>
-          <Animated.View style={[
-            styles.recordCircle,
-            {
-              backgroundColor: isRecording
-                ? 'rgba(236,72,153,0.3)'
-                : 'rgba(124,58,237,0.3)',
-              borderColor: isRecording ? '#f472b6' : theme.accent,
-              transform: [{ scale: pulseAnim }],
-              shadowColor: isRecording ? '#f472b6' : theme.accent,
-              shadowOpacity: isRecording ? 0.8 : 0.3,
-              shadowRadius: 20,
-              elevation: 10,
-            },
-          ]}>
-            <Text style={{ fontSize: 48 }}>{isRecording ? '🔴' : '🎙️'}</Text>
-          </Animated.View>
-
-          <Text style={styles.recordLabel}>
-            {isRecording ? 'Recording...' : recorded ? 'Saved 💜' : 'Tap to Start'}
-          </Text>
-          <Text style={styles.recordSub}>
-            {isRecording ? 'Tap again to stop' : 'Say whatever you need to say'}
-          </Text>
-
+          {/* HOTSPOT — Microphone */}
           <TouchableOpacity
-            onPress={isRecording ? stopRecording : startRecording}
-            style={styles.recordActionWrap}
+            activeOpacity={0.8}
+            style={[styles.hotspot, { top: HOTSPOTS.microphone.top, left: HOTSPOTS.microphone.left, width: HOTSPOTS.microphone.width, height: HOTSPOTS.microphone.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            onPress={() => {
+              if (isRecording) stopRecording();
+              else setShowBipMenu(true);
+            }}
           >
-            <View style={[
-              styles.recordActionInner,
-              { backgroundColor: isRecording ? '#ef4444' : theme.accent },
-            ]}>
-              <Text style={styles.recordActionText}>
-                {isRecording ? '⏹ Stop Recording' : '▶ Start Voice Bip'}
-              </Text>
-            </View>
+            {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.microphone.label}</Text>}
           </TouchableOpacity>
+
+          {/* HOTSPOT — Journal */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.hotspot, { bottom: HOTSPOTS.journal.bottom, left: HOTSPOTS.journal.left, width: HOTSPOTS.journal.width, height: HOTSPOTS.journal.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            onPress={() => setShowArchive(true)}
+          >
+            {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.journal.label}</Text>}
+          </TouchableOpacity>
+
+          {/* HOTSPOT — Window */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.hotspot, { top: HOTSPOTS.window.top, right: HOTSPOTS.window.right, width: HOTSPOTS.window.width, height: HOTSPOTS.window.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            onPress={() => setScreen('cloudThoughts')}
+          >
+            {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.window.label}</Text>}
+          </TouchableOpacity>
+
+          {/* HOTSPOT — Crystal Jar */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.hotspot, { bottom: HOTSPOTS.crystalJar.bottom, right: HOTSPOTS.crystalJar.right, width: HOTSPOTS.crystalJar.width, height: HOTSPOTS.crystalJar.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            onPress={() => setShowArchive(true)}
+          >
+            {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.crystalJar.label}</Text>}
+          </TouchableOpacity>
+
+          {/* Floating hints */}
+          {!DEBUG_HOTSPOTS && !isRecording && (
+            <View style={[styles.hint, { top: '15%', left: '26%' }]}>
+              <Text style={styles.hintText}>tap the mic 🎙️</Text>
+            </View>
+          )}
         </View>
 
-        {/* ── Se'kret listening ── */}
-        {isThinking && (
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, gap: 12 }]}>
-            <Image
-              source={IMAGES.cloudHeadphones}
-              style={{ width: 40, height: 40 }}
-              resizeMode="contain"
-            />
-            <Text style={[styles.listeningText, { color: theme.soft }]}>
-              Se'kret is listening... ☁️
-            </Text>
+        {/* ── Recording state ── */}
+        {isRecording && (
+          <View style={[styles.recordingCard, { borderColor: '#a855f7', backgroundColor: 'rgba(13,9,20,0.92)' }]}>
+            {/* Pulse circle */}
+            <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseAnim }], borderColor: '#a855f7' }]} />
+
+            <Text style={styles.recordingLabel}>Recording... 🔴</Text>
+            <Text style={styles.recordingTimer}>{formatTime(recordingTime)}</Text>
+
+            {/* Waveform */}
+            <View style={styles.waveform}>
+              {waveAnims.map((anim, i) => (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.waveBar,
+                    {
+                      height: anim.interpolate({ inputRange: [0, 1], outputRange: [4, 36] }),
+                      backgroundColor: i % 3 === 0 ? '#a855f7' : i % 3 === 1 ? '#f472b6' : '#7c3aed',
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+
+            <TouchableOpacity style={styles.stopBtn} onPress={stopRecording}>
+              <Text style={styles.stopBtnText}>⏹ Stop</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {/* ── Se'kret replied ── */}
+        {/* ── Saved confirmation ── */}
+        {recorded && !isRecording && (
+          <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
+            <Text style={[styles.savedLabel, { color: theme.soft }]}>Saved to your journal 💜</Text>
+          </View>
+        )}
+
+        {/* ── Se'kret listening ── */}
+        {isThinking && (
+          <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)', flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+            <Image source={CLOUD_HP} style={{ width: 36, height: 36 }} resizeMode="contain" />
+            <Text style={[styles.thinkingText, { color: theme.soft }]}>Se'kret is listening... ☁️</Text>
+          </View>
+        )}
+
+        {/* ── Se'kret reply ── */}
         {sekretReply && !isThinking && (
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: 'rgba(168,85,247,0.3)', flexDirection: 'column' }]}>
-            <Text style={styles.replyLabel}>Se'kret replied 💜</Text>
+          <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.3)', backgroundColor: 'rgba(13,9,20,0.92)' }]}>
+            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>Se'kret replied 💜</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
           </View>
         )}
 
         {/* ── Tips ── */}
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column' }]}>
-          <Text style={styles.cardTitle}>Tips for Voice Bips 🌙</Text>
+        <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips for Voice Bips 🌙</Text>
           {[
             "Find a private spot — car, room, bathroom, wherever",
             "You don't need perfect words. Just talk.",
             "It's okay to cry, pause, or start over",
             "Se'kret listens without judgment, always",
           ].map(tip => (
-            <Text key={tip} style={styles.tip}>• {tip}</Text>
+            <Text key={tip} style={[styles.tip, { color: '#c4b5fd' }]}>• {tip}</Text>
           ))}
         </View>
 
-        {/* ── Saved voice bips ── */}
-        {voiceNotes.length > 0 && (
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column' }]}>
-            <Text style={[styles.cardTitle, { marginBottom: 12 }]}>Saved Voice Bips</Text>
-            {voiceNotes.slice(0, 5).map(n => (
-              <View key={n.id} style={styles.noteRow}>
-                <View style={[styles.noteIcon, { backgroundColor: 'rgba(124,58,237,0.3)' }]}>
-                  <Text style={{ fontSize: 16 }}>🎙️</Text>
-                </View>
+      </ScrollView>
+
+      {/* ── Bip type menu ── */}
+      {showBipMenu && (
+        <View style={styles.overlayWrap}>
+          <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowBipMenu(false)} />
+          <View style={[styles.bipMenuCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
+            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? 💜</Text>
+            <Text style={[styles.bipMenuSub, { color: '#7c6899' }]}>Choose how you want to express right now</Text>
+            {BIP_TYPES.map(bip => (
+              <TouchableOpacity
+                key={bip.id}
+                style={[styles.bipTypeRow, { borderColor: theme.accent }]}
+                onPress={() => {
+                  setSelectedBipType(bip.id);
+                  if (bip.id === 'text') { setShowBipMenu(false); setScreen('pages'); }
+                  else if (bip.id === 'cloud') { setShowBipMenu(false); setScreen('cloudThoughts'); }
+                  else { setShowBipMenu(false); startRecording(); }
+                }}
+              >
+                <Text style={styles.bipTypeEmoji}>{bip.emoji}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.noteTitle}>{n.title}</Text>
-                  <Text style={styles.noteMeta}>{n.date} · {n.time} · {n.duration}</Text>
+                  <Text style={[styles.bipTypeLabel, { color: '#fff' }]}>{bip.label}</Text>
+                  <Text style={[styles.bipTypeSub, { color: '#7c6899' }]}>{bip.sub}</Text>
                 </View>
-                <TouchableOpacity style={[styles.playBtn, { backgroundColor: 'rgba(124,58,237,0.25)' }]}>
-                  <Text style={styles.playBtnText}>▶ Play</Text>
-                </TouchableOpacity>
-              </View>
+                <Text style={{ color: theme.soft, fontSize: 18 }}>›</Text>
+              </TouchableOpacity>
             ))}
           </View>
-        )}
+        </View>
+      )}
 
-        {/* ── Empty state ── */}
-        {voiceNotes.length === 0 && (
-          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent, flexDirection: 'column', alignItems: 'center', padding: 20 }]}>
-            <Image
-              source={IMAGES.cloudHeadphones}
-              style={{ width: 48, height: 48, marginBottom: 10 }}
-              resizeMode="contain"
-            />
-            <Text style={styles.emptyText}>
-              No voice bips yet. Your first one is waiting. 🎙️
-            </Text>
+      {/* ── Archive overlay ── */}
+      {showArchive && (
+        <View style={styles.overlayWrap}>
+          <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowArchive(false)} />
+          <View style={[styles.archiveCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
+            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>Raylene's journal 📖</Text>
+
+            {voiceNotes.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+                <Image source={CLOUD_HP} style={{ width: 48, height: 48, marginBottom: 10 }} resizeMode="contain" />
+                <Text style={[styles.emptyText, { color: '#7c6899' }]}>No bips yet. Your first one is waiting. 🎙️</Text>
+              </View>
+            ) : (
+              voiceNotes.slice(0, 6).map(n => (
+                <View key={n.id} style={[styles.noteRow, { borderBottomColor: 'rgba(167,114,192,0.15)' }]}>
+                  <View style={[styles.noteIcon, { backgroundColor: 'rgba(124,58,237,0.3)' }]}>
+                    <Text style={{ fontSize: 14 }}>
+                      {n.type === 'video' ? '📹' : n.type === 'text' ? '✍️' : n.type === 'cloud' ? '☁️' : '🎙️'}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.noteTitle, { color: '#fff' }]}>{n.title}</Text>
+                    <Text style={[styles.noteMeta, { color: '#7c6899' }]}>{n.date} · {n.duration}</Text>
+                  </View>
+                  <TouchableOpacity style={[styles.playBtn, { backgroundColor: 'rgba(124,58,237,0.25)' }]}>
+                    <Text style={[styles.playBtnText, { color: '#c4b5fd' }]}>▶</Text>
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+
+            <TouchableOpacity style={{ alignItems: 'center', paddingTop: 12 }} onPress={() => setShowArchive(false)}>
+              <Text style={{ color: '#7c6899', fontSize: 13 }}>close</Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        {/* ── Back button ── */}
-        <TouchableOpacity
-          onPress={() => setScreen('pages')}
-          style={styles.backBtn}
-        >
-          <Text style={styles.backBtnText}>← Back to Se'kret Pages</Text>
-        </TouchableOpacity>
-
-      </ScrollView>
+        </View>
+      )}
     </View>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:              { flex: 1 },
   scroll:            { paddingBottom: 100 },
+  roomWrap:          { position: 'relative', width: '100%', height: 340, marginBottom: 16, overflow: 'hidden' },
+  roomImage:         { width: '100%', height: '100%' },
+  recordingOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(124,58,237,0.25)' },
+  timeBadge:         { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  timeBadgeText:     { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
+  listeningBadge:    { position: 'absolute', bottom: 12, left: 0, right: 0, alignItems: 'center' },
+  listeningBadgeText:{ color: '#f5f0ff', fontSize: 14, fontWeight: '800', backgroundColor: 'rgba(124,58,237,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
+  hotspot:           { position: 'absolute' },
+  hotspotDebug:      { borderWidth: 2, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.18)' },
+  debugLabel:        { color: '#f472b6', fontSize: 9, fontWeight: '900', padding: 2 },
+  hint:              { position: 'absolute', backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  hintText:          { color: '#c4b5fd', fontSize: 10, fontWeight: '600' },
 
-  // Hero
-  heroWrap:          { marginHorizontal: 16, marginTop: Platform.OS === 'ios' ? 56 : 40, marginBottom: 12, borderRadius: 24, overflow: 'hidden' },
-  heroBg:            { width: '100%', minHeight: 180 },
-  heroOverlay:       { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,9,20,0.55)' },
-  heroContent:       { padding: 18, minHeight: 180, justifyContent: 'flex-end', flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
-  heroSub:           { fontSize: 11, color: '#a855f7', letterSpacing: 1, marginBottom: 4 },
-  heroTitle:         { fontSize: 26, color: '#f472b6', fontStyle: 'italic', fontWeight: '800' },
-  heroMini:          { fontSize: 12, color: '#a78cc0', marginTop: 4 },
-  heroChar:          { width: 90, height: 90, borderRadius: 14, borderWidth: 2, borderColor: 'rgba(168,85,247,0.4)' },
+  // Recording card
+  recordingCard:     { marginHorizontal: 16, marginBottom: 12, borderRadius: 24, borderWidth: 1, padding: 24, alignItems: 'center' },
+  pulseRing:         { width: 80, height: 80, borderRadius: 40, borderWidth: 3, position: 'absolute', top: 14 },
+  recordingLabel:    { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 6, marginTop: 8 },
+  recordingTimer:    { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 16 },
+  waveform:          { flexDirection: 'row', alignItems: 'center', gap: 3, height: 44, marginBottom: 20 },
+  waveBar:           { width: 4, borderRadius: 2 },
+  stopBtn:           { backgroundColor: '#ef4444', borderRadius: 18, paddingHorizontal: 24, paddingVertical: 12 },
+  stopBtnText:       { color: '#fff', fontWeight: '800', fontSize: 15 },
 
-  // Card
-  card:              { marginHorizontal: 16, marginBottom: 12, borderRadius: 20, borderWidth: 1, padding: 16, flexDirection: 'row', alignItems: 'center' },
-  cardTitle:         { fontSize: 13, color: '#f5f0ff', fontWeight: '600', marginBottom: 10 },
-
-  // Record
-  recordCircle:      { width: 120, height: 120, borderRadius: 60, borderWidth: 3, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  recordLabel:       { color: '#f5f0ff', fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
-  recordSub:         { color: '#7c6899', fontSize: 13, marginBottom: 20 },
-  recordActionWrap:  { borderRadius: 50, overflow: 'hidden', width: 200 },
-  recordActionInner: { padding: 14, alignItems: 'center', borderRadius: 50 },
-  recordActionText:  { color: '#fff', fontSize: 15, fontWeight: '700' },
-
-  // Reply
-  listeningText:     { fontSize: 13, fontStyle: 'italic' },
-  replyLabel:        { fontSize: 10, color: '#a855f7', marginBottom: 6 },
+  // Float cards
+  floatCard:         { marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16 },
+  savedLabel:        { fontSize: 15, fontWeight: '700', textAlign: 'center' },
+  thinkingText:      { fontSize: 13, fontStyle: 'italic' },
+  replyLabel:        { fontSize: 10, marginBottom: 6 },
   replyText:         { fontSize: 13, lineHeight: 20 },
+  cardTitle:         { fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  tip:               { fontSize: 13, marginBottom: 8, lineHeight: 20 },
 
-  // Tips
-  tip:               { fontSize: 13, color: '#c4b5fd', marginBottom: 8, lineHeight: 20 },
+  // Bip menu
+  overlayWrap:       { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
+  overlayBackdrop:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  bipMenuCard:       { margin: 16, borderRadius: 28, borderWidth: 1, padding: 24, zIndex: 10 },
+  bipMenuTitle:      { fontSize: 20, fontWeight: '900', marginBottom: 4 },
+  bipMenuSub:        { fontSize: 12, marginBottom: 20 },
+  bipTypeRow:        { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 10 },
+  bipTypeEmoji:      { fontSize: 26 },
+  bipTypeLabel:      { fontSize: 15, fontWeight: '700' },
+  bipTypeSub:        { fontSize: 11, marginTop: 2 },
 
-  // Notes list
-  noteRow:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(167,114,192,0.1)' },
+  // Archive
+  archiveCard:       { margin: 16, borderRadius: 28, borderWidth: 1, padding: 24, zIndex: 10, maxHeight: '70%' },
+  noteRow:           { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1 },
   noteIcon:          { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  noteTitle:         { color: '#f5f0ff', fontWeight: '600', fontSize: 13 },
-  noteMeta:          { color: '#7c6899', fontSize: 11 },
-  playBtn:           { borderRadius: 10, padding: 6 },
-  playBtnText:       { color: '#c4b5fd', fontSize: 12 },
-
-  // Empty
-  emptyText:         { fontSize: 13, color: '#7c6899', textAlign: 'center', fontStyle: 'italic' },
-
-  // Back
-  backBtn:           { marginHorizontal: 16, marginBottom: 12, padding: 12, alignItems: 'center' },
-  backBtnText:       { fontSize: 13, color: '#7c6899' },
+  noteTitle:         { fontWeight: '600', fontSize: 13 },
+  noteMeta:          { fontSize: 11 },
+  playBtn:           { borderRadius: 10, padding: 8 },
+  playBtnText:       { fontSize: 14 },
+  emptyText:         { fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
 });
