@@ -32,7 +32,7 @@ interface CalmScreenProps {
   t: Record<string, any>;
   breatheAnim: Animated.Value;
   comfortIdx: number;
-  setComfortIdx: (fn: (i: number) => number) => void;
+  setComfortIdx: React.Dispatch<React.SetStateAction<number>>;
   art: Record<string, any>;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
