@@ -15,8 +15,9 @@ import { BridgeScreen }         from '../screens/BridgeScreen';
 import { ParentBridgeScreen }   from '../screens/ParentBridgeScreen';
 import { MoreScreen }           from '../screens/MoreScreen';
 import { SettingsScreen }       from '../screens/SettingsScreen';
-import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
-import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
+import { PeriodCalendarScreen }  from '../screens/PeriodCalendarScreen';
+import { VoiceBipScreen }        from '../screens/VoiceBipScreen';
+import { CloudThoughtsScreen }   from '../screens/CloudThoughtsScreen';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 import { loadState, saveState } from '../utils/storage';
@@ -50,10 +51,6 @@ const IMAGES = {
   rylaneWriting:   require('../assets/images/rylane-writing.png'),
   rylaneWindow:    require('../assets/images/rylane-window.png'),
   rylaneFullbody:  require('../assets/images/rylane-fullbody.png'),
-rayleneVoiceDay: require('../assets/images/raylene-voice-day.png'),
-rayleneVoiceNight: require('../assets/images/raylene-voice-night.png'),
-rylaneVoiceDay: require('../assets/images/rylane-voice-day.png'),
-rylaneVoiceNight: require('../assets/images/rylane-voice-night.png'),
 };
 
 const HOME_MESSAGES = [
@@ -236,6 +233,15 @@ export default function App() {
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
   if (isLoading) return null;
+
+  if (screen === 'cloudThoughts') return (
+    <CloudThoughtsScreen
+      t={t}
+      mood={mood}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
+  );
 
   if (screen === 'periodCalendar') return (
     <PeriodCalendarScreen theme={t} setScreen={setScreen} />
