@@ -1,5 +1,7 @@
-<<<<<<< HEAD
-=======
+// ─────────────────────────────────────────────────────────────────────────────
+// constants/theme.ts — conflict resolved, all image paths verified
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const THEME_PACKS: Record<string, any> = {
   night: {
     name: 'Golden Moon',
@@ -74,9 +76,17 @@ export const SEKRET_PROFILES: Record<string, any> = {
   },
 };
 
+export const SEKRET_MODES: Record<string, any> = {
+  soft:     { emoji: '🌙', label: 'Soft',        description: 'Gentle comfort & reassurance' },
+  realTalk: { emoji: '🧠', label: 'Real Talk',   description: 'Honest, caring, keeps it real' },
+  distract: { emoji: '😂', label: 'Distract Me', description: 'Light jokes, low-pressure vibes' },
+  listen:   { emoji: '☁️', label: 'Just Listen', description: 'No fixing. Just presence.' },
+  push:     { emoji: '🔥', label: 'Push Me',     description: 'Motivation & accountability' },
+};
+
 export const MOODS = [
   { id: 'Happy', emoji: '😊' },
-  { id: 'Sad', emoji: '😔' },
+  { id: 'Sad',   emoji: '😔' },
   { id: 'Angry', emoji: '😡' },
   { id: 'Tired', emoji: '😴' },
 ];
@@ -102,54 +112,62 @@ export const HOME_MESSAGES = [
 ];
 
 export const HEAVY_WORDS = [
-  'alone',
-  'hurt',
-  'tired',
-  'done',
-  'empty',
-  'cry',
-  'sad',
-  'scared',
-  'anxious',
-  'panic',
+  'alone', 'hurt', 'tired', 'done', 'empty',
+  'cry', 'sad', 'scared', 'anxious', 'panic',
 ];
 
+// ── Design tokens ──────────────────────────────────────────────────────────
 export const C = {
-  bg: '#0d0914',
-  card: '#130d1f',
-  card2: '#1a1030',
-  purple: '#7c3aed',
-  pink: '#ec4899',
-  pinkHot: '#f472b6',
+  bg:       '#0d0914',
+  card:     '#130d1f',
+  card2:    '#1a1030',
+  purple:   '#7c3aed',
+  pink:     '#ec4899',
+  pinkHot:  '#f472b6',
   lavender: '#c4b5fd',
-  white: '#f5f0ff',
-  muted: '#7c6899',
-  mutedLt: '#a78cc0',
-  border: 'rgba(167,114,192,0.15)',
+  white:    '#f5f0ff',
+  muted:    '#7c6899',
+  mutedLt:  '#a78cc0',
+  border:   'rgba(167,114,192,0.15)',
   borderPk: 'rgba(244,114,182,0.25)',
 };
 
+// ── Images — all paths verified against assets/images/ ────────────────────
 export const IMAGES = {
-  raylene: {
-    thinking: require('../assets/images/F097FADB-A72B-49DC-A252-8375F3AAC824.png'),
-    writing: require('../assets/images/IMG_0619.jpeg'),
-    neutral: require('../assets/images/IMG_0620.jpeg'),
-    happy: require('../assets/images/IMG_0621.jpeg'),
-    window: require('../assets/images/BA887C05-3A6B-46F3-8373-1DC58BEF592C.png'),
-  },
+  // Raylene
+  rayleneNeutral:     require('../assets/images/raylene-neutral.png'),
+  rayleneHappy:       require('../assets/images/raylene-happy.png'),
+  rayleneThinking:    require('../assets/images/raylene-thinking.png'),
+  rayleneWriting:     require('../assets/images/raylene-writing.png'),
+  rayleneWindow:      require('../assets/images/raylene-window.png'),
+  rayleneFullbody:    require('../assets/images/raylene-fullbody.png'),
+  rayleneVoiceDay:    require('../assets/images/raylene-voice-day.png'),
+  rayleneVoiceNight:  require('../assets/images/raylene-voice-night.png'),
+  rayleneNightWindow: require('../assets/images/raylene-night-window.png'),
 
-  rylane: {
-    thinking: require('../assets/images/rylane-writing.png'),
-    writing: require('../assets/images/rylane-writing.png'),
-    neutral: require('../assets/images/rylane-neutral.png'),
-    happy: require('../assets/images/rylane-neutral.png'),
-    window: require('../assets/images/rylane-standing.png'),
-  },
-  cloud: require('../assets/images/cloud.png'),
-  cloudHeadphones: require('../assets/images/cloud-headphones.png'),
-  cloudStormy: require('../assets/images/cloud-stormy.png'),
-  roomBg: require('../assets/images/room-bg.png'),
-  roomBgDark: require('../assets/images/room-bg-dark.png'),
-  mom: require('../assets/images/mom.png'),
+  // Rylane
+  rylaneNeutral:      require('../assets/images/rylane-neutral.png'),
+  rylaneHappy:        require('../assets/images/rylane-happy.png'),
+  rylaneThinking:     require('../assets/images/rylane-thinking.png'),
+  rylaneWriting:      require('../assets/images/rylane-writing.png'),
+  rylaneWindow:       require('../assets/images/rylane-window.png'),
+  rylaneFullbody:     require('../assets/images/rylane-fullbody.png'),
+  rylaneVoiceDay:     require('../assets/images/rylane-voice-day.png'),
+  rylaneVoiceNight:   require('../assets/images/rylane-voice-night.png'),
+
+  // Bippin2 rooms
+  bippin2Day:         require('../assets/images/raylene-bippin2-day.png'),
+  bippin2Night:       require('../assets/images/raylene-bippin2-night.png'),
+
+  // Rooms
+  roomBg:             require('../assets/images/room-bg.png'),
+  roomBgDark:         require('../assets/images/room-bg-dark.png'),
+  voiceBipBg:         require('../assets/images/voice-bip-bg.png'),
+  window:             require('../assets/images/window.png'),
+  sekretSplash:       require('../assets/images/sekret-splash.png'),
+
+  // Cloud characters
+  cloud:              require('../assets/images/cloud.png'),
+  cloudHeadphones:    require('../assets/images/cloud-headphones.png'),
+  cloudStormy:        require('../assets/images/cloud-stormy.png'),
 };
->>>>>>> 0a8371d79d1feb2cc2e4bb74950361e2b0713e18
