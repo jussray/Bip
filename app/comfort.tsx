@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
-import BottomNav from '@components/BottomNav';
+import BottomNav from '../components/BottomNav';
 import { C, IMAGES } from '@constants/theme';
 
 export default function ComfortScreen() {

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
-import BottomNav from '@components/BottomNav';
+import BottomNav from '../components/BottomNav';
 import { C } from '@constants/theme';
 
 export default function Bippin2Screen() {

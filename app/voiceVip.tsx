@@ -7,8 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
-import BottomNav from '@components/BottomNav';
-import BackgroundLayer from '@components/BackgroundLayer';
+import BottomNav from '../components/BottomNav';
+import BackgroundLayer from '../components/BackgroundLayer';
 import { C, IMAGES } from '@constants/theme';
 import { BIP } from '@constants/bip_voice';
 

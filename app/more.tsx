@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
-import BottomNav from '@components/BottomNav';
+import BottomNav from '../components/BottomNav';
 import { C } from '@constants/theme';
 
 export default function MoreScreen() {

@@ -5,8 +5,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
-import BottomNav from '@components/BottomNav';
-import BackgroundLayer from '@components/BackgroundLayer';
+import BottomNav from '../components/BottomNav';
+import BackgroundLayer from '../components/BackgroundLayer';
 import { C } from '@constants/theme';
 import { BIP } from '@constants/bip_voice';
 
