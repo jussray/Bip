@@ -1,19 +1,21 @@
 module.exports = function (api) {
   api.cache(true);
+
   return {
     presets: ['babel-preset-expo'],
     plugins: [
+      'expo-router/babel',
       [
-        'babel-plugin-module-resolver'
+        'babel-plugin-module-resolver',
         {
-          root: ['.'],
+          root: ['./'],
           alias: {
-            '@hooks':      './hooks',
-            '@utils':      './utils',
+            '@hooks': './hooks',
+            '@utils': './utils',
             '@components': './components',
-            '@constants':  './constants',
-            '@screens':    './screens',
-            '@types':      './types',
+            '@constants': './constants',
+            '@screens': './screens',
+            '@types': './types',
           },
         },
       ],
