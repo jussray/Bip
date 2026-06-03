@@ -6,11 +6,21 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
-    "splash": { "backgroundColor": "#160028" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.sekretbip.app" },
+    "splash": {
+      "backgroundColor": "#160028"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sekretbip.app"
+    },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#160028" },
+      "adaptiveIcon": {
+        "backgroundColor": "#160028"
+      },
       "package": "com.sekretbip.app"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }
