@@ -1,9 +1,9 @@
 import React from 'react';
 import {
-import { IMAGES } from '../constants/theme';
   Text, TouchableOpacity, ScrollView,
   View, Image, StyleSheet, Platform,
 } from 'react-native';
+import { IMAGES } from '../constants/theme';
 
 // ─── Theme & Profile Data (local — no prop needed) ───────────────────────────
 
