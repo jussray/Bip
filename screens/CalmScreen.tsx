@@ -35,7 +35,7 @@ import {
 const CLOUD_HEADPHONES = require('../assets/images/cloud-headphones.png');
 // Hero image shown at top of Calm screen (character at window, peaceful)
 // Adjust path if your asset is named differently
-const CALM_HERO = require('../assets/images/sekret-calm-hero.png');
+const CALM_HERO = require('../assets/images/raylene-window.png');
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
