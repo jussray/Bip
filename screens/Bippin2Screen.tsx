@@ -5,20 +5,19 @@ import {
 } from 'react-native';
 
 // ─── Artwork system ───────────────────────────────────────────────────────────
-// Swap hero images here when dedicated Bippin2 artwork arrives.
-// Currently uses fullbody as hero fallback per spec.
+// Swap hero keys to raylene_bippin2Day / dedicated rylane art when uploaded.
 const ART: Record<string, Record<string, any>> = {
   raylene: {
-    hero:     require('../assets/images/raylene-fullbody.png'),   // swap for bippin2-raylene-hero.png when available
-    neutral:  require('../assets/images/raylene-neutral.png'),
-    window:   require('../assets/images/raylene-window.png'),
-    thinking: require('../assets/images/raylene-thinking.png'),
+    hero:     IMAGES.rayleneFullbody,
+    neutral:  IMAGES.rayleneNeutral,
+    window:   IMAGES.rayleneWindow,
+    thinking: IMAGES.rayleneThinking,
   },
   rylane: {
-    hero:     require('../assets/images/rylane-fullbody.png'),    // swap for bippin2-rylane-hero.png when available
-    neutral:  require('../assets/images/rylane-neutral.png'),
-    window:   require('../assets/images/rylane-window.png'),
-    thinking: require('../assets/images/rylane-thinking.png'),
+    hero:     IMAGES.rylaneFullbody,
+    neutral:  IMAGES.rylaneNeutral,
+    window:   IMAGES.rylaneWindow,
+    thinking: IMAGES.rylaneThinking,
   },
 };
 
