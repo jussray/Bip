@@ -13,10 +13,11 @@ import {
   StyleSheet, Dimensions, Animated, Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { IMAGES } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
-const SPLASH_BG = require('../assets/images/sekret-splash.png');
+const SPLASH_BG = IMAGES.sekretSplash;
 
 interface SplashScreenProps {
   setScreen: (screen: string) => void;
