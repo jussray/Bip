@@ -31,7 +31,7 @@ const DEBUG_HOTSPOTS = false;
 
 // ── ROOM IMAGES ────────────────────────────────────────────────────────────
 const ROOM_DAY   = require('../assets/images/raylene-bippin2-day.png');
-const ROOM_NIGHT = require('../assets/images/raylene-bippin2-night.png');
+const ROOM_NIGHT = require('../assets/images/raylene-writing.png');
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
 const HOTSPOTS = {
