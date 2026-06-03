@@ -29,6 +29,7 @@ async function fetchSekretReply(
   context = 'cloud',
   mood?: string,
 ): Promise<string> {
+  if (!BASE_URL) return "I hear you. You don't have to carry that alone 💜";
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method:  'POST',
