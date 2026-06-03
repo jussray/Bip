@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 // ── Screens ────────────────────────────────────────────────────────────────
-// NOTE: HomeScreen is imported for future use (e.g. a 'dashboard' route).
+// NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
 // The primary 'home' route renders RoomScreen — the Room IS the home.
 import { SplashScreen }         from '../screens/SplashScreen';
 import { HomeScreen }           from '../screens/HomeScreen';
@@ -24,6 +24,9 @@ import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
+// IMPORTANT: loadState() takes NO args — returns full state object.
+// saveState() takes ONE object arg — all keys to update.
+// Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -109,19 +112,19 @@ export default function App() {
   // ─── Journal (route: 'pages') ──────────────────────────────────────────
   // RENAMED: entries → journalEntries, saveEntry → saveJournalEntry
   // to match fixed JournalScreen prop interface
-  const [journalText, setJournalText]     = useState('');
+  const [journalText, setJournalText]       = useState('');
   const [journalEntries, setJournalEntries] = useState<any[]>([]);
 
   // ─── Circle ────────────────────────────────────────────────────────────
-  const [circlePosts, setCirclePosts]         = useState<any[]>([]);
-  const [circlePostText, setCirclePostText]   = useState('');
+  const [circlePosts, setCirclePosts]       = useState<any[]>([]);
+  const [circlePostText, setCirclePostText] = useState('');
 
   // ─── Voice Bip ─────────────────────────────────────────────────────────
   const [voiceNotes, setVoiceNotes] = useState<any[]>([]);
 
   // ─── Streak tracking ───────────────────────────────────────────────────
-  const [streakDays, setStreakDays]       = useState(0);
-  const [lastOpenDate, setLastOpenDate]   = useState('');
+  const [streakDays, setStreakDays]     = useState(0);
+  const [lastOpenDate, setLastOpenDate] = useState('');
 
   // ─── Room Memory (Supabase-ready) ──────────────────────────────────────
   const [roomMemory, setRoomMemory] = useState<RoomMemory>(DEFAULT_ROOM_MEMORY);
@@ -135,44 +138,39 @@ export default function App() {
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
-  // NOTE: loadState/saveState use key-value pairs per utils/storage.ts
+  // loadState() returns the full state object — no args needed.
+  // Keys returned match STORAGE_KEYS in utils/storage.ts:
+  //   theme, mood, userSide, selectedSekret, sekretMode, journalText,
+  //   entries (journalEntries), moodHistory, circlePosts, voiceNotes,
+  //   streakDays, lastOpenDate  (streakDays/lastOpenDate are custom — added below)
+  // NOTE: storage.ts auto-parses arrays: entries, moodHistory, circlePosts, voiceNotes
   useEffect(() => {
     (async () => {
       try {
-        const [
-          savedTheme, savedMood, savedSide, savedSekret, savedMode,
-          savedJournalText, savedEntries, savedMoodHistory,
-          savedCirclePosts, savedVoiceNotes, savedStreak, savedLastOpen,
-          savedRoomMemory,
-        ] = await Promise.all([
-          loadState('theme'),
-          loadState('mood'),
-          loadState('userSide'),
-          loadState('selectedSekret'),
-          loadState('sekretMode'),
-          loadState('journalText'),
-          loadState('journalEntries'),
-          loadState('moodHistory'),
-          loadState('circlePosts'),
-          loadState('voiceNotes'),
-          loadState('streakDays'),
-          loadState('lastOpenDate'),
-          loadState('roomMemory'),
-        ]);
+        const state = await loadState();
 
-        if (savedTheme)        setTheme(savedTheme);
-        if (savedMood)         setMood(savedMood);
-        if (savedSide)         setUserSide(savedSide);
-        if (savedSekret)       setSelectedSekret(savedSekret);
-        if (savedMode)         setSekretMode(savedMode);
-        if (savedJournalText)  setJournalText(savedJournalText);
-        if (savedEntries)      setJournalEntries(typeof savedEntries === 'string' ? JSON.parse(savedEntries) : savedEntries);
-        if (savedMoodHistory)  setMoodHistory(typeof savedMoodHistory === 'string' ? JSON.parse(savedMoodHistory) : savedMoodHistory);
-        if (savedCirclePosts)  setCirclePosts(typeof savedCirclePosts === 'string' ? JSON.parse(savedCirclePosts) : savedCirclePosts);
-        if (savedVoiceNotes)   setVoiceNotes(typeof savedVoiceNotes === 'string' ? JSON.parse(savedVoiceNotes) : savedVoiceNotes);
-        if (savedStreak)       setStreakDays(Number(savedStreak) || 0);
-        if (savedLastOpen)     setLastOpenDate(savedLastOpen);
-        if (savedRoomMemory)   setRoomMemory(typeof savedRoomMemory === 'string' ? JSON.parse(savedRoomMemory) : savedRoomMemory);
+        if (state.theme)          setTheme(state.theme);
+        if (state.mood)           setMood(state.mood);
+        if (state.userSide)       setUserSide(state.userSide);
+        if (state.selectedSekret) setSelectedSekret(state.selectedSekret);
+        if (state.sekretMode)     setSekretMode(state.sekretMode);
+        if (state.journalText)    setJournalText(state.journalText);
+        // 'entries' is the storage key (matches STORAGE_KEYS in storage.ts)
+        // but we keep it as journalEntries in state
+        if (state.entries)        setJournalEntries(Array.isArray(state.entries) ? state.entries : []);
+        if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
+        if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
+        // streakDays / lastOpenDate / roomMemory not in STORAGE_KEYS yet —
+        // stored as custom keys via saveState; loaded as plain strings here
+        if (state.streakDays)     setStreakDays(Number(state.streakDays) || 0);
+        if (state.lastOpenDate)   setLastOpenDate(state.lastOpenDate);
+        if (state.roomMemory) {
+          const rm = typeof state.roomMemory === 'string'
+            ? JSON.parse(state.roomMemory)
+            : state.roomMemory;
+          setRoomMemory(rm);
+        }
       } catch (e) {
         // Storage read failure — continue with defaults
       }
@@ -181,22 +179,28 @@ export default function App() {
   }, []);
 
   // ── AsyncStorage: save on change ──────────────────────────────────────────
+  // saveState() takes a single object — all key/value pairs to persist.
+  // Arrays must be passed as-is (storage.ts handles JSON.stringify internally
+  // for non-string values via the multiSet pairs mapping).
+  // Note: storage.ts STORAGE_KEYS uses 'entries' not 'journalEntries'
   useEffect(() => {
     if (isLoading) return;
     try {
-      saveState('theme',          theme);
-      saveState('mood',           mood);
-      saveState('userSide',       userSide);
-      saveState('selectedSekret', selectedSekret);
-      saveState('sekretMode',     sekretMode);
-      saveState('journalText',    journalText);
-      saveState('journalEntries', JSON.stringify(journalEntries));
-      saveState('moodHistory',    JSON.stringify(moodHistory));
-      saveState('circlePosts',    JSON.stringify(circlePosts));
-      saveState('voiceNotes',     JSON.stringify(voiceNotes));
-      saveState('streakDays',     String(streakDays));
-      saveState('lastOpenDate',   lastOpenDate);
-      saveState('roomMemory',     JSON.stringify(roomMemory));
+      saveState({
+        theme,
+        mood,
+        userSide,
+        selectedSekret,
+        sekretMode,
+        journalText,
+        entries:       journalEntries,   // storage key is 'entries'
+        moodHistory,
+        circlePosts,
+        voiceNotes,
+        streakDays:    String(streakDays),
+        lastOpenDate,
+        roomMemory:    JSON.stringify(roomMemory),
+      });
     } catch (e) {
       // Storage write failure — silent
     }
