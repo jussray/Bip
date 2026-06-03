@@ -11,6 +11,7 @@
 //   D1 — Archive shows total count + "see all → pages" nudge when > 6
 
 import React, { useState, useRef, useEffect } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Animated, Image, StyleSheet, Platform,
@@ -20,9 +21,9 @@ import {
 const DEBUG_HOTSPOTS = false;
 
 // ── ROOM IMAGES ────────────────────────────────────────────────────────────
-const ROOM_DAY   = require('../assets/images/raylene-voice-day.png');
-const ROOM_NIGHT = require('../assets/images/raylene-voice-night.png');
-const CLOUD_HP   = require('../assets/images/cloud-headphones.png');
+const ROOM_DAY   = IMAGES.rayleneVoiceDay;
+const ROOM_NIGHT = IMAGES.rayleneVoiceNight;
+const CLOUD_HP   = IMAGES.cloudHeadphones;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
 const HOTSPOTS = {
@@ -114,12 +115,8 @@ export function VoiceBipScreen({
   // Fix B3: heroArt now actually rendered
   const heroArt =
     selectedSekret === 'rylane'
-      ? (isNight
-          ? require('../assets/images/rylane-voice-night.png')
-          : require('../assets/images/rylane-voice-day.png'))
-      : (isNight
-          ? require('../assets/images/raylene-voice-night.png')
-          : require('../assets/images/raylene-voice-day.png'));
+      ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
+      : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
 
   // Fix A4: character-aware listening label
   const characterName = selectedSekret === 'rylane' ? 'Rylane' : 'Raylene';
