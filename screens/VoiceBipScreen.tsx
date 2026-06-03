@@ -44,6 +44,7 @@ const BIP_TYPES = [
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 async function fetchSekretReply(text: string, context = 'journal', mood?: string): Promise<string> {
+  if (!BASE_URL) return "I hear you. You don't have to carry that alone 💜";
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method:  'POST',
