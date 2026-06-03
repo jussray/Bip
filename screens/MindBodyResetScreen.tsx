@@ -7,17 +7,17 @@ import {
 // ─── Local assets ─────────────────────────────────────────────────────────────
 // assets/images/cloud-headphones.png  — mind reset circle art
 // assets/images/cloud.png             — body reset circle art
-// assets/images/raylene-avatar.png    — Raylene presence
-// assets/images/rylane-avatar.png     — Rylane presence
+// assets/images/raylene-neutral.png   — Raylene presence (swap raylene-avatar.png when available)
+// assets/images/rylane-profile.png    — Rylane presence
 const CLOUD_HEADPHONES = require('../assets/images/cloud-headphones.png');
 const CLOUD            = require('../assets/images/cloud.png');
 
 // Avatar map — character-aware hero presence
 const AVATAR_ASSETS: Record<string, any> = {
-  soft:   require('../assets/images/raylene-avatar.png'),
-  rylane: require('../assets/images/rylane-avatar.png'),
-  cloud:  require('../assets/images/raylene-avatar.png'),
-  night:  require('../assets/images/raylene-avatar.png'),
+  soft:   require('../assets/images/raylene-neutral.png'),
+  rylane: require('../assets/images/rylane-profile.png'),
+  cloud:  require('../assets/images/raylene-neutral.png'),
+  night:  require('../assets/images/raylene-neutral.png'),
 };
 
 // ─── Static data ──────────────────────────────────────────────────────────────
