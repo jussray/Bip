@@ -31,14 +31,14 @@ const SEKRET_MODES: Record<string, any> = {
 
 // ─── Character avatar assets ──────────────────────────────────────────────────
 // Save your character images at these paths in assets/images/
-// raylene → assets/images/raylene-avatar.png
-// rylane  → assets/images/rylane-avatar.png
-// others  → assets/images/sekret-avatar.png
+// raylene → assets/images/raylene-neutral.png  (use raylene-avatar.png when available)
+// rylane  → assets/images/rylane-profile.png
+// others  → assets/images/raylene-neutral.png  (use sekret-avatar.png when available)
 const AVATAR_ASSETS: Record<string, any> = {
-  soft:   require('../assets/images/sekret-avatar.png'),
-  rylane: require('../assets/images/rylane-avatar.png'),
-  cloud:  require('../assets/images/sekret-avatar.png'),
-  night:  require('../assets/images/sekret-avatar.png'),
+  soft:   require('../assets/images/raylene-neutral.png'),
+  rylane: require('../assets/images/rylane-profile.png'),
+  cloud:  require('../assets/images/raylene-neutral.png'),
+  night:  require('../assets/images/raylene-neutral.png'),
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
