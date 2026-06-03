@@ -282,3 +282,236 @@ export function MindBodyResetScreen({
                       : t.background,
                     borderColor: t.accent + '55',
                   },
+                ]}
+              >
+                <Text style={[
+                  styles.guideChipText,
+                  { color: breathing && breathPhase === phase ? '#fff' : t.soft },
+                ]}>
+                  {phase}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {breathing ? (
+            <TouchableOpacity
+              style={[styles.breatheBtn, { backgroundColor: '#334155' }]}
+              onPress={stopBreathing}
+            >
+              <Text style={styles.breatheBtnText}>Stop ✕</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.breatheBtn, { backgroundColor: t.accent, shadowColor: t.accent }]}
+              onPress={startBreathing}
+            >
+              <Text style={styles.breatheBtnText}>Start Breathing 🫧</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ━━━ RESET STEPS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <View style={scrapCard()}>
+          <Text style={styles.cardLabel}>
+            {isMind ? 'Mind Reset Steps' : 'Body Reset Steps'}
+          </Text>
+          {(isMind ? MIND_STEPS : BODY_STEPS).map((step, i) => (
+            <View key={i} style={styles.stepRow}>
+              <Text style={styles.stepIcon}>{step.icon}</Text>
+              <Text style={styles.stepText}>{step.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* ━━━ RESET TOOLS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <Text style={[styles.sectionTitle, { color: t.soft }]}>
+          {isMind ? 'Mind Tools' : 'Body Tools'}
+        </Text>
+        <View style={styles.toolsGrid}>
+          {(isMind ? MIND_TOOLS : BODY_TOOLS).map(tool => (
+            <TouchableOpacity
+              key={tool.label}
+              style={[styles.toolCard, { backgroundColor: t.card, borderColor: t.accent + '55' }]}
+              onPress={() => handleTool(tool.label)}
+            >
+              <Text style={styles.toolEmoji}>{tool.emoji}</Text>
+              <Text style={[styles.toolLabel, { color: t.soft }]}>{tool.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ━━━ MOOD CHECK-IN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <View style={scrapCard()}>
+          <Text style={styles.cardLabel}>How are you feeling rn?</Text>
+          <View style={styles.chipRow}>
+            {MOOD_CHIPS.map(chip => {
+              const active = selectedMood === chip.label;
+              return (
+                <TouchableOpacity
+                  key={chip.label}
+                  style={[
+                    styles.moodChip,
+                    {
+                      backgroundColor: active ? t.accent : t.background,
+                      borderColor: active ? t.accent : t.accent + '44',
+                    },
+                  ]}
+                  onPress={() => setSelectedMood(active ? null : chip.label)}
+                >
+                  <Text style={styles.moodChipEmoji}>{chip.emoji}</Text>
+                  <Text style={[styles.moodChipText, { color: active ? '#fff' : t.soft }]}>
+                    {chip.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {selectedMood && (
+            <Text style={[styles.moodAck, { color: t.soft }]}>
+              {charEmoji} {charName} sees you. That's valid.
+            </Text>
+          )}
+        </View>
+
+        {/* ━━━ SE'KRET QUOTE CARD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <View style={[scrapCard(), styles.quoteCard]}>
+          <Text style={styles.quoteEmoji}>{charEmoji}</Text>
+          <Text style={[styles.quoteText, { color: t.soft }]}>"{quote}"</Text>
+          <Text style={[styles.quoteSig, { color: t.accent }]}>— {charName}</Text>
+        </View>
+
+        {/* ━━━ NAV BUTTONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <TouchableOpacity
+          style={[styles.mainBtn, { backgroundColor: t.accent, shadowColor: t.accent }]}
+          onPress={() => setScreen('comfort')}
+        >
+          <Text style={styles.mainBtnText}>Open Comfort Mode 💙</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.ghostBtn}
+          onPress={() => setScreen('calm')}
+        >
+          <Text style={styles.ghostBtnText}>← Back to Calm 🌙</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 36 }} />
+      </Animated.ScrollView>
+
+      {/* BottomNav always pinned — never scrolls away */}
+      {BottomNav}
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  root:            { flex: 1 },
+  bgGlow:          {
+    position: 'absolute', top: -120, alignSelf: 'center',
+    width: 340, height: 340, borderRadius: 170,
+  },
+  container:       { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+
+  // Header
+  headerRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  backChip:        { backgroundColor: '#1E1035', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  backChipText:    { color: '#CBD5E1', fontSize: 13, fontWeight: '600' },
+  cloudBadge:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1 },
+  cloudBadgeText:  { color: '#CBD5E1', fontSize: 12, fontWeight: '600' },
+
+  logo:            { fontSize: 30, fontWeight: 'bold', textAlign: 'center', marginBottom: 6, letterSpacing: 0.4 },
+  subtitle:        { fontSize: 14, color: '#CBD5E1', textAlign: 'center', marginBottom: 22, lineHeight: 20 },
+
+  // Hero
+  heroRow:         { flexDirection: 'row', alignItems: 'flex-end', marginBottom: 20, gap: 12 },
+  heroAvatar:      { width: 90, height: 110, borderRadius: 16 },
+  speechBubble:    {
+    flex: 1, padding: 14, borderRadius: 18, borderWidth: 1,
+    borderBottomLeftRadius: 4,
+  },
+  speechText:      { color: '#E2E8F0', fontSize: 14, lineHeight: 21 },
+  bubbleTail:      {
+    position: 'absolute', left: -10, bottom: 14,
+    width: 0, height: 0,
+    borderStyle: 'solid',
+    borderTopWidth: 10, borderRightWidth: 10, borderBottomWidth: 0, borderLeftWidth: 0,
+    borderTopColor: 'transparent', borderRightColor: 'transparent',
+  },
+
+  // Scrap cards
+  scrapCard:       {
+    padding: 18, borderRadius: 22, marginBottom: 18, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25, shadowRadius: 8, elevation: 4,
+  },
+  cardLabel:       { color: '#fff', fontSize: 17, fontWeight: '700', marginBottom: 14, letterSpacing: 0.2 },
+
+  // Breathe circle
+  circleWrap:      { alignItems: 'center', justifyContent: 'center', marginVertical: 16, height: 200 },
+  glowRing:        {
+    position: 'absolute',
+    width: 200, height: 200, borderRadius: 100,
+    borderWidth: 2,
+  },
+  circle:          {
+    width: 160, height: 160, borderRadius: 80,
+    justifyContent: 'center', alignItems: 'center',
+    shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 28, elevation: 14,
+  },
+  circleImg:       { width: 72, height: 72 },
+  circlePhase:     { color: '#fff', fontSize: 13, marginTop: 6, fontWeight: '600', opacity: 0.9 },
+
+  breatheGuide:    { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 16 },
+  guideChip:       { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1 },
+  guideChipText:   { fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+
+  breatheBtn:      {
+    padding: 14, borderRadius: 16, alignItems: 'center',
+    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5,
+  },
+  breatheBtnText:  { color: '#fff', fontWeight: 'bold', fontSize: 15 },
+
+  // Steps
+  stepRow:         { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 10 },
+  stepIcon:        { fontSize: 18, marginTop: 1 },
+  stepText:        { color: '#E2E8F0', fontSize: 14, lineHeight: 22, flex: 1 },
+
+  // Tools grid
+  sectionTitle:    { fontSize: 17, fontWeight: '700', marginBottom: 12, marginTop: 4 },
+  toolsGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  toolCard:        {
+    width: '47%', padding: 16, borderRadius: 18, borderWidth: 1,
+    alignItems: 'center', gap: 6,
+  },
+  toolEmoji:       { fontSize: 28 },
+  toolLabel:       { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+
+  // Mood chips
+  chipRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  moodChip:        {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1,
+  },
+  moodChipEmoji:   { fontSize: 15 },
+  moodChipText:    { fontSize: 13, fontWeight: '600' },
+  moodAck:         { fontSize: 13, marginTop: 8, fontStyle: 'italic', textAlign: 'center' },
+
+  // Quote
+  quoteCard:       { alignItems: 'center', paddingVertical: 22 },
+  quoteEmoji:      { fontSize: 30, marginBottom: 10 },
+  quoteText:       { fontSize: 16, fontStyle: 'italic', textAlign: 'center', lineHeight: 26, marginBottom: 10 },
+  quoteSig:        { fontSize: 13, fontWeight: '700', letterSpacing: 0.4 },
+
+  // Nav
+  mainBtn:         {
+    padding: 16, borderRadius: 18, alignItems: 'center', marginBottom: 12,
+    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 8, elevation: 5,
+  },
+  mainBtnText:     { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  ghostBtn:        { backgroundColor: '#1E1035', padding: 13, borderRadius: 16, alignItems: 'center', marginBottom: 8 },
+  ghostBtnText:    { color: '#CBD5E1', fontWeight: '600', fontSize: 14 },
+});
