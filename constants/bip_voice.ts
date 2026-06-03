@@ -1,4 +1,16 @@
 // constants/bip_voice.ts
+// Se'kret Bip — Voice + Mood Content System
+//
+// CHANGES FROM ORIGINAL:
+//   + sekretKeyToCharacter() — maps index.tsx selectedSekret lowercase keys
+//     ('soft', 'rylane', 'cloud', 'night') to CharacterKey ('RAYLENE', etc.)
+//     This fixes the silent mismatch where getVoicePack(selectedSekret) always
+//     fell through to the default RAYLENE branch, ignoring character selection.
+//
+// USAGE IN SCREENS:
+//   import { BIP, getVoicePack, sekretKeyToCharacter, pickRandom } from '../constants/bip_voice';
+//   const pack = getVoicePack(sekretKeyToCharacter(selectedSekret));
+//   const greeting = pickRandom(pack.greetings);
 
 export type MoodKey =
   | 'happy'
@@ -431,7 +443,7 @@ export function getMoodResponse(mood: MoodKey) {
   return pickRandom(MOOD_RESPONSES[mood]);
 }
 
-export function getVoicePack(character: CharacterKey) {
+export function getVoicePack(character: CharacterKey): VoiceBucket {
   switch (character) {
     case 'RAYLENE':
       return RAYLENE;
@@ -444,6 +456,44 @@ export function getVoicePack(character: CharacterKey) {
     default:
       return RAYLENE;
   }
+}
+
+// ── NEW: selectedSekret → CharacterKey adapter ─────────────────────────────
+//
+// index.tsx stores selectedSekret as lowercase strings:
+//   'soft'   → maps to RAYLENE (Raylene is the 'soft big sis' profile)
+//   'rylane' → maps to RYLANE
+//   'cloud'  → maps to CLOUD
+//   'night'  → maps to NIGHT
+//
+// Without this, getVoicePack(selectedSekret as CharacterKey) always falls
+// through to the default branch and returns RAYLENE, ignoring character choice.
+//
+// Usage:
+//   import { getVoicePack, sekretKeyToCharacter } from '../constants/bip_voice';
+//   const pack = getVoicePack(sekretKeyToCharacter(selectedSekret));
+//   const greeting = pickRandom(pack.greetings);
+//   const comfort  = pickRandom(pack.comfort);
+//
+export function sekretKeyToCharacter(selectedSekret: string): CharacterKey {
+  switch (selectedSekret) {
+    case 'rylane': return 'RYLANE';
+    case 'cloud':  return 'CLOUD';
+    case 'night':  return 'NIGHT';
+    case 'soft':
+    default:       return 'RAYLENE';
+  }
+}
+
+// ── Convenience: get voice pack directly from selectedSekret ───────────────
+// Combines sekretKeyToCharacter + getVoicePack into one call.
+//
+// Usage:
+//   const pack = getPackForSekret(selectedSekret);
+//   const prompt = pickRandom(pack.journalPrompts);
+//
+export function getPackForSekret(selectedSekret: string): VoiceBucket {
+  return getVoicePack(sekretKeyToCharacter(selectedSekret));
 }
 
 export const BIP = {
@@ -472,4 +522,7 @@ export const BIP = {
   NIGHT,
 
   pick: pickRandom,
+  getVoicePack,
+  sekretKeyToCharacter,
+  getPackForSekret,
 } as const;
