@@ -60,15 +60,7 @@ async function fetchSekretReply(text: string, context = 'journal', mood?: string
   }
 }
 
-// ── TYPES ──────────────────────────────────────────────────────────────────
-interface VoiceNote {
-  id:        number;
-  title:     string;
-  date:      string;
-  time:      string;
-  duration:  string;
-  type?:     string;
-}
+// VoiceNote imported from types/bridge.ts
 
 // Fix A1: onSave added
 interface VoiceBipScreenProps {
