@@ -1,3 +1,12 @@
+// screens/SplashScreen.tsx
+// Se'kret Bip — Splash / Entry Screen
+//
+// Fixes applied (2026-06-03):
+//   A1 — glowAnim loop changed to useNativeDriver: true (opacity supports it;
+//         was useNativeDriver: false → JS-thread animation, jank on low-end devices)
+//   B1 — Dark fade-up gradient overlay added under bottom content so text
+//         stays readable over any splash background composition
+
 import React, { useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, Image,
@@ -19,7 +28,7 @@ export function SplashScreen({ setScreen }: SplashScreenProps) {
   const glowAnim  = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
-    // Fade in on mount
+    // Fade in + scale up on mount
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -34,11 +43,11 @@ export function SplashScreen({ setScreen }: SplashScreenProps) {
       }),
     ]).start();
 
-    // Glow pulse on button
+    // Fix A1: useNativeDriver: true — opacity is supported on native driver
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1,   duration: 1400, useNativeDriver: false }),
-        Animated.timing(glowAnim, { toValue: 0.6, duration: 1400, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 1,   duration: 1400, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.6, duration: 1400, useNativeDriver: true }),
       ])
     ).start();
   }, []);
@@ -62,13 +71,17 @@ export function SplashScreen({ setScreen }: SplashScreenProps) {
         />
       </Animated.View>
 
+      {/* Fix B1: dark gradient so bottom content always reads over splash art */}
+      <View style={styles.bottomGradient} pointerEvents="none" />
+
       {/* Bottom content */}
       <Animated.View style={[styles.bottomContent, { opacity: fadeAnim }]}>
 
-        {/* Enter button */}
+        {/* Enter prompt */}
         <Text style={styles.enterPrompt}>Press Se'kret Bip</Text>
         <Text style={styles.enterSub}>to enter your safe space</Text>
 
+        {/* Main button */}
         <Animated.View style={[styles.mainBtnWrap, { opacity: glowOpacity }]}>
           <TouchableOpacity
             style={styles.mainBtn}
@@ -85,10 +98,10 @@ export function SplashScreen({ setScreen }: SplashScreenProps) {
         {/* Quick action buttons */}
         <View style={styles.quickRow}>
           {[
-            { emoji: '✏️', label: 'Write It Out', target: 'pages'        },
-            { emoji: '🎙️', label: 'Voice Bip',    target: 'voiceBip'     },
-            { emoji: '☁️', label: 'Calm Me',       target: 'calm'         },
-            { emoji: '👥', label: 'Circle',         target: 'circle'       },
+            { emoji: '✏️', label: 'Write It Out', target: 'pages'    },
+            { emoji: '🎙️', label: 'Voice Bip',    target: 'voiceBip' },
+            { emoji: '☁️', label: 'Calm Me',       target: 'calm'     },
+            { emoji: '👥', label: 'Circle',         target: 'circle'   },
           ].map(({ emoji, label, target }) => (
             <TouchableOpacity
               key={target}
@@ -124,6 +137,21 @@ const styles = StyleSheet.create({
   bg: {
     width,
     height,
+  },
+
+  // Fix B1: gradient fade from transparent → dark at bottom
+  bottomGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.42,
+    backgroundColor: 'transparent',
+    // React Native doesn't support CSS gradients natively without expo-linear-gradient.
+    // This solid dark overlay approximates the fade — replace with LinearGradient if
+    // expo-linear-gradient is installed:
+    //   <LinearGradient colors={['transparent', 'rgba(13,0,20,0.92)']} style={...} />
+    backgroundColor: 'rgba(13,0,20,0.55)',
   },
 
   // Bottom content
