@@ -1,9 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-import { IMAGES } from '../constants/theme';
   Text, TouchableOpacity, ScrollView,
   View, Animated, Image, StyleSheet, Platform,
 } from 'react-native';
+import { IMAGES } from '../constants/theme';
+
 
 // ─── Local assets ─────────────────────────────────────────────────────────────
 // assets/images/cloud-headphones.png  — mind reset circle art
