@@ -12,12 +12,13 @@
 //   D1 — BottomNav moved outside ScrollView so it stays pinned
 
 import React, { useState, useEffect } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text, ScrollView, View, Image, StyleSheet,
   Platform, TouchableOpacity,
 } from 'react-native';
 
-const CLOUD_STORMY = require('../assets/images/cloud-stormy.png');
+const CLOUD_STORMY = IMAGES.cloudStormy;
 
 // ── Comfort messages ───────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
