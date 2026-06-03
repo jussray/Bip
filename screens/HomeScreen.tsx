@@ -1,4 +1,5 @@
 import React, { useRef, useEffect } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text, TouchableOpacity, ScrollView,
   View, Animated, Image, StyleSheet, Platform,
@@ -6,23 +7,21 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 // ─── Assets ───────────────────────────────────────────────────────────────────
-// Cloud companion — character-aware
 const CLOUD_ASSETS: Record<string, any> = {
-  raylene: require('../assets/images/cloud.png'),   // swap for raylene-cloud.png when available
-  rylane:  require('../assets/images/cloud.png'),   // swap for rylane-cloud.png when available
+  raylene: IMAGES.cloud,
+  rylane:  IMAGES.cloud,
 };
 
-// Raylene / Rylane artwork system
 const ART: Record<string, Record<string, any>> = {
   raylene: {
-    neutral:  require('../assets/images/raylene-neutral.png'),
-    thinking: require('../assets/images/raylene-thinking.png'),
-    window:   require('../assets/images/raylene-window.png'),
+    neutral:  IMAGES.rayleneNeutral,
+    thinking: IMAGES.rayleneThinking,
+    window:   IMAGES.rayleneWindow,
   },
   rylane: {
-    neutral:  require('../assets/images/rylane-neutral.png'),
-    thinking: require('../assets/images/rylane-thinking.png'),
-    window:   require('../assets/images/rylane-window.png'),
+    neutral:  IMAGES.rylaneNeutral,
+    thinking: IMAGES.rylaneThinking,
+    window:   IMAGES.rylaneWindow,
   },
 };
 
