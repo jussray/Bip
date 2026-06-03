@@ -49,16 +49,16 @@ type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 const ROOMS: Record<Character, AssetMap> = {
   raylene: {
-    morning: require('../assets/images/raylene-room-morning.png'),
-    day:     require('../assets/images/raylene-room-day.png'),
-    evening: require('../assets/images/raylene-room-evening.png'),
-    night:   require('../assets/images/raylene-room-night.png'),
+    morning: require('../assets/images/bg-raylene-room-day.png'),
+    day:     require('../assets/images/bg-raylene-room-day.png'),
+    evening: require('../assets/images/room-bg-dark.png'),
+    night:   require('../assets/images/night-room-v2.png'),
   },
   rylane: {
-    morning: require('../assets/images/rylane-room-morning.png'),
-    day:     require('../assets/images/rylane-room-day.png'),
-    evening: require('../assets/images/rylane-room-evening.png'),
-    night:   require('../assets/images/rylane-room-night.png'),
+    morning: require('../assets/images/bg-rylane-room-day.png'),
+    day:     require('../assets/images/bg-rylane-room-day.png'),
+    evening: require('../assets/images/room-bg-dark.png'),
+    night:   require('../assets/images/bg-rylane-room-night.png'),
   },
 };
 
@@ -82,8 +82,8 @@ const AVATARS: Record<Character, AvatarMap> = {
 };
 
 const FALLBACK_ROOM: Record<Character, ImageSourcePropType> = {
-  raylene: require('../assets/images/raylene-room-day.png'),
-  rylane:  require('../assets/images/rylane-room-day.png'),
+  raylene: require('../assets/images/bg-raylene-room-day.png'),
+  rylane:  require('../assets/images/bg-rylane-room-day.png'),
 };
 
 const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
