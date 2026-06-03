@@ -261,4 +261,87 @@ export function HomeScreen({
         </View>
 
         {/* ━━━ QUICK ACTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <Text style={[styles.sectionTitle, { color: t.soft }]}>Quick Actio
+        <Text style={[styles.sectionTitle, { color: t.soft }]}>Quick Actions ⚡</Text>
+        <View style={styles.actionsGrid}>
+          {QUICK_ACTIONS.map(action => {
+            // Resolve bridge route at runtime based on userSide
+            const route = action.to === '__bridge__'
+              ? (userSide === 'parent' ? 'parentBridge' : 'bridge')
+              : action.to;
+            return (
+              <TouchableOpacity
+                key={action.label}
+                style={[styles.quickCard, { backgroundColor: t.card, borderColor: t.accent + '55' }]}
+                onPress={() => setScreen(route)}
+              >
+                <Text style={styles.quickEmoji}>{action.emoji}</Text>
+                <Text style={styles.quickLabel}>{action.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={{ height: 36 }} />
+      </Animated.ScrollView>
+
+      {/* BottomNav always pinned outside ScrollView */}
+      {BottomNav}
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  root:           { flex: 1 },
+  bgGlow:         {
+    position: 'absolute', top: -80, alignSelf: 'center',
+    width: 320, height: 320, borderRadius: 160,
+  },
+  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+
+  parentBadge:    { backgroundColor: '#065F46', borderRadius: 10, padding: 6, alignSelf: 'center', marginBottom: 10 },
+  parentBadgeText:{ color: '#6EE7B7', fontSize: 12, fontWeight: '700' },
+
+  logo:           { fontSize: 28, fontWeight: 'bold', textAlign: 'center', marginBottom: 6 },
+  subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 16 },
+
+  cloudWrap:      { alignItems: 'center', marginVertical: 14 },
+  cloudImg:       { width: 100, height: 100 },
+
+  card:           {
+    padding: 18, borderRadius: 22, marginBottom: 16, borderWidth: 1,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22, shadowRadius: 8, elevation: 4,
+  },
+  heroCardTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  heroArt:        { width: 60, height: 72, borderRadius: 12 },
+  heroCardBy:     { fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  heroText:       { fontSize: 22, fontWeight: 'bold', lineHeight: 30 },
+  cardText:       { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  entryText:      { color: '#E2E8F0', fontSize: 14, marginBottom: 6, lineHeight: 20 },
+
+  sectionTitle:   { fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 8 },
+
+  moodRow:        { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 18, gap: 8 },
+  moodBubble:     {
+    width: 66, height: 66, borderRadius: 33,
+    backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center',
+  },
+  moodEmoji:      { fontSize: 28 },
+
+  actionRow:      { flexDirection: 'row', gap: 10, marginTop: 10 },
+  actionBtn:      {
+    flex: 1, padding: 12, borderRadius: 16, alignItems: 'center',
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 6, elevation: 3,
+  },
+  actionBtnText:  { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  actionsGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 },
+  quickCard:      {
+    width: '30%', flexGrow: 1, padding: 14, borderRadius: 18,
+    alignItems: 'center', borderWidth: 1, gap: 5,
+  },
+  quickEmoji:     { fontSize: 24 },
+  quickLabel:     { color: '#CBD5E1', fontWeight: '600', fontSize: 12, textAlign: 'center' },
+});
