@@ -1,143 +1,184 @@
 // constants/theme.ts
-// Se'kret Bip — Design Tokens, IMAGES Map, THEME_PACKS, SEKRET_PROFILES
+// Se'kret Bip — Design Tokens + IMAGES Map
 //
-// IMAGES map reflects the EXACT filenames present in assets/images/ as of June 2026.
-// Every key maps to the closest available real asset.
-// Keys marked "// TODO:" need the real artwork uploaded — current value is the best fallback.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// IMAGES MAP — PRODUCTION RULES:
 //
-// ONE REQUIRED RENAME before building:
-//   git mv "assets/images/raylene- bippin2-day.png" assets/images/raylene-bippin2-day.png
+//   1. ONLY files confirmed to exist in assets/images/ are included.
+//   2. All paths use the flat assets/images/ structure currently in repo.
+//      When/if you move to subfolders, update paths here — screens don't change.
+//   3. Three files require git action before this map works fully:
+//        git mv "assets/images/raylene- bippin2-day.png" assets/images/raylene-bippin2-day.png
+//        git mv assets/images/night-room-v2.png assets/images/bg-raylene-room-night.png
+//        git rm assets/images/rylane-wndow.png
+//   4. Fallback keys (marked // FALLBACK) use existing art until real art is uploaded.
+//      Replace the require() path when the real file lands.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-// ── Character Art ──────────────────────────────────────────────────────────
+// ── Raylene ───────────────────────────────────────────────────────────────────
+// Core runtime poses
+const rayleneNeutral     = require('../assets/images/raylene-neutral.png');
+const rayleneHappy       = require('../assets/images/raylene-happy.png');
+const rayleneThinking    = require('../assets/images/raylene-thinking.png');
+const rayleneWriting     = require('../assets/images/raylene-writing.png');
+const rayleneWindow      = require('../assets/images/raylene-window.png');
+const rayleneWindowRainy = require('../assets/images/raylene-window-rainy.png');
+const rayleneNightWindow = require('../assets/images/raylene-night-window.png');
+const rayleneNightDoodle = require('../assets/images/raylene-night-doodle.png');
+const rayleneFullbody    = require('../assets/images/raylene-fullbody.png');
+
+// Voice Bip art
+const rayleneVoiceDay    = require('../assets/images/raylene-voice-day.png');
+const rayleneVoiceNight  = require('../assets/images/raylene-voice-night.png');
+
+// Bippin2 — requires rename: "raylene- bippin2-day.png" → "raylene-bippin2-day.png"
+const raylene_Bippin2Day = require('../assets/images/raylene-bippin2-day.png');
+// TODO: raylene-bippin2-night.png — not yet uploaded. Using raylene-writing.png until available.
+const raylene_Bippin2Night = require('../assets/images/raylene-writing.png'); // FALLBACK
+
+// Period calendar — verify full filename (shown truncated in GitHub)
+// Likely: raylene-period-calendar-day.png
+const raylene_PeriodCalendar = require('../assets/images/raylene-period-calendar-day.png');
+
+// Alternate iterations (available but not primary runtime)
+const rayleneNeutralV2   = require('../assets/images/raylene-neutral-v2.png');
+const rayleneNeutralV3   = require('../assets/images/raylene-neutral-v3.png');
+const rayleneHappyV2     = require('../assets/images/raylene-happy-v2.png');
+const rayleneHappyV3     = require('../assets/images/raylene-happy-v3.png');
+const rayleneWindowV2    = require('../assets/images/raylene-window-v2.png');
+const rayleneWindowV3    = require('../assets/images/raylene-window-v3.png');
+
+// ── Rylane ────────────────────────────────────────────────────────────────────
+const rylaneNeutral      = require('../assets/images/rylane-neutral.png');
+const rylaneHappy        = require('../assets/images/rylane-happy.png');
+const rylaneThinking     = require('../assets/images/rylane-thinking.png');
+const rylaneWriting      = require('../assets/images/rylane-writing.png');
+const rylaneWindow       = require('../assets/images/rylane-window.png');
+const rylaneFullbody     = require('../assets/images/rylane-fullbody.png');
+const rylaneProfile      = require('../assets/images/rylane-profile.png'); // also used as avatar
+
+// Voice Bip art
+const rylaneVoiceDay     = require('../assets/images/rylane-voice-day.png');
+const rylaneVoiceNight   = require('../assets/images/rylane-voice-night.png');
+
+// Alternate iterations
+const rylaneNeutralV2    = require('../assets/images/rylane-neutral-v2.png');
+
+// ── Room Backgrounds ──────────────────────────────────────────────────────────
+// raylene-room-night requires: git mv night-room-v2.png bg-raylene-room-night.png
+const bgRayleneRoomDay   = require('../assets/images/bg-raylene-room-day.png');
+const bgRayleneRoomNight = require('../assets/images/bg-raylene-room-night.png'); // after rename
+const bgRylaneRoomDay    = require('../assets/images/bg-rylane-room-day.png');
+const bgRylaneRoomNight  = require('../assets/images/bg-rylane-room-night.png');
+const roomBg             = require('../assets/images/room-bg.png');       // generic day fallback
+const roomBgDark         = require('../assets/images/room-bg-dark.png'); // generic night fallback
+
+// TODO: Upload when artwork is ready —
+//   bg-raylene-room-morning.png  (golden morning variant)
+//   bg-raylene-room-evening.png  (sunset variant)
+//   bg-raylene-room-rain.png     (rainy scene — art exists locally, not in repo)
+//   bg-rylane-room-morning.png
+//   bg-rylane-room-evening.png
+//   bg-rylane-room-rain.png
+
+// ── Screen Backgrounds ────────────────────────────────────────────────────────
+const bgComfort          = require('../assets/images/comfort-bg.png');
+const bgJournal          = require('../assets/images/journal-bg.png');
+const bgBridge           = require('../assets/images/bridge-bg.png');
+const bgVoiceBip         = require('../assets/images/voice-bip-bg.png');
+const bgParentDashboard  = require('../assets/images/parent-dashboard-bg.png');
+const bgWindow           = require('../assets/images/window.png');
+
+// TODO: Upload when artwork is ready —
+//   sekret-calm-hero.png   (CalmScreen hero — currently using raylene-window.png)
+// FALLBACK:
+const bgCalmHero         = require('../assets/images/raylene-window.png'); // FALLBACK
+
+// ── Cloud / Mascot ────────────────────────────────────────────────────────────
+const cloud              = require('../assets/images/cloud.png');
+const cloudHappy         = require('../assets/images/cloud-happy.png');
+const cloudHeadphones    = require('../assets/images/cloud-headphones.png');
+const cloudHeadphonesV2  = require('../assets/images/cloud-headphones-v2.png');
+const cloudSleepy        = require('../assets/images/cloud-sleepy.png');
+const cloudStormy        = require('../assets/images/cloud-stormy.png');
+
+// ── UI / Splash ───────────────────────────────────────────────────────────────
+const sekretSplash       = require('../assets/images/sekret-splash.png');
+const parentDashboard    = require('../assets/images/parent-dashboard.png');
+const circleMockup       = require('../assets/images/circle-mockup.png');
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// IMAGES EXPORT — single source of truth for all require() calls
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const IMAGES = {
-  // Raylene — core poses
-  rayleneNeutral:    require('../assets/images/raylene-neutral.png'),
-  rayleneHappy:      require('../assets/images/raylene-happy.png'),
-  rayleneThinking:   require('../assets/images/raylene-thinking.png'),
-  rayleneWriting:    require('../assets/images/raylene-writing.png'),
-  rayleneWindow:     require('../assets/images/raylene-window.png'),
-  rayleneFullbody:   require('../assets/images/raylene-fullbody.png'),
+  // ── Raylene ──────────────────────────────────────────────────────
+  rayleneNeutral,
+  rayleneNeutralV2,
+  rayleneNeutralV3,
+  rayleneHappy,
+  rayleneHappyV2,
+  rayleneHappyV3,
+  rayleneThinking,
+  rayleneWriting,
+  rayleneWindow,
+  rayleneWindowRainy,
+  rayleneWindowV2,
+  rayleneWindowV3,
+  rayleneNightWindow,
+  rayleneNightDoodle,
+  rayleneFullbody,
+  rayleneVoiceDay,
+  rayleneVoiceNight,
+  raylene_Bippin2Day,
+  raylene_Bippin2Night,   // FALLBACK: raylene-writing.png until real art uploaded
+  raylene_PeriodCalendar,
 
-  // Raylene — voice room
-  rayleneVoiceDay:   require('../assets/images/raylene-voice-day.png'),
-  rayleneVoiceNight: require('../assets/images/raylene-voice-night.png'),
+  // ── Rylane ───────────────────────────────────────────────────────
+  rylaneNeutral,
+  rylaneNeutralV2,
+  rylaneHappy,
+  rylaneThinking,
+  rylaneWriting,
+  rylaneWindow,
+  rylaneFullbody,
+  rylaneProfile,
+  rylaneVoiceDay,
+  rylaneVoiceNight,
 
-  // Raylene — versioned / special
-  rayleneHappyV2:    require('../assets/images/raylene-happy-v2.png'),
-  rayleneHappyV3:    require('../assets/images/raylene-happy-v3.png'),
-  rayleneNeutralV2:  require('../assets/images/raylene-neutral-v2.png'),
-  rayleneNeutralV3:  require('../assets/images/raylene-neutral-v3.png'),
-  rayleneWindowV2:   require('../assets/images/raylene-window-v2.png'),
-  rayleneWindowV3:   require('../assets/images/raylene-window-v3.png'),
+  // ── Room backgrounds ─────────────────────────────────────────────
+  bgRayleneRoomDay,
+  bgRayleneRoomNight,
+  bgRylaneRoomDay,
+  bgRylaneRoomNight,
+  roomBg,
+  roomBgDark,
 
-  // Raylene — screen-specific
-  rayleneNightWindow:    require('../assets/images/raylene-night-window.png'),
-  rayleneNightDoodle:    require('../assets/images/raylene-night-doodle.png'),
-  rayleneWindowRainy:    require('../assets/images/raylene-window-rainy.png'),
-  rayleneThinkingSheet:  require('../assets/images/raylene-thinking-sheet.png'),
-  raylene_fanSheet:      require('../assets/images/raylene-fan-sheet.png'),
+  // ── Screen backgrounds ───────────────────────────────────────────
+  bgComfort,
+  bgJournal,
+  bgBridge,
+  bgVoiceBip,
+  bgParentDashboard,
+  bgWindow,
+  bgCalmHero,             // FALLBACK: raylene-window.png
 
-  // Raylene — Bippin2 day (rename required first: remove space)
-  // git mv "assets/images/raylene- bippin2-day.png" assets/images/raylene-bippin2-day.png
-  raylene_bippin2Day:    require('../assets/images/raylene-bippin2-day.png'),
-  // TODO: raylene_bippin2Night — upload raylene-bippin2-night.png (currently uses raylene-writing.png)
+  // ── Clouds ───────────────────────────────────────────────────────
+  cloud,
+  cloudHappy,
+  cloudHeadphones,
+  cloudHeadphonesV2,
+  cloudSleepy,
+  cloudStormy,
 
-  // Raylene — avatar (TODO: upload raylene-avatar.png; using neutral as fallback)
-  rayleneAvatar:     require('../assets/images/raylene-neutral.png'),
-
-  // ── Rylane — core poses ──────────────────────────────────────────────────
-  rylaneNeutral:     require('../assets/images/rylane-neutral.png'),
-  rylaneHappy:       require('../assets/images/rylane-happy.png'),
-  rylaneThinking:    require('../assets/images/rylane-thinking.png'),
-  rylaneWriting:     require('../assets/images/rylane-writing.png'),
-  rylaneWindow:      require('../assets/images/rylane-window.png'),
-  rylaneFullbody:    require('../assets/images/rylane-fullbody.png'),
-
-  // Rylane — voice room
-  rylaneVoiceDay:    require('../assets/images/rylane-voice-day.png'),
-  rylaneVoiceNight:  require('../assets/images/rylane-voice-night.png'),
-
-  // Rylane — avatar / profile
-  rylaneProfile:     require('../assets/images/rylane-profile.png'),
-  // rylaneAvatar is rylane-profile.png — the confirmed avatar file
-  rylaneAvatar:      require('../assets/images/rylane-profile.png'),
-
-  // Rylane — versioned
-  rylaneNeutralV2:   require('../assets/images/rylane-neutral-v2.png'),
-
-  // ── Room Backgrounds ──────────────────────────────────────────────────────
-  // Only these backgrounds currently exist in the repo.
-  // Time-of-day fallback strategy:
-  //   morning → day background
-  //   afternoon → day background
-  //   evening → room-bg-dark.png
-  //   night → night variant
-  raylene_roomDay:     require('../assets/images/bg-raylene-room-day.png'),
-  raylene_roomNight:   require('../assets/images/night-room-v2.png'),
-  raylene_roomDark:    require('../assets/images/room-bg-dark.png'),
-  rylane_roomDay:      require('../assets/images/bg-rylane-room-day.png'),
-  rylane_roomNight:    require('../assets/images/bg-rylane-room-night.png'),
-  rylane_roomDark:     require('../assets/images/room-bg-dark.png'),
-
-  // Generic room fallbacks
-  roomBg:              require('../assets/images/room-bg.png'),
-  roomBgDark:          require('../assets/images/room-bg-dark.png'),
-  nightRoomV2:         require('../assets/images/night-room-v2.png'),
-
-  // ── Screen Backgrounds ────────────────────────────────────────────────────
-  comfortBg:           require('../assets/images/comfort-bg.png'),
-  journalBg:           require('../assets/images/journal-bg.png'),
-  bridgeBg:            require('../assets/images/bridge-bg.png'),
-  voiceBipBg:          require('../assets/images/voice-bip-bg.png'),
-  parentDashboardBg:   require('../assets/images/parent-dashboard-bg.png'),
-  parentDashboard:     require('../assets/images/parent-dashboard.png'),
-  circleMockup:        require('../assets/images/circle-mockup.png'),
-
-  // Calm screen hero — using raylene-window.png as stand-in
-  // TODO: upload sekret-calm-hero.png for the real calm art
-  calmHero:            require('../assets/images/raylene-window.png'),
-
-  // ── Cloud / Mood Art ──────────────────────────────────────────────────────
-  cloud:               require('../assets/images/cloud.png'),
-  cloudHappy:          require('../assets/images/cloud-happy.png'),
-  cloudHeadphones:     require('../assets/images/cloud-headphones.png'),
-  cloudHeadphonesV2:   require('../assets/images/cloud-headphones-v2.png'),
-  cloudSleepy:         require('../assets/images/cloud-sleepy.png'),
-  cloudStormy:         require('../assets/images/cloud-stormy.png'),
-
-  // ── Splash / App Icon ─────────────────────────────────────────────────────
-  sekretSplash:        require('../assets/images/sekret-splash.png'),
-
-  // ── Period Calendar ───────────────────────────────────────────────────────
-  // Truncated name in repo: raylene-period-calendar-d... (full name unknown)
-  // TODO: confirm full filename; placeholder key provided
-  // raylene_periodCalendar: require('../assets/images/raylene-period-calendar-day.png'),
-
-  // ── Window (generic) ─────────────────────────────────────────────────────
-  window:              require('../assets/images/window.png'),
-
-  // ── Reference / Design Sheets (not used in runtime — for dev reference) ──
-  // rayleneReferenceSheet, rayleneRainyWindowSheet, raylaneReferenceBoard etc.
+  // ── UI ───────────────────────────────────────────────────────────
+  sekretSplash,
+  parentDashboard,
+  circleMockup,
 } as const;
 
-// ── Room Background Helper ─────────────────────────────────────────────────
-// Use this in RoomScreen instead of a raw require() per time slot.
-// Returns the correct background image for the character + time of day.
-export type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
-
-export function getRoomBg(character: 'raylene' | 'rylane', time: TimeOfDay) {
-  if (character === 'raylene') {
-    if (time === 'night')           return IMAGES.raylene_roomNight;
-    if (time === 'evening')         return IMAGES.raylene_roomDark;
-    return IMAGES.raylene_roomDay;  // morning + day
-  } else {
-    if (time === 'night')           return IMAGES.rylane_roomNight;
-    if (time === 'evening')         return IMAGES.rylane_roomDark;
-    return IMAGES.rylane_roomDay;   // morning + day
-  }
-}
-
-// ── AVATARS Map (used in RoomScreen, VoiceBipScreen) ──────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// AVATARS MAP — used by RoomScreen, VoiceBipScreen, SettingsScreen
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const AVATARS: Record<string, Record<string, any>> = {
   raylene: {
     neutral:  IMAGES.rayleneNeutral,
@@ -157,49 +198,97 @@ export const AVATARS: Record<string, Record<string, any>> = {
   },
 };
 
-// ── Theme Packs ───────────────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ROOM BACKGROUND HELPER
+// Returns the correct background for a character + time of day.
+// Falls back gracefully when a time variant doesn't exist yet.
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
+
+export function getRoomBg(character: 'raylene' | 'rylane', time: TimeOfDay) {
+  if (character === 'raylene') {
+    switch (time) {
+      case 'night':   return IMAGES.bgRayleneRoomNight;
+      case 'evening': return IMAGES.roomBgDark;          // TODO: real evening art
+      case 'morning': return IMAGES.bgRayleneRoomDay;    // TODO: real morning art
+      default:        return IMAGES.bgRayleneRoomDay;
+    }
+  } else {
+    switch (time) {
+      case 'night':   return IMAGES.bgRylaneRoomNight;
+      case 'evening': return IMAGES.roomBgDark;           // TODO: real evening art
+      case 'morning': return IMAGES.bgRylaneRoomDay;     // TODO: real morning art
+      default:        return IMAGES.bgRylaneRoomDay;
+    }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// THEME PACKS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const THEME_PACKS: Record<string, {
   name: string; emoji: string;
   background: string; card: string; accent: string; soft: string;
 }> = {
-  night:  { name: 'Golden Moon',  emoji: '🌙', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
-  flower: { name: 'Soft Pink',    emoji: '🌸', background: '#4A1028', card: '#6D1B3B', accent: '#FF4FA3', soft: '#FFD6E7' },
-  rain:   { name: 'Rain Blue',    emoji: '🌧️', background: '#243447', card: '#36506B', accent: '#4DA3FF', soft: '#B6DCFF' },
-  neon:   { name: 'Night Purple', emoji: '💜', background: '#160028', card: '#2B0A4D', accent: '#D946EF', soft: '#F5B8FF' },
-  galaxy: { name: 'Galaxy Night', emoji: '🌌', background: '#151A40', card: '#2A2D73', accent: '#7C83FF', soft: '#D7D9FF' },
+  night:  { name: 'Golden Moon',  emoji: '\uD83C\uDF19', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
+  flower: { name: 'Soft Pink',    emoji: '\uD83C\uDF38', background: '#4A1028', card: '#6D1B3B', accent: '#FF4FA3', soft: '#FFD6E7' },
+  rain:   { name: 'Rain Blue',    emoji: '\uD83C\uDF27\uFE0F', background: '#243447', card: '#36506B', accent: '#4DA3FF', soft: '#B6DCFF' },
+  neon:   { name: 'Night Purple', emoji: '\uD83D\uDC9C', background: '#160028', card: '#2B0A4D', accent: '#D946EF', soft: '#F5B8FF' },
+  galaxy: { name: 'Galaxy Night', emoji: '\uD83C\uDF0C', background: '#151A40', card: '#2A2D73', accent: '#7C83FF', soft: '#D7D9FF' },
 };
 
-// ── Sekret Profiles ───────────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SEKRET PROFILES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const SEKRET_PROFILES: Record<string, {
   name: string; emoji: string; title: string; vibe: string; greeting: string;
 }> = {
   soft:   {
-    name: "Se\u2019kret",       emoji: '🌸',
-    title: 'Soft Big Sis',
-    vibe: 'Warm, expressive, protective, and real.',
+    name:     "Se\u2019kret",
+    emoji:    '\uD83C\uDF38',
+    title:    'Soft Big Sis',
+    vibe:     'Warm, expressive, protective, and real.',
     greeting: "Hey love. I\u2019m here. Tell me what\u2019s on your mind.",
   },
   rylane: {
-    name: 'Rylane',             emoji: '⚡',
-    title: 'Loyal Bro',
-    vibe: 'Quiet loyalty. Keeps it real. Never talks down.',
+    name:     'Rylane',
+    emoji:    '\u26A1',
+    title:    'Loyal Bro',
+    vibe:     'Quiet loyalty. Keeps it real. Never talks down.',
     greeting: "Aight, I\u2019m here. What\u2019s been heavy?",
   },
   cloud:  {
-    name: "Cloud Se\u2019kret", emoji: '☁️',
-    title: 'Quiet Comfort',
-    vibe: 'Soft, calm, low-pressure presence.',
+    name:     "Cloud Se\u2019kret",
+    emoji:    '\u2601\uFE0F',
+    title:    'Quiet Comfort',
+    vibe:     'Soft, calm, low-pressure presence.',
     greeting: "No pressure. We can just sit here for a minute.",
   },
   night:  {
-    name: "Night Se\u2019kret", emoji: '🌙',
-    title: 'Late-Night Listener',
-    vibe: 'Minimal words, calm energy, safe space.',
+    name:     "Night Se\u2019kret",
+    emoji:    '\uD83C\uDF19',
+    title:    'Late-Night Listener',
+    vibe:     'Minimal words, calm energy, safe space.',
     greeting: "I\u2019m here. You don\u2019t gotta explain perfectly.",
   },
 };
 
-// ── Comfort Messages ──────────────────────────────────────────────────────
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HOME MESSAGES — rotating affirmations
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+export const HOME_MESSAGES = [
+  "Don\u2019t stay up carrying the whole world tonight.",
+  'Rest is productive too.',
+  'You deserve softness too.',
+  'Heavy days do not define you.',
+  'Your mind deserves rest.',
+  'Breathe slowly tonight.',
+  'You made it through today.',
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// COMFORT MESSAGES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 export const COMFORT_MESSAGES = [
   "You are not too much.",
   "Rest is not giving up.",
@@ -209,15 +298,4 @@ export const COMFORT_MESSAGES = [
   "Softness is not weakness.",
   "You deserve the same kindness you give others.",
   "It\u2019s okay to not be okay right now.",
-];
-
-// ── Home Messages (rotating) ──────────────────────────────────────────────
-export const HOME_MESSAGES = [
-  "Don\u2019t stay up carrying the whole world tonight.",
-  'Rest is productive too.',
-  'You deserve softness too.',
-  'Heavy days do not define you.',
-  'Your mind deserves rest.',
-  'Breathe slowly tonight.',
-  'You made it through today.',
 ];
