@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
-import { C } from '@constants/theme';
+import { C } from '../constants/theme';
 
 export default function MoreScreen() {
   const { userSide, setUserSide } = useSekret();

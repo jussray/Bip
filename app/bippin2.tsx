@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
-import { C } from '@constants/theme';
+import { C } from '../constants/theme';
 
 export default function Bippin2Screen() {
   const { userSide } = useSekret();

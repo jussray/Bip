@@ -9,8 +9,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
 import BackgroundLayer from '../components/BackgroundLayer';
-import { C, IMAGES } from '@constants/theme';
-import { BIP } from '@constants/bip_voice';
+import { C, IMAGES } from '../constants/theme';
+import { BIP } from '../constants/bip_voice';
 
 export default function VoiceBipScreen() {
   const { userSide, voiceKey, isRecording, voiceNotes, pulseAnim, startRecording, stopRecording, isSekretTyping, sekretReply } = useSekret();

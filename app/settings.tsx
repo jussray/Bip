@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
-import { C, IMAGES, THEME_PACKS, SEKRET_PROFILES } from '@constants/theme';
+import { C, IMAGES, THEME_PACKS, SEKRET_PROFILES } from '../constants/theme';
 
 export default function SettingsScreen() {
   const { userSide, setUserSide, theme, setTheme, selectedSekret, setSelectedSekret } = useSekret();

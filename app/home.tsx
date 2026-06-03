@@ -6,11 +6,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useSekretState } from '@hooks/useSekretState';
+import { useSekretState } from '../hooks/useSekretState';
 import BottomNav from '../components/BottomNav';
 import BackgroundLayer from '../components/BackgroundLayer';
-import { C, IMAGES } from '@constants/theme';
-import { BIP } from '@constants/bip_voice';
+import { C, IMAGES } from '../constants/theme';
+import { BIP } from '../constants/bip_voice';
 
 export default function HomeScreen() {
   const {

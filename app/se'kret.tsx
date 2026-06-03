@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
-import { C, IMAGES, SEKRET_PROFILES } from '@constants/theme';
+import { C, IMAGES, SEKRET_PROFILES } from '../constants/theme';
 
 export default function SekretScreen() {
   const {

@@ -7,8 +7,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
 import BackgroundLayer from '../components/BackgroundLayer';
-import { C } from '@constants/theme';
-import { BIP } from '@constants/bip_voice';
+import { C } from '../constants/theme';
+import { BIP } from '../constants/bip_voice';
 
 export default function BridgeScreen() {
   const { userSide, voiceKey, bridgeText, setBridgeText, selectedTone, setSelectedTone } = useSekret();
