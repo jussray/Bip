@@ -1,28 +1,28 @@
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Se'kret Bip — .gitignore
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
-# ── Dependencies ──────────────────────────────────────────────────────────────
+#  Dependencies 
 node_modules/
 .pnp
 .pnp.js
 
-# ── Testing ───────────────────────────────────────────────────────────────────
+#  Testing 
 .coverage/
 
-# ── Production / Build ────────────────────────────────────────────────────────
+#  Production / Build 
 build/
 dist/
 .expo/
 .expo-shared/
 
-# ── Environment — NEVER commit real values ────────────────────────────────────
+#  Environment — NEVER commit real values 
 # .env.example is intentionally NOT listed here — it should be committed.
 .env
 .env.local
 .env.*.local
 
-# ── EAS / Signing Certificates — NEVER commit these ──────────────────────────
+# ── EAS / Signing Certificates — NEVER commit these 
 *.jks
 *.p8
 *.p12
@@ -30,21 +30,21 @@ dist/
 *.mobileprovision
 *.orig.*
 
-# ── TypeScript ────────────────────────────────────────────────────────────────
+#  TypeScript 
 *.tsbuildinfo
 
-# ── IDE ───────────────────────────────────────────────────────────────────────
+#  IDE 
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# ── OS ────────────────────────────────────────────────────────────────────────
+#  OS 
 .DS_Store
 Thumbs.db
 
-# ── Logs ──────────────────────────────────────────────────────────────────────
+#  Logs 
 logs/
 *.log
 npm-debug.log*
