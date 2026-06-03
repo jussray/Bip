@@ -22,6 +22,7 @@
 
 import React, { useState } from 'react';
 import { IMAGES } from '../constants/theme';
+import type { JournalEntry } from '../types/bridge';
 import {
   Text, TouchableOpacity, ScrollView,
   TextInput, View, Image, StyleSheet, Platform, Alert,
@@ -52,13 +53,7 @@ const getDynamicTags = (selectedSekret: string) => {
 
 const CHECK_IN_MOODS = ['worse', 'still heavy', 'a little better', 'better', 'okay'];
 
-interface JournalEntry {
-  id:   number;
-  text: string;
-  mood: string;
-  date: string;
-  time: string; // NOTE: add to saveJournalEntry in index.tsx (see B1 above)
-}
+// JournalEntry imported from types/bridge.ts
 
 // ── Props ──────────────────────────────────────────────────────────────────
 // Fix A1: prop names match index.tsx exactly
