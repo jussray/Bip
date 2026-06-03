@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native
 import { StatusBar } from 'expo-status-bar';
 
 // ── Screens ────────────────────────────────────────────────────────────────
+import { SplashScreen } from '../screens/SplashScreen';
 import { HomeScreen }           from '../screens/HomeScreen';
 import { JournalScreen }        from '../screens/JournalScreen';
 import { CalmScreen }           from '../screens/CalmScreen';
@@ -102,6 +103,7 @@ function BottomNav({ screen, setScreen, userSide }: any) {
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
+const [screen, setScreen] = useState('splash');
   const [screen, setScreen]               = useState('home');
   const [theme, setTheme]                 = useState('neon');
   const [mood, setMood]                   = useState('Happy');
@@ -257,6 +259,10 @@ export default function App() {
       setVoiceNotes={setVoiceNotes}
     />
   );
+
+if (screen === 'splash') return (
+  <SplashScreen setScreen={setScreen} />
+);
 
   if (screen === 'home') return (
   <RoomScreen
