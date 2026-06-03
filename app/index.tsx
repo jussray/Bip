@@ -103,8 +103,7 @@ function BottomNav({ screen, setScreen, userSide }: any) {
 
 // ── Main App ───────────────────────────────────────────────────────────────
 export default function App() {
-const [screen, setScreen] = useState('splash');
-  const [screen, setScreen]               = useState('home');
+  const [screen, setScreen] = useState('splash');
   const [theme, setTheme]                 = useState('neon');
   const [mood, setMood]                   = useState('Happy');
   const [userSide, setUserSide]           = useState('teen');
