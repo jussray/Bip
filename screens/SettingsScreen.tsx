@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+import { IMAGES } from '../constants/theme';
   Text, TouchableOpacity, ScrollView,
   View, Image, StyleSheet, Platform,
 } from 'react-native';
@@ -35,10 +36,10 @@ const SEKRET_MODES: Record<string, any> = {
 // rylane  → assets/images/rylane-profile.png
 // others  → assets/images/raylene-neutral.png  (use sekret-avatar.png when available)
 const AVATAR_ASSETS: Record<string, any> = {
-  soft:   require('../assets/images/raylene-neutral.png'),
-  rylane: require('../assets/images/rylane-profile.png'),
-  cloud:  require('../assets/images/raylene-neutral.png'),
-  night:  require('../assets/images/raylene-neutral.png'),
+  soft:   IMAGES.rayleneNeutral,
+  rylane: IMAGES.rylaneProfile,
+  cloud:  IMAGES.rayleneNeutral,
+  night:  IMAGES.rayleneNeutral,
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
