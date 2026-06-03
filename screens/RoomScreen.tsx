@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { loadState, saveState } from '../utils/storage';
+import { IMAGES } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,46 +50,46 @@ type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 const ROOMS: Record<Character, AssetMap> = {
   raylene: {
-    morning: require('../assets/images/bg-raylene-room-day.png'),
-    day:     require('../assets/images/bg-raylene-room-day.png'),
-    evening: require('../assets/images/room-bg-dark.png'),
-    night:   require('../assets/images/night-room-v2.png'),
+    morning: IMAGES.bgRayleneRoomDay,
+    day:     IMAGES.bgRayleneRoomDay,
+    evening: IMAGES.roomBgDark,
+    night:   IMAGES.bgRayleneRoomNight,
   },
   rylane: {
-    morning: require('../assets/images/bg-rylane-room-day.png'),
-    day:     require('../assets/images/bg-rylane-room-day.png'),
-    evening: require('../assets/images/room-bg-dark.png'),
-    night:   require('../assets/images/bg-rylane-room-night.png'),
+    morning: IMAGES.bgRylaneRoomDay,
+    day:     IMAGES.bgRylaneRoomDay,
+    evening: IMAGES.roomBgDark,
+    night:   IMAGES.bgRylaneRoomNight,
   },
 };
 
 const AVATARS: Record<Character, AvatarMap> = {
   raylene: {
-    neutral:  require('../assets/images/raylene-neutral.png'),
-    happy:    require('../assets/images/raylene-happy.png'),
-    thinking: require('../assets/images/raylene-thinking.png'),
-    writing:  require('../assets/images/raylene-writing.png'),
-    window:   require('../assets/images/raylene-window.png'),
-    fullbody: require('../assets/images/raylene-fullbody.png'),
+    neutral:  IMAGES.rayleneNeutral,
+    happy:    IMAGES.rayleneHappy,
+    thinking: IMAGES.rayleneThinking,
+    writing:  IMAGES.rayleneWriting,
+    window:   IMAGES.rayleneWindow,
+    fullbody: IMAGES.rayleneFullbody,
   },
   rylane: {
-    neutral:  require('../assets/images/rylane-neutral.png'),
-    happy:    require('../assets/images/rylane-happy.png'),
-    thinking: require('../assets/images/rylane-thinking.png'),
-    writing:  require('../assets/images/rylane-writing.png'),
-    window:   require('../assets/images/rylane-window.png'),
-    fullbody: require('../assets/images/rylane-fullbody.png'),
+    neutral:  IMAGES.rylaneNeutral,
+    happy:    IMAGES.rylaneHappy,
+    thinking: IMAGES.rylaneThinking,
+    writing:  IMAGES.rylaneWriting,
+    window:   IMAGES.rylaneWindow,
+    fullbody: IMAGES.rylaneFullbody,
   },
 };
 
 const FALLBACK_ROOM: Record<Character, ImageSourcePropType> = {
-  raylene: require('../assets/images/bg-raylene-room-day.png'),
-  rylane:  require('../assets/images/bg-rylane-room-day.png'),
+  raylene: IMAGES.bgRayleneRoomDay,
+  rylane:  IMAGES.bgRylaneRoomDay,
 };
 
 const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
-  raylene: require('../assets/images/raylene-neutral.png'),
-  rylane:  require('../assets/images/rylane-neutral.png'),
+  raylene: IMAGES.rayleneNeutral,
+  rylane:  IMAGES.rylaneNeutral,
 };
 
 // ─── Hotspot maps ─────────────────────────────────────────────────────────────
