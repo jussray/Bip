@@ -526,3 +526,4 @@ export const BIP = {
   sekretKeyToCharacter,
   getPackForSekret,
 } as const;
+
