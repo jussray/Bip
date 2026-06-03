@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-// ── Screens ────────────────────────────────────────────────────────────────
+//  Screens 
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
 // The primary 'home' route renders RoomScreen — the Room IS the home.
 import { SplashScreen }         from '../screens/SplashScreen';
@@ -23,13 +23,13 @@ import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 
-// ── Utils ──────────────────────────────────────────────────────────────────
+//  Utils 
 // IMPORTANT: loadState() takes NO args — returns full state object.
 // saveState() takes ONE object arg — all keys to update.
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
 
-// ── Types ──────────────────────────────────────────────────────────────────
+//  Types 
 // RoomMemory: tracks room interactions for future Supabase room_memory table
 export interface RoomMemory {
   character: string;
@@ -47,7 +47,7 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
   visitCount:  0,
 };
 
-// ── Constants ─────────────────────────────────────────────────────────────
+//  Constants 
 
 const THEME_PACKS: Record<string, any> = {
   night:  { name: 'Golden Moon',  emoji: '\uD83C\uDF19', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
@@ -74,7 +74,7 @@ const HOME_MESSAGES = [
   'You made it through today.',
 ];
 
-// ── Bottom Nav ─────────────────────────────────────────────────────────────
+//  Bottom Nav 
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
@@ -93,51 +93,51 @@ function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen:
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────
+//  Main App 
 
 export default function App() {
-  // ─── Navigation ────────────────────────────────────────────────────────
+  //  Navigation 
   const [screen, setScreen] = useState('splash');
 
-  // ─── Theme & identity ──────────────────────────────────────────────────
+  //  Theme & identity 
   const [theme, setTheme]                   = useState('neon');
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState('teen');
 
-  // ─── Mood ──────────────────────────────────────────────────────────────
+  //  Mood 
   const [mood, setMood]             = useState('Happy');
   const [moodHistory, setMoodHistory] = useState<any[]>([]);
 
-  // ─── Journal (route: 'pages') ──────────────────────────────────────────
+  //  Journal (route: 'pages') 
   // RENAMED: entries → journalEntries, saveEntry → saveJournalEntry
   // to match fixed JournalScreen prop interface
   const [journalText, setJournalText]       = useState('');
   const [journalEntries, setJournalEntries] = useState<any[]>([]);
 
-  // ─── Circle ────────────────────────────────────────────────────────────
+  //  Circle 
   const [circlePosts, setCirclePosts]       = useState<any[]>([]);
   const [circlePostText, setCirclePostText] = useState('');
 
-  // ─── Voice Bip ─────────────────────────────────────────────────────────
+  //  Voice Bip 
   const [voiceNotes, setVoiceNotes] = useState<any[]>([]);
 
-  // ─── Streak tracking ───────────────────────────────────────────────────
+  //  Streak tracking 
   const [streakDays, setStreakDays]     = useState(0);
   const [lastOpenDate, setLastOpenDate] = useState('');
 
-  // ─── Room Memory (Supabase-ready) ──────────────────────────────────────
+  //  Room Memory (Supabase-ready) 
   const [roomMemory, setRoomMemory] = useState<RoomMemory>(DEFAULT_ROOM_MEMORY);
 
-  // ─── UI ────────────────────────────────────────────────────────────────
+  //  UI 
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
   const [isLoading, setIsLoading]               = useState(true);
 
-  // ── Derived ──────────────────────────────────────────────────────────────
+  //  Derived 
   const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
 
-  // ── AsyncStorage: load on mount ───────────────────────────────────────────
+  //  AsyncStorage: load on mount 
   // loadState() returns the full state object — no args needed.
   // Keys returned match STORAGE_KEYS in utils/storage.ts:
   //   theme, mood, userSide, selectedSekret, sekretMode, journalText,
@@ -178,7 +178,7 @@ export default function App() {
     })();
   }, []);
 
-  // ── AsyncStorage: save on change ──────────────────────────────────────────
+  //  AsyncStorage: save on change 
   // saveState() takes a single object — all key/value pairs to persist.
   // Arrays must be passed as-is (storage.ts handles JSON.stringify internally
   // for non-string values via the multiSet pairs mapping).
@@ -211,7 +211,7 @@ export default function App() {
     roomMemory, isLoading,
   ]);
 
-  // ── Streak tracking (daily open) ──────────────────────────────────────────
+  //  Streak tracking (daily open) 
   useEffect(() => {
     if (isLoading) return;
     const today = new Date().toLocaleDateString();
@@ -224,7 +224,7 @@ export default function App() {
     }
   }, [isLoading]);
 
-  // ── Rotating home message ─────────────────────────────────────────────────
+  //  Rotating home message 
   useEffect(() => {
     const interval = setInterval(
       () => setHomeMessageIndex(p => (p + 1) % HOME_MESSAGES.length),
@@ -233,18 +233,18 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // ── Room Memory updater (Supabase-ready) ──────────────────────────────────
+  //  Room Memory updater (Supabase-ready) 
   const updateRoomMemory = (patch: Partial<RoomMemory>) => {
     setRoomMemory(prev => ({ ...prev, ...patch, visitCount: prev.visitCount + 1 }));
   };
 
-  // ── Activity tracker (RoomMemory + future Supabase hooks) ─────────────────
+  //  Activity tracker (RoomMemory + future Supabase hooks) 
   const trackActivity = (type: 'calm' | 'comfort' | 'voice' | 'journal' | 'growth' | 'mood') => {
     updateRoomMemory({ lastVisit: new Date().toISOString() });
     // Future: Supabase insert to bip_energy / comfort_sessions / growth_milestones
   };
 
-  // ── Mood ──────────────────────────────────────────────────────────────────
+  //  Mood 
   const selectMood = (m: string) => {
     setMood(m);
     setMoodHistory(h => [{
@@ -255,7 +255,7 @@ export default function App() {
     trackActivity('mood');
   };
 
-  // ── Journal ───────────────────────────────────────────────────────────────
+  //  Journal 
   // RENAMED to match JournalScreen fixed interface
   const saveJournalEntry = () => {
     if (!journalText.trim()) return;
@@ -268,7 +268,7 @@ export default function App() {
     trackActivity('journal');
   };
 
-  // ── Circle ────────────────────────────────────────────────────────────────
+  //  Circle 
   const saveCirclePost = () => {
     if (!circlePostText.trim()) return;
     setCirclePosts(p => [{
@@ -288,13 +288,13 @@ export default function App() {
     ));
   };
 
-  // ── Nav ───────────────────────────────────────────────────────────────────
+  //  Nav 
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
-  // ── Loading guard ─────────────────────────────────────────────────────────
+  //  Loading guard 
   if (isLoading) return null;
 
-  // ━━━ RENDER SWITCH ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  //  RENDER SWITCH 
   // Route map:
   //   splash · home · pages · calm · sekret · circle · bippin2 · comfort
   //   mindReset · bodyReset · bridge · parentBridge · more · settings
@@ -304,7 +304,7 @@ export default function App() {
     <SplashScreen setScreen={setScreen} />
   );
 
-  // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
+  //  Se'kret's Room (THE home — Room is the heart of Bip) 
   if (screen === 'home') return (
     <RoomScreen
       mood={mood}
@@ -316,7 +316,7 @@ export default function App() {
     />
   );
 
-  // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
+  //  Dashboard (HomeScreen) — secondary entry, available from MoreScreen 
   if (screen === 'dashboard') return (
     <HomeScreen
       mood={mood}
@@ -477,7 +477,7 @@ export default function App() {
   return null;
 }
 
-// ── Styles ─────────────────────────────────────────────────────────────────
+//  Styles 
 
 const styles = StyleSheet.create({
   bottomNav:     {
