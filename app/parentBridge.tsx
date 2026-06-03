@@ -3,97 +3,148 @@
 // Teen controls everything. Parent receives only what teen chooses to share.
 // This is a bridge, not a window. Trust first, always.
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Platform, Image,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  TextInput,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as Haptics from 'expo-haptics';
 import { useSekret } from './_layout';
 import BottomNav from '../components/BottomNav';
 import { C } from '../constants/theme';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK DATA — replace with Supabase queries when ready
-// SUPABASE_HOOK: fetch from shared_bips table where parent_visible = true
-// SUPABASE_HOOK: fetch from soft_prompts table for current mood context
-// SUPABASE_HOOK: fetch from conversation_starters table
-// ─────────────────────────────────────────────────────────────────────────────
+type ParentBridgePayload = {
+  sharedTitle?: string;
+  preview: string;
+  mood?: string;
+  moodEmoji?: string;
+  shareTypeLabel?: string;
+  sharedAt?: string;
+  sekretTip?: string;
+  softPrompt?: string;
+  conversationStarter?: string;
+  followUp?: string;
+  avoid?: string[];
+  guidance?: string;
+  translation?: {
+    said: string;
+    means: string;
+  };
+};
 
-const MOCK_SHARED_BIP = {
-  id: '001',
+type ParentBridgeScreenProps = {
+  payload?: ParentBridgePayload | null;
+  onReplyText?: (text: string) => void;
+  onReplyVoice?: () => void;
+  onReplyVideo?: () => void;
+  onOpenSekret?: () => void;
+};
+
+const DEFAULT_PAYLOAD: ParentBridgePayload = {
+  sharedTitle: 'What they wanted you to understand 💜',
   preview: "I've been feeling overwhelmed lately and I miss talking comfortably again.",
   mood: 'overwhelmed',
   moodEmoji: '☁️',
-  shareType: 'journal',
   shareTypeLabel: 'Journal Entry',
   sharedAt: 'Today, 7:42 PM',
   sekretTip: 'This message took courage to send.',
+  softPrompt: 'Your teen may be looking for understanding more than solutions right now.',
+  conversationStarter: "How's your week been for real?",
+  followUp: 'Want to tell me what made it feel heavy?',
+  avoid: [
+    "Why didn't you tell me sooner?",
+    'Give me your phone.',
+    'Who were you with?',
+    "You're overreacting.",
+    'When I was your age...',
+  ],
+  guidance: 'Try listening all the way through before fixing.',
+  translation: {
+    said: "I've been feeling overwhelmed.",
+    means: 'I need someone to sit with me, not fix me.',
+  },
 };
 
 const SOFT_PROMPTS = [
-  "Your teen may be looking for understanding more than solutions right now.",
-  "This may be a moment for curiosity before advice.",
+  'Your teen may be looking for understanding more than solutions right now.',
+  'This may be a moment for curiosity before advice.',
   "They shared this because they trust you. That's already something.",
-  "Connection before correction. Always.",
+  'Connection before correction. Always.',
   "You don't have to have the perfect response. You just have to show up.",
 ];
 
 const CONVERSATION_STARTERS = [
-  { emoji: '☕', text: '"Want to tell me more about that?"', type: 'Connection' },
-  { emoji: '🌙', text: '"Anything on your mind before bed?"', type: 'Check-In' },
-  { emoji: '💜', text: '"I\'m here for you, always."', type: 'Support' },
-  { emoji: '💬', text: '"What part felt hardest?"', type: 'Understanding' },
-  { emoji: '🤝', text: '"How\'s your week been for real?"', type: 'Connection' },
+  { emoji: '☕', text: "Want to tell me more about that?", type: 'Connection' },
+  { emoji: '🌙', text: "Anything on your mind before bed?", type: 'Check-In' },
+  { emoji: '💜', text: "I'm here for you, always.", type: 'Support' },
+  { emoji: '💬', text: 'What part felt hardest?', type: 'Understanding' },
+  { emoji: '🤝', text: "How's your week been for real?", type: 'Connection' },
 ];
 
 const FOLLOW_UP_QUESTIONS = [
-  "When did you start feeling that way?",
-  "What would help right now?",
-  "What do you wish I understood better?",
-  "Is there something specific you need from me?",
-  "How can I show up for you differently?",
-];
-
-const AVOID_PHRASES = [
-  '"Why didn\'t you tell me sooner?"',
-  '"Give me your phone."',
-  '"Who were you with?"',
-  '"You\'re overreacting."',
-  '"When I was your age..."',
-];
-
-const SEKRET_GUIDANCE = [
-  "Try listening all the way through before fixing.",
-  "Connection first. Solutions later.",
-  "Sometimes they need to feel heard before they're ready for advice.",
-  "Your calm helps them feel safe.",
-  "You don't have to be perfect. You just have to stay present.",
+  'When did you start feeling that way?',
+  'What would help right now?',
+  'What do you wish I understood better?',
+  'Is there something specific you need from me?',
+  'How can I show up for you differently?',
 ];
 
 const WHAT_THEY_NEED = [
-  { label: 'Encouragement',        pct: 45, color: '#a855f7' },
-  { label: 'Listen without fixing',pct: 30, color: '#7c3aed' },
-  { label: 'More quality time',    pct: 15, color: '#6d28d9' },
-  { label: 'Space & understanding',pct: 10, color: '#5b21b6' },
+  { label: 'Encouragement', pct: 45, color: '#a855f7' },
+  { label: 'Listen without fixing', pct: 30, color: '#7c3aed' },
+  { label: 'More quality time', pct: 15, color: '#6d28d9' },
+  { label: 'Space & understanding', pct: 10, color: '#5b21b6' },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
-export default function ParentBridgeScreen() {
-  const { userSide, setScreen } = useSekret();
+async function triggerHaptic() {
+  if (Platform.OS === 'web') return;
+  try {
+    await Haptics.selectionAsync();
+  } catch {
+    void 0;
+  }
+}
 
+export default function ParentBridgeScreen({
+  payload,
+  onReplyText,
+  onReplyVoice,
+  onReplyVideo,
+  onOpenSekret,
+}: ParentBridgeScreenProps) {
+  const { userSide, setScreen } = useSekret();
   const [activeStarter, setActiveStarter] = useState<number | null>(null);
   const [activeFollowUp, setActiveFollowUp] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
 
-  const prompt   = SOFT_PROMPTS[Math.floor(Math.random() * SOFT_PROMPTS.length)];
-  const guidance = SEKRET_GUIDANCE[Math.floor(Math.random() * SEKRET_GUIDANCE.length)];
+  const data = payload || DEFAULT_PAYLOAD;
 
-  // ── Shared Bip translation (what they said → what they might mean) ──────
-  const translation = {
-    said: '"I\'ve been feeling overwhelmed."',
-    means: '"I need someone to sit with me, not fix me."',
+  const prompt = useMemo(() => {
+    return data.softPrompt || SOFT_PROMPTS[0];
+  }, [data.softPrompt]);
+
+  const guidance = data.guidance || 'Try listening all the way through before fixing.';
+
+  const translation = data.translation || DEFAULT_PAYLOAD.translation!;
+  const avoidPhrases = data.avoid || DEFAULT_PAYLOAD.avoid || [];
+
+  const handleUseStarter = async (text: string) => {
+    await triggerHaptic();
+    setReplyText(text);
+    setActiveStarter(null);
+  };
+
+  const handleSendText = async () => {
+    if (!replyText.trim()) return;
+    await triggerHaptic();
+    onReplyText?.(replyText.trim());
+    setReplyText('');
   };
 
   return (
@@ -103,20 +154,18 @@ export default function ParentBridgeScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-
-        {/* ── Header ── */}
         <View style={styles.header}>
           <View>
             <Text style={styles.headerTitle}>Parent Window 💜</Text>
-            <Text style={styles.headerSub}>Helping conversations happen.</Text>
+            <Text style={styles.headerSub}>Helping conversations happen gently.</Text>
           </View>
           <View style={styles.parentsBadge}>
             <Text style={styles.parentsBadgeText}>PARENTS SIDE</Text>
           </View>
         </View>
 
-        {/* ── Trust notice ── */}
         <View style={styles.trustCard}>
           <Text style={styles.trustEmoji}>🔒</Text>
           <View style={{ flex: 1 }}>
@@ -127,38 +176,34 @@ export default function ParentBridgeScreen() {
           </View>
         </View>
 
-        {/* ── Shared Bip card ── */}
-        {MOCK_SHARED_BIP && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>What they wanted you to understand 💜</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{data.sharedTitle || 'What they wanted you to understand 💜'}</Text>
 
-            <View style={styles.bipCard}>
-              <View style={styles.bipCardHeader}>
-                <Text style={styles.bipTypeTag}>
-                  {MOCK_SHARED_BIP.moodEmoji} {MOCK_SHARED_BIP.shareTypeLabel}
-                </Text>
-                <Text style={styles.bipTime}>{MOCK_SHARED_BIP.sharedAt}</Text>
-              </View>
-
-              <Text style={styles.bipPreview}>
-                "{MOCK_SHARED_BIP.preview}"
+          <View style={styles.bipCard}>
+            <View style={styles.bipCardHeader}>
+              <Text style={styles.bipTypeTag}>
+                {(data.moodEmoji || '☁️')} {data.shareTypeLabel || 'Shared Note'}
               </Text>
+              <Text style={styles.bipTime}>{data.sharedAt || 'Just now'}</Text>
+            </View>
 
+            <Text style={styles.bipPreview}>“{data.preview}”</Text>
+
+            {!!data.mood && (
               <View style={styles.moodTag}>
-                <Text style={styles.moodTagText}>
-                  feeling: {MOCK_SHARED_BIP.mood}
-                </Text>
+                <Text style={styles.moodTagText}>feeling: {data.mood}</Text>
               </View>
+            )}
 
+            {!!data.sekretTip && (
               <View style={styles.sekretTipRow}>
                 <Text style={styles.sekretTipLabel}>💜 Se'kret Tip:</Text>
-                <Text style={styles.sekretTipText}>{MOCK_SHARED_BIP.sekretTip}</Text>
+                <Text style={styles.sekretTipText}>{data.sekretTip}</Text>
               </View>
-            </View>
+            )}
           </View>
-        )}
+        </View>
 
-        {/* ── What they might mean ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Help understand what they might mean</Text>
           <Text style={styles.sectionSub}>Se'kret translates so you can connect deeper. ☁️</Text>
@@ -177,23 +222,21 @@ export default function ParentBridgeScreen() {
 
           <View style={styles.thinkFeelingRow}>
             <Text style={styles.thinkFeelingEmoji}>💡</Text>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.thinkFeelingTitle}>Think feeling, not just words.</Text>
               <Text style={styles.thinkFeelingText}>Focus on the emotion behind the message.</Text>
             </View>
           </View>
         </View>
 
-        {/* ── Soft prompt ── */}
         <View style={styles.promptCard}>
           <Text style={styles.promptEmoji}>☁️</Text>
           <Text style={styles.promptText}>{prompt}</Text>
         </View>
 
-        {/* ── What they need from you ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What They Need From You</Text>
-          <Text style={styles.sectionSub}>Based on recent mood and check-ins.</Text>
+          <Text style={styles.sectionSub}>This is a gentle guess, not a diagnosis.</Text>
           <View style={styles.needsCard}>
             {WHAT_THEY_NEED.map(item => (
               <View key={item.label} style={styles.needRow}>
@@ -207,7 +250,6 @@ export default function ParentBridgeScreen() {
           </View>
         </View>
 
-        {/* ── Conversation starters ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Start a Conversation 💬</Text>
           <Text style={styles.sectionSub}>Choose a tone that helps them feel safe.</Text>
@@ -215,17 +257,22 @@ export default function ParentBridgeScreen() {
           {CONVERSATION_STARTERS.map((s, i) => (
             <TouchableOpacity
               key={i}
-              style={[
-                styles.starterCard,
-                activeStarter === i && styles.starterCardActive,
-              ]}
-              onPress={() => setActiveStarter(activeStarter === i ? null : i)}
+              style={[styles.starterCard, activeStarter === i && styles.starterCardActive]}
+              onPress={() => {
+                triggerHaptic();
+                setActiveStarter(activeStarter === i ? null : i);
+                if (activeStarter !== i) {
+                  setReplyText(s.text);
+                }
+              }}
               accessibilityRole="button"
               accessibilityLabel={s.text}
+              accessibilityHint="Selects this conversation starter."
+              accessibilityState={{ selected: activeStarter === i }}
             >
               <Text style={styles.starterEmoji}>{s.emoji}</Text>
               <View style={{ flex: 1 }}>
-                <Text style={styles.starterText}>{s.text}</Text>
+                <Text style={styles.starterText}>“{s.text}”</Text>
                 <Text style={styles.starterType}>{s.type}</Text>
               </View>
               <View style={[styles.useBtn, activeStarter === i && { backgroundColor: '#7c3aed' }]}>
@@ -234,10 +281,33 @@ export default function ParentBridgeScreen() {
             </TouchableOpacity>
           ))}
 
-          <TouchableOpacity style={styles.writeOwnBtn}>
+          <TouchableOpacity style={styles.writeOwnBtn} onPress={() => setReplyText('')}>
             <Text style={styles.writeOwnText}>✏️  Write your own response</Text>
             <Text style={styles.writeOwnArrow}>›</Text>
           </TouchableOpacity>
+
+          <View style={styles.replyComposer}>
+            <Text style={styles.replyComposerLabel}>Your reply</Text>
+            <TextInput
+              style={styles.replyInput}
+              placeholder="Type a calm, listening-first reply..."
+              placeholderTextColor="#7c6b98"
+              value={replyText}
+              onChangeText={setReplyText}
+              multiline
+              accessibilityLabel="Parent reply text box"
+              accessibilityHint="Write a gentle response to your teen."
+            />
+            <TouchableOpacity
+              style={styles.replySendBtn}
+              onPress={handleSendText}
+              accessibilityRole="button"
+              accessibilityLabel="Send text reply"
+              accessibilityHint="Sends your text reply."
+            >
+              <Text style={styles.replySendText}>Send text reply</Text>
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.sekretNoteCard}>
             <Text style={styles.sekretNoteText}>
@@ -246,7 +316,6 @@ export default function ParentBridgeScreen() {
           </View>
         </View>
 
-        {/* ── Follow-up questions ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Follow-Up Questions</Text>
           <Text style={styles.sectionSub}>When the conversation slows down.</Text>
@@ -259,16 +328,22 @@ export default function ParentBridgeScreen() {
                   activeFollowUp === i && { backgroundColor: 'rgba(124,58,237,0.15)' },
                   i < FOLLOW_UP_QUESTIONS.length - 1 && styles.followRowBorder,
                 ]}
-                onPress={() => setActiveFollowUp(activeFollowUp === i ? null : i)}
+                onPress={async () => {
+                  await triggerHaptic();
+                  setActiveFollowUp(activeFollowUp === i ? null : i);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={q}
+                accessibilityHint="Selects this follow-up question."
+                accessibilityState={{ selected: activeFollowUp === i }}
               >
-                <Text style={styles.followText}>"{q}"</Text>
+                <Text style={styles.followText}>“{q}”</Text>
                 <Text style={styles.followArrow}>{activeFollowUp === i ? '✓' : '›'}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* ── Tips for this conversation ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Tips for this conversation 💜</Text>
           {[
@@ -293,52 +368,58 @@ export default function ParentBridgeScreen() {
           </View>
         </View>
 
-        {/* ── What NOT to say ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Try to avoid starting with...</Text>
           <View style={styles.avoidCard}>
-            {AVOID_PHRASES.map((phrase, i) => (
-              <View key={i} style={[styles.avoidRow, i < AVOID_PHRASES.length - 1 && styles.avoidRowBorder]}>
+            {avoidPhrases.map((phrase, i) => (
+              <View key={i} style={[styles.avoidRow, i < avoidPhrases.length - 1 && styles.avoidRowBorder]}>
                 <Text style={styles.avoidX}>✕</Text>
-                <Text style={styles.avoidText}>{phrase}</Text>
+                <Text style={styles.avoidText}>“{phrase}”</Text>
               </View>
             ))}
           </View>
         </View>
 
-        {/* ── Se'kret Guidance ── */}
         <View style={styles.guidanceCard}>
           <View style={styles.guidanceHeader}>
             <Text style={styles.guidanceCloud}>☁️</Text>
             <Text style={styles.guidanceTitle}>Se'kret Says</Text>
           </View>
-          <Text style={styles.guidanceText}>"{guidance}"</Text>
+          <Text style={styles.guidanceText}>“{guidance}”</Text>
           <TouchableOpacity
             style={styles.talkBtn}
-            onPress={() => setScreen && setScreen('sekret')}
+            onPress={() => {
+              onOpenSekret?.();
+              setScreen?.('sekret');
+            }}
             accessibilityRole="button"
             accessibilityLabel="Talk to Se'kret"
+            accessibilityHint="Opens Se'kret for guidance."
           >
             <Text style={styles.talkBtnText}>Talk to Se'kret  →</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── Parent Reply Actions ── */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>How do you want to respond?</Text>
           <Text style={styles.sectionSub}>Choose a tone that helps them feel safe.</Text>
 
           <View style={styles.replyRow}>
             {[
-              { emoji: '💬', label: 'Text Reply' },
-              { emoji: '🎙️', label: 'Voice Reply' },
-              { emoji: '📹', label: 'Video Reply' },
-            ].map(({ emoji, label }) => (
+              { emoji: '💬', label: 'Text Reply', action: onReplyText },
+              { emoji: '🎙️', label: 'Voice Reply', action: onReplyVoice },
+              { emoji: '📹', label: 'Video Reply', action: onReplyVideo },
+            ].map(({ emoji, label, action }) => (
               <TouchableOpacity
                 key={label}
                 style={styles.replyBtn}
+                onPress={async () => {
+                  await triggerHaptic();
+                  action?.();
+                }}
                 accessibilityRole="button"
                 accessibilityLabel={label}
+                accessibilityHint={`Send a ${label.toLowerCase()}.`}
               >
                 <Text style={styles.replyEmoji}>{emoji}</Text>
                 <Text style={styles.replyLabel}>{label}</Text>
@@ -347,19 +428,20 @@ export default function ParentBridgeScreen() {
           </View>
         </View>
 
-        {/* ── Past shared moments ── */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Messages they've shared with you</Text>
-            <TouchableOpacity><Text style={styles.seeAll}>View All</Text></TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="View all shared messages">
+              <Text style={styles.seeAll}>View All</Text>
+            </TouchableOpacity>
           </View>
 
           {[
-            { preview: "I've been feeling overwhelmed...", time: "Today, 7:42 PM" },
-            { preview: "I need to talk about something...", time: "2 days ago, 9:15 PM" },
-            { preview: "Can you help me understand...", time: "5 days ago, 6:09 PM" },
+            { preview: "I've been feeling overwhelmed...", time: 'Today, 7:42 PM' },
+            { preview: 'I need to talk about something...', time: '2 days ago, 9:15 PM' },
+            { preview: 'Can you help me understand...', time: '5 days ago, 6:09 PM' },
           ].map((msg, i) => (
-            <TouchableOpacity key={i} style={styles.historyRow}>
+            <TouchableOpacity key={i} style={styles.historyRow} accessibilityRole="button" accessibilityLabel={msg.preview}>
               <View style={styles.historyDot} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyPreview}>{msg.preview}</Text>
@@ -374,13 +456,11 @@ export default function ParentBridgeScreen() {
           </Text>
         </View>
 
-        {/* ── Bottom privacy note ── */}
         <View style={styles.privacyNote}>
           <Text style={styles.privacyText}>
             🔒 Private content stays private. Your teen controls every share. Se'kret protects both of you.
           </Text>
         </View>
-
       </ScrollView>
 
       <BottomNav screen="parentBridge" setScreen={setScreen} userSide={userSide} />
@@ -388,129 +468,118 @@ export default function ParentBridgeScreen() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:              { flex: 1, backgroundColor: C.bg },
-  scroll:            { padding: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 100 },
+  root: { flex: 1, backgroundColor: C.bg },
+  scroll: { padding: 16, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 100 },
 
-  // Header
-  header:            { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  headerTitle:       { fontSize: 24, fontWeight: '900', color: C.white, marginBottom: 3 },
-  headerSub:         { fontSize: 13, color: C.mutedLt },
-  parentsBadge:      { backgroundColor: 'rgba(124,58,237,0.2)', borderWidth: 1, borderColor: '#7c3aed', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
-  parentsBadgeText:  { color: '#c4b5fd', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: C.white, marginBottom: 3 },
+  headerSub: { fontSize: 13, color: C.mutedLt },
+  parentsBadge: { backgroundColor: 'rgba(124,58,237,0.2)', borderWidth: 1, borderColor: '#7c3aed', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  parentsBadgeText: { color: '#c4b5fd', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
 
-  // Trust card
-  trustCard:         { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: C.card2, borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)', borderRadius: 16, padding: 14, marginBottom: 20 },
-  trustEmoji:        { fontSize: 22, marginTop: 2 },
-  trustTitle:        { color: C.white, fontWeight: '700', fontSize: 14, marginBottom: 4 },
-  trustText:         { color: C.mutedLt, fontSize: 13, lineHeight: 19 },
+  trustCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, backgroundColor: C.card2, borderWidth: 1, borderColor: 'rgba(124,58,237,0.3)', borderRadius: 16, padding: 14, marginBottom: 20 },
+  trustEmoji: { fontSize: 22, marginTop: 2 },
+  trustTitle: { color: C.white, fontWeight: '700', fontSize: 14, marginBottom: 4 },
+  trustText: { color: C.mutedLt, fontSize: 13, lineHeight: 19 },
 
-  // Section
-  section:           { marginBottom: 24 },
-  sectionRow:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  sectionTitle:      { color: C.white, fontSize: 16, fontWeight: '800', marginBottom: 4 },
-  sectionSub:        { color: C.muted, fontSize: 12, marginBottom: 12 },
-  seeAll:            { color: '#a855f7', fontSize: 13 },
+  section: { marginBottom: 24 },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { color: C.white, fontSize: 16, fontWeight: '800', marginBottom: 4 },
+  sectionSub: { color: C.muted, fontSize: 12, marginBottom: 12 },
+  seeAll: { color: '#a855f7', fontSize: 13 },
 
-  // Shared Bip card
-  bipCard:           { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 20, padding: 18 },
-  bipCardHeader:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  bipTypeTag:        { color: '#c4b5fd', fontSize: 12, fontWeight: '700' },
-  bipTime:           { color: C.muted, fontSize: 11 },
-  bipPreview:        { color: C.white, fontSize: 17, fontWeight: '700', lineHeight: 26, marginBottom: 12, fontStyle: 'italic' },
-  moodTag:           { alignSelf: 'flex-start', backgroundColor: 'rgba(124,58,237,0.2)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 12 },
-  moodTagText:       { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
-  sekretTipRow:      { flexDirection: 'row', gap: 6, alignItems: 'flex-start', backgroundColor: 'rgba(124,58,237,0.1)', borderRadius: 12, padding: 10 },
-  sekretTipLabel:    { color: '#a855f7', fontSize: 12, fontWeight: '700' },
-  sekretTipText:     { color: C.lavender, fontSize: 12, flex: 1, lineHeight: 18 },
+  bipCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 20, padding: 18 },
+  bipCardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  bipTypeTag: { color: '#c4b5fd', fontSize: 12, fontWeight: '700' },
+  bipTime: { color: C.muted, fontSize: 11 },
+  bipPreview: { color: C.white, fontSize: 17, fontWeight: '700', lineHeight: 26, marginBottom: 12, fontStyle: 'italic' },
+  moodTag: { alignSelf: 'flex-start', backgroundColor: 'rgba(124,58,237,0.2)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 12 },
+  moodTagText: { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
+  sekretTipRow: { flexDirection: 'row', gap: 6, alignItems: 'flex-start', backgroundColor: 'rgba(124,58,237,0.1)', borderRadius: 12, padding: 10 },
+  sekretTipLabel: { color: '#a855f7', fontSize: 12, fontWeight: '700' },
+  sekretTipText: { color: C.lavender, fontSize: 12, flex: 1, lineHeight: 18 },
 
-  // Translation
-  translationCard:   { flexDirection: 'row', gap: 10, backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 16, marginBottom: 12 },
-  translationCol:    { flex: 1 },
-  translationLabel:  { color: C.muted, fontSize: 11, marginBottom: 6 },
-  translationText:   { color: C.white, fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
-  translationArrow:  { color: '#a855f7', fontSize: 20, alignSelf: 'center' },
-  thinkFeelingRow:   { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: 'rgba(245,191,0,0.06)', borderRadius: 14, padding: 12 },
+  translationCard: { flexDirection: 'row', gap: 10, backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 16, marginBottom: 12 },
+  translationCol: { flex: 1 },
+  translationLabel: { color: C.muted, fontSize: 11, marginBottom: 6 },
+  translationText: { color: C.white, fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
+  translationArrow: { color: '#a855f7', fontSize: 20, alignSelf: 'center' },
+  thinkFeelingRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: 'rgba(245,191,0,0.06)', borderRadius: 14, padding: 12 },
   thinkFeelingEmoji: { fontSize: 20 },
   thinkFeelingTitle: { color: C.white, fontWeight: '700', fontSize: 13, marginBottom: 3 },
-  thinkFeelingText:  { color: C.muted, fontSize: 12 },
+  thinkFeelingText: { color: C.muted, fontSize: 12 },
 
-  // Soft prompt
-  promptCard:        { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: 'rgba(168,85,247,0.08)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 18, padding: 16, marginBottom: 24 },
-  promptEmoji:       { fontSize: 24, marginTop: 2 },
-  promptText:        { flex: 1, color: C.lavender, fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
+  promptCard: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: 'rgba(168,85,247,0.08)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 18, padding: 16, marginBottom: 24 },
+  promptEmoji: { fontSize: 24, marginTop: 2 },
+  promptText: { flex: 1, color: C.lavender, fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
 
-  // What they need
-  needsCard:         { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 16, gap: 12 },
-  needRow:           { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  needLabel:         { color: C.lavender, fontSize: 13, width: 130 },
-  needBarTrack:      { flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3 },
-  needBarFill:       { height: 6, borderRadius: 3 },
-  needPct:           { color: C.muted, fontSize: 11, width: 32, textAlign: 'right' },
+  needsCard: { backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border, padding: 16, gap: 12 },
+  needRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  needLabel: { color: C.lavender, fontSize: 13, width: 130 },
+  needBarTrack: { flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3 },
+  needBarFill: { height: 6, borderRadius: 3 },
+  needPct: { color: C.muted, fontSize: 11, width: 32, textAlign: 'right' },
 
-  // Conversation starters
-  starterCard:       { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, marginBottom: 10 },
+  starterCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, marginBottom: 10 },
   starterCardActive: { borderColor: '#7c3aed', backgroundColor: 'rgba(124,58,237,0.1)' },
-  starterEmoji:      { fontSize: 24 },
-  starterText:       { color: C.white, fontSize: 14, fontWeight: '600', marginBottom: 3 },
-  starterType:       { color: '#a855f7', fontSize: 11 },
-  useBtn:            { backgroundColor: 'rgba(124,58,237,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  useBtnText:        { color: '#c4b5fd', fontSize: 12, fontWeight: '700' },
-  writeOwnBtn:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, marginBottom: 10 },
-  writeOwnText:      { color: C.lavender, fontSize: 14 },
-  writeOwnArrow:     { color: C.muted, fontSize: 18 },
-  sekretNoteCard:    { backgroundColor: 'rgba(124,58,237,0.08)', borderRadius: 14, padding: 12 },
-  sekretNoteText:    { color: C.lavender, fontSize: 13, lineHeight: 20 },
+  starterEmoji: { fontSize: 24 },
+  starterText: { color: C.white, fontSize: 14, fontWeight: '600', marginBottom: 3 },
+  starterType: { color: '#a855f7', fontSize: 11 },
+  useBtn: { backgroundColor: 'rgba(124,58,237,0.2)', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+  useBtnText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700' },
+  writeOwnBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, marginBottom: 10 },
+  writeOwnText: { color: C.lavender, fontSize: 14 },
+  writeOwnArrow: { color: C.muted, fontSize: 18 },
 
-  // Follow-up
-  followCard:        { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 18, overflow: 'hidden' },
-  followRow:         { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
-  followRowBorder:   { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  followText:        { color: C.lavender, fontSize: 13, flex: 1, fontStyle: 'italic' },
-  followArrow:       { color: '#a855f7', fontSize: 18, marginLeft: 8 },
+  replyComposer: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, marginBottom: 10 },
+  replyComposerLabel: { color: C.mutedLt, fontSize: 11, marginBottom: 8 },
+  replyInput: { minHeight: 90, color: C.white, borderColor: C.border, borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 10, textAlignVertical: 'top' },
+  replySendBtn: { backgroundColor: '#7c3aed', borderRadius: 14, padding: 12, alignItems: 'center' },
+  replySendText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  // Tips
-  tipRow:            { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 14 },
-  tipEmoji:          { fontSize: 22, marginTop: 2 },
-  tipTitle:          { color: C.white, fontWeight: '700', fontSize: 14, marginBottom: 3 },
-  tipSub:            { color: C.muted, fontSize: 12, lineHeight: 18 },
-  presentCard:       { backgroundColor: 'rgba(124,58,237,0.1)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 6 },
-  presentText:       { color: C.lavender, fontSize: 15, fontWeight: '700', textAlign: 'center', lineHeight: 24 },
+  sekretNoteCard: { backgroundColor: 'rgba(124,58,237,0.08)', borderRadius: 14, padding: 12 },
+  sekretNoteText: { color: C.lavender, fontSize: 13, lineHeight: 20 },
 
-  // Avoid
-  avoidCard:         { backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', borderRadius: 18, overflow: 'hidden' },
-  avoidRow:          { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
-  avoidRowBorder:    { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  avoidX:            { color: '#f87171', fontSize: 14, fontWeight: '900', width: 16 },
-  avoidText:         { color: C.mutedLt, fontSize: 13, fontStyle: 'italic', flex: 1 },
+  followCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 18, overflow: 'hidden' },
+  followRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
+  followRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  followText: { color: C.lavender, fontSize: 13, flex: 1, fontStyle: 'italic' },
+  followArrow: { color: '#a855f7', fontSize: 18, marginLeft: 8 },
 
-  // Guidance
-  guidanceCard:      { backgroundColor: 'rgba(124,58,237,0.12)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)', borderRadius: 20, padding: 20, marginBottom: 24 },
-  guidanceHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  guidanceCloud:     { fontSize: 24 },
-  guidanceTitle:     { color: C.white, fontSize: 16, fontWeight: '800' },
-  guidanceText:      { color: C.lavender, fontSize: 15, fontStyle: 'italic', lineHeight: 24, marginBottom: 14 },
-  talkBtn:           { backgroundColor: 'rgba(124,58,237,0.3)', borderRadius: 14, padding: 12, alignItems: 'center' },
-  talkBtnText:       { color: '#c4b5fd', fontSize: 14, fontWeight: '700' },
+  tipRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginBottom: 14 },
+  tipEmoji: { fontSize: 22, marginTop: 2 },
+  tipTitle: { color: C.white, fontWeight: '700', fontSize: 14, marginBottom: 3 },
+  tipSub: { color: C.muted, fontSize: 12, lineHeight: 18 },
+  presentCard: { backgroundColor: 'rgba(124,58,237,0.1)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 16, padding: 16, alignItems: 'center', marginTop: 6 },
+  presentText: { color: C.lavender, fontSize: 15, fontWeight: '700', textAlign: 'center', lineHeight: 24 },
 
-  // Reply actions
-  replyRow:          { flexDirection: 'row', gap: 10 },
-  replyBtn:          { flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)', borderRadius: 16, padding: 16, alignItems: 'center' },
-  replyEmoji:        { fontSize: 26, marginBottom: 6 },
-  replyLabel:        { color: C.lavender, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+  avoidCard: { backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)', borderRadius: 18, overflow: 'hidden' },
+  avoidRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  avoidRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  avoidX: { color: '#f87171', fontSize: 14, fontWeight: '900', width: 16 },
+  avoidText: { color: C.mutedLt, fontSize: 13, fontStyle: 'italic', flex: 1 },
 
-  // History
-  historyRow:        { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: C.card, borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: C.border },
-  historyDot:        { width: 8, height: 8, borderRadius: 4, backgroundColor: '#a855f7' },
-  historyPreview:    { color: C.white, fontSize: 13, fontWeight: '600', marginBottom: 2 },
-  historyTime:       { color: C.muted, fontSize: 11 },
-  historyArrow:      { color: C.muted, fontSize: 18 },
-  historyFooter:     { color: C.muted, fontSize: 12, textAlign: 'center', marginTop: 8, fontStyle: 'italic' },
+  guidanceCard: { backgroundColor: 'rgba(124,58,237,0.12)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)', borderRadius: 20, padding: 20, marginBottom: 24 },
+  guidanceHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  guidanceCloud: { fontSize: 24 },
+  guidanceTitle: { color: C.white, fontSize: 16, fontWeight: '800' },
+  guidanceText: { color: C.lavender, fontSize: 15, fontStyle: 'italic', lineHeight: 24, marginBottom: 14 },
+  talkBtn: { backgroundColor: 'rgba(124,58,237,0.3)', borderRadius: 14, padding: 12, alignItems: 'center' },
+  talkBtnText: { color: '#c4b5fd', fontSize: 14, fontWeight: '700' },
 
-  // Privacy
-  privacyNote:       { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, marginBottom: 8 },
-  privacyText:       { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
+  replyRow: { flexDirection: 'row', gap: 10 },
+  replyBtn: { flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(168,85,247,0.3)', borderRadius: 16, padding: 16, alignItems: 'center' },
+  replyEmoji: { fontSize: 26, marginBottom: 6 },
+  replyLabel: { color: C.lavender, fontSize: 12, fontWeight: '700', textAlign: 'center' },
+
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, backgroundColor: C.card, borderRadius: 14, marginBottom: 8, borderWidth: 1, borderColor: C.border },
+  historyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#a855f7' },
+  historyPreview: { color: C.white, fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  historyTime: { color: C.muted, fontSize: 11 },
+  historyArrow: { color: C.muted, fontSize: 18 },
+  historyFooter: { color: C.muted, fontSize: 12, textAlign: 'center', marginTop: 8, fontStyle: 'italic' },
+
+  privacyNote: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, padding: 14, marginBottom: 8 },
+  privacyText: { color: C.muted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
 });
