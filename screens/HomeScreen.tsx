@@ -1,20 +1,33 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  View,
-  Animated,
-  Image,
-  StyleSheet,
-  Platform,
+  Text, TouchableOpacity, ScrollView,
+  View, Animated, Image, StyleSheet, Platform,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CONSTANTS (local — kept in sync with index.tsx, not imported to avoid
-// circular deps while screens/ folder is still prop-based)
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Assets ───────────────────────────────────────────────────────────────────
+// Cloud companion — character-aware
+const CLOUD_ASSETS: Record<string, any> = {
+  raylene: require('../assets/images/cloud.png'),   // swap for raylene-cloud.png when available
+  rylane:  require('../assets/images/cloud.png'),   // swap for rylane-cloud.png when available
+};
+
+// Raylene / Rylane artwork system
+const ART: Record<string, Record<string, any>> = {
+  raylene: {
+    neutral:  require('../assets/images/raylene-neutral.png'),
+    thinking: require('../assets/images/raylene-thinking.png'),
+    window:   require('../assets/images/raylene-window.png'),
+  },
+  rylane: {
+    neutral:  require('../assets/images/rylane-neutral.png'),
+    thinking: require('../assets/images/rylane-thinking.png'),
+    window:   require('../assets/images/rylane-window.png'),
+  },
+};
+
+// ─── Static data ──────────────────────────────────────────────────────────────
+
 const MOODS = [
   { id: 'Happy', emoji: '😊' },
   { id: 'Sad',   emoji: '😔' },
@@ -32,7 +45,15 @@ const HOME_MESSAGES = [
   'You made it through today.',
 ];
 
-const CLOUD_IMAGE = require('../assets/images/cloud.png');
+// Quick actions — typed, easy to extend
+// Route map: pages = JournalScreen, voiceBip, calm, circle, bridge/parentBridge
+const QUICK_ACTIONS: { emoji: string; label: string; to: string }[] = [
+  { emoji: '✍️', label: 'Write It Out', to: 'pages'        },
+  { emoji: '🎙️', label: 'Voice Bip',   to: 'voiceBip'     },
+  { emoji: '🌙', label: 'Calm',         to: 'calm'         },
+  { emoji: '🌐', label: 'Circle',       to: 'circle'       },
+  { emoji: '🌉', label: 'Bridge',       to: '__bridge__'   }, // resolved at runtime below
+];
 
 const getHeroText = (mood: string) => {
   if (mood === 'Happy') return "I'm glad\nyou're smiling\ntonight 🌤️";
@@ -42,165 +63,202 @@ const getHeroText = (mood: string) => {
   return 'Welcome back 🌙';
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROPS
-// ─────────────────────────────────────────────────────────────────────────────
+const getMoodResponse = (mood: string, isRylane: boolean) => {
+  if (isRylane) {
+    if (mood === 'Sad')   return "nah, you not going through this alone. i'm right here.";
+    if (mood === 'Angry') return "your feelings make sense. let it out. i got you.";
+    if (mood === 'Tired') return "you gave it everything today. rest is part of the work.";
+    return "i see you. you're doing way better than you think.";
+  }
+  if (mood === 'Sad')   return "Heavy nights don't last forever. I'm right here with you.";
+  if (mood === 'Angry') return "Your feelings make sense. You're safe to let it out here.";
+  if (mood === 'Tired') return "Rest is an act of self-love. You've done enough today.";
+  return "I read your energy tonight. You're doing better than you think.";
+};
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
 interface HomeScreenProps {
   mood: string;
   selectMood: (mood: string) => void;
   t: Record<string, any>;
   currentSekret: Record<string, any>;
+  selectedSekret: string;           // character identity key
   homeMessageIndex: number;
-  breatheAnim: Animated.Value;
   userSide: string;
-  screen: string;
   setScreen: (screen: string) => void;
+  onMoodSelect?: (mood: string) => void;  // Supabase/RoomMemory hook
   BottomNav: React.ReactNode;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export function HomeScreen({
-  mood,
-  selectMood,
-  t,
-  currentSekret,
-  homeMessageIndex,
-  breatheAnim,
-  userSide,
-  screen,
-  setScreen,
-  BottomNav,
+  mood, selectMood, t, currentSekret, selectedSekret,
+  homeMessageIndex, userSide, setScreen, onMoodSelect, BottomNav,
 }: HomeScreenProps) {
-  const card = () => [styles.card, { backgroundColor: t.card, borderColor: t.accent }] as any;
+
+  const isRylane  = selectedSekret === 'rylane';
+  const charKey   = isRylane ? 'rylane' : 'raylene';
+  const art       = ART[charKey];
+  const cloudImg  = CLOUD_ASSETS[charKey];
+
+  // ─── Animations ─────────────────────────────────────────────────────────
+  const breatheAnim = useRef(new Animated.Value(1)).current;
+  const fadeIn      = useRef(new Animated.Value(0)).current;
+  const glowAnim    = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    // Page entrance
+    Animated.timing(fadeIn, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+
+    // Breathe cloud loop
+    const breathe = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, { toValue: 1.12, duration: 3000, useNativeDriver: true }),
+        Animated.timing(breatheAnim, { toValue: 1,    duration: 3000, useNativeDriver: true }),
+      ])
+    );
+    breathe.start();
+
+    // Ambient glow pulse
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1,   duration: 2800, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.4, duration: 2800, useNativeDriver: true }),
+      ])
+    );
+    glow.start();
+
+    return () => { breathe.stop(); glow.stop(); };
+  }, []);
+
+  const glowOpacity = glowAnim.interpolate({ inputRange: [0.4, 1], outputRange: [0.15, 0.38] });
+
+  // ─── Style helpers ───────────────────────────────────────────────────────
+  const card = (extra?: object) => [
+    styles.card, { backgroundColor: t.card, borderColor: t.accent + '55' }, extra,
+  ] as any;
+
+  // ─── Mood select handler (also fires Supabase hook) ───────────────────────
+  const handleMoodSelect = (m: string) => {
+    selectMood(m);
+    onMoodSelect?.(m);
+  };
+
+  // ─── Reminder message (bounds-guarded) ───────────────────────────────────
+  const reminder = HOME_MESSAGES[homeMessageIndex] ?? HOME_MESSAGES[0];
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
+    <View style={[styles.root, { backgroundColor: t.background }]}>
       <StatusBar style="light" />
 
-      {userSide === 'parent' && (
-        <View style={styles.parentBadge}>
-          <Text style={{ color: '#6EE7B7', fontSize: 12 }}>🌿 PARENT SIDE</Text>
+      {/* ── Ambient background glow ─────────────────────────────────────── */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.bgGlow, { backgroundColor: t.accent, opacity: glowOpacity }]}
+      />
+
+      <Animated.ScrollView
+        style={{ opacity: fadeIn }}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ━━━ PARENT BADGE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {userSide === 'parent' && (
+          <View style={styles.parentBadge}>
+            <Text style={styles.parentBadgeText}>🌿 PARENT SIDE</Text>
+          </View>
+        )}
+
+        {/* ━━━ HEADER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <Text style={[styles.logo, { color: t.soft }]}>
+          Se'kret Bip {currentSekret.emoji}
+        </Text>
+        <Text style={styles.subtitle}>your space. your voice. always you.</Text>
+
+        {/* ━━━ BREATHING CLOUD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <Animated.View
+          style={[styles.cloudWrap, { transform: [{ scale: breatheAnim }] }]}
+        >
+          <Image source={cloudImg} style={styles.cloudImg} resizeMode="contain" />
+        </Animated.View>
+
+        {/* ━━━ HERO MESSAGE CARD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <View style={card()}>
+          <View style={styles.heroCardTop}>
+            <Image source={art.neutral} style={styles.heroArt} resizeMode="contain" />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.heroCardBy, { color: t.soft }]}>
+                {currentSekret.name} says...
+              </Text>
+              <Text style={[styles.heroText, { color: '#fff' }]}>
+                {getHeroText(mood)}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.entryText}>
+            Your Se'kret is {currentSekret.name} energy.
+          </Text>
         </View>
-      )}
 
-      <Text style={styles.logo}>Se'kret Bip {currentSekret.emoji}</Text>
-      <Text style={styles.subtitle}>your space. your voice. always you.</Text>
-
-      {/* Breathing cloud */}
-      <Animated.View style={[styles.cloudWrap, { transform: [{ scale: breatheAnim }] }]}>
-        <Image source={CLOUD_IMAGE} style={styles.cloudImg} resizeMode="contain" />
-      </Animated.View>
-
-      {/* Hero message card */}
-      <View style={card()}>
-        <Text style={{ color: t.soft, fontSize: 13, marginBottom: 4 }}>
-          {currentSekret.name} says...
-        </Text>
-        <Text style={styles.heroText}>{getHeroText(mood)}</Text>
-        <Text style={styles.entryText}>
-          Your Se'kret is {currentSekret.name} energy.
-        </Text>
-      </View>
-
-      {/* Tonight's rotating reminder */}
-      <View style={card()}>
-        <Text style={styles.cardText}>Tonight's Reminder ✨</Text>
-        <Text style={styles.entryText}>{HOME_MESSAGES[homeMessageIndex]}</Text>
-      </View>
-
-      {/* Mood selector */}
-      <Text style={styles.sectionTitle}>How's your heart right now? 💜</Text>
-      <View style={styles.moodRow}>
-        {MOODS.map(m => (
-          <TouchableOpacity
-            key={m.id}
-            style={[
-              styles.moodBubble,
-              mood === m.id && {
-                backgroundColor: t.accent,
-                shadowColor: t.accent,
-                shadowOpacity: 0.8,
-                shadowRadius: 12,
-                elevation: 8,
-              },
-            ]}
-            onPress={() => selectMood(m.id)}
-          >
-            <Text style={styles.moodEmoji}>{m.emoji}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Se'kret sees you — mood-aware */}
-      <View style={card()}>
-        <Text style={styles.cardText}>Se'kret sees you 💜</Text>
-        <Text style={styles.entryText}>
-          {mood === 'Sad'
-            ? "Heavy nights don't last forever. I'm right here with you."
-            : mood === 'Angry'
-            ? "Your feelings make sense. You're safe to let it out here."
-            : mood === 'Tired'
-            ? "Rest is an act of self-love. You've done enough today."
-            : "I read your energy tonight. You're doing better than you think."}
-        </Text>
-        <View style={styles.row}>
-          <TouchableOpacity style={styles.smallButton} onPress={() => setScreen('sekret')}>
-            <Text style={styles.smallButtonText}>💬 Talk more</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.smallButton} onPress={() => setScreen('calm')}>
-            <Text style={styles.smallButtonText}>🌙 Calm me</Text>
-          </TouchableOpacity>
+        {/* ━━━ TONIGHT'S REMINDER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <View style={card()}>
+          <Text style={styles.cardText}>Tonight's Reminder ✨</Text>
+          <Text style={styles.entryText}>{reminder}</Text>
         </View>
-      </View>
 
-      {/* Quick actions */}
-      <Text style={styles.sectionTitle}>Quick Actions ⚡</Text>
-      <View style={[styles.row, { flexWrap: 'wrap' }]}>
-        {[
-          ['✍️', 'Write It Out', 'pages'],
-          ['🎙️', 'Voice Bip',   'voiceBip'],
-          ['🌙', 'Calm',        'calm'],
-          ['🌐', 'Circle',      'circle'],
-          ['🌉', 'Bridge',      userSide === 'parent' ? 'parentBridge' : 'bridge'],
-        ].map(([e, l, to]) => (
-          <TouchableOpacity
-            key={l}
-            style={[styles.smallAction, { backgroundColor: t.card, borderColor: t.accent }]}
-            onPress={() => setScreen(to as string)}
-          >
-            <Text style={{ fontSize: 22, marginBottom: 4 }}>{e}</Text>
-            <Text style={styles.smallButtonText}>{l}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+        {/* ━━━ MOOD SELECTOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <Text style={[styles.sectionTitle, { color: t.soft }]}>
+          How's your heart right now? 💜
+        </Text>
+        <View style={styles.moodRow}>
+          {MOODS.map(m => {
+            const active = mood === m.id;
+            return (
+              <TouchableOpacity
+                key={m.id}
+                style={[
+                  styles.moodBubble,
+                  active && {
+                    backgroundColor: t.accent,
+                    shadowColor: t.accent,
+                    shadowOpacity: 0.8,
+                    shadowRadius: 12,
+                    elevation: 8,
+                  },
+                ]}
+                onPress={() => handleMoodSelect(m.id)}
+              >
+                <Text style={styles.moodEmoji}>{m.emoji}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-      {BottomNav}
-    </ScrollView>
-  );
-}
+        {/* ━━━ SE'KRET SEES YOU — mood-aware, character-aware ━━━━━━━━━━━━━ */}
+        <View style={card()}>
+          <Text style={styles.cardText}>
+            {currentSekret.name} sees you {currentSekret.emoji}
+          </Text>
+          <Text style={styles.entryText}>
+            {getMoodResponse(mood, isRylane)}
+          </Text>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: t.accent, shadowColor: t.accent }]}
+              onPress={() => setScreen('sekret')}
+            >
+              <Text style={styles.actionBtnText}>💬 Talk more</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { backgroundColor: t.card, borderWidth: 1, borderColor: t.accent + '66' }]}
+              onPress={() => setScreen('calm')}
+            >
+              <Text style={styles.actionBtnText}>🌙 Calm me</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
-const styles = StyleSheet.create({
-  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
-  heroText:       { fontSize: 24, color: '#fff', textAlign: 'center', fontWeight: 'bold', marginBottom: 10, lineHeight: 32 },
-  sectionTitle:   { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 18 },
-  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
-  cardText:       { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  entryText:      { color: '#E2E8F0', fontSize: 14, marginBottom: 6, lineHeight: 20 },
-  row:            { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 14 },
-  smallAction:    { flex: 1, padding: 12, borderRadius: 16, alignItems: 'center', borderWidth: 1 },
-  smallButton:    { backgroundColor: '#334155', padding: 11, borderRadius: 14, marginTop: 8 },
-  smallButtonText:{ color: '#fff', textAlign: 'center', fontWeight: '600', fontSize: 13 },
-  moodRow:        { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 18, gap: 8 },
-  moodBubble:     { width: 66, height: 66, borderRadius: 33, backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center' },
-  moodEmoji:      { fontSize: 28 },
-  cloudWrap:      { alignItems: 'center', marginVertical: 16 },
-  cloudImg:       { width: 100, height: 100 },
-  parentBadge:    { backgroundColor: '#065F46', borderRadius: 10, padding: 6, alignSelf: 'center', marginBottom: 10 },
-});
+        {/* ━━━ QUICK ACTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <Text style={[styles.sectionTitle, { color: t.soft }]}>Quick Actio
