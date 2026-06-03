@@ -337,6 +337,7 @@ export default function App() {
     <CloudThoughtsScreen
       t={t}
       mood={mood}
+      selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
     />
