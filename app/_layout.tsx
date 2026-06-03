@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
 import { Stack } from 'expo-router';
-import { SEKRET_PROFILES, COMFORT_MESSAGES } from '@constants/theme';
+import { SEKRET_PROFILES, COMFORT_MESSAGES } from '../constants/theme';
 
 type UserSide = 'teen' | 'parent';
 
