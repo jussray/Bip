@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { IMAGES } from '../constants/theme';
 
-
 // ─── Local assets ─────────────────────────────────────────────────────────────
 // assets/images/cloud-headphones.png  — mind reset circle art
 // assets/images/cloud.png             — body reset circle art
