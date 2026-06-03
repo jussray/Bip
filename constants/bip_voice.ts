@@ -441,6 +441,8 @@ export function getVoicePack(character: CharacterKey) {
       return CLOUD;
     case 'NIGHT':
       return NIGHT;
+    default:
+      return RAYLENE;
   }
 }
 
