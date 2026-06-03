@@ -21,6 +21,7 @@
 //   D2 — getDynamicTags handles 'raylene' explicitly
 
 import React, { useState } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text, TouchableOpacity, ScrollView,
   TextInput, View, Image, StyleSheet, Platform, Alert,
@@ -30,8 +31,8 @@ import {
 const DEBUG_HOTSPOTS = false;
 
 // ── ROOM IMAGES ────────────────────────────────────────────────────────────
-const ROOM_DAY   = require('../assets/images/raylene-bippin2-day.png');
-const ROOM_NIGHT = require('../assets/images/raylene-writing.png');
+const ROOM_DAY   = IMAGES.raylene_Bippin2Day;
+const ROOM_NIGHT = IMAGES.raylene_Bippin2Night;  // fallback until raylene-bippin2-night.png uploaded
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
 const HOTSPOTS = {
