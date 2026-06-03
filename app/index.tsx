@@ -18,6 +18,7 @@ import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen }  from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }        from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }   from '../screens/CloudThoughtsScreen';
+import { RoomScreen } from '../screens/RoomScreen';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 import { loadState, saveState } from '../utils/storage';
@@ -258,19 +259,14 @@ export default function App() {
   );
 
   if (screen === 'home') return (
-    <HomeScreen
-      mood={mood}
-      selectMood={selectMood}
-      t={t}
-      currentSekret={currentSekret}
-      homeMessageIndex={homeMessageIndex}
-      breatheAnim={breatheAnim}
-      userSide={userSide}
-      screen={screen}
-      setScreen={setScreen}
-      BottomNav={nav}
-    />
-  );
+  <RoomScreen
+    t={t}
+    selectedSekret={selectedSekret}
+    setSelectedSekret={setSelectedSekret}
+    setScreen={setScreen}
+    BottomNav={nav}
+  />
+);
 
   if (screen === 'pages') return (
     <JournalScreen
