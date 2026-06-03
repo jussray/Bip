@@ -8,6 +8,7 @@
 //   C5 — mode buttons now change the active prompt set and API context
 
 import React, { useState } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text,
   TouchableOpacity,
@@ -19,8 +20,8 @@ import {
   Platform,
 } from 'react-native';
 
-const CLOUD_HP = require('../assets/images/cloud-headphones.png');
-const CLOUD    = require('../assets/images/cloud.png');
+const CLOUD_HP = IMAGES.cloudHeadphones;
+const CLOUD    = IMAGES.cloud;
 
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
