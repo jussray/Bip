@@ -1,14 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
-  View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
+  View,
+  Animated,
   Image,
   StyleSheet,
   Platform,
-  Modal,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
