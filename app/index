@@ -28,6 +28,7 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // saveState() takes ONE object arg — all keys to update.
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
+import type { JournalEntry, CirclePost, VoiceNote, MoodEntry } from '../types/bridge';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
@@ -107,20 +108,20 @@ export default function App() {
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
-  const [moodHistory, setMoodHistory] = useState<any[]>([]);
+  const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
 
   // ─── Journal (route: 'pages') ──────────────────────────────────────────
   // RENAMED: entries → journalEntries, saveEntry → saveJournalEntry
   // to match fixed JournalScreen prop interface
   const [journalText, setJournalText]       = useState('');
-  const [journalEntries, setJournalEntries] = useState<any[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
 
   // ─── Circle ────────────────────────────────────────────────────────────
-  const [circlePosts, setCirclePosts]       = useState<any[]>([]);
+  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
   const [circlePostText, setCirclePostText] = useState('');
 
   // ─── Voice Bip ─────────────────────────────────────────────────────────
-  const [voiceNotes, setVoiceNotes] = useState<any[]>([]);
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
 
   // ─── Streak tracking ───────────────────────────────────────────────────
   const [streakDays, setStreakDays]     = useState(0);
