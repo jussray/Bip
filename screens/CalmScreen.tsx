@@ -18,6 +18,7 @@
 //   D2 — "private" lock badge added to header
 
 import React, { useState, useEffect, useRef } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text,
   TouchableOpacity,
@@ -32,10 +33,8 @@ import {
 
 // ── Assets ─────────────────────────────────────────────────────────────────
 // Fix A3: direct requires — no art prop needed
-const CLOUD_HEADPHONES = require('../assets/images/cloud-headphones.png');
-// Hero image shown at top of Calm screen (character at window, peaceful)
-// Adjust path if your asset is named differently
-const CALM_HERO = require('../assets/images/raylene-window.png');
+const CLOUD_HEADPHONES = IMAGES.cloudHeadphones;
+const CALM_HERO        = IMAGES.bgCalmHero;  // raylene-window.png until sekret-calm-hero.png is uploaded
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
