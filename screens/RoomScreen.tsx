@@ -13,16 +13,25 @@ import {
   ViewStyle,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { loadState, saveState } from '../utils/storage';
 
 const { width, height } = Dimensions.get('window');
 
 const DEBUG_HOTSPOTS = false;
 
-type Character = 'raylene' | 'rylane';
-type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
-type Pose = 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody';
-type Mood = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
-type RoomTarget = 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm' | 'voiceBip' | 'sekret';
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Character  = 'raylene' | 'rylane';
+type TimeOfDay  = 'morning' | 'day' | 'evening' | 'night';
+type Pose       = 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody';
+type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
+
+// RoomTarget kept as internal type for hotspot definitions.
+// setScreen prop is widened to string to match index.tsx.
+type RoomTarget =
+  | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
+  | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge'
+  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar';
 
 type Hotspot = {
   id: string;
@@ -33,56 +42,188 @@ type Hotspot = {
   pulse?: boolean;
 };
 
-type AssetMap = Record<TimeOfDay, ImageSourcePropType>;
+type AssetMap  = Record<TimeOfDay, ImageSourcePropType>;
 type AvatarMap = Record<Pose, ImageSourcePropType>;
+
+// ─── Room / Avatar assets ─────────────────────────────────────────────────────
 
 const ROOMS: Record<Character, AssetMap> = {
   raylene: {
     morning: require('../assets/images/raylene-room-morning.png'),
-    day: require('../assets/images/raylene-room-day.png'),
+    day:     require('../assets/images/raylene-room-day.png'),
     evening: require('../assets/images/raylene-room-evening.png'),
-    night: require('../assets/images/raylene-room-night.png'),
+    night:   require('../assets/images/raylene-room-night.png'),
   },
   rylane: {
     morning: require('../assets/images/rylane-room-morning.png'),
-    day: require('../assets/images/rylane-room-day.png'),
+    day:     require('../assets/images/rylane-room-day.png'),
     evening: require('../assets/images/rylane-room-evening.png'),
-    night: require('../assets/images/rylane-room-night.png'),
+    night:   require('../assets/images/rylane-room-night.png'),
   },
 };
 
 const AVATARS: Record<Character, AvatarMap> = {
   raylene: {
-    neutral: require('../assets/images/raylene-neutral.png'),
-    happy: require('../assets/images/raylene-happy.png'),
+    neutral:  require('../assets/images/raylene-neutral.png'),
+    happy:    require('../assets/images/raylene-happy.png'),
     thinking: require('../assets/images/raylene-thinking.png'),
-    writing: require('../assets/images/raylene-writing.png'),
-    window: require('../assets/images/raylene-window.png'),
+    writing:  require('../assets/images/raylene-writing.png'),
+    window:   require('../assets/images/raylene-window.png'),
     fullbody: require('../assets/images/raylene-fullbody.png'),
   },
   rylane: {
-    neutral: require('../assets/images/rylane-neutral.png'),
-    happy: require('../assets/images/rylane-happy.png'),
+    neutral:  require('../assets/images/rylane-neutral.png'),
+    happy:    require('../assets/images/rylane-happy.png'),
     thinking: require('../assets/images/rylane-thinking.png'),
-    writing: require('../assets/images/rylane-writing.png'),
-    window: require('../assets/images/rylane-window.png'),
+    writing:  require('../assets/images/rylane-writing.png'),
+    window:   require('../assets/images/rylane-window.png'),
     fullbody: require('../assets/images/rylane-fullbody.png'),
   },
 };
 
 const FALLBACK_ROOM: Record<Character, ImageSourcePropType> = {
   raylene: require('../assets/images/raylene-room-day.png'),
-  rylane: require('../assets/images/rylane-room-day.png'),
+  rylane:  require('../assets/images/rylane-room-day.png'),
 };
 
 const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
   raylene: require('../assets/images/raylene-neutral.png'),
-  rylane: require('../assets/images/rylane-neutral.png'),
+  rylane:  require('../assets/images/rylane-neutral.png'),
 };
+
+// ─── Hotspot maps ─────────────────────────────────────────────────────────────
+// Fixed: cloudThoughts hotspots now target 'cloudThoughts' (was incorrectly 'calm')
+// Fixed: Se'kret apostrophe in hint strings — use escaped version
+
+const RAYLENE_HOTSPOTS: Hotspot[] = [
+  {
+    id: 'pages',
+    label: 'Journal \uD83D\uDCD6',
+    target: 'pages',
+    hint: 'Tap journal',
+    pulse: true,
+    style: { bottom: '10%', left: '20%', width: '35%', height: '18%' },
+  },
+  {
+    id: 'voiceBip',
+    label: 'Headphones \uD83C\uDF99\uFE0F',
+    target: 'voiceBip',
+    hint: 'Tap headphones',
+    style: { bottom: '14%', left: '2%', width: '18%', height: '12%' },
+  },
+  {
+    id: 'cloudThoughts',
+    label: 'Cloud Lamp \u2601\uFE0F',
+    target: 'cloudThoughts',   // FIXED: was 'calm'
+    hint: 'Tap cloud',
+    pulse: true,
+    style: { top: '42%', left: '26%', width: '14%', height: '12%' },
+  },
+  {
+    id: 'comfort',
+    label: 'Bed \uD83C\uDF19',
+    target: 'comfort',
+    hint: 'Tap bed',
+    style: { top: '38%', right: '2%', width: '38%', height: '35%' },
+  },
+  {
+    id: 'bippin2',
+    label: 'Growth Board \u2B50',
+    target: 'bippin2',
+    hint: 'Tap board',
+    style: { top: '4%', left: '18%', width: '24%', height: '28%' },
+  },
+  {
+    id: 'circle',
+    label: 'Photo Wall \uD83C\uDF10',
+    target: 'circle',
+    hint: 'Tap wall',
+    style: { top: '4%', right: '0%', width: '18%', height: '55%' },
+  },
+  {
+    id: 'calm',
+    label: 'Window \uD83C\uDF24\uFE0F',
+    target: 'calm',
+    hint: 'Tap window',
+    pulse: true,
+    style: { top: '4%', left: '0%', width: '18%', height: '50%' },
+  },
+  {
+    id: 'summon',
+    label: "Se\u2019kret \uD83D\uDC9C",
+    target: 'sekret',
+    hint: "Call Se\u2019kret",   // FIXED: Unicode right-single-quote — no parse error
+    style: { top: '38%', left: '4%', width: '20%', height: '30%' },
+  },
+];
+
+const RYLANE_HOTSPOTS: Hotspot[] = [
+  {
+    id: 'pages',
+    label: 'Journal \uD83D\uDCD6',
+    target: 'pages',
+    hint: 'Tap journal',
+    pulse: true,
+    style: { bottom: '8%', left: '22%', width: '38%', height: '20%' },
+  },
+  {
+    id: 'voiceBip',
+    label: 'Headphones \uD83C\uDF99\uFE0F',
+    target: 'voiceBip',
+    hint: 'Tap headphones',
+    style: { top: '40%', left: '28%', width: '14%', height: '10%' },
+  },
+  {
+    id: 'cloudThoughts',
+    label: 'Cloud Neon \u2601\uFE0F',
+    target: 'cloudThoughts',   // FIXED: was 'calm'
+    hint: 'Tap cloud',
+    pulse: true,
+    style: { top: '28%', left: '36%', width: '14%', height: '12%' },
+  },
+  {
+    id: 'comfort',
+    label: 'Bed \uD83C\uDF19',
+    target: 'comfort',
+    hint: 'Tap bed',
+    style: { top: '36%', right: '2%', width: '40%', height: '38%' },
+  },
+  {
+    id: 'bippin2',
+    label: 'Growth Board \u2B50',
+    target: 'bippin2',
+    hint: 'Tap board',
+    style: { top: '2%', left: '22%', width: '24%', height: '30%' },
+  },
+  {
+    id: 'circle',
+    label: 'Photo Wall \uD83C\uDF10',
+    target: 'circle',
+    hint: 'Tap wall',
+    style: { top: '2%', right: '0%', width: '20%', height: '50%' },
+  },
+  {
+    id: 'calm',
+    label: 'Window \uD83C\uDF24\uFE0F',
+    target: 'calm',
+    hint: 'Tap window',
+    pulse: true,
+    style: { top: '2%', left: '0%', width: '20%', height: '55%' },
+  },
+  {
+    id: 'summon',
+    label: "Se\u2019kret \u26A1",
+    target: 'sekret',
+    hint: "Call Se\u2019kret",   // FIXED: Unicode right-single-quote
+    style: { top: '30%', left: '2%', width: '24%', height: '36%' },
+  },
+];
+
+// ─── Pure helpers (defined outside component — no recreation per render) ──────
 
 const getTimeOfDay = (): TimeOfDay => {
   const h = new Date().getHours();
-  if (h >= 6 && h < 12) return 'morning';
+  if (h >= 6  && h < 12) return 'morning';
   if (h >= 12 && h < 18) return 'day';
   if (h >= 18 && h < 22) return 'evening';
   return 'night';
@@ -98,22 +239,22 @@ const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
   const map: Record<Character, Record<TimeOfDay, string>> = {
     raylene: {
       morning: 'Soft light. Quiet thoughts. Come sit.',
-      day: 'Room open. Energy low-key alive.',
+      day:     'Room open. Energy low-key alive.',
       evening: 'Golden hour got the room feeling honest.',
-      night: 'Heavy night. The room’s still here with you.',
+      night:   "Heavy night. The room's still here with you.",
     },
     rylane: {
       morning: 'Early light, late thoughts. We move gentle.',
-      day: 'Room’s awake. Let’s get into it.',
-      evening: 'Evening’s here. That means real talk time.',
-      night: 'Late night mode. Keep it low and real.',
+      day:     "Room's awake. Let's get into it.",
+      evening: 'Evening\u2019s here. That means real talk time.',
+      night:   'Late night mode. Keep it low and real.',
     },
   };
   return map[character][timeOfDay];
 };
 
-const getPose = (mood: Mood, timeOfDay: TimeOfDay, isFirstVisit: boolean): Pose => {
-  if (isFirstVisit) return 'fullbody';
+const getPose = (mood: Mood, timeOfDay: TimeOfDay, isFirstVisit: boolean, isSekretVisible: boolean): Pose => {
+  if (isFirstVisit && isSekretVisible) return 'fullbody';
   if (timeOfDay === 'night' || mood === 'Sad' || mood === 'Tired') return 'window';
   if (mood === 'Happy') return 'happy';
   if (mood === 'Angry') return 'thinking';
@@ -126,19 +267,19 @@ const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isV
   if (isVisible && timeOfDay === 'night') {
     return character === 'raylene'
       ? 'Come sit. We not doing the most tonight.'
-      : 'Aight, you here now. Let’s keep it real.';
+      : 'Aight, you here now. Let\u2019s keep it real.';
   }
 
   if (moodKey.includes('sad')) {
     return character === 'raylene'
-      ? 'Come sit. I already know it’s been a lot.'
+      ? 'Come sit. I already know it\u2019s been a lot.'
       : 'Nah, I can tell something hit you. Talk to me.';
   }
 
   if (moodKey.includes('angry')) {
     return character === 'raylene'
       ? 'Hold on. Who got you like this?'
-      : 'Okay, who irritated us today? 😒';
+      : 'Okay, who irritated us today? \uD83D\uDE12';
   }
 
   if (moodKey.includes('tired')) {
@@ -167,7 +308,7 @@ const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isV
 
   if (timeOfDay === 'night') {
     return character === 'raylene'
-      ? 'Heavy night huh. You don’t gotta carry it alone.'
+      ? 'Heavy night huh. You don\u2019t gotta carry it alone.'
       : 'Late night thoughts? Yeah, I figured.';
   }
 
@@ -181,137 +322,18 @@ const safeImage = (
   fallback: ImageSourcePropType
 ): ImageSourcePropType => source ?? fallback;
 
-const RAYLENE_HOTSPOTS: Hotspot[] = [
-  {
-    id: 'pages',
-    label: 'Journal 📖',
-    target: 'pages',
-    hint: 'Tap journal',
-    pulse: true,
-    style: { bottom: '10%', left: '20%', width: '35%', height: '18%' },
-  },
-  {
-    id: 'voiceBip',
-    label: 'Headphones 🎙️',
-    target: 'voiceBip',
-    hint: 'Tap headphones',
-    style: { bottom: '14%', left: '2%', width: '18%', height: '12%' },
-  },
-  {
-    id: 'cloudThoughts',
-    label: 'Cloud Lamp ☁️',
-    target: 'calm',
-    hint: 'Tap cloud',
-    pulse: true,
-    style: { top: '42%', left: '26%', width: '14%', height: '12%' },
-  },
-  {
-    id: 'comfort',
-    label: 'Bed 🌙',
-    target: 'comfort',
-    hint: 'Tap bed',
-    style: { top: '38%', right: '2%', width: '38%', height: '35%' },
-  },
-  {
-    id: 'bippin2',
-    label: 'Growth Board ⭐',
-    target: 'bippin2',
-    hint: 'Tap board',
-    style: { top: '4%', left: '18%', width: '24%', height: '28%' },
-  },
-  {
-    id: 'circle',
-    label: 'Photo Wall 🌐',
-    target: 'circle',
-    hint: 'Tap wall',
-    style: { top: '4%', right: '0%', width: '18%', height: '55%' },
-  },
-  {
-    id: 'calm',
-    label: 'Window 🌤️',
-    target: 'calm',
-    hint: 'Tap window',
-    pulse: true,
-    style: { top: '4%', left: '0%', width: '18%', height: '50%' },
-  },
-  {
-    id: 'summon',
-    label: "Se'kret 💜",
-    target: 'sekret',
-    hint: 'Call Se’kret',
-    style: { top: '38%', left: '4%', width: '20%', height: '30%' },
-  },
-];
-
-const RYLANE_HOTSPOTS: Hotspot[] = [
-  {
-    id: 'pages',
-    label: 'Journal 📖',
-    target: 'pages',
-    hint: 'Tap journal',
-    pulse: true,
-    style: { bottom: '8%', left: '22%', width: '38%', height: '20%' },
-  },
-  {
-    id: 'voiceBip',
-    label: 'Headphones 🎙️',
-    target: 'voiceBip',
-    hint: 'Tap headphones',
-    style: { top: '40%', left: '28%', width: '14%', height: '10%' },
-  },
-  {
-    id: 'cloudThoughts',
-    label: 'Cloud Neon ☁️',
-    target: 'calm',
-    hint: 'Tap cloud',
-    pulse: true,
-    style: { top: '28%', left: '36%', width: '14%', height: '12%' },
-  },
-  {
-    id: 'comfort',
-    label: 'Bed 🌙',
-    target: 'comfort',
-    hint: 'Tap bed',
-    style: { top: '36%', right: '2%', width: '40%', height: '38%' },
-  },
-  {
-    id: 'bippin2',
-    label: 'Growth Board ⭐',
-    target: 'bippin2',
-    hint: 'Tap board',
-    style: { top: '2%', left: '22%', width: '24%', height: '30%' },
-  },
-  {
-    id: 'circle',
-    label: 'Photo Wall 🌐',
-    target: 'circle',
-    hint: 'Tap wall',
-    style: { top: '2%', right: '0%', width: '20%', height: '50%' },
-  },
-  {
-    id: 'calm',
-    label: 'Window 🌤️',
-    target: 'calm',
-    hint: 'Tap window',
-    pulse: true,
-    style: { top: '2%', left: '0%', width: '20%', height: '55%' },
-  },
-  {
-    id: 'summon',
-    label: "Se'kret ⚡",
-    target: 'sekret',
-    hint: 'Call Se’kret',
-    style: { top: '30%', left: '2%', width: '24%', height: '36%' },
-  },
-];
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface RoomScreenProps {
   mood: Mood;
   selectedSekret: Character;
   setSelectedSekret: (value: Character) => void;
-  setScreen: (screen: RoomTarget) => void;
+  setScreen: (screen: string) => void;   // widened to string — matches index.tsx
   t: Record<string, any>;
+  updateRoomMemory?: (patch: Record<string, any>) => void;  // Supabase/RoomMemory hook
 }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function RoomScreen({
   mood,
@@ -319,88 +341,121 @@ export function RoomScreen({
   setSelectedSekret,
   setScreen,
   t,
+  updateRoomMemory,
 }: RoomScreenProps) {
-  const timeOfDay = getTimeOfDay();
+
+  // ─── Derived ────────────────────────────────────────────────────────────
   const character: Character = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
-  const roomImage = safeImage(ROOMS[character]?.[timeOfDay], FALLBACK_ROOM[character]);
-  const hotspots = character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS;
 
+  // timeOfDay calculated once per mount (doesn't change during a session)
+  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), []);
+
+  const roomImage = useMemo(
+    () => safeImage(ROOMS[character]?.[timeOfDay], FALLBACK_ROOM[character]),
+    [character, timeOfDay]
+  );
+
+  const hotspots = useMemo(
+    () => character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS,
+    [character]
+  );
+
+  // ─── State ──────────────────────────────────────────────────────────────
   const [isSekretVisible, setIsSekretVisible] = useState(false);
-  const [isFirstVisit] = useState(true);
-  const [showGuide, setShowGuide] = useState(false);
-  const [hintSpot, setHintSpot] = useState<string | null>(null);
-  const [greeting, setGreeting] = useState(() => getGreeting(character, mood, timeOfDay, false));
+  const [isFirstVisit, setIsFirstVisit]       = useState(true);  // persisted below
+  const [showGuide, setShowGuide]             = useState(false);
+  const [hintSpot, setHintSpot]               = useState<string | null>(null);
+  const [greeting, setGreeting]               = useState(
+    () => getGreeting(character, mood, timeOfDay, false)
+  );
 
-  const pose = getPose(mood, timeOfDay, isFirstVisit && isSekretVisible);
+  const pose = getPose(mood, timeOfDay, isFirstVisit, isSekretVisible);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const greetAnim = useRef(new Animated.Value(0)).current;
-  const avatarAnim = useRef(new Animated.Value(0)).current;
+  // ─── AsyncStorage: first-visit persistence ───────────────────────────────
+  useEffect(() => {
+    loadState('sekretbip_first_visit_done').then(done => {
+      if (done === 'true') setIsFirstVisit(false);
+    });
+  }, []);
+
+  // ─── Animations ─────────────────────────────────────────────────────────
+  const fadeAnim    = useRef(new Animated.Value(0)).current;
+  const greetAnim   = useRef(new Animated.Value(0)).current;
+  const avatarAnim  = useRef(new Animated.Value(0)).current;
   const avatarSlide = useRef(new Animated.Value(14)).current;
   const avatarScale = useRef(new Animated.Value(0.96)).current;
-  const glowAnim = useRef(new Animated.Value(0.2)).current;
-  const guideAnim = useRef(new Animated.Value(0)).current;
-  const hintAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim    = useRef(new Animated.Value(0.2)).current;
+  const guideAnim   = useRef(new Animated.Value(0)).current;
+  const hintAnim    = useRef(new Animated.Value(0)).current;
+  const pulseAnim   = useRef(new Animated.Value(0)).current;
 
+  // Loop refs for cleanup
+  const glowLoopRef  = useRef<Animated.CompositeAnimation | null>(null);
+  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  // Mount animations + loops
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 850,
-      useNativeDriver: true,
-    }).start(() => {
-      Animated.timing(greetAnim, {
-        toValue: 1,
-        duration: 450,
-        useNativeDriver: true,
-      }).start();
+    Animated.timing(fadeAnim, { toValue: 1, duration: 850, useNativeDriver: true }).start(() => {
+      Animated.timing(greetAnim, { toValue: 1, duration: 450, useNativeDriver: true }).start();
     });
 
-    Animated.loop(
+    glowLoopRef.current = Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 1600, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 1,   duration: 1600, useNativeDriver: true }),
         Animated.timing(glowAnim, { toValue: 0.2, duration: 1600, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    glowLoopRef.current.start();
 
-    Animated.loop(
+    pulseLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    pulseLoopRef.current.start();
 
+    // Auto hint on first load
     const guideTimer = setTimeout(() => {
       setHintSpot('pages');
       setTimeout(() => setHintSpot(null), 1800);
     }, 700);
 
-    return () => clearTimeout(guideTimer);
+    return () => {
+      clearTimeout(guideTimer);
+      glowLoopRef.current?.stop();
+      pulseLoopRef.current?.stop();
+    };
   }, []);
 
+  // ─── hintAnim drives hint opacity — now actually wired ──────────────────
+  // FIXED: hintAnim was never started; hint was permanently invisible
+  useEffect(() => {
+    if (hintSpot) {
+      Animated.timing(hintAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(hintAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
+    }
+  }, [hintSpot]);
+
+  // Greeting updates on mood/character/time change
   useEffect(() => {
     setGreeting(getGreeting(character, mood, timeOfDay, isSekretVisible));
   }, [character, mood, timeOfDay, isSekretVisible]);
 
+  // Guide overlay fade
   useEffect(() => {
     if (showGuide) {
-      Animated.timing(guideAnim, {
-        toValue: 1,
-        duration: 180,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(guideAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
       const timer = setTimeout(() => {
         setShowGuide(false);
-        Animated.timing(guideAnim, {
-          toValue: 0,
-          duration: 240,
-          useNativeDriver: true,
-        }).start();
+        Animated.timing(guideAnim, { toValue: 0, duration: 240, useNativeDriver: true }).start();
       }, 2000);
       return () => clearTimeout(timer);
     }
   }, [showGuide]);
 
+  // Avatar entrance / exit
   useEffect(() => {
     Animated.parallel([
       Animated.timing(avatarAnim, {
@@ -411,28 +466,46 @@ export function RoomScreen({
       }),
       Animated.spring(avatarSlide, {
         toValue: isSekretVisible ? 0 : 14,
-        tension: 55,
-        friction: 8,
-        useNativeDriver: true,
+        tension: 55, friction: 8, useNativeDriver: true,
       }),
       Animated.spring(avatarScale, {
         toValue: isSekretVisible ? 1 : 0.96,
-        tension: 60,
-        friction: 9,
-        useNativeDriver: true,
+        tension: 60, friction: 9, useNativeDriver: true,
       }),
     ]).start();
   }, [isSekretVisible]);
 
+  // ─── Handlers ────────────────────────────────────────────────────────────
+
   const handleHotspot = (target: RoomTarget) => {
     if (target === 'sekret') {
-      setIsSekretVisible(v => !v);
+      setIsSekretVisible(v => {
+        const next = !v;
+        // First time summoning — mark first visit done
+        if (next && isFirstVisit) {
+          setIsFirstVisit(false);
+          saveState('sekretbip_first_visit_done', 'true');
+        }
+        updateRoomMemory?.({ lastSummon: new Date().toISOString(), character });
+        return next;
+      });
       setHintSpot('summon');
       setTimeout(() => setHintSpot(null), 1200);
       return;
     }
+    updateRoomMemory?.({ lastHotspot: target, lastVisit: new Date().toISOString() });
     setScreen(target);
   };
+
+  const handleCharacterSwitch = (char: Character) => {
+    setSelectedSekret(char);
+    setIsSekretVisible(false);
+    setHintSpot('summon');
+    setTimeout(() => setHintSpot(null), 1500);  // FIXED: hint was never cleared on toggle
+    updateRoomMemory?.({ character: char });
+  };
+
+  // ─── Derived display ──────────────────────────────────────────────────────
 
   const getPresence = () => {
     if (isSekretVisible) return character === 'raylene' ? 'Raylene is nearby' : 'Rylane is posted up';
@@ -440,18 +513,19 @@ export function RoomScreen({
   };
 
   const timeBadge = {
-    morning: '☀️ morning',
-    day: '🌤️ afternoon',
-    evening: '🌆 evening',
-    night: '🌙 late night',
+    morning: '\u2600\uFE0F morning',
+    day:     '\uD83C\uDF24\uFE0F afternoon',
+    evening: '\uD83C\uDF06 evening',
+    night:   '\uD83C\uDF19 late night',
   }[timeOfDay];
 
-  const guideTargets = useMemo(() => hotspots.slice(0, 4), [hotspots]);
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
 
+      {/* ── Room background ─────────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
         <Image
           source={roomImage}
@@ -463,11 +537,11 @@ export function RoomScreen({
         <View style={styles.overlay} />
       </Animated.View>
 
+      {/* ── Hotspots ────────────────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
         {hotspots.map((spot) => {
-          const isHinted = hintSpot === spot.id;
-          const shouldGuide = showGuide || guideAnim.__getValue() > 0;
-          const showTapHint = isHinted || (spot.pulse && shouldGuide);
+          const isHinted    = hintSpot === spot.id;
+          const showTapHint = isHinted || (spot.pulse && showGuide);
 
           return (
             <TouchableOpacity
@@ -476,14 +550,30 @@ export function RoomScreen({
                 styles.hotspot,
                 spot.style,
                 DEBUG_HOTSPOTS && styles.hotspotDebug,
-                (showTapHint || showGuide) && styles.hotspotGlow,
+                showTapHint && styles.hotspotGlow,
               ]}
               onPress={() => handleHotspot(spot.target)}
               activeOpacity={0.72}
               accessibilityRole="button"
               accessibilityLabel={spot.label}
             >
-              {(showTapHint && !DEBUG_HOTSPOTS) && (
+              {/* Pulse ring for pulse hotspots */}
+              {spot.pulse && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.pulseRing,
+                    {
+                      opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }),
+                      transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) }],
+                      borderColor: t.accent,
+                    },
+                  ]}
+                />
+              )}
+
+              {/* Tap hint label — FIXED: now actually visible via hintAnim useEffect */}
+              {showTapHint && !DEBUG_HOTSPOTS && (
                 <Animated.View
                   style={[
                     styles.tapHintWrap,
@@ -501,15 +591,13 @@ export function RoomScreen({
         })}
       </Animated.View>
 
+      {/* ── Avatar ──────────────────────────────────────────────────────── */}
       <Animated.View
         style={[
           styles.avatarWrap,
           {
             opacity: avatarAnim,
-            transform: [
-              { translateY: avatarSlide },
-              { scale: avatarScale },
-            ],
+            transform: [{ translateY: avatarSlide }, { scale: avatarScale }],
           },
         ]}
         pointerEvents="none"
@@ -523,6 +611,7 @@ export function RoomScreen({
         />
       </Animated.View>
 
+      {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
         <View style={styles.timeBadge}>
           <Text style={styles.timeBadgeText}>{timeBadge}</Text>
@@ -530,39 +619,25 @@ export function RoomScreen({
 
         <View style={styles.characterToggle}>
           <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              character === 'raylene' && styles.toggleBtnActivePink,
-            ]}
-            onPress={() => {
-              setSelectedSekret('raylene');
-              setIsSekretVisible(false);
-              setHintSpot('summon');
-            }}
+            style={[styles.toggleBtn, character === 'raylene' && styles.toggleBtnActivePink]}
+            onPress={() => handleCharacterSwitch('raylene')}
             accessibilityRole="button"
             accessibilityLabel="Switch to Raylene"
           >
-            <Text style={styles.toggleText}>💜 Raylene</Text>
+            <Text style={styles.toggleText}>\uD83D\uDC9C Raylene</Text>
           </TouchableOpacity>
-
           <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              character === 'rylane' && styles.toggleBtnActivePurple,
-            ]}
-            onPress={() => {
-              setSelectedSekret('rylane');
-              setIsSekretVisible(false);
-              setHintSpot('summon');
-            }}
+            style={[styles.toggleBtn, character === 'rylane' && styles.toggleBtnActivePurple]}
+            onPress={() => handleCharacterSwitch('rylane')}
             accessibilityRole="button"
             accessibilityLabel="Switch to Rylane"
           >
-            <Text style={styles.toggleText}>⚡ Rylane</Text>
+            <Text style={styles.toggleText}>\u26A1 Rylane</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
 
+      {/* ── Presence pill ───────────────────────────────────────────────── */}
       <Animated.View style={[styles.presencePill, { opacity: fadeAnim }]}>
         <Animated.View
           style={[
@@ -576,27 +651,32 @@ export function RoomScreen({
         <Text style={styles.presenceText}>{getPresence()}</Text>
       </Animated.View>
 
+      {/* ── Bottom content ──────────────────────────────────────────────── */}
       <Animated.View style={[styles.bottomContent, { opacity: greetAnim }]}>
+
+        {/* Greeting bubble */}
         <TouchableOpacity
           style={styles.greetingBubble}
           onPress={() => {
             setIsSekretVisible(v => !v);
             setHintSpot('summon');
+            setTimeout(() => setHintSpot(null), 1200);
           }}
           activeOpacity={0.85}
           accessibilityRole="button"
-          accessibilityLabel={isSekretVisible ? "Hide Se'kret" : "Call Se'kret"}
+          accessibilityLabel={isSekretVisible ? "Hide Se\u2019kret" : "Call Se\u2019kret"}
         >
           <Text style={styles.greetingChar}>
-            {character === 'raylene' ? '💜 Raylene' : '⚡ Rylane'}
+            {character === 'raylene' ? '\uD83D\uDC9C Raylene' : '\u26A1 Rylane'}
           </Text>
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
           <Text style={styles.greetingText}>"{greeting}"</Text>
           <Text style={[styles.greetingTap, { color: t.soft }]}>
-            {isSekretVisible ? 'tap to dismiss' : 'tap to call Se\'kret'}
+            {isSekretVisible ? 'tap to dismiss' : "tap to call Se\u2019kret"}
           </Text>
         </TouchableOpacity>
 
+        {/* Drop a Bip CTA */}
         <TouchableOpacity
           style={[styles.mainBtn, { borderColor: t.accent }]}
           onPress={() => setScreen('sekret')}
@@ -605,18 +685,18 @@ export function RoomScreen({
           accessibilityLabel="Drop a Bip"
         >
           <Text style={[styles.mainBtnText, { color: t.accent }]}>
-            Drop a Bip {character === 'raylene' ? '💜' : '⚡'}
+            Drop a Bip {character === 'raylene' ? '\uD83D\uDC9C' : '\u26A1'}
           </Text>
         </TouchableOpacity>
 
+        {/* Control row */}
         <View style={styles.controlRow}>
           <TouchableOpacity
             style={styles.guideBtn}
             onPress={() => {
               setShowGuide(true);
               setHintSpot('pages');
-              Animated.timing(hintAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
-              setTimeout(() => Animated.timing(hintAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(), 2000);
+              setTimeout(() => setHintSpot(null), 2000);
             }}
             accessibilityRole="button"
             accessibilityLabel="Room Guide"
@@ -626,7 +706,7 @@ export function RoomScreen({
 
           <TouchableOpacity
             style={styles.guideBtn}
-            onPress={() => setHintSpot(prev => (prev ? null : 'pages'))}
+            onPress={() => setHintSpot(prev => prev ? null : 'pages')}
             accessibilityRole="button"
             accessibilityLabel="Tap hint"
           >
@@ -634,13 +714,16 @@ export function RoomScreen({
           </TouchableOpacity>
         </View>
 
+        {/* Quick row — FIXED: now includes voiceBip and calm */}
         <View style={styles.quickRow}>
-          {[
-            { emoji: '🏠', label: 'Home', target: 'home' as const },
-            { emoji: '📖', label: 'Pages', target: 'pages' as const },
-            { emoji: '🌐', label: 'Circle', target: 'circle' as const },
-            { emoji: '⭐', label: 'Growth', target: 'bippin2' as const },
-          ].map(({ emoji, label, target }) => (
+          {([
+            { emoji: '\uD83C\uDFE0', label: 'Home',    target: 'home'    },
+            { emoji: '\uD83D\uDCD6', label: 'Pages',   target: 'pages'   },
+            { emoji: '\uD83C\uDF99\uFE0F', label: 'Voice',   target: 'voiceBip' },
+            { emoji: '\uD83C\uDF19', label: 'Calm',    target: 'calm'    },
+            { emoji: '\uD83C\uDF10', label: 'Circle',  target: 'circle'  },
+            { emoji: '\u2B50',      label: 'Growth',  target: 'bippin2' },
+          ] as { emoji: string; label: string; target: string }[]).map(({ emoji, label, target }) => (
             <TouchableOpacity
               key={target}
               style={styles.quickBtn}
@@ -654,29 +737,21 @@ export function RoomScreen({
           ))}
         </View>
 
-        <Text style={styles.tagline}>your room. your voice. always you. ♡</Text>
+        <Text style={styles.tagline}>your room. your voice. always you. \u2661</Text>
       </Animated.View>
     </View>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#0d0014',
-  },
-  bg: {
-    width,
-    height,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(13,0,20,0.34)',
-  },
-  hotspot: {
-    position: 'absolute',
-  },
-  hotspotGlow: {
+  root:                  { flex: 1, backgroundColor: '#0d0014' },
+  bg:                    { width, height },
+  overlay:               { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,0,20,0.34)' },
+
+  hotspot:               { position: 'absolute' },
+  hotspotGlow:           {
     borderRadius: 16,
     backgroundColor: 'rgba(244,114,182,0.08)',
     shadowColor: '#f472b6',
@@ -684,12 +759,17 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
-  hotspotDebug: {
-    borderWidth: 2,
-    borderColor: '#f472b6',
-    backgroundColor: 'rgba(244,114,182,0.15)',
+  hotspotDebug:          { borderWidth: 2, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.15)' },
+
+  pulseRing:             {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    borderWidth: 1.5,
   },
-  tapHintWrap: {
+
+  tapHintWrap:           {
     position: 'absolute',
     top: -22,
     left: 0,
@@ -700,12 +780,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 999,
   },
-  tapHint: {
-    color: '#f5f0ff',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  avatarWrap: {
+  tapHint:               { color: '#f5f0ff', fontSize: 9, fontWeight: '800' },
+
+  avatarWrap:            {
     position: 'absolute',
     bottom: '21%',
     alignSelf: 'center',
@@ -713,11 +790,9 @@ const styles = StyleSheet.create({
     height: height * 0.46,
     zIndex: 10,
   },
-  avatar: {
-    width: '100%',
-    height: '100%',
-  },
-  topBar: {
+  avatar:                { width: '100%', height: '100%' },
+
+  topBar:                {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 52 : 32,
     left: 16,
@@ -726,22 +801,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  timeBadge: {
+  timeBadge:             {
     backgroundColor: 'rgba(13,0,20,0.68)',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 5,
   },
-  timeBadgeText: {
-    color: '#c4b5fd',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  characterToggle: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  toggleBtn: {
+  timeBadgeText:         { color: '#c4b5fd', fontSize: 12, fontWeight: '600' },
+
+  characterToggle:       { flexDirection: 'row', gap: 8 },
+  toggleBtn:             {
     borderWidth: 1,
     borderColor: 'rgba(167,114,192,0.35)',
     borderRadius: 12,
@@ -749,20 +818,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     backgroundColor: 'rgba(13,0,20,0.55)',
   },
-  toggleBtnActivePink: {
-    backgroundColor: 'rgba(217,70,239,0.24)',
-    borderColor: '#d946ef',
-  },
-  toggleBtnActivePurple: {
-    backgroundColor: 'rgba(124,58,237,0.24)',
-    borderColor: '#7c3aed',
-  },
-  toggleText: {
-    color: '#f5f0ff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  presencePill: {
+  toggleBtnActivePink:   { backgroundColor: 'rgba(217,70,239,0.24)', borderColor: '#d946ef' },
+  toggleBtnActivePurple: { backgroundColor: 'rgba(124,58,237,0.24)', borderColor: '#7c3aed' },
+  toggleText:            { color: '#f5f0ff', fontSize: 11, fontWeight: '700' },
+
+  presencePill:          {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 96 : 74,
     left: 16,
@@ -774,18 +834,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 7,
   },
-  presenceDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#d946ef',
-  },
-  presenceText: {
-    color: '#e9d5ff',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  bottomContent: {
+  presenceDot:           { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d946ef' },
+  presenceText:          { color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+
+  bottomContent:         {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -793,7 +845,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 36 : 24,
     paddingHorizontal: 16,
   },
-  greetingBubble: {
+  greetingBubble:        {
     backgroundColor: 'rgba(13,0,20,0.84)',
     borderWidth: 1,
     borderColor: 'rgba(217,70,239,0.3)',
@@ -801,32 +853,12 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  greetingChar: {
-    color: '#c4b5fd',
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 5,
-  },
-  roomCopy: {
-    color: '#f5f0ff',
-    fontSize: 12,
-    fontWeight: '700',
-    opacity: 0.9,
-    marginBottom: 6,
-  },
-  greetingText: {
-    color: '#f5f0ff',
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
-    fontStyle: 'italic',
-    marginBottom: 6,
-  },
-  greetingTap: {
-    fontSize: 10,
-    fontStyle: 'italic',
-  },
-  mainBtn: {
+  greetingChar:          { color: '#c4b5fd', fontSize: 11, fontWeight: '700', marginBottom: 5 },
+  roomCopy:              { color: '#f5f0ff', fontSize: 12, fontWeight: '700', opacity: 0.9, marginBottom: 6 },
+  greetingText:          { color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 22, fontStyle: 'italic', marginBottom: 6 },
+  greetingTap:           { fontSize: 10, fontStyle: 'italic' },
+
+  mainBtn:               {
     borderWidth: 1.5,
     borderRadius: 50,
     paddingVertical: 14,
@@ -839,17 +871,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     elevation: 8,
   },
-  mainBtnText: {
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 0.3,
-  },
-  controlRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  guideBtn: {
+  mainBtnText:           { fontSize: 16, fontWeight: '900', letterSpacing: 0.3 },
+
+  controlRow:            { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  guideBtn:              {
     flex: 1,
     backgroundColor: 'rgba(13,0,20,0.7)',
     borderWidth: 1,
@@ -858,39 +883,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  guideBtnText: {
-    color: '#f5f0ff',
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  quickRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 10,
-  },
-  quickBtn: {
+  guideBtnText:          { color: '#f5f0ff', fontSize: 11, fontWeight: '800' },
+
+  quickRow:              { flexDirection: 'row', gap: 6, marginBottom: 10 },
+  quickBtn:              {
     flex: 1,
     backgroundColor: 'rgba(13,0,20,0.7)',
     borderWidth: 1,
     borderColor: 'rgba(167,114,192,0.25)',
     borderRadius: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
     alignItems: 'center',
   },
-  quickEmoji: {
-    fontSize: 18,
-    marginBottom: 3,
-  },
-  quickLabel: {
-    color: '#E2E8F0',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  tagline: {
-    color: '#c4b5fd',
-    fontSize: 12,
-    textAlign: 'center',
-    fontStyle: 'italic',
-    opacity: 0.8,
-  },
+  quickEmoji:            { fontSize: 16, marginBottom: 2 },
+  quickLabel:            { color: '#E2E8F0', fontSize: 9, fontWeight: '700' },
+
+  tagline:               { color: '#c4b5fd', fontSize: 12, textAlign: 'center', fontStyle: 'italic', opacity: 0.8 },
 });
