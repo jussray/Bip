@@ -1,73 +1,118 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, Image,
-  StyleSheet, Dimensions, Animated, Platform,
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  Dimensions,
+  Animated,
+  Platform,
+  Easing,
+  ImageSourcePropType,
+  ViewStyle,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
 const { width, height } = Dimensions.get('window');
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DEBUG — set true to see pink hotspot outlines while testing
-// ─────────────────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ROOM BACKGROUNDS
-// ─────────────────────────────────────────────────────────────────────────────
-const ROOMS = {
+type Character = 'raylene' | 'rylane';
+type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
+type Pose = 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody';
+type Mood = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
+type RoomTarget = 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm' | 'voiceBip' | 'sekret';
+
+type Hotspot = {
+  id: string;
+  label: string;
+  target: RoomTarget;
+  style: ViewStyle;
+  hint?: string;
+  pulse?: boolean;
+};
+
+type AssetMap = Record<TimeOfDay, ImageSourcePropType>;
+type AvatarMap = Record<Pose, ImageSourcePropType>;
+
+const ROOMS: Record<Character, AssetMap> = {
   raylene: {
     morning: require('../assets/images/raylene-room-morning.png'),
-    day:     require('../assets/images/raylene-room-day.png'),
+    day: require('../assets/images/raylene-room-day.png'),
     evening: require('../assets/images/raylene-room-evening.png'),
-    night:   require('../assets/images/raylene-room-night.png'),
+    night: require('../assets/images/raylene-room-night.png'),
   },
   rylane: {
     morning: require('../assets/images/rylane-room-morning.png'),
-    day:     require('../assets/images/rylane-room-day.png'),
+    day: require('../assets/images/rylane-room-day.png'),
     evening: require('../assets/images/rylane-room-evening.png'),
-    night:   require('../assets/images/rylane-room-night.png'),
+    night: require('../assets/images/rylane-room-night.png'),
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CHARACTER AVATARS — pose selection by mood + context
-// ─────────────────────────────────────────────────────────────────────────────
-const AVATARS = {
+const AVATARS: Record<Character, AvatarMap> = {
   raylene: {
-    neutral:  require('../assets/images/raylene-neutral.png'),
-    happy:    require('../assets/images/raylene-happy.png'),
+    neutral: require('../assets/images/raylene-neutral.png'),
+    happy: require('../assets/images/raylene-happy.png'),
     thinking: require('../assets/images/raylene-thinking.png'),
-    writing:  require('../assets/images/raylene-writing.png'),
-    window:   require('../assets/images/raylene-window.png'),
+    writing: require('../assets/images/raylene-writing.png'),
+    window: require('../assets/images/raylene-window.png'),
     fullbody: require('../assets/images/raylene-fullbody.png'),
   },
   rylane: {
-    neutral:  require('../assets/images/rylane-neutral.png'),
-    happy:    require('../assets/images/rylane-happy.png'),
+    neutral: require('../assets/images/rylane-neutral.png'),
+    happy: require('../assets/images/rylane-happy.png'),
     thinking: require('../assets/images/rylane-thinking.png'),
-    writing:  require('../assets/images/rylane-writing.png'),
-    window:   require('../assets/images/rylane-window.png'),
+    writing: require('../assets/images/rylane-writing.png'),
+    window: require('../assets/images/rylane-window.png'),
     fullbody: require('../assets/images/rylane-fullbody.png'),
   },
 };
 
-type Pose = 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody';
-type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
-type Character = 'raylene' | 'rylane';
+const FALLBACK_ROOM: Record<Character, ImageSourcePropType> = {
+  raylene: require('../assets/images/raylene-room-day.png'),
+  rylane: require('../assets/images/rylane-room-day.png'),
+};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
+  raylene: require('../assets/images/raylene-neutral.png'),
+  rylane: require('../assets/images/rylane-neutral.png'),
+};
+
 const getTimeOfDay = (): TimeOfDay => {
   const h = new Date().getHours();
-  if (h >= 6  && h < 12) return 'morning';
+  if (h >= 6 && h < 12) return 'morning';
   if (h >= 12 && h < 18) return 'day';
   if (h >= 18 && h < 22) return 'evening';
   return 'night';
 };
 
-const getPose = (mood: string, timeOfDay: TimeOfDay, isFirstVisit: boolean): Pose => {
+const getPresenceLine = (character: Character, timeOfDay: TimeOfDay): string => {
+  if (timeOfDay === 'night') return 'Cloud is floating around.';
+  if (character === 'raylene') return 'Raylene is nearby.';
+  return 'Rylane is posted up.';
+};
+
+const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
+  const map: Record<Character, Record<TimeOfDay, string>> = {
+    raylene: {
+      morning: 'Soft light. Quiet thoughts. Come sit.',
+      day: 'Room open. Energy low-key alive.',
+      evening: 'Golden hour got the room feeling honest.',
+      night: 'Heavy night. The room’s still here with you.',
+    },
+    rylane: {
+      morning: 'Early light, late thoughts. We move gentle.',
+      day: 'Room’s awake. Let’s get into it.',
+      evening: 'Evening’s here. That means real talk time.',
+      night: 'Late night mode. Keep it low and real.',
+    },
+  };
+  return map[character][timeOfDay];
+};
+
+const getPose = (mood: Mood, timeOfDay: TimeOfDay, isFirstVisit: boolean): Pose => {
   if (isFirstVisit) return 'fullbody';
   if (timeOfDay === 'night' || mood === 'Sad' || mood === 'Tired') return 'window';
   if (mood === 'Happy') return 'happy';
@@ -75,190 +120,199 @@ const getPose = (mood: string, timeOfDay: TimeOfDay, isFirstVisit: boolean): Pos
   return 'neutral';
 };
 
-const getGreeting = (character: Character, mood: string, timeOfDay: TimeOfDay): string => {
-  if (timeOfDay === 'night') {
-    const lines = [
-      "It's one of those nights huh.",
-      "Your brain doing gymnastics again?",
-      "Drink some water and tell me what's going on.",
-      "We're not solving life tonight. Just this moment.",
-    ];
-    return lines[Math.floor(Math.random() * lines.length)];
-  }
-  if (timeOfDay === 'morning') {
-    const lines = [
-      "Morning. How we feeling today for real.",
-      "You came back. I'm glad.",
-      "New day. Tell me what's on your mind.",
-    ];
-    return lines[Math.floor(Math.random() * lines.length)];
-  }
-  if (mood === 'Sad')   return character === 'raylene' ? "Come sit. I've been thinking about you." : "Nah I could tell something was off. Talk.";
-  if (mood === 'Angry') return character === 'raylene' ? "Hold on. Back up. Who got you out here like this?" : "Okay who we irritated at today? 😒";
-  if (mood === 'Tired') return character === 'raylene' ? "Baby you look tired. Not the sleep kind." : "You been running on empty huh. Sit down.";
-  if (mood === 'Happy') return character === 'raylene' ? "Look at you. Something good happened." : "Aye. You seem different today. Good different.";
+const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isVisible: boolean): string => {
+  const moodKey = String(mood).toLowerCase();
 
-  const rayleneDefaults = [
-    "Come sit. Tell me the real version.",
-    "Nah. Your face already told on you. What's up?",
-    "Baby are we healing or are we pretending today? 👀",
-    "I've been waiting on you.",
-  ];
-  const rylaneDefaults = [
-    "Aight. Come in. What we bippin about?",
-    "Bet. Spill.",
-    "Nah cause what are we doing today? 😭",
-    "Who approved your decisions lately? 👀",
-  ];
-  const pool = character === 'raylene' ? rayleneDefaults : rylaneDefaults;
-  return pool[Math.floor(Math.random() * pool.length)];
+  if (isVisible && timeOfDay === 'night') {
+    return character === 'raylene'
+      ? 'Come sit. We not doing the most tonight.'
+      : 'Aight, you here now. Let’s keep it real.';
+  }
+
+  if (moodKey.includes('sad')) {
+    return character === 'raylene'
+      ? 'Come sit. I already know it’s been a lot.'
+      : 'Nah, I can tell something hit you. Talk to me.';
+  }
+
+  if (moodKey.includes('angry')) {
+    return character === 'raylene'
+      ? 'Hold on. Who got you like this?'
+      : 'Okay, who irritated us today? 😒';
+  }
+
+  if (moodKey.includes('tired')) {
+    return character === 'raylene'
+      ? 'You look tired-tired. Sit down.'
+      : 'You been running on fumes huh. Rest your head.';
+  }
+
+  if (moodKey.includes('happy')) {
+    return character === 'raylene'
+      ? 'Look at you. Something good happened.'
+      : 'Aye, that face says good news.';
+  }
+
+  if (timeOfDay === 'morning') {
+    return character === 'raylene'
+      ? 'Morning. Tell me the real version of today.'
+      : 'Morning check-in. What we on?';
+  }
+
+  if (timeOfDay === 'evening') {
+    return character === 'raylene'
+      ? 'Evening got truth in it. Start wherever.'
+      : 'You made it to evening. That counts.';
+  }
+
+  if (timeOfDay === 'night') {
+    return character === 'raylene'
+      ? 'Heavy night huh. You don’t gotta carry it alone.'
+      : 'Late night thoughts? Yeah, I figured.';
+  }
+
+  return character === 'raylene'
+    ? 'Come sit. Tell me the real version.'
+    : 'Aight. What we bippin about?';
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HOTSPOT DEFINITIONS
-// Coordinates calibrated from room artwork.
-// All values are percentage strings — scale with any screen size.
-// Tweak here if needed after testing on device.
-// ─────────────────────────────────────────────────────────────────────────────
+const safeImage = (
+  source: ImageSourcePropType | undefined,
+  fallback: ImageSourcePropType
+): ImageSourcePropType => source ?? fallback;
 
-// Raylene room hotspots (daytime layout reference — Image 1)
-const RAYLENE_HOTSPOTS = [
+const RAYLENE_HOTSPOTS: Hotspot[] = [
   {
     id: 'pages',
     label: 'Journal 📖',
     target: 'pages',
-    // Open notebook — bottom center foreground
+    hint: 'Tap journal',
+    pulse: true,
     style: { bottom: '10%', left: '20%', width: '35%', height: '18%' },
   },
   {
     id: 'voiceBip',
     label: 'Headphones 🎙️',
     target: 'voiceBip',
-    // Headphones on floor rug — bottom left
+    hint: 'Tap headphones',
     style: { bottom: '14%', left: '2%', width: '18%', height: '12%' },
   },
   {
     id: 'cloudThoughts',
     label: 'Cloud Lamp ☁️',
-    target: 'cloudThoughts',
-    // Cloud lamp on desk — center left
+    target: 'calm',
+    hint: 'Tap cloud',
+    pulse: true,
     style: { top: '42%', left: '26%', width: '14%', height: '12%' },
   },
   {
     id: 'comfort',
     label: 'Bed 🌙',
     target: 'comfort',
-    // Bed right side
+    hint: 'Tap bed',
     style: { top: '38%', right: '2%', width: '38%', height: '35%' },
   },
   {
     id: 'bippin2',
     label: 'Growth Board ⭐',
     target: 'bippin2',
-    // Bippin2WomanHood whiteboard — top left wall
+    hint: 'Tap board',
     style: { top: '4%', left: '18%', width: '24%', height: '28%' },
   },
   {
     id: 'circle',
     label: 'Photo Wall 🌐',
     target: 'circle',
-    // Polaroid photo wall — far right
+    hint: 'Tap wall',
     style: { top: '4%', right: '0%', width: '18%', height: '55%' },
   },
   {
     id: 'calm',
     label: 'Window 🌤️',
     target: 'calm',
-    // Window — far left
+    hint: 'Tap window',
+    pulse: true,
     style: { top: '4%', left: '0%', width: '18%', height: '50%' },
   },
   {
     id: 'summon',
-    label: 'Se\'kret 💜',
-    target: 'summon',
-    // Hoodie on chair — left center
+    label: "Se'kret 💜",
+    target: 'sekret',
+    hint: 'Call Se’kret',
     style: { top: '38%', left: '4%', width: '20%', height: '30%' },
   },
 ];
 
-// Rylane room hotspots (daytime layout reference — Image 7)
-const RYLANE_HOTSPOTS = [
+const RYLANE_HOTSPOTS: Hotspot[] = [
   {
     id: 'pages',
     label: 'Journal 📖',
     target: 'pages',
-    // Open notebook — bottom center foreground
+    hint: 'Tap journal',
+    pulse: true,
     style: { bottom: '8%', left: '22%', width: '38%', height: '20%' },
   },
   {
     id: 'voiceBip',
     label: 'Headphones 🎙️',
     target: 'voiceBip',
-    // Headphones on desk — center
+    hint: 'Tap headphones',
     style: { top: '40%', left: '28%', width: '14%', height: '10%' },
   },
   {
     id: 'cloudThoughts',
     label: 'Cloud Neon ☁️',
-    target: 'cloudThoughts',
-    // Neon cloud sign — center wall
+    target: 'calm',
+    hint: 'Tap cloud',
+    pulse: true,
     style: { top: '28%', left: '36%', width: '14%', height: '12%' },
   },
   {
     id: 'comfort',
     label: 'Bed 🌙',
     target: 'comfort',
-    // Bed right side
+    hint: 'Tap bed',
     style: { top: '36%', right: '2%', width: '40%', height: '38%' },
   },
   {
     id: 'bippin2',
     label: 'Growth Board ⭐',
     target: 'bippin2',
-    // Bippin2MannHood whiteboard — top left
+    hint: 'Tap board',
     style: { top: '2%', left: '22%', width: '24%', height: '30%' },
   },
   {
     id: 'circle',
     label: 'Photo Wall 🌐',
     target: 'circle',
-    // Polaroid wall — right side
+    hint: 'Tap wall',
     style: { top: '2%', right: '0%', width: '20%', height: '50%' },
   },
   {
     id: 'calm',
     label: 'Window 🌤️',
     target: 'calm',
-    // Window — far left
+    hint: 'Tap window',
+    pulse: true,
     style: { top: '2%', left: '0%', width: '20%', height: '55%' },
   },
   {
     id: 'summon',
-    label: 'Se\'kret ⚡',
-    target: 'summon',
-    // Hoodie on gaming chair — left
+    label: "Se'kret ⚡",
+    target: 'sekret',
+    hint: 'Call Se’kret',
     style: { top: '30%', left: '2%', width: '24%', height: '36%' },
   },
 ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PROPS
-// ─────────────────────────────────────────────────────────────────────────────
 interface RoomScreenProps {
-  mood: string;
-  selectedSekret: string;
-  setSelectedSekret: (value: string) => void;
-  setScreen: (screen: string) => void;
+  mood: Mood;
+  selectedSekret: Character;
+  setSelectedSekret: (value: Character) => void;
+  setScreen: (screen: RoomTarget) => void;
   t: Record<string, any>;
-  // MEMORY_HOOK: lastVisit?: string
-  // MEMORY_HOOK: moodStreak?: number
-  // MEMORY_HOOK: lastShared?: string
-  // MEMORY_HOOK: daysSinceFirstBip?: number
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
 export function RoomScreen({
   mood,
   selectedSekret,
@@ -266,170 +320,269 @@ export function RoomScreen({
   setScreen,
   t,
 }: RoomScreenProps) {
-  const timeOfDay  = getTimeOfDay();
+  const timeOfDay = getTimeOfDay();
   const character: Character = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
-  const roomImage  = ROOMS[character][timeOfDay];
-  const hotspots   = character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS;
+  const roomImage = safeImage(ROOMS[character]?.[timeOfDay], FALLBACK_ROOM[character]);
+  const hotspots = character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS;
 
-  // Avatar state
   const [isSekretVisible, setIsSekretVisible] = useState(false);
-  const [isFirstVisit]   = useState(true); // MEMORY_HOOK: replace with persisted value
-  const [greeting]       = useState(() => getGreeting(character, mood, timeOfDay));
+  const [isFirstVisit] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
+  const [hintSpot, setHintSpot] = useState<string | null>(null);
+  const [greeting, setGreeting] = useState(() => getGreeting(character, mood, timeOfDay, false));
+
   const pose = getPose(mood, timeOfDay, isFirstVisit && isSekretVisible);
 
-  // Animations
-  const fadeAnim    = useRef(new Animated.Value(0)).current;
-  const greetAnim   = useRef(new Animated.Value(0)).current;
-  const avatarAnim  = useRef(new Animated.Value(0)).current;
-  const avatarSlide = useRef(new Animated.Value(40)).current;
-  const glowAnim    = useRef(new Animated.Value(0.7)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const greetAnim = useRef(new Animated.Value(0)).current;
+  const avatarAnim = useRef(new Animated.Value(0)).current;
+  const avatarSlide = useRef(new Animated.Value(14)).current;
+  const avatarScale = useRef(new Animated.Value(0.96)).current;
+  const glowAnim = useRef(new Animated.Value(0.2)).current;
+  const guideAnim = useRef(new Animated.Value(0)).current;
+  const hintAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Room fades in
     Animated.timing(fadeAnim, {
-      toValue: 1, duration: 900, useNativeDriver: true,
+      toValue: 1,
+      duration: 850,
+      useNativeDriver: true,
     }).start(() => {
-      // Greeting appears after room
       Animated.timing(greetAnim, {
-        toValue: 1, duration: 500, useNativeDriver: true,
+        toValue: 1,
+        duration: 450,
+        useNativeDriver: true,
       }).start();
     });
 
-    // Greeting glow pulse
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1,   duration: 2000, useNativeDriver: false }),
-        Animated.timing(glowAnim, { toValue: 0.7, duration: 2000, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 1, duration: 1600, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.2, duration: 1600, useNativeDriver: true }),
       ])
     ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
+      ])
+    ).start();
+
+    const guideTimer = setTimeout(() => {
+      setHintSpot('pages');
+      setTimeout(() => setHintSpot(null), 1800);
+    }, 700);
+
+    return () => clearTimeout(guideTimer);
   }, []);
 
-  // Avatar slide in when summoned
   useEffect(() => {
-    if (isSekretVisible) {
-      Animated.parallel([
-        Animated.timing(avatarAnim, {
-          toValue: 1, duration: 500, useNativeDriver: true,
-        }),
-        Animated.spring(avatarSlide, {
-          toValue: 0, tension: 60, friction: 8, useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      avatarAnim.setValue(0);
-      avatarSlide.setValue(40);
+    setGreeting(getGreeting(character, mood, timeOfDay, isSekretVisible));
+  }, [character, mood, timeOfDay, isSekretVisible]);
+
+  useEffect(() => {
+    if (showGuide) {
+      Animated.timing(guideAnim, {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+      const timer = setTimeout(() => {
+        setShowGuide(false);
+        Animated.timing(guideAnim, {
+          toValue: 0,
+          duration: 240,
+          useNativeDriver: true,
+        }).start();
+      }, 2000);
+      return () => clearTimeout(timer);
     }
+  }, [showGuide]);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(avatarAnim, {
+        toValue: isSekretVisible ? 1 : 0,
+        duration: isSekretVisible ? 420 : 220,
+        easing: isSekretVisible ? Easing.out(Easing.cubic) : Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.spring(avatarSlide, {
+        toValue: isSekretVisible ? 0 : 14,
+        tension: 55,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.spring(avatarScale, {
+        toValue: isSekretVisible ? 1 : 0.96,
+        tension: 60,
+        friction: 9,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, [isSekretVisible]);
 
-  const handleHotspot = (target: string) => {
-    if (target === 'summon') {
+  const handleHotspot = (target: RoomTarget) => {
+    if (target === 'sekret') {
       setIsSekretVisible(v => !v);
-    } else {
-      setScreen(target);
+      setHintSpot('summon');
+      setTimeout(() => setHintSpot(null), 1200);
+      return;
     }
+    setScreen(target);
+  };
+
+  const getPresence = () => {
+    if (isSekretVisible) return character === 'raylene' ? 'Raylene is nearby' : 'Rylane is posted up';
+    return getPresenceLine(character, timeOfDay);
   };
 
   const timeBadge = {
     morning: '☀️ morning',
-    day:     '🌤️ afternoon',
+    day: '🌤️ afternoon',
     evening: '🌆 evening',
-    night:   '🌙 late night',
+    night: '🌙 late night',
   }[timeOfDay];
+
+  const guideTargets = useMemo(() => hotspots.slice(0, 4), [hotspots]);
 
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
 
-      {/* ── Room background ── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
         <Image
           source={roomImage}
           style={styles.bg}
           resizeMode="cover"
           accessibilityIgnoresInvertColors
+          onError={() => undefined}
         />
         <View style={styles.overlay} />
       </Animated.View>
 
-      {/* ── Hotspot layer ── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
-        {hotspots.map(spot => (
-          <TouchableOpacity
-            key={spot.id}
-            style={[
-              styles.hotspot,
-              spot.style as any,
-              DEBUG_HOTSPOTS && styles.hotspotDebug,
-            ]}
-            onPress={() => handleHotspot(spot.target)}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel={spot.label}
-          >
-            {DEBUG_HOTSPOTS && (
-              <Text style={styles.debugLabel}>{spot.label}</Text>
-            )}
-          </TouchableOpacity>
-        ))}
+        {hotspots.map((spot) => {
+          const isHinted = hintSpot === spot.id;
+          const shouldGuide = showGuide || guideAnim.__getValue() > 0;
+          const showTapHint = isHinted || (spot.pulse && shouldGuide);
+
+          return (
+            <TouchableOpacity
+              key={spot.id}
+              style={[
+                styles.hotspot,
+                spot.style,
+                DEBUG_HOTSPOTS && styles.hotspotDebug,
+                (showTapHint || showGuide) && styles.hotspotGlow,
+              ]}
+              onPress={() => handleHotspot(spot.target)}
+              activeOpacity={0.72}
+              accessibilityRole="button"
+              accessibilityLabel={spot.label}
+            >
+              {(showTapHint && !DEBUG_HOTSPOTS) && (
+                <Animated.View
+                  style={[
+                    styles.tapHintWrap,
+                    {
+                      opacity: hintAnim,
+                      transform: [{ translateY: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }],
+                    },
+                  ]}
+                >
+                  <Text style={styles.tapHint}>{spot.hint ?? 'Tap'}</Text>
+                </Animated.View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </Animated.View>
 
-      {/* ── Summoned avatar ── */}
-      {isSekretVisible && (
-        <Animated.View
-          style={[
-            styles.avatarWrap,
-            {
-              opacity: avatarAnim,
-              transform: [{ translateY: avatarSlide }],
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <Image
-            source={AVATARS[character][pose]}
-            style={styles.avatar}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-          />
-        </Animated.View>
-      )}
+      <Animated.View
+        style={[
+          styles.avatarWrap,
+          {
+            opacity: avatarAnim,
+            transform: [
+              { translateY: avatarSlide },
+              { scale: avatarScale },
+            ],
+          },
+        ]}
+        pointerEvents="none"
+      >
+        <Image
+          source={safeImage(AVATARS[character]?.[pose], FALLBACK_AVATAR[character])}
+          style={styles.avatar}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          accessible={false}
+        />
+      </Animated.View>
 
-      {/* ── Top bar ── */}
       <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
         <View style={styles.timeBadge}>
           <Text style={styles.timeBadgeText}>{timeBadge}</Text>
         </View>
 
-        {/* Character toggle */}
         <View style={styles.characterToggle}>
           <TouchableOpacity
             style={[
               styles.toggleBtn,
-              character === 'raylene' && { backgroundColor: 'rgba(217,70,239,0.25)', borderColor: '#d946ef' },
+              character === 'raylene' && styles.toggleBtnActivePink,
             ]}
-            onPress={() => { setSelectedSekret('soft'); setIsSekretVisible(false); }}
+            onPress={() => {
+              setSelectedSekret('raylene');
+              setIsSekretVisible(false);
+              setHintSpot('summon');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Switch to Raylene"
           >
             <Text style={styles.toggleText}>💜 Raylene</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
             style={[
               styles.toggleBtn,
-              character === 'rylane' && { backgroundColor: 'rgba(124,58,237,0.25)', borderColor: '#7c3aed' },
+              character === 'rylane' && styles.toggleBtnActivePurple,
             ]}
-            onPress={() => { setSelectedSekret('rylane'); setIsSekretVisible(false); }}
+            onPress={() => {
+              setSelectedSekret('rylane');
+              setIsSekretVisible(false);
+              setHintSpot('summon');
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Switch to Rylane"
           >
             <Text style={styles.toggleText}>⚡ Rylane</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
 
-      {/* ── Bottom UI ── */}
-      <Animated.View style={[styles.bottomContent, { opacity: greetAnim }]}>
+      <Animated.View style={[styles.presencePill, { opacity: fadeAnim }]}>
+        <Animated.View
+          style={[
+            styles.presenceDot,
+            {
+              opacity: glowAnim,
+              transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.1] }) }],
+            },
+          ]}
+        />
+        <Text style={styles.presenceText}>{getPresence()}</Text>
+      </Animated.View>
 
-        {/* Greeting bubble */}
+      <Animated.View style={[styles.bottomContent, { opacity: greetAnim }]}>
         <TouchableOpacity
           style={styles.greetingBubble}
-          onPress={() => setIsSekretVisible(v => !v)}
+          onPress={() => {
+            setIsSekretVisible(v => !v);
+            setHintSpot('summon');
+          }}
           activeOpacity={0.85}
           accessibilityRole="button"
           accessibilityLabel={isSekretVisible ? "Hide Se'kret" : "Call Se'kret"}
@@ -437,13 +590,13 @@ export function RoomScreen({
           <Text style={styles.greetingChar}>
             {character === 'raylene' ? '💜 Raylene' : '⚡ Rylane'}
           </Text>
+          <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
           <Text style={styles.greetingText}>"{greeting}"</Text>
           <Text style={[styles.greetingTap, { color: t.soft }]}>
             {isSekretVisible ? 'tap to dismiss' : 'tap to call Se\'kret'}
           </Text>
         </TouchableOpacity>
 
-        {/* Main bip button */}
         <TouchableOpacity
           style={[styles.mainBtn, { borderColor: t.accent }]}
           onPress={() => setScreen('sekret')}
@@ -456,13 +609,37 @@ export function RoomScreen({
           </Text>
         </TouchableOpacity>
 
-        {/* Quick nav */}
+        <View style={styles.controlRow}>
+          <TouchableOpacity
+            style={styles.guideBtn}
+            onPress={() => {
+              setShowGuide(true);
+              setHintSpot('pages');
+              Animated.timing(hintAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
+              setTimeout(() => Animated.timing(hintAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(), 2000);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Room Guide"
+          >
+            <Text style={styles.guideBtnText}>Room Guide</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.guideBtn}
+            onPress={() => setHintSpot(prev => (prev ? null : 'pages'))}
+            accessibilityRole="button"
+            accessibilityLabel="Tap hint"
+          >
+            <Text style={styles.guideBtnText}>Tap Hint</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.quickRow}>
           {[
-            { emoji: '🏠', label: 'Home',   target: 'home'    },
-            { emoji: '📖', label: 'Pages',  target: 'pages'   },
-            { emoji: '🌐', label: 'Circle', target: 'circle'  },
-            { emoji: '⭐', label: 'Growth', target: 'bippin2' },
+            { emoji: '🏠', label: 'Home', target: 'home' as const },
+            { emoji: '📖', label: 'Pages', target: 'pages' as const },
+            { emoji: '🌐', label: 'Circle', target: 'circle' as const },
+            { emoji: '⭐', label: 'Growth', target: 'bippin2' as const },
           ].map(({ emoji, label, target }) => (
             <TouchableOpacity
               key={target}
@@ -483,9 +660,6 @@ export function RoomScreen({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STYLES
-// ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -497,40 +671,52 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(13,0,20,0.35)',
+    backgroundColor: 'rgba(13,0,20,0.34)',
   },
-
-  // Hotspots
   hotspot: {
     position: 'absolute',
+  },
+  hotspotGlow: {
+    borderRadius: 16,
+    backgroundColor: 'rgba(244,114,182,0.08)',
+    shadowColor: '#f472b6',
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
   },
   hotspotDebug: {
     borderWidth: 2,
     borderColor: '#f472b6',
     backgroundColor: 'rgba(244,114,182,0.15)',
   },
-  debugLabel: {
-    color: '#f472b6',
-    fontSize: 9,
-    fontWeight: '900',
-    padding: 2,
+  tapHintWrap: {
+    position: 'absolute',
+    top: -22,
+    left: 0,
+    backgroundColor: 'rgba(13,0,20,0.82)',
+    borderColor: 'rgba(196,181,253,0.25)',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
-
-  // Avatar
+  tapHint: {
+    color: '#f5f0ff',
+    fontSize: 9,
+    fontWeight: '800',
+  },
   avatarWrap: {
     position: 'absolute',
-    bottom: '22%',
+    bottom: '21%',
     alignSelf: 'center',
-    width: width * 0.55,
-    height: height * 0.45,
+    width: width * 0.56,
+    height: height * 0.46,
     zIndex: 10,
   },
   avatar: {
     width: '100%',
     height: '100%',
   },
-
-  // Top bar
   topBar: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 52 : 32,
@@ -541,7 +727,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   timeBadge: {
-    backgroundColor: 'rgba(13,0,20,0.65)',
+    backgroundColor: 'rgba(13,0,20,0.68)',
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 5,
@@ -563,13 +749,42 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     backgroundColor: 'rgba(13,0,20,0.55)',
   },
+  toggleBtnActivePink: {
+    backgroundColor: 'rgba(217,70,239,0.24)',
+    borderColor: '#d946ef',
+  },
+  toggleBtnActivePurple: {
+    backgroundColor: 'rgba(124,58,237,0.24)',
+    borderColor: '#7c3aed',
+  },
   toggleText: {
     color: '#f5f0ff',
     fontSize: 11,
     fontWeight: '700',
   },
-
-  // Bottom UI
+  presencePill: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 96 : 74,
+    left: 16,
+    backgroundColor: 'rgba(13,0,20,0.7)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  presenceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#d946ef',
+  },
+  presenceText: {
+    color: '#e9d5ff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   bottomContent: {
     position: 'absolute',
     bottom: 0,
@@ -591,6 +806,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     marginBottom: 5,
+  },
+  roomCopy: {
+    color: '#f5f0ff',
+    fontSize: 12,
+    fontWeight: '700',
+    opacity: 0.9,
+    marginBottom: 6,
   },
   greetingText: {
     color: '#f5f0ff',
@@ -621,6 +843,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 0.3,
+  },
+  controlRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  guideBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(13,0,20,0.7)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,114,192,0.25)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  guideBtnText: {
+    color: '#f5f0ff',
+    fontSize: 11,
+    fontWeight: '800',
   },
   quickRow: {
     flexDirection: 'row',
