@@ -64,7 +64,7 @@ const rylaneNeutralV2    = require('../assets/images/rylane-neutral-v2.png');
 // ── Room Backgrounds ──────────────────────────────────────────────────────────
 // raylene-room-night requires: git mv night-room-v2.png bg-raylene-room-night.png
 const bgRayleneRoomDay   = require('../assets/images/bg-raylene-room-day.png');
-const bgRayleneRoomNight = require('../assets/images/bg-raylene-room-night.png'); // after rename
+const bgRayleneRoomNight = require('../assets/images/bg-raylene-room-night`.png'); // after rename
 const bgRylaneRoomDay    = require('../assets/images/bg-rylane-room-day.png');
 const bgRylaneRoomNight  = require('../assets/images/bg-rylane-room-night.png');
 const roomBg             = require('../assets/images/room-bg.png');       // generic day fallback
