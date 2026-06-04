@@ -37,10 +37,30 @@ interface BridgeScreenProps {
 // ── Share type options ────────────────────────────────────────────────────────
 
 const SHARE_TYPES = [
-  { id: 'mood',      emoji: '💜', label: 'My Mood',       placeholder: 'Tell them how you're feeling…' },
-  { id: 'thought',   emoji: '💭', label: 'A Thought',      placeholder: 'Something on your mind…' },
-  { id: 'need',      emoji: '🌿', label: 'Something I Need', placeholder: 'What would help right now…' },
-  { id: 'win',       emoji: '⚡', label: 'A Win',           placeholder: 'Something good that happened…' },
+  {
+    id: 'mood',
+    emoji: '💜',
+    label: 'My Mood',
+    placeholder: "Tell them how you're feeling...",
+  },
+  {
+    id: 'thought',
+    emoji: '💭',
+    label: 'A Thought',
+    placeholder: 'Something on your mind...',
+  },
+  {
+    id: 'need',
+    emoji: '🌿',
+    label: 'Something I Need',
+    placeholder: 'What would help right now...',
+  },
+  {
+    id: 'win',
+    emoji: '⚡',
+    label: 'A Win',
+    placeholder: 'Something good that happened...',
+  },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
