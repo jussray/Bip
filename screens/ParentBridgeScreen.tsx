@@ -16,8 +16,8 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import { useSekret } from '../app/_layout';
-import BottomNav from '../components/BottomNav';
-import { C } from '../constants/theme';
+import { BottomNav } from '../components/BottomNav';
+import { THEME_PACKS } from '../constants/theme';
 
 type ParentBridgePayload = {
   sharedTitle?: string;
