@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
-import { useSekret } from './_layout';
+import { useSekret } from '../app/_layout';
 import BottomNav from '../components/BottomNav';
 import { C } from '../constants/theme';
 
