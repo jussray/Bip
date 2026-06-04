@@ -31,7 +31,7 @@ const rayleneFullbody    = require('../assets/images/raylene-fullbody.png');
 const rayleneVoiceDay    = require('../assets/images/raylene-voice-day.png');
 const rayleneVoiceNight  = require('../assets/images/raylene-voice-night.png');
 
-// Bippin2 — requires rename: "raylene- bippin2-day.png" → "raylene-bippin2-day.png"
+// Bippin2 — requires rename: "raylene- bippin2-day.png" → "raylene-bippin2-day.png"c
 const raylene_Bippin2Day = require('../assets/images/raylene-writing.png');
 // TODO: raylene-bippin2-night.png — not yet uploaded. Using raylene-writing.png until available.
 const raylene_Bippin2Night = require('../assets/images/raylene-writing.png'); // FALLBACK
@@ -46,8 +46,7 @@ const rayleneNeutralV3   = require('../assets/images/raylene-neutral-v3.png');
 const rayleneHappyV2     = require('../assets/images/raylene-happy-v2.png');
 const rayleneHappyV3     = require('../assets/images/raylene-happy-v3.png');
 const rayleneWindowV2    = require('../assets/images/raylene-window-v2.png');
-const rayleneWindowV3    = require('../assets/images/raylene-window-v3.png');
-
+const raylene_Bippin2Day = require('../assets/images/raylene-writing.png');
 // ── Rylane ────────────────────────────────────────────────────────────────────
 const rylaneNeutral      = require('../assets/images/rylane-neutral.png');
 const rylaneHappy        = require('../assets/images/rylane-happy.png');
