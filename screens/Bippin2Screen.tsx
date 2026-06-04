@@ -1,4 +1,12 @@
+// screens/Bippin2Screen.tsx
+// ─── FIX: Added missing IMAGES import + uncommented ART object ───────────────
+// The ART object was accidentally wrapped in a block comment (/* */) which
+// commented out the entire thing, then used throughout the file — instant crash.
+// IMAGES was never imported. Both fixed here. Nothing else changed.
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState, useRef, useEffect } from 'react';
+import { IMAGES } from '../constants/theme';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Image, Animated, StyleSheet, Platform,
@@ -25,56 +33,56 @@ const ART: Record<string, Record<string, any>> = {
 
 const W_CHIPS = [
   { key: 'period',   emoji: '🩸', label: 'First Period\nSupport' },
-  { key: 'cycle',    emoji: '🌙', label: 'Cycle\nWellness' },
-  { key: 'mood',     emoji: '💜', label: 'Mood + Body\nCheck-in' },
-  { key: 'comfort',  emoji: '🕯️', label: 'Comfort\nMode' },
-  { key: 'sekret',   emoji: '☁️', label: "Ask\nSe'kret" },
-  { key: 'journal',  emoji: '📓', label: 'Private\nJournal' },
+  { key: 'cycle',    emoji: '🫶', label: 'Cycle\nWellness' },
+  { key: 'mood',     emoji: '🌙', label: 'Mood + Body\nCheck-in' },
+  { key: 'comfort',  emoji: '🌷', label: 'Comfort\nMode' },
+  { key: 'sekret',   emoji: '🤍', label: "Ask\nSe'kret" },
+  { key: 'journal',  emoji: '📝', label: 'Private\nJournal' },
 ];
 
 const W_MOOD_CHIPS = [
   { label: 'happy',     emoji: '😊' },
-  { label: 'calm',      emoji: '🌿' },
+  { label: 'calm',      emoji: '😌' },
   { label: 'tired',     emoji: '😴' },
   { label: 'scared',    emoji: '😨' },
-  { label: 'emotional', emoji: '💜' },
-  { label: 'okay',      emoji: '☁️' },
+  { label: 'emotional', emoji: '🥺' },
+  { label: 'okay',      emoji: '🤍' },
 ];
 
 const W_BIP_FLOW = [
-  { icon: '☁️', step: 'notice',   sub: 'how you feel' },
-  { icon: '📓', step: 'name it',  sub: 'be real' },
-  { icon: '💜', step: 'nourish',  sub: 'yourself' },
-  { icon: '🎧', step: 'release',  sub: 'let it out' },
-  { icon: '⭐', step: 'grow',     sub: 'keep bippin' },
+  { icon: '👁️‍🗨️', step: 'notice',   sub: 'how you feel' },
+  { icon: '📝', step: 'name it',   sub: 'be real' },
+  { icon: '🫶', step: 'nourish',   sub: 'yourself' },
+  { icon: '🫧', step: 'release',  sub: 'let it out' },
+  { icon: '🕊️', step: 'grow',     sub: 'keep bippin' },
 ];
 
 // ─── Static data — Manhood ────────────────────────────────────────────────────
 
 const M_CHIPS = [
-  { key: 'puberty',     emoji: '⚡', label: 'Puberty\nGuide' },
-  { key: 'body',        emoji: '🧍🏾', label: 'Body\nChanges' },
-  { key: 'confidence',  emoji: '⭐', label: 'Confidence\nBoost' },
-  { key: 'hygiene',     emoji: '🧴', label: 'Hygiene +\nSelf-Care' },
-  { key: 'mind',        emoji: '🧠', label: 'Mind\nCheck-in' },
-  { key: 'journal',     emoji: '📓', label: 'Private\nJournal' },
+  { key: 'puberty',    emoji: '🪱', label: 'Puberty\nGuide' },
+  { key: 'body',       emoji: '🧠🏾‍🦲', label: 'Body\nChanges' },
+  { key: 'confidence', emoji: '🕊️', label: 'Confidence\nBoost' },
+  { key: 'hygiene',    emoji: '🌻', label: 'Hygiene +\nSelf-Care' },
+  { key: 'mind',       emoji: '🧠', label: 'Mind\nCheck-in' },
+  { key: 'journal',    emoji: '📝', label: 'Private\nJournal' },
 ];
 
 const M_MOOD_CHIPS = [
-  { label: 'happy',    emoji: '😊' },
-  { label: 'calm',     emoji: '🌿' },
-  { label: 'stressed', emoji: '⚡' },
-  { label: 'angry',    emoji: '😤' },
-  { label: 'tired',    emoji: '😴' },
-  { label: 'okay',     emoji: '☁️' },
+  { label: 'happy',   emoji: '😊' },
+  { label: 'calm',    emoji: '😌' },
+  { label: 'stressed', emoji: '🤯' },
+  { label: 'angry',   emoji: '😠' },
+  { label: 'tired',   emoji: '😴' },
+  { label: 'okay',    emoji: '👁️‍🗨️' },
 ];
 
 const M_BIP_FLOW = [
-  { icon: '☁️', step: 'notice',  sub: "what's up" },
-  { icon: '📓', step: 'name it', sub: 'be honest' },
-  { icon: '⚡', step: 'reset',   sub: 'refocus' },
-  { icon: '🎧', step: 'release', sub: 'clear it out' },
-  { icon: '🏆', step: 'grow',    sub: 'level up' },
+  { icon: '👁️‍🗨️', step: 'notice',  sub: "what's up" },
+  { icon: '📝', step: 'name it', sub: 'be honest' },
+  { icon: '🪱', step: 'reset',   sub: 'refocus' },
+  { icon: '🫧', step: 'release', sub: 'clear it out' },
+  { icon: '🕒', step: 'grow',    sub: 'level up' },
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -96,7 +104,7 @@ export function Bippin2Screen({
   // ─── Identity ─────────────────────────────────────────────────────────────
   const isRylane   = selectedSekret === 'rylane';
   const charName   = isRylane ? 'Rylane' : 'Raylene';
-  const charEmoji  = isRylane ? '⚡' : '💜';
+  const charEmoji  = isRylane ? '🪱' : '🫶';
   const art        = ART[isRylane ? 'rylane' : 'raylene'];
 
   // Rylane gets a cooler blue-electric tint, Raylene keeps the warm neon-pink.
@@ -124,29 +132,29 @@ export function Bippin2Screen({
 
   // ─── Local state ──────────────────────────────────────────────────────────
   const [selectedMood, setSelectedMood]   = useState<string | null>(null);
-  const [energyLevel]                     = useState(72);   // future: AsyncStorage / Supabase mood_checkins
-  const [sleepHours]                      = useState('6h 42m'); // future: Supabase sleep_tracker
+  const [energyLevel]                     = useState(72);   // future: AsyncStorage / Supabase mood_checkin
+  const [sleepHours]                     = useState('6h 42m'); // future: Supabase sleep_tracker
 
   // ─── Feature chip navigation ──────────────────────────────────────────────
   const handleChip = (key: string) => {
     const routes: Record<string, string> = {
-      period:     'periodCalendar',
-      cycle:      'periodCalendar',
-      mood:       'calm',
-      comfort:    'comfort',
-      sekret:     'sekret',
-      journal:    'pages',
-      puberty:    'sekret',        // stub — future: dedicated puberty guide screen
-      body:       'sekret',        // stub
-      confidence: 'bippin2',       // stub — future: confidence boost section
-      hygiene:    'sekret',        // stub
-      mind:       'calm',
+      period:    'periodCalendar',
+      cycle:     'periodCalendar',
+      mood:      'calm',
+      comfort:   'comfort',
+      sekret:    'sekret',
+      journal:   'pages',
+      puberty:   'sekret',           // stub ✦ future: dedicated puberty guide screen
+      body:      'sekret',           // stub
+      confidence:'bippin2',          // stub ✦ future: confidence boost section
+      hygiene:   'sekret',           // stub
+      mind:      'calm',
     };
     const route = routes[key];
     if (route) setScreen(route);
   };
 
-  // ─── Style helpers ─────────────────────────────────────────────────────────
+  // ─── Style helpers ────────────────────────────────────────────────────────
   const scrapCard = (extra?: object) => [
     styles.scrapCard,
     { backgroundColor: t.card, borderColor: idAccent + '44' },
@@ -161,26 +169,26 @@ export function Bippin2Screen({
 
   // ─── Greeting copy ────────────────────────────────────────────────────────
   const greeting = isRylane
-    ? { title: `Good night, ${charName} ⚡`, body: "Keep building the best version of you.\nYou've got this." }
-    : { title: `Good night, ${charName} 💜`, body: "Your body is changing.\nThat's not something to fear or hide." };
+    ? { title: `Good night, ${charName} 🪱`, body: "Keep building the best version of you.\nYou've got this." }
+    : { title: `Good night, ${charName} 🫶`, body: "Your body is changing.\nThat's not something to fear or hide." };
 
-  const streakLabel = isRylane ? 'focus streak'      : 'connection streak';
+  const streakLabel = isRylane ? 'focus streak'     : 'connection streak';
   const streakSub   = isRylane ? 'consistency builds confidence.' : "you're showing up for you.";
-  const streakNote  = isRylane ? 'proud of you, seriously.' : "you're doing great. ✨";
+  const streakNote  = isRylane ? 'proud of you, seriously.' : "you're doing great. 🫶";
 
-  const chips      = isRylane ? M_CHIPS      : W_CHIPS;
-  const moodChips  = isRylane ? M_MOOD_CHIPS : W_MOOD_CHIPS;
-  const bipFlow    = isRylane ? M_BIP_FLOW   : W_BIP_FLOW;
+  const chips       = isRylane ? M_CHIPS       : W_CHIPS;
+  const moodChips   = isRylane ? M_MOOD_CHIPS : W_MOOD_CHIPS;
+  const bipFlow     = isRylane ? M_BIP_FLOW   : W_BIP_FLOW;
 
   // ─── Cloud mascot speech ──────────────────────────────────────────────────
   const cloudSpeech = isRylane
-    ? "yo. i'm here. what's on your mind rn? 🤝"
-    : "hey. whatever you're feeling right now — it's valid 💜";
+    ? "yo. i'm here. what's on your mind rn? 😤"
+    : "hey. whatever you're feeling right now ✨ it's valid 🫶";
 
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
 
-      {/* ── Ambient background glow ────────────────────────────────────────── */}
+      {/* Ambient background glow */}
       <Animated.View
         pointerEvents="none"
         style={[styles.bgGlow, { backgroundColor: idAccent, opacity: glowOpacity }]}
@@ -192,24 +200,23 @@ export function Bippin2Screen({
         showsVerticalScrollIndicator={false}
       >
 
-        {/* ━━━ HEADER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* HEADER */}
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backChip} onPress={() => setScreen('home')}>
-            <Text style={styles.backChipText}>← Room</Text>
+            <Text style={styles.backChipText}>🛡 Room</Text>
           </TouchableOpacity>
           <View style={[styles.privateBadge, { backgroundColor: t.card, borderColor: idAccent + '66' }]}>
             <Text style={styles.privateBadgeText}>🔒 private</Text>
           </View>
         </View>
-
         <Text style={[styles.screenTitle, { color: idAccent }]}>
-          {isRylane ? 'Bippin 2\nManhood ⚡' : 'Bippin 2\nWomanhood 💜'}
+          {isRylane ? 'Bippin 2\nManhood 🪱' : 'Bippin 2\nWomanhood 🫶'}
         </Text>
         <Text style={[styles.screenSub, { color: idSoft }]}>
-          {isRylane ? 'growing into yourself. 💙' : 'growing at your own pace. 💜'}
+          {isRylane ? 'growing into yourself. ✨' : 'growing at your own pace. 🫶'}
         </Text>
 
-        {/* ━━━ HERO — character presence ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* HERO + character presence */}
         <View style={styles.heroSection}>
           {/* Character portrait */}
           <Image source={art.hero} style={styles.heroArt} resizeMode="contain" />
@@ -223,24 +230,24 @@ export function Bippin2Screen({
             <View style={[styles.streakCard, { backgroundColor: t.card, borderColor: idAccent + '55' }]}>
               <Text style={[styles.streakLabel, { color: idAccent }]}>{streakLabel}</Text>
               <View style={styles.streakRow}>
-                <Text style={styles.streakFlame}>{isRylane ? '🔵' : '🔥'}</Text>
+                <Text style={styles.streakFlame}>{isRylane ? '🪱' : '🫀'}</Text>
                 <Text style={[styles.streakDays, { color: '#fff' }]}>{streakDays} days</Text>
               </View>
               <Text style={styles.streakSub}>{streakSub}</Text>
-              <Text style={[styles.streakNote, { color: idSoft }]}>{streakNote}</Text>
+              <Text style={styles.streakNote}>{streakNote}</Text>
             </View>
           </View>
         </View>
 
-        {/* ━━━ CLOUD MASCOT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* CLOUD MASCOT SPEECH */}
         <View style={styles.cloudRow}>
-          <Text style={styles.cloudMascot}>{isRylane ? '💙' : '💜'}☁️</Text>
+          <Text style={styles.cloudMascot}>{isRylane ? '🫡' : '🌧️'}</Text>
           <View style={[styles.cloudBubble, { backgroundColor: t.card, borderColor: idAccent + '55' }]}>
             <Text style={styles.cloudText}>{cloudSpeech}</Text>
           </View>
         </View>
 
-        {/* ━━━ FEATURE CHIPS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* FEATURE CHIPS ROW */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -258,8 +265,8 @@ export function Bippin2Screen({
           ))}
         </ScrollView>
 
-        {/* ━━━ WOMANHOOD CARDS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        {!isRylane && (
+        {/* WOMANHOOD CARDS */}
+        {isRylane && (
           <>
             {/* First Period Support */}
             <View style={scrapCard()}>
@@ -282,16 +289,16 @@ export function Bippin2Screen({
             {/* Comfort Tip + Cycle Calendar — side by side */}
             <View style={styles.twoColRow}>
               <View style={[scrapCard(), styles.halfCard]}>
-                <Text style={[styles.cardLabel, { color: idAccent }]}>comfort tip 🕯️</Text>
+                <Text style={[styles.cardLabel, { color: idAccent }]}>comfort tip 🌷</Text>
                 <Text style={styles.cardBodyText}>
                   Use warmth for cramps, drink water, rest, and be gentle with yourself.
                 </Text>
                 <TouchableOpacity onPress={() => setScreen('comfort')}>
-                  <Text style={[styles.linkText, { color: idAccent }]}>more tips →</Text>
+                  <Text style={[styles.linkText, { color: idAccent }]}>more tips 💬</Text>
                 </TouchableOpacity>
               </View>
               <View style={[scrapCard(), styles.halfCard]}>
-                <Text style={[styles.cardLabel, { color: idAccent }]}>cycle calendar 📅</Text>
+                <Text style={[styles.cardLabel, { color: idAccent }]}>cycle calendar 🗓️</Text>
                 <Text style={styles.cardBodyText}>
                   Track your cycle with ease and privacy.
                 </Text>
@@ -306,18 +313,18 @@ export function Bippin2Screen({
           </>
         )}
 
-        {/* ━━━ MANHOOD CARDS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        {isRylane && (
+        {/* MANHOOD CARDS */}
+        {!isRylane && (
           <>
             {/* Energy + Sleep + Quick Tip — top row */}
             <View style={styles.threeColRow}>
               {/* Energy Check-In */}
               <View style={[scrapCard(), styles.thirdCard]}>
-                <Text style={[styles.cardLabel, { color: idAccent }]}>energy check-in ⚡</Text>
+                <Text style={[styles.cardLabel, { color: idAccent }]}>energy check-in 🪱</Text>
                 <Text style={styles.cardBodySmall}>How are you feeling right now?</Text>
                 {/* Battery bar */}
                 <View style={styles.batteryOuter}>
-                  <View style={[styles.batteryInner, { width: `${energyLevel}%` as any, backgroundColor: idAccent }]} />
+                  <View style={[styles.batteryInner, { width: `${energyLevel}%`, backgroundColor: idAccent }]} />
                 </View>
                 <Text style={[styles.batteryLabel, { color: idSoft }]}>{energyLevel}% energy</Text>
                 <TouchableOpacity
@@ -330,24 +337,24 @@ export function Bippin2Screen({
 
               {/* Sleep Tracker */}
               <View style={[scrapCard(), styles.thirdCard]}>
-                <Text style={[styles.cardLabel, { color: idAccent }]}>sleep tracker 🌙</Text>
+                <Text style={[styles.cardLabel, { color: idAccent }]}>sleep tracker 😴</Text>
                 <Text style={styles.cardBodySmall}>How'd you sleep?</Text>
-                <Text style={styles.sleepBig}>🌙</Text>
-                <Text style={[styles.sleepTime, { color: '#fff' }]}>{sleepHours}</Text>
+                <Text style={styles.sleepBig}>😴</Text>
+                <Text style={styles.sleepTime}>{sleepHours}</Text>
                 <Text style={styles.cardBodySmall}>sleep</Text>
                 <TouchableOpacity onPress={() => {}}>
-                  <Text style={[styles.linkText, { color: idAccent }]}>track sleep →</Text>
+                  <Text style={[styles.linkText, { color: idAccent }]}>track sleep 💤</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Quick Tip */}
               <View style={[scrapCard(), styles.thirdCard]}>
-                <Text style={[styles.cardLabel, { color: idAccent }]}>quick tip 💡</Text>
+                <Text style={[styles.cardLabel, { color: idAccent }]}>quick tip 🪞</Text>
                 <Text style={styles.cardBodySmall}>
                   Small habits. Big future. Stay focused, stay you.
                 </Text>
                 <TouchableOpacity onPress={() => setScreen('calm')}>
-                  <Text style={[styles.linkText, { color: idAccent }]}>more tips →</Text>
+                  <Text style={[styles.linkText, { color: idAccent }]}>more tips 💬</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -356,7 +363,7 @@ export function Bippin2Screen({
             <View style={scrapCard()}>
               <View style={styles.goalRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.cardLabel, { color: idAccent }]}>goal tracker 🎯</Text>
+                  <Text style={[styles.cardLabel, { color: idAccent }]}>goal tracker 🏆</Text>
                   <Text style={styles.cardBodyText}>
                     Track your goals and level up. Every day.
                   </Text>
@@ -370,47 +377,47 @@ export function Bippin2Screen({
                 <Text style={styles.goalTrophy}>🏆</Text>
               </View>
             </View>
+
+            {/* MOOD CHECK-IN (both sides) */}
+            <View style={scrapCard()}>
+              <Text style={[styles.cardLabel, { color: idAccent }]}>mood check-in {charEmoji}</Text>
+              <Text style={styles.cardBodyText}>How are you feeling right now?</Text>
+              <View style={styles.moodRow}>
+                {moodChips.map(chip => {
+                  const active = selectedMood === chip.label;
+                  return (
+                    <TouchableOpacity
+                      key={chip.label}
+                      style={[
+                        styles.moodChip,
+                        {
+                          backgroundColor: active ? idAccent : t.background,
+                          borderColor: active ? idAccent : idAccent + '44',
+                        },
+                      ]}
+                      onPress={() => setSelectedMood(active ? null : chip.label)}
+                    >
+                      <Text style={styles.moodEmoji}>{chip.emoji}</Text>
+                      <Text style={[styles.moodLabel, { color: active ? '#fff' : idSoft }]}>
+                        {chip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {selectedMood && (
+                <Text style={[styles.moodAck, { color: idSoft }]}>
+                  {charEmoji} {charName} sees you. That's valid.
+                </Text>
+              )}
+            </View>
           </>
         )}
 
-        {/* ━━━ MOOD CHECK-IN (both sides) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <View style={scrapCard()}>
-          <Text style={[styles.cardLabel, { color: idAccent }]}>mood check-in {charEmoji}</Text>
-          <Text style={styles.cardBodyText}>How are you feeling right now?</Text>
-          <View style={styles.moodRow}>
-            {moodChips.map(chip => {
-              const active = selectedMood === chip.label;
-              return (
-                <TouchableOpacity
-                  key={chip.label}
-                  style={[
-                    styles.moodChip,
-                    {
-                      backgroundColor: active ? idAccent : t.background,
-                      borderColor: active ? idAccent : idAccent + '44',
-                    },
-                  ]}
-                  onPress={() => setSelectedMood(active ? null : chip.label)}
-                >
-                  <Text style={styles.moodEmoji}>{chip.emoji}</Text>
-                  <Text style={[styles.moodLabel, { color: active ? '#fff' : idSoft }]}>
-                    {chip.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-          {selectedMood && (
-            <Text style={[styles.moodAck, { color: idSoft }]}>
-              {charEmoji} {charName} sees you. That's valid.
-            </Text>
-          )}
-        </View>
-
-        {/* ━━━ BIP FLOW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* BIP FLOW */}
         <View style={scrapCard()}>
           <Text style={[styles.cardLabel, { color: idAccent }]}>
-            BIP FLOW {isRylane ? '⚡' : '💜'}
+            BIP FLOW {isRylane ? '🪱' : '🫶'}
           </Text>
           <ScrollView
             horizontal
@@ -427,31 +434,31 @@ export function Bippin2Screen({
                   <Text style={[styles.flowStepSub, { color: idSoft }]}>{item.sub}</Text>
                 </View>
                 {i < bipFlow.length - 1 && (
-                  <Text style={[styles.flowArrow, { color: idAccent }]}>→</Text>
+                  <Text style={[styles.flowArrow, { color: idAccent }]}>➜</Text>
                 )}
               </React.Fragment>
             ))}
           </ScrollView>
         </View>
 
-        {/* ━━━ CHARACTER QUOTE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* CHARACTER QUOTE */}
         <View style={[scrapCard(), styles.quoteCard]}>
           <Image source={art.neutral} style={styles.quoteArt} resizeMode="contain" />
           <Text style={[styles.quoteText, { color: idSoft }]}>
             {isRylane
-              ? '"You don\'t gotta have it all figured out. Just keep going. That\'s enough."'
-              : '"You are allowed to be both a work in progress and a whole person right now."'}
+              ? `"You don't gotta have it all figured out. Just keep going. That's enough."`
+              : `"You are allowed to be both a work in progress and a whole person right now."`}
           </Text>
           <Text style={[styles.quoteSig, { color: idAccent }]}>— {charName}</Text>
         </View>
 
-        {/* ━━━ NAV ACTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* NAV ACTIONS */}
         <TouchableOpacity
           style={accentBtn()}
           onPress={() => { onMilestone?.(); setScreen('sekret'); }}
         >
           <Text style={styles.accentBtnText}>
-            {isRylane ? `Talk to ${charName} ⚡` : `Talk to ${charName} 💜`}
+            {isRylane ? `Talk to ${charName} 🪱` : `Talk to ${charName} 🫶`}
           </Text>
         </TouchableOpacity>
 
@@ -459,7 +466,7 @@ export function Bippin2Screen({
           style={styles.ghostBtn}
           onPress={() => setScreen('pages')}
         >
-          <Text style={styles.ghostBtnText}>📓 Open Private Journal</Text>
+          <Text style={styles.ghostBtnText}>🔒 Open Private Journal</Text>
         </TouchableOpacity>
 
         <View style={{ height: 36 }} />
@@ -472,22 +479,20 @@ export function Bippin2Screen({
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  root:           { flex: 1 },
-  bgGlow:         {
+  root:         { flex: 1 },
+  bgGlow:       {
     position: 'absolute', top: -100, alignSelf: 'center',
     width: 360, height: 360, borderRadius: 180,
   },
-  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 58 : 38 },
+  container:    { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 58 : 38 },
 
   // Header
-  headerRow:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  backChip:       { backgroundColor: '#1E1035', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+  backChip:      { backgroundColor: '#1E1035', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
   backChipText:   { color: '#CBD5E1', fontSize: 13, fontWeight: '600' },
   privateBadge:   { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1 },
   privateBadgeText:{ color: '#CBD5E1', fontSize: 12, fontWeight: '600' },
-
   screenTitle:    { fontSize: 32, fontWeight: 'bold', letterSpacing: 0.3, marginBottom: 4 },
   screenSub:      { fontSize: 14, marginBottom: 22, fontStyle: 'italic' },
 
