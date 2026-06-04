@@ -32,7 +32,7 @@ const rayleneVoiceDay    = require('../assets/images/raylene-voice-day.png');
 const rayleneVoiceNight  = require('../assets/images/raylene-voice-night.png');
 
 // Bippin2 — requires rename: "raylene- bippin2-day.png" → "raylene-bippin2-day.png"
-const raylene_Bippin2Day = require('../assets/images/raylene-bippin2-day.png');
+const raylene_Bippin2Day = require('../assets/images/raylene-writing.png');
 // TODO: raylene-bippin2-night.png — not yet uploaded. Using raylene-writing.png until available.
 const raylene_Bippin2Night = require('../assets/images/raylene-writing.png'); // FALLBACK
 
