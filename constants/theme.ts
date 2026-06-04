@@ -47,6 +47,7 @@ const rayleneHappyV2     = require('../assets/images/raylene-happy-v2.png');
 const rayleneHappyV3     = require('../assets/images/raylene-happy-v3.png');
 const rayleneWindowV2    = require('../assets/images/raylene-window-v2.png');
 const raylene_Bippin2Day = require('../assets/images/raylene-writing.png');
+');
 // ── Rylane ────────────────────────────────────────────────────────────────────
 const rylaneNeutral      = require('../assets/images/rylane-neutral.png');
 const rylaneHappy        = require('../assets/images/rylane-happy.png');
