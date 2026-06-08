@@ -1,24 +1,24 @@
 // screens/CalmScreen.tsx
-// Se'kret Bip — Se'kret Calm
+// Se'kret Bip — Se'kret Calm (Calm Me)
+// Vision: Weighted blanket for the brain. Slow down. Box breathing.
+// Cloud-led tools, soft purple, low-pressure. Comfort Mode escalates to here.
 //
-// Fixes applied (2026-06-03):
-//   A1 — breatheAnim / comfortIdx / setComfortIdx / art removed from props;
-//         all moved to internal state/refs (index.tsx does not pass them)
-//   A2 — mood + setMood added to interface (index.tsx passes these)
-//   A3 — art.window replaced with local require() — no more undefined crash
-//   B1 — breathe Animated.loop started in useEffect, cleaned up on unmount
-//   B2 — Mood check-in row restored ("How are you feeling?") + calls setMood
-//   B3 — Today's Calm Plan checklist restored (local useState)
-//   B4 — Calm Picks media row restored (static cards, horizontal scroll)
-//   B5 — "Se'kret says" section restored at bottom (uses COMFORT_MESSAGES)
-//   C1 — "Breathe with me" is an in-screen toggle (no new route needed)
-//   C2 — check-in button scrolls to mood row
-//   C3 — Breathe Reminder stubbed with Alert
-//   D1 — Header greeting personalized
-//   D2 — "private" lock badge added to header
+// Polish pass (2026-06-07):
+//   - Time-of-day-aware hero backdrop via getRoomBg(character, time)
+//   - Real LinearGradient hero overlay (replaces flat 45% black)
+//   - Cloud companion presence pill + breath loop above hero
+//   - selectedSekret prop wired through (optional, defaults to 'raylene')
+//   - Character-aware tips + greeting + 'says' label
+//   - Mood-tinted glow on breathing circle + 'says' card
+//   - Curly quotes throughout (real Unicode glyphs in JSX text)
+//   - Quote strip uses curly “ ” not straight "
+//   - Staggered entrance on greeting + mood row + tools (140ms)
+//
+// Previous fixes preserved: A1/A2/A3, B1/B2/B3/B4/B5, C1/C2/C3, D1/D2
 
 import React, { useState, useEffect, useRef } from 'react';
-import { IMAGES } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import {
   Text,
   TouchableOpacity,
@@ -29,23 +29,51 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  Easing,
 } from 'react-native';
 
 // ── Assets ─────────────────────────────────────────────────────────────────
-// Fix A3: direct requires — no art prop needed
 const CLOUD_HEADPHONES = IMAGES.cloudHeadphones;
-const CALM_HERO        = IMAGES.bgCalmHero;  // raylene-window.png until sekret-calm-hero.png is uploaded
+
+// ── MOOD GLOW ──────────────────────────────────────────────────────────────
+const MOOD_GLOW: Record<string, string> = {
+  Happy:       '#fbbf24',
+  Neutral:     '#c4b5fd',
+  Sad:         '#7dd3fc',
+  Angry:       '#f472b6',
+  Tired:       '#6d28d9',
+  anxious:     '#7dd3fc',
+  overwhelmed: '#f472b6',
+  sad:         '#7dd3fc',
+  stressed:    '#f472b6',
+  tired:       '#6d28d9',
+  calm:        '#c4b5fd',
+};
+
+// ── TIME OF DAY ────────────────────────────────────────────────────────────
+function getTimeOfDay(hour: number): TimeOfDay {
+  if (hour >= 5  && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
+}
+const TIME_BADGE: Record<TimeOfDay, string> = {
+  morning: '☀️ morning',
+  day:     '🌤️ day',
+  evening: '🌆 evening',
+  night:   '🌙 night',
+};
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
-  { emoji: '🌙', text: "You've survived every hard day so far. That matters." },
+  { emoji: '🌙', text: 'You’ve survived every hard day so far. That matters.' },
   { emoji: '☁️', text: 'Rest is productive too. You are allowed to pause.' },
-  { emoji: '💙', text: "Someone is glad you're still here tonight." },
+  { emoji: '💙', text: 'Someone is glad you’re still here tonight.' },
   { emoji: '🌧️', text: 'Bad moments are real. So is your strength.' },
-  { emoji: '✨', text: "You don't need to be perfect to be loved." },
+  { emoji: '✨', text: 'You don’t need to be perfect to be loved.' },
   { emoji: '🫶', text: 'Your feelings are allowed here.' },
   { emoji: '🕯️', text: 'Soft moment. Slow breath. Stay with me.' },
-  { emoji: '💜', text: "Rest is productive, too. You don't have to earn peace. I'm proud of you for choosing you tonight." },
+  { emoji: '💜', text: 'Rest is productive, too. You don’t have to earn peace. I’m proud of you for choosing you tonight.' },
 ];
 
 const MOOD_CHIPS = [
@@ -58,26 +86,26 @@ const MOOD_CHIPS = [
 ];
 
 const CALM_TOOLS = [
-  { emoji: '💜', label: 'Breathe\nwith me', sub: '1–5 min',    action: 'breathe' },
-  { emoji: '🌿', label: 'Ground\nYourself',  sub: '3–7 min',   action: 'mindReset' },
-  { emoji: '📝', label: 'Release\nIt Out',   sub: 'write + let go', action: 'pages' },
-  { emoji: '🌙', label: 'Sleep\nBetter',     sub: 'stories + sounds', action: null },
-  { emoji: '🚨', label: 'SOS\nCalm Now',     sub: '30 sec reset', action: 'comfort' },
+  { emoji: '💜', label: 'Breathe\nwith me', sub: '1–5 min',         action: 'breathe' },
+  { emoji: '🌿', label: 'Ground\nYourself',  sub: '3–7 min',         action: 'mindReset' },
+  { emoji: '📝', label: 'Release\nIt Out',   sub: 'write + let go',       action: 'pages' },
+  { emoji: '🌙', label: 'Sleep\nBetter',     sub: 'stories + sounds',     action: null },
+  { emoji: '🚨', label: 'SOS\nCalm Now',     sub: '30 sec reset',         action: 'comfort' },
 ];
 
 const CALM_PICKS = [
-  { emoji: '🌧️', label: 'late night\nrain',        duration: '20 min' },
-  { emoji: '🌊', label: 'deep sleep\nwaves',        duration: '30 min' },
-  { emoji: '🎹', label: 'soft piano\n+ heart',      duration: '25 min' },
-  { emoji: '📖', label: 'bedtime\nstory',            duration: '15 min' },
-  { emoji: '✨', label: 'healing\nfrequency',        duration: '20 min' },
+  { emoji: '🌧️', label: 'late night\nrain',   duration: '20 min' },
+  { emoji: '🌊', label: 'deep sleep\nwaves',   duration: '30 min' },
+  { emoji: '🎹', label: 'soft piano\n+ heart', duration: '25 min' },
+  { emoji: '📖', label: 'bedtime\nstory',      duration: '15 min' },
+  { emoji: '✨', label: 'healing\nfrequency',  duration: '20 min' },
 ];
 
 const DEFAULT_PLAN = [
-  { id: 1, label: 'Breathe for 2 minutes',     time: '7:30 PM', done: false },
-  { id: 2, label: "Write down what's heavy",   time: '7:40 PM', done: false },
-  { id: 3, label: 'Listen to a comfort sound', time: '',        done: false },
-  { id: 4, label: 'Affirm something kind',     time: '',        done: false },
+  { id: 1, label: 'Breathe for 2 minutes',      time: '7:30 PM', done: false },
+  { id: 2, label: 'Write down what’s heavy', time: '7:40 PM', done: false },
+  { id: 3, label: 'Listen to a comfort sound',  time: '',        done: false },
+  { id: 4, label: 'Affirm something kind',      time: '',        done: false },
 ];
 
 const BOX_BREATHING_STEPS = [
@@ -89,51 +117,58 @@ const BOX_BREATHING_STEPS = [
 
 const MORE_BREATHING = [
   { label: '4-7-8 Breathing',  sub: 'calm anxiety + help sleep', duration: '5 min' },
-  { label: 'Calming Breath',   sub: 'quick reset for stress',     duration: '2 min' },
-  { label: 'Deep Belly Breath',sub: 'release tension',            duration: '3 min' },
+  { label: 'Calming Breath',   sub: 'quick reset for stress',    duration: '2 min' },
+  { label: 'Deep Belly Breath',sub: 'release tension',           duration: '3 min' },
 ];
 
 const CALM_PLAYLIST = [
-  { emoji: '🔥', label: 'night rain',   sub: 'soothing rain sounds', duration: '20:00' },
-  { emoji: '🎵', label: 'soft lo-fi',   sub: 'focus + unwind',       duration: '30:00' },
-  { emoji: '🌊', label: 'ocean waves',  sub: 'reset your mind',      duration: '25:00' },
+  { emoji: '🔥', label: 'night rain',  sub: 'soothing rain sounds', duration: '20:00' },
+  { emoji: '🎵', label: 'soft lo-fi',  sub: 'focus + unwind',       duration: '30:00' },
+  { emoji: '🌊', label: 'ocean waves', sub: 'reset your mind',      duration: '25:00' },
 ];
 
 // ── Props ──────────────────────────────────────────────────────────────────
-// Fix A1: breatheAnim / comfortIdx / setComfortIdx / art removed
-// Fix A2: mood + setMood added
 interface CalmScreenProps {
-  t:         Record<string, any>;
-  mood:      string;
-  setMood:   (mood: string) => void;
-  setScreen: (screen: string) => void;
-  BottomNav: React.ReactNode;
+  t:               Record<string, any>;
+  mood:            string;
+  setMood:         (mood: string) => void;
+  setScreen:       (screen: string) => void;
+  BottomNav:       React.ReactNode;
+  selectedSekret?: string;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
-export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScreenProps) {
+export function CalmScreen({
+  t, mood, setMood, setScreen, BottomNav, selectedSekret = 'raylene',
+}: CalmScreenProps) {
 
-  // Fix A1: internal animated value
   const breatheAnim = useRef(new Animated.Value(1)).current;
-
-  // Fix A1: internal comfort index
   const [comfortIdx, setComfortIdx] = useState(0);
-
-  // B3: today's plan
   const [plan, setPlan] = useState(DEFAULT_PLAN);
-
-  // C1: breathe sub-screen toggle
   const [showBreathe, setShowBreathe] = useState(false);
-
-  // Box breathing step tracking
   const [breatheStep, setBreatheStep] = useState(0);
   const [breatheRunning, setBreatheRunning] = useState(false);
 
-  // Scroll ref for check-in button (C2)
   const scrollRef = useRef<ScrollView>(null);
   const moodRowY  = useRef(0);
 
-  // Fix B1: start breathe animation on mount, clean up on unmount
+  // Character / time / mood ─────────────────────────────────────────────────
+  const hour       = new Date().getHours();
+  const timeOfDay  = getTimeOfDay(hour);
+  const isRylane   = selectedSekret === 'rylane';
+  const character  = isRylane ? 'rylane' : 'raylene';
+  const charLabel  = isRylane ? 'rylane' : 'raylene';
+  const charEmoji  = isRylane ? '⚡' : '💜';
+  const heroArt    = getRoomBg(character, timeOfDay);
+  const moodKey    = mood?.toLowerCase?.() ?? mood;
+  const moodGlow   = MOOD_GLOW[moodKey] ?? MOOD_GLOW[mood] ?? MOOD_GLOW.Neutral;
+
+  // Greeting variant
+  const greetCopy = isRylane
+    ? { title: 'Take a slow breath. 💪', sub: 'you held it together today. respect.' }
+    : { title: 'Take a deep breath. 💜', sub: 'you made it through today. that matters.' };
+
+  // Animations ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
@@ -154,6 +189,33 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
     return () => clearInterval(timer);
   }, [breatheRunning]);
 
+  // Companion presence breath
+  const pillBreath = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pillBreath, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pillBreath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  const pillStyle = {
+    opacity: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] }),
+    transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
+  };
+
+  // Staggered card entrance
+  const cards = useRef([0, 0, 0, 0].map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    Animated.stagger(140, cards.map(v =>
+      Animated.timing(v, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true })
+    )).start();
+  }, []);
+  const cardAnim = (i: number) => ({
+    opacity: cards[i],
+    transform: [{ translateY: cards[i].interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+  });
+
   const togglePlanItem = (id: number) => {
     setPlan(prev => prev.map(item => item.id === id ? { ...item, done: !item.done } : item));
   };
@@ -163,23 +225,20 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
     <View style={[styles.root, { backgroundColor: t.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
         <View style={styles.breatheHeader}>
           <TouchableOpacity onPress={() => setShowBreathe(false)}>
             <Text style={[styles.backArrow, { color: t.soft }]}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.breatheTitle, { color: '#fff' }]}>Breathe with me 💜</Text>
+            <Text style={[styles.breatheTitle, { color: '#fff' }]}>Breathe with me {charEmoji}</Text>
             <Text style={[styles.breatheSub, { color: t.soft }]}>slow down. just breathe.</Text>
           </View>
         </View>
 
-        {/* Box breathing card */}
-        <View style={[styles.boxCard, { backgroundColor: t.card, borderColor: t.accent }]}>
+        <View style={[styles.boxCard, { backgroundColor: t.card, borderColor: t.accent, shadowColor: moodGlow }]}>
           <Text style={[styles.boxTitle, { color: '#fff' }]}>Box Breathing ✦</Text>
           <Text style={[styles.boxSub, { color: t.soft }]}>a simple way to calm your mind and body</Text>
 
-          {/* Box diagram */}
           <View style={styles.boxDiagram}>
             <Text style={[styles.boxTop, { color: '#fff' }]}>breathe in{'\n'}4</Text>
             <View style={styles.boxMiddleRow}>
@@ -205,7 +264,6 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
           </TouchableOpacity>
         </View>
 
-        {/* More breathing exercises */}
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>More Breathing Exercises</Text>
         {MORE_BREATHING.map(item => (
           <View key={item.label} style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}>
@@ -219,7 +277,6 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
           </View>
         ))}
 
-        {/* Calm Playlist */}
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>Calm Playlist ✦</Text>
         <Text style={[styles.sectionSub, { color: t.soft }]}>music + sounds to relax</Text>
         {CALM_PLAYLIST.map(item => (
@@ -234,21 +291,19 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
           </View>
         ))}
 
-        {/* Breathe reminder */}
         <View style={[styles.reminderCard, { backgroundColor: t.card, borderColor: t.accent }]}>
           <Text style={[styles.reminderTitle, { color: t.accent }]}>Breathe Reminder</Text>
           <Text style={[styles.reminderSub, { color: t.soft }]}>set a gentle reminder to breathe</Text>
           <TouchableOpacity
             style={[styles.addReminderBtn, { borderColor: t.accent }]}
-            onPress={() => Alert.alert("Breathe Reminder", "Reminder set. You'll get a gentle nudge to breathe. 💜")}
+            onPress={() => Alert.alert('Breathe Reminder', 'Reminder set. You’ll get a gentle nudge to breathe. 💜')}
           >
             <Text style={[styles.addReminderText, { color: t.soft }]}>+ Add Reminder</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Quote strip */}
         <View style={[styles.quoteStrip, { borderColor: t.accent }]}>
-          <Text style={styles.quoteOpen}>"</Text>
+          <Text style={styles.quoteOpen}>“</Text>
           <Text style={[styles.quoteText, { color: '#fff' }]}>Your breath is your anchor.{'\n'}You can always come back to it. ✦</Text>
         </View>
 
@@ -258,8 +313,6 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
   );
 
   // ── Main calm screen ───────────────────────────────────────────────────
-  const currentStep = BOX_BREATHING_STEPS[breatheStep];
-
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
       <ScrollView
@@ -270,42 +323,68 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
 
         {/* ── Hero header ── */}
         <View style={styles.heroWrap}>
-          <Image source={CALM_HERO} style={styles.heroImage} resizeMode="cover" />
-          {/* D2: private badge */}
-          <View style={[styles.privateBadge, { backgroundColor: 'rgba(13,0,20,0.7)' }]}>
+          <Image source={heroArt} style={styles.heroImage} resizeMode="cover" blurRadius={1.5} />
+
+          {/* Mood-tinted scrim */}
+          <View style={[styles.heroMoodScrim, { backgroundColor: moodGlow + '14' }]} pointerEvents="none" />
+
+          {/* Real gradient overlay */}
+          <LinearGradient
+            colors={['rgba(13,0,20,0.25)', 'rgba(13,0,20,0.55)', 'rgba(13,0,20,0.92)']}
+            style={styles.heroGradient}
+            pointerEvents="none"
+          />
+
+          {/* Time badge */}
+          <View style={styles.timeBadge} pointerEvents="none">
+            <Text style={styles.timeBadgeText}>{TIME_BADGE[timeOfDay]}</Text>
+          </View>
+
+          {/* Private badge */}
+          <View style={[styles.privateBadge, { backgroundColor: 'rgba(13,0,20,0.7)' }]} pointerEvents="none">
             <Text style={styles.privateBadgeText}>🔒 private</Text>
           </View>
+
+          {/* Companion presence pill */}
+          <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
+            <Text style={styles.presenceText}>
+              {charLabel}’s here · weighted blanket mode
+            </Text>
+          </Animated.View>
+
           <View style={styles.heroOverlay} pointerEvents="none">
-            <Text style={[styles.heroTitle, { color: '#fff' }]}>Se'kret Calm 💜</Text>
+            <Text style={[styles.heroTitle, { color: '#fff', textShadowColor: moodGlow + '99' }]}>
+              Se’kret Calm 💜
+            </Text>
             <Text style={[styles.heroLines, { color: t.soft }]}>
               your calm.{'\n'}your reset.{'\n'}your safe place.
             </Text>
           </View>
         </View>
 
-        {/* D1: personalized greeting + check-in button */}
-        <View style={[styles.greetRow, { backgroundColor: t.card }]}>
+        {/* Personalized greeting + check-in button */}
+        <Animated.View style={[styles.greetRow, { backgroundColor: t.card, shadowColor: moodGlow }, cardAnim(0)]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.greetTitle, { color: '#fff' }]}>Take a deep breath. 💜</Text>
-            <Text style={[styles.greetSub, { color: t.soft }]}>you made it through today. that matters.</Text>
+            <Text style={[styles.greetTitle, { color: '#fff' }]}>{greetCopy.title}</Text>
+            <Text style={[styles.greetSub, { color: t.soft }]}>{greetCopy.sub}</Text>
           </View>
-          {/* C2: scroll to mood row */}
           <TouchableOpacity
             style={[styles.checkInBtn, { borderColor: t.accent }]}
             onPress={() => scrollRef.current?.scrollTo({ y: moodRowY.current, animated: true })}
           >
             <Text style={[styles.checkInText, { color: t.soft }]}>check-in ›</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
 
-        {/* B2: Mood check-in row */}
-        <View
+        {/* Mood check-in row */}
+        <Animated.View
           onLayout={e => { moodRowY.current = e.nativeEvent.layout.y; }}
+          style={cardAnim(1)}
         >
           <Text style={[styles.sectionTitle, { color: t.accent }]}>How are you feeling right now?</Text>
           <View style={styles.moodRow}>
             {MOOD_CHIPS.map(chip => {
-              const selected = mood.toLowerCase() === chip.label;
+              const selected = mood?.toLowerCase?.() === chip.label;
               return (
                 <TouchableOpacity
                   key={chip.label}
@@ -321,61 +400,65 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
               );
             })}
           </View>
-        </View>
+        </Animated.View>
 
         {/* ── Calm Tools grid ── */}
-        <View style={styles.toolsHeader}>
-          <Text style={[styles.sectionTitle, { color: t.accent }]}>Calm Tools ✦</Text>
-          <TouchableOpacity onPress={() => setScreen('more')}>
-            <Text style={[styles.seeAll, { color: t.soft }]}>see all</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolsScroll}>
-          {CALM_TOOLS.map(tool => (
-            <TouchableOpacity
-              key={tool.label}
-              style={[styles.toolCard, { backgroundColor: t.card, borderColor: t.accent }]}
-              onPress={() => {
-                if (tool.action === 'breathe') { setShowBreathe(true); return; }
-                if (tool.action) setScreen(tool.action);
-              }}
-            >
-              <Text style={styles.toolEmoji}>{tool.emoji}</Text>
-              <Text style={[styles.toolLabel, { color: '#fff' }]}>{tool.label}</Text>
-              <Text style={[styles.toolSub, { color: t.soft }]}>{tool.sub}</Text>
+        <Animated.View style={cardAnim(2)}>
+          <View style={styles.toolsHeader}>
+            <Text style={[styles.sectionTitle, { color: t.accent }]}>Calm Tools ✦</Text>
+            <TouchableOpacity onPress={() => setScreen('more')}>
+              <Text style={[styles.seeAll, { color: t.soft }]}>see all</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.toolsScroll}>
+            {CALM_TOOLS.map(tool => (
+              <TouchableOpacity
+                key={tool.label}
+                style={[styles.toolCard, { backgroundColor: t.card, borderColor: t.accent }]}
+                onPress={() => {
+                  if (tool.action === 'breathe') { setShowBreathe(true); return; }
+                  if (tool.action) setScreen(tool.action);
+                }}
+              >
+                <Text style={styles.toolEmoji}>{tool.emoji}</Text>
+                <Text style={[styles.toolLabel, { color: '#fff' }]}>{tool.label}</Text>
+                <Text style={[styles.toolSub, { color: t.soft }]}>{tool.sub}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
 
-        {/* B3: Today's Calm Plan */}
-        <View style={styles.toolsHeader}>
-          <Text style={[styles.sectionTitle, { color: t.accent }]}>Today's Calm Plan 💜</Text>
-          <TouchableOpacity>
-            <Text style={[styles.seeAll, { color: t.soft }]}>edit plan ✏️</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={[styles.sectionSub, { color: t.soft }]}>small steps. big difference.</Text>
-        <View style={[styles.planCard, { backgroundColor: t.card, borderColor: t.accent }]}>
-          {plan.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.planRow}
-              onPress={() => togglePlanItem(item.id)}
-            >
-              <View style={[styles.planCheck, { borderColor: t.accent, backgroundColor: item.done ? t.accent : 'transparent' }]}>
-                {item.done && <Text style={styles.planCheckMark}>✓</Text>}
-              </View>
-              <Text style={[styles.planLabel, { color: item.done ? t.soft : '#fff', textDecorationLine: item.done ? 'line-through' : 'none' }]}>
-                {item.label}
-              </Text>
-              {item.time ? (
-                <Text style={[styles.planTime, { color: t.soft }]}>{item.time} ›</Text>
-              ) : (
-                <Text style={[styles.planTime, { color: '#4B5563' }]}>—</Text>
-              )}
+        {/* Today's Calm Plan */}
+        <Animated.View style={cardAnim(3)}>
+          <View style={styles.toolsHeader}>
+            <Text style={[styles.sectionTitle, { color: t.accent }]}>Today’s Calm Plan 💜</Text>
+            <TouchableOpacity>
+              <Text style={[styles.seeAll, { color: t.soft }]}>edit plan ✏️</Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
+          <Text style={[styles.sectionSub, { color: t.soft }]}>small steps. big difference.</Text>
+          <View style={[styles.planCard, { backgroundColor: t.card, borderColor: t.accent }]}>
+            {plan.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.planRow}
+                onPress={() => togglePlanItem(item.id)}
+              >
+                <View style={[styles.planCheck, { borderColor: t.accent, backgroundColor: item.done ? t.accent : 'transparent' }]}>
+                  {item.done && <Text style={styles.planCheckMark}>✓</Text>}
+                </View>
+                <Text style={[styles.planLabel, { color: item.done ? t.soft : '#fff', textDecorationLine: item.done ? 'line-through' : 'none' }]}>
+                  {item.label}
+                </Text>
+                {item.time ? (
+                  <Text style={[styles.planTime, { color: t.soft }]}>{item.time} ›</Text>
+                ) : (
+                  <Text style={[styles.planTime, { color: '#4B5563' }]}>—</Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Animated.View>
 
         {/* ── Breathing circle teaser ── */}
         <TouchableOpacity style={styles.circleWrap} onPress={() => setShowBreathe(true)}>
@@ -384,10 +467,10 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
             {
               transform: [{ scale: breatheAnim }],
               backgroundColor: t.accent,
-              shadowColor: t.accent,
-              shadowOpacity: 0.6,
-              shadowRadius: 25,
-              elevation: 12,
+              shadowColor: moodGlow,
+              shadowOpacity: 0.7,
+              shadowRadius: 28,
+              elevation: 14,
             },
           ]}>
             <Image source={CLOUD_HEADPHONES} style={styles.circleImg} resizeMode="contain" />
@@ -396,7 +479,7 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
           <Text style={[styles.circleHint, { color: t.soft }]}>tap to open breathing</Text>
         </TouchableOpacity>
 
-        {/* B4: Calm Picks */}
+        {/* Calm Picks */}
         <View style={styles.toolsHeader}>
           <Text style={[styles.sectionTitle, { color: t.accent }]}>Calm Picks for You ✦</Text>
           <TouchableOpacity>
@@ -416,34 +499,34 @@ export function CalmScreen({ t, mood, setMood, setScreen, BottomNav }: CalmScree
           ))}
         </ScrollView>
 
-        {/* B5: Se'kret says */}
-        <Text style={[styles.sectionTitle, { color: t.accent }]}>Se'kret says 💜</Text>
-        <View style={[styles.sekretSaysCard, { backgroundColor: t.card, borderColor: t.accent }]}>
+        {/* Character says ── */}
+        <Text style={[styles.sectionTitle, { color: t.accent }]}>{charLabel} says {charEmoji}</Text>
+        <View style={[styles.sekretSaysCard, { backgroundColor: t.card, borderColor: t.accent, shadowColor: moodGlow }]}>
           <Text style={[styles.sekretSaysText, { color: '#E2E8F0' }]}>
             {COMFORT_MESSAGES[comfortIdx].text}
           </Text>
           <View style={styles.sekretSaysRow}>
             <TouchableOpacity onPress={() => setComfortIdx(i => (i + 1) % COMFORT_MESSAGES.length)}>
-              <Text style={styles.sekretSaysHeart}>💜</Text>
+              <Text style={styles.sekretSaysHeart}>{charEmoji}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Navigate to calm tools */}
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: t.accent }]}
+          style={[styles.btn, { backgroundColor: t.accent, shadowColor: moodGlow }]}
           onPress={() => setScreen('mindReset')}
         >
           <Text style={styles.btnText}>🌙 7-Min Mind Reset</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: t.accent }]}
+          style={[styles.btn, { backgroundColor: t.accent, shadowColor: moodGlow }]}
           onPress={() => setScreen('bodyReset')}
         >
           <Text style={styles.btnText}>🫧 7-Min Body Reset</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.btn, { backgroundColor: t.accent }]}
+          style={[styles.btn, { backgroundColor: t.accent, shadowColor: moodGlow }]}
           onPress={() => setScreen('comfort')}
         >
           <Text style={styles.btnText}>🚨 Comfort Mode</Text>
@@ -461,16 +544,30 @@ const styles = StyleSheet.create({
   scroll:            { paddingBottom: 100 },
 
   // Hero
-  heroWrap:          { width: '100%', height: 240, position: 'relative', marginBottom: 0 },
+  heroWrap:          { width: '100%', height: 260, position: 'relative', marginBottom: 0, overflow: 'hidden' },
   heroImage:         { width: '100%', height: '100%' },
-  heroOverlay:       { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16, backgroundColor: 'rgba(13,0,20,0.45)' },
-  heroTitle:         { fontSize: 26, fontWeight: '900', marginBottom: 2 },
+  heroMoodScrim:     { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  heroGradient:      { position: 'absolute', bottom: 0, left: 0, right: 0, height: 200 },
+  heroOverlay:       { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 16 },
+  heroTitle:         { fontSize: 26, fontWeight: '900', marginBottom: 4, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
   heroLines:         { fontSize: 13, lineHeight: 20 },
+  timeBadge:         { position: 'absolute', top: Platform.OS === 'ios' ? 52 : 36, left: 14, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  timeBadgeText:     { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
   privateBadge:      { position: 'absolute', top: Platform.OS === 'ios' ? 52 : 36, right: 14, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   privateBadgeText:  { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
+  presencePill:      {
+    position: 'absolute', top: Platform.OS === 'ios' ? 88 : 72, right: 14,
+    backgroundColor: 'rgba(168,85,247,0.18)',
+    borderColor: 'rgba(168,85,247,0.45)', borderWidth: 1,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  presenceText:      { color: '#e9d5ff', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
 
   // Greeting
-  greetRow:          { flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 14, marginHorizontal: 16, borderRadius: 18 },
+  greetRow:          {
+    flexDirection: 'row', alignItems: 'center', padding: 16, marginBottom: 14, marginHorizontal: 16, borderRadius: 18,
+    shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+  },
   greetTitle:        { fontSize: 16, fontWeight: '700', marginBottom: 2 },
   greetSub:          { fontSize: 12 },
   checkInBtn:        { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6, marginLeft: 8 },
@@ -517,13 +614,19 @@ const styles = StyleSheet.create({
   pickDur:           { fontSize: 10, textAlign: 'center' },
 
   // Se'kret says
-  sekretSaysCard:    { marginHorizontal: 16, borderRadius: 18, borderWidth: 1, padding: 18, marginBottom: 16 },
-  sekretSaysText:    { fontSize: 15, lineHeight: 24, marginBottom: 14 },
+  sekretSaysCard:    {
+    marginHorizontal: 16, borderRadius: 18, borderWidth: 1, padding: 18, marginBottom: 16,
+    shadowOpacity: 0.25, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+  },
+  sekretSaysText:    { fontSize: 15, lineHeight: 24, marginBottom: 14, fontStyle: 'italic' },
   sekretSaysRow:     { flexDirection: 'row', justifyContent: 'flex-end' },
   sekretSaysHeart:   { fontSize: 22 },
 
   // Nav buttons
-  btn:               { padding: 16, borderRadius: 18, marginHorizontal: 16, marginBottom: 12, alignItems: 'center' },
+  btn:               {
+    padding: 16, borderRadius: 18, marginHorizontal: 16, marginBottom: 12, alignItems: 'center',
+    shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+  },
   btnText:           { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 
   // Breathe sub-screen
@@ -531,7 +634,10 @@ const styles = StyleSheet.create({
   backArrow:         { fontSize: 22, fontWeight: '300', paddingRight: 4 },
   breatheTitle:      { fontSize: 22, fontWeight: '800' },
   breatheSub:        { fontSize: 13 },
-  boxCard:           { margin: 16, borderRadius: 20, borderWidth: 1, padding: 20 },
+  boxCard:           {
+    margin: 16, borderRadius: 20, borderWidth: 1, padding: 20,
+    shadowOpacity: 0.3, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
+  },
   boxTitle:          { fontSize: 20, fontWeight: '800', marginBottom: 4 },
   boxSub:            { fontSize: 12, marginBottom: 20 },
   boxDiagram:        { alignItems: 'center' },

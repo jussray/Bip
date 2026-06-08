@@ -393,6 +393,7 @@ export default function App() {
       setMood={setMood}
       setScreen={setScreen}
       BottomNav={nav}
+      selectedSekret={selectedSekret}
     />
   );
 
