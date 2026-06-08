@@ -91,6 +91,9 @@ export function MoreScreen({
         <TouchableOpacity style={btn()} onPress={() => setScreen('crew')}>
           <Text style={styles.buttonText}>🤝 Bip Crew · invite-only</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('points')}>
+          <Text style={styles.buttonText}>⭐ Bip Points · soft receipts</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={btn()}
           onPress={() => setScreen(userSide === 'parent' ? 'parentBridge' : 'bridge')}

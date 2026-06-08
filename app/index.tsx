@@ -19,6 +19,7 @@ import { ManhoodScreen }        from '../screens/ManhoodScreen';
 import { HistoryScreen }        from '../screens/HistoryScreen';
 import { ComfortStreaksScreen } from '../screens/ComfortStreaksScreen';
 import { BipCrewScreen }        from '../screens/BipCrewScreen';
+import { PointsScreen }         from '../screens/PointsScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
@@ -524,6 +525,23 @@ export default function App() {
       onComplete={() => trackActivity('calm')}
       BottomNav={nav}
       mood={mood}
+    />
+  );
+
+  if (screen === 'points') return (
+    <PointsScreen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      moodHistory={moodHistory}
+      journalEntries={journalEntries}
+      voiceNotes={voiceNotes}
+      circlePosts={circlePosts}
+      comfortSessions={comfortSessions}
+      crewCheckIns={crewCheckIns}
+      streakDays={streakDays}
+      setScreen={setScreen}
+      BottomNav={nav}
     />
   );
 
