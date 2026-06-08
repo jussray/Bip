@@ -16,6 +16,7 @@ import { Bippin2Screen }        from '../screens/Bippin2Screen';
 import { GrowthScreen }         from '../screens/GrowthScreen';
 import { WomanhoodScreen }      from '../screens/WomanhoodScreen';
 import { ManhoodScreen }        from '../screens/ManhoodScreen';
+import { HistoryScreen }        from '../screens/HistoryScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
@@ -499,6 +500,21 @@ export default function App() {
       onComplete={() => trackActivity('calm')}
       BottomNav={nav}
       mood={mood}
+    />
+  );
+
+  if (screen === 'history') return (
+    <HistoryScreen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      moodHistory={moodHistory}
+      journalEntries={journalEntries}
+      voiceNotes={voiceNotes}
+      circlePosts={circlePosts}
+      streakDays={streakDays}
+      setScreen={setScreen}
+      BottomNav={nav}
     />
   );
 
