@@ -1,15 +1,20 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { IMAGES } from '../constants/theme';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
 import {
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
   View,
   Animated,
   Image,
+  ImageBackground,
+  Modal,
   StyleSheet,
   Platform,
+  Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 
@@ -54,6 +59,8 @@ type CircleScreenProps = {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   sendQuietReply?: (postId: string, replyText: string) => void;
+  selectedSekret?: 'raylene' | 'rylane' | string;
+  mood?: string;
 };
 
 const MEDIA_TYPES: { id: MediaType; emoji: string; label: string; sub: string }[] = [
@@ -74,15 +81,26 @@ const FIT_CHECK_REACTIONS = [
   { emoji: '🎨', label: 'Creative Choice' },
 ];
 
-const QUOTE_REPLIES = [
+const QUOTE_REPLIES_RAYLENE = [
   'I felt this too.',
-  'You are not alone.',
-  'That sounds heavy.',
-  'I’m glad you said this.',
+  'You are not alone in this.',
+  'That sounds heavy 💜',
+  'I’m glad you said it.',
   'Staying with you.',
   'No fixing, just here.',
   'Proud of you for saying it.',
   'This made sense to me.',
+];
+
+const QUOTE_REPLIES_RYLANE = [
+  'felt that. fr.',
+  'you’re not alone bro.',
+  'heavy day. respect for posting.',
+  'glad you said it out loud.',
+  'right here. not going anywhere.',
+  'no advice. just with you.',
+  'that took guts.',
+  'this hit. for real.',
 ];
 
 const LIGHT_WORDS = ['tired', 'overwhelmed', 'stressed', 'ugh', 'annoyed', 'frustrated', 'embarrassed'];
@@ -151,6 +169,24 @@ const getSafetyLevel = (text: string): ScanResult => {
   return { level: 'none' };
 };
 
+const getTimeOfDay = (): TimeOfDay => {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+};
+
+const moodGlow = (mood?: string): string => {
+  const m = (mood || '').toLowerCase();
+  if (m === 'happy') return '#fbbf24';
+  if (m === 'sad' || m === 'anxious') return '#7dd3fc';
+  if (m === 'angry' || m === 'overwhelmed' || m === 'stressed') return '#f472b6';
+  if (m === 'tired') return '#6d28d9';
+  if (m === 'calm') return '#c4b5fd';
+  return '#c4b5fd';
+};
+
 export function CircleScreen({
   t,
   circlePosts,
@@ -161,7 +197,18 @@ export function CircleScreen({
   setScreen,
   BottomNav,
   sendQuietReply,
+  selectedSekret,
+  mood,
 }: CircleScreenProps) {
+  const isRylane = selectedSekret === 'rylane';
+  const charLabel = isRylane ? 'rylane' : 'raylene';
+  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
+  const time = useMemo(() => getTimeOfDay(), []);
+  const bg = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
+  const glow = useMemo(() => moodGlow(mood), [mood]);
+
+  const QUOTE_REPLIES = isRylane ? QUOTE_REPLIES_RYLANE : QUOTE_REPLIES_RAYLENE;
+
   const [selectedType, setSelectedType] = useState<MediaType>('text');
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
@@ -182,6 +229,45 @@ export function CircleScreen({
     () => MEDIA_TYPES.find(item => item.id === selectedType) || MEDIA_TYPES[0],
     [selectedType],
   );
+
+  // Entrance animations — staggered card fade-ins
+  const fade1 = useRef(new Animated.Value(0)).current;
+  const fade2 = useRef(new Animated.Value(0)).current;
+  const fade3 = useRef(new Animated.Value(0)).current;
+  const fade4 = useRef(new Animated.Value(0)).current;
+  const breath = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const stagger = (val: Animated.Value, delay: number) =>
+      Animated.timing(val, {
+        toValue: 1,
+        duration: 380,
+        delay,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      });
+
+    Animated.parallel([
+      stagger(fade1, 0),
+      stagger(fade2, 140),
+      stagger(fade3, 280),
+      stagger(fade4, 420),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    ).start();
+  }, [fade1, fade2, fade3, fade4, breath]);
+
+  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
+  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
+  const cardStyle = (val: Animated.Value) => ({
+    opacity: val,
+    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+  });
 
   const triggerHaptic = async (style: Haptics.ImpactFeedbackStyle = Haptics.ImpactFeedbackStyle.Light) => {
     if (Platform.OS === 'web') return;
@@ -304,254 +390,342 @@ export function CircleScreen({
 
   const handleParentPrompt = async () => {
     await triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
-    setScreen('parentbridge');
+    setScreen('parentBridge');
   };
 
+  // Char-aware copy
+  const headerTagline = isRylane
+    ? 'no likes. no count. no clout. just us.'
+    : 'no likes. no followers. just real, soft, here.';
+  const energyText = isRylane ? '⚡ low-stakes space open' : '💜 soft space open';
+  const cultureLines = isRylane
+    ? ['no bullying. no exposing. no chasing clout.', 'just real bips. real circle. respect.']
+    : ['no bullying. no exposing. no going viral.', 'just real bips, real connection, real safety.'];
+  const composerHint = isRylane ? 'say it plain. no filter.' : 'say it how it feels, gently.';
+
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>Bip Circle 🌐</Text>
-      <Text style={styles.subtitle}>No likes. No followers. Just real.</Text>
+    <ImageBackground source={bg} style={styles.bgImage} resizeMode="cover">
+      <LinearGradient
+        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.88)']}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: glow + '10' }]} />
 
-      <View style={[styles.energyBadge, { borderColor: t.accent }]}>
-        <Text style={styles.energyText}>💜 Soft space open</Text>
-      </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Animated.View style={cardStyle(fade1)}>
+          <Text style={styles.logo}>Bip Circle 🌐</Text>
+          <Text style={styles.subtitle}>{headerTagline}</Text>
 
-      <Image source={CLOUD_HAPPY} style={styles.artworkSmall} resizeMode="contain" />
+          <Animated.View
+            style={[
+              styles.energyBadge,
+              { borderColor: glow, shadowColor: glow, shadowOpacity: 0.6, shadowRadius: 12 },
+              { transform: [{ scale: breathScale }], opacity: breathOpacity },
+            ]}
+          >
+            <Text style={[styles.energyText, { color: glow }]}>{energyText}</Text>
+          </Animated.View>
 
-      <View style={[styles.card, { backgroundColor: t.card, borderColor: t.accent }]}>
-        <Text style={styles.cardEmoji}>✨</Text>
-        <Text style={styles.cardText}>Circle is for real moments.</Text>
-        <Text style={styles.entryText}>
-          Share anonymous Bips, photos, fit checks, art, room photos, short clips, and growth moments.
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.typeSelector, { borderColor: t.accent, backgroundColor: t.card }]}
-        onPress={() => setShowTypeMenu(s => !s)}
-      >
-        <Text style={styles.typeSelectorText}>
-          {currentType.emoji} {currentType.label}
-        </Text>
-        <Text style={[styles.typeSelectorSub, { color: t.soft }]}>
-          {currentType.sub} {showTypeMenu ? '▲' : '▼'}
-        </Text>
-      </TouchableOpacity>
-
-      {showTypeMenu && (
-        <View style={[styles.typeMenu, { backgroundColor: t.card, borderColor: t.accent }]}>
-          {MEDIA_TYPES.map(type => (
-            <TouchableOpacity
-              key={type.id}
-              style={[
-                styles.typeOption,
-                selectedType === type.id && { backgroundColor: 'rgba(168,85,247,0.15)' },
-              ]}
-              onPress={() => handleTypeChange(type.id)}
-            >
-              <Text style={styles.typeEmoji}>{type.emoji}</Text>
-              <View>
-                <Text style={styles.typeLabel}>{type.label}</Text>
-                <Text style={styles.typeSub}>{type.sub}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {selectedType !== 'text' && (
-        <TouchableOpacity
-          style={[styles.mediaPickerBtn, { backgroundColor: t.accent }]}
-          onPress={handlePickMedia}
-        >
-          <Text style={styles.mediaPickerText}>Pick Media</Text>
-        </TouchableOpacity>
-      )}
-
-      {selectedMediaUri && (
-        <View style={[styles.previewCard, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={styles.previewLabel}>Preview</Text>
-          <Text style={styles.previewPath}>{selectedMediaType === 'video' ? '🎬 Video selected' : '🖼️ Photo selected'}</Text>
-          <Text style={styles.previewPath}>{selectedMediaUri}</Text>
-        </View>
-      )}
-
-      <View style={[styles.composerCard, { backgroundColor: t.card, borderColor: t.accent }]}>
-        <Text style={[styles.composerPrompt, { color: t.soft }]}>
-          {currentType.emoji} Drop a {currentType.label}...
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Say it how it feels..."
-          placeholderTextColor="#4a3d6b"
-          multiline
-          value={circlePostText}
-          onChangeText={text => {
-            setCirclePostText(text);
-            const scan = runSafetyScan(text, !!selectedMediaUri);
-            setScanResult(scan);
-            setShowSoftCheckIn(scan.level === 'soft');
-            setShowBridgeSuggestion(scan.level === 'bridge');
-            setShowParentPrompt(scan.level === 'parent');
-          }}
-        />
-
-        <TouchableOpacity style={[styles.postBtn, { backgroundColor: t.accent }]} onPress={handleSavePost} disabled={isSubmitting}>
-          <Text style={styles.postBtnText}>{isSubmitting ? 'Posting...' : '+ Post Anonymous Bip'}</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.safeText}>
-          Anonymous. Protected. Real. No bullying. No exposing people.
-        </Text>
-      </View>
-
-      {showSoftCheckIn && (
-        <View style={[styles.softCard, { borderColor: t.accent }]}>
-          <Text style={styles.softTitle}>Hold up 💜</Text>
-          <Text style={styles.softText}>
-            This one feels a little rough. Circle can hold it gently.
-          </Text>
-        </View>
-      )}
-
-      {showBridgeSuggestion && (
-        <View style={[styles.bridgeCard, { borderColor: t.accent }]}>
-          <Text style={styles.bridgeTitle}>This might be easier through Bridge.</Text>
-          <Text style={styles.bridgeText}>
-            You can share a softer version with someone you trust, and keep control of what they see.
-          </Text>
-          <TouchableOpacity style={styles.smallBtn} onPress={handleBridgeShare}>
-            <Text style={styles.smallBtnText}>Open Bridge</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {showParentPrompt && (
-        <View style={[styles.parentCard, { borderColor: t.accent }]}>
-          <Text style={styles.parentTitle}>We wanna keep you safe.</Text>
-          <Text style={styles.parentText}>
-            This one may need a trusted grown-up. You choose what gets shared.
-          </Text>
-          <TouchableOpacity style={styles.smallBtn} onPress={handleParentPrompt}>
-            <Text style={styles.smallBtnText}>Open Parent Window</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {showFitCheckMode && (
-        <View style={[styles.fitCard, { borderColor: t.accent, backgroundColor: t.card }]}>
-          <Text style={styles.fitTitle}>✨ Fit Check</Text>
-          <Text style={styles.fitText}>
-            Expression. Creativity. Confidence. Not ratings. Not popularity.
-          </Text>
-          <View style={styles.fitReactions}>
-            {FIT_CHECK_REACTIONS.map((reaction, idx) => (
-              <View key={reaction.label} style={[styles.fitReaction, { borderColor: t.accent }]}>
-                <Text style={styles.fitReactionEmoji}>{reaction.emoji}</Text>
-                <Text style={styles.fitReactionLabel}>{reaction.label}</Text>
-              </View>
-            ))}
+          <View style={styles.cloudWrap}>
+            <Animated.Image
+              source={CLOUD_HAPPY}
+              style={[styles.artworkSmall, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            />
+            <View style={[styles.presencePill, { borderColor: glow }]}>
+              <Text style={[styles.presenceText, { color: '#f5f0ff' }]}>
+                {charLabel} is here · circle is soft
+              </Text>
+            </View>
           </View>
-          <Text style={styles.fitVoice}>Okayyyy fit check 👀 The confidence is the best part.</Text>
-        </View>
-      )}
+        </Animated.View>
 
-      <View style={[styles.sectionCard, { borderColor: t.accent, backgroundColor: t.card }]}>
-        <Text style={styles.sectionTitle}>Circle Bips</Text>
-        {circlePosts.map(post => (
-          <View key={post.id} style={[styles.postCard, { borderColor: t.accent }]}>
-            <Text style={styles.postText}>{post.text}</Text>
-            {!!post.mediaUri && <Text style={styles.postMedia}>Media attached</Text>}
-            <View style={styles.reactionRow}>
-              {[
-                ['💜', 'felt', 'Felt This'],
-                ['☁️', 'comfort', 'Comfort'],
-                ['⭐', 'proud', 'Proud'],
-                ['🌙', 'stay', 'Stayed'],
-              ].map(([emoji, type, label]) => (
+        <Animated.View style={cardStyle(fade2)}>
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow, shadowColor: glow }]}>
+            <Text style={styles.cardEmoji}>✨</Text>
+            <Text style={styles.cardText}>circle is for real moments.</Text>
+            <Text style={styles.entryText}>
+              drop anonymous bips, photos, fit checks, art, room glow, short clips, growth wins. no count. no clout.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.typeSelector, { borderColor: glow, backgroundColor: 'rgba(20,12,40,0.7)' }]}
+            onPress={() => setShowTypeMenu(s => !s)}
+          >
+            <Text style={styles.typeSelectorText}>
+              {currentType.emoji} {currentType.label}
+            </Text>
+            <Text style={[styles.typeSelectorSub, { color: '#cbb6f7' }]}>
+              {currentType.sub} {showTypeMenu ? '▲' : '▼'}
+            </Text>
+          </TouchableOpacity>
+
+          {showTypeMenu && (
+            <View style={[styles.typeMenu, { backgroundColor: 'rgba(20,12,40,0.92)', borderColor: glow }]}>
+              {MEDIA_TYPES.map(type => (
                 <TouchableOpacity
-                  key={type}
-                  onPress={() => reactToPost(post.id, type)}
-                  style={styles.reactionBtn}
+                  key={type.id}
+                  style={[
+                    styles.typeOption,
+                    selectedType === type.id && { backgroundColor: 'rgba(168,85,247,0.18)' },
+                  ]}
+                  onPress={() => handleTypeChange(type.id)}
                 >
-                  <Text style={styles.reactionText}>{emoji} {(post.reactions as any)?.[type] || 0}</Text>
-                  <Text style={styles.reactionLabel}>{label}</Text>
+                  <Text style={styles.typeEmoji}>{type.emoji}</Text>
+                  <View>
+                    <Text style={styles.typeLabel}>{type.label}</Text>
+                    <Text style={styles.typeSub}>{type.sub}</Text>
+                  </View>
                 </TouchableOpacity>
               ))}
             </View>
+          )}
+
+          {selectedType !== 'text' && (
+            <TouchableOpacity
+              style={[styles.mediaPickerBtn, { backgroundColor: glow }]}
+              onPress={handlePickMedia}
+            >
+              <Text style={styles.mediaPickerText}>pick media</Text>
+            </TouchableOpacity>
+          )}
+
+          {selectedMediaUri && (
+            <View style={[styles.previewCard, { backgroundColor: 'rgba(20,12,40,0.7)', borderColor: glow }]}>
+              <Text style={styles.previewLabel}>preview</Text>
+              <Text style={styles.previewPath}>{selectedMediaType === 'video' ? '🎬 video selected' : '🖼️ photo selected'}</Text>
+              <Text style={styles.previewPath} numberOfLines={1}>{selectedMediaUri}</Text>
+            </View>
+          )}
+        </Animated.View>
+
+        <Animated.View style={cardStyle(fade3)}>
+          <View style={[styles.composerCard, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow, shadowColor: glow }]}>
+            <Text style={[styles.composerPrompt, { color: '#cbb6f7' }]}>
+              {currentType.emoji} drop a {currentType.label}…
+            </Text>
+            <TextInput
+              style={[styles.input, { borderColor: glow + '66' }]}
+              placeholder={composerHint}
+              placeholderTextColor="#7c6b98"
+              multiline
+              value={circlePostText}
+              onChangeText={text => {
+                setCirclePostText(text);
+                const scan = runSafetyScan(text, !!selectedMediaUri);
+                setScanResult(scan);
+                setShowSoftCheckIn(scan.level === 'soft');
+                setShowBridgeSuggestion(scan.level === 'bridge');
+                setShowParentPrompt(scan.level === 'parent');
+              }}
+            />
 
             <TouchableOpacity
-              style={styles.replyBtn}
-              onPress={() => setActiveReplySheetPostId(post.id)}
+              style={[styles.postBtn, { backgroundColor: glow }]}
+              onPress={handleSavePost}
+              disabled={isSubmitting}
             >
-              <Text style={styles.replyBtnText}>
-                Reply Softly{post.quietRepliesCount ? ` • ${post.quietRepliesCount} quiet replies sent` : ''}
+              <Text style={styles.postBtnText}>
+                {isSubmitting ? 'posting…' : '+ post anonymous bip'}
               </Text>
             </TouchableOpacity>
+
+            <Text style={styles.safeText}>
+              anonymous · protected · real. no bullying. no exposing people.
+            </Text>
           </View>
-        ))}
-      </View>
 
-      <View style={[styles.cultureCard, { borderColor: t.accent, backgroundColor: t.card }]}>
-        <Text style={styles.cultureTitle}>Circle Culture 💜</Text>
-        <Text style={styles.cultureText}>No bullying. No exposing people. No going viral.</Text>
-        <Text style={styles.cultureText}>Just real Bips. Real connection. Real safety.</Text>
-      </View>
+          <View style={styles.stickyNote}>
+            <Text style={styles.stickyText}>
+              {isRylane
+                ? '“no count. no clout. just keep it real.”'
+                : '“it’s safe here. say it gentle, say it true.”'}
+            </Text>
+          </View>
 
-      <Modal visible={!!activeReplySheetPostId} transparent animationType="slide" onRequestClose={() => setActiveReplySheetPostId(null)}>
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { backgroundColor: t.card, borderColor: t.accent }]}>
-            <Text style={styles.modalTitle}>Reply Softly</Text>
-            <Text style={styles.modalSub}>Pick one. Anonymous. No thread. No drama.</Text>
-            {QUOTE_REPLIES.map(reply => (
-              <TouchableOpacity
-                key={reply}
-                style={styles.replyOption}
-                onPress={() => setSelectedQuietReply(reply)}
-              >
-                <Text style={styles.replyOptionText}>{reply}</Text>
+          {showSoftCheckIn && (
+            <View style={[styles.softCard, { borderColor: glow }]}>
+              <Text style={styles.softTitle}>hold up 💜</Text>
+              <Text style={styles.softText}>
+                {isRylane
+                  ? 'this one feels rough. circle’s got you.'
+                  : 'this one feels a little tender. circle can hold it gently.'}
+              </Text>
+            </View>
+          )}
+
+          {showBridgeSuggestion && (
+            <View style={[styles.bridgeCard, { borderColor: glow }]}>
+              <Text style={styles.bridgeTitle}>this might land easier through bridge.</Text>
+              <Text style={styles.bridgeText}>
+                share a softer version with someone you trust. you stay in control of what they see.
+              </Text>
+              <TouchableOpacity style={[styles.smallBtn, { backgroundColor: glow + '40' }]} onPress={handleBridgeShare}>
+                <Text style={styles.smallBtnText}>open bridge</Text>
               </TouchableOpacity>
-            ))}
-            <TextInput
-              style={styles.replyInput}
-              placeholder="Or one short custom note..."
-              placeholderTextColor="#7c6b98"
-              value={selectedQuietReply}
-              onChangeText={setSelectedQuietReply}
-            />
-            <TouchableOpacity
-              style={[styles.sendBtn, { backgroundColor: t.accent }]}
-              onPress={() => {
-                if (activeReplySheetPostId && selectedQuietReply.trim()) {
-                  sendQuietReply?.(activeReplySheetPostId, selectedQuietReply.trim());
-                }
-                setSelectedQuietReply('');
-                setActiveReplySheetPostId(null);
-              }}
-            >
-              <Text style={styles.sendBtnText}>Send quietly</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+            </View>
+          )}
 
-      {BottomNav}
-    </ScrollView>
+          {showParentPrompt && (
+            <View style={[styles.parentCard, { borderColor: glow }]}>
+              <Text style={styles.parentTitle}>we wanna keep you safe.</Text>
+              <Text style={styles.parentText}>
+                this one might need a trusted grown-up. you choose what gets shared.
+              </Text>
+              <TouchableOpacity style={[styles.smallBtn, { backgroundColor: glow + '40' }]} onPress={handleParentPrompt}>
+                <Text style={styles.smallBtnText}>open parent window</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {showFitCheckMode && (
+            <View style={[styles.fitCard, { borderColor: glow, backgroundColor: 'rgba(30,18,55,0.78)' }]}>
+              <Text style={styles.fitTitle}>✨ fit check</Text>
+              <Text style={styles.fitText}>
+                expression · creativity · confidence. not ratings. not popularity.
+              </Text>
+              <View style={styles.fitReactions}>
+                {FIT_CHECK_REACTIONS.map((reaction) => (
+                  <View key={reaction.label} style={[styles.fitReaction, { borderColor: glow }]}>
+                    <Text style={styles.fitReactionEmoji}>{reaction.emoji}</Text>
+                    <Text style={styles.fitReactionLabel}>{reaction.label}</Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={styles.fitVoice}>
+                {isRylane
+                  ? 'okay the drip is the drip. confidence > anything.'
+                  : 'okayyyy fit check 👀 the confidence is the best part.'}
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+
+        <Animated.View style={cardStyle(fade4)}>
+          <View style={[styles.sectionCard, { borderColor: glow, backgroundColor: 'rgba(20,12,40,0.7)' }]}>
+            <Text style={styles.sectionTitle}>circle bips</Text>
+            {circlePosts.length === 0 && (
+              <Text style={styles.emptyText}>
+                {isRylane ? 'circle’s quiet. drop something real.' : 'circle is quiet right now. you can be the first.'}
+              </Text>
+            )}
+            {circlePosts.map(post => (
+              <View key={post.id} style={[styles.postCard, { borderColor: glow + '88' }]}>
+                <Text style={styles.postText}>{post.text}</Text>
+                {!!post.mediaUri && <Text style={styles.postMedia}>media attached</Text>}
+                <View style={styles.reactionRow}>
+                  {[
+                    ['💜', 'felt', 'felt this'],
+                    ['☁️', 'comfort', 'comfort'],
+                    ['⭐', 'proud', 'proud'],
+                    ['🌙', 'stay', 'stayed'],
+                  ].map(([emoji, type, label]) => (
+                    <TouchableOpacity
+                      key={type}
+                      onPress={() => reactToPost(post.id, type as string)}
+                      style={styles.reactionBtn}
+                    >
+                      <Text style={styles.reactionText}>{emoji} {(post.reactions as any)?.[type as string] || 0}</Text>
+                      <Text style={styles.reactionLabel}>{label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.replyBtn, { backgroundColor: glow + '24' }]}
+                  onPress={() => setActiveReplySheetPostId(post.id)}
+                >
+                  <Text style={styles.replyBtnText}>
+                    reply softly{post.quietRepliesCount ? ` · ${post.quietRepliesCount} quiet replies sent` : ''}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+
+          <View style={[styles.cultureCard, { borderColor: glow, backgroundColor: 'rgba(30,18,55,0.78)' }]}>
+            <Text style={styles.cultureTitle}>circle culture 💜</Text>
+            {cultureLines.map((line, i) => (
+              <Text key={i} style={styles.cultureText}>{line}</Text>
+            ))}
+          </View>
+        </Animated.View>
+
+        <Modal
+          visible={!!activeReplySheetPostId}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setActiveReplySheetPostId(null)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalCard, { backgroundColor: 'rgba(20,12,40,0.96)', borderColor: glow }]}>
+              <Text style={styles.modalTitle}>reply softly</Text>
+              <Text style={styles.modalSub}>pick one. anonymous. no thread. no drama.</Text>
+              {QUOTE_REPLIES.map(reply => (
+                <TouchableOpacity
+                  key={reply}
+                  style={[styles.replyOption, selectedQuietReply === reply && { backgroundColor: glow + '30' }]}
+                  onPress={() => setSelectedQuietReply(reply)}
+                >
+                  <Text style={styles.replyOptionText}>{reply}</Text>
+                </TouchableOpacity>
+              ))}
+              <TextInput
+                style={[styles.replyInput, { borderColor: glow + '66' }]}
+                placeholder={isRylane ? 'or one short note. keep it real.' : 'or one short custom note…'}
+                placeholderTextColor="#7c6b98"
+                value={selectedQuietReply}
+                onChangeText={setSelectedQuietReply}
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: glow }]}
+                onPress={() => {
+                  if (activeReplySheetPostId && selectedQuietReply.trim()) {
+                    sendQuietReply?.(activeReplySheetPostId, selectedQuietReply.trim());
+                  }
+                  setSelectedQuietReply('');
+                  setActiveReplySheetPostId(null);
+                }}
+              >
+                <Text style={styles.sendBtnText}>send quietly</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => {
+                  setSelectedQuietReply('');
+                  setActiveReplySheetPostId(null);
+                }}
+              >
+                <Text style={styles.cancelBtnText}>nevermind</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {BottomNav}
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  bgImage: { flex: 1 },
   container: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  logo: { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle: { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 12 },
-  energyBadge: { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 16 },
-  energyText: { color: '#c4b5fd', fontSize: 13, fontWeight: '600' },
-  artworkSmall: { width: 80, height: 80, alignSelf: 'center', marginBottom: 12 },
+  logo: { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 },
+  subtitle: { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 12, fontStyle: 'italic' },
+  energyBadge: { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 },
+  energyText: { fontSize: 13, fontWeight: '600' },
 
-  card: { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
-  cardEmoji: { fontSize: 32, marginBottom: 8 },
+  cloudWrap: { alignItems: 'center', marginBottom: 14 },
+  artworkSmall: { width: 84, height: 84, marginBottom: 6 },
+  presencePill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(20,12,40,0.6)' },
+  presenceText: { fontSize: 12, fontWeight: '600' },
+
+  card: { padding: 18, borderRadius: 20, marginBottom: 14, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14 },
+  cardEmoji: { fontSize: 30, marginBottom: 6 },
   cardText: { color: '#fff', fontSize: 17, fontWeight: '700', marginBottom: 8 },
-  entryText: { color: '#E2E8F0', fontSize: 14, marginBottom: 8, lineHeight: 20 },
+  entryText: { color: '#e9defc', fontSize: 14, lineHeight: 21 },
 
   typeSelector: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderRadius: 16, padding: 14, marginBottom: 8 },
   typeSelectorText: { color: '#fff', fontSize: 15, fontWeight: '700' },
@@ -566,64 +740,70 @@ const styles = StyleSheet.create({
   mediaPickerText: { color: '#fff', fontWeight: '700' },
   previewCard: { borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 12 },
   previewLabel: { color: '#fff', fontWeight: '700', marginBottom: 4 },
-  previewPath: { color: '#CBD5E1', fontSize: 12 },
+  previewPath: { color: '#cbb6f7', fontSize: 12 },
 
-  composerCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 14 },
+  composerCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, shadowOpacity: 0.4, shadowRadius: 14 },
   composerPrompt: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
-  input: { color: '#fff', padding: 14, borderRadius: 14, minHeight: 110, textAlignVertical: 'top', marginBottom: 14, backgroundColor: 'rgba(0,0,0,0.3)', fontSize: 14, lineHeight: 22 },
+  input: { color: '#fff', padding: 14, borderRadius: 14, minHeight: 110, textAlignVertical: 'top', marginBottom: 14, backgroundColor: 'rgba(0,0,0,0.35)', fontSize: 14, lineHeight: 22, borderWidth: 1 },
   postBtn: { padding: 16, borderRadius: 18, marginBottom: 8, alignItems: 'center' },
   postBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   safeText: { color: '#94A3B8', fontSize: 11, textAlign: 'center', marginTop: 4 },
 
-  softCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: 'rgba(124,58,237,0.08)' },
+  stickyNote: { backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 10, marginBottom: 12, transform: [{ rotate: '-2deg' }] },
+  stickyText: { color: '#3a2461', fontSize: 13, fontStyle: 'italic', textAlign: 'center' },
+
+  softCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: 'rgba(124,58,237,0.16)' },
   softTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 6 },
-  softText: { color: '#E2E8F0', fontSize: 13, lineHeight: 19 },
+  softText: { color: '#e9defc', fontSize: 13, lineHeight: 19 },
 
-  bridgeCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: 'rgba(124,58,237,0.08)' },
+  bridgeCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: 'rgba(124,58,237,0.16)' },
   bridgeTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 6 },
-  bridgeText: { color: '#E2E8F0', fontSize: 13, lineHeight: 19, marginBottom: 10 },
+  bridgeText: { color: '#e9defc', fontSize: 13, lineHeight: 19, marginBottom: 10 },
 
-  parentCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: 'rgba(124,58,237,0.08)' },
+  parentCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12, backgroundColor: 'rgba(124,58,237,0.16)' },
   parentTitle: { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 6 },
-  parentText: { color: '#E2E8F0', fontSize: 13, lineHeight: 19, marginBottom: 10 },
+  parentText: { color: '#e9defc', fontSize: 13, lineHeight: 19, marginBottom: 10 },
 
-  smallBtn: { backgroundColor: '#334155', padding: 10, borderRadius: 12, alignItems: 'center' },
+  smallBtn: { padding: 10, borderRadius: 12, alignItems: 'center' },
   smallBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
   fitCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12 },
   fitTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 6 },
-  fitText: { color: '#CBD5E1', fontSize: 13, marginBottom: 12, lineHeight: 19 },
+  fitText: { color: '#cbb6f7', fontSize: 13, marginBottom: 12, lineHeight: 19 },
   fitReactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   fitReaction: { borderWidth: 1, borderRadius: 14, padding: 10, minWidth: '31%', alignItems: 'center' },
   fitReactionEmoji: { fontSize: 18, marginBottom: 4 },
   fitReactionLabel: { color: '#fff', fontSize: 11, textAlign: 'center', fontWeight: '600' },
   fitVoice: { color: '#f5f0ff', fontSize: 13, fontStyle: 'italic' },
 
-  sectionCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 6, marginBottom: 16 },
+  sectionCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 6, marginBottom: 14 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
+  emptyText: { color: '#cbb6f7', fontSize: 13, fontStyle: 'italic', textAlign: 'center', paddingVertical: 18 },
 
-  postCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12 },
+  postCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, backgroundColor: 'rgba(20,12,40,0.4)' },
   postText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },
-  postMedia: { color: '#94A3B8', fontSize: 12, marginBottom: 10 },
+  postMedia: { color: '#cbb6f7', fontSize: 12, marginBottom: 10 },
   reactionRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },
-  reactionBtn: { backgroundColor: '#1E293B', padding: 10, borderRadius: 14, alignItems: 'center', minWidth: '22%' },
+  reactionBtn: { backgroundColor: 'rgba(30,18,55,0.85)', padding: 10, borderRadius: 14, alignItems: 'center', minWidth: '22%' },
   reactionText: { color: '#fff', fontWeight: 'bold', fontSize: 13 },
-  reactionLabel: { color: '#94A3B8', fontSize: 10, marginTop: 2 },
+  reactionLabel: { color: '#cbb6f7', fontSize: 10, marginTop: 2 },
 
-  replyBtn: { marginTop: 10, padding: 12, borderRadius: 14, backgroundColor: 'rgba(168,85,247,0.14)' },
-  replyBtnText: { color: '#f5f0ff', fontWeight: '700', fontSize: 13 },
+  replyBtn: { marginTop: 10, padding: 12, borderRadius: 14 },
+  replyBtnText: { color: '#f5f0ff', fontWeight: '700', fontSize: 13, textAlign: 'center' },
 
-  cultureCard: { borderWidth: 1, borderRadius: 20, padding: 18, marginTop: 8, marginBottom: 20 },
+  cultureCard: { borderWidth: 1, borderRadius: 20, padding: 18, marginTop: 4, marginBottom: 24 },
   cultureTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  cultureText: { color: '#CBD5E1', fontSize: 13, marginBottom: 4, lineHeight: 19 },
+  cultureText: { color: '#e9defc', fontSize: 13, marginBottom: 4, lineHeight: 19 },
 
-  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.72)', justifyContent: 'flex-end' },
-  modalCard: { borderWidth: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '82%' },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  modalCard: { borderWidth: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, maxHeight: '85%' },
   modalTitle: { color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  modalSub: { color: '#CBD5E1', fontSize: 12, marginBottom: 12 },
-  replyOption: { padding: 12, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', marginBottom: 8 },
+  modalSub: { color: '#cbb6f7', fontSize: 12, marginBottom: 12 },
+  replyOption: { padding: 12, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 8 },
   replyOptionText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  replyInput: { color: '#fff', padding: 12, borderRadius: 12, minHeight: 44, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.3)' },
+  replyInput: { color: '#fff', padding: 12, borderRadius: 12, minHeight: 44, marginTop: 8, backgroundColor: 'rgba(0,0,0,0.35)', borderWidth: 1 },
   sendBtn: { marginTop: 12, padding: 14, borderRadius: 16, alignItems: 'center' },
   sendBtnText: { color: '#fff', fontWeight: '800' },
+  cancelBtn: { marginTop: 8, padding: 10, alignItems: 'center' },
+  cancelBtnText: { color: '#cbb6f7', fontSize: 13 },
 });

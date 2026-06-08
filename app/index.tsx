@@ -421,6 +421,8 @@ export default function App() {
       reactToPost={reactToPost}
       setScreen={setScreen}
       BottomNav={nav}
+      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+      mood={mood}
     />
   );
 
