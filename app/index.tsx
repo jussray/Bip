@@ -427,7 +427,7 @@ export default function App() {
   );
 
   if (screen === 'bridge') return (
-    <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} />
+    <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
   );
 
   if (screen === 'parentBridge') return (

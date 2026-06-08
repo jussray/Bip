@@ -1,65 +1,112 @@
 // screens/BridgeScreen.tsx
 // Se'kret Bip — Bridge Screen (Teen Side)
-// ─────────────────────────────────────────────────────────────────────────────
-// Props from index.tsx:
-//   t             — theme object (THEME_PACKS[theme])
-//   currentSekret — SEKRET_PROFILES[selectedSekret] object
-//   setScreen     — navigation function (setScreen only, no router.push)
-//   BottomNav     — rendered nav node
-//
-// PURPOSE: Lets the teen share a moment with a trusted adult via the Bridge.
-// The teen picks a share type, writes a message, and generates a Bridge card.
-// The parent sees it in ParentBridgeScreen.
-// ─────────────────────────────────────────────────────────────────────────────
+// Phase 1 polish: time-of-day backdrop, char-aware tone, mood glow,
+// staggered entrance, breath badge, sticky note, send confirmation glow.
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ScrollView,
+  ImageBackground,
+  Animated,
   StyleSheet,
   Platform,
   Alert,
+  Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getRoomBg, TimeOfDay } from '../constants/theme';
 import type { BridgePayload } from '../types/index';
-
-// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
   currentSekret: Record<string, any>;
   setScreen:     (screen: string) => void;
   BottomNav:     React.ReactNode;
+  selectedSekret?: string;
+  mood?:         string;
 }
 
-// ── Share type options ────────────────────────────────────────────────────────
-
 const SHARE_TYPES = [
-  { id: 'mood',      emoji: '💜', label: 'My Mood',       placeholder: "Tell them how you're feeling…" },
-  { id: 'thought',   emoji: '💭', label: 'A Thought',      placeholder: 'Something on your mind…' },
-  { id: 'need',      emoji: '🌿', label: 'Something I Need', placeholder: 'What would help right now…' },
-  { id: 'win',       emoji: '⚡', label: 'A Win',           placeholder: 'Something good that happened…' },
+  { id: 'mood',    emoji: '💜', label: 'My Mood',     placeholder: "tell them how you're feeling…" },
+  { id: 'thought', emoji: '💭', label: 'A Thought',    placeholder: 'something on your mind…' },
+  { id: 'need',    emoji: '🌿', label: 'Something I Need', placeholder: 'what would help right now…' },
+  { id: 'win',     emoji: '⚡', label: 'A Win',         placeholder: 'something good that happened…' },
 ];
 
-// ── Component ─────────────────────────────────────────────────────────────────
+const getTimeOfDay = (): TimeOfDay => {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+};
 
-export function BridgeScreen({ t, currentSekret, setScreen, BottomNav }: BridgeScreenProps) {
-  const [shareType, setShareType]   = useState<string | null>(null);
-  const [message, setMessage]       = useState('');
-  const [sent, setSent]             = useState(false);
+const moodGlow = (mood?: string): string => {
+  const m = (mood || '').toLowerCase();
+  if (m === 'happy') return '#fbbf24';
+  if (m === 'sad' || m === 'anxious') return '#7dd3fc';
+  if (m === 'angry' || m === 'overwhelmed' || m === 'stressed') return '#f472b6';
+  if (m === 'tired') return '#6d28d9';
+  if (m === 'calm') return '#c4b5fd';
+  return '#c4b5fd';
+};
+
+export function BridgeScreen({
+  t, currentSekret, setScreen, BottomNav, selectedSekret, mood,
+}: BridgeScreenProps) {
+  const [shareType, setShareType] = useState<string | null>(null);
+  const [message, setMessage]     = useState('');
+  const [sent, setSent]           = useState(false);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
+  const isRylane = selectedSekret === 'rylane';
+  const charLabel = isRylane ? 'rylane' : 'raylene';
+  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
+
+  const time = useMemo(() => getTimeOfDay(), []);
+  const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
+  const glow = useMemo(() => moodGlow(mood), [mood]);
+
+  const fade1 = useRef(new Animated.Value(0)).current;
+  const fade2 = useRef(new Animated.Value(0)).current;
+  const fade3 = useRef(new Animated.Value(0)).current;
+  const breath = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const stagger = (val: Animated.Value, delay: number) =>
+      Animated.timing(val, {
+        toValue: 1, duration: 380, delay,
+        easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      });
+    Animated.parallel([stagger(fade1, 0), stagger(fade2, 160), stagger(fade3, 320)]).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [fade1, fade2, fade3, breath]);
+
+  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
+  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
+  const cardStyle = (val: Animated.Value) => ({
+    opacity: val,
+    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+  });
 
   const handleSend = () => {
     if (!shareType || !message.trim()) {
-      Alert.alert('Almost there', 'Pick a share type and write your message first.');
+      Alert.alert('almost there', 'pick a share type and write your message first.');
       return;
     }
 
-    // Bridge payload — matches BridgePayload type in types/bridge.ts
-    // Future: POST to Supabase bridge_shares table
     const payload: BridgePayload = {
       shareTypeLabel: selectedType?.label,
       preview:        message.trim().slice(0, 80),
@@ -67,7 +114,6 @@ export function BridgeScreen({ t, currentSekret, setScreen, BottomNav }: BridgeS
       softPrompt:     `${currentSekret?.name ?? 'Bip'} helped share this.`,
     };
 
-    // TODO: await api.post('/bridge/share', payload)
     console.log('[BridgeScreen] Bridge payload:', payload);
 
     setSent(true);
@@ -75,135 +121,186 @@ export function BridgeScreen({ t, currentSekret, setScreen, BottomNav }: BridgeS
     setShareType(null);
   };
 
-  // ── Sent confirmation ────────────────────────────────────────────────────
+  const heroCopy = isRylane
+    ? "share something with your person. no pressure. no big speech."
+    : "share something with your person — softly. no full explanation needed.";
+
   if (sent) {
     return (
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-        <Text style={styles.logo}>🌉 Bridge</Text>
-        <View style={[styles.card, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={styles.sentEmoji}>💌</Text>
-          <Text style={[styles.sentTitle, { color: t.soft }]}>Sent to your person.</Text>
-          <Text style={styles.sentSub}>
-            They'll see it when they open the Parent Bridge. You did something brave.
-          </Text>
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: t.accent }]}
-            onPress={() => setSent(false)}
-          >
-            <Text style={styles.buttonText}>Send Another</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ghostButton, { borderColor: t.accent }]}
-            onPress={() => setScreen('home')}
-          >
-            <Text style={[styles.ghostButtonText, { color: t.soft }]}>Back to Room</Text>
-          </TouchableOpacity>
-        </View>
-        {BottomNav}
-      </ScrollView>
+      <View style={styles.root}>
+        <ImageBackground source={bg} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <LinearGradient
+          colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: glow + '14' }]} />
+
+        <ScrollView contentContainerStyle={styles.container}>
+          <Animated.View style={cardStyle(fade1)}>
+            <Text style={styles.logo}>🌉 bridge</Text>
+            <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow, shadowColor: glow, alignItems: 'center', paddingVertical: 32 }]}>
+              <Animated.Text style={[styles.sentEmoji, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}>💌</Animated.Text>
+              <Text style={styles.sentTitle}>sent to your person.</Text>
+              <Text style={styles.sentSub}>
+                they'll see it as a gentle note. you did something brave 💜
+              </Text>
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: glow, marginTop: 18 }]}
+                onPress={() => setSent(false)}
+              >
+                <Text style={styles.buttonText}>send another</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.ghostButton, { borderColor: glow }]}
+                onPress={() => setScreen('home')}
+              >
+                <Text style={[styles.ghostButtonText, { color: '#e9defc' }]}>back to room</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+          {BottomNav}
+        </ScrollView>
+      </View>
     );
   }
 
-  // ── Main screen ──────────────────────────────────────────────────────────
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: t.background }]}>
-      <Text style={styles.logo}>🌉 Bridge</Text>
-      <Text style={styles.subtitle}>
-        Share something with your person — no pressure, no full explanation needed.
-      </Text>
+    <View style={styles.root}>
+      <ImageBackground source={bg} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <LinearGradient
+        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: glow + '12' }]} />
 
-      {/* Share type selector */}
-      <Text style={[styles.sectionLabel, { color: t.soft }]}>What do you want to share?</Text>
-      <View style={styles.typeRow}>
-        {SHARE_TYPES.map(type => (
-          <TouchableOpacity
-            key={type.id}
+      <ScrollView contentContainerStyle={styles.container}>
+        <Animated.View style={cardStyle(fade1)}>
+          <Text style={styles.logo}>🌉 bridge</Text>
+          <Text style={styles.subtitle}>{heroCopy}</Text>
+
+          <Animated.View
             style={[
-              styles.typeChip,
+              styles.energyBadge,
+              { borderColor: glow, shadowColor: glow, shadowOpacity: 0.6, shadowRadius: 12 },
+              { transform: [{ scale: breathScale }], opacity: breathOpacity },
+            ]}
+          >
+            <Text style={[styles.energyText, { color: glow }]}>
+              {charLabel} helps you bridge it · you stay in control
+            </Text>
+          </Animated.View>
+        </Animated.View>
+
+        <Animated.View style={cardStyle(fade2)}>
+          <Text style={[styles.sectionLabel, { color: '#cbb6f7' }]}>what do you want to share?</Text>
+          <View style={styles.typeRow}>
+            {SHARE_TYPES.map(type => (
+              <TouchableOpacity
+                key={type.id}
+                style={[
+                  styles.typeChip,
+                  {
+                    backgroundColor: shareType === type.id ? glow : 'rgba(20,12,40,0.75)',
+                    borderColor:     shareType === type.id ? glow : glow + '55',
+                  },
+                ]}
+                onPress={() => setShareType(type.id)}
+              >
+                <Text style={styles.typeEmoji}>{type.emoji}</Text>
+                <Text style={[styles.typeLabel, { color: shareType === type.id ? '#fff' : '#e9defc' }]}>
+                  {type.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {shareType && (
+            <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
+              <Text style={[styles.cardLabel, { color: glow }]}>
+                {selectedType?.emoji} {selectedType?.label}
+              </Text>
+              <TextInput
+                style={[styles.input, { color: '#fff', borderColor: glow + '66' }]}
+                placeholder={selectedType?.placeholder}
+                placeholderTextColor="#7c6b98"
+                value={message}
+                onChangeText={setMessage}
+                multiline
+                numberOfLines={4}
+                maxLength={280}
+              />
+              <Text style={[styles.charCount, { color: '#cbb6f7' }]}>
+                {message.length}/280
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+
+        <Animated.View style={cardStyle(fade3)}>
+          <View style={styles.stickyNote}>
+            <Text style={styles.stickyText}>
+              {isRylane
+                ? '“share what you can. they don’t need the whole story.”'
+                : '“soft is brave. you don’t have to explain everything.”'}
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.button,
               {
-                backgroundColor: shareType === type.id ? t.accent : t.card,
-                borderColor:     shareType === type.id ? t.accent : t.soft + '44',
+                backgroundColor: shareType && message.trim() ? glow : 'rgba(50,35,80,0.6)',
+                opacity:          shareType && message.trim() ? 1 : 0.6,
               },
             ]}
-            onPress={() => setShareType(type.id)}
+            onPress={handleSend}
+            disabled={!shareType || !message.trim()}
           >
-            <Text style={styles.typeEmoji}>{type.emoji}</Text>
-            <Text style={[styles.typeLabel, { color: shareType === type.id ? '#fff' : t.soft }]}>
-              {type.label}
-            </Text>
+            <Text style={styles.buttonText}>🌉 send to bridge</Text>
           </TouchableOpacity>
-        ))}
-      </View>
 
-      {/* Message input */}
-      {shareType && (
-        <View style={[styles.card, { backgroundColor: t.card, borderColor: t.accent }]}>
-          <Text style={[styles.cardLabel, { color: t.soft }]}>
-            {selectedType?.emoji} {selectedType?.label}
-          </Text>
-          <TextInput
-            style={[styles.input, { color: '#fff', borderColor: t.accent + '66' }]}
-            placeholder={selectedType?.placeholder}
-            placeholderTextColor={t.soft + '88'}
-            value={message}
-            onChangeText={setMessage}
-            multiline
-            numberOfLines={4}
-            maxLength={280}
-          />
-          <Text style={[styles.charCount, { color: t.soft + '88' }]}>
-            {message.length}/280
-          </Text>
-        </View>
-      )}
+          <TouchableOpacity
+            style={[styles.ghostButton, { borderColor: glow + '88' }]}
+            onPress={() => setScreen('home')}
+          >
+            <Text style={[styles.ghostButtonText, { color: '#cbb6f7' }]}>back to room</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
-      {/* Send button */}
-      <TouchableOpacity
-        style={[
-          styles.button,
-          {
-            backgroundColor: shareType && message.trim() ? t.accent : t.card,
-            opacity:          shareType && message.trim() ? 1 : 0.5,
-          },
-        ]}
-        onPress={handleSend}
-        disabled={!shareType || !message.trim()}
-      >
-        <Text style={styles.buttonText}>🌉 Send to Bridge</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.ghostButton, { borderColor: t.accent }]}
-        onPress={() => setScreen('home')}
-      >
-        <Text style={[styles.ghostButtonText, { color: t.soft }]}>Back to Room</Text>
-      </TouchableOpacity>
-
-      {BottomNav}
-    </ScrollView>
+        {BottomNav}
+      </ScrollView>
+    </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0e0820' },
   container:       { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
   logo:            { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:        { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 24 },
+  subtitle:        { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 14, fontStyle: 'italic', lineHeight: 20 },
+  energyBadge:     { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 16 },
+  energyText:      { fontSize: 12, fontWeight: '600' },
+
   sectionLabel:    { fontSize: 14, fontWeight: '600', marginBottom: 12 },
-  typeRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  typeRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   typeChip:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1 },
   typeEmoji:       { fontSize: 18 },
   typeLabel:       { fontSize: 14, fontWeight: '600' },
-  card:            { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
+
+  card:            { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.4, shadowRadius: 14 },
   cardLabel:       { fontSize: 14, fontWeight: '700', marginBottom: 10 },
-  input:           { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 15, minHeight: 100, textAlignVertical: 'top', marginBottom: 8 },
+  input:           { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 15, minHeight: 110, textAlignVertical: 'top', marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.35)' },
   charCount:       { fontSize: 12, textAlign: 'right' },
+
+  stickyNote:      { backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 12, marginBottom: 14, transform: [{ rotate: '-2deg' }] },
+  stickyText:      { color: '#3a2461', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 19 },
+
   button:          { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center' },
   buttonText:      { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   ghostButton:     { padding: 14, borderRadius: 18, marginBottom: 12, alignItems: 'center', borderWidth: 1 },
-  ghostButtonText: { fontSize: 15, fontWeight: '600' },
-  sentEmoji:       { fontSize: 48, textAlign: 'center', marginBottom: 12 },
-  sentTitle:       { fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 8 },
-  sentSub:         { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
+  ghostButtonText: { fontSize: 14, fontWeight: '600' },
+
+  sentEmoji:       { fontSize: 56, textAlign: 'center', marginBottom: 12 },
+  sentTitle:       { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
+  sentSub:         { fontSize: 14, color: '#e9defc', textAlign: 'center', lineHeight: 21 },
 });

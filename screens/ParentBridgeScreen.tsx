@@ -1,63 +1,94 @@
 // screens/ParentBridgeScreen.tsx
-// Se'kret Bip — Parent Bridge Screen
+// Se'kret Bip — Parent Bridge Screen (Parent Window)
 //
-// FULL REWRITE — 2026-06-03 audit
-// Previous version had:
-//   - export default (wrong — must be named export)
-//   - import { useSekret } from './_layout' (fake hook, doesn't exist)
-//   - import BottomNav from '../components/BottomNav' (wrong — it's a prop)
-//   - import { C } from '../constants/theme' (C doesn't exist in theme.ts)
-//   - Styles using C.bg, C.card, C.white (all undefined → crash)
-//
-// This rewrite matches exactly what index.tsx passes:
-//   <ParentBridgeScreen t={t} setScreen={setScreen} BottomNav={nav} />
+// Phase 1 polish: warmer parent-facing tone (less teen scrapbook),
+// soft amber/warm-purple palette, staggered entrance, sent confirmation glow,
+// preserves all logic + Supabase-ready fetch.
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Text,
   TouchableOpacity,
   ScrollView,
   TextInput,
   View,
+  Animated,
   StyleSheet,
   Platform,
   Alert,
+  Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
-// ── Message tips for the parent ─────────────────────────────────────────────
 const BRIDGE_TIPS = [
   'Keep it short and warm. Teens shut down when they feel lectured.',
   'Ask questions instead of giving answers.',
   'Say "I love you" without conditions attached.',
   'Acknowledge their feelings before sharing yours.',
   '"I noticed you seemed stressed. I\'m here if you want to talk." goes a long way.',
+  'Presence > advice. Just being there is the whole gift.',
+  'Apologize when you got it wrong. That teaches more than any lecture.',
 ];
 
 const STARTER_PROMPTS = [
-  'I\'m proud of you, even when I don\'t say it enough.',
-  'You don\'t have to have it all figured out. Neither do I.',
+  "I'm proud of you, even when I don't say it enough.",
+  "You don't have to have it all figured out. Neither do I.",
   'I love you. No strings. No conditions.',
-  'I noticed you\'ve been quiet. I\'m here whenever you\'re ready.',
-  'You can always come to me. I promise I\'ll listen first.',
+  "I noticed you've been quiet. I'm here whenever you're ready.",
+  "You can always come to me. I promise I'll listen first.",
+  "I'm rooting for you, always.",
 ];
 
-// ── Props ────────────────────────────────────────────────────────────────────
-// Matches exactly what app/index.tsx passes
 interface ParentBridgeScreenProps {
   t:         Record<string, any>;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
 }
 
-// Named export — matches index.tsx import { ParentBridgeScreen }
 export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScreenProps) {
 
-  const [message,   setMessage]   = useState('');
-  const [sent,      setSent]      = useState(false);
-  const [sending,   setSending]   = useState(false);
-  const [tipIndex,  setTipIndex]  = useState(0);
+  const [message,  setMessage]  = useState('');
+  const [sent,     setSent]     = useState(false);
+  const [sending,  setSending]  = useState(false);
+  const [tipIndex, setTipIndex] = useState(0);
+
+  // Warm parent palette — amber-cream over deep purple, not teen-scrapbook
+  const parentAccent = '#e9b66d';      // warm amber
+  const parentSoft   = '#f5e8c8';
+  const parentDeep   = '#3a2461';
+
+  // Animations
+  const fade1 = useRef(new Animated.Value(0)).current;
+  const fade2 = useRef(new Animated.Value(0)).current;
+  const fade3 = useRef(new Animated.Value(0)).current;
+  const breath = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const stagger = (val: Animated.Value, delay: number) =>
+      Animated.timing(val, {
+        toValue: 1, duration: 420, delay,
+        easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      });
+    Animated.parallel([stagger(fade1, 0), stagger(fade2, 180), stagger(fade3, 360)]).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [fade1, fade2, fade3, breath]);
+
+  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
+  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
+  const cardStyle = (val: Animated.Value) => ({
+    opacity: val,
+    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+  });
 
   const handleSend = async () => {
     const text = message.trim();
@@ -72,7 +103,6 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
           body:    JSON.stringify({ message: text }),
         });
       }
-      // Success — regardless of backend presence, show confirmation
       setSent(true);
       setMessage('');
     } catch {
@@ -83,146 +113,175 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
   };
 
   const card = (extra?: object) =>
-    [styles.card, { backgroundColor: t.card, borderColor: t.accent + '55' }, extra] as any;
+    [styles.card, { backgroundColor: 'rgba(45,28,75,0.88)', borderColor: parentAccent + '66' }, extra] as any;
 
   return (
-    <View style={[styles.root, { backgroundColor: t.background }]}>
+    <View style={styles.root}>
+      <LinearGradient
+        colors={['#2a1850', '#3a2461', '#1f1238']}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* Warm amber wash to differentiate from teen side */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: parentAccent + '0d' }]} />
+
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ── */}
-        <Text style={styles.logo}>Parent Bridge 🌉</Text>
-        <Text style={styles.subtitle}>
-          Reach in with love. Your teen is on the other side.
-        </Text>
-
-        {/* ── What is this? ── */}
-        <View style={card()}>
-          <Text style={[styles.cardText, { color: '#fff' }]}>What is the Bridge?</Text>
-          <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
-            The Bridge lets you send a short, private message of support to your
-            teen's Se'kret space. They'll see it as a gentle note — not a lecture.
-            You can't read their journal or conversations. This is one-way warmth.
+        <Animated.View style={cardStyle(fade1)}>
+          <Text style={styles.logo}>Parent Window 🌉</Text>
+          <Text style={[styles.subtitle, { color: parentSoft }]}>
+            Reach in with love. Your teen is on the other side.
           </Text>
-        </View>
 
-        {/* ── Tip of the day ── */}
-        <View style={card()}>
-          <Text style={[styles.cardLabel, { color: t.accent }]}>Parent Tip 💜</Text>
-          <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
-            {BRIDGE_TIPS[tipIndex % BRIDGE_TIPS.length]}
-          </Text>
-          <TouchableOpacity
-            style={[styles.nextTipBtn, { borderColor: t.accent }]}
-            onPress={() => setTipIndex(i => i + 1)}
+          <Animated.View
+            style={[
+              styles.energyBadge,
+              { borderColor: parentAccent, shadowColor: parentAccent, shadowOpacity: 0.5, shadowRadius: 12 },
+              { transform: [{ scale: breathScale }], opacity: breathOpacity },
+            ]}
           >
-            <Text style={[styles.nextTipText, { color: t.soft }]}>Next tip →</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Starter prompts ── */}
-        <Text style={[styles.sectionTitle, { color: '#fff' }]}>Need a starting point?</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promptsScroll}>
-          {STARTER_PROMPTS.map(prompt => (
-            <TouchableOpacity
-              key={prompt}
-              style={[styles.promptChip, { backgroundColor: t.card, borderColor: t.accent + '44' }]}
-              onPress={() => setMessage(prompt)}
-            >
-              <Text style={[styles.promptChipText, { color: t.soft }]}>{prompt}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* ── Message input ── */}
-        {!sent ? (
-          <>
-            <Text style={[styles.sectionTitle, { color: '#fff' }]}>Your message</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: t.card, borderColor: t.accent, color: '#fff' }]}
-              placeholder="Write something warm..."
-              placeholderTextColor="#4a3d6b"
-              multiline
-              value={message}
-              onChangeText={setMessage}
-              maxLength={300}
-            />
-            <Text style={[styles.charCount, { color: t.soft }]}>{message.length}/300</Text>
-
-            <TouchableOpacity
-              style={[styles.sendBtn, { backgroundColor: message.trim() ? t.accent : '#334155' }]}
-              onPress={handleSend}
-              disabled={!message.trim() || sending}
-            >
-              <Text style={styles.sendBtnText}>
-                {sending ? 'Sending...' : 'Send with Love 💌'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        ) : (
-          <View style={card({ padding: 24, alignItems: 'center' })}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>💜</Text>
-            <Text style={[styles.cardText, { color: '#fff', textAlign: 'center' }]}>
-              Message sent.
+            <Text style={[styles.energyText, { color: parentAccent }]}>
+              warm · one-way · they choose what to share back
             </Text>
-            <Text style={[styles.entryText, { color: '#E2E8F0', textAlign: 'center' }]}>
-              Your teen will see it as a gentle note in their Se'kret space.
-              That small act of love matters more than you know.
+          </Animated.View>
+
+          <View style={card()}>
+            <Text style={styles.cardTitle}>What is the Bridge?</Text>
+            <Text style={styles.entryText}>
+              The Bridge lets you send a short, private message of support to your
+              teen's Se'kret space. They'll see it as a gentle note — not a lecture.
+              You can't read their journal or conversations. This is one-way warmth.
+            </Text>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={cardStyle(fade2)}>
+          <View style={card()}>
+            <Text style={[styles.cardLabel, { color: parentAccent }]}>Parent Tip 💜</Text>
+            <Text style={styles.entryText}>
+              {BRIDGE_TIPS[tipIndex % BRIDGE_TIPS.length]}
             </Text>
             <TouchableOpacity
-              style={[styles.sendBtn, { backgroundColor: t.accent, marginTop: 16 }]}
-              onPress={() => setSent(false)}
+              style={[styles.nextTipBtn, { borderColor: parentAccent }]}
+              onPress={() => setTipIndex(i => i + 1)}
             >
-              <Text style={styles.sendBtnText}>Send Another</Text>
+              <Text style={[styles.nextTipText, { color: parentSoft }]}>next tip →</Text>
             </TouchableOpacity>
           </View>
-        )}
 
-        {/* ── Navigation ── */}
-        <TouchableOpacity
-          style={[styles.ghostBtn, { borderColor: t.accent }]}
-          onPress={() => setScreen('home')}
-        >
-          <Text style={[styles.ghostBtnText, { color: t.soft }]}>← Back to Room</Text>
-        </TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: '#fff' }]}>Need a starting point?</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promptsScroll}>
+            {STARTER_PROMPTS.map(prompt => (
+              <TouchableOpacity
+                key={prompt}
+                style={[styles.promptChip, { backgroundColor: 'rgba(45,28,75,0.85)', borderColor: parentAccent + '55' }]}
+                onPress={() => setMessage(prompt)}
+              >
+                <Text style={[styles.promptChipText, { color: parentSoft }]}>{prompt}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </Animated.View>
+
+        <Animated.View style={cardStyle(fade3)}>
+          {!sent ? (
+            <>
+              <Text style={[styles.sectionTitle, { color: '#fff' }]}>Your message</Text>
+              <TextInput
+                style={[styles.input, {
+                  backgroundColor: 'rgba(45,28,75,0.85)',
+                  borderColor: parentAccent + '88',
+                  color: '#fff',
+                }]}
+                placeholder="Write something warm..."
+                placeholderTextColor={parentSoft + '88'}
+                multiline
+                value={message}
+                onChangeText={setMessage}
+                maxLength={300}
+              />
+              <Text style={[styles.charCount, { color: parentSoft }]}>{message.length}/300</Text>
+
+              <TouchableOpacity
+                style={[
+                  styles.sendBtn,
+                  {
+                    backgroundColor: message.trim() ? parentAccent : 'rgba(60,40,90,0.6)',
+                    shadowColor: parentAccent,
+                    shadowOpacity: message.trim() ? 0.5 : 0,
+                    shadowRadius: 12,
+                  },
+                ]}
+                onPress={handleSend}
+                disabled={!message.trim() || sending}
+              >
+                <Text style={[styles.sendBtnText, { color: message.trim() ? parentDeep : '#fff' }]}>
+                  {sending ? 'sending…' : 'send with love 💌'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={card({ padding: 28, alignItems: 'center' })}>
+              <Animated.Text style={{ fontSize: 56, marginBottom: 12, transform: [{ scale: breathScale }], opacity: breathOpacity }}>💜</Animated.Text>
+              <Text style={styles.cardTitle}>Message sent.</Text>
+              <Text style={[styles.entryText, { textAlign: 'center' }]}>
+                Your teen will see it as a gentle note in their Se'kret space.
+                That small act of love matters more than you know.
+              </Text>
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: parentAccent, marginTop: 18, paddingHorizontal: 32 }]}
+                onPress={() => setSent(false)}
+              >
+                <Text style={[styles.sendBtnText, { color: parentDeep }]}>send another</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.ghostBtn, { borderColor: parentAccent + '88' }]}
+            onPress={() => setScreen('home')}
+          >
+            <Text style={[styles.ghostBtnText, { color: parentSoft }]}>← back to room</Text>
+          </TouchableOpacity>
+        </Animated.View>
 
       </ScrollView>
 
-      {/* BottomNav pinned outside scroll */}
       {BottomNav}
     </View>
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root:          { flex: 1 },
-  scroll:        { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
+  root:           { flex: 1, backgroundColor: '#1f1238' },
+  scroll:         { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
 
-  logo:          { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:      { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
+  logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8, letterSpacing: 0.3 },
+  subtitle:       { fontSize: 15, textAlign: 'center', marginBottom: 14, fontStyle: 'italic', lineHeight: 21 },
+  energyBadge:    { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 18 },
+  energyText:     { fontSize: 12, fontWeight: '600' },
 
-  card:          { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
-  cardLabel:     { fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  cardText:      { fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  entryText:     { fontSize: 14, marginBottom: 6, lineHeight: 22 },
+  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.3, shadowRadius: 12 },
+  cardLabel:      { fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  cardTitle:      { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 8 },
+  entryText:      { fontSize: 14, color: '#f5e8c8', marginBottom: 6, lineHeight: 22 },
 
-  nextTipBtn:    { alignSelf: 'flex-start', marginTop: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },
-  nextTipText:   { fontSize: 12, fontWeight: '600' },
+  nextTipBtn:     { alignSelf: 'flex-start', marginTop: 8, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 5 },
+  nextTipText:    { fontSize: 12, fontWeight: '600' },
 
-  sectionTitle:  { fontSize: 16, fontWeight: '700', marginBottom: 10, marginTop: 4 },
+  sectionTitle:   { fontSize: 16, fontWeight: '700', marginBottom: 10, marginTop: 4 },
 
-  promptsScroll: { marginBottom: 16 },
-  promptChip:    { borderWidth: 1, borderRadius: 14, padding: 12, marginRight: 10, maxWidth: 220 },
-  promptChipText:{ fontSize: 13, lineHeight: 19 },
+  promptsScroll:  { marginBottom: 16 },
+  promptChip:     { borderWidth: 1, borderRadius: 14, padding: 12, marginRight: 10, maxWidth: 240 },
+  promptChipText: { fontSize: 13, lineHeight: 19 },
 
-  input:         { borderWidth: 1, borderRadius: 18, padding: 16, minHeight: 120, textAlignVertical: 'top', fontSize: 14, lineHeight: 22, marginBottom: 6 },
-  charCount:     { fontSize: 11, textAlign: 'right', marginBottom: 12 },
+  input:          { borderWidth: 1, borderRadius: 18, padding: 16, minHeight: 130, textAlignVertical: 'top', fontSize: 14, lineHeight: 22, marginBottom: 6 },
+  charCount:      { fontSize: 11, textAlign: 'right', marginBottom: 12 },
 
-  sendBtn:       { padding: 16, borderRadius: 18, alignItems: 'center', marginBottom: 12 },
-  sendBtnText:   { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  sendBtn:        { padding: 16, borderRadius: 18, alignItems: 'center', marginBottom: 12 },
+  sendBtnText:    { fontSize: 16, fontWeight: 'bold' },
 
-  ghostBtn:      { borderWidth: 1, borderRadius: 18, padding: 14, alignItems: 'center', marginBottom: 16 },
-  ghostBtnText:  { fontSize: 14, fontWeight: '600' },
+  ghostBtn:       { borderWidth: 1, borderRadius: 18, padding: 14, alignItems: 'center', marginBottom: 16 },
+  ghostBtnText:   { fontSize: 14, fontWeight: '600' },
 });
