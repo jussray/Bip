@@ -282,6 +282,16 @@ export function Bippin2Screen({
           {isRylane ? 'growing into yourself. ⚡' : 'growing at your own pace. 💜'}
         </Text>
 
+        {/* Phase 2: deep link to dedicated content layer */}
+        <TouchableOpacity
+          style={{ alignSelf: 'center', backgroundColor: idAccent, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, marginBottom: 16, shadowColor: idAccent, shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } }}
+          onPress={() => setScreen(isRylane ? 'manhood' : 'womanhood')}
+        >
+          <Text style={{ color: '#0a0420', fontWeight: '800', fontSize: 13 }}>
+            {isRylane ? 'open the manhood guide →' : 'open the womanhood guide →'}
+          </Text>
+        </TouchableOpacity>
+
         <Animated.View style={cardStyle(card1)}>
           <View style={styles.heroSection}>
             <Image source={art.hero} style={styles.heroArt} resizeMode="contain" />

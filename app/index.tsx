@@ -14,6 +14,8 @@ import { SekretScreen }         from '../screens/SekretScreen';
 import { CircleScreen }         from '../screens/CircleScreen';
 import { Bippin2Screen }        from '../screens/Bippin2Screen';
 import { GrowthScreen }         from '../screens/GrowthScreen';
+import { WomanhoodScreen }      from '../screens/WomanhoodScreen';
+import { ManhoodScreen }        from '../screens/ManhoodScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
@@ -455,6 +457,26 @@ export default function App() {
       setScreen={setScreen}
       onMilestone={() => trackActivity('growth')}
       streakDays={streakDays}
+      BottomNav={nav}
+    />
+  );
+
+  if (screen === 'womanhood') return (
+    <WomanhoodScreen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
+  );
+
+  if (screen === 'manhood') return (
+    <ManhoodScreen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      setScreen={setScreen}
       BottomNav={nav}
     />
   );
