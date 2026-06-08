@@ -1,29 +1,37 @@
-// screens/VoiceBipScreen.txt
-// Se'kret Bip — Voice Bip Screen
+// screens/VoiceBipScreen.tsx
+// Se'kret Bip — Voice Bip (Headphone Cloud)
+// Vision: Speak it out loud. Cloud floats here. Listening without judgment.
+// Cousin energy, soft purple night. The mic is a release valve, not a stage.
 //
-// Fixes applied (2026-06-03):
-//   A1 — onSave?: () => void added to interface; called inside stopRecording
-//         (index.tsx passes () => trackActivity('voice') — was silently dropped)
-//   A4 — "Raylene is listening" badge now character-aware (Raylene / Rylane)
-//   B1 — roomWrap View gets pointerEvents="box-none" (Android hotspot fix)
-//   B2 — hint View gets pointerEvents="none" (Android touch-block fix)
-//   B3 — heroArt is now rendered as the avatar overlay on the room image
-//   D1 — Archive shows total count + "see all → pages" nudge when > 6
+// Polish pass (2026-06-07):
+//   - Time-of-day backdrop via getRoomBg(character, time) — 4 phases
+//   - Real LinearGradient scrim (top + bottom fade)
+//   - Cloud companion drifts above the room with breath loop
+//   - Character-aware copy: Raylene soft / Rylane direct / Cloud quiet
+//   - Tips list adapts per companion
+//   - Listening pill mirrors JournalScreen pattern (breath loop)
+//   - Sticky-note hint ("tap the mic") with -2deg tilt
+//   - Reply card credits the actual companion (charLabel), not hard-coded
+//   - VoiceNote type properly imported
+//   - Curly quotes throughout
+//
+// Previous fixes preserved: A1 (onSave), A4 (char-aware badge), B1 (box-none),
+// B2 (none on hint), B3 (heroArt overlay), D1 (archive count + link)
 
 import React, { useState, useRef, useEffect } from 'react';
-import { IMAGES } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import type { VoiceNote } from '../types/bridge';
 import {
   Text, TouchableOpacity, ScrollView, View,
-  Animated, Image, StyleSheet, Platform,
+  Animated, Image, StyleSheet, Easing,
 } from 'react-native';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
 
-// ── ROOM IMAGES ────────────────────────────────────────────────────────────
-const ROOM_DAY   = IMAGES.rayleneVoiceDay;
-const ROOM_NIGHT = IMAGES.rayleneVoiceNight;
-const CLOUD_HP   = IMAGES.cloudHeadphones;
+// ── ASSETS ─────────────────────────────────────────────────────────────────
+const CLOUD_HP = IMAGES.cloudHeadphones;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
 const HOTSPOTS = {
@@ -41,11 +49,26 @@ const BIP_TYPES = [
   { id: 'cloud', emoji: '☁️', label: 'Cloud Bip',  sub: 'send to the clouds' },
 ];
 
+// ── TIME OF DAY ────────────────────────────────────────────────────────────
+function getTimeOfDay(hour: number): TimeOfDay {
+  if (hour >= 5  && hour < 11) return 'morning';
+  if (hour >= 11 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
+}
+
+const TIME_BADGE: Record<TimeOfDay, string> = {
+  morning: '☀️ morning',
+  day:     '🌤️ day',
+  evening: '🌆 evening',
+  night:   '🌙 night',
+};
+
 // ── API ────────────────────────────────────────────────────────────────────
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 async function fetchSekretReply(text: string, context = 'journal', mood?: string): Promise<string> {
-  if (!BASE_URL) return "I hear you. You don't have to carry that alone 💜";
+  if (!BASE_URL) return "I hear you. You don’t have to carry that alone 💜";
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method:  'POST',
@@ -54,15 +77,13 @@ async function fetchSekretReply(text: string, context = 'journal', mood?: string
     });
     if (!res.ok) throw new Error('api error');
     const data = await res.json();
-    return data.reply || "I hear you. You don't have to carry that alone 💜";
+    return data.reply || "I hear you. You don’t have to carry that alone 💜";
   } catch {
-    return "I hear you. That makes sense. You don't have to carry that by yourself 💜";
+    return "I hear you. That makes sense. You don’t have to carry that by yourself 💜";
   }
 }
 
-// VoiceNote imported from types/bridge.ts
-
-// Fix A1: onSave added
+// ── Props ──────────────────────────────────────────────────────────────────
 interface VoiceBipScreenProps {
   theme:          Record<string, any>;
   setScreen:      (screen: string) => void;
@@ -93,29 +114,71 @@ export function VoiceBipScreen({
   const glowLoop  = useRef<any>(null);
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Cloud drift + breath
+  const cloudFloat = useRef(new Animated.Value(0)).current;
+  const cloudBreath = useRef(new Animated.Value(0)).current;
+  // Listening pill breath
+  const pillBreath = useRef(new Animated.Value(0)).current;
+
   // Waveform — 12 bars
   const waveAnims = useRef(
     Array.from({ length: 12 }, () => new Animated.Value(0.3))
   ).current;
   const waveLoop = useRef<any>(null);
 
-  // Time-aware room
-  const hour    = new Date().getHours();
-  const isNight = hour >= 18 || hour < 6;
-  const roomArt = isNight ? ROOM_NIGHT : ROOM_DAY;
+  // Character / time
+  const hour       = new Date().getHours();
+  const timeOfDay  = getTimeOfDay(hour);
+  const isNight    = timeOfDay === 'night' || timeOfDay === 'evening';
+  const isRylane   = selectedSekret === 'rylane';
+  const character  = isRylane ? 'rylane' : 'raylene';
+  const charLabel  = isRylane ? 'rylane' : 'raylene';
+  const charName   = isRylane ? 'Rylane' : 'Raylene';
+  const charEmoji  = isRylane ? '⚡' : '💜';
+  const roomArt    = getRoomBg(character, timeOfDay);
 
-  // Fix B3: heroArt now actually rendered
   const heroArt =
-    selectedSekret === 'rylane'
+    isRylane
       ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
       : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
 
-  // Fix A4: character-aware listening label
-  const characterName = selectedSekret === 'rylane' ? 'Rylane' : 'Raylene';
-  const characterEmoji = selectedSekret === 'rylane' ? '⚡' : '💜';
-
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  // Cloud drift + breath ────────────────────────────────────────────────────
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cloudFloat, { toValue: 1, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(cloudFloat, { toValue: 0, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(cloudBreath, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(cloudBreath, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pillBreath, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pillBreath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const cloudStyle = {
+    transform: [
+      { translateX: cloudFloat.interpolate({ inputRange: [0, 1], outputRange: [-6, 6] }) },
+      { translateY: cloudFloat.interpolate({ inputRange: [0, 1], outputRange: [-3, 3] }) },
+      { scale:      cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) },
+    ],
+    opacity: cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] }),
+  };
+  const pillStyle = {
+    opacity: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }),
+    transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
+  };
 
   const startRecording = () => {
     setIsRecording(true);
@@ -132,7 +195,6 @@ export function VoiceBipScreen({
     );
     pulseLoop.current.start();
 
-    // glowAnim drives overlay opacity — useNativeDriver: false is correct here
     glowLoop.current = Animated.loop(
       Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1,   duration: 1000, useNativeDriver: false }),
@@ -189,8 +251,6 @@ export function VoiceBipScreen({
     };
 
     setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
-
-    // Fix A1: call onSave so trackActivity('voice') fires in index.tsx
     onSave?.();
 
     setIsThinking(true);
@@ -212,22 +272,59 @@ export function VoiceBipScreen({
     };
   }, []);
 
+  // Copy variants ───────────────────────────────────────────────────────────
+  const tips = isRylane
+    ? [
+        'Find your spot — car, garage, walk, wherever feels real',
+        'You don’t gotta sound smooth. Just say it.',
+        'Pause. Curse. Restart. All allowed.',
+        'I’m not grading you. I’m holding it with you.',
+      ]
+    : [
+        'Find a private spot — car, room, bathroom, wherever',
+        'You don’t need perfect words. Just talk.',
+        'It’s okay to cry, pause, or start over',
+        'I listen without judgment, always',
+      ];
+
+  const tipsTitle = isRylane ? 'Tips for Voice Bips 🌙' : 'Tips for Voice Bips 🌙';
+  const replyLabelText = `${charLabel} replied ${charEmoji}`;
+  const listeningPillText = `${charLabel} is listening… ${charEmoji}`;
+  const cloudListeningText = `${charLabel} is listening… ☁️`;
+
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Interactive Room ── */}
-        {/* Fix B1: pointerEvents="box-none" so hotspots work on Android */}
         <View style={styles.roomWrap} pointerEvents="box-none">
-          <Image source={roomArt} style={styles.roomImage} resizeMode="cover" />
+          <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.2} />
 
-          {/* Fix B3: hero art avatar overlaid on room */}
+          {/* Hero avatar */}
           <Image
             source={heroArt}
             style={styles.heroAvatar}
             resizeMode="contain"
             pointerEvents="none"
           />
+
+          {/* Top scrim */}
+          <LinearGradient
+            colors={['rgba(13,9,20,0.55)', 'transparent']}
+            style={styles.topScrim}
+            pointerEvents="none"
+          />
+          {/* Bottom scrim */}
+          <LinearGradient
+            colors={['transparent', 'rgba(13,9,20,0.55)', 'rgba(13,9,20,0.95)']}
+            style={styles.bottomScrim}
+            pointerEvents="none"
+          />
+
+          {/* Cloud companion — drifts above */}
+          <Animated.View style={[styles.cloudWrap, cloudStyle]} pointerEvents="none">
+            <Image source={CLOUD_HP} style={styles.cloudImg} resizeMode="contain" />
+          </Animated.View>
 
           {/* Purple recording overlay */}
           {isRecording && (
@@ -239,14 +336,21 @@ export function VoiceBipScreen({
 
           {/* Time badge */}
           <View style={styles.timeBadge} pointerEvents="none">
-            <Text style={styles.timeBadgeText}>{isNight ? '🌙 night' : '☀️ day'}</Text>
+            <Text style={styles.timeBadgeText}>{TIME_BADGE[timeOfDay]}</Text>
           </View>
 
-          {/* Fix A4: character-aware listening badge */}
+          {/* Companion presence pill */}
+          <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
+            <Text style={styles.presenceText}>
+              {charLabel}’s here · headphone cloud
+            </Text>
+          </Animated.View>
+
+          {/* Listening badge — full character name, only while recording */}
           {isRecording && (
             <View style={styles.listeningBadge} pointerEvents="none">
               <Text style={styles.listeningBadgeText}>
-                {characterName} is listening... {characterEmoji}
+                {charName} is listening… {charEmoji}
               </Text>
             </View>
           )}
@@ -306,19 +410,19 @@ export function VoiceBipScreen({
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.crystalJar.label}</Text>}
           </TouchableOpacity>
 
-          {/* Fix B2: pointerEvents="none" so hint doesn't eat touches */}
+          {/* Scrapbook sticky-note hint */}
           {!DEBUG_HOTSPOTS && !isRecording && (
-            <View style={[styles.hint, { top: '15%', left: '26%' }]} pointerEvents="none">
-              <Text style={styles.hintText}>tap the mic 🎙️</Text>
+            <View style={[styles.stickyHint, { top: '15%', left: '26%' }]} pointerEvents="none">
+              <Text style={styles.stickyHintText}>tap the mic 🎙️</Text>
             </View>
           )}
         </View>
 
         {/* ── Recording state ── */}
         {isRecording && (
-          <View style={[styles.recordingCard, { borderColor: '#a855f7', backgroundColor: 'rgba(13,9,20,0.92)' }]}>
+          <View style={[styles.recordingCard, { borderColor: '#a855f7', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
             <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseAnim }], borderColor: '#a855f7' }]} />
-            <Text style={styles.recordingLabel}>Recording... 🔴</Text>
+            <Text style={styles.recordingLabel}>Recording… 🔴</Text>
             <Text style={styles.recordingTimer}>{formatTime(recordingTime)}</Text>
             <View style={styles.waveform}>
               {waveAnims.map((anim, i) => (
@@ -343,35 +447,32 @@ export function VoiceBipScreen({
         {/* ── Saved confirmation ── */}
         {recorded && !isRecording && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
-            <Text style={[styles.savedLabel, { color: theme.soft }]}>Saved to your journal 💜</Text>
+            <Text style={[styles.savedLabel, { color: theme.soft }]}>
+              Saved to your journal {charEmoji}
+            </Text>
           </View>
         )}
 
-        {/* ── Se'kret listening ── */}
+        {/* ── Companion thinking ── */}
         {isThinking && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)', flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
             <Image source={CLOUD_HP} style={{ width: 36, height: 36 }} resizeMode="contain" />
-            <Text style={[styles.thinkingText, { color: theme.soft }]}>Se'kret is listening... ☁️</Text>
+            <Text style={[styles.thinkingText, { color: theme.soft }]}>{cloudListeningText}</Text>
           </View>
         )}
 
-        {/* ── Se'kret reply ── */}
+        {/* ── Reply ── */}
         {sekretReply && !isThinking && (
-          <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.3)', backgroundColor: 'rgba(13,9,20,0.92)' }]}>
-            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>Se'kret replied 💜</Text>
+          <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
+            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{replyLabelText}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
           </View>
         )}
 
         {/* ── Tips ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
-          <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips for Voice Bips 🌙</Text>
-          {[
-            "Find a private spot — car, room, bathroom, wherever",
-            "You don't need perfect words. Just talk.",
-            "It's okay to cry, pause, or start over",
-            "Se'kret listens without judgment, always",
-          ].map(tip => (
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>{tipsTitle}</Text>
+          {tips.map(tip => (
             <Text key={tip} style={[styles.tip, { color: '#c4b5fd' }]}>• {tip}</Text>
           ))}
         </View>
@@ -383,7 +484,7 @@ export function VoiceBipScreen({
         <View style={styles.overlayWrap}>
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowBipMenu(false)} />
           <View style={[styles.bipMenuCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
-            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? 💜</Text>
+            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? {charEmoji}</Text>
             <Text style={[styles.bipMenuSub, { color: '#7c6899' }]}>Choose how you want to express right now</Text>
             {BIP_TYPES.map(bip => (
               <TouchableOpacity
@@ -414,7 +515,7 @@ export function VoiceBipScreen({
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowArchive(false)} />
           <View style={[styles.archiveCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
             <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>
-              {characterName}'s journal 📖
+              {charName}’s journal 📖
             </Text>
 
             {voiceNotes.length === 0 ? (
@@ -441,7 +542,6 @@ export function VoiceBipScreen({
                   </View>
                 ))}
 
-                {/* Fix D1: show count + link to full journal if more than 6 */}
                 {voiceNotes.length > 6 && (
                   <TouchableOpacity
                     style={{ alignItems: 'center', paddingTop: 10 }}
@@ -470,21 +570,41 @@ const styles = StyleSheet.create({
   scroll:             { paddingBottom: 100 },
   roomWrap:           { position: 'relative', width: '100%', height: 340, marginBottom: 16, overflow: 'hidden' },
   roomImage:          { width: '100%', height: '100%' },
-  // Fix B3: hero avatar sits in lower-center of room image
   heroAvatar:         { position: 'absolute', bottom: 0, alignSelf: 'center', width: '70%', height: '90%' },
+  topScrim:           { position: 'absolute', top: 0, left: 0, right: 0, height: 90 },
+  bottomScrim:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
+  cloudWrap:          { position: 'absolute', top: 36, right: 24 },
+  cloudImg:           { width: 64, height: 64 },
   recordingOverlay:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(124,58,237,0.25)' },
   timeBadge:          { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   timeBadgeText:      { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
+  presencePill:       {
+    position: 'absolute', top: 110, right: 16,
+    backgroundColor: 'rgba(168,85,247,0.18)',
+    borderColor: 'rgba(168,85,247,0.45)', borderWidth: 1,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
+  },
+  presenceText:       { color: '#e9d5ff', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
   listeningBadge:     { position: 'absolute', bottom: 12, left: 0, right: 0, alignItems: 'center' },
   listeningBadgeText: { color: '#f5f0ff', fontSize: 14, fontWeight: '800', backgroundColor: 'rgba(124,58,237,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
   hotspot:            { position: 'absolute' },
   hotspotDebug:       { borderWidth: 2, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.18)' },
   debugLabel:         { color: '#f472b6', fontSize: 9, fontWeight: '900', padding: 2 },
-  hint:               { position: 'absolute', backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  hintText:           { color: '#c4b5fd', fontSize: 10, fontWeight: '600' },
+  stickyHint:         {
+    position: 'absolute',
+    backgroundColor: '#fff8e7',
+    borderColor: '#a855f7', borderWidth: 1, borderStyle: 'dashed',
+    borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5,
+    transform: [{ rotate: '-2deg' }],
+    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 1, height: 2 },
+  },
+  stickyHintText:     { color: '#3d2563', fontSize: 11, fontWeight: '700', fontStyle: 'italic' },
 
   // Recording card
-  recordingCard:      { marginHorizontal: 16, marginBottom: 12, borderRadius: 24, borderWidth: 1, padding: 24, alignItems: 'center' },
+  recordingCard:      {
+    marginHorizontal: 16, marginBottom: 12, borderRadius: 24, borderWidth: 1, padding: 24, alignItems: 'center',
+    shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 0 },
+  },
   pulseRing:          { width: 80, height: 80, borderRadius: 40, borderWidth: 3, position: 'absolute', top: 14 },
   recordingLabel:     { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 6, marginTop: 8 },
   recordingTimer:     { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 16 },
@@ -494,11 +614,14 @@ const styles = StyleSheet.create({
   stopBtnText:        { color: '#fff', fontWeight: '800', fontSize: 15 },
 
   // Float cards
-  floatCard:          { marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16 },
+  floatCard:          {
+    marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16,
+    shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+  },
   savedLabel:         { fontSize: 15, fontWeight: '700', textAlign: 'center' },
   thinkingText:       { fontSize: 13, fontStyle: 'italic' },
-  replyLabel:         { fontSize: 10, marginBottom: 6 },
-  replyText:          { fontSize: 13, lineHeight: 20 },
+  replyLabel:         { fontSize: 10, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 },
+  replyText:          { fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
   cardTitle:          { fontSize: 13, fontWeight: '600', marginBottom: 10 },
   tip:                { fontSize: 13, marginBottom: 8, lineHeight: 20 },
 
