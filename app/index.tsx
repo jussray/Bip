@@ -13,6 +13,7 @@ import { CalmScreen }           from '../screens/CalmScreen';
 import { SekretScreen }         from '../screens/SekretScreen';
 import { CircleScreen }         from '../screens/CircleScreen';
 import { Bippin2Screen }        from '../screens/Bippin2Screen';
+import { GrowthScreen }         from '../screens/GrowthScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
@@ -436,6 +437,18 @@ export default function App() {
 
   if (screen === 'bippin2') return (
     <Bippin2Screen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      setScreen={setScreen}
+      onMilestone={() => trackActivity('growth')}
+      streakDays={streakDays}
+      BottomNav={nav}
+    />
+  );
+
+  if (screen === 'growth') return (
+    <GrowthScreen
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
