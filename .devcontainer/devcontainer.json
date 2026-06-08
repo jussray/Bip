@@ -1,0 +1,46 @@
+{
+  "name": "Se'kret Bip — Expo Dev",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "forwardPorts": [8081, 19000, 19001, 19002],
+  "portsAttributes": {
+    "8081":  { "label": "Expo Web",   "onAutoForward": "openPreview" },
+    "19000": { "label": "Expo Metro", "onAutoForward": "silent" },
+    "19001": { "label": "Expo Tools", "onAutoForward": "silent" },
+    "19002": { "label": "Expo DevTools", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "expo.vscode-expo-tools",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.vscode-typescript-next",
+        "GitHub.copilot",
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": false,
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "files.exclude": {
+          "**/.expo": true,
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    }
+  },
+
+  "remoteEnv": {
+    "EXPO_NO_TELEMETRY": "1"
+  }
+}
