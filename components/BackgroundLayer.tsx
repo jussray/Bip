@@ -1,12 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, ImageBackground, StyleSheet } from 'react-native';
+import { IMAGES } from '../constants/theme';
 
 type VoiceKey = 'raylene' | 'rylane';
 type ScreenKey = 'default' | 'bippin2' | 'voiceBip' | 'voiceVip';
 
 type RoomVariant = {
-  day: number;
-  night: number;
+  day: any;
+  night: any;
 };
 
 type BackgroundLayerProps = {
@@ -16,24 +17,26 @@ type BackgroundLayerProps = {
   dimOverlay?: boolean;
 };
 
-const ROOMS = {
+// All room art is sourced from constants/theme.ts so we only have ONE
+// place that knows how to map a logical name to a real asset file.
+const ROOMS: Record<string, RoomVariant> = {
   bippin2: {
-    day: require('../assets/images/raylene-bippin2-day.png'),
-    night: require('../assets/images/raylene-bippin2-night.png'),
+    day:   IMAGES.raylene_Bippin2Day,
+    night: IMAGES.raylene_Bippin2Night,
   },
   voiceBip: {
-    day: require('../assets/images/raylene-voice-day.png'),
-    night: require('../assets/images/raylene-voice-night.png'),
+    day:   IMAGES.rayleneVoiceDay,
+    night: IMAGES.rayleneVoiceNight,
   },
   voiceBipRylane: {
-    day: require('../assets/images/rylane-voice-day.png'),
-    night: require('../assets/images/rylane-voice-night.png'),
+    day:   IMAGES.rylaneVoiceDay,
+    night: IMAGES.rylaneVoiceNight,
   },
   default: {
-    day: require('../assets/images/room-bg.png'),
-    night: require('../assets/images/room-bg-dark.png'),
+    day:   IMAGES.roomBg,
+    night: IMAGES.roomBgDark,
   },
-} as const satisfies Record<string, RoomVariant>;
+};
 
 function resolveRoom(screen: ScreenKey, voiceKey: VoiceKey) {
   if (screen === 'bippin2') return ROOMS.bippin2;

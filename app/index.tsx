@@ -30,6 +30,18 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 import { loadState, saveState } from '../utils/storage';
 import type { JournalEntry, CirclePost, VoiceNote, MoodEntry } from '../types/index';
 
+// ── IMAGES ─────────────────────────────────────────────────────────────────
+// One clean place to see every image Se'kret Bip uses.
+//
+// The actual `require()` paths + safe fallbacks live in constants/theme.ts.
+// This map is re-exported here so the top of the root file documents — at a
+// glance — what art is wired into the app and to which character / screen.
+//
+// Do NOT add new require() calls here. Edit constants/theme.ts instead so
+// fallbacks stay centralized and no screen can drift out of sync.
+import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
+export { IMAGES, AVATARS, getRoomBg };
+
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
 export interface RoomMemory {
