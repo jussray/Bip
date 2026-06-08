@@ -7,8 +7,8 @@
 //   A4 — back target prop added (backTarget, defaults to 'home')
 //   C5 — mode buttons now change the active prompt set and API context
 
-import React, { useState } from 'react';
-import { IMAGES } from '../constants/theme';
+import React, { useState, useEffect, useRef } from 'react';
+import { IMAGES, getRoomBg } from '../constants/theme';
 import {
   Text,
   TouchableOpacity,
@@ -18,7 +18,29 @@ import {
   Image,
   StyleSheet,
   Platform,
+  ImageBackground,
+  Animated,
+  Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+function glowFor(mood?: string): string {
+  const m = (mood || '').toLowerCase();
+  if (m.includes('happy'))       return '#fbbf24';
+  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
+  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
+  if (m.includes('tired'))       return '#6d28d9';
+  if (m.includes('calm'))        return '#c4b5fd';
+  return '#c4b5fd';
+}
+
+function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+}
 
 const CLOUD_HP = IMAGES.cloudHeadphones;
 const CLOUD    = IMAGES.cloud;
@@ -128,6 +150,24 @@ export function CloudThoughtsScreen({
   const hour    = new Date().getHours();
   const isNight = hour >= 18 || hour < 6;
 
+  // Mood glow + character-aware backdrop
+  const glow     = glowFor(mood);
+  const charKey  = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const bgSource = getRoomBg(charKey, timeOfDay());
+
+  // Breath loop on hero cloud
+  const breath = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: 2100, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(breath, { toValue: 0, duration: 2100, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ])
+    ).start();
+  }, []);
+  const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
+  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
+
   // Fix C5: prompts rotate within the active mode's set
   const currentPrompts = PROMPT_SETS[activeMode];
   const currentPrompt  = currentPrompts[promptIdx % currentPrompts.length];
@@ -155,7 +195,11 @@ export function CloudThoughtsScreen({
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
+    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <LinearGradient
+        colors={['rgba(13,9,20,0.72)', 'rgba(30,18,55,0.82)', 'rgba(13,9,20,0.95)']}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -175,12 +219,16 @@ export function CloudThoughtsScreen({
 
         {/* ── Hero ── */}
         <View style={styles.heroWrap}>
-          <Image source={CLOUD_HP} style={styles.heroCloud} resizeMode="contain" />
-          <Text style={[styles.heroSub, { color: '#a855f7' }]}>
+          <Animated.Image
+            source={CLOUD_HP}
+            style={[styles.heroCloud, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+            resizeMode="contain"
+          />
+          <Text style={[styles.heroSub, { color: glow }]}>
             {isNight ? 'late night thoughts 🌙' : 'cloud thoughts ☁️'}
           </Text>
-          <Text style={[styles.heroTitle, { color: '#f472b6' }]}>Cloud Thoughts</Text>
-          <Text style={[styles.heroMini, { color: '#7c6899' }]}>
+          <Text style={[styles.heroTitle, { color: glow }]}>Cloud Thoughts</Text>
+          <Text style={[styles.heroMini, { color: '#cbb5ff' }]}>
             This is just for you. Say it here.
           </Text>
         </View>
@@ -211,7 +259,7 @@ export function CloudThoughtsScreen({
         </View>
 
         {/* ── Reflection prompt ── */}
-        <View style={[styles.promptCard, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
+        <View style={[styles.promptCard, { borderColor: glow + '88', backgroundColor: 'rgba(30,18,55,0.82)', shadowColor: glow }]}>
           <Text style={styles.promptEmoji}>{currentPrompt.emoji}</Text>
           <Text style={[styles.promptText, { color: '#f5f0ff' }]}>{currentPrompt.text}</Text>
           <TouchableOpacity
@@ -225,7 +273,7 @@ export function CloudThoughtsScreen({
         </View>
 
         {/* ── Input ── */}
-        <View style={[styles.inputCard, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
+        <View style={[styles.inputCard, { borderColor: glow + '88', backgroundColor: 'rgba(30,18,55,0.82)', shadowColor: glow }]}>
           <TextInput
             style={[styles.input, { color: '#f5f0ff' }]}
             placeholder="let it out softly..."
@@ -275,7 +323,7 @@ export function CloudThoughtsScreen({
 
       </ScrollView>
       {BottomNav}
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -312,13 +360,13 @@ const styles = StyleSheet.create({
   modeLabel:  { fontSize: 12, fontWeight: '700', marginBottom: 2 },
   modeSub:    { fontSize: 10, color: '#7c6899', textAlign: 'center' },
 
-  promptCard:    { marginHorizontal: 16, marginBottom: 12, borderRadius: 20, borderWidth: 1, padding: 20, alignItems: 'center' },
+  promptCard:    { marginHorizontal: 16, marginBottom: 12, borderRadius: 20, borderWidth: 1, padding: 20, alignItems: 'center', shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
   promptEmoji:   { fontSize: 32, marginBottom: 10 },
   promptText:    { fontSize: 17, fontWeight: '700', textAlign: 'center', lineHeight: 26, marginBottom: 16 },
   promptBtn:     { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 },
   promptBtnText: { fontSize: 12, fontWeight: '600' },
 
-  inputCard:     { marginHorizontal: 16, marginBottom: 12, borderRadius: 20, borderWidth: 1, padding: 16 },
+  inputCard:     { marginHorizontal: 16, marginBottom: 12, borderRadius: 20, borderWidth: 1, padding: 16, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
   input:         { minHeight: 100, fontSize: 14, lineHeight: 22, textAlignVertical: 'top', marginBottom: 12 },
   sendBtn:       { borderRadius: 16, padding: 14, alignItems: 'center' },
   sendBtnText:   { color: '#fff', fontSize: 14, fontWeight: '700' },

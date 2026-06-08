@@ -1,9 +1,28 @@
 import React from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  View, Image, StyleSheet, Platform,
+  View, Image, StyleSheet, Platform, ImageBackground,
 } from 'react-native';
-import { IMAGES } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES, getRoomBg } from '../constants/theme';
+
+function glowFor(mood?: string): string {
+  const m = (mood || '').toLowerCase();
+  if (m.includes('happy'))       return '#fbbf24';
+  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
+  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
+  if (m.includes('tired'))       return '#6d28d9';
+  if (m.includes('calm'))        return '#c4b5fd';
+  return '#c4b5fd';
+}
+
+function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+}
 
 // ─── Theme & Profile Data (local — no prop needed) ───────────────────────────
 
@@ -56,6 +75,7 @@ interface SettingsScreenProps {
   setUserSide: (side: string) => void;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
+  mood?: string;
 }
 
 export function SettingsScreen({
@@ -65,21 +85,31 @@ export function SettingsScreen({
   userSide, setUserSide,
   setScreen,
   BottomNav,
+  mood,
 }: SettingsScreenProps) {
 
+  // ─── Mood glow + room backdrop ─────────────────────────────────────────────
+  const glow     = glowFor(mood);
+  const charKey  = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const bgSource = getRoomBg(charKey, timeOfDay());
+
   // ─── Style helpers ─────────────────────────────────────────────────────────
-  const card      = () => [styles.card,        { backgroundColor: t.card,       borderColor: t.accent }] as any;
-  const btn       = () => [styles.button,      { backgroundColor: t.accent,     shadowColor: t.accent }] as any;
+  const card      = () => [styles.card,        { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }] as any;
+  const btn       = () => [styles.button,      { backgroundColor: glow,                  shadowColor: glow }] as any;
   const choiceBtn = (active: boolean) => [
     styles.choiceButton,
-    { backgroundColor: t.card, borderColor: active ? t.accent : '#334155', borderWidth: active ? 2 : 1 },
+    { backgroundColor: 'rgba(30,41,59,0.7)', borderColor: active ? glow : '#334155', borderWidth: active ? 2 : 1 },
   ] as any;
 
   // ─── Character avatar (safe — falls back to emoji header if image missing) ──
   const avatarSource = AVATAR_ASSETS[selectedSekret] ?? AVATAR_ASSETS.soft;
 
   return (
-    <View style={[styles.root, { backgroundColor: t.background }]}>
+    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <LinearGradient
+        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -189,7 +219,7 @@ export function SettingsScreen({
 
       {/* BottomNav pinned outside ScrollView so it never scrolls away */}
       {BottomNav}
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -202,7 +232,7 @@ const styles = StyleSheet.create({
 
   sectionTitle:   { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 18 },
 
-  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
+  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
   cardText:       { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8 },
   entryText:      { color: '#E2E8F0', fontSize: 14, marginBottom: 6, lineHeight: 20 },
   miniText:       { color: '#CBD5E1', fontSize: 12, textAlign: 'center' },

@@ -1,9 +1,28 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  View, Animated, Image, StyleSheet, Platform,
+  View, Animated, Image, StyleSheet, Platform, ImageBackground,
 } from 'react-native';
-import { IMAGES } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES, getRoomBg } from '../constants/theme';
+
+function glowFor(mood?: string): string {
+  const m = (mood || '').toLowerCase();
+  if (m.includes('happy'))       return '#fbbf24';
+  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
+  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
+  if (m.includes('tired'))       return '#6d28d9';
+  if (m.includes('calm'))        return '#c4b5fd';
+  return '#c4b5fd';
+}
+
+function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+}
 
 // ─── Local assets ─────────────────────────────────────────────────────────────
 // assets/images/cloud-headphones.png  — mind reset circle art
@@ -71,16 +90,22 @@ interface MindBodyResetScreenProps {
   setScreen: (screen: string) => void;
   onComplete?: () => void;
   BottomNav: React.ReactNode;
+  mood?: string;
 }
 
 export function MindBodyResetScreen({
-  screen, t, selectedSekret = 'soft', setScreen, onComplete, BottomNav,
+  screen, t, selectedSekret = 'soft', setScreen, onComplete, BottomNav, mood,
 }: MindBodyResetScreenProps) {
 
   const isMind    = screen === 'mindReset';
   const isRylane  = selectedSekret === 'rylane';
   const charName  = isRylane ? 'Rylane' : "Se'kret";
   const charEmoji = isRylane ? '⚡' : '💜';
+
+  // Mood glow + character-aware backdrop
+  const moodGlow = glowFor(mood);
+  const charKey  = isRylane ? 'rylane' : 'raylene';
+  const bgSource = getRoomBg(charKey, timeOfDay());
 
   // ─── Breathe animation ───────────────────────────────────────────────────
   const breatheAnim  = useRef(new Animated.Value(1)).current;
@@ -178,12 +203,16 @@ export function MindBodyResetScreen({
   const glowOpacity = glowAnim.interpolate({ inputRange: [0.5, 1], outputRange: [0.25, 0.55] });
 
   return (
-    <View style={[styles.root, { backgroundColor: t.background }]}>
+    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <LinearGradient
+        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        style={StyleSheet.absoluteFill}
+      />
 
       {/* ── Ambient background glow ──────────────────────────────────────── */}
       <Animated.View
         pointerEvents="none"
-        style={[styles.bgGlow, { backgroundColor: t.accent, opacity: glowOpacity }]}
+        style={[styles.bgGlow, { backgroundColor: moodGlow, opacity: glowOpacity }]}
       />
 
       <Animated.ScrollView
@@ -402,7 +431,7 @@ export function MindBodyResetScreen({
 
       {/* BottomNav always pinned — never scrolls away */}
       {BottomNav}
-    </View>
+    </ImageBackground>
   );
 }
 

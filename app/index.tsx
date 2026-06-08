@@ -71,14 +71,14 @@ const THEME_PACKS: Record<string, any> = {
 };
 
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se\u2019kret",       emoji: '\uD83C\uDF38', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. I\u2019m here. Tell me what\u2019s on your mind." },
-  rylane: { name: 'Rylane',             emoji: '\u26A1',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, I\u2019m here. What\u2019s been heavy?" },
-  cloud:  { name: "Cloud Se\u2019kret", emoji: '\u2601\uFE0F', title: 'Quiet Comfort',        vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
-  night:  { name: "Night Se\u2019kret", emoji: '\uD83C\uDF19', title: 'Late-Night Listener',  vibe: 'Minimal words, calm energy, safe space.',        greeting: "I\u2019m here. You don\u2019t gotta explain perfectly." },
+  soft:   { name: "Se’kret",       emoji: '\uD83C\uDF38', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. I’m here. Tell me what’s on your mind." },
+  rylane: { name: 'Rylane',             emoji: '\u26A1',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, I’m here. What’s been heavy?" },
+  cloud:  { name: "Cloud Se’kret", emoji: '☁\uFE0F', title: 'Quiet Comfort',        vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
+  night:  { name: "Night Se’kret", emoji: '\uD83C\uDF19', title: 'Late-Night Listener',  vibe: 'Minimal words, calm energy, safe space.',        greeting: "I’m here. You don’t gotta explain perfectly." },
 };
 
 const HOME_MESSAGES = [
-  "Don\u2019t stay up carrying the whole world tonight.",
+  "Don’t stay up carrying the whole world tonight.",
   'Rest is productive too.',
   'You deserve softness too.',
   'Heavy days do not define you.',
@@ -91,8 +91,8 @@ const HOME_MESSAGES = [
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','\uD83C\uDFE0','Home'],['bridge','\uD83C\uDF09','Bridge'],['sekret','\uD83D\uDC9C',"Se\u2019kret"],['pages','\uD83D\uDCD6','Pages'],['more','\u2630','More']]
-    : [['home','\uD83C\uDFE0','Home'],['pages','\uD83D\uDCD6','Pages'],['calm','\uD83C\uDF19','Calm'],['circle','\uD83C\uDF10','Circle'],['sekret','\uD83D\uDC9C',"Se\u2019kret"],['more','\u2630','More']];
+    ? [['home','\uD83C\uDFE0','Home'],['bridge','\uD83C\uDF09','Bridge'],['sekret','\uD83D\uDC9C',"Se’kret"],['pages','\uD83D\uDCD6','Pages'],['more','\u2630','More']]
+    : [['home','\uD83C\uDFE0','Home'],['pages','\uD83D\uDCD6','Pages'],['calm','\uD83C\uDF19','Calm'],['circle','\uD83C\uDF10','Circle'],['sekret','\uD83D\uDC9C',"Se’kret"],['more','\u2630','More']];
 
   return (
     <View style={styles.bottomNav}>
@@ -463,6 +463,7 @@ export default function App() {
       setScreen={setScreen}
       onComplete={() => trackActivity('calm')}
       BottomNav={nav}
+      mood={mood}
     />
   );
 
@@ -473,6 +474,8 @@ export default function App() {
       setUserSide={setUserSide}
       setScreen={setScreen}
       BottomNav={nav}
+      mood={mood}
+      selectedSekret={selectedSekret}
     />
   );
 
@@ -489,6 +492,7 @@ export default function App() {
       setUserSide={setUserSide}
       setScreen={setScreen}
       BottomNav={nav}
+      mood={mood}
     />
   );
 
