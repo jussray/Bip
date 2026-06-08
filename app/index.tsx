@@ -357,7 +357,7 @@ export default function App() {
   );
 
   if (screen === 'periodCalendar') return (
-    <PeriodCalendarScreen theme={t} setScreen={setScreen} />
+    <PeriodCalendarScreen theme={t} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
   );
 
   if (screen === 'voiceBip') return (

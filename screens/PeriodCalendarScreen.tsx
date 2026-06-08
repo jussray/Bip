@@ -1,54 +1,90 @@
 // screens/PeriodCalendarScreen.tsx
-// Se'kret Bip — Cycle Calendar
-// Private. On-device only. No data ever leaves this phone.
+// Se'kret Bip — Cycle Calendar (cycle layer of Womanhood, Raylene-led)
+// Private. On-device only. No data leaves the phone.
 //
-// Fixes applied (audit 2026-06-03):
-//   A3 — back button no longer hardcoded to 'bippin2'; uses backTarget prop (defaults 'home')
-//   C6 — JSON.parse wrapped in try/catch to guard against corrupted AsyncStorage data
+// Phase 1 polish: time-of-day backdrop (raylene window), mood glow,
+// staggered entrance, breath loop, today highlight, sticky note, body-positive copy.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Text,
   TouchableOpacity,
   ScrollView,
   View,
   Image,
+  ImageBackground,
+  Animated,
   StyleSheet,
+  Platform,
+  Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IMAGES } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
 
 const RAYLENE_THINKING = IMAGES.rayleneThinking;
-
-// ── Props ────────────────────────────────────────────────────────────────────
+const CLOUD_HAPPY = IMAGES.cloudHappy;
 
 interface PeriodCalendarScreenProps {
-  theme:        Record<string, any>;
-  setScreen:    (screen: string) => void;
-  backTarget?:  string;   // Fix A3: where the back button navigates. Defaults to 'home'.
+  theme:           Record<string, any>;
+  setScreen:       (screen: string) => void;
+  backTarget?:     string;
+  BottomNav?:      React.ReactNode;
+  selectedSekret?: string;
+  mood?:           string;
 }
 
-// ── Component ────────────────────────────────────────────────────────────────
+const getTimeOfDay = (): TimeOfDay => {
+  const h = new Date().getHours();
+  if (h >= 5 && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+};
+
+const moodGlow = (mood?: string): string => {
+  const m = (mood || '').toLowerCase();
+  if (m === 'happy') return '#fbbf24';
+  if (m === 'sad' || m === 'anxious') return '#7dd3fc';
+  if (m === 'angry' || m === 'overwhelmed' || m === 'stressed') return '#f472b6';
+  if (m === 'tired') return '#6d28d9';
+  if (m === 'calm') return '#c4b5fd';
+  return '#c4b5fd';
+};
 
 export function PeriodCalendarScreen({
   theme,
   setScreen,
   backTarget = 'home',
+  BottomNav,
+  selectedSekret,
+  mood,
 }: PeriodCalendarScreenProps) {
 
   const today = new Date();
-  const [currentMonth,     setCurrentMonth]     = useState(today.getMonth());
-  const [currentYear,      setCurrentYear]       = useState(today.getFullYear());
-  const [markedDays,       setMarkedDays]         = useState<Record<string, string>>({});
-  const [lastPeriodStart,  setLastPeriodStart]    = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear]   = useState(today.getFullYear());
+  const [markedDays, setMarkedDays]     = useState<Record<string, string>>({});
+  const [lastPeriodStart, setLastPeriodStart] = useState<string | null>(null);
 
-  // Fix C6: JSON.parse guarded with try/catch on both storage reads
+  const time = useMemo(() => getTimeOfDay(), []);
+  // Raylene-led screen, but backdrop respects the chosen companion's room
+  const charKey: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
+  const glow = useMemo(() => moodGlow(mood), [mood]);
+
+  // Animations
+  const card1 = useRef(new Animated.Value(0)).current;
+  const card2 = useRef(new Animated.Value(0)).current;
+  const card3 = useRef(new Animated.Value(0)).current;
+  const card4 = useRef(new Animated.Value(0)).current;
+  const breath = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     AsyncStorage.getItem('periodDays').then(v => {
       try {
         if (v) setMarkedDays(JSON.parse(v));
       } catch {
-        // Corrupted storage — start fresh rather than crash
         setMarkedDays({});
       }
     });
@@ -56,6 +92,36 @@ export function PeriodCalendarScreen({
       if (v) setLastPeriodStart(v);
     });
   }, []);
+
+  useEffect(() => {
+    const stagger = (val: Animated.Value, delay: number) =>
+      Animated.timing(val, {
+        toValue: 1, duration: 380, delay,
+        easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      });
+    Animated.parallel([
+      stagger(card1, 0),
+      stagger(card2, 140),
+      stagger(card3, 280),
+      stagger(card4, 420),
+    ]).start();
+
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(breath, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [card1, card2, card3, card4, breath]);
+
+  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
+  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
+  const cardStyle = (val: Animated.Value) => ({
+    opacity: val,
+    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
+  });
 
   const save = async (days: Record<string, string>, start: string | null) => {
     await AsyncStorage.setItem('periodDays', JSON.stringify(days));
@@ -65,8 +131,7 @@ export function PeriodCalendarScreen({
   const getDaysInMonth = (m: number, y: number) => new Date(y, m + 1, 0).getDate();
   const getFirstDay    = (m: number, y: number) => new Date(y, m, 1).getDay();
   const monthName = new Date(currentYear, currentMonth).toLocaleString('default', {
-    month: 'long',
-    year:  'numeric',
+    month: 'long', year: 'numeric',
   });
 
   const toggleDay = (day: number) => {
@@ -112,135 +177,213 @@ export function PeriodCalendarScreen({
   };
 
   const prediction = predictNext();
+  const isToday = (day: number | null) =>
+    !!day &&
+    day === today.getDate() &&
+    currentMonth === today.getMonth() &&
+    currentYear === today.getFullYear();
 
   return (
-    <ScrollView
-      contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}
-    >
-      {/* ── Back — Fix A3: uses backTarget prop ── */}
-      <TouchableOpacity
-        onPress={() => setScreen(backTarget)}
-        style={styles.backBtn}
-        accessibilityRole="button"
-        accessibilityLabel="Back"
-      >
-        <Text style={styles.backText}>← Back</Text>
-      </TouchableOpacity>
+    <View style={styles.root}>
+      <ImageBackground source={bg} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <LinearGradient
+        colors={['rgba(20,10,40,0.5)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: glow + '10' }]} />
 
-      <Text style={styles.logo}>Cycle Calendar 🩸</Text>
-      <Text style={styles.subtitle}>Track your cycle privately. Only you can see this.</Text>
-
-      <Image source={RAYLENE_THINKING} style={styles.artworkMedium} resizeMode="contain" />
-
-      {/* ── Calendar card ── */}
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-        <View style={styles.monthNav}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Animated.View style={cardStyle(card1)}>
           <TouchableOpacity
-            onPress={prevMonth}
+            onPress={() => setScreen(backTarget)}
+            style={styles.backBtn}
             accessibilityRole="button"
-            accessibilityLabel="Previous month"
+            accessibilityLabel="Back"
           >
-            <Text style={[styles.navArrow, { color: theme.accent }]}>‹</Text>
+            <Text style={styles.backText}>← back</Text>
           </TouchableOpacity>
-          <Text style={styles.monthName}>{monthName}</Text>
-          <TouchableOpacity
-            onPress={nextMonth}
-            accessibilityRole="button"
-            accessibilityLabel="Next month"
+
+          <Text style={styles.logo}>cycle calendar 🩸</Text>
+          <Text style={styles.subtitle}>track your cycle, quietly. only you see this.</Text>
+
+          <Animated.View
+            style={[
+              styles.energyBadge,
+              { borderColor: glow, shadowColor: glow, shadowOpacity: 0.6, shadowRadius: 12 },
+              { transform: [{ scale: breathScale }], opacity: breathOpacity },
+            ]}
           >
-            <Text style={[styles.navArrow, { color: theme.accent }]}>›</Text>
-          </TouchableOpacity>
-        </View>
+            <Text style={[styles.energyText, { color: glow }]}>💜 private · on-device</Text>
+          </Animated.View>
 
-        <View style={styles.dayHeaders}>
-          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-            <Text key={d} style={styles.dayHeader}>{d}</Text>
-          ))}
-        </View>
+          <View style={styles.cloudWrap}>
+            <Animated.Image
+              source={CLOUD_HAPPY}
+              style={[styles.cloudArt, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            />
+            <Image source={RAYLENE_THINKING} style={styles.artworkMedium} resizeMode="contain" />
+          </View>
+        </Animated.View>
 
-        <View style={styles.grid}>
-          {cells.map((day, i) => {
-            const key    = day ? `${currentYear}-${currentMonth + 1}-${day}` : null;
-            const marked = key ? markedDays[key] : null;
-            return (
+        <Animated.View style={cardStyle(card2)}>
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
+            <View style={styles.monthNav}>
               <TouchableOpacity
-                key={i}
-                style={styles.cell}
-                onPress={() => day && toggleDay(day)}
-                disabled={!day}
+                onPress={prevMonth}
                 accessibilityRole="button"
-                accessibilityLabel={day ? `${day}${marked ? ', marked' : ''}` : undefined}
+                accessibilityLabel="Previous month"
               >
-                <View style={[styles.dayCircle, marked ? { backgroundColor: theme.accent } : null]}>
-                  <Text style={[
-                    styles.dayText,
-                    { color: day ? (marked ? '#fff' : '#E2E8F0') : 'transparent' },
-                  ]}>
-                    {day || ''}
-                  </Text>
-                </View>
+                <Text style={[styles.navArrow, { color: glow }]}>‹</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
+              <Text style={styles.monthName}>{monthName}</Text>
+              <TouchableOpacity
+                onPress={nextMonth}
+                accessibilityRole="button"
+                accessibilityLabel="Next month"
+              >
+                <Text style={[styles.navArrow, { color: glow }]}>›</Text>
+              </TouchableOpacity>
+            </View>
 
-      {/* ── Prediction ── */}
-      {prediction && (
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-          <Text style={[styles.softLabel, { color: theme.soft }]}>Next predicted period</Text>
-          <Text style={styles.predictionDate}>~{prediction}</Text>
-          <Text style={styles.predictionSub}>Based on a 28-day average cycle</Text>
-        </View>
-      )}
+            <View style={styles.dayHeaders}>
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                <Text key={d} style={styles.dayHeader}>{d}</Text>
+              ))}
+            </View>
 
-      {/* ── Comfort tips ── */}
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-        <Text style={styles.tipsTitle}>Comfort Tips 💜</Text>
-        {[
-          'Use a heating pad for cramps',
-          'Stay hydrated — water helps a lot',
-          'Rest when your body asks for it',
-          "Be gentle with yourself, it's okay to slow down",
-          'Dark chocolate and warm tea are your friends 🍫',
-        ].map(tip => (
-          <Text key={tip} style={styles.tip}>• {tip}</Text>
-        ))}
-      </View>
+            <View style={styles.grid}>
+              {cells.map((day, i) => {
+                const key    = day ? `${currentYear}-${currentMonth + 1}-${day}` : null;
+                const marked = key ? markedDays[key] : null;
+                const todayCell = isToday(day);
+                return (
+                  <TouchableOpacity
+                    key={i}
+                    style={styles.cell}
+                    onPress={() => day && toggleDay(day)}
+                    disabled={!day}
+                    accessibilityRole="button"
+                    accessibilityLabel={day ? `${day}${marked ? ', marked' : ''}${todayCell ? ', today' : ''}` : undefined}
+                  >
+                    <View
+                      style={[
+                        styles.dayCircle,
+                        marked && { backgroundColor: '#e879a3' },
+                        todayCell && !marked && { borderWidth: 2, borderColor: glow },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.dayText,
+                          { color: day ? (marked ? '#fff' : todayCell ? glow : '#e9defc') : 'transparent' },
+                          todayCell && { fontWeight: '800' },
+                        ]}
+                      >
+                        {day || ''}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-      {/* ── Privacy note ── */}
-      <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.accent }]}>
-        <Text style={[styles.privacyNote, { color: theme.soft }]}>
-          Tap any day to mark it. Your data stays private on this device. 🔒
-        </Text>
-      </View>
-    </ScrollView>
+            <View style={styles.legendRow}>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { backgroundColor: '#e879a3' }]} />
+                <Text style={styles.legendText}>period day</Text>
+              </View>
+              <View style={styles.legendItem}>
+                <View style={[styles.legendDot, { borderWidth: 2, borderColor: glow }]} />
+                <Text style={styles.legendText}>today</Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View style={cardStyle(card3)}>
+          {prediction && (
+            <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88' }]}>
+              <Text style={[styles.softLabel, { color: '#cbb6f7' }]}>next predicted period</Text>
+              <Text style={styles.predictionDate}>~{prediction}</Text>
+              <Text style={styles.predictionSub}>based on a 28-day average cycle · just an estimate</Text>
+            </View>
+          )}
+
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88' }]}>
+            <Text style={styles.tipsTitle}>comfort tips 💜</Text>
+            {[
+              'heating pad for cramps',
+              'water · hydration helps a lot',
+              'rest when your body asks',
+              "be gentle. it's okay to slow down",
+              'warm tea + dark chocolate are friends 🍫',
+              'gentle stretching · no pressure',
+            ].map(tip => (
+              <Text key={tip} style={styles.tip}>· {tip}</Text>
+            ))}
+          </View>
+        </Animated.View>
+
+        <Animated.View style={cardStyle(card4)}>
+          <View style={styles.stickyNote}>
+            <Text style={styles.stickyText}>
+              “your body isn’t a problem to solve. it’s yours. you know it best.” — raylene
+            </Text>
+          </View>
+
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.7)', borderColor: glow + '66' }]}>
+            <Text style={styles.privacyNote}>
+              tap any day to mark it 🩸 · your data stays on this device. nothing leaves. 🔒
+            </Text>
+          </View>
+
+          <View style={{ height: 36 }} />
+        </Animated.View>
+
+        {BottomNav}
+      </ScrollView>
+    </View>
   );
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
-  container:      { flexGrow: 1, padding: 20, paddingTop: 60 },
-  logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
-  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
+  root: { flex: 1, backgroundColor: '#0e0820' },
+  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 },
+  subtitle:       { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 14, fontStyle: 'italic' },
+  energyBadge:    { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 },
+  energyText:     { fontSize: 13, fontWeight: '600' },
+
+  cloudWrap: { alignItems: 'center', marginBottom: 12 },
+  cloudArt: { width: 60, height: 60, marginBottom: 6 },
+
+  card:           { padding: 18, borderRadius: 20, marginBottom: 14, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14 },
   backBtn:        { marginBottom: 12 },
-  backText:       { color: '#94A3B8', fontSize: 14 },
+  backText:       { color: '#cbb6f7', fontSize: 14 },
   monthNav:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  navArrow:       { fontSize: 22 },
+  navArrow:       { fontSize: 26, fontWeight: 'bold' },
   monthName:      { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   dayHeaders:     { flexDirection: 'row', marginBottom: 8 },
-  dayHeader:      { flex: 1, textAlign: 'center', color: '#94A3B8', fontSize: 12, fontWeight: 'bold' },
+  dayHeader:      { flex: 1, textAlign: 'center', color: '#cbb6f7', fontSize: 12, fontWeight: 'bold' },
   grid:           { flexDirection: 'row', flexWrap: 'wrap' },
   cell:           { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  dayCircle:      { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  dayCircle:      { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   dayText:        { fontSize: 14 },
+
+  legendRow:      { flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  legendItem:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot:      { width: 12, height: 12, borderRadius: 6 },
+  legendText:     { color: '#cbb6f7', fontSize: 11 },
+
   softLabel:      { fontSize: 13, marginBottom: 4 },
-  predictionDate: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-  predictionSub:  { color: '#94A3B8', fontSize: 12, marginTop: 4 },
+  predictionDate: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  predictionSub:  { color: '#cbb6f7', fontSize: 12, marginTop: 4 },
   tipsTitle:      { color: '#fff', fontWeight: 'bold', fontSize: 16, marginBottom: 10 },
-  tip:            { color: '#CBD5E1', fontSize: 14, marginBottom: 6 },
-  privacyNote:    { fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
-  artworkMedium:  { width: '100%', height: 200, marginBottom: 16, borderRadius: 16 },
+  tip:            { color: '#e9defc', fontSize: 14, marginBottom: 6, lineHeight: 21 },
+  privacyNote:    { fontSize: 13, fontStyle: 'italic', textAlign: 'center', color: '#cbb6f7', lineHeight: 19 },
+  artworkMedium:  { width: 180, height: 180, marginBottom: 12, borderRadius: 16 },
+
+  stickyNote: { backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 12, marginBottom: 14, transform: [{ rotate: '-2deg' }] },
+  stickyText: { color: '#3a2461', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 19 },
 });
