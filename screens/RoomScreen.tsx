@@ -13,7 +13,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { loadState, saveState } from '../utils/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IMAGES } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -374,7 +374,7 @@ export function RoomScreen({
 
   // ─── AsyncStorage: first-visit persistence ───────────────────────────────
   useEffect(() => {
-    loadState('sekretbip_first_visit_done').then(done => {
+    AsyncStorage.getItem('sekretbip_first_visit_done').then(done => {
       if (done === 'true') setIsFirstVisit(false);
     });
   }, []);
@@ -485,7 +485,7 @@ export function RoomScreen({
         // First time summoning — mark first visit done
         if (next && isFirstVisit) {
           setIsFirstVisit(false);
-          saveState('sekretbip_first_visit_done', 'true');
+          AsyncStorage.setItem('sekretbip_first_visit_done', 'true');
         }
         updateRoomMemory?.({ lastSummon: new Date().toISOString(), character });
         return next;
@@ -625,7 +625,7 @@ export function RoomScreen({
             accessibilityRole="button"
             accessibilityLabel="Switch to Raylene"
           >
-            <Text style={styles.toggleText}>\uD83D\uDC9C Raylene</Text>
+            <Text style={styles.toggleText}>💜 Raylene</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleBtn, character === 'rylane' && styles.toggleBtnActivePurple]}
@@ -633,7 +633,7 @@ export function RoomScreen({
             accessibilityRole="button"
             accessibilityLabel="Switch to Rylane"
           >
-            <Text style={styles.toggleText}>\u26A1 Rylane</Text>
+            <Text style={styles.toggleText}>⚡ Rylane</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -738,7 +738,7 @@ export function RoomScreen({
           ))}
         </View>
 
-        <Text style={styles.tagline}>your room. your voice. always you. \u2661</Text>
+        <Text style={styles.tagline}>your room. your voice. always you. ♡</Text>
       </Animated.View>
     </View>
   );
