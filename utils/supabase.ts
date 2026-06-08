@@ -53,13 +53,17 @@ export function getSupabase(): SupabaseClient | null {
 // Centralized so Phase 2 wiring touches one file when schema names change.
 // These match the planned Supabase schema — do not rename without migrating.
 export const TABLES = {
-  journalEntries: 'journal_entries',
-  moodHistory:    'mood_history',
-  circlePosts:    'circle_posts',
-  voiceNotes:     'voice_notes',
-  bridgeShares:   'bridge_shares',
-  roomMemory:     'room_memory',
-  periodDays:     'period_days',
+  journalEntries:  'journal_entries',
+  moodHistory:     'mood_history',
+  circlePosts:     'circle_posts',
+  voiceNotes:      'voice_notes',
+  bridgeShares:    'bridge_shares',
+  roomMemory:      'room_memory',
+  periodDays:      'period_days',
+  comfortSessions: 'comfort_sessions',
+  crewMembers:     'crew_members',
+  crewCheckIns:    'crew_check_ins',
+  bipPoints:       'bip_points',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

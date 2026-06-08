@@ -135,7 +135,7 @@ export function BipCrewScreen({
     const commit = newCommit.trim();
     if (!name || crewMembers.length >= MAX_CREW) return;
     const nextId = crewMembers.length ? Math.max(...crewMembers.map(m => m.id)) + 1 : 1;
-    setCrewMembers(prev => [...prev, {
+    const member: CrewMember = {
       id: nextId,
       name,
       emoji: newEmoji || '\u{1F49C}',
@@ -143,7 +143,9 @@ export function BipCrewScreen({
       cadence: newCadence,
       inviteCode: makeInviteCode(),
       addedAt: new Date().toISOString(),
-    }]);
+    };
+    setCrewMembers(prev => [...prev, member]);
+    syncCrewMember(member);
     setNewName('');
     setNewCommit('');
     setShowInvite(false);

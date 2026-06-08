@@ -35,6 +35,13 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // saveState() takes ONE object arg — all keys to update.
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
+import { isSupabaseConfigured } from '../utils/supabase';
+import {
+  ensureAnonymousSession,
+  syncMood, syncJournal, syncCirclePost, syncVoiceNote,
+  syncComfortSession, syncCrewMember, deleteCrewMember as cloudDeleteCrewMember,
+  syncCrewCheckIn,
+} from '../utils/sync';
 import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
@@ -208,6 +215,12 @@ export default function App() {
     })();
   }, []);
 
+  // ── Supabase: ensure an anonymous session (silent no-op when not configured)
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    void ensureAnonymousSession();
+  }, []);
+
   // ── AsyncStorage: save on change ──────────────────────────────────────────
   // saveState() takes a single object — all key/value pairs to persist.
   // Arrays must be passed as-is (storage.ts handles JSON.stringify internally
@@ -276,24 +289,28 @@ export default function App() {
   const trackActivity = (type: 'calm' | 'comfort' | 'voice' | 'journal' | 'growth' | 'mood') => {
     updateRoomMemory({ lastVisit: new Date().toISOString() });
     const now = new Date();
-    setComfortSessions(prev => [{
-      id:   prev.length ? prev[0].id + 1 : 1,
+    const nextId = comfortSessions.length ? comfortSessions[0].id + 1 : 1;
+    const session: ComfortSession = {
+      id:   nextId,
       type,
       mood,
       date: now.toLocaleDateString(),
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }, ...prev].slice(0, 365));
-    // Future: Supabase insert to bip_energy / comfort_sessions / growth_milestones
+    };
+    setComfortSessions(prev => [session, ...prev].slice(0, 365));
+    syncComfortSession(session);
   };
 
   // ── Mood ──────────────────────────────────────────────────────────────────
   const selectMood = (m: string) => {
     setMood(m);
-    setMoodHistory(h => [{
+    const entry: MoodEntry = {
       id: Date.now(), mood: m,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-    }, ...h]);
+    };
+    setMoodHistory(h => [entry, ...h]);
+    syncMood(entry);
     trackActivity('mood');
   };
 
@@ -301,25 +318,29 @@ export default function App() {
   // RENAMED to match JournalScreen fixed interface
   const saveJournalEntry = () => {
     if (!journalText.trim()) return;
-    setJournalEntries(e => [{
+    const entry: JournalEntry = {
       id: Date.now(), text: journalText, mood,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }, ...e]);
+    };
+    setJournalEntries(e => [entry, ...e]);
     setJournalText('');
+    syncJournal(entry);
     trackActivity('journal');
   };
 
   // ── Circle ────────────────────────────────────────────────────────────────
   const saveCirclePost = () => {
     if (!circlePostText.trim()) return;
-    setCirclePosts(p => [{
+    const post: CirclePost = {
       id: Date.now(), text: circlePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
-    }, ...p]);
+    };
+    setCirclePosts(p => [post, ...p]);
     setCirclePostText('');
+    syncCirclePost(post);
   };
 
   const reactToPost = (id: number, type: string) => {

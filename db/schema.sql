@@ -1,0 +1,188 @@
+-- ───────────────────────────────────────────────────────────────────────────
+-- Se'kret Bip — Supabase schema (Phase 2 backend wiring)
+-- ───────────────────────────────────────────────────────────────────────────
+-- Apply: paste into the Supabase SQL editor, or run via the CLI:
+--   supabase db push
+--
+-- All tables are scoped per-user via RLS. The client uses anonymous auth, so
+-- every user gets a stable auth.uid() without giving up an email. When the
+-- user is ready, an upgrade to email+OTP is one row change away.
+--
+-- IMPORTANT:
+--   • the service_role key NEVER ships in the app — only EXPO_PUBLIC_*.
+--   • every table has user_id NOT NULL + RLS "owner only" policies.
+--   • we accept the device-generated integer id as the primary key paired
+--     with user_id, so AsyncStorage-side ids round-trip cleanly.
+-- ───────────────────────────────────────────────────────────────────────────
+
+-- ── Helpers ────────────────────────────────────────────────────────────────
+create extension if not exists "pgcrypto";
+
+create or replace function bip_now() returns timestamptz
+  language sql stable as $$ select now() $$;
+
+-- ── mood_history ───────────────────────────────────────────────────────────
+create table if not exists public.mood_history (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  mood        text        not null,
+  date        text        not null,
+  time        text        not null,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── journal_entries ────────────────────────────────────────────────────────
+create table if not exists public.journal_entries (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  text        text        not null,
+  mood        text        not null,
+  date        text        not null,
+  time        text        not null,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── circle_posts (still scoped per-user; Circle is the user's own private wall) --
+create table if not exists public.circle_posts (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  text        text        not null,
+  date        text        not null,
+  time        text        not null,
+  reactions   jsonb       not null default '{"felt":0,"comfort":0,"proud":0,"stay":0}'::jsonb,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── voice_notes ────────────────────────────────────────────────────────────
+create table if not exists public.voice_notes (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  title       text        not null,
+  date        text        not null,
+  time        text        not null,
+  duration    text        not null,
+  audio_url   text,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── comfort_sessions (calm + comfort + voice + journal + growth + mood) ───
+create table if not exists public.comfort_sessions (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  type        text        not null check (type in ('comfort','calm','voice','journal','growth','mood')),
+  mood        text,
+  date        text        not null,
+  time        text        not null,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── crew_members (Bip Crew — invite-only accountability) ──────────────────
+create table if not exists public.crew_members (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  name        text        not null,
+  emoji       text        not null,
+  commitment  text        not null,
+  cadence     text        not null check (cadence in ('daily','weekly','whenever')),
+  invite_code text        not null,
+  added_at    timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── crew_check_ins ─────────────────────────────────────────────────────────
+create table if not exists public.crew_check_ins (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  member_id   bigint      not null,
+  note        text        not null,
+  mood        text,
+  date        text        not null,
+  time        text        not null,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── bridge_shares (Parent Window) ──────────────────────────────────────────
+create table if not exists public.bridge_shares (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  payload     jsonb       not null,
+  shared_at   timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── period_days (Womanhood cycle layer) ────────────────────────────────────
+create table if not exists public.period_days (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  date        text        not null,
+  phase       text,
+  flow        text,
+  note        text,
+  updated_at  timestamptz not null default bip_now(),
+  primary key (user_id, date)
+);
+
+-- ── room_memory (RoomMemory: visit-count, lastVisit, lastHotspot, etc) ─────
+create table if not exists public.room_memory (
+  user_id      uuid        not null references auth.users(id) on delete cascade,
+  character    text        not null default 'raylene',
+  last_visit   timestamptz,
+  last_hotspot text,
+  last_summon  text,
+  visit_count  integer     not null default 0,
+  updated_at   timestamptz not null default bip_now(),
+  primary key (user_id)
+);
+
+-- ── bip_points (optional snapshots) ────────────────────────────────────────
+create table if not exists public.bip_points (
+  id           bigserial primary key,
+  user_id      uuid        not null references auth.users(id) on delete cascade,
+  total        integer     not null,
+  captured_at  timestamptz not null default bip_now()
+);
+
+-- ───────────────────────────────────────────────────────────────────────────
+-- Row Level Security — every table is owner-only.
+-- ───────────────────────────────────────────────────────────────────────────
+do $$
+declare t text;
+begin
+  for t in
+    select unnest(array[
+      'mood_history','journal_entries','circle_posts','voice_notes',
+      'comfort_sessions','crew_members','crew_check_ins',
+      'bridge_shares','period_days','room_memory','bip_points'
+    ])
+  loop
+    execute format('alter table public.%I enable row level security;', t);
+
+    execute format('drop policy if exists "%s_owner_select" on public.%I;', t, t);
+    execute format('drop policy if exists "%s_owner_insert" on public.%I;', t, t);
+    execute format('drop policy if exists "%s_owner_update" on public.%I;', t, t);
+    execute format('drop policy if exists "%s_owner_delete" on public.%I;', t, t);
+
+    execute format(
+      'create policy "%s_owner_select" on public.%I for select using (auth.uid() = user_id);', t, t);
+    execute format(
+      'create policy "%s_owner_insert" on public.%I for insert with check (auth.uid() = user_id);', t, t);
+    execute format(
+      'create policy "%s_owner_update" on public.%I for update using (auth.uid() = user_id);', t, t);
+    execute format(
+      'create policy "%s_owner_delete" on public.%I for delete using (auth.uid() = user_id);', t, t);
+  end loop;
+end $$;
+
+-- ── Helpful indexes ────────────────────────────────────────────────────────
+create index if not exists idx_mood_user_date           on public.mood_history     (user_id, date);
+create index if not exists idx_journal_user_date        on public.journal_entries  (user_id, date);
+create index if not exists idx_circle_user_date         on public.circle_posts     (user_id, date);
+create index if not exists idx_voice_user_date          on public.voice_notes      (user_id, date);
+create index if not exists idx_comfort_user_date        on public.comfort_sessions (user_id, date);
+create index if not exists idx_checkins_user_member     on public.crew_check_ins   (user_id, member_id);
+create index if not exists idx_bip_points_user_captured on public.bip_points       (user_id, captured_at desc);
