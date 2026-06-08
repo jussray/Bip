@@ -23,7 +23,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import type { BridgePayload } from '../types/bridge';
+import type { BridgePayload } from '../types/index';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 

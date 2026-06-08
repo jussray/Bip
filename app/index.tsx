@@ -28,7 +28,7 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // saveState() takes ONE object arg — all keys to update.
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
-import type { JournalEntry, CirclePost, VoiceNote, MoodEntry } from '../types/bridge';
+import type { JournalEntry, CirclePost, VoiceNote, MoodEntry } from '../types/index';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table

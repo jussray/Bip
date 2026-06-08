@@ -50,3 +50,18 @@ export interface SekretProfile {
   vibe: string;
   greeting: string;
 }
+
+export interface BridgePayload {
+  shareTypeLabel?: string;
+  preview?:        string;
+  mood?:           string;
+  moodEmoji?:      string;
+  sharedAt?:       string;
+  sekretTip?:      string;
+  softPrompt?:     string;
+  conversationStarter?: string;
+  followUp?:       string;
+  avoid?:          string[];
+  guidance?:       string;
+  translation?:    { said: string; means: string };
+}
