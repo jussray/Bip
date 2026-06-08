@@ -1,23 +1,26 @@
 // screens/SekretScreen.tsx
 // Se'kret Bip — Talk with Se'kret
 //
-// Fixes applied (2026-06-03):
-//   A1 — Props realigned with index.tsx:
-//         removed: art, selectedSekret, setSelectedSekret, sekretReply,
-//                  isSekretTyping, sendSekretMessage
-//         added:   mood, selectedProfile, setSelectedProfile, userSide
-//   A2 — art.neutral image removed (art not passed from index); no crash
-//   A3 — currentSekret?.emoji / name guarded with SEKRET_PROFILES fallback
-//   A4 — sendSekretMessage moved internal as handleSend with local fetch
-//         to BASE_URL/api/sekret; gracefully stubs if BASE_URL is empty
-//   B1 — selectedSekret/setSelectedSekret → selectedProfile/setSelectedProfile
-//   B2 — sekretReply + isSekretTyping moved to internal useState
-//   B3 — userSide prop added; parent side gets simplified view
-//   B4 — mood prop added; used in API request body
-//   B5 — Se'kret selector highlight now uses selectedProfile (correct key)
-//   B6 — Static hardcoded chat line replaced with real message/reply display
-//   C1 — BottomNav moved outside ScrollView (root View wrapper)
-//   C2 — Local fetch wired to BASE_URL/api/sekret
+// Additional fixes (2026-06-03 audit pass 2):
+//   FIX-A — sekretMessage / setSekretMessage moved to internal state
+//            index.tsx never declared these as state — passing undefined would crash
+//            the TextInput value prop and silently break the send flow.
+//            They don't need to persist across screens, so internal is correct.
+//   FIX-B — selectedSekret extra prop removed from interface
+//            index.tsx passes it but interface didn't include it — unused. Cleaned up.
+//
+// Props interface now matches EXACTLY what index.tsx passes:
+//   <SekretScreen
+//     t={t}
+//     currentSekret={currentSekret}
+//     mood={mood}
+//     selectedProfile={selectedSekret}
+//     setSelectedProfile={setSelectedSekret}
+//     userSide={userSide}
+//     setScreen={setScreen}
+//     BottomNav={nav}
+//   />
+// (The extra selectedSekret={selectedSekret} in index.tsx is harmless — ignored by React)
 
 import React, { useState } from 'react';
 import {
@@ -36,26 +39,28 @@ const SEKRET_PROFILES: Record<string, any> = {
 };
 
 // ── Props ──────────────────────────────────────────────────────────────────
-// Fix A1/B1: props now match exactly what index.tsx passes
+// FIX-A: sekretMessage / setSekretMessage removed from interface (moved internal)
+// FIX-B: selectedSekret removed (not needed — selectedProfile serves this role)
 interface SekretScreenProps {
   t:                  Record<string, any>;
   mood:               string;
   currentSekret:      Record<string, any> | null;
-  sekretMessage:      string;
-  setSekretMessage:   (text: string) => void;
-  selectedProfile:    string;             // was: selectedSekret
-  setSelectedProfile: (key: string) => void; // was: setSelectedSekret
+  selectedProfile:    string;
+  setSelectedProfile: (key: string) => void;
   userSide:           'teen' | 'parent';
   setScreen:          (screen: string) => void;
   BottomNav:          React.ReactNode;
 }
 
 export function SekretScreen({
-  t, mood, currentSekret, sekretMessage, setSekretMessage,
+  t, mood, currentSekret,
   selectedProfile, setSelectedProfile, userSide, setScreen, BottomNav,
 }: SekretScreenProps) {
 
-  // Fix B2: internal reply + typing state
+  // FIX-A: internal state — no longer a prop
+  const [sekretMessage,    setSekretMessage]    = useState('');
+
+  // Internal reply + typing state (unchanged)
   const [sekretReply,    setSekretReply]    = useState('');
   const [isSekretTyping, setIsSekretTyping] = useState(false);
   const [lastSent,       setLastSent]       = useState('');
@@ -66,7 +71,7 @@ export function SekretScreen({
   const card = (extra?: object) => [styles.card, { backgroundColor: t.card, borderColor: t.accent }, extra] as any;
   const btn  = ()                => [styles.button, { backgroundColor: t.accent, shadowColor: t.accent }] as any;
 
-  // Fix A4 + C2: local send handler with fetch to BASE_URL
+  // Local send handler
   const handleSend = async () => {
     const text = sekretMessage.trim();
     if (!text) return;
@@ -77,7 +82,6 @@ export function SekretScreen({
     setSekretReply('');
 
     if (!BASE_URL) {
-      // No backend configured — show a warm stub reply
       setTimeout(() => {
         setIsSekretTyping(false);
         setSekretReply(profile.greeting);
@@ -100,7 +104,7 @@ export function SekretScreen({
     }
   };
 
-  // Fix B3: parent side simplified view
+  // Parent side simplified view
   if (userSide === 'parent') return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -122,23 +126,19 @@ export function SekretScreen({
 
   // ── Teen side ─────────────────────────────────────────────────────────────
   return (
-    // Fix C1: root View so BottomNav stays pinned
     <View style={[styles.root, { backgroundColor: t.background }]}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <Text style={styles.logo}>Talk with Se'kret 💜</Text>
         <Text style={styles.subtitle}>Your safe space. No pressure. Just real.</Text>
 
-        {/* Fix A2: no art image — just the profile card */}
         <View style={card()}>
-          {/* Fix A3: guarded emoji + name */}
           <Text style={styles.cardEmoji}>{profile.emoji}</Text>
           <Text style={[styles.cardText, { color: '#fff' }]}>{profile.name}</Text>
           <Text style={[styles.entryText, { color: '#E2E8F0' }]}>{profile.title}</Text>
           <Text style={[styles.entryText, { color: t.soft }]}>{profile.vibe}</Text>
         </View>
 
-        {/* Fix B6: real message + reply display */}
         {(lastSent || sekretReply || isSekretTyping) ? (
           <View style={card()}>
             {lastSent ? (
@@ -153,7 +153,6 @@ export function SekretScreen({
             </Text>
           </View>
         ) : (
-          // Greeting card before first message
           <View style={card()}>
             <Text style={[styles.entryText, { color: t.soft }]}>
               {profile.greeting}
@@ -161,7 +160,7 @@ export function SekretScreen({
           </View>
         )}
 
-        {/* Input */}
+        {/* Input — FIX-A: value now uses internal sekretMessage state */}
         <TextInput
           style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent, color: '#fff' }]}
           placeholder={`Talk to ${profile.name}...`}
@@ -174,7 +173,6 @@ export function SekretScreen({
           <Text style={styles.buttonText}>Send 💜</Text>
         </TouchableOpacity>
 
-        {/* Fix B1/B5: Se'kret selector — uses selectedProfile as key */}
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>Choose Your Se'kret</Text>
         <View style={card()}>
           {Object.keys(SEKRET_PROFILES).map(key => (
@@ -196,7 +194,6 @@ export function SekretScreen({
 
       </ScrollView>
 
-      {/* Fix C1: pinned outside scroll */}
       {BottomNav}
     </View>
   );
