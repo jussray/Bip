@@ -99,61 +99,61 @@ const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
 const RAYLENE_HOTSPOTS: Hotspot[] = [
   {
     id: 'pages',
-    label: 'Journal \uD83D\uDCD6',
+    label: 'Journal 📖',
     target: 'pages',
-    hint: 'Tap journal',
+    hint: 'tap the journal',
     pulse: true,
-    style: { bottom: '10%', left: '20%', width: '35%', height: '18%' },
+    style: { bottom: '10%', left: '14%', width: '36%', height: '18%' },
   },
   {
     id: 'voiceBip',
-    label: 'Headphones \uD83C\uDF99\uFE0F',
+    label: 'Headphones 🎙️',
     target: 'voiceBip',
-    hint: 'Tap headphones',
+    hint: 'tap headphones',
     style: { bottom: '14%', left: '2%', width: '18%', height: '12%' },
   },
   {
     id: 'cloudThoughts',
-    label: 'Cloud Lamp \u2601\uFE0F',
-    target: 'cloudThoughts',   // FIXED: was 'calm'
-    hint: 'Tap cloud',
+    label: 'Cloud Lamp ☁️',
+    target: 'cloudThoughts',
+    hint: 'tap the cloud',
     pulse: true,
-    style: { top: '42%', left: '26%', width: '14%', height: '12%' },
+    style: { top: '38%', left: '26%', width: '14%', height: '12%' },
   },
   {
     id: 'comfort',
-    label: 'Bed \uD83C\uDF19',
+    label: 'Bed 🌙',
     target: 'comfort',
-    hint: 'Tap bed',
-    style: { top: '38%', right: '2%', width: '38%', height: '35%' },
+    hint: 'tap the bed',
+    style: { top: '38%', right: '6%', width: '34%', height: '34%' },
   },
   {
     id: 'bippin2',
-    label: 'Growth Board \u2B50',
+    label: 'Growth Board ⭐',
     target: 'bippin2',
-    hint: 'Tap board',
-    style: { top: '4%', left: '18%', width: '24%', height: '28%' },
+    hint: 'tap the board',
+    style: { top: '4%', left: '22%', width: '24%', height: '26%' },
   },
   {
     id: 'circle',
-    label: 'Photo Wall \uD83C\uDF10',
+    label: 'Photo Wall 🌐',
     target: 'circle',
-    hint: 'Tap wall',
+    hint: 'tap the wall',
     style: { top: '4%', right: '0%', width: '18%', height: '55%' },
   },
   {
     id: 'calm',
-    label: 'Window \uD83C\uDF24\uFE0F',
+    label: 'Window 🌤️',
     target: 'calm',
-    hint: 'Tap window',
+    hint: 'tap the window',
     pulse: true,
     style: { top: '4%', left: '0%', width: '18%', height: '50%' },
   },
   {
     id: 'summon',
-    label: "Se\u2019kret \uD83D\uDC9C",
+    label: "Se’kret 💜",
     target: 'sekret',
-    hint: "Call Se\u2019kret",   // FIXED: Unicode right-single-quote — no parse error
+    hint: "call Se’kret",
     style: { top: '38%', left: '4%', width: '20%', height: '30%' },
   },
 ];
@@ -161,61 +161,61 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
 const RYLANE_HOTSPOTS: Hotspot[] = [
   {
     id: 'pages',
-    label: 'Journal \uD83D\uDCD6',
+    label: 'Journal 📖',
     target: 'pages',
-    hint: 'Tap journal',
+    hint: 'tap the journal',
     pulse: true,
-    style: { bottom: '8%', left: '22%', width: '38%', height: '20%' },
+    style: { bottom: '8%', left: '18%', width: '38%', height: '20%' },
   },
   {
     id: 'voiceBip',
-    label: 'Headphones \uD83C\uDF99\uFE0F',
+    label: 'Headphones 🎙️',
     target: 'voiceBip',
-    hint: 'Tap headphones',
+    hint: 'tap headphones',
     style: { top: '40%', left: '28%', width: '14%', height: '10%' },
   },
   {
     id: 'cloudThoughts',
-    label: 'Cloud Neon \u2601\uFE0F',
-    target: 'cloudThoughts',   // FIXED: was 'calm'
-    hint: 'Tap cloud',
+    label: 'Cloud Neon ☁️',
+    target: 'cloudThoughts',
+    hint: 'tap the cloud',
     pulse: true,
-    style: { top: '28%', left: '36%', width: '14%', height: '12%' },
+    style: { top: '26%', left: '36%', width: '14%', height: '12%' },
   },
   {
     id: 'comfort',
-    label: 'Bed \uD83C\uDF19',
+    label: 'Bed 🌙',
     target: 'comfort',
-    hint: 'Tap bed',
-    style: { top: '36%', right: '2%', width: '40%', height: '38%' },
+    hint: 'tap the bed',
+    style: { top: '36%', right: '6%', width: '36%', height: '36%' },
   },
   {
     id: 'bippin2',
-    label: 'Growth Board \u2B50',
+    label: 'Growth Board ⭐',
     target: 'bippin2',
-    hint: 'Tap board',
-    style: { top: '2%', left: '22%', width: '24%', height: '30%' },
+    hint: 'tap the board',
+    style: { top: '2%', left: '26%', width: '24%', height: '28%' },
   },
   {
     id: 'circle',
-    label: 'Photo Wall \uD83C\uDF10',
+    label: 'Photo Wall 🌐',
     target: 'circle',
-    hint: 'Tap wall',
+    hint: 'tap the wall',
     style: { top: '2%', right: '0%', width: '20%', height: '50%' },
   },
   {
     id: 'calm',
-    label: 'Window \uD83C\uDF24\uFE0F',
+    label: 'Window 🌤️',
     target: 'calm',
-    hint: 'Tap window',
+    hint: 'tap the window',
     pulse: true,
     style: { top: '2%', left: '0%', width: '20%', height: '55%' },
   },
   {
     id: 'summon',
-    label: "Se\u2019kret \u26A1",
+    label: "Se’kret ⚡",
     target: 'sekret',
-    hint: "Call Se\u2019kret",   // FIXED: Unicode right-single-quote
+    hint: "call Se’kret",
     style: { top: '30%', left: '2%', width: '24%', height: '36%' },
   },
 ];
@@ -514,10 +514,10 @@ export function RoomScreen({
   };
 
   const timeBadge = {
-    morning: '\u2600\uFE0F morning',
-    day:     '\uD83C\uDF24\uFE0F afternoon',
-    evening: '\uD83C\uDF06 evening',
-    night:   '\uD83C\uDF19 late night',
+    morning: '☀️ morning',
+    day:     '🌤️ afternoon',
+    evening: '🌆 evening',
+    night:   '🌙 late night',
   }[timeOfDay];
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -639,7 +639,18 @@ export function RoomScreen({
       </Animated.View>
 
       {/* ── Presence pill ───────────────────────────────────────────────── */}
-      <Animated.View style={[styles.presencePill, { opacity: fadeAnim }]}>
+      <Animated.View
+        style={[
+          styles.presencePill,
+          {
+            opacity: Animated.multiply(
+              fadeAnim,
+              breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] })
+            ),
+            transform: [{ scale: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) }],
+          },
+        ]}
+      >
         <Animated.View
           style={[
             styles.presenceDot,
@@ -668,7 +679,7 @@ export function RoomScreen({
           accessibilityLabel={isSekretVisible ? "Hide Se\u2019kret" : "Call Se\u2019kret"}
         >
           <Text style={styles.greetingChar}>
-            {character === 'raylene' ? '\uD83D\uDC9C Raylene' : '\u26A1 Rylane'}
+            {character === 'raylene' ? '💜 Raylene' : '⚡ Rylane'}
           </Text>
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
           <Text style={styles.greetingText}>"{greeting}"</Text>
@@ -686,7 +697,7 @@ export function RoomScreen({
           accessibilityLabel="Drop a Bip"
         >
           <Text style={[styles.mainBtnText, { color: t.accent }]}>
-            Drop a Bip {character === 'raylene' ? '\uD83D\uDC9C' : '\u26A1'}
+            Drop a Bip {character === 'raylene' ? '💜' : '⚡'}
           </Text>
         </TouchableOpacity>
 
@@ -718,12 +729,12 @@ export function RoomScreen({
         {/* Quick row — FIXED: now includes voiceBip and calm */}
         <View style={styles.quickRow}>
           {([
-            { emoji: '\uD83C\uDFE0', label: 'Home',    target: 'home'    },
-            { emoji: '\uD83D\uDCD6', label: 'Pages',   target: 'pages'   },
-            { emoji: '\uD83C\uDF99\uFE0F', label: 'Voice',   target: 'voiceBip' },
-            { emoji: '\uD83C\uDF19', label: 'Calm',    target: 'calm'    },
-            { emoji: '\uD83C\uDF10', label: 'Circle',  target: 'circle'  },
-            { emoji: '\u2B50',      label: 'Growth',  target: 'bippin2' },
+            { emoji: '🏠',       label: 'Home',   target: 'home'    },
+            { emoji: '📖',       label: 'Pages',  target: 'pages'   },
+            { emoji: '🎙️', label: 'Voice',  target: 'voiceBip' },
+            { emoji: '🌙',       label: 'Calm',   target: 'calm'    },
+            { emoji: '🌐',       label: 'Circle', target: 'circle'  },
+            { emoji: '⭐',             label: 'Growth', target: 'bippin2' },
           ] as { emoji: string; label: string; target: string }[]).map(({ emoji, label, target }) => (
             <TouchableOpacity
               key={target}
@@ -770,18 +781,32 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
 
+  // Softer scrapbook-style hint card — warm cream sticky-note with a slight tilt
   tapHintWrap:           {
     position: 'absolute',
-    top: -22,
-    left: 0,
-    backgroundColor: 'rgba(13,0,20,0.82)',
-    borderColor: 'rgba(196,181,253,0.25)',
+    top: -26,
+    left: -2,
+    backgroundColor: 'rgba(253,247,236,0.94)',
+    borderColor: 'rgba(124,58,237,0.45)',
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
+    borderStyle: 'dashed',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    transform: [{ rotate: '-2deg' }],
+    shadowColor: '#7c3aed',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  tapHint:               { color: '#f5f0ff', fontSize: 9, fontWeight: '800' },
+  tapHint:               {
+    color: '#3b0764',
+    fontSize: 10,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    letterSpacing: 0.2,
+  },
 
   avatarWrap:            {
     position: 'absolute',
