@@ -342,6 +342,7 @@ export default function App() {
       setScreen={setScreen}
       onMoodSelect={(m) => trackActivity('mood')}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
