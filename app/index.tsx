@@ -18,6 +18,7 @@ import { WomanhoodScreen }      from '../screens/WomanhoodScreen';
 import { ManhoodScreen }        from '../screens/ManhoodScreen';
 import { HistoryScreen }        from '../screens/HistoryScreen';
 import { ComfortStreaksScreen } from '../screens/ComfortStreaksScreen';
+import { BipCrewScreen }        from '../screens/BipCrewScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
@@ -33,7 +34,7 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // saveState() takes ONE object arg — all keys to update.
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
-import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession } from '../types/index';
+import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
 // One clean place to see every image Se'kret Bip uses.
@@ -143,6 +144,10 @@ export default function App() {
   // ─── Comfort sessions (calm + comfort rituals) ─────────────────────────
   const [comfortSessions, setComfortSessions] = useState<ComfortSession[]>([]);
 
+  // ─── Bip Crew (invite-only accountability) ──────────────────────────
+  const [crewMembers,  setCrewMembers]  = useState<CrewMember[]>([]);
+  const [crewCheckIns, setCrewCheckIns] = useState<CrewCheckIn[]>([]);
+
   // ─── Streak tracking ───────────────────────────────────────────────────
   const [streakDays, setStreakDays]     = useState(0);
   const [lastOpenDate, setLastOpenDate] = useState('');
@@ -183,6 +188,8 @@ export default function App() {
         if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
         if (state.comfortSessions) setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
+        if (state.crewMembers)     setCrewMembers(Array.isArray(state.crewMembers) ? state.crewMembers : []);
+        if (state.crewCheckIns)    setCrewCheckIns(Array.isArray(state.crewCheckIns) ? state.crewCheckIns : []);
         // streakDays / lastOpenDate / roomMemory not in STORAGE_KEYS yet —
         // stored as custom keys via saveState; loaded as plain strings here
         if (state.streakDays)     setStreakDays(Number(state.streakDays) || 0);
@@ -220,6 +227,8 @@ export default function App() {
         circlePosts,
         voiceNotes,
         comfortSessions,
+        crewMembers,
+        crewCheckIns,
         streakDays:    String(streakDays),
         lastOpenDate,
         roomMemory:    JSON.stringify(roomMemory),
@@ -230,7 +239,8 @@ export default function App() {
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
     journalText, journalEntries, moodHistory,
-    circlePosts, voiceNotes, comfortSessions, streakDays, lastOpenDate,
+    circlePosts, voiceNotes, comfortSessions,
+    crewMembers, crewCheckIns, streakDays, lastOpenDate,
     roomMemory, isLoading,
   ]);
 
@@ -514,6 +524,20 @@ export default function App() {
       onComplete={() => trackActivity('calm')}
       BottomNav={nav}
       mood={mood}
+    />
+  );
+
+  if (screen === 'crew') return (
+    <BipCrewScreen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      crewMembers={crewMembers}
+      setCrewMembers={setCrewMembers}
+      crewCheckIns={crewCheckIns}
+      setCrewCheckIns={setCrewCheckIns}
+      setScreen={setScreen}
+      BottomNav={nav}
     />
   );
 

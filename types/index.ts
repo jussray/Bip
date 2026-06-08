@@ -42,6 +42,25 @@ export interface ComfortSession {
   mood?: string;
 }
 
+export interface CrewMember {
+  id: number;
+  name: string;
+  emoji: string;            // soft picker, no profile pics
+  commitment: string;       // "text me when you spiral", "daily check-in", etc.
+  cadence: 'daily' | 'weekly' | 'whenever';
+  inviteCode: string;       // local placeholder until Supabase
+  addedAt: string;          // ISO
+}
+
+export interface CrewCheckIn {
+  id: number;
+  memberId: number;
+  note: string;             // short, soft
+  mood?: string;
+  date: string;
+  time: string;
+}
+
 export interface Theme {
   name: string;
   emoji: string;
