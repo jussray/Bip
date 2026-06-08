@@ -15,7 +15,7 @@ const rayleneFullbody = require(’../assets/images/raylene-fullbody.png’);
 const rayleneVoiceDay = require(’../assets/images/raylene-voice-day.png’);
 const rayleneVoiceNight = require(’../assets/images/raylene-voice-night.png’);
 
-const raylene_Bippin2Day = require(’../assets/images/raylene-writing.png’);
+const raylene_Bippin2Day = require(’../assets/images/raylene-bippin2-day.png’);
 const raylene_Bippin2Night = require(’../assets/images/raylene-writing.png’);
 
 const raylene_PeriodCalendar = require(’../assets/images/raylene-period-calendar-day.png’);
