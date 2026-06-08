@@ -1,46 +1,56 @@
 // screens/SekretScreen.tsx
-// Se'kret Bip — Talk with Se'kret
+// Se'kret Bip — Drop a Bip (Talk with Se'kret)
 //
-// Additional fixes (2026-06-03 audit pass 2):
-//   FIX-A — sekretMessage / setSekretMessage moved to internal state
-//            index.tsx never declared these as state — passing undefined would crash
-//            the TextInput value prop and silently break the send flow.
-//            They don't need to persist across screens, so internal is correct.
-//   FIX-B — selectedSekret extra prop removed from interface
-//            index.tsx passes it but interface didn't include it — unused. Cleaned up.
+// Polish pass (2026-06-07): preserves ALL props, internal state, parent/teen split,
+// SEKRET_PROFILES fallback, and BASE_URL fetch. Adds:
+//   • Time-of-day Room backdrop via getRoomBg(character, time)
+//   • Mood-tinted glow (happy/sad/angry/tired/calm)
+//   • Char-aware copy when selectedSekret is rylane vs raylene/soft
+//   • Stagger entrance fade-ins, breath loop on profile emoji
+//   • Scrapbook sticky-note quiet line
+//   • Gradient overlay on hero
 //
-// Props interface now matches EXACTLY what index.tsx passes:
-//   <SekretScreen
-//     t={t}
-//     currentSekret={currentSekret}
-//     mood={mood}
-//     selectedProfile={selectedSekret}
-//     setSelectedProfile={setSelectedSekret}
-//     userSide={userSide}
-//     setScreen={setScreen}
-//     BottomNav={nav}
-//   />
-// (The extra selectedSekret={selectedSekret} in index.tsx is harmless — ignored by React)
+// Props interface UNCHANGED — index.tsx call site untouched.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  TextInput, View, StyleSheet, Platform, Alert,
+  TextInput, View, StyleSheet, Platform,
+  ImageBackground, Animated, Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { getRoomBg } from '../constants/theme';
 
 const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
 
 // ── Profiles (keep in sync with index.tsx SEKRET_PROFILES) ─────────────────
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se'kret",       emoji: '🌸', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. I'm here. Tell me what's on your mind." },
-  rylane: { name: 'Rylane',        emoji: '⚡', title: 'Loyal Bro',           vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, I'm here. What's been heavy?" },
-  cloud:  { name: "Cloud Se'kret", emoji: '☁️', title: 'Quiet Comfort',       vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
-  night:  { name: "Night Se'kret", emoji: '🌙', title: 'Late-Night Listener', vibe: 'Minimal words, calm energy, safe space.',        greeting: "I'm here. You don't gotta explain perfectly." },
+  soft:   { name: "Se’kret",       emoji: '🌸', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. I’m here. Tell me what’s on your mind." },
+  rylane: { name: 'Rylane',              emoji: '⚡', title: 'Loyal Bro',           vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, I’m here. What’s been heavy?" },
+  cloud:  { name: "Cloud Se’kret",  emoji: '☁️', title: 'Quiet Comfort',       vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
+  night:  { name: "Night Se’kret",  emoji: '🌙', title: 'Late-Night Listener', vibe: 'Minimal words, calm energy, safe space.',        greeting: "I’m here. You don’t gotta explain perfectly." },
 };
 
+// ── Mood glow palette ──────────────────────────────────────────────────────
+function glowFor(mood: string): string {
+  const m = (mood || '').toLowerCase();
+  if (m.includes('happy'))       return '#fbbf24';
+  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
+  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
+  if (m.includes('tired'))       return '#6d28d9';
+  if (m.includes('calm'))        return '#c4b5fd';
+  return '#c4b5fd';
+}
+
+function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+}
+
 // ── Props ──────────────────────────────────────────────────────────────────
-// FIX-A: sekretMessage / setSekretMessage removed from interface (moved internal)
-// FIX-B: selectedSekret removed (not needed — selectedProfile serves this role)
 interface SekretScreenProps {
   t:                  Record<string, any>;
   mood:               string;
@@ -57,21 +67,74 @@ export function SekretScreen({
   selectedProfile, setSelectedProfile, userSide, setScreen, BottomNav,
 }: SekretScreenProps) {
 
-  // FIX-A: internal state — no longer a prop
-  const [sekretMessage,    setSekretMessage]    = useState('');
-
-  // Internal reply + typing state (unchanged)
+  // Internal state — kept exactly as before
+  const [sekretMessage,  setSekretMessage]  = useState('');
   const [sekretReply,    setSekretReply]    = useState('');
   const [isSekretTyping, setIsSekretTyping] = useState(false);
   const [lastSent,       setLastSent]       = useState('');
 
-  // Fix A3: safe profile fallback if currentSekret is null
+  // Safe profile fallback
   const profile = currentSekret ?? SEKRET_PROFILES[selectedProfile] ?? SEKRET_PROFILES.soft;
 
-  const card = (extra?: object) => [styles.card, { backgroundColor: t.card, borderColor: t.accent }, extra] as any;
-  const btn  = ()                => [styles.button, { backgroundColor: t.accent, shadowColor: t.accent }] as any;
+  // Char awareness — Rylane = manhood/loyal-bro, otherwise Raylene/soft-big-sis energy
+  const isRylane  = selectedProfile === 'rylane';
+  const charKey   = isRylane ? 'rylane' : 'raylene';
+  const glow      = glowFor(mood);
+  const tod       = timeOfDay();
+  const bgSource  = useMemo(() => getRoomBg(charKey, tod), [charKey, tod]);
 
-  // Local send handler
+  // Char-aware copy overrides
+  const heroTitle = isRylane ? 'Drop a Bip 🤝' : 'Drop a Bip 💜';
+  const heroSub   = isRylane
+    ? 'No judgement. Just say it. Stays between us.'
+    : 'Your safe space. No pressure. Just real.';
+  const stickyLine = isRylane
+    ? 'lock in. say it once, get it off your chest.'
+    : 'we see you. it doesn’t have to be perfect.';
+  const sendLabel = isRylane ? 'Send 🤝' : 'Send 💜';
+  const greetingOverride = isRylane && profile === SEKRET_PROFILES.rylane
+    ? profile.greeting
+    : (isRylane ? 'Aight. I’m here. Drop it.' : profile.greeting);
+
+  // ── Animations ──────────────────────────────────────────────────────────
+  const fadeHero   = useRef(new Animated.Value(0)).current;
+  const fadeProf   = useRef(new Animated.Value(0)).current;
+  const fadeChat   = useRef(new Animated.Value(0)).current;
+  const fadeInput  = useRef(new Animated.Value(0)).current;
+  const fadePicker = useRef(new Animated.Value(0)).current;
+  const transHero   = useRef(new Animated.Value(10)).current;
+  const transProf   = useRef(new Animated.Value(10)).current;
+  const transChat   = useRef(new Animated.Value(10)).current;
+  const transInput  = useRef(new Animated.Value(10)).current;
+  const transPicker = useRef(new Animated.Value(10)).current;
+  const breath = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const stagger = (op: Animated.Value, tr: Animated.Value, delay: number) =>
+      Animated.parallel([
+        Animated.timing(op, { toValue: 1, duration: 400, delay, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+        Animated.timing(tr, { toValue: 0, duration: 400, delay, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+      ]);
+    Animated.parallel([
+      stagger(fadeHero,   transHero,   0),
+      stagger(fadeProf,   transProf,   160),
+      stagger(fadeChat,   transChat,   320),
+      stagger(fadeInput,  transInput,  460),
+      stagger(fadePicker, transPicker, 600),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, { toValue: 1, duration: 2000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+        Animated.timing(breath, { toValue: 0, duration: 2000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+      ])
+    ).start();
+  }, []);
+
+  const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1,    1.04] });
+  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1   ] });
+
+  // ── Send handler (unchanged behavior) ───────────────────────────────────
   const handleSend = async () => {
     const text = sekretMessage.trim();
     if (!text) return;
@@ -84,7 +147,7 @@ export function SekretScreen({
     if (!BASE_URL) {
       setTimeout(() => {
         setIsSekretTyping(false);
-        setSekretReply(profile.greeting);
+        setSekretReply(greetingOverride);
       }, 1200);
       return;
     }
@@ -97,105 +160,154 @@ export function SekretScreen({
       });
       const data = await res.json();
       setIsSekretTyping(false);
-      setSekretReply(data.reply ?? profile.greeting);
+      setSekretReply(data.reply ?? greetingOverride);
     } catch {
       setIsSekretTyping(false);
-      setSekretReply("I'm here. Tell me more when you're ready. 💜");
+      setSekretReply(isRylane
+        ? 'I’m here. Tell me when you’re ready. 🤝'
+        : 'I’m here. Tell me more when you’re ready. 💜');
     }
   };
 
-  // Parent side simplified view
+  // ── Parent side (preserved) ─────────────────────────────────────────────
   if (userSide === 'parent') return (
-    <View style={[styles.root, { backgroundColor: t.background }]}>
+    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <LinearGradient
+        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        style={StyleSheet.absoluteFill}
+      />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.logo}>Se'kret Bridge 💜</Text>
-        <Text style={styles.subtitle}>Your teen's safe space. You can reach in with love.</Text>
-        <View style={card()}>
-          <Text style={[styles.cardText, { color: '#fff' }]}>This is your teen's private space.</Text>
+        <Text style={styles.logo}>Se’kret Bridge 💜</Text>
+        <Text style={styles.subtitle}>Your teen’s safe space. You can reach in with love.</Text>
+        <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
+          <Text style={[styles.cardText, { color: '#fff' }]}>This is your teen’s private space.</Text>
           <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
-            Se'kret helps them process emotions safely. You can send a message of support through the Bridge.
+            Se’kret helps them process emotions safely. You can send a message of support through the Bridge.
           </Text>
-          <TouchableOpacity style={[styles.button, { backgroundColor: t.accent, marginTop: 12 }]} onPress={() => setScreen('bridge')}>
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: glow, shadowColor: glow, marginTop: 12 }]}
+            onPress={() => setScreen('bridge')}
+          >
             <Text style={styles.buttonText}>Open Bridge 💌</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
       {BottomNav}
-    </View>
+    </ImageBackground>
   );
 
-  // ── Teen side ─────────────────────────────────────────────────────────────
+  // ── Teen side ────────────────────────────────────────────────────────────
   return (
-    <View style={[styles.root, { backgroundColor: t.background }]}>
+    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <LinearGradient
+        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        style={StyleSheet.absoluteFill}
+      />
+
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-        <Text style={styles.logo}>Talk with Se'kret 💜</Text>
-        <Text style={styles.subtitle}>Your safe space. No pressure. Just real.</Text>
+        {/* Hero */}
+        <Animated.View style={{ opacity: fadeHero, transform: [{ translateY: transHero }] }}>
+          <Text style={styles.logo}>{heroTitle}</Text>
+          <Text style={styles.subtitle}>{heroSub}</Text>
 
-        <View style={card()}>
-          <Text style={styles.cardEmoji}>{profile.emoji}</Text>
-          <Text style={[styles.cardText, { color: '#fff' }]}>{profile.name}</Text>
-          <Text style={[styles.entryText, { color: '#E2E8F0' }]}>{profile.title}</Text>
-          <Text style={[styles.entryText, { color: t.soft }]}>{profile.vibe}</Text>
-        </View>
-
-        {(lastSent || sekretReply || isSekretTyping) ? (
-          <View style={card()}>
-            {lastSent ? (
-              <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
-                You: {lastSent}
-              </Text>
-            ) : null}
-            <Text style={[styles.entryText, { color: t.soft, marginTop: 8 }]}>
-              {isSekretTyping
-                ? `${profile.name} is typing... ☁️`
-                : sekretReply}
+          {/* Companion presence pill */}
+          <Animated.View style={[
+            styles.companion,
+            { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', shadowColor: glow,
+              opacity: breathOpacity, transform: [{ scale: breathScale }] },
+          ]}>
+            <Text style={styles.companionText}>
+              {profile.emoji}  {profile.name} is right here
             </Text>
-          </View>
-        ) : (
-          <View style={card()}>
-            <Text style={[styles.entryText, { color: t.soft }]}>
-              {profile.greeting}
-            </Text>
-          </View>
-        )}
+          </Animated.View>
+        </Animated.View>
 
-        {/* Input — FIX-A: value now uses internal sekretMessage state */}
-        <TextInput
-          style={[styles.journalInput, { backgroundColor: t.card, borderColor: t.accent, color: '#fff' }]}
-          placeholder={`Talk to ${profile.name}...`}
-          placeholderTextColor="#94A3B8"
-          multiline
-          value={sekretMessage}
-          onChangeText={setSekretMessage}
-        />
-        <TouchableOpacity style={btn()} onPress={handleSend}>
-          <Text style={styles.buttonText}>Send 💜</Text>
-        </TouchableOpacity>
+        {/* Profile card with breathing emoji */}
+        <Animated.View style={{ opacity: fadeProf, transform: [{ translateY: transProf }] }}>
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }]}>
+            <Animated.Text style={[styles.cardEmoji, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}>
+              {profile.emoji}
+            </Animated.Text>
+            <Text style={[styles.cardText, { color: '#fff' }]}>{profile.name}</Text>
+            <Text style={[styles.entryText, { color: '#E2E8F0' }]}>{profile.title}</Text>
+            <Text style={[styles.entryText, { color: t.soft }]}>{profile.vibe}</Text>
+          </View>
 
-        <Text style={[styles.sectionTitle, { color: '#fff' }]}>Choose Your Se'kret</Text>
-        <View style={card()}>
-          {Object.keys(SEKRET_PROFILES).map(key => (
-            <TouchableOpacity
-              key={key}
-              style={[
-                styles.choiceButton,
-                selectedProfile === key && { borderColor: t.accent, borderWidth: 2 },
-              ]}
-              onPress={() => setSelectedProfile(key)}
-            >
-              <Text style={styles.entryText}>
-                {SEKRET_PROFILES[key].emoji} {SEKRET_PROFILES[key].name}
+          {/* Scrapbook sticky-note */}
+          <View style={styles.sticky}>
+            <Text style={styles.stickyText}>{stickyLine}</Text>
+          </View>
+        </Animated.View>
+
+        {/* Chat bubble */}
+        <Animated.View style={{ opacity: fadeChat, transform: [{ translateY: transChat }] }}>
+          {(lastSent || sekretReply || isSekretTyping) ? (
+            <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
+              {lastSent ? (
+                <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
+                  You: {lastSent}
+                </Text>
+              ) : null}
+              <Text style={[styles.entryText, { color: t.soft, marginTop: 8 }]}>
+                {isSekretTyping
+                  ? `${profile.name} is typing… ☁️`
+                  : sekretReply}
               </Text>
-              <Text style={styles.miniText}>{SEKRET_PROFILES[key].title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </View>
+          ) : (
+            <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', shadowColor: glow }]}>
+              <Text style={[styles.entryText, { color: t.soft }]}>
+                {greetingOverride}
+              </Text>
+            </View>
+          )}
+        </Animated.View>
+
+        {/* Input + Send */}
+        <Animated.View style={{ opacity: fadeInput, transform: [{ translateY: transInput }] }}>
+          <TextInput
+            style={[styles.journalInput, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', color: '#fff' }]}
+            placeholder={isRylane ? `Talk to ${profile.name}… no cap` : `Talk to ${profile.name}…`}
+            placeholderTextColor="#94A3B8"
+            multiline
+            value={sekretMessage}
+            onChangeText={setSekretMessage}
+          />
+          <TouchableOpacity
+            style={[styles.button, { backgroundColor: glow, shadowColor: glow }]}
+            onPress={handleSend}
+          >
+            <Text style={styles.buttonText}>{sendLabel}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Profile picker */}
+        <Animated.View style={{ opacity: fadePicker, transform: [{ translateY: transPicker }] }}>
+          <Text style={[styles.sectionTitle, { color: '#fff' }]}>Choose Your Se’kret</Text>
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }]}>
+            {Object.keys(SEKRET_PROFILES).map(key => (
+              <TouchableOpacity
+                key={key}
+                style={[
+                  styles.choiceButton,
+                  selectedProfile === key && { borderColor: glow, borderWidth: 2, backgroundColor: 'rgba(124,58,237,0.18)' },
+                ]}
+                onPress={() => setSelectedProfile(key)}
+              >
+                <Text style={styles.entryText}>
+                  {SEKRET_PROFILES[key].emoji} {SEKRET_PROFILES[key].name}
+                </Text>
+                <Text style={styles.miniText}>{SEKRET_PROFILES[key].title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Animated.View>
 
       </ScrollView>
 
       {BottomNav}
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -204,15 +316,19 @@ const styles = StyleSheet.create({
   root:           { flex: 1 },
   scroll:         { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
   logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
+  subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 16 },
+  companion:      { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, marginBottom: 20, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
+  companionText:  { color: '#F8FAFC', fontSize: 13, fontWeight: '600' },
   sectionTitle:   { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 18 },
-  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1 },
-  cardEmoji:      { fontSize: 32, marginBottom: 8 },
-  cardText:       { fontSize: 17, fontWeight: '600', marginBottom: 8 },
+  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
+  cardEmoji:      { fontSize: 36, marginBottom: 8, textAlign: 'center' },
+  cardText:       { fontSize: 17, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
   entryText:      { fontSize: 14, marginBottom: 6, lineHeight: 20 },
   miniText:       { color: '#CBD5E1', fontSize: 12, textAlign: 'center' },
-  button:         { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center' },
+  button:         { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center', shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
   buttonText:     { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
   journalInput:   { padding: 16, borderRadius: 18, minHeight: 130, textAlignVertical: 'top', marginBottom: 16, borderWidth: 1, fontSize: 14, lineHeight: 22 },
-  choiceButton:   { backgroundColor: '#1E293B', padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
+  choiceButton:   { backgroundColor: 'rgba(30,41,59,0.7)', padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
+  sticky:         { alignSelf: 'center', backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 18, transform: [{ rotate: '-2deg' }] },
+  stickyText:     { color: '#3b1f6b', fontStyle: 'italic', fontSize: 13 },
 });
