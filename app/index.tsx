@@ -17,6 +17,7 @@ import { GrowthScreen }         from '../screens/GrowthScreen';
 import { WomanhoodScreen }      from '../screens/WomanhoodScreen';
 import { ManhoodScreen }        from '../screens/ManhoodScreen';
 import { HistoryScreen }        from '../screens/HistoryScreen';
+import { ComfortStreaksScreen } from '../screens/ComfortStreaksScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
@@ -32,7 +33,7 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // saveState() takes ONE object arg — all keys to update.
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
-import type { JournalEntry, CirclePost, VoiceNote, MoodEntry } from '../types/index';
+import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
 // One clean place to see every image Se'kret Bip uses.
@@ -139,6 +140,9 @@ export default function App() {
   // ─── Voice Bip ─────────────────────────────────────────────────────────
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
 
+  // ─── Comfort sessions (calm + comfort rituals) ─────────────────────────
+  const [comfortSessions, setComfortSessions] = useState<ComfortSession[]>([]);
+
   // ─── Streak tracking ───────────────────────────────────────────────────
   const [streakDays, setStreakDays]     = useState(0);
   const [lastOpenDate, setLastOpenDate] = useState('');
@@ -178,6 +182,7 @@ export default function App() {
         if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
         if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
+        if (state.comfortSessions) setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
         // streakDays / lastOpenDate / roomMemory not in STORAGE_KEYS yet —
         // stored as custom keys via saveState; loaded as plain strings here
         if (state.streakDays)     setStreakDays(Number(state.streakDays) || 0);
@@ -214,6 +219,7 @@ export default function App() {
         moodHistory,
         circlePosts,
         voiceNotes,
+        comfortSessions,
         streakDays:    String(streakDays),
         lastOpenDate,
         roomMemory:    JSON.stringify(roomMemory),
@@ -224,7 +230,7 @@ export default function App() {
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
     journalText, journalEntries, moodHistory,
-    circlePosts, voiceNotes, streakDays, lastOpenDate,
+    circlePosts, voiceNotes, comfortSessions, streakDays, lastOpenDate,
     roomMemory, isLoading,
   ]);
 
@@ -258,6 +264,14 @@ export default function App() {
   // ── Activity tracker (RoomMemory + future Supabase hooks) ─────────────────
   const trackActivity = (type: 'calm' | 'comfort' | 'voice' | 'journal' | 'growth' | 'mood') => {
     updateRoomMemory({ lastVisit: new Date().toISOString() });
+    const now = new Date();
+    setComfortSessions(prev => [{
+      id:   prev.length ? prev[0].id + 1 : 1,
+      type,
+      mood,
+      date: now.toLocaleDateString(),
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    }, ...prev].slice(0, 365));
     // Future: Supabase insert to bip_energy / comfort_sessions / growth_milestones
   };
 
@@ -500,6 +514,17 @@ export default function App() {
       onComplete={() => trackActivity('calm')}
       BottomNav={nav}
       mood={mood}
+    />
+  );
+
+  if (screen === 'comfortStreaks') return (
+    <ComfortStreaksScreen
+      t={t}
+      mood={mood}
+      selectedSekret={selectedSekret}
+      comfortSessions={comfortSessions}
+      setScreen={setScreen}
+      BottomNav={nav}
     />
   );
 

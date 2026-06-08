@@ -85,6 +85,9 @@ export function MoreScreen({
         <TouchableOpacity style={btn()} onPress={() => setScreen('history')}>
           <Text style={styles.buttonText}>📈 History · doing better</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('comfortStreaks')}>
+          <Text style={styles.buttonText}>✨ Comfort Streaks</Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={btn()}
           onPress={() => setScreen(userSide === 'parent' ? 'parentBridge' : 'bridge')}

@@ -34,6 +34,14 @@ export interface MoodEntry {
   time: string;
 }
 
+export interface ComfortSession {
+  id: number;
+  type: 'comfort' | 'calm' | 'voice' | 'journal' | 'growth' | 'mood';
+  date: string;
+  time: string;
+  mood?: string;
+}
+
 export interface Theme {
   name: string;
   emoji: string;
