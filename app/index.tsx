@@ -37,7 +37,7 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 import { loadState, saveState } from '../utils/storage';
 import { isSupabaseConfigured } from '../utils/supabase';
 import {
-  ensureAnonymousSession,
+  ensureAnonymousSession, pullAll,
   syncMood, syncJournal, syncCirclePost, syncVoiceNote,
   syncComfortSession, syncCrewMember, deleteCrewMember as cloudDeleteCrewMember,
   syncCrewCheckIn,
@@ -215,11 +215,58 @@ export default function App() {
     })();
   }, []);
 
-  // ── Supabase: ensure an anonymous session (silent no-op when not configured)
+  // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
+  //
+  // Strategy:
+  //   1. Local AsyncStorage already loaded (effect above) → instant render.
+  //   2. Wait until isLoading flips off so we don't fight the local restore.
+  //   3. Sign in anonymously (if not configured, the whole effect no-ops).
+  //   4. pullAll() reads every owned row from the cloud.
+  //   5. Merge: cloud rows win on id collision; local-only rows survive
+  //      (they'll sync up on next write via the fire-and-forget helpers).
+  //   6. Setters update state → the existing save effect persists the
+  //      merged result back to AsyncStorage for next launch.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    void ensureAnonymousSession();
-  }, []);
+    if (isLoading) return;
+    let cancelled = false;
+
+    (async () => {
+      const uid = await ensureAnonymousSession();
+      if (!uid || cancelled) return;
+
+      const cloud = await pullAll();
+      if (!cloud || cancelled) return;
+
+      // Merge helper: cloud rows take precedence, then any local-only rows
+      // (id not in cloud) get appended.
+      const mergeById = <T extends { id: number | string },>(local: T[], remote: T[]): T[] => {
+        const remoteIds = new Set(remote.map(r => r.id));
+        const localExtras = local.filter(l => !remoteIds.has(l.id));
+        return [...remote, ...localExtras];
+      };
+
+      setMoodHistory(prev     => mergeById(prev, cloud.moodHistory));
+      setJournalEntries(prev  => mergeById(prev, cloud.journalEntries));
+      setCirclePosts(prev     => mergeById(prev, cloud.circlePosts));
+      setVoiceNotes(prev      => mergeById(prev, cloud.voiceNotes));
+      setComfortSessions(prev => mergeById(prev, cloud.comfortSessions));
+      setCrewMembers(prev     => mergeById(prev, cloud.crewMembers));
+      setCrewCheckIns(prev    => mergeById(prev, cloud.crewCheckIns));
+
+      if (__DEV__) console.log('[sync] pullAll hydrated', {
+        mood: cloud.moodHistory.length,
+        journal: cloud.journalEntries.length,
+        circle: cloud.circlePosts.length,
+        voice: cloud.voiceNotes.length,
+        comfort: cloud.comfortSessions.length,
+        crew: cloud.crewMembers.length,
+        checkins: cloud.crewCheckIns.length,
+      });
+    })();
+
+    return () => { cancelled = true; };
+  }, [isLoading]);
 
   // ── AsyncStorage: save on change ──────────────────────────────────────────
   // saveState() takes a single object — all key/value pairs to persist.

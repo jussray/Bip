@@ -74,6 +74,20 @@ in `app/index.tsx` and `screens/BipCrewScreen.tsx`. Local writes happen
 first and never wait on the network — if the cloud call fails, the local
 copy is still saved to AsyncStorage and the user sees no error.
 
+## Boot-time cloud restore
+
+On every app boot, after the local AsyncStorage restore finishes, the app:
+
+1. Calls `ensureAnonymousSession()` to get a stable `auth.uid()`.
+2. Calls `pullAll()` to fetch every owned row from the cloud.
+3. **Merges** cloud + local: cloud rows win on `id` collision, any
+   local-only rows survive and sync up on the next write.
+4. Merged state is persisted back to AsyncStorage via the existing save
+   effect — so the next launch is instant and offline-safe.
+
+This means a fresh install on a second device hydrates with the user's
+full history once they sign in (anon today, email later).
+
 ## What's NOT synced yet
 
 - `roomMemory` — the table exists (`room_memory`) but the helper isn't
