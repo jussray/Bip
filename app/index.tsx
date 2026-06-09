@@ -71,7 +71,8 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
   lastVisit:   '',
   lastHotspot: '',
   lastSummon:  '',
-  visitCount:  0,
+  visitCount:  0,};
+  
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────
