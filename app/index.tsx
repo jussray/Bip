@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
-<<<<<<< Updated upstream
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
 // The primary 'home' route renders RoomScreen — the Room IS the home.
@@ -72,42 +71,7 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
   lastVisit:   '',
   lastHotspot: '',
   lastSummon:  '',
-  visitCount:  0,
-=======
-// ── IMAGE ASSETS ──────────────────────────────────────────────────────────────
-const IMAGES = {
-  // Raylene
-  rayleneNeutral:  require('../assets/images/raylene-neutral.png'),
-  rayleneHappy:    require('../assets/images/raylene-happy.png'),
-  rayleneThinking: require('../assets/images/raylene-thinking.png'),
-  rayleneWriting:  require('../assets/images/raylene-writing.png'),
-  rayleneWindow:   require('../assets/images/raylene-window.png'),
-  rayleneFullbody: require('../assets/images/raylene-fullbody.png'),
-  // Rylane
-  rylaneNeutral:   require('../assets/images/rylane-neutral.png'),
-  rylaneHappy:     require('../assets/images/rylane-happy.png'),
-  rylaneThinking:  require('../assets/images/rylane-thinking.png'),
-  rylaneWriting:   require('../assets/images/rylane-writing.png'),
-  rylaneWindow:    require('../assets/images/rylane-window.png'),
-  rylaneFullbody:  require('../assets/images/rylane-fullbody.png'),
-  // Clouds
-  cloud:           require('../assets/images/cloud.png'),
-  cloudHeadphones: require('../assets/images/cloud-headphones.png'),
-  cloudStormy:     require('../assets/images/cloud-stormy.png'),
-  cloudSleepy:     require('../assets/images/cloud-sleepy.png'),
-  cloudHappy:      require('../assets/images/cloud-happy.png'),
-  // Backgrounds
-  roomBg:          require('../assets/images/room-bg.png'),
-  roomBgDark:      require('../assets/images/room-bg-dark.png'),
-  journalBg:       require('../assets/images/journal-bg.png'),
-  comfortBg:       require('../assets/images/comfort-bg.png'),
-  voiceBipBg:      require('../assets/images/voice-bip-bg.png'),
-  // Parent / Bridge
-  parentHomeBg:    require('../assets/images/parent-home-bg.png'),
-  bridgeBg:        require('../assets/images/bridge-bg.png'),
-  parentDashBg:    require('../assets/images/parent-dashboard-bg.png'),
->>>>>>> Stashed changes
-};
+  visitCount:  0,};
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
