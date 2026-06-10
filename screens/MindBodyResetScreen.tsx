@@ -171,7 +171,7 @@ export function MindBodyResetScreen({
   // ─── Tool stub alerts ────────────────────────────────────────────────────
   const handleTool = (label: string) => {
     // Stub — future: navigate or open modal
-    // e.g. if (label === 'Brain Dump') setScreen('journal');
+    // e.g. if (label === 'Brain Dump') setScreen('pages');
     //      if (label === 'Calm Sounds') setScreen('calm');
   };
 

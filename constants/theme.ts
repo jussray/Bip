@@ -46,17 +46,23 @@ const rylaneVoiceDay  = rylaneWindow;   // fallback → window
 const rylaneVoiceNight = rylaneWindow;  // fallback → window
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
-const roomBg              = require('../assets/images/room-bg.png');
-const roomBgDark          = require('../assets/images/room-bg-dark.png');
-// NOTE: bg-raylene-room-night.png exists on disk but its filename contains an
-// invisible unicode thin-space (U+2009) that breaks Metro's require resolver
-// on web. Until the asset is renamed, fall back to roomBgDark so the bundle
-// never crashes. Swap this line back to a require() once the file is renamed.
-const bgRayleneRoomNight  = require('../assets/images/room-bg-dark.png');
-// Fallbacks for missing room backgrounds:
-const bgRayleneRoomDay    = roomBg;     // fallback → generic day room
-const bgRylaneRoomDay     = roomBg;     // fallback → generic day room
-const bgRylaneRoomNight   = roomBgDark; // fallback → generic dark room
+// The dedicated Raylene night room is the only complete room panorama in this
+// checkout. The day/Rylane-named files are 2-byte placeholders, so they must
+// never be handed to React Native's image loader. The room system keeps each
+// identity/time/weather slot explicit while using the valid original room art
+// and character overlays already in the repository.
+const roomArtwork = require('../assets/images/bg-raylene-room-night.png');
+
+const bgRayleneRoomDay       = roomArtwork;
+const bgRayleneRoomEvening   = roomArtwork;
+const bgRayleneRoomRain      = roomArtwork;
+const bgRayleneRoomNight     = roomArtwork;
+const bgRayleneRoomDeepNight = roomArtwork;
+const bgRylaneRoomDay        = roomArtwork;
+const bgRylaneRoomEvening    = roomArtwork;
+const bgRylaneRoomRain       = roomArtwork;
+const bgRylaneRoomNight      = roomArtwork;
+const bgRylaneRoomDeepNight  = roomArtwork;
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
 const bgComfort         = require('../assets/images/comfort-bg.png');
@@ -118,11 +124,15 @@ export const IMAGES = {
 
   // Rooms
   bgRayleneRoomDay,
+  bgRayleneRoomEvening,
+  bgRayleneRoomRain,
   bgRayleneRoomNight,
+  bgRayleneRoomDeepNight,
   bgRylaneRoomDay,
+  bgRylaneRoomEvening,
+  bgRylaneRoomRain,
   bgRylaneRoomNight,
-  roomBg,
-  roomBgDark,
+  bgRylaneRoomDeepNight,
 
   // Screen backgrounds
   bgComfort,
@@ -167,24 +177,34 @@ export const AVATARS: Record<string, Record<string, any>> = {
 };
 
 export type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
+export type RoomPhase = 'day' | 'evening' | 'rain' | 'night' | 'deepNight';
 
-export function getRoomBg(character: 'raylene' | 'rylane', time: TimeOfDay) {
-  if (character === 'raylene') {
-    switch (time) {
-      case 'night':   return IMAGES.bgRayleneRoomNight;
-      case 'evening': return IMAGES.roomBgDark;
-      case 'morning':
-      case 'day':
-      default:        return IMAGES.bgRayleneRoomDay;
-    }
-  }
-  switch (time) {
-    case 'night':   return IMAGES.bgRylaneRoomNight;
-    case 'evening': return IMAGES.roomBgDark;
-    case 'morning':
-    case 'day':
-    default:        return IMAGES.bgRylaneRoomDay;
-  }
+export function getRoomPhase(date = new Date(), weatherMode?: string): RoomPhase {
+  if (weatherMode === 'rain') return 'rain';
+  const hour = date.getHours();
+  if (hour >= 6 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 20) return 'evening';
+  if (hour >= 20 || hour < 1) return 'night';
+  return 'deepNight';
+}
+
+export function getRoomScene(character: 'raylene' | 'rylane', phase: RoomPhase) {
+  const prefix = character === 'rylane' ? 'bgRylaneRoom' : 'bgRayleneRoom';
+  const suffix = phase === 'deepNight'
+    ? 'DeepNight'
+    : phase.charAt(0).toUpperCase() + phase.slice(1);
+  return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
+}
+
+export function getRoomBg(character: 'raylene' | 'rylane', time: TimeOfDay, weatherMode?: string) {
+  const phase = weatherMode === 'rain'
+    ? 'rain'
+    : time === 'evening'
+      ? 'evening'
+      : time === 'night'
+        ? getRoomPhase(new Date(), weatherMode)
+        : 'day';
+  return getRoomScene(character, phase);
 }
 
 export const THEME_PACKS: Record<string, {

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, ImageBackground, StyleSheet } from 'react-native';
-import { IMAGES } from '../constants/theme';
+import { IMAGES, getRoomScene } from '../constants/theme';
 
 type VoiceKey = 'raylene' | 'rylane';
 type ScreenKey = 'default' | 'bippin2' | 'voiceBip' | 'voiceVip';
@@ -33,8 +33,8 @@ const ROOMS: Record<string, RoomVariant> = {
     night: IMAGES.rylaneVoiceNight,
   },
   default: {
-    day:   IMAGES.roomBg,
-    night: IMAGES.roomBgDark,
+    day:   getRoomScene('raylene', 'day'),
+    night: getRoomScene('raylene', 'night'),
   },
 };
 
@@ -43,7 +43,10 @@ function resolveRoom(screen: ScreenKey, voiceKey: VoiceKey) {
   if (screen === 'voiceBip' || screen === 'voiceVip') {
     return voiceKey === 'rylane' ? ROOMS.voiceBipRylane : ROOMS.voiceBip;
   }
-  return ROOMS.default;
+  return {
+    day: getRoomScene(voiceKey, 'day'),
+    night: getRoomScene(voiceKey, 'night'),
+  };
 }
 
 function isNightHour(hour: number) {

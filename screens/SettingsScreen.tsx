@@ -1,10 +1,10 @@
 import React from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  View, Image, StyleSheet, Platform, ImageBackground,
+  View, Image, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomBg } from '../constants/theme';
+import { IMAGES } from '../constants/theme';
 
 function glowFor(mood?: string): string {
   const m = (mood || '').toLowerCase();
@@ -14,14 +14,6 @@ function glowFor(mood?: string): string {
   if (m.includes('tired'))       return '#6d28d9';
   if (m.includes('calm'))        return '#c4b5fd';
   return '#c4b5fd';
-}
-
-function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 11) return 'morning';
-  if (h >= 11 && h < 17) return 'day';
-  if (h >= 17 && h < 21) return 'evening';
-  return 'night';
 }
 
 // ─── Theme & Profile Data (local — no prop needed) ───────────────────────────
@@ -35,10 +27,8 @@ const THEME_PACKS: Record<string, any> = {
 };
 
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se'kret",       emoji: '🌸', title: 'Soft Big Sis' },
-  rylane: { name: 'Rylane',        emoji: '⚡', title: 'Loyal Bro' },
-  cloud:  { name: "Cloud Se'kret", emoji: '☁️', title: 'Quiet Comfort' },
-  night:  { name: "Night Se'kret", emoji: '🌙', title: 'Late-Night Listener' },
+  soft:   { name: 'Raylene', emoji: '💜', title: 'Big Sis' },
+  rylane: { name: 'Rylane',  emoji: '⚡', title: 'Loyal Bro' },
 };
 
 const SEKRET_MODES: Record<string, any> = {
@@ -57,8 +47,6 @@ const SEKRET_MODES: Record<string, any> = {
 const AVATAR_ASSETS: Record<string, any> = {
   soft:   IMAGES.rayleneNeutral,
   rylane: IMAGES.rylaneProfile,
-  cloud:  IMAGES.rayleneNeutral,
-  night:  IMAGES.rayleneNeutral,
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -88,10 +76,8 @@ export function SettingsScreen({
   mood,
 }: SettingsScreenProps) {
 
-  // ─── Mood glow + room backdrop ─────────────────────────────────────────────
-  const glow     = glowFor(mood);
-  const charKey  = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
-  const bgSource = getRoomBg(charKey, timeOfDay());
+  // ─── Mood glow ──────────────────────────────────────────────────────────────
+  const glow = glowFor(mood);
 
   // ─── Style helpers ─────────────────────────────────────────────────────────
   const card      = () => [styles.card,        { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }] as any;
@@ -105,7 +91,7 @@ export function SettingsScreen({
   const avatarSource = AVATAR_ASSETS[selectedSekret] ?? AVATAR_ASSETS.soft;
 
   return (
-    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+    <View style={styles.root}>
       <LinearGradient
         colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
         style={StyleSheet.absoluteFill}
@@ -219,13 +205,13 @@ export function SettingsScreen({
 
       {/* BottomNav pinned outside ScrollView so it never scrolls away */}
       {BottomNav}
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root:           { flex: 1 },
-  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  root:           { flex: 1, backgroundColor: '#160b2b' },
+  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 120 },
 
   logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },

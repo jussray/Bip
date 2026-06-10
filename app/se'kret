@@ -26,7 +26,7 @@ export default function SekretScreen() {
 
       {/* Header */}
       <View style={styles.heroWrap}>
-        <ImageBackground source={IMAGES.roomBgDark} style={styles.heroBg} resizeMode="cover">
+        <ImageBackground source={IMAGES.bgRayleneRoomNight} style={styles.heroBg} resizeMode="cover">
           <LinearGradient colors={['rgba(13,9,20,0.1)', 'rgba(13,9,20,0.88)']} style={StyleSheet.absoluteFill} />
           <View style={styles.heroContent}>
             <Image source={IMAGES[voiceKey].neutral} style={styles.heroChar} resizeMode="cover" />

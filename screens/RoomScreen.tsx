@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IMAGES } from '../constants/theme';
+import { IMAGES, getRoomPhase, getRoomScene, type RoomPhase } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -32,7 +32,7 @@ type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
 type RoomTarget =
   | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
   | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge'
-  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar';
+  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard';
 
 type Hotspot = {
   id: string;
@@ -48,19 +48,12 @@ type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 // ─── Room / Avatar assets ─────────────────────────────────────────────────────
 
-const ROOMS: Record<Character, AssetMap> = {
-  raylene: {
-    morning: IMAGES.bgRayleneRoomDay,
-    day:     IMAGES.bgRayleneRoomDay,
-    evening: IMAGES.roomBgDark,
-    night:   IMAGES.bgRayleneRoomNight,
-  },
-  rylane: {
-    morning: IMAGES.bgRylaneRoomDay,
-    day:     IMAGES.bgRylaneRoomDay,
-    evening: IMAGES.roomBgDark,
-    night:   IMAGES.bgRylaneRoomNight,
-  },
+const ROOM_PHASE_OVERLAYS: Record<RoomPhase, string> = {
+  day:       'rgba(255,225,180,0.08)',
+  evening:   'rgba(91,45,120,0.18)',
+  rain:      'rgba(35,85,125,0.30)',
+  night:     'rgba(20,10,55,0.28)',
+  deepNight: 'rgba(5,3,24,0.48)',
 };
 
 const AVATARS: Record<Character, AvatarMap> = {
@@ -80,11 +73,6 @@ const AVATARS: Record<Character, AvatarMap> = {
     window:   IMAGES.rylaneWindow,
     fullbody: IMAGES.rylaneFullbody,
   },
-};
-
-const FALLBACK_ROOM: Record<Character, ImageSourcePropType> = {
-  raylene: IMAGES.bgRayleneRoomDay,
-  rylane:  IMAGES.bgRylaneRoomDay,
 };
 
 const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
@@ -142,12 +130,19 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     style: { top: '4%', right: '0%', width: '18%', height: '55%' },
   },
   {
-    id: 'calm',
-    label: 'Window 🌤️',
-    target: 'calm',
+    id: 'moodCheckIn',
+    label: 'Mood Check-In 🌤️',
+    target: 'dashboard',
     hint: 'tap the window',
     pulse: true,
     style: { top: '4%', left: '0%', width: '18%', height: '50%' },
+  },
+  {
+    id: 'bridge',
+    label: 'Bridge 🌉',
+    target: 'bridge',
+    hint: 'tap the bridge object',
+    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
   },
   {
     id: 'summon',
@@ -204,12 +199,19 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     style: { top: '2%', right: '0%', width: '20%', height: '50%' },
   },
   {
-    id: 'calm',
-    label: 'Window 🌤️',
-    target: 'calm',
+    id: 'moodCheckIn',
+    label: 'Mood Check-In 🌤️',
+    target: 'dashboard',
     hint: 'tap the window',
     pulse: true,
     style: { top: '2%', left: '0%', width: '20%', height: '55%' },
+  },
+  {
+    id: 'bridge',
+    label: 'Bridge 🌉',
+    target: 'bridge',
+    hint: 'tap the bridge object',
+    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
   },
   {
     id: 'summon',
@@ -331,7 +333,9 @@ interface RoomScreenProps {
   setSelectedSekret: (value: Character) => void;
   setScreen: (screen: string) => void;   // widened to string — matches index.tsx
   t: Record<string, any>;
-  updateRoomMemory?: (patch: Record<string, any>) => void;  // Supabase/RoomMemory hook
+  updateRoomMemory?: (patch: Record<string, any>) => void;
+  weatherMode?: string;
+  BottomNav: React.ReactNode;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -343,18 +347,19 @@ export function RoomScreen({
   setScreen,
   t,
   updateRoomMemory,
+  weatherMode,
+  BottomNav,
 }: RoomScreenProps) {
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const character: Character = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
 
-  // timeOfDay calculated once per mount (doesn't change during a session)
-  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), []);
-
-  const roomImage = useMemo(
-    () => safeImage(ROOMS[character]?.[timeOfDay], FALLBACK_ROOM[character]),
-    [character, timeOfDay]
-  );
+  // Resolve the room once for the current visit. Weather mode wins over
+  // clock time, matching the original room-selection hierarchy.
+  const now = useMemo(() => new Date(), []);
+  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
+  const roomPhase = useMemo(() => getRoomPhase(now, weatherMode), [now, weatherMode]);
+  const roomImage = useMemo(() => getRoomScene(character, roomPhase), [character, roomPhase]);
 
   const hotspots = useMemo(
     () => character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS,
@@ -522,11 +527,12 @@ export function RoomScreen({
   };
 
   const timeBadge = {
-    morning: '☀️ morning',
-    day:     '🌤️ afternoon',
-    evening: '🌆 evening',
-    night:   '🌙 late night',
-  }[timeOfDay];
+    day: '☀️ day room',
+    evening: '🌆 evening room',
+    rain: '🌧️ rain room',
+    night: '🌙 night room',
+    deepNight: '✨ deep night room',
+  }[roomPhase];
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -543,7 +549,7 @@ export function RoomScreen({
           accessibilityIgnoresInvertColors
           onError={() => undefined}
         />
-        <View style={styles.overlay} />
+        <View style={[styles.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
       </Animated.View>
 
       {/* ── Hotspots ────────────────────────────────────────────────────── */}
@@ -696,68 +702,7 @@ export function RoomScreen({
           </Text>
         </TouchableOpacity>
 
-        {/* Drop a Bip CTA */}
-        <TouchableOpacity
-          style={[styles.mainBtn, { borderColor: t.accent }]}
-          onPress={() => setScreen('sekret')}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Drop a Bip"
-        >
-          <Text style={[styles.mainBtnText, { color: t.accent }]}>
-            Drop a Bip {character === 'raylene' ? '💜' : '⚡'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Control row */}
-        <View style={styles.controlRow}>
-          <TouchableOpacity
-            style={styles.guideBtn}
-            onPress={() => {
-              setShowGuide(true);
-              setHintSpot('pages');
-              setTimeout(() => setHintSpot(null), 2000);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Room Guide"
-          >
-            <Text style={styles.guideBtnText}>Room Guide</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.guideBtn}
-            onPress={() => setHintSpot(prev => prev ? null : 'pages')}
-            accessibilityRole="button"
-            accessibilityLabel="Tap hint"
-          >
-            <Text style={styles.guideBtnText}>Tap Hint</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick row — FIXED: now includes voiceBip and calm */}
-        <View style={styles.quickRow}>
-          {([
-            { emoji: '🏠',       label: 'Home',   target: 'home'    },
-            { emoji: '📖',       label: 'Pages',  target: 'pages'   },
-            { emoji: '🎙️', label: 'Voice',  target: 'voiceBip' },
-            { emoji: '🌙',       label: 'Calm',   target: 'calm'    },
-            { emoji: '🌐',       label: 'Circle', target: 'circle'  },
-            { emoji: '⭐',             label: 'Growth', target: 'bippin2' },
-          ] as { emoji: string; label: string; target: string }[]).map(({ emoji, label, target }) => (
-            <TouchableOpacity
-              key={target}
-              style={styles.quickBtn}
-              onPress={() => setScreen(target)}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-            >
-              <Text style={styles.quickEmoji}>{emoji}</Text>
-              <Text style={styles.quickLabel}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.tagline}>your room. your voice. always you. ♡</Text>
+        {BottomNav}
       </Animated.View>
     </View>
   );
@@ -768,7 +713,7 @@ export function RoomScreen({
 const styles = StyleSheet.create({
   root:                  { flex: 1, backgroundColor: '#0d0014' },
   bg:                    { width, height },
-  overlay:               { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,0,20,0.34)' },
+  overlay:               { ...StyleSheet.absoluteFillObject },
 
   hotspot:               { position: 'absolute' },
   hotspotGlow:           {
@@ -876,7 +821,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 10,
     paddingHorizontal: 16,
   },
   greetingBubble:        {

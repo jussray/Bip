@@ -96,11 +96,12 @@ interface VoiceBipScreenProps {
   companion?:     {
     presenceMessage: string;
   };
+  BottomNav: React.ReactNode;
 }
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
-  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion,
+  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav,
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -304,7 +305,7 @@ export function VoiceBipScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Interactive Room ── */}
         <View style={styles.roomWrap} pointerEvents="box-none">
@@ -478,7 +479,7 @@ export function VoiceBipScreen({
         )}
 
 {/* ── Voice-ready status ── */}
-        <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}> 
+        <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
           <Text style={[styles.cardTitle, { color: '#fff' }]}>Voice-ready</Text>
           <Text style={[styles.tip, { color: '#c4b5fd' }]}>{voiceStatus.message}</Text>
         </View>
@@ -492,6 +493,8 @@ export function VoiceBipScreen({
         </View>
 
       </ScrollView>
+
+      {BottomNav}
 
       {/* ── Bip type menu ── */}
       {showBipMenu && (
@@ -581,6 +584,7 @@ export function VoiceBipScreen({
 
 const styles = StyleSheet.create({
   root:               { flex: 1 },
+  scrollView:          { flex: 1 },
   scroll:             { paddingBottom: 100 },
   roomWrap:           { position: 'relative', width: '100%', height: 340, marginBottom: 16, overflow: 'hidden' },
   roomImage:          { width: '100%', height: '100%' },

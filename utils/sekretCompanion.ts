@@ -160,7 +160,9 @@ export function buildCompanionSnapshot(input: CompanionActivityInput, previousSt
     greeting,
     presenceMessage,
     checkIn,
-    lastUpdated: new Date().toISOString(),
+    // The hook stamps meaningful changes. Keeping snapshot construction pure
+    // prevents render-time timestamps from creating recursive state updates.
+    lastUpdated: previousState?.lastUpdated || '',
     personality,
   } satisfies CompanionState;
 }
