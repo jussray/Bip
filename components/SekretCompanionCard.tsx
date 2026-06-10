@@ -20,7 +20,7 @@ export function SekretCompanionCard({
   onAction,
 }: SekretCompanionCardProps) {
   return (
-    <View style={styles.card}>
+    <View style={styles.card} accessibilityLabel={`${personality} companion card`}>
       <View style={styles.headerRow}>
         <View style={{ flex: 1 }}>
           <Text style={styles.badge}>{personality}</Text>
@@ -41,19 +41,19 @@ export function SekretCompanionCard({
       ) : null}
 
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('write')}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('write')} accessibilityRole="button" accessibilityLabel="Write with companion">
           <Text style={styles.actionEmoji}>✍️</Text>
           <Text style={styles.actionLabel}>Write</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('voice')}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('voice')} accessibilityRole="button" accessibilityLabel="Record a Voice Bip">
           <Text style={styles.actionEmoji}>🎙️</Text>
           <Text style={styles.actionLabel}>Voice Bip</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('comfort')}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('comfort')} accessibilityRole="button" accessibilityLabel="Open comfort tools">
           <Text style={styles.actionEmoji}>🫶</Text>
           <Text style={styles.actionLabel}>Comfort Me</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('checkIn')}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => onAction('checkIn')} accessibilityRole="button" accessibilityLabel="Check in with companion">
           <Text style={styles.actionEmoji}>💜</Text>
           <Text style={styles.actionLabel}>Check In</Text>
         </TouchableOpacity>
