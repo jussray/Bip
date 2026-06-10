@@ -39,8 +39,8 @@ const rylaneWindow = require("../assets/images/rylane-window.png");
 const rylaneFullbody = require("../assets/images/rylane-fullbody.png");
 const rylaneNeutralV2 = require("../assets/images/rylane-neutral-v2.png");
 
-// ── Rylane (fallbacks; voice now has real assets) ─────────────────────────
-const rylaneThinking   = rylaneNeutral; // fallback → neutral
+// ── Rylane (thinking now has real asset; voice assets real) ──────────────
+const rylaneThinking   = require("../assets/images/rylane-thinking.png");
 const rylaneProfile    = rylaneFullbody; // fallback → fullbody portrait
 const rylaneVoiceDay   = require("../assets/images/rylane-voice-day.png");
 const rylaneVoiceNight = require("../assets/images/rylane-voice-night.png");
