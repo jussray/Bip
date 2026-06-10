@@ -81,6 +81,42 @@ const FIT_CHECK_REACTIONS = [
   { emoji: '🎨', label: 'Creative Choice' },
 ];
 
+const SEED_POSTS: CirclePost[] = [
+  {
+    id: "seed-1",
+    text: "nobody asked if i was okay today but actually i kind of was and that felt weird",
+    bipType: "text",
+    date: "yesterday",
+    reactions: { felt: 14, comfort: 9, proud: 0, stay: 6 },
+    quietRepliesCount: 3,
+  },
+  {
+    id: "seed-2",
+    text: "finished my assignment at 2am but i finished it. that counts.",
+    bipType: "growth",
+    date: "2 days ago",
+    reactions: { felt: 22, comfort: 4, proud: 18, stay: 2 },
+    quietRepliesCount: 7,
+  },
+  {
+    id: "seed-3",
+    text: "the anxiety hit different this morning. still got up though.",
+    bipType: "text",
+    date: "3 days ago",
+    reactions: { felt: 31, comfort: 19, proud: 11, stay: 14 },
+    quietRepliesCount: 5,
+  },
+  {
+    id: "seed-4",
+    text: "told my mom something real today. she actually listened.",
+    bipType: "text",
+    date: "4 days ago",
+    reactions: { felt: 27, comfort: 16, proud: 8, stay: 5 },
+    quietRepliesCount: 4,
+  },
+];
+
+
 const QUOTE_REPLIES_RAYLENE = [
   'I felt this too.',
   'You are not alone in this.',
@@ -598,9 +634,28 @@ export function CircleScreen({
           <View style={[styles.sectionCard, { borderColor: glow, backgroundColor: 'rgba(20,12,40,0.7)' }]}>
             <Text style={styles.sectionTitle}>circle bips</Text>
             {circlePosts.length === 0 && (
-              <Text style={styles.emptyText}>
-                {isRylane ? 'circle’s quiet. drop something real.' : 'circle is quiet right now. you can be the first.'}
-              </Text>
+              <>
+                <Text style={styles.emptyText}>
+                  {isRylane ? "circle's quiet. drop something real." : "circle is quiet right now. you can be the first."}
+                </Text>
+                <Text style={styles.seedLabel}>what circle sounds like</Text>
+                {SEED_POSTS.map(post => (
+                  <View key={post.id} style={[styles.postCard, { borderColor: "#c4b5fd55" }]}>
+                    <Text style={[styles.postBipType, { color: "#c4b5fd" }]}>
+                      {MEDIA_TYPES.find(m => m.id === post.bipType)?.emoji ?? "💜"}{" "}
+                      {MEDIA_TYPES.find(m => m.id === post.bipType)?.label ?? "Bip"}
+                    </Text>
+                    <Text style={styles.postText}>{post.text}</Text>
+                    <Text style={styles.postDate}>{post.date}</Text>
+                    <View style={styles.reactionRow}>
+                      <Text style={styles.reactionBtn}>💜 {post.reactions?.felt ?? 0}</Text>
+                      <Text style={styles.reactionBtn}>🫶 {post.reactions?.comfort ?? 0}</Text>
+                      <Text style={styles.reactionBtn}>⭐ {post.reactions?.proud ?? 0}</Text>
+                      <Text style={styles.reactionBtn}>🌿 {post.reactions?.stay ?? 0}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
             )}
             {circlePosts.map(post => (
               <View key={post.id} style={[styles.postCard, { borderColor: glow + '88' }]}>
@@ -771,6 +826,9 @@ const styles = StyleSheet.create({
   sectionCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 6, marginBottom: 14 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
   emptyText: { color: '#cbb6f7', fontSize: 13, fontStyle: 'italic', textAlign: 'center', paddingVertical: 18 },
+  seedLabel: { color: '#c4b5fd', fontSize: 11, fontWeight: '700', textAlign: 'center', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10, marginTop: 4, opacity: 0.7 },
+  postDate: { color: '#8877a9', fontSize: 11, marginTop: 4, marginBottom: 6 },
+  postBipType: { fontSize: 12, fontWeight: '700', marginBottom: 6 },
 
   postCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, backgroundColor: 'rgba(20,12,40,0.4)' },
   postText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },

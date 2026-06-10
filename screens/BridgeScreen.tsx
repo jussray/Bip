@@ -37,6 +37,14 @@ const SHARE_TYPES = [
   { id: 'win',     emoji: '⚡', label: 'A Win',         placeholder: 'something good that happened…' },
 ];
 
+const CONV_MODES = [
+  { id: 'soft',     emoji: '🌸', label: 'Soft Start',     hint: 'Ease in gently — no pressure to say it all.',          tone: 'soft' },
+  { id: 'honest',   emoji: '💜', label: 'Honest Version',  hint: 'Say the full truth. No editing, no softening.',        tone: 'direct' },
+  { id: 'boundary', emoji: '🛡️', label: 'Calm Boundary',   hint: 'Set a limit with kindness — you stay in control.',     tone: 'firm' },
+  { id: 'safety',   emoji: '🫶', label: 'Safety Check',    hint: 'Check that your message lands the way you mean it.',   tone: 'check' },
+] as const;
+type ConvModeId = (typeof CONV_MODES)[number]['id'];
+
 const getTimeOfDay = (): TimeOfDay => {
   const h = new Date().getHours();
   if (h >= 5 && h < 11) return 'morning';
@@ -58,9 +66,10 @@ const moodGlow = (mood?: string): string => {
 export function BridgeScreen({
   t, currentSekret, setScreen, BottomNav, selectedSekret, mood,
 }: BridgeScreenProps) {
-  const [shareType, setShareType] = useState<string | null>(null);
-  const [message, setMessage]     = useState('');
-  const [sent, setSent]           = useState(false);
+  const [shareType, setShareType]   = useState<string | null>(null);
+  const [convMode, setConvMode]     = useState<ConvModeId | null>(null);
+  const [message, setMessage]       = useState('');
+  const [sent, setSent]             = useState(false);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
   const isRylane = selectedSekret === 'rylane';
@@ -215,24 +224,56 @@ export function BridgeScreen({
           </View>
 
           {shareType && (
-            <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
-              <Text style={[styles.cardLabel, { color: glow }]}>
-                {selectedType?.emoji} {selectedType?.label}
-              </Text>
-              <TextInput
-                style={[styles.input, { color: '#fff', borderColor: glow + '66' }]}
-                placeholder={selectedType?.placeholder}
-                placeholderTextColor="#7c6b98"
-                value={message}
-                onChangeText={setMessage}
-                multiline
-                numberOfLines={4}
-                maxLength={280}
-              />
-              <Text style={[styles.charCount, { color: '#cbb6f7' }]}>
-                {message.length}/280
-              </Text>
-            </View>
+            <>
+              <Text style={[styles.sectionLabel, { color: '#cbb6f7', marginTop: 4 }]}>how do you want to say it?</Text>
+              <View style={[styles.typeRow, { marginBottom: 14 }]}>
+                {CONV_MODES.map(mode => (
+                  <TouchableOpacity
+                    key={mode.id}
+                    style={[
+                      styles.typeChip,
+                      {
+                        backgroundColor: convMode === mode.id ? glow : 'rgba(20,12,40,0.75)',
+                        borderColor:     convMode === mode.id ? glow : glow + '55',
+                      },
+                    ]}
+                    onPress={() => setConvMode(mode.id)}
+                  >
+                    <Text style={styles.typeEmoji}>{mode.emoji}</Text>
+                    <Text style={[styles.typeLabel, { color: convMode === mode.id ? '#fff' : '#e9defc', fontSize: 12 }]}>
+                      {mode.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {convMode && (
+                <View style={[styles.convModeHint, { borderColor: glow + '55', backgroundColor: 'rgba(30,18,55,0.65)' }]}>
+                  <Text style={[styles.convModeHintText, { color: '#cbb6f7' }]}>
+                    {CONV_MODES.find(m => m.id === convMode)?.hint}
+                  </Text>
+                </View>
+              )}
+
+              <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
+                <Text style={[styles.cardLabel, { color: glow }]}>
+                  {selectedType?.emoji} {selectedType?.label}
+                </Text>
+                <TextInput
+                  style={[styles.input, { color: '#fff', borderColor: glow + '66' }]}
+                  placeholder={selectedType?.placeholder}
+                  placeholderTextColor="#7c6b98"
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  numberOfLines={4}
+                  maxLength={280}
+                />
+                <Text style={[styles.charCount, { color: '#cbb6f7' }]}>
+                  {message.length}/280
+                </Text>
+              </View>
+            </>
           )}
         </Animated.View>
 
@@ -291,6 +332,9 @@ const styles = StyleSheet.create({
   cardLabel:       { fontSize: 14, fontWeight: '700', marginBottom: 10 },
   input:           { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 15, minHeight: 110, textAlignVertical: 'top', marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.35)' },
   charCount:       { fontSize: 12, textAlign: 'right' },
+
+  convModeHint:    { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 12 },
+  convModeHintText: { fontSize: 13, fontStyle: 'italic', lineHeight: 19 },
 
   stickyNote:      { backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 12, marginBottom: 14, transform: [{ rotate: '-2deg' }] },
   stickyText:      { color: '#3a2461', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 19 },
