@@ -145,7 +145,7 @@ export function BipCrewScreen({
       addedAt: new Date().toISOString(),
     };
     setCrewMembers(prev => [...prev, member]);
-    syncCrewMember(member);
+    void member;
     setNewName('');
     setNewCommit('');
     setShowInvite(false);

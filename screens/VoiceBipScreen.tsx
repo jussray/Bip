@@ -21,6 +21,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
 import {
   Text, TouchableOpacity, ScrollView, View,
@@ -91,11 +92,15 @@ interface VoiceBipScreenProps {
   voiceNotes:     VoiceNote[];
   setVoiceNotes:  (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
   onSave?:        () => void;
+  mood?:          string;
+  companion?:     {
+    presenceMessage: string;
+  };
 }
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
-  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave,
+  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion,
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -136,6 +141,10 @@ export function VoiceBipScreen({
   const charName   = isRylane ? 'Rylane' : 'Raylene';
   const charEmoji  = isRylane ? '⚡' : '💜';
   const roomArt    = getRoomBg(character, timeOfDay);
+  const { prepareVoiceSession, voiceStatus } = useVoiceCompanion({
+    personality: isRylane ? 'Rylane' : selectedSekret === 'cloud' ? "Cloud Se'kret" : selectedSekret === 'night' ? "Night Se'kret" : 'Raylene',
+    mood: mood || 'calm',
+  });
 
   const heroArt =
     isRylane
@@ -186,6 +195,7 @@ export function VoiceBipScreen({
     setSekretReply('');
     setRecordingTime(0);
     setShowBipMenu(false);
+    prepareVoiceSession('voice');
 
     pulseLoop.current = Animated.loop(
       Animated.sequence([
@@ -300,20 +310,18 @@ export function VoiceBipScreen({
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.2} />
 
-          {/* Hero avatar */}
-          <Image
-            source={heroArt}
-            style={styles.heroAvatar}
-            resizeMode="contain"
-            pointerEvents="none"
-          />
-
-          {/* Top scrim */}
-          <LinearGradient
-            colors={['rgba(13,9,20,0.55)', 'transparent']}
-            style={styles.topScrim}
-            pointerEvents="none"
-          />
+          {/* Environmental character art */}
+          <View pointerEvents="none" style={styles.environmentLayer}>
+            <Image
+              source={heroArt}
+              style={styles.heroAvatar}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={['rgba(13,9,20,0.55)', 'transparent']}
+              style={styles.topScrim}
+            />
+          </View>
           {/* Bottom scrim */}
           <LinearGradient
             colors={['transparent', 'rgba(13,9,20,0.55)', 'rgba(13,9,20,0.95)']}
@@ -342,7 +350,7 @@ export function VoiceBipScreen({
           {/* Companion presence pill */}
           <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {charLabel}’s here · headphone cloud
+              {companion?.presenceMessage || `${charLabel}’s here · headphone cloud`}
             </Text>
           </Animated.View>
 
@@ -360,7 +368,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { top: HOTSPOTS.microphone.top, left: HOTSPOTS.microphone.left, width: HOTSPOTS.microphone.width, height: HOTSPOTS.microphone.height },
+              { top: HOTSPOTS.microphone.top as any, left: HOTSPOTS.microphone.left as any, width: HOTSPOTS.microphone.width as any, height: HOTSPOTS.microphone.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => {
@@ -376,7 +384,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { bottom: HOTSPOTS.journal.bottom, left: HOTSPOTS.journal.left, width: HOTSPOTS.journal.width, height: HOTSPOTS.journal.height },
+              { bottom: HOTSPOTS.journal.bottom as any, left: HOTSPOTS.journal.left as any, width: HOTSPOTS.journal.width as any, height: HOTSPOTS.journal.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => setShowArchive(true)}
@@ -389,7 +397,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { top: HOTSPOTS.window.top, right: HOTSPOTS.window.right, width: HOTSPOTS.window.width, height: HOTSPOTS.window.height },
+              { top: HOTSPOTS.window.top as any, right: HOTSPOTS.window.right as any, width: HOTSPOTS.window.width as any, height: HOTSPOTS.window.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => setScreen('cloudThoughts')}
@@ -402,7 +410,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { bottom: HOTSPOTS.crystalJar.bottom, right: HOTSPOTS.crystalJar.right, width: HOTSPOTS.crystalJar.width, height: HOTSPOTS.crystalJar.height },
+              { bottom: HOTSPOTS.crystalJar.bottom as any, right: HOTSPOTS.crystalJar.right as any, width: HOTSPOTS.crystalJar.width as any, height: HOTSPOTS.crystalJar.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => setShowArchive(true)}
@@ -468,6 +476,12 @@ export function VoiceBipScreen({
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
           </View>
         )}
+
+{/* ── Voice-ready status ── */}
+        <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}> 
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>Voice-ready</Text>
+          <Text style={[styles.tip, { color: '#c4b5fd' }]}>{voiceStatus.message}</Text>
+        </View>
 
         {/* ── Tips ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
@@ -570,8 +584,9 @@ const styles = StyleSheet.create({
   scroll:             { paddingBottom: 100 },
   roomWrap:           { position: 'relative', width: '100%', height: 340, marginBottom: 16, overflow: 'hidden' },
   roomImage:          { width: '100%', height: '100%' },
-  heroAvatar:         { position: 'absolute', bottom: 0, alignSelf: 'center', width: '70%', height: '90%' },
-  topScrim:           { position: 'absolute', top: 0, left: 0, right: 0, height: 90 },
+  environmentLayer:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  heroAvatar:         { position: 'absolute', bottom: -20, alignSelf: 'center', width: '88%', height: '82%', opacity: 0.16, tintColor: '#fff' },
+  topScrim:           { position: 'absolute', top: 0, left: 0, right: 0, height: 100 },
   bottomScrim:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
   cloudWrap:          { position: 'absolute', top: 36, right: 24 },
   cloudImg:           { width: 64, height: 64 },

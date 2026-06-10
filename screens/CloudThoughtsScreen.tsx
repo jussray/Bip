@@ -219,11 +219,18 @@ export function CloudThoughtsScreen({
 
         {/* ── Hero ── */}
         <View style={styles.heroWrap}>
-          <Animated.Image
-            source={CLOUD_HP}
-            style={[styles.heroCloud, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
-            resizeMode="contain"
-          />
+          <View pointerEvents="none" style={styles.envCloudLayer}>
+            <Animated.Image
+              source={CLOUD}
+              style={[styles.envCloud, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            />
+            <Animated.Image
+              source={CLOUD_HP}
+              style={[styles.envCloudSmall, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            />
+          </View>
           <Text style={[styles.heroSub, { color: glow }]}>
             {isNight ? 'late night thoughts 🌙' : 'cloud thoughts ☁️'}
           </Text>
@@ -337,6 +344,23 @@ const styles = StyleSheet.create({
   backText:      { fontSize: 14 },
   heroWrap:      { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
   heroCloud:     { width: 80, height: 80, marginBottom: 12 },
+  envCloudLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  envCloud: {
+    width: 260, height: 260,
+    position: 'absolute',
+    top: -24,
+    right: -40,
+  },
+  envCloudSmall: {
+    width: 140, height: 140,
+    position: 'absolute',
+    bottom: -8,
+    left: -18,
+  },
   heroSub:       { fontSize: 11, letterSpacing: 1, marginBottom: 4 },
   heroTitle:     { fontSize: 30, fontWeight: '900', fontStyle: 'italic', marginBottom: 6 },
   heroMini:      { fontSize: 13, textAlign: 'center', lineHeight: 20 },

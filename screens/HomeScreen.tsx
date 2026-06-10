@@ -1,5 +1,7 @@
 import React, { useRef, useEffect, useMemo } from 'react';
 import { IMAGES } from '../constants/theme';
+import { SekretCompanionCard } from '../components/SekretCompanionCard';
+import type { CompanionCheckIn } from '../types/sekretCompanion';
 import {
   Text, TouchableOpacity,
   View, Animated, Image, StyleSheet, Platform,
@@ -118,28 +120,40 @@ const getHeroText = (mood: string, tod: TimeOfDay) => {
   return `Welcome back ${timeEmoji}`;
 };
 
-const getMoodResponse = (mood: string, isRylane: boolean) => {
-  if (isRylane) {
-    if (mood === 'Sad')     return "nah, you not going through this alone. i'm right here.";
+const getMoodResponse = (mood: string, selectedSekret: string) => {
+  if (selectedSekret === 'rylane') {
+    if (mood === 'Sad')     return "nah, you not carrying this by yourself. i’m right here.";
     if (mood === 'Angry')   return "your feelings make sense. let it out. i got you.";
     if (mood === 'Tired')   return "you gave it everything today. rest is part of the work.";
     if (mood === 'Neutral') return "low-key kinda mid? bet. we can just sit here a sec.";
-    return "i see you. you're doing way better than you think.";
+    return "i see you. you doing better than you think.";
   }
-  if (mood === 'Sad')     return "Heavy nights don't last forever. I'm right here with you.";
-  if (mood === 'Angry')   return "Your feelings make sense. You're safe to let it out here.";
-  if (mood === 'Tired')   return "Rest is an act of self-love. You've done enough today.";
+  if (selectedSekret === 'cloud') {
+    if (mood === 'Sad')     return "That sounds heavy. We can just sit with it for a minute.";
+    if (mood === 'Angry')   return "That sounds frustrating. You don’t have to solve everything tonight.";
+    if (mood === 'Tired')   return "Long day? You can rest here.";
+    return "You can be quiet here. No pressure.";
+  }
+  if (selectedSekret === 'night') {
+    if (mood === 'Sad')     return "Still awake? It’s okay. I’m here.";
+    if (mood === 'Angry')   return "Long day? We can keep it simple tonight.";
+    if (mood === 'Tired')   return "You don’t have to explain it perfectly. Just be here.";
+    return "It’s okay to be quiet tonight.";
+  }
+  if (mood === 'Sad')     return "Aight, come here. Tell me what happened.";
+  if (mood === 'Angry')   return "That would've hurt my feelings too. You okay?";
+  if (mood === 'Tired')   return "Be nice to yourself today, okay?";
   if (mood === 'Neutral') return "Sometimes a quiet middle is exactly where you need to be.";
-  return "I read your energy tonight. You're doing better than you think.";
+  return "I read your energy tonight. You’re doing better than you think.";
 };
 
 // Streak language per vision: "we see you" — never punishing
 const getStreakCopy = (days: number, isRylane: boolean) => {
-  if (days <= 0)  return isRylane ? "first day. let's lock in."           : "first day. we got this.";
-  if (days === 1) return isRylane ? "day 1 bip. you here. that counts."   : "day 1 bip. you showed up.";
-  if (days < 7)   return isRylane ? `${days} days bippin. keep going.`    : `${days} days bippin. we see you.`;
-  if (days < 30)  return isRylane ? `${days} day bip. that's consistent.` : `${days} day bip. that's self-love.`;
-  if (days < 100) return isRylane ? `${days} day bip. you locked in.`     : `${days} day bip. proud of you.`;
+  if (days <= 0)  return isRylane ? "first day. let's lock in." : "first day. we got this.";
+  if (days === 1) return isRylane ? "day 1 bip. you here. that counts." : "day 1 bip. you showed up.";
+  if (days < 7)   return isRylane ? `${days} days bippin. keep going.` : `${days} days bippin. we see you.`;
+  if (days < 30)  return isRylane ? `${days} day bip. that's consistent.` : `${days} day bip. that's real.`;
+  if (days < 100) return isRylane ? `${days} day bip. you locked in.` : `${days} day bip. proud of you.`;
   return isRylane ? `${days} day bip. legend energy.` : `${days} day bip. we see every one.`;
 };
 
@@ -157,6 +171,14 @@ interface HomeScreenProps {
   onMoodSelect?: (mood: string) => void;  // Supabase/RoomMemory hook
   BottomNav: React.ReactNode;
   streakDays?: number;              // vision: streak lives on the dashboard
+  companion?: {
+    greeting: string;
+    presenceMessage: string;
+    memorySummary?: { commonTopics?: string[] };
+    checkIn?: CompanionCheckIn | null;
+    companionLevel?: any;
+    personality: string;
+  };
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -164,7 +186,7 @@ interface HomeScreenProps {
 export function HomeScreen({
   mood, selectMood, t, currentSekret, selectedSekret,
   homeMessageIndex, userSide, setScreen, onMoodSelect, BottomNav,
-  streakDays = 0,
+  streakDays = 0, companion,
 }: HomeScreenProps) {
 
   const isRylane  = selectedSekret === 'rylane';
@@ -238,6 +260,16 @@ export function HomeScreen({
 
   // ─── Reminder message (bounds-guarded) ───────────────────────────────────
   const reminder = HOME_MESSAGES[homeMessageIndex] ?? HOME_MESSAGES[0];
+  const memoryMessage = companion?.memorySummary?.commonTopics?.length
+    ? `I remember ${companion.memorySummary.commonTopics[0]} has been sitting heavy. I’m still here for that.`
+    : 'You’ve been showing up for yourself. I’m noticing it.';
+
+  const handleCompanionAction = (action: 'write' | 'voice' | 'comfort' | 'checkIn') => {
+    if (action === 'write') setScreen('pages');
+    else if (action === 'voice') setScreen('voiceBip');
+    else if (action === 'comfort') setScreen('comfort');
+    else setScreen('sekret');
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
@@ -264,6 +296,14 @@ export function HomeScreen({
         pointerEvents="none"
         style={[styles.bgGlow, { backgroundColor: moodGlow, opacity: glowOpacity }]}
       />
+
+      <View pointerEvents="none" style={styles.environmentLayer}>
+        <Image
+          source={selectedSekret === 'night' ? IMAGES.rayleneWindow : (isRylane ? IMAGES.rylaneWindow : IMAGES.rayleneWindow)}
+          style={styles.environmentArt}
+          resizeMode="cover"
+        />
+      </View>
 
       <Animated.ScrollView
         style={{ opacity: fadeIn }}
@@ -297,7 +337,7 @@ export function HomeScreen({
         {/* ━━━ HERO MESSAGE CARD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <Animated.View style={[card(), cardAnim(card2Anim)]}>
           <View style={styles.heroCardTop}>
-            <Image source={art.neutral} style={styles.heroArt} resizeMode="contain" />
+            <View style={styles.heroArtGlow} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.heroCardBy, { color: t.soft }]}>
                 {currentSekret.name} says…
@@ -362,7 +402,7 @@ export function HomeScreen({
               {currentSekret.name} sees you {currentSekret.emoji}
             </Text>
             <Text style={styles.entryText}>
-              {getMoodResponse(mood, isRylane)}
+              {getMoodResponse(mood, selectedSekret)}
             </Text>
             <View style={styles.actionRow}>
               <TouchableOpacity
@@ -384,6 +424,19 @@ export function HomeScreen({
             </View>
           </View>
         </Animated.View>
+
+        {companion ? (
+          <Animated.View style={cardAnim(card5Anim)}>
+            <SekretCompanionCard
+              personality={companion.personality}
+              greeting={companion.greeting}
+              memoryMessage={memoryMessage}
+              level={companion.companionLevel || { level: 1, title: 'First hello', progress: 0, nextLevel: 8, unlockedGreetings: ['Hey'], unlockedDepth: ['check-in'], encouragements: ['You’re doing enough.'], personalityResponses: ['gentle comfort'] }}
+              checkIn={companion.checkIn}
+              onAction={handleCompanionAction}
+            />
+          </Animated.View>
+        ) : null}
 
         {/* ━━━ QUICK ACTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <Animated.View style={cardAnim(card5Anim)}>
@@ -431,6 +484,19 @@ const styles = StyleSheet.create({
     position: 'absolute', top: -80, alignSelf: 'center',
     width: 320, height: 320, borderRadius: 160,
   },
+  environmentLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingRight: 16,
+    paddingBottom: 80,
+  },
+  environmentArt: {
+    width: '88%',
+    height: '58%',
+    opacity: 0.16,
+    tintColor: '#fff',
+  },
   container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
 
   parentBadge:    { backgroundColor: '#065F46', borderRadius: 10, padding: 6, alignSelf: 'center', marginBottom: 10 },
@@ -464,7 +530,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.22, shadowRadius: 8, elevation: 4,
   },
   heroCardTop:    { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
-  heroArt:        { width: 60, height: 72, borderRadius: 12 },
+  heroArtGlow:    {
+    width: 14, height: 54, borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    marginRight: 2,
+  },
   heroCardBy:     { fontSize: 12, fontWeight: '600', marginBottom: 4 },
   heroText:       { fontSize: 22, fontWeight: 'bold', lineHeight: 30 },
   cardText:       { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8 },

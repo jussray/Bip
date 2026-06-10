@@ -65,11 +65,14 @@ interface ComfortScreenProps {
   BottomNav:       React.ReactNode;
   selectedSekret?: string;
   mood?:           string;
+  companion?: {
+    presenceMessage: string;
+  };
 }
 
 export function ComfortScreen({
   t, setScreen, onComplete, BottomNav,
-  selectedSekret = 'raylene', mood,
+  selectedSekret = 'raylene', mood, companion,
 }: ComfortScreenProps) {
 
   const [checked, setChecked] = useState<number[]>([]);
@@ -220,7 +223,7 @@ export function ComfortScreen({
 
         {/* Companion presence pill (top right) */}
         <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
-          <Text style={styles.presenceText}>cloud is here · rainy room</Text>
+          <Text style={styles.presenceText}>{companion?.presenceMessage || 'cloud is here · rainy room'}</Text>
         </Animated.View>
 
         <Text style={[styles.logo, { textShadowColor: moodGlow + '99' }]}>{heroCopy.title}</Text>

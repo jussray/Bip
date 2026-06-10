@@ -83,12 +83,18 @@ interface JournalScreenProps {
   selectedSekret?:   string;
   setScreen:         (screen: string) => void;
   BottomNav:         React.ReactNode;
+  companion?: {
+    greeting: string;
+    presenceMessage: string;
+    checkIn?: { message: string } | null;
+    personality: string;
+  };
 }
 
 export function JournalScreen({
   journalText, setJournalText, journalEntries, saveJournalEntry,
   mood, t, currentSekret, selectedSekret = 'raylene',
-  setScreen, BottomNav,
+  setScreen, BottomNav, companion,
 }: JournalScreenProps) {
 
   const [showCheckIn, setShowCheckIn] = useState(false);
@@ -135,13 +141,21 @@ export function JournalScreen({
   };
 
   // Listening reply variants ────────────────────────────────────────────────
-  const listeningCopy = isRylane
-    ? 'Heavy day. You don’t gotta carry it solo — I see you putting it down. That’s real.'
-    : 'That sounds heavy. You’ve been carrying a lot quietly. I’m glad you let some of it out.';
+  const listeningCopy = selectedSekret === 'rylane'
+    ? 'Bet. Start from the beginning. We’ll take it one thing at a time.'
+    : selectedSekret === 'cloud'
+      ? 'That sounds heavy. You don’t have to solve everything tonight.'
+      : selectedSekret === 'night'
+        ? 'Still awake? It’s okay. I’m here.'
+        : "Aight, come here. Tell me what happened.";
 
-  const greetingCopy = isRylane
-    ? { title: 'Lock in. Write it raw.', sub: 'No filter. No proof-reading. Just truth.' }
-    : { title: 'Write freely.',           sub: 'No pressure. No perfect wording. Just honesty.' };
+  const greetingCopy = selectedSekret === 'rylane'
+    ? { title: 'Bet. Write it raw.', sub: 'No filter. No fake polish. Just truth.' }
+    : selectedSekret === 'cloud'
+      ? { title: 'Write softly.', sub: 'You don’t have to solve everything tonight.' }
+      : selectedSekret === 'night'
+        ? { title: 'Late-night page.', sub: 'You don’t have to explain it perfectly.' }
+        : { title: 'Write freely.', sub: 'No pressure. No perfect wording. Just honesty.' };
 
   const btn = () => [styles.btn, { backgroundColor: t.accent, shadowColor: moodGlow }] as any;
 
@@ -157,6 +171,14 @@ export function JournalScreen({
         {/* ── Room with hotspots ─────────────────────────────────────── */}
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.5} />
+
+          <View pointerEvents="none" style={styles.environmentArtWrap}>
+            <Image
+              source={selectedSekret === 'rylane' ? IMAGES.rylaneWriting : IMAGES.rayleneWriting}
+              style={styles.environmentArt}
+              resizeMode="cover"
+            />
+          </View>
 
           {/* Mood-tinted scrim — top */}
           <View
@@ -178,7 +200,7 @@ export function JournalScreen({
           {/* Companion presence pill */}
           <Animated.View style={[styles.presencePill, breathStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {charLabel}’s here · {timeOfDay === 'night' ? 'late night' : timeOfDay}
+              {companion?.presenceMessage ?? `${charLabel}’s here · ${timeOfDay === 'night' ? 'late night' : timeOfDay}`}
             </Text>
           </Animated.View>
 
@@ -192,7 +214,7 @@ export function JournalScreen({
           {/* HOTSPOT — Journal (already here) */}
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.hotspot, { bottom: HOTSPOTS.journal.bottom, left: HOTSPOTS.journal.left, width: HOTSPOTS.journal.width, height: HOTSPOTS.journal.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            style={[styles.hotspot, { bottom: HOTSPOTS.journal.bottom as any, left: HOTSPOTS.journal.left as any, width: HOTSPOTS.journal.width as any, height: HOTSPOTS.journal.height as any }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
             onPress={() => {/* already on journal */}}
           >
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.journal.label}</Text>}
@@ -201,7 +223,7 @@ export function JournalScreen({
           {/* HOTSPOT — Calendar */}
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.hotspot, { top: HOTSPOTS.calendar.top, right: HOTSPOTS.calendar.right, width: HOTSPOTS.calendar.width, height: HOTSPOTS.calendar.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            style={[styles.hotspot, { top: HOTSPOTS.calendar.top as any, right: HOTSPOTS.calendar.right as any, width: HOTSPOTS.calendar.width as any, height: HOTSPOTS.calendar.height as any }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
             onPress={() => setScreen('bippin2')}
           >
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.calendar.label}</Text>}
@@ -225,7 +247,12 @@ export function JournalScreen({
         >
           <Text style={styles.floatCardEmoji}>{currentSekret?.emoji ?? '💜'}</Text>
           <Text style={[styles.floatCardText, { color: '#fff' }]}>{greetingCopy.title}</Text>
-          <Text style={[styles.floatCardSub, { color: t.soft }]}>{greetingCopy.sub}</Text>
+          <Text style={[styles.floatCardSub, { color: t.soft }]}> {companion?.greeting ?? greetingCopy.sub} </Text>
+          {companion?.checkIn ? (
+            <View style={styles.checkInPill}>
+              <Text style={styles.checkInPillText}>{companion.checkIn.message}</Text>
+            </View>
+          ) : null}
         </Animated.View>
 
         {/* ── Journal input ─────────────────────────────────────────── */}
@@ -455,6 +482,8 @@ const styles = StyleSheet.create({
   floatCardEmoji: { fontSize: 28, marginBottom: 6 },
   floatCardText:  { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   floatCardSub:   { fontSize: 13, lineHeight: 19 },
+  checkInPill:    { marginTop: 10, backgroundColor: 'rgba(168,85,247,0.16)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, alignSelf: 'flex-start' },
+  checkInPillText:{ color: '#f5f0ff', fontSize: 11, fontWeight: '600' },
   journalInput:   {
     marginHorizontal: 16, marginBottom: 12, padding: 16, borderRadius: 18,
     minHeight: 130, textAlignVertical: 'top', borderWidth: 1, fontSize: 14, lineHeight: 22,
@@ -490,4 +519,17 @@ const styles = StyleSheet.create({
   entryDate:      { fontSize: 11, marginBottom: 6 },
   entryText:      { fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
   emptyText:      { fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
+  environmentArtWrap: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    paddingRight: 12,
+    paddingBottom: 24,
+  },
+  environmentArt: {
+    width: '74%',
+    height: '46%',
+    opacity: 0.12,
+    tintColor: '#fff',
+  },
 });

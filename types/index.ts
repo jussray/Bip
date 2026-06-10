@@ -25,6 +25,7 @@ export interface VoiceNote {
   date: string;
   time: string;
   duration: string;
+  type?: string;
 }
 
 export interface MoodEntry {

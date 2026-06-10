@@ -36,6 +36,7 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
 import { isSupabaseConfigured } from '../utils/supabase';
+import { useSekretCompanion } from '../hooks/useSekretCompanion';
 import {
   ensureAnonymousSession, pullAll,
   syncMood, syncJournal, syncCirclePost, syncVoiceNote,
@@ -85,10 +86,10 @@ const THEME_PACKS: Record<string, any> = {
 };
 
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se’kret",       emoji: '\uD83C\uDF38', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. I’m here. Tell me what’s on your mind." },
-  rylane: { name: 'Rylane',             emoji: '\u26A1',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, I’m here. What’s been heavy?" },
-  cloud:  { name: "Cloud Se’kret", emoji: '☁\uFE0F', title: 'Quiet Comfort',        vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
-  night:  { name: "Night Se’kret", emoji: '\uD83C\uDF19', title: 'Late-Night Listener',  vibe: 'Minimal words, calm energy, safe space.',        greeting: "I’m here. You don’t gotta explain perfectly." },
+  soft:   { name: "Se’kret",       emoji: '🌸', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. Aight, talk to me. What’s really going on?" },
+  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
+  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Comfort',        vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
+  night:  { name: "Night Se’kret", emoji: '🌙', title: 'Late-Night Listener',  vibe: 'Minimal words, calm energy, safe space.',        greeting: "You don’t have to explain it perfectly tonight. I’m here." },
 };
 
 const HOME_MESSAGES = [
@@ -130,7 +131,7 @@ export default function App() {
   const [theme, setTheme]                   = useState('neon');
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
-  const [userSide, setUserSide]             = useState('teen');
+  const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
@@ -170,6 +171,19 @@ export default function App() {
   // ── Derived ──────────────────────────────────────────────────────────────
   const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
+  const companion = useSekretCompanion({
+    selectedSekret,
+    mood,
+    journalEntries,
+    moodHistory,
+    voiceNotes,
+    comfortSessions,
+    circlePosts,
+    streakDays,
+    lastOpenDate,
+    screen,
+    isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
+  });
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
   // loadState() returns the full state object — no args needed.
@@ -380,7 +394,7 @@ export default function App() {
   const saveCirclePost = () => {
     if (!circlePostText.trim()) return;
     const post: CirclePost = {
-      id: Date.now(), text: circlePostText,
+      id: Number(Date.now()), text: circlePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
@@ -390,10 +404,11 @@ export default function App() {
     syncCirclePost(post);
   };
 
-  const reactToPost = (id: number, type: string) => {
+  const reactToPost = (id: string | number, type: string) => {
+    const reactionKey = type as keyof CirclePost['reactions'];
     setCirclePosts(posts => posts.map(p =>
-      p.id === id
-        ? { ...p, reactions: { ...p.reactions, [type]: (p.reactions[type] || 0) + 1 } }
+      String(p.id) === String(id)
+        ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
         : p
     ));
   };
@@ -440,6 +455,7 @@ export default function App() {
       onMoodSelect={(m) => trackActivity('mood')}
       BottomNav={nav}
       streakDays={streakDays}
+      companion={companion}
     />
   );
 
@@ -465,6 +481,8 @@ export default function App() {
       voiceNotes={voiceNotes}
       setVoiceNotes={setVoiceNotes}
       onSave={() => trackActivity('voice')}
+      mood={mood}
+      companion={companion}
     />
   );
 
@@ -480,6 +498,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      companion={companion}
     />
   );
 
@@ -499,7 +518,6 @@ export default function App() {
       t={t}
       currentSekret={currentSekret}
       mood={mood}
-      selectedSekret={selectedSekret}
       selectedProfile={selectedSekret}
       setSelectedProfile={setSelectedSekret}
       userSide={userSide}
@@ -581,6 +599,9 @@ export default function App() {
       setScreen={setScreen}
       onComplete={() => trackActivity('comfort')}
       BottomNav={nav}
+      selectedSekret={selectedSekret}
+      mood={mood}
+      companion={companion}
     />
   );
 
@@ -657,7 +678,7 @@ export default function App() {
     <MoreScreen
       t={t}
       userSide={userSide}
-      setUserSide={setUserSide}
+      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
@@ -675,7 +696,7 @@ export default function App() {
       sekretMode={sekretMode}
       setSekretMode={setSekretMode}
       userSide={userSide}
-      setUserSide={setUserSide}
+      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}

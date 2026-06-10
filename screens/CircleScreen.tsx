@@ -32,7 +32,7 @@ type ScanResult = {
 };
 
 type CirclePost = {
-  id: string;
+  id: string | number;
   text: string;
   date?: string;
   time?: string;
@@ -55,7 +55,7 @@ type CircleScreenProps = {
   circlePostText: string;
   setCirclePostText: (text: string) => void;
   saveCirclePost: (extra?: Partial<CirclePost>) => void;
-  reactToPost: (id: string, type: string) => void;
+  reactToPost: (id: string | number, type: string) => void;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   sendQuietReply?: (postId: string, replyText: string) => void;
@@ -634,7 +634,7 @@ export function CircleScreen({
 
                 <TouchableOpacity
                   style={[styles.replyBtn, { backgroundColor: glow + '24' }]}
-                  onPress={() => setActiveReplySheetPostId(post.id)}
+                  onPress={() => setActiveReplySheetPostId(String(post.id))}
                 >
                   <Text style={styles.replyBtnText}>
                     reply softly{post.quietRepliesCount ? ` · ${post.quietRepliesCount} quiet replies sent` : ''}
