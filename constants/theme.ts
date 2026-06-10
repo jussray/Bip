@@ -70,6 +70,9 @@ const bgJournal         = require('../assets/images/journal-bg.png');
 const bgBridge          = require('../assets/images/bridge-bg.png');
 const bgVoiceBip        = require('../assets/images/voice-bip-bg.png');
 const bgParentDashboard = require('../assets/images/parent-dashboard-bg.png');
+// Circle's own mockup is corrupt, so use the valid generic night backdrop here.
+// This stays separate from room art: room screens always resolve through getRoomScene().
+const bgCircle          = require('../assets/images/room-bg-dark.png');
 const bgWindow          = require('../assets/images/window.png');
 const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
 
@@ -83,9 +86,12 @@ const cloudStormy       = require('../assets/images/cloud-stormy.png');
 
 // ── UI / Splash ────────────────────────────────────────────────────────────
 const parentDashboard = require('../assets/images/parent-dashboard.png');
-// Fallbacks for splash + circle mockup until real art lands:
-const sekretSplash  = require('../assets/images/sekret-splash.png');
-const circleMockup  = cloudHappy;    // soft circle preview
+// sekret-splash.png is a byte-identical copy of parent-dashboard.png, so it is
+// intentionally never loaded as the splash. Use the valid room artwork behind
+// the existing branded splash overlays instead. circle-mockup.png is a corrupt
+// two-byte placeholder, so the Circle preview falls back to a valid mascot.
+const sekretSplash = roomArtwork;
+const circleMockup = cloudHappy;
 
 export const IMAGES = {
   // Raylene
@@ -140,6 +146,7 @@ export const IMAGES = {
   bgBridge,
   bgVoiceBip,
   bgParentDashboard,
+  bgCircle,
   bgWindow,
   bgCalmHero,
 
