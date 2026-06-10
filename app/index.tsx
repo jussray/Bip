@@ -433,6 +433,7 @@ export default function App() {
       updateRoomMemory={updateRoomMemory}
       vibe={vibeKey}
       BottomNav={nav}
+      companion={companion}
     />
   );
 

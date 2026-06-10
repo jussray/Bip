@@ -15,6 +15,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IMAGES, THEME_PACKS, getRoomPhase, type RoomPhase, type VibeKey } from '../constants/theme';
+import type { CompanionState } from '../types/sekretCompanion';
 
 const { width, height } = Dimensions.get('window');
 
@@ -336,6 +337,7 @@ interface RoomScreenProps {
   updateRoomMemory?: (patch: Record<string, any>) => void;
   vibe: VibeKey;
   BottomNav: React.ReactNode;
+  companion?: CompanionState;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -349,6 +351,7 @@ export function RoomScreen({
   updateRoomMemory,
   vibe,
   BottomNav,
+  companion,
 }: RoomScreenProps) {
 
   // ─── Derived ────────────────────────────────────────────────────────────
@@ -377,6 +380,31 @@ export function RoomScreen({
   );
 
   const pose = getPose(mood, timeOfDay, isFirstVisit, isSekretVisible);
+
+  const rememberedLine = useMemo(() => {
+    if (!companion) return null;
+
+    const repeatedMood = companion.checkIn?.id.includes('repeated-emotion');
+    const moodKey = String(mood).toLowerCase();
+    if (repeatedMood && moodKey.includes('tired')) {
+      return "You've been calling a lot of things tired lately. I peeped that.";
+    }
+    if (repeatedMood && moodKey) {
+      return `${mood} keeps pulling up lately. I remember.`;
+    }
+
+    const topic = companion.memorySummary.commonTopics[0];
+    if (topic && companion.memorySummary.journalsWritten >= 2) {
+      return `You keep circling back to ${topic}. We can stay with that part.`;
+    }
+    if (companion.memorySummary.streakDays >= 3) {
+      return `You came back ${companion.memorySummary.streakDays} days straight. Lowkey proud of you.`;
+    }
+    if (companion.memorySummary.conversations >= 3) {
+      return companion.presenceMessage;
+    }
+    return null;
+  }, [companion, mood]);
 
   // ─── AsyncStorage: first-visit persistence ───────────────────────────────
   useEffect(() => {
@@ -702,7 +730,13 @@ export function RoomScreen({
             {character === 'raylene' ? '💜 Raylene' : '⚡ Rylane'}
           </Text>
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
-          <Text style={styles.greetingText}>"{greeting}"</Text>
+          {!!rememberedLine && (
+            <View style={styles.memoryTag}>
+              <Text style={styles.memoryTagLabel}>I REMEMBER</Text>
+              <Text style={styles.memoryTagText}>{rememberedLine}</Text>
+            </View>
+          )}
+          <Text style={styles.greetingText}>"{rememberedLine || greeting}"</Text>
           <Text style={[styles.greetingTap, { color: t.soft }]}>
             {isSekretVisible ? 'tap to dismiss' : "tap to call Se\u2019kret"}
           </Text>
@@ -842,6 +876,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   greetingChar:          { color: '#c4b5fd', fontSize: 11, fontWeight: '700', marginBottom: 5 },
+  memoryTag:             { borderLeftWidth: 2, borderLeftColor: '#d8b4fe', paddingLeft: 9, marginTop: 8, marginBottom: 9 },
+  memoryTagLabel:        { color: '#bca7d5', fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginBottom: 3 },
+  memoryTagText:         { color: '#f4eaff', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   roomCopy:              { color: '#f5f0ff', fontSize: 12, fontWeight: '700', opacity: 0.9, marginBottom: 6 },
   greetingText:          { color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 22, fontStyle: 'italic', marginBottom: 6 },
   greetingTap:           { fontSize: 10, fontStyle: 'italic' },
