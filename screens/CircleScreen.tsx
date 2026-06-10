@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
+import { IMAGES } from '../constants/theme';
 import {
   Text,
   TextInput,
@@ -18,8 +18,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 
-const CLOUD_HAPPY = require('../assets/images/cloud-happy.png');
-const CLOUD_STORMY = require('../assets/images/cloud-stormy.png');
+const CLOUD_HAPPY = IMAGES.cloudHappy;
+const CLOUD_STORMY = IMAGES.cloudStormy;
 
 type MediaType = 'text' | 'photo' | 'fitCheck' | 'art' | 'room' | 'clip' | 'growth';
 type SafetyLevel = 'none' | 'soft' | 'bridge' | 'parent';
@@ -169,14 +169,6 @@ const getSafetyLevel = (text: string): ScanResult => {
   return { level: 'none' };
 };
 
-const getTimeOfDay = (): TimeOfDay => {
-  const h = new Date().getHours();
-  if (h >= 5 && h < 11) return 'morning';
-  if (h >= 11 && h < 17) return 'day';
-  if (h >= 17 && h < 21) return 'evening';
-  return 'night';
-};
-
 const moodGlow = (mood?: string): string => {
   const m = (mood || '').toLowerCase();
   if (m === 'happy') return '#fbbf24';
@@ -202,9 +194,9 @@ export function CircleScreen({
 }: CircleScreenProps) {
   const isRylane = selectedSekret === 'rylane';
   const charLabel = isRylane ? 'rylane' : 'raylene';
-  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
-  const time = useMemo(() => getTimeOfDay(), []);
-  const bg = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
+  // Circle is a community surface, not either companion's room. Its dedicated
+  // mockup is corrupt, so use the explicit valid Circle fallback from the map.
+  const bg = IMAGES.bgCircle;
   const glow = useMemo(() => moodGlow(mood), [mood]);
 
   const QUOTE_REPLIES = isRylane ? QUOTE_REPLIES_RYLANE : QUOTE_REPLIES_RAYLENE;
