@@ -583,6 +583,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
@@ -593,6 +594,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
