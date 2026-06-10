@@ -16,13 +16,13 @@ const rayleneFullbody = require("../assets/images/raylene-fullbody.png");
 const rayleneHappyV3 = require("../assets/images/raylene-happy-v3.png");
 const rayleneNeutralV3 = require("../assets/images/raylene-neutral-v3.png");
 
-// ── Raylene (fallbacks for assets that are missing / placeholder) ──────────
-const rayleneThinking = rayleneNeutral; // fallback → neutral
-const rayleneWindowRainy = rayleneWindow; // fallback → window
+// ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
+const rayleneThinking    = rayleneNeutral; // fallback → neutral
+const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
 const rayleneNightWindow = rayleneWindow; // fallback → window
 const rayleneNightDoodle = rayleneWriting; // fallback → writing
-const rayleneVoiceDay = rayleneWindow; // fallback → window (calm look)
-const rayleneVoiceNight = rayleneWindow; // fallback → window
+const rayleneVoiceDay    = require("../assets/images/raylene-voice-day.png");
+const rayleneVoiceNight  = require("../assets/images/raylene-voice-night.png");
 const raylene_Bippin2Day = rayleneWriting; // fallback → writing
 const raylene_Bippin2Night = rayleneWriting; // fallback → writing
 const raylene_PeriodCalendar = rayleneWriting; // fallback → writing
@@ -39,30 +39,24 @@ const rylaneWindow = require("../assets/images/rylane-window.png");
 const rylaneFullbody = require("../assets/images/rylane-fullbody.png");
 const rylaneNeutralV2 = require("../assets/images/rylane-neutral-v2.png");
 
-// ── Rylane (fallbacks) ─────────────────────────────────────────────────────
-const rylaneThinking = rylaneNeutral; // fallback → neutral
-const rylaneProfile = rylaneFullbody; // fallback → fullbody portrait
-const rylaneVoiceDay = rylaneWindow; // fallback → window
-const rylaneVoiceNight = rylaneWindow; // fallback → window
+// ── Rylane (thinking now has real asset; voice assets real) ──────────────
+const rylaneThinking   = require("../assets/images/rylane-thinking.png");
+const rylaneProfile    = rylaneFullbody; // fallback → fullbody portrait
+const rylaneVoiceDay   = require("../assets/images/rylane-voice-day.png");
+const rylaneVoiceNight = require("../assets/images/rylane-voice-night.png");
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
-// The dedicated Raylene night room is the only complete room panorama in this
-// checkout. The day/Rylane-named files are 2-byte placeholders, so they must
-// never be handed to React Native's image loader. The room system keeps each
-// identity/time/weather slot explicit while using the valid original room art
-// and character overlays already in the repository.
-const roomArtwork = require("../assets/images/bg-raylene-room-night.png");
+const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
+const bgRayleneRoomEvening   = require("../assets/images/bg-raylene-room-evening.png");
+const bgRayleneRoomRain      = require("../assets/images/bg-raylene-room-rain.png");
+const bgRayleneRoomNight     = require("../assets/images/bg-raylene-room-night.png");
+const bgRayleneRoomDeepNight = require("../assets/images/bg-raylene-room-deep-night.png");
 
-const bgRayleneRoomDay = roomArtwork;
-const bgRayleneRoomEvening = roomArtwork;
-const bgRayleneRoomRain = roomArtwork;
-const bgRayleneRoomNight = roomArtwork;
-const bgRayleneRoomDeepNight = roomArtwork;
-const bgRylaneRoomDay = roomArtwork;
-const bgRylaneRoomEvening = roomArtwork;
-const bgRylaneRoomRain = roomArtwork;
-const bgRylaneRoomNight = roomArtwork;
-const bgRylaneRoomDeepNight = roomArtwork;
+const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
+const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png");
+const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
+const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
+const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
 const bgComfort = require("../assets/images/comfort-bg.png");
