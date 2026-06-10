@@ -69,9 +69,8 @@ const bgComfort         = require('../assets/images/comfort-bg.png');
 const bgJournal         = require('../assets/images/journal-bg.png');
 const bgBridge          = require('../assets/images/bridge-bg.png');
 const bgVoiceBip        = require('../assets/images/voice-bip-bg.png');
-const bgParentDashboard = require('../assets/images/parent-dashboard-bg.png');
-// Circle's own mockup is corrupt, so use the valid generic night backdrop here.
-// This stays separate from room art: room screens always resolve through getRoomScene().
+// Circle is assembled from React Native controls over a generic atmosphere asset.
+// Design mockups live outside assets/ and are never loaded by the application.
 const bgCircle          = require('../assets/images/room-bg-dark.png');
 const bgWindow          = require('../assets/images/window.png');
 const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
@@ -85,13 +84,9 @@ const cloudSleepy       = require('../assets/images/cloud-sleepy.png');
 const cloudStormy       = require('../assets/images/cloud-stormy.png');
 
 // ── UI / Splash ────────────────────────────────────────────────────────────
-const parentDashboard = require('../assets/images/parent-dashboard.png');
-// sekret-splash.png is a byte-identical copy of parent-dashboard.png, so it is
-// intentionally never loaded as the splash. Use the valid room artwork behind
-// the existing branded splash overlays instead. circle-mockup.png is a corrupt
-// two-byte placeholder, so the Circle preview falls back to a valid mascot.
+// The native splash is color-only in app.json. The branded splash experience is
+// composed in SplashScreen from text, controls, mascots, and valid scene artwork.
 const sekretSplash = roomArtwork;
-const circleMockup = cloudHappy;
 
 export const IMAGES = {
   // Raylene
@@ -145,7 +140,6 @@ export const IMAGES = {
   bgJournal,
   bgBridge,
   bgVoiceBip,
-  bgParentDashboard,
   bgCircle,
   bgWindow,
   bgCalmHero,
@@ -160,8 +154,6 @@ export const IMAGES = {
 
   // UI / Splash
   sekretSplash,
-  parentDashboard,
-  circleMockup,
 } as const;
 
 export const AVATARS: Record<string, Record<string, any>> = {
