@@ -15,15 +15,12 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 
 const CLOUD_HAPPY = IMAGES.cloudHappy;
-const CLOUD_STORMY = IMAGES.cloudStormy;
 
-type MediaType = 'text' | 'photo' | 'fitCheck' | 'art' | 'room' | 'clip' | 'growth';
+type MediaType = 'text' | 'struggle' | 'relatable' | 'growth';
 type SafetyLevel = 'none' | 'soft' | 'bridge' | 'parent';
-type SelectedMediaType = 'image' | 'video';
 
 type ScanResult = {
   level: SafetyLevel;
@@ -38,7 +35,6 @@ type CirclePost = {
   time?: string;
   bipType?: string;
   mediaUri?: string;
-  mediaType?: SelectedMediaType;
   mediaKind?: MediaType;
   reactions?: {
     felt?: number;
@@ -66,21 +62,10 @@ type CircleScreenProps = {
 };
 
 const MEDIA_TYPES: { id: MediaType; emoji: string; label: string; sub: string }[] = [
-  { id: 'text', emoji: '📖', label: 'Thought Bip', sub: 'say it how it feels' },
-  { id: 'photo', emoji: '🖼️', label: 'Photo Bip', sub: 'share a moment' },
-  { id: 'fitCheck', emoji: '✨', label: 'Fit Check', sub: 'confidence, not ratings' },
-  { id: 'art', emoji: '🎨', label: 'Art Bip', sub: 'made something real' },
-  { id: 'room', emoji: '🛏️', label: 'Room Glow', sub: 'your space, your vibe' },
-  { id: 'clip', emoji: '🎬', label: 'Short Clip', sub: '5–15 seconds of life' },
-  { id: 'growth', emoji: '⭐', label: 'Growth Bip', sub: 'a win, a step, a shift' },
-];
-
-const FIT_CHECK_REACTIONS = [
-  { emoji: '💜', label: 'Clean Fit' },
-  { emoji: '☁️', label: 'Love The Energy' },
-  { emoji: '⭐', label: 'That’s You' },
-  { emoji: '🔥', label: 'Color Combo Goes Crazy' },
-  { emoji: '🎨', label: 'Creative Choice' },
+  { id: 'text', emoji: '💭', label: 'Need to say it', sub: 'put the heavy part down' },
+  { id: 'struggle', emoji: '🫂', label: 'Anybody else?', sub: 'find the people who get it' },
+  { id: 'relatable', emoji: '👀', label: 'Real-life Bip', sub: 'the part nobody says out loud' },
+  { id: 'growth', emoji: '⭐', label: 'Small win', sub: 'something shifted, even a little' },
 ];
 
 const QUOTE_REPLIES_RAYLENE = [
@@ -200,7 +185,7 @@ const getSafetyLevel = (text: string): ScanResult => {
 
 const moodGlow = (mood?: string): string => {
   const m = (mood || '').toLowerCase();
-  if (m === 'happy') return '#fbbf24';
+  if (m === 'happy') return '#f0a6d2';
   if (m === 'sad' || m === 'anxious') return '#7dd3fc';
   if (m === 'angry' || m === 'overwhelmed' || m === 'stressed') return '#f472b6';
   if (m === 'tired') return '#6d28d9';
@@ -233,19 +218,13 @@ export function CircleScreen({
 
   const [selectedType, setSelectedType] = useState<MediaType>('text');
   const [showTypeMenu, setShowTypeMenu] = useState(false);
-  const [showMediaPicker, setShowMediaPicker] = useState(false);
-  const [showFitCheckMode, setShowFitCheckMode] = useState(false);
-  const [selectedMediaUri, setSelectedMediaUri] = useState<string | null>(null);
-  const [selectedMediaType, setSelectedMediaType] = useState<SelectedMediaType | null>(null);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSoftCheckIn, setShowSoftCheckIn] = useState(false);
   const [showBridgeSuggestion, setShowBridgeSuggestion] = useState(false);
   const [showParentPrompt, setShowParentPrompt] = useState(false);
   const [activeReplySheetPostId, setActiveReplySheetPostId] = useState<string | null>(null);
-  const [activeMediaPreviewOpen, setActiveMediaPreviewOpen] = useState(false);
   const [selectedQuietReply, setSelectedQuietReply] = useState<string>('');
-  const [fitCheckReactionIndex, setFitCheckReactionIndex] = useState<number>(0);
 
   const currentType = useMemo(
     () => MEDIA_TYPES.find(item => item.id === selectedType) || MEDIA_TYPES[0],
@@ -300,70 +279,17 @@ export function CircleScreen({
     }
   };
 
-  const runSafetyScan = (text: string, hasMedia: boolean): ScanResult => {
-    const base = getSafetyLevel(text);
-    if (hasMedia && base.level === 'none') return base;
-    return base;
-  };
-
-  const handlePickMedia = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.All,
-        allowsEditing: true,
-        quality: 0.85,
-        allowsMultipleSelection: false,
-      });
-
-      if (result.canceled || !result.assets?.[0]) return;
-
-      const asset = result.assets[0];
-      const uri = asset.uri;
-      const type = asset.type === 'video' ? 'video' : 'image';
-
-      setSelectedMediaUri(uri);
-      setSelectedMediaType(type);
-      setShowMediaPicker(false);
-      setActiveMediaPreviewOpen(true);
-
-      const scan = runSafetyScan(circlePostText, true);
-      setScanResult(scan);
-
-      if (scan.level === 'soft') {
-        setShowSoftCheckIn(true);
-        setShowBridgeSuggestion(false);
-        setShowParentPrompt(false);
-      } else if (scan.level === 'bridge') {
-        setShowBridgeSuggestion(true);
-        setShowSoftCheckIn(false);
-        setShowParentPrompt(false);
-      } else if (scan.level === 'parent') {
-        setShowParentPrompt(true);
-        setShowSoftCheckIn(false);
-        setShowBridgeSuggestion(false);
-      }
-
-      await triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      setShowMediaPicker(false);
-    }
-  };
+  const runSafetyScan = (text: string): ScanResult => getSafetyLevel(text);
 
   const handleTypeChange = async (type: MediaType) => {
     setSelectedType(type);
     setShowTypeMenu(false);
     await triggerHaptic(Haptics.ImpactFeedbackStyle.Light);
-
-    if (type === 'fitCheck') {
-      setShowFitCheckMode(true);
-    } else {
-      setShowFitCheckMode(false);
-    }
   };
 
   const handleSavePost = async () => {
     setIsSubmitting(true);
-    const scan = runSafetyScan(circlePostText, !!selectedMediaUri);
+    const scan = runSafetyScan(circlePostText);
     setScanResult(scan);
 
     if (scan.level === 'parent') {
@@ -392,15 +318,10 @@ export function CircleScreen({
 
     saveCirclePost({
       text: circlePostText,
-      mediaUri: selectedMediaUri || undefined,
-      mediaType: selectedMediaType || undefined,
       mediaKind: selectedType,
     });
 
     setCirclePostText('');
-    setSelectedMediaUri(null);
-    setSelectedMediaType(null);
-    setActiveMediaPreviewOpen(false);
     setIsSubmitting(false);
     await triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
   };
@@ -417,9 +338,9 @@ export function CircleScreen({
 
   // Char-aware copy
   const headerTagline = isRylane
-    ? 'no likes. no count. no clout. just us.'
-    : 'no likes. no followers. just real, soft, here.';
-  const energyText = isRylane ? '⚡ low-stakes space open' : '💜 soft space open';
+    ? 'pull up a chair. nobody has to perform in here.'
+    : 'pull up a chair. somebody in here gets it.';
+  const energyText = isRylane ? '⚡ support circle open' : '💜 support circle open';
   const cultureLines = isRylane
     ? ['no bullying. no exposing. no chasing clout.', 'just real bips. real circle. respect.']
     : ['no bullying. no exposing. no going viral.', 'just real bips, real connection, real safety.'];
@@ -448,15 +369,28 @@ export function CircleScreen({
             <Text style={[styles.energyText, { color: glow }]}>{energyText}</Text>
           </Animated.View>
 
+          <View style={styles.circleFloor}>
+            {[
+              { label: 'here', position: styles.seatTopLeft },
+              { label: 'listening', position: styles.seatTopRight },
+              { label: 'felt that', position: styles.seatBottomLeft },
+              { label: 'staying', position: styles.seatBottomRight },
+            ].map(seat => (
+              <View key={seat.label} style={[styles.circleSeat, seat.position]}>
+                <View style={[styles.seatGlow, { backgroundColor: glow }]} />
+                <Text style={styles.seatLabel}>{seat.label}</Text>
+              </View>
+            ))}
+            <View style={[styles.circleCenter, { borderColor: glow }]}>
+              <Image source={CLOUD_HAPPY} style={styles.circleCloud} resizeMode="contain" />
+              <Text style={styles.circleCenterText}>you are not the only one</Text>
+            </View>
+          </View>
+
           <View style={styles.cloudWrap}>
-            <Animated.Image
-              source={CLOUD_HAPPY}
-              style={[styles.artworkSmall, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
-              resizeMode="contain"
-            />
             <View style={[styles.presencePill, { borderColor: glow }]}>
               <Text style={[styles.presenceText, { color: '#f5f0ff' }]}>
-                {charLabel} is here · circle is soft
+                {charLabel} pulled up too · no fixing, just here
               </Text>
             </View>
           </View>
@@ -464,10 +398,10 @@ export function CircleScreen({
 
         <Animated.View style={cardStyle(fade2)}>
           <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow, shadowColor: glow }]}>
-            <Text style={styles.cardEmoji}>✨</Text>
-            <Text style={styles.cardText}>circle is for real moments.</Text>
+            <Text style={styles.cardEmoji}>🪑</Text>
+            <Text style={styles.cardText}>this is a circle, not a feed.</Text>
             <Text style={styles.entryText}>
-              drop anonymous bips, photos, fit checks, art, room glow, short clips, growth wins. no count. no clout.
+              say the part you keep skipping. leave encouragement. let somebody else's Bip remind you you're not weird or alone.
             </Text>
           </View>
 
@@ -504,22 +438,6 @@ export function CircleScreen({
             </View>
           )}
 
-          {selectedType !== 'text' && (
-            <TouchableOpacity
-              style={[styles.mediaPickerBtn, { backgroundColor: glow }]}
-              onPress={handlePickMedia}
-            >
-              <Text style={styles.mediaPickerText}>pick media</Text>
-            </TouchableOpacity>
-          )}
-
-          {selectedMediaUri && (
-            <View style={[styles.previewCard, { backgroundColor: 'rgba(20,12,40,0.7)', borderColor: glow }]}>
-              <Text style={styles.previewLabel}>preview</Text>
-              <Text style={styles.previewPath}>{selectedMediaType === 'video' ? '🎬 video selected' : '🖼️ photo selected'}</Text>
-              <Text style={styles.previewPath} numberOfLines={1}>{selectedMediaUri}</Text>
-            </View>
-          )}
         </Animated.View>
 
         <Animated.View style={cardStyle(fade3)}>
@@ -535,7 +453,7 @@ export function CircleScreen({
               value={circlePostText}
               onChangeText={text => {
                 setCirclePostText(text);
-                const scan = runSafetyScan(text, !!selectedMediaUri);
+                const scan = runSafetyScan(text);
                 setScanResult(scan);
                 setShowSoftCheckIn(scan.level === 'soft');
                 setShowBridgeSuggestion(scan.level === 'bridge');
@@ -554,7 +472,7 @@ export function CircleScreen({
             </TouchableOpacity>
 
             <Text style={styles.safeText}>
-              anonymous · protected · real. no bullying. no exposing people.
+              no name attached · support only · you can leave anytime
             </Text>
           </View>
 
@@ -601,32 +519,11 @@ export function CircleScreen({
             </View>
           )}
 
-          {showFitCheckMode && (
-            <View style={[styles.fitCard, { borderColor: glow, backgroundColor: 'rgba(30,18,55,0.78)' }]}>
-              <Text style={styles.fitTitle}>✨ fit check</Text>
-              <Text style={styles.fitText}>
-                expression · creativity · confidence. not ratings. not popularity.
-              </Text>
-              <View style={styles.fitReactions}>
-                {FIT_CHECK_REACTIONS.map((reaction) => (
-                  <View key={reaction.label} style={[styles.fitReaction, { borderColor: glow }]}>
-                    <Text style={styles.fitReactionEmoji}>{reaction.emoji}</Text>
-                    <Text style={styles.fitReactionLabel}>{reaction.label}</Text>
-                  </View>
-                ))}
-              </View>
-              <Text style={styles.fitVoice}>
-                {isRylane
-                  ? 'okay the drip is the drip. confidence > anything.'
-                  : 'okayyyy fit check 👀 the confidence is the best part.'}
-              </Text>
-            </View>
-          )}
         </Animated.View>
 
         <Animated.View style={cardStyle(fade4)}>
           <View style={[styles.sectionCard, { borderColor: glow, backgroundColor: 'rgba(20,12,40,0.7)' }]}>
-            <Text style={styles.sectionTitle}>circle bips</Text>
+            <Text style={styles.sectionTitle}>what the circle is holding</Text>
             <View style={styles.circlePromise}>
               <Text style={styles.circlePromiseText}>You don't have to know them to not feel alone.</Text>
               <Text style={styles.circlePromiseSub}>anonymous · supported · never ranked</Text>
@@ -743,8 +640,18 @@ const styles = StyleSheet.create({
   energyBadge: { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 },
   energyText: { fontSize: 13, fontWeight: '600' },
 
+  circleFloor: { minHeight: 218, marginHorizontal: 2, marginBottom: 15, position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  circleSeat: { position: 'absolute', alignItems: 'center', width: 74 },
+  seatTopLeft: { left: 2, top: 28 },
+  seatTopRight: { right: 2, top: 28 },
+  seatBottomLeft: { left: 2, bottom: 18 },
+  seatBottomRight: { right: 2, bottom: 18 },
+  seatGlow: { width: 42, height: 42, borderRadius: 21, opacity: 0.24, borderWidth: 8, borderColor: 'rgba(255,255,255,0.22)' },
+  seatLabel: { color: '#d9cce9', fontSize: 9, fontWeight: '800', marginTop: 5, letterSpacing: 0.4 },
+  circleCenter: { width: 178, height: 178, borderRadius: 89, borderWidth: 1, backgroundColor: 'rgba(27,15,49,0.76)', alignItems: 'center', justifyContent: 'center', shadowColor: '#c4b5fd', shadowOpacity: 0.35, shadowRadius: 20 },
+  circleCloud: { width: 92, height: 76 },
+  circleCenterText: { color: '#fff', fontSize: 12, fontWeight: '800', textAlign: 'center', maxWidth: 130, lineHeight: 17 },
   cloudWrap: { alignItems: 'center', marginBottom: 14 },
-  artworkSmall: { width: 84, height: 84, marginBottom: 6 },
   presencePill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(20,12,40,0.6)' },
   presenceText: { fontSize: 12, fontWeight: '600' },
 
@@ -762,11 +669,6 @@ const styles = StyleSheet.create({
   typeLabel: { color: '#fff', fontSize: 14, fontWeight: '600' },
   typeSub: { color: '#94A3B8', fontSize: 12 },
 
-  mediaPickerBtn: { padding: 14, borderRadius: 16, alignItems: 'center', marginBottom: 12 },
-  mediaPickerText: { color: '#fff', fontWeight: '700' },
-  previewCard: { borderWidth: 1, borderRadius: 16, padding: 12, marginBottom: 12 },
-  previewLabel: { color: '#fff', fontWeight: '700', marginBottom: 4 },
-  previewPath: { color: '#cbb6f7', fontSize: 12 },
 
   composerCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, shadowOpacity: 0.4, shadowRadius: 14 },
   composerPrompt: { fontSize: 13, fontWeight: '600', marginBottom: 10 },
@@ -793,14 +695,6 @@ const styles = StyleSheet.create({
   smallBtn: { padding: 10, borderRadius: 12, alignItems: 'center' },
   smallBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
 
-  fitCard: { borderWidth: 1, borderRadius: 18, padding: 14, marginBottom: 12 },
-  fitTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 6 },
-  fitText: { color: '#cbb6f7', fontSize: 13, marginBottom: 12, lineHeight: 19 },
-  fitReactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  fitReaction: { borderWidth: 1, borderRadius: 14, padding: 10, minWidth: '31%', alignItems: 'center' },
-  fitReactionEmoji: { fontSize: 18, marginBottom: 4 },
-  fitReactionLabel: { color: '#fff', fontSize: 11, textAlign: 'center', fontWeight: '600' },
-  fitVoice: { color: '#f5f0ff', fontSize: 13, fontStyle: 'italic' },
 
   sectionCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 6, marginBottom: 14 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
