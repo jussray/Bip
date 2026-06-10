@@ -7,6 +7,8 @@
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
     "splash": {
+      "image": "./assets/images/sekret-splash.png",
+      "resizeMode": "cover",
       "backgroundColor": "#160028"
     },
     "ios": {
@@ -19,9 +21,9 @@
       },
       "package": "com.sekretbip.app"
     },
-   "plugins": [
-  "expo-router",
-  "expo-secure-store"
-]
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
   }
 }

@@ -29,7 +29,7 @@ export default function PagesScreen() {
 
           {/* Header */}
           <View style={styles.heroWrap}>
-            <ImageBackground source={IMAGES.roomBgDark} style={styles.heroBg} resizeMode="cover">
+            <ImageBackground source={IMAGES.bgJournal} style={styles.heroBg} resizeMode="cover">
               <LinearGradient colors={['rgba(13,9,20,0.2)', 'rgba(13,9,20,0.9)']} style={StyleSheet.absoluteFill} />
               <View style={styles.heroContent}>
                 <View style={{ flex: 1 }}>

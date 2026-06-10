@@ -8,23 +8,23 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ screen, setScreen, userSide }: BottomNavProps) {
-  const items =
-    userSide === 'parent'
-      ? [
-          ['home', '🏠', 'Home'],
-          ['bridge', '🌉', 'Bridge'],
-          ['sekret', '💜', "Se'kret"],
-          ['pages', '📖', 'Pages'],
-          ['more', '☰', 'More'],
-        ]
-      : [
-          ['home', '🏠', 'Home'],
-          ['pages', '📖', 'Pages'],
-          ['calm', '🌙', 'Calm'],
-          ['circle', '🌐', 'Circle'],
-          ['sekret', '💜', "Se'kret"],
-          ['more', '☰', 'More'],
-        ];
+  const items = userSide === 'parent'
+    ? [
+        ['home', '🏠', 'Room'],
+        ['pages', '📖', 'Pages'],
+        ['voiceBip', '🎙', 'Voice'],
+        ['calm', '🌙', 'Calm'],
+        ['circle', '🌐', 'Circle'],
+        ['more', '☰', 'More'],
+      ]
+    : [
+        ['home', '🏠', 'Room'],
+        ['pages', '📖', 'Pages'],
+        ['voiceBip', '🎙', 'Voice'],
+        ['calm', '🌙', 'Calm'],
+        ['circle', '🌐', 'Circle'],
+        ['more', '☰', 'More'],
+      ];
 
   return (
     <View style={styles.bottomNav}>

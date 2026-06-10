@@ -26,17 +26,21 @@ export function useSekretCompanion(input: CompanionActivityInput) {
     };
   }, []);
 
-  const snapshot = useMemo(() => buildCompanionSnapshot(input, state), [input, state]);
+  const inputSignature = JSON.stringify(input);
+  const snapshot = useMemo(
+    () => buildCompanionSnapshot(input, state),
+    [inputSignature, state]
+  );
 
   useEffect(() => {
     if (!isReady) return;
-    const serializedState = JSON.stringify(state);
-    const serializedSnapshot = JSON.stringify(snapshot);
-    if (serializedState === serializedSnapshot) return;
+    const { lastUpdated: _stateUpdated, ...stateContent } = state;
+    const { lastUpdated: _snapshotUpdated, ...snapshotContent } = snapshot;
+    if (JSON.stringify(stateContent) === JSON.stringify(snapshotContent)) return;
 
-    const nextState = { ...snapshot };
+    const nextState = { ...snapshot, lastUpdated: new Date().toISOString() };
     setState(nextState);
-    saveCompanionState(nextState);
+    void saveCompanionState(nextState);
   }, [isReady, snapshot, state]);
 
   return {

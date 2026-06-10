@@ -56,7 +56,7 @@ export default function HomeScreen() {
 
           {/* Hero */}
           <View style={styles.heroWrap}>
-            <ImageBackground source={IMAGES.roomBg} style={styles.heroBg} resizeMode="cover">
+            <ImageBackground source={IMAGES.bgRayleneRoomDay} style={styles.heroBg} resizeMode="cover">
               <LinearGradient colors={['rgba(13,9,20,0.1)', 'rgba(13,9,20,0.88)']} style={StyleSheet.absoluteFill} />
               <View style={styles.heroPad}>
                 <View style={styles.heroRow}>
