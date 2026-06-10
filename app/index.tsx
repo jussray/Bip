@@ -106,8 +106,8 @@ const HOME_MESSAGES = [
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','\uD83C\uDFE0','Home'],['bridge','\uD83C\uDF09','Bridge'],['sekret','\uD83D\uDC9C',"Se’kret"],['pages','\uD83D\uDCD6','Pages'],['more','\u2630','More']]
-    : [['home','\uD83C\uDFE0','Home'],['pages','\uD83D\uDCD6','Pages'],['calm','\uD83C\uDF19','Calm'],['circle','\uD83C\uDF10','Circle'],['sekret','\uD83D\uDC9C',"Se’kret"],['more','\u2630','More']];
+    ? [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']]
+    : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
     <View style={styles.bottomNav}>
@@ -416,6 +416,9 @@ export default function App() {
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
+  // The branded splash is the first paint; storage hydration must never hide it.
+  if (screen === 'splash') return <SplashScreen setScreen={setScreen} />;
+
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (isLoading) return null;
 
@@ -424,10 +427,6 @@ export default function App() {
   //   splash · home · pages · calm · sekret · circle · bippin2 · comfort
   //   mindReset · bodyReset · bridge · parentBridge · more · settings
   //   periodCalendar · voiceBip · cloudThoughts · dashboard
-
-  if (screen === 'splash') return (
-    <SplashScreen setScreen={setScreen} />
-  );
 
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
   if (screen === 'home') return (
@@ -438,6 +437,8 @@ export default function App() {
       setScreen={setScreen}
       t={t}
       updateRoomMemory={updateRoomMemory}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
+      BottomNav={nav}
     />
   );
 
@@ -483,6 +484,7 @@ export default function App() {
       onSave={() => trackActivity('voice')}
       mood={mood}
       companion={companion}
+      BottomNav={nav}
     />
   );
 

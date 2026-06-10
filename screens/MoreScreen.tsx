@@ -6,10 +6,9 @@
 import React from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  View, StyleSheet, Platform, ImageBackground,
+  View, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getRoomBg } from '../constants/theme';
 
 interface MoreScreenProps {
   t: Record<string, any>;
@@ -31,29 +30,18 @@ function glowFor(mood?: string): string {
   return '#c4b5fd';
 }
 
-function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 11) return 'morning';
-  if (h >= 11 && h < 17) return 'day';
-  if (h >= 17 && h < 21) return 'evening';
-  return 'night';
-}
-
 export function MoreScreen({
   t, userSide, setUserSide, setScreen, BottomNav,
   mood, selectedSekret,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
-  const charKey = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
-  const bgSource = getRoomBg(charKey, timeOfDay());
-
   const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }] as any;
   const btn  = () => [styles.button, { backgroundColor: glow, shadowColor: glow }] as any;
 
   return (
-    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+    <View style={styles.root}>
       <LinearGradient
-        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        colors={['#241038', '#160b2b', '#0d0914']}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView contentContainerStyle={styles.container}>
@@ -106,12 +94,12 @@ export function MoreScreen({
         <View style={{ height: 32 }} />
       </ScrollView>
       {BottomNav}
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root:       { flex: 1 },
+  root:       { flex: 1, backgroundColor: '#0d0914' },
   container:  { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 100 },
   logo:       { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   subtitle:   { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
