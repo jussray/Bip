@@ -45,7 +45,7 @@ const AMBIENT_BG: Record<string, Record<TimeOfDay, any>> = {
   rylane: {
     morning: IMAGES.bgRylaneRoomDay,
     day:     IMAGES.bgRylaneRoomDay,
-    evening: IMAGES.bgRayleneRoomEvening,
+    evening: IMAGES.bgRylaneRoomEvening,
     night:   IMAGES.bgRylaneRoomNight,
   },
 };

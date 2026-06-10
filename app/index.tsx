@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -106,7 +106,7 @@ const HOME_MESSAGES = [
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']]
+    ? [['home','🏠','Room'],['dashboard','📊','Home'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
     : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
@@ -171,7 +171,7 @@ export default function App() {
   // ── Derived ──────────────────────────────────────────────────────────────
   const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
-  const companion = useSekretCompanion({
+  const companionInput = useMemo(() => ({
     selectedSekret,
     mood,
     journalEntries,
@@ -183,7 +183,8 @@ export default function App() {
     lastOpenDate,
     screen,
     isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
-  });
+  }), [selectedSekret, mood, journalEntries, moodHistory, voiceNotes, comfortSessions, circlePosts, streakDays, lastOpenDate, screen]);
+  const companion = useSekretCompanion(companionInput);
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
   // loadState() returns the full state object — no args needed.
@@ -327,10 +328,10 @@ export default function App() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
-      setStreakDays(wasYesterday ? streakDays + 1 : 1);
+      setStreakDays(prev => wasYesterday ? prev + 1 : 1);
       setLastOpenDate(today);
     }
-  }, [isLoading]);
+  }, [isLoading, lastOpenDate]);
 
   // ── Rotating home message ─────────────────────────────────────────────────
   useEffect(() => {

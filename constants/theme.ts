@@ -14,12 +14,12 @@ const rayleneWriting = require("../assets/images/raylene-writing.png");
 const rayleneWindow = require("../assets/images/raylene-window.png");
 const rayleneFullbody = require("../assets/images/raylene-fullbody.png");
 const rayleneHappyV3 = require("../assets/images/raylene-happy-v3.png");
-const rayleneNeutralV3 = require("../assets/images/raylene-neutral-v3.png");
+const rayleneNeutralV3 = rayleneNeutral;
 
 // ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
 const rayleneThinking    = rayleneNeutral; // fallback → neutral
 const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
-const rayleneNightWindow = rayleneWindow; // fallback → window
+const rayleneNightWindow = rayleneWindowRainy; // night window → rainy window (closer semantic)
 const rayleneNightDoodle = rayleneWriting; // fallback → writing
 const rayleneVoiceDay    = require("../assets/images/raylene-voice-day.png");
 const rayleneVoiceNight  = require("../assets/images/raylene-voice-night.png");
@@ -44,6 +44,7 @@ const rylaneThinking   = require("../assets/images/rylane-thinking.png");
 const rylaneProfile    = rylaneFullbody; // fallback → fullbody portrait
 const rylaneVoiceDay   = require("../assets/images/rylane-voice-day.png");
 const rylaneVoiceNight = require("../assets/images/rylane-voice-night.png");
+const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
 const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
@@ -111,6 +112,7 @@ export const IMAGES = {
   rylaneProfile,
   rylaneVoiceDay,
   rylaneVoiceNight,
+  rylaneWindowDay,
 
   // Rooms
   bgRayleneRoomDay,
