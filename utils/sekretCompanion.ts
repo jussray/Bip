@@ -6,6 +6,15 @@ import type {
   CompanionState,
   MemorySummary,
 } from '../types/sekretCompanion';
+import {
+  DEFAULT_SEKRET_MEMORY,
+  loadSekretMemory,
+  saveSekretMemory,
+  summarizeSekretMemory,
+  type SekretMemory,
+} from '../services/sekretMemory';
+import { buildSekretPresence } from '../services/sekretPresence';
+import { buildSekretCheckIn } from '../services/sekretCheckins';
 
 const STORAGE_KEY = 'sekret_companion_state';
 
@@ -18,7 +27,7 @@ const PERSONALITY_LABELS: Record<string, string> = {
 
 const DEFAULT_MEMORY_SUMMARY: MemorySummary = {
   favoriteMood: 'Thoughtful',
-  favoriteSekret: "Raylene",
+  favoriteSekret: 'Raylene',
   commonTopics: ['breathing', 'rest'],
   streakDays: 0,
   lastCheckIn: 'Just met you.',
@@ -51,102 +60,26 @@ export const DEFAULT_COMPANION_STATE: CompanionState = {
   presenceMessage: 'I’m here with you. No rush.',
   checkIn: null,
   lastUpdated: '',
-  personality: "Raylene",
+  personality: 'Raylene',
 };
 
-function normalizeTopics(values: Array<string | undefined>): string[] {
-  const normalized = values
-    .filter(Boolean)
-    .map((value) => value?.toLowerCase().trim())
-    .filter((value): value is string => Boolean(value));
-  return Array.from(new Set(normalized)).slice(0, 6);
-}
-
-function mostFrequent(values: string[], fallback: string) {
-  if (!values.length) return fallback;
-  const counts = values.reduce<Record<string, number>>((acc, value) => {
-    acc[value] = (acc[value] || 0) + 1;
-    return acc;
-  }, {});
-  return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || fallback;
-}
-
-function selectFavoriteMood(input: CompanionActivityInput, fallback: string) {
-  const moods = (input.moodHistory || []).map((entry) => entry.mood).filter(Boolean) as string[];
-  if (moods.length) {
-    return mostFrequent(moods, fallback);
-  }
-  return input.mood || fallback;
-}
-
-function buildTopics(input: CompanionActivityInput) {
-  const journalTopics = (input.journalEntries || [])
-    .map((entry) => entry.text)
-    .join(' ')
-    .toLowerCase()
-    .match(/\b(about|school|friends|family|anxiety|stress|sleep|body|heart|future|home|work|love|money|grades|boys|girls|identity|peace|rest)\b/g) || [];
-
-  const circleTopics = (input.circlePosts || [])
-    .map((post) => post.text)
-    .join(' ')
-    .toLowerCase()
-    .match(/\b(school|friends|family|anxiety|stress|sleep|body|heart|future|home|work|love|money|grades|boys|girls|identity|peace|rest)\b/g) || [];
-
-  return normalizeTopics([...journalTopics, ...circleTopics]);
-}
-
-function buildComfortTools(input: CompanionActivityInput) {
-  const tools = (input.comfortSessions || [])
-    .map((session) => session.type)
-    .filter((tool): tool is string => Boolean(tool))
-    .map((tool) => tool.toLowerCase()) as string[];
-  return Array.from(new Set(tools)).slice(0, 5);
-}
-
-function buildMilestones(summary: MemorySummary, input: CompanionActivityInput) {
-  const milestones = [...summary.importantMilestones];
-  if ((input.streakDays || 0) >= 7 && !milestones.includes('7-day streak')) milestones.push('7-day streak');
-  if ((input.streakDays || 0) >= 14 && !milestones.includes('14-day streak')) milestones.push('14-day streak');
-  if ((input.journalEntries || []).length >= 3 && !milestones.includes('first pages')) milestones.push('first pages');
-  if ((input.voiceNotes || []).length >= 1 && !milestones.includes('voice-bip shared')) milestones.push('voice-bip shared');
-  return milestones.slice(-4);
-}
-
-export function buildMemorySummary(
-  input: CompanionActivityInput,
-  previous?: MemorySummary
-): MemorySummary {
-  const base = previous || DEFAULT_MEMORY_SUMMARY;
-  const favoriteMood = selectFavoriteMood(input, base.favoriteMood || DEFAULT_MEMORY_SUMMARY.favoriteMood);
-  const commonTopics = buildTopics(input);
-  const comfortToolsUsed = buildComfortTools(input);
-  const recurringEmotions = normalizeTopics(
-    (input.moodHistory || []).map((entry) => entry.mood).filter(Boolean) as string[]
-  );
-  const recurringStruggles = commonTopics.length ? commonTopics : base.recurringStruggles;
-  const streakDays = input.streakDays || base.streakDays || 0;
-  const journalsWritten = input.journalEntries?.length || base.journalsWritten || 0;
-  const voiceBips = input.voiceNotes?.length || base.voiceBips || 0;
-  const comfortActions = input.comfortSessions?.length || base.comfortActions || 0;
-  const daysActive = Math.max(base.daysActive || 0, streakDays, journalsWritten + voiceBips + comfortActions);
-  const conversations = Math.max(base.conversations || 0, journalsWritten + voiceBips + Math.max(1, (input.moodHistory || []).length));
-
+function buildCompanionMemory(previous?: MemorySummary, input?: CompanionActivityInput): SekretMemory {
   return {
-    favoriteMood,
-    favoriteSekret: PERSONALITY_LABELS[input.selectedSekret || 'soft'] || base.favoriteSekret,
-    commonTopics: commonTopics.length ? commonTopics : base.commonTopics,
-    streakDays,
-    lastCheckIn: base.lastCheckIn || 'We’re checking in.',
-    comfortToolsUsed: comfortToolsUsed.length ? comfortToolsUsed : base.comfortToolsUsed,
-    recurringEmotions: recurringEmotions.length ? recurringEmotions : base.recurringEmotions,
-    recurringStruggles: recurringStruggles.length ? recurringStruggles : base.recurringStruggles,
-    importantMilestones: buildMilestones(base, input),
-    daysActive,
-    conversations,
-    journalsWritten,
-    voiceBips,
-    comfortActions,
+    ...DEFAULT_SEKRET_MEMORY,
+    selectedPersonality: input?.selectedSekret || previous?.favoriteSekret || 'soft',
+    streaks: {
+      current: previous?.streakDays || 0,
+      longest: previous?.streakDays || 0,
+      lastUpdated: '',
+    },
+    recurringTopics: previous?.commonTopics || DEFAULT_SEKRET_MEMORY.recurringTopics,
+    lastCheckIn: previous?.lastCheckIn || DEFAULT_SEKRET_MEMORY.lastCheckIn,
   };
+}
+
+export function buildMemorySummary(input: CompanionActivityInput, previous?: MemorySummary): MemorySummary {
+  const memory = buildCompanionMemory(previous, input);
+  return summarizeSekretMemory(memory, input);
 }
 
 export function buildCompanionLevel(summary: MemorySummary): CompanionLevel {
@@ -188,78 +121,11 @@ export function buildCompanionLevel(summary: MemorySummary): CompanionLevel {
 }
 
 function getScreenPresence(input: CompanionActivityInput, summary: MemorySummary, personality: string) {
-  const topic = summary.commonTopics[0] || 'whatever’s been sitting heavy';
-  if (personality === 'Rylane') {
-    if (input.screen === 'journal') {
-      if (summary.streakDays >= 3) return `You’ve been keeping up your streak. That’s real. Proud of you.`;
-      if (summary.journalsWritten > 0) return `Last time you mentioned ${topic}. Bet. Want to get into it?`;
-      return `No pressure. One messy little page is enough.`;
-    }
-    if (summary.recurringStruggles.length) return `That ${summary.recurringStruggles[0]} stuff has been hanging around. We’ll handle one thing at a time.`;
-    return `I’m here. No big speech, just me.`;
-  }
-  if (personality === "Cloud Se'kret") {
-    if (input.screen === 'journal') {
-      if (summary.journalsWritten > 0) return `Last time you mentioned ${topic}. We can just sit with that for a minute.`;
-      return `You don’t have to solve everything tonight.`;
-    }
-    if (summary.recurringStruggles.length) return `That sounds heavy. We can just sit with it for a minute.`;
-    return `You can rest here.`;
-  }
-  if (personality === 'Night Se\'kret') {
-    if (input.screen === 'journal') {
-      if (summary.journalsWritten > 0) return `Still awake? You mentioned ${topic} last time. You don’t gotta explain it perfectly.`;
-      return `Long day? It’s okay. I’m here.`;
-    }
-    if (summary.recurringStruggles.length) return `Still awake? I’m here. No need to make it polished.`;
-    return `You’re not alone tonight.`;
-  }
-  if (input.screen === 'journal') {
-    if (summary.streakDays >= 3) return `You’ve been keeping up your streak. That matters. Proud of you.`;
-    if (summary.journalsWritten > 0) return `Last time you mentioned ${topic}. You still carrying that around?`;
-    return `No pressure. One messy little page is enough.`;
-  }
-  if (summary.recurringStruggles.length) return `You’ve been carrying ${summary.recurringStruggles[0]} around for a while. We can go slow.`;
-  return `I’m here with you. No big speech, just me.`;
+  return buildSekretPresence(summary, personality, input.screen);
 }
 
 export function buildCheckIn(summary: MemorySummary, input: CompanionActivityInput, personality: string): CompanionCheckIn | null {
-  const lowMood = /sad|angry|tired|anxious|overwhelmed|stress/i.test(input.mood || '');
-  const lateNight = input.isLateNight || false;
-  const roughPattern = summary.recurringEmotions.some((emotion) => /sad|angry|anxious|stress|overwhelmed/.test(emotion));
-  const longAbsence = summary.streakDays <= 1 && summary.daysActive > 4;
-
-  if (personality === 'Rylane') {
-    if (lateNight && lowMood) return { id: 'night-low-mood', message: "Looks like tonight’s one of those nights. We’ll keep it simple. I’m here.", tone: 'gentle' };
-    if (lowMood && roughPattern) return { id: 'rough-pattern', message: "You’ve had a few rough days in a row. Nah, that’s not nothing. Want to talk?", tone: 'warm' };
-    if (longAbsence) return { id: 'long-absence', message: 'I noticed you’ve been quiet lately. That usually means something’s sitting heavy. Start from the beginning.', tone: 'protective' };
-    return null;
-  }
-  if (personality === "Cloud Se'kret") {
-    if (lateNight && lowMood) return { id: 'night-low-mood', message: 'That sounds heavy. We can just sit here for a minute.', tone: 'gentle' };
-    if (lowMood && roughPattern) return { id: 'rough-pattern', message: 'You’ve had a few rough days in a row. We don’t have to fix it all tonight.', tone: 'warm' };
-    if (longAbsence) return { id: 'long-absence', message: 'I noticed you’ve been quiet lately. You don’t have to solve everything right now.', tone: 'protective' };
-    return null;
-  }
-  if (personality === 'Night Se\'kret') {
-    if (lateNight && lowMood) return { id: 'night-low-mood', message: 'Still awake? It’s okay. I’m here.', tone: 'gentle' };
-    if (lowMood && roughPattern) return { id: 'rough-pattern', message: 'Long day? We can keep this simple. You don’t have to explain it perfectly.', tone: 'warm' };
-    if (longAbsence) return { id: 'long-absence', message: 'I noticed you’ve been quiet lately. You can just be here with me tonight.', tone: 'protective' };
-    return null;
-  }
-  if (lateNight && lowMood) {
-    return { id: 'night-low-mood', message: "Looks like tonight might be one of those nights. I’m here. No fake 'I’m fine' stuff.", tone: 'gentle' };
-  }
-  if (lowMood && roughPattern) {
-    return { id: 'rough-pattern', message: "You’ve had a few rough days in a row. Nah, that’s not nothing. Want to talk?", tone: 'warm' };
-  }
-  if (longAbsence) {
-    return { id: 'long-absence', message: 'I noticed you’ve been quiet lately. That usually means something’s sitting heavy. You good to talk?', tone: 'protective' };
-  }
-  if (summary.streakDays <= 1) {
-    return { id: 'first-streak', message: 'You’re starting again, and that matters. Bet. We handle one thing at a time.', tone: 'gentle' };
-  }
-  return null;
+  return buildSekretCheckIn(summary, personality, input.mood, input.isLateNight);
 }
 
 export function buildGreeting(personality: string, level: CompanionLevel, mood?: string) {
@@ -283,7 +149,7 @@ export function buildGreeting(personality: string, level: CompanionLevel, mood?:
 export function buildCompanionSnapshot(input: CompanionActivityInput, previousState?: CompanionState) {
   const memorySummary = buildMemorySummary(input, previousState?.memorySummary);
   const companionLevel = buildCompanionLevel(memorySummary);
-  const personality = PERSONALITY_LABELS[input.selectedSekret || 'soft'] || previousState?.personality || "Raylene";
+  const personality = PERSONALITY_LABELS[input.selectedSekret || 'soft'] || previousState?.personality || 'Raylene';
   const greeting = buildGreeting(personality, companionLevel, input.mood);
   const presenceMessage = getScreenPresence(input, memorySummary, personality);
   const checkIn = buildCheckIn(memorySummary, input, personality);
@@ -302,13 +168,34 @@ export function buildCompanionSnapshot(input: CompanionActivityInput, previousSt
 export async function loadCompanionState(): Promise<CompanionState> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_COMPANION_STATE;
+    const memory = await loadSekretMemory();
+
+    if (!raw) {
+      return {
+        ...DEFAULT_COMPANION_STATE,
+        memorySummary: {
+          ...DEFAULT_MEMORY_SUMMARY,
+          commonTopics: memory.recurringTopics || DEFAULT_MEMORY_SUMMARY.commonTopics,
+          streakDays: memory.streaks?.current || 0,
+          lastCheckIn: memory.lastCheckIn || DEFAULT_MEMORY_SUMMARY.lastCheckIn,
+        },
+        personality: PERSONALITY_LABELS[memory.selectedPersonality || 'soft'] || defaultCompanionPersonality(memory.selectedPersonality),
+      };
+    }
+
     const parsed = JSON.parse(raw) as CompanionState;
     return {
       ...DEFAULT_COMPANION_STATE,
       ...parsed,
-      memorySummary: { ...DEFAULT_MEMORY_SUMMARY, ...(parsed.memorySummary || {}) },
+      memorySummary: {
+        ...DEFAULT_MEMORY_SUMMARY,
+        ...(parsed.memorySummary || {}),
+        commonTopics: parsed.memorySummary?.commonTopics || memory.recurringTopics || DEFAULT_MEMORY_SUMMARY.commonTopics,
+        streakDays: parsed.memorySummary?.streakDays ?? memory.streaks?.current ?? 0,
+        lastCheckIn: parsed.memorySummary?.lastCheckIn || memory.lastCheckIn || DEFAULT_MEMORY_SUMMARY.lastCheckIn,
+      },
       companionLevel: { ...DEFAULT_COMPANION_LEVEL, ...(parsed.companionLevel || {}) },
+      personality: parsed.personality || PERSONALITY_LABELS[memory.selectedPersonality || 'soft'] || 'Raylene',
     };
   } catch (error) {
     console.warn('Unable to load companion state', error);
@@ -316,9 +203,27 @@ export async function loadCompanionState(): Promise<CompanionState> {
   }
 }
 
+function defaultCompanionPersonality(value?: string) {
+  return PERSONALITY_LABELS[value || 'soft'] || 'Raylene';
+}
+
 export async function saveCompanionState(state: CompanionState) {
   try {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const existing = await loadSekretMemory();
+    const memory: SekretMemory = {
+      ...existing,
+      selectedPersonality: state.personality?.toLowerCase().includes('rylane') ? 'rylane' : state.personality?.toLowerCase().includes('cloud') ? 'cloud' : state.personality?.toLowerCase().includes('night') ? 'night' : 'soft',
+      streaks: {
+        current: state.memorySummary?.streakDays || existing.streaks?.current || 0,
+        longest: Math.max(existing.streaks?.longest || 0, state.memorySummary?.streakDays || 0),
+        lastUpdated: state.lastUpdated || existing.streaks?.lastUpdated || new Date().toISOString(),
+      },
+      recurringTopics: state.memorySummary?.commonTopics || existing.recurringTopics || DEFAULT_SEKRET_MEMORY.recurringTopics,
+      lastCheckIn: state.memorySummary?.lastCheckIn || existing.lastCheckIn || DEFAULT_SEKRET_MEMORY.lastCheckIn,
+      lastUpdated: state.lastUpdated || existing.lastUpdated || new Date().toISOString(),
+    };
+    await saveSekretMemory(memory);
   } catch (error) {
     console.warn('Unable to save companion state', error);
   }
