@@ -82,7 +82,7 @@ function withinDays<T extends { date?: string }>(items: T[], n: number): number 
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  t: (k: string) => string;
+  t: Record<string, any>;
   mood: string;
   selectedSekret: 'rylane' | 'raylene' | string;
   moodHistory: MoodEntry[];

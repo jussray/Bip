@@ -4,7 +4,7 @@ import { loadState, saveState } from '../utils/storage';
 import { SEKRET_PROFILES, HOME_MESSAGES } from '../constants/theme';
 
 export function useSekretState() {
-  const [theme, setTheme] = useState('neon');
+  const [theme, setTheme] = useState('raylene');
   const [mood, setMood] = useState('Happy');
   const [userSide, setUserSide] = useState<'teen' | 'parent'>('teen');
   const [selectedSekret, setSelectedSekret] = useState('soft');
