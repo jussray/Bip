@@ -1,51 +1,63 @@
-# Image Asset Audit — Se'kret Bip
-
-**Audited:** 2026-06-10
-**Runtime roots:** `app/`, `components/`, `constants/`, `hooks/`, `screens/`, `services/`, `utils/`, `assets/`, and `app.json`
+# Image asset audit
 
 ## Runtime policy
 
-Mockups, reference boards, and character sheets are design inputs, not application UI. They live under `design-references/images/`, outside Expo's runtime asset directory. Screens must recreate their layout with React Native components rather than displaying a flattened design image.
+Runtime images live in `assets/images/`. Full-screen mockups, character reference
+boards, and design sheets live in `docs/design-references/assets/` and are not
+part of the runtime image map. Expo's native splash is color-only; the React
+Native opening screen builds its atmosphere, content, and actions from
+components rather than displaying a screenshot.
 
-The native Expo splash is color-only. `screens/SplashScreen.tsx` supplies the branded experience with React Native layout, text, buttons, mascot art, and scene artwork after the application mounts.
+Do not add a `require()` for anything under `docs/design-references/`. If a
+reference contains a reusable illustration, export that illustration as a
+separate, deliberately named runtime asset first.
 
-Run `npm run audit:runtime-assets` to verify that:
+## Reference-only files
 
-- no file named `*mockup*`, `*reference*`, or `*sheet*` remains under `assets/`;
-- runtime source does not import or require a matching filename;
-- runtime source does not reference `design-references/`.
+The following files were removed from `assets/images/` during this audit:
 
-## Isolated design-only files
+- `circle-mockup.png`
+- `parent-dashboard-background-reference.png`
+- `parent-dashboard-mockup.png`
+- `parent-dashboard-splash-mockup.png`
+- `raylene-fan-sheet.png`
+- `raylene-happy-reference-sheet.png`
+- `raylene-neutral-reference-sheet.png`
+- `raylene-rainy-window-sheet.png`
+- `raylene-reference-sheet.png`
+- `raylene-thinking-sheet-v2.png`
+- `raylene-thinking-sheet.png`
+- `rylane-chibi-sticker-mini-reference-sheet.png`
+- `rylane-profile-sheet.png`
+- `rylane-reference-board.png`
+- `rylane-reference-sheet.png`
 
-These files are retained for designers and implementers, but are never loaded by React Native:
+Several Raylene sheets and `circle-mockup.png` are two-byte placeholders. The
+Rylane sheets and dashboard references are loadable images, but remain
+reference-only because they are composite boards or screen mockups. The former
+`sekret-splash.png` was byte-identical to the parent dashboard mockup and is now
+stored as `parent-dashboard-splash-mockup.png` to make its role explicit.
 
-- `design-references/images/circle-mockup.png`
-- `design-references/images/parent-dashboard-bg.png`
-- `design-references/images/parent-dashboard.png`
-- `design-references/images/raylene-fan-sheet.png`
-- `design-references/images/raylene-happy-reference-sheet.png`
-- `design-references/images/raylene-neutral-reference-sheet.png`
-- `design-references/images/raylene-rainy-window-sheet.png`
-- `design-references/images/raylene-reference-sheet.png`
-- `design-references/images/raylene-thinking-sheet-v2.png`
-- `design-references/images/raylene-thinking-sheet.png`
-- `design-references/images/rylane-chibi-sticker-mini-reference-sheet.png`
-- `design-references/images/rylane-profile-sheet.png`
-- `design-references/images/rylane-reference-board.png`
-- `design-references/images/rylane-reference-sheet.png`
-- `design-references/images/sekret-splash.png`
+## Runtime fallbacks
 
-`parent-dashboard.png` and `sekret-splash.png` are byte-for-byte identical flattened dashboard artwork. Neither is a valid splash or screen implementation. `parent-dashboard-bg.png` is also kept with the source references because the implemented parent bridge uses a component-based gradient, cards, input, controls, and shared bottom navigation.
+A number of old runtime filenames are also two-byte placeholders. None is
+passed to React Native's image loader. `constants/theme.ts` maps those semantic
+slots to valid standalone character art or room art until proper exports are
+available.
 
-## Runtime layout map
+- Room variants currently fall back to `bg-raylene-room-night.png`.
+- Missing Raylene poses fall back to standalone neutral, happy, writing, or
+  window art.
+- Missing Rylane poses fall back to standalone neutral, full-body, or window
+  art.
+- Circle uses `room-bg-dark.png`; it never loads the reference mockup.
 
-| Experience | Component implementation | Runtime art policy |
-|---|---|---|
-| Native splash | `app.json` solid background color | No image |
-| Branded splash | `screens/SplashScreen.tsx` | Scene/character illustrations are layered into a component layout |
-| Circle | `screens/CircleScreen.tsx` | Cards, composer input, actions, and shared bottom nav over a generic atmosphere background; no Circle mockup |
-| Parent Bridge | `screens/ParentBridgeScreen.tsx` | Gradient, cards, prompt controls, message input, actions, and shared bottom nav; no dashboard mockup |
+## Verification expectations
 
-## Known placeholder artwork
-
-Some production-named files in `assets/images/` are two-byte placeholders. `constants/theme.ts` never requires those files and maps their semantic roles to valid production artwork instead. They remain a separate asset-quality issue and are not used as a reason to load a reference sheet or mockup.
+- No file matching `*mockup*`, `*reference*`, or `*sheet*` belongs under
+  `assets/images/`.
+- No source file imports an image from `docs/design-references/`.
+- `app.json` must not configure a mockup or reference image as the native
+  splash.
+- Screen structure, cards, text inputs, actions, and navigation remain React
+  Native components.
