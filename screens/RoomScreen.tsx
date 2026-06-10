@@ -386,6 +386,7 @@ export function RoomScreen({
   const avatarSlide = useRef(new Animated.Value(14)).current;
   const avatarScale = useRef(new Animated.Value(0.96)).current;
   const glowAnim    = useRef(new Animated.Value(0.2)).current;
+  const breathAnim  = useRef(new Animated.Value(1)).current;
   const guideAnim   = useRef(new Animated.Value(0)).current;
   const hintAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(0)).current;
@@ -407,6 +408,13 @@ export function RoomScreen({
       ])
     );
     glowLoopRef.current.start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1.04, duration: 2200, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 1,    duration: 2200, useNativeDriver: true }),
+      ])
+    ).start();
 
     pulseLoopRef.current = Animated.loop(
       Animated.sequence([

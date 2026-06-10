@@ -78,7 +78,7 @@ const cloudStormy       = require('../assets/images/cloud-stormy.png');
 // ── UI / Splash ────────────────────────────────────────────────────────────
 const parentDashboard = require('../assets/images/parent-dashboard.png');
 // Fallbacks for splash + circle mockup until real art lands:
-const sekretSplash  = rayleneWindow; // calm splash hero
+const sekretSplash  = require('../assets/images/sekret-splash.png');
 const circleMockup  = cloudHappy;    // soft circle preview
 
 export const IMAGES = {
