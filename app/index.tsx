@@ -78,11 +78,12 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const THEME_PACKS: Record<string, any> = {
-  night:  { name: 'Golden Moon',  emoji: '\uD83C\uDF19', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
-  flower: { name: 'Soft Pink',    emoji: '\uD83C\uDF38', background: '#4A1028', card: '#6D1B3B', accent: '#FF4FA3', soft: '#FFD6E7' },
-  rain:   { name: 'Rain Blue',    emoji: '\uD83C\uDF27\uFE0F', background: '#243447', card: '#36506B', accent: '#4DA3FF', soft: '#B6DCFF' },
-  neon:   { name: 'Night Purple', emoji: '\uD83D\uDC9C', background: '#160028', card: '#2B0A4D', accent: '#D946EF', soft: '#F5B8FF' },
-  galaxy: { name: 'Galaxy Night', emoji: '\uD83C\uDF0C', background: '#151A40', card: '#2A2D73', accent: '#7C83FF', soft: '#D7D9FF' },
+  raylene: { name: "Raylene's Room", emoji: '\uD83D\uDC9C', background: '#1a0828', card: '#2a1040', accent: '#e879f9', soft: '#fde8ff' },
+  rylane:  { name: "Rylane's Space", emoji: '\u26A1', background: '#060d1c', card: '#0d1f3a', accent: '#4DA3FF', soft: '#b6dcff' },
+  cloud:   { name: "Cloud's World",  emoji: '\u2601\uFE0F', background: '#0a0818', card: '#18103a', accent: '#a78bfa', soft: '#ede9fe' },
+  night:   { name: 'Late Night',     emoji: '\uD83C\uDF19', background: '#05030f', card: '#100828', accent: '#c4b5fd', soft: '#ede9fe' },
+  rain:    { name: 'Rain Room',      emoji: '\uD83C\uDF27\uFE0F', background: '#060e18', card: '#0d1e30', accent: '#60a5fa', soft: '#bfdbfe' },
+  sunset:  { name: 'Sunset Vibe',   emoji: '\uD83C\uDF05', background: '#180a18', card: '#2a1428', accent: '#fb7185', soft: '#fce7f3' },
 };
 
 const SEKRET_PROFILES: Record<string, any> = {
@@ -128,7 +129,7 @@ export default function App() {
   const [screen, setScreen] = useState('splash');
 
   // ─── Theme & identity ──────────────────────────────────────────────────
-  const [theme, setTheme]                   = useState('neon');
+  const [theme, setTheme]                   = useState('raylene');
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
@@ -169,7 +170,7 @@ export default function App() {
   const [isLoading, setIsLoading]               = useState(true);
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
+  const t             = THEME_PACKS[theme] || THEME_PACKS.raylene;
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
   const companionInput = useMemo(() => ({
     selectedSekret,
