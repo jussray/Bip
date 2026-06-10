@@ -59,6 +59,28 @@ const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png"
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
+const bgComfort         = require('../assets/images/comfort-bg.png');
+const bgJournal         = require('../assets/images/journal-bg.png');
+const bgBridge          = require('../assets/images/bridge-bg.png');
+const bgVoiceBip        = require('../assets/images/voice-bip-bg.png');
+// Circle is assembled from React Native controls over a generic atmosphere asset.
+// Design mockups live outside assets/ and are never loaded by the application.
+const bgCircle          = require('../assets/images/room-bg-dark.png');
+const bgWindow          = require('../assets/images/window.png');
+const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
+
+// ── Cloud / Mascot (all real) ──────────────────────────────────────────────
+const cloud             = require('../assets/images/cloud.png');
+const cloudHappy        = require('../assets/images/cloud-happy.png');
+const cloudHeadphones   = require('../assets/images/cloud-headphones.png');
+const cloudHeadphonesV2 = require('../assets/images/cloud-headphones-v2.png');
+const cloudSleepy       = require('../assets/images/cloud-sleepy.png');
+const cloudStormy       = require('../assets/images/cloud-stormy.png');
+
+// ── UI / Splash ────────────────────────────────────────────────────────────
+// The native splash is color-only in app.json. The branded splash experience is
+// composed in SplashScreen from text, controls, mascots, and valid scene artwork.
+const sekretSplash = roomArtwork;
 const bgComfort = require("../assets/images/comfort-bg.png");
 const bgJournal = require("../assets/images/journal-bg.png");
 const bgBridge = require("../assets/images/bridge-bg.png");
@@ -140,6 +162,9 @@ export const IMAGES = {
   cloudHeadphonesV2,
   cloudSleepy,
   cloudStormy,
+
+  // UI / Splash
+  sekretSplash,
 } as const;
 
 export const AVATARS: Record<string, Record<string, any>> = {
