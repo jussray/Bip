@@ -29,6 +29,7 @@ import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
+import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 // IMPORTANT: loadState() takes NO args — returns full state object.
@@ -77,14 +78,6 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const THEME_PACKS: Record<string, any> = {
-  night:  { name: 'Golden Moon',  emoji: '\uD83C\uDF19', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
-  flower: { name: 'Soft Pink',    emoji: '\uD83C\uDF38', background: '#4A1028', card: '#6D1B3B', accent: '#FF4FA3', soft: '#FFD6E7' },
-  rain:   { name: 'Rain Blue',    emoji: '\uD83C\uDF27\uFE0F', background: '#243447', card: '#36506B', accent: '#4DA3FF', soft: '#B6DCFF' },
-  neon:   { name: 'Night Purple', emoji: '\uD83D\uDC9C', background: '#160028', card: '#2B0A4D', accent: '#D946EF', soft: '#F5B8FF' },
-  galaxy: { name: 'Galaxy Night', emoji: '\uD83C\uDF0C', background: '#151A40', card: '#2A2D73', accent: '#7C83FF', soft: '#D7D9FF' },
-};
-
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: "Se’kret",       emoji: '🌸', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. Aight, talk to me. What’s really going on?" },
   rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
@@ -128,7 +121,7 @@ export default function App() {
   const [screen, setScreen] = useState('splash');
 
   // ─── Theme & identity ──────────────────────────────────────────────────
-  const [theme, setTheme]                   = useState('neon');
+  const [theme, setTheme]                   = useState('raylene');
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
@@ -169,7 +162,8 @@ export default function App() {
   const [isLoading, setIsLoading]               = useState(true);
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
+  const vibeKey       = normalizeVibeKey(theme);
+  const t             = THEME_PACKS[vibeKey];
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
   const companion = useSekretCompanion({
     selectedSekret,
@@ -197,7 +191,7 @@ export default function App() {
       try {
         const state = await loadState();
 
-        if (state.theme)          setTheme(state.theme);
+        if (state.theme)          setTheme(normalizeVibeKey(state.theme));
         if (state.mood)           setMood(state.mood);
         if (state.userSide)       setUserSide(state.userSide);
         if (state.selectedSekret) setSelectedSekret(state.selectedSekret);
@@ -437,7 +431,7 @@ export default function App() {
       setScreen={setScreen}
       t={t}
       updateRoomMemory={updateRoomMemory}
-      weatherMode={theme === 'rain' ? 'rain' : undefined}
+      vibe={vibeKey}
       BottomNav={nav}
     />
   );

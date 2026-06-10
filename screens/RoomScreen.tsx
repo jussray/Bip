@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IMAGES, getRoomPhase, getRoomScene, type RoomPhase } from '../constants/theme';
+import { IMAGES, THEME_PACKS, getRoomPhase, type RoomPhase, type VibeKey } from '../constants/theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -334,7 +334,7 @@ interface RoomScreenProps {
   setScreen: (screen: string) => void;   // widened to string — matches index.tsx
   t: Record<string, any>;
   updateRoomMemory?: (patch: Record<string, any>) => void;
-  weatherMode?: string;
+  vibe: VibeKey;
   BottomNav: React.ReactNode;
 }
 
@@ -347,7 +347,7 @@ export function RoomScreen({
   setScreen,
   t,
   updateRoomMemory,
-  weatherMode,
+  vibe,
   BottomNav,
 }: RoomScreenProps) {
 
@@ -358,8 +358,9 @@ export function RoomScreen({
   // clock time, matching the original room-selection hierarchy.
   const now = useMemo(() => new Date(), []);
   const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
-  const roomPhase = useMemo(() => getRoomPhase(now, weatherMode), [now, weatherMode]);
-  const roomImage = useMemo(() => getRoomScene(character, roomPhase), [character, roomPhase]);
+  const roomPhase = useMemo(() => getRoomPhase(now, vibe === 'rain' ? 'rain' : undefined), [now, vibe]);
+  const vibePack = THEME_PACKS[vibe];
+  const roomImage = vibePack.room;
 
   const hotspots = useMemo(
     () => character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS,
@@ -526,13 +527,7 @@ export function RoomScreen({
     return getPresenceLine(character, timeOfDay);
   };
 
-  const timeBadge = {
-    day: '☀️ day room',
-    evening: '🌆 evening room',
-    rain: '🌧️ rain room',
-    night: '🌙 night room',
-    deepNight: '✨ deep night room',
-  }[roomPhase];
+  const timeBadge = `${vibePack.emoji} ${vibePack.feeling}`;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -550,6 +545,7 @@ export function RoomScreen({
           onError={() => undefined}
         />
         <View style={[styles.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
+        <View style={[styles.overlay, { backgroundColor: vibePack.background + '22' }]} />
       </Animated.View>
 
       {/* ── Hotspots ────────────────────────────────────────────────────── */}
@@ -625,6 +621,16 @@ export function RoomScreen({
           accessible={false}
         />
       </Animated.View>
+
+      <TouchableOpacity
+        style={[styles.cloudPresence, { borderColor: vibePack.accent + '88' }]}
+        onPress={() => setScreen('cloudThoughts')}
+        accessibilityRole="button"
+        accessibilityLabel="Cloud is here. Open Cloud Thoughts"
+      >
+        <Image source={IMAGES.cloudHappy} style={styles.cloudPresenceImage} resizeMode="contain" />
+        <Text style={styles.cloudPresenceText}>Cloud's here</Text>
+      </TouchableOpacity>
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
@@ -714,6 +720,9 @@ const styles = StyleSheet.create({
   root:                  { flex: 1, backgroundColor: '#0d0014' },
   bg:                    { width, height },
   overlay:               { ...StyleSheet.absoluteFillObject },
+  cloudPresence:         { position: 'absolute', top: Platform.OS === 'ios' ? 116 : 94, right: 18, width: 76, height: 76, borderRadius: 24, borderWidth: 1, backgroundColor: 'rgba(22,12,42,0.58)', alignItems: 'center', justifyContent: 'center', zIndex: 8 },
+  cloudPresenceImage:    { width: 47, height: 40 },
+  cloudPresenceText:     { color: '#f3edff', fontSize: 9, fontWeight: '700', marginTop: -2 },
 
   hotspot:               { position: 'absolute' },
   hotspotGlow:           {

@@ -47,6 +47,8 @@ type CirclePost = {
     stay?: number;
   };
   quietRepliesCount?: number;
+  anonymousName?: string;
+  circleTag?: string;
 };
 
 type CircleScreenProps = {
@@ -101,6 +103,33 @@ const QUOTE_REPLIES_RYLANE = [
   'no advice. just with you.',
   'that took guts.',
   'this hit. for real.',
+];
+
+const COMMUNITY_BIPS: CirclePost[] = [
+  {
+    id: 'community-1',
+    anonymousName: 'anonymous bip · 17',
+    circleTag: 'needed to say it',
+    text: "I keep telling everybody I'm just tired, but honestly I think I'm sad. I don't need advice. I just didn't want to hold it by myself tonight.",
+    reactions: { felt: 34, comfort: 58, proud: 21, stay: 46 },
+    quietRepliesCount: 12,
+  },
+  {
+    id: 'community-2',
+    anonymousName: 'anonymous bip · 15',
+    circleTag: 'small win',
+    text: "I finally told my friend that joke actually hurt me. My voice was shaking bad 😭 but I said it.",
+    reactions: { felt: 19, comfort: 17, proud: 63, stay: 14 },
+    quietRepliesCount: 8,
+  },
+  {
+    id: 'community-3',
+    anonymousName: 'anonymous bip · 16',
+    circleTag: 'anybody else?',
+    text: "Does anybody else get quiet when they're mad because they're scared they'll say too much?",
+    reactions: { felt: 71, comfort: 24, proud: 8, stay: 31 },
+    quietRepliesCount: 19,
+  },
 ];
 
 const LIGHT_WORDS = ['tired', 'overwhelmed', 'stressed', 'ugh', 'annoyed', 'frustrated', 'embarrassed'];
@@ -200,6 +229,7 @@ export function CircleScreen({
   const glow = useMemo(() => moodGlow(mood), [mood]);
 
   const QUOTE_REPLIES = isRylane ? QUOTE_REPLIES_RYLANE : QUOTE_REPLIES_RAYLENE;
+  const visiblePosts = circlePosts.length ? circlePosts : COMMUNITY_BIPS;
 
   const [selectedType, setSelectedType] = useState<MediaType>('text');
   const [showTypeMenu, setShowTypeMenu] = useState(false);
@@ -597,13 +627,17 @@ export function CircleScreen({
         <Animated.View style={cardStyle(fade4)}>
           <View style={[styles.sectionCard, { borderColor: glow, backgroundColor: 'rgba(20,12,40,0.7)' }]}>
             <Text style={styles.sectionTitle}>circle bips</Text>
-            {circlePosts.length === 0 && (
-              <Text style={styles.emptyText}>
-                {isRylane ? 'circle’s quiet. drop something real.' : 'circle is quiet right now. you can be the first.'}
-              </Text>
-            )}
-            {circlePosts.map(post => (
+            <View style={styles.circlePromise}>
+              <Text style={styles.circlePromiseText}>You don't have to know them to not feel alone.</Text>
+              <Text style={styles.circlePromiseSub}>anonymous · supported · never ranked</Text>
+            </View>
+            {visiblePosts.map(post => (
               <View key={post.id} style={[styles.postCard, { borderColor: glow + '88' }]}>
+                <View style={styles.postMetaRow}>
+                  <View style={[styles.anonymousDot, { backgroundColor: glow }]} />
+                  <Text style={styles.anonymousName}>{post.anonymousName || 'anonymous bip'}</Text>
+                  {!!post.circleTag && <Text style={[styles.circleTag, { color: glow }]}>{post.circleTag}</Text>}
+                </View>
                 <Text style={styles.postText}>{post.text}</Text>
                 {!!post.mediaUri && <Text style={styles.postMedia}>media attached</Text>}
                 <View style={styles.reactionRow}>
@@ -615,7 +649,7 @@ export function CircleScreen({
                   ].map(([emoji, type, label]) => (
                     <TouchableOpacity
                       key={type}
-                      onPress={() => reactToPost(post.id, type as string)}
+                      onPress={() => { if (!String(post.id).startsWith('community-')) reactToPost(post.id, type as string); }}
                       style={styles.reactionBtn}
                     >
                       <Text style={styles.reactionText}>{emoji} {(post.reactions as any)?.[type as string] || 0}</Text>
@@ -771,6 +805,13 @@ const styles = StyleSheet.create({
   sectionCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 6, marginBottom: 14 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
   emptyText: { color: '#cbb6f7', fontSize: 13, fontStyle: 'italic', textAlign: 'center', paddingVertical: 18 },
+  circlePromise: { padding: 13, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.055)', marginBottom: 12 },
+  circlePromiseText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  circlePromiseSub: { color: '#bcaed2', fontSize: 10, letterSpacing: 0.5, marginTop: 3 },
+  postMetaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 11 },
+  anonymousDot: { width: 8, height: 8, borderRadius: 4, marginRight: 7 },
+  anonymousName: { color: '#e8def7', fontSize: 11, fontWeight: '800', flex: 1 },
+  circleTag: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
 
   postCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, backgroundColor: 'rgba(20,12,40,0.4)' },
   postText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },

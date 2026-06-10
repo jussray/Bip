@@ -1,3 +1,5 @@
+import type { ImageSourcePropType } from "react-native";
+
 // constants/theme.ts
 // Se'kret Bip — Design Tokens + IMAGES Map
 //
@@ -80,24 +82,8 @@ const cloudStormy       = require('../assets/images/cloud-stormy.png');
 // ── UI / Splash ────────────────────────────────────────────────────────────
 // The native splash is color-only in app.json. The branded splash experience is
 // composed in SplashScreen from text, controls, mascots, and valid scene artwork.
-const sekretSplash = roomArtwork;
-const bgComfort = require("../assets/images/comfort-bg.png");
-const bgJournal = require("../assets/images/journal-bg.png");
-const bgBridge = require("../assets/images/bridge-bg.png");
-const bgVoiceBip = require("../assets/images/voice-bip-bg.png");
-// Circle's own mockup is corrupt, so use the valid generic night backdrop here.
-// This stays separate from room art: room screens always resolve through getRoomScene().
-const bgCircle = require("../assets/images/room-bg-dark.png");
-const bgWindow = require("../assets/images/window.png");
-const bgCalmHero = rayleneWindow; // hero on Calm = Raylene at the window
+const sekretSplash = bgRayleneRoomNight;
 
-// ── Cloud / Mascot (all real) ──────────────────────────────────────────────
-const cloud = require("../assets/images/cloud.png");
-const cloudHappy = require("../assets/images/cloud-happy.png");
-const cloudHeadphones = require("../assets/images/cloud-headphones.png");
-const cloudHeadphonesV2 = require("../assets/images/cloud-headphones-v2.png");
-const cloudSleepy = require("../assets/images/cloud-sleepy.png");
-const cloudStormy = require("../assets/images/cloud-stormy.png");
 
 export const IMAGES = {
   // Raylene
@@ -229,57 +215,104 @@ export function getRoomBg(
   return getRoomScene(character, phase);
 }
 
-export const THEME_PACKS: Record<
-  string,
-  {
-    name: string;
-    emoji: string;
-    background: string;
-    card: string;
-    accent: string;
-    soft: string;
-  }
-> = {
-  night: {
-    name: "Golden Moon",
-    emoji: "🌙",
-    background: "#3A2503",
-    card: "#5B3A00",
-    accent: "#FFD84D",
-    soft: "#FFF3B0",
+export type VibeKey = "raylene" | "rylane" | "cloud" | "night" | "rain" | "sunset";
+
+export type VibePack = {
+  name: string;
+  emoji: string;
+  feeling: string;
+  detail: string;
+  background: string;
+  card: string;
+  accent: string;
+  soft: string;
+  room: ImageSourcePropType;
+  overlay: readonly [string, string, string];
+};
+
+// Vibes are room atmospheres, not app color skins. Each one is grounded in
+// an existing production room scene so previews and the live room stay honest.
+export const THEME_PACKS: Record<VibeKey, VibePack> = {
+  raylene: {
+    name: "Raylene's Room",
+    emoji: "💜",
+    feeling: "scrapbook soft",
+    detail: "lavender · warm pink glow · fairy lights",
+    background: "#21102f",
+    card: "#4b285f",
+    accent: "#f19ac5",
+    soft: "#f4d8f3",
+    room: bgRayleneRoomEvening,
+    overlay: ["rgba(42,20,61,0.08)", "rgba(87,42,103,0.28)", "rgba(24,9,39,0.62)"],
   },
-  flower: {
-    name: "Soft Pink",
-    emoji: "🌸",
-    background: "#4A1028",
-    card: "#6D1B3B",
-    accent: "#FF4FA3",
-    soft: "#FFD6E7",
+  rylane: {
+    name: "Rylane After Dark",
+    emoji: "🌃",
+    feeling: "city chill",
+    detail: "indigo · midnight blue · window lights",
+    background: "#0c102c",
+    card: "#202353",
+    accent: "#8f9cff",
+    soft: "#d7dcff",
+    room: bgRylaneRoomDeepNight,
+    overlay: ["rgba(8,13,45,0.08)", "rgba(24,29,82,0.3)", "rgba(5,7,27,0.66)"],
+  },
+  cloud: {
+    name: "Cloud Drift",
+    emoji: "☁️",
+    feeling: "quiet and floating",
+    detail: "cloud white · lavender mist · soft blue",
+    background: "#25253f",
+    card: "#555577",
+    accent: "#c8c9f5",
+    soft: "#f0efff",
+    room: bgRayleneRoomDay,
+    overlay: ["rgba(229,231,255,0.16)", "rgba(143,148,194,0.22)", "rgba(42,37,70,0.52)"],
+  },
+  night: {
+    name: "Night Comfort",
+    emoji: "🌙",
+    feeling: "late-night safe",
+    detail: "deep violet · moonlight silver · stars",
+    background: "#110a28",
+    card: "#2d2051",
+    accent: "#bbb7ef",
+    soft: "#e7e5ff",
+    room: bgRayleneRoomDeepNight,
+    overlay: ["rgba(20,12,53,0.08)", "rgba(47,31,91,0.28)", "rgba(7,4,24,0.7)"],
   },
   rain: {
-    name: "Rain Blue",
+    name: "Window Rain",
     emoji: "🌧️",
-    background: "#243447",
-    card: "#36506B",
-    accent: "#4DA3FF",
-    soft: "#B6DCFF",
+    feeling: "reflective and held",
+    detail: "muted blue-purple · rain glass · hush",
+    background: "#17263c",
+    card: "#30445f",
+    accent: "#91b7dc",
+    soft: "#d8e8f7",
+    room: bgRayleneRoomRain,
+    overlay: ["rgba(26,58,83,0.1)", "rgba(42,67,98,0.3)", "rgba(10,22,39,0.68)"],
   },
-  neon: {
-    name: "Night Purple",
-    emoji: "💜",
-    background: "#160028",
-    card: "#2B0A4D",
-    accent: "#D946EF",
-    soft: "#F5B8FF",
+  sunset: {
+    name: "Sunset Exhale",
+    emoji: "🌆",
+    feeling: "warm evening",
+    detail: "purple-orange sky · lamp glow · unwind",
+    background: "#321630",
+    card: "#66334d",
+    accent: "#f4a07f",
+    soft: "#ffe0d1",
+    room: bgRayleneRoomEvening,
+    overlay: ["rgba(142,69,72,0.1)", "rgba(106,48,92,0.26)", "rgba(39,13,44,0.62)"],
   },
-  galaxy: {
-    name: "Galaxy Night",
-    emoji: "🌌",
-    background: "#151A40",
-    card: "#2A2D73",
-    accent: "#7C83FF",
-    soft: "#D7D9FF",
-  },
+};
+
+export const normalizeVibeKey = (key?: string): VibeKey => {
+  if (key && key in THEME_PACKS) return key as VibeKey;
+  if (key === "flower") return "raylene";
+  if (key === "galaxy") return "rylane";
+  if (key === "neon") return "night";
+  return "raylene";
 };
 
 export const SEKRET_PROFILES: Record<
