@@ -84,35 +84,51 @@ const FIT_CHECK_REACTIONS = [
 const SEED_POSTS: CirclePost[] = [
   {
     id: "seed-1",
-    text: "nobody asked if i was okay today but actually i kind of was and that felt weird",
+    text: "nobody asked if i was okay today. i was kind of not. but i smiled the whole time and now i’m tired in a different way.",
     bipType: "text",
-    date: "yesterday",
-    reactions: { felt: 14, comfort: 9, proud: 0, stay: 6 },
-    quietRepliesCount: 3,
+    date: "a few hours ago",
+    reactions: { felt: 41, comfort: 22, proud: 0, stay: 17 },
+    quietRepliesCount: 8,
   },
   {
     id: "seed-2",
-    text: "finished my assignment at 2am but i finished it. that counts.",
+    text: "finished it at 2am. cried a little. submitted anyway. that’s the whole story.",
     bipType: "growth",
-    date: "2 days ago",
-    reactions: { felt: 22, comfort: 4, proud: 18, stay: 2 },
-    quietRepliesCount: 7,
+    date: "yesterday",
+    reactions: { felt: 29, comfort: 6, proud: 38, stay: 4 },
+    quietRepliesCount: 11,
   },
   {
     id: "seed-3",
-    text: "the anxiety hit different this morning. still got up though.",
+    text: "anxiety was loud this morning. like really loud. i got up anyway. that’s my win today and i’m not minimizing it.",
     bipType: "text",
-    date: "3 days ago",
-    reactions: { felt: 31, comfort: 19, proud: 11, stay: 14 },
-    quietRepliesCount: 5,
+    date: "yesterday",
+    reactions: { felt: 53, comfort: 31, proud: 19, stay: 24 },
+    quietRepliesCount: 9,
   },
   {
     id: "seed-4",
-    text: "told my mom something real today. she actually listened.",
+    text: "i apologized to someone i hurt and they didn’t accept it. i’m trying to let that be okay.",
+    bipType: "text",
+    date: "2 days ago",
+    reactions: { felt: 44, comfort: 38, proud: 7, stay: 21 },
+    quietRepliesCount: 14,
+  },
+  {
+    id: "seed-5",
+    text: "i said no to something i didn’t want to do and i didn’t apologize for it. first time in a long time.",
+    bipType: "growth",
+    date: "3 days ago",
+    reactions: { felt: 18, comfort: 9, proud: 62, stay: 3 },
+    quietRepliesCount: 6,
+  },
+  {
+    id: "seed-6",
+    text: "sometimes i’m scared that being honest about how i feel will make people leave. so i stay quiet. and then i’m still alone anyway.",
     bipType: "text",
     date: "4 days ago",
-    reactions: { felt: 27, comfort: 16, proud: 8, stay: 5 },
-    quietRepliesCount: 4,
+    reactions: { felt: 78, comfort: 51, proud: 0, stay: 34 },
+    quietRepliesCount: 19,
   },
 ];
 
@@ -427,8 +443,18 @@ export function CircleScreen({
     : 'no likes. no followers. just real, soft, here.';
   const energyText = isRylane ? '⚡ low-stakes space open' : '💜 soft space open';
   const cultureLines = isRylane
-    ? ['no bullying. no exposing. no chasing clout.', 'just real bips. real circle. respect.']
-    : ['no bullying. no exposing. no going viral.', 'just real bips, real connection, real safety.'];
+    ? [
+        'this is not the internet. nobody\'s getting exposed here.',
+        'no clout. no ratio. no drama.',
+        'just real ones, saying real things, held in real care.',
+        'what gets posted in the circle stays in the circle.',
+      ]
+    : [
+        'this is not a social media feed. it\'s a support circle.',
+        'no bullying. no exposing. no going viral.',
+        'your bips are held gently here, always.',
+        'every person in this circle is going through something real.',
+      ];
   const composerHint = isRylane ? 'say it plain. no filter.' : 'say it how it feels, gently.';
 
   return (

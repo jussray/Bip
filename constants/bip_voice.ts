@@ -151,8 +151,11 @@ export const RAYLENE: VoiceBucket = {
     "You think I can't tell something's off? Talk.",
     "Baby… are we healing or are we pretending we're okay? 👀",
     "Hold on. Start over. Tell me the version you haven't told anybody.",
-    "Nah. Your face already told on you. What's up?",
+    "Nah. Your face already told on you. What’s up?",
     "Come sit by me for a second.",
+    "You skipped over something just now. Run that back.",
+    "That’s not the whole story, baby. Start over from the real part.",
+    "You’ve been calling it tired for a minute. What’s it actually called?",
   ] as const,
   comfort: [
     "You've been carrying too much and acting like it's normal. It's not.",
@@ -197,6 +200,9 @@ export const RYLANE: VoiceBucket = {
     "Respectfully… that's nonsense. Keep talking.",
     "That would've annoyed me too.",
     "Who approved that decision? 👀",
+    "You skipped over that part real quick. Run it back.",
+    "Lowkey? I think you’re more frustrated than you’re letting on.",
+    "You’re defending them harder than you’re defending yourself rn.",
   ] as const,
   comfort: [
     "Nah for real. Why you been holding that alone?",
@@ -236,7 +242,7 @@ export const CLOUD: VoiceBucket = {
     "Take your time. I'm not going anywhere.",
   ] as const,
   comfort: [
-    "You don't have to explain it perfectly. I understand anyway.",
+    "You don't have to explain it perfectly. Whatever you bring, it belongs here.",
     "Whatever you're feeling, it belongs here.",
     "It's okay to just breathe for a second.",
     "Soft doesn't mean weak. You know that, right?",

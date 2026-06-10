@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CompanionActivityInput, MemorySummary } from '../types/sekretCompanion';
 
+
+type ComfortWordEntry = { word: string; date: string };
+type DeferredEntry    = { phrase: string; date: string };
 type MemoryRecord = {
   sourceId?: string;
   date?: string;
@@ -25,6 +28,8 @@ export interface SekretMemory {
   lastCheckIn?: string;
   lastActiveAt?: string;
   recurringTopics: string[];
+  comfortWordHistory: ComfortWordEntry[];
+  deferredGoalHistory: DeferredEntry[];
   lastUpdated: string;
 }
 
@@ -38,6 +43,19 @@ const TOPIC_WORDS = [
 ] as const;
 const MAX_ACTIVITY_ITEMS = 60;
 
+// Words teens use to mask harder emotions
+const COMFORT_WORDS = [
+  'tired', 'fine', 'whatever', 'idk', 'okay', 'kind of', 'sort of', 'not really', 'ig', 'i guess',
+] as const;
+
+// Phrases that signal deferred goals
+const DEFERRED_PHRASES = [
+  'on monday', 'next week', 'next month', "i'll start", 'ill start', 'eventually',
+  'soon', 'maybe later', 'one day', 'when i', 'after i',
+] as const;
+
+
+
 export const DEFAULT_SEKRET_MEMORY: SekretMemory = {
   moodHistory: [],
   journalActivity: [],
@@ -48,6 +66,8 @@ export const DEFAULT_SEKRET_MEMORY: SekretMemory = {
   lastCheckIn: '',
   lastActiveAt: '',
   recurringTopics: [],
+  comfortWordHistory: [],
+  deferredGoalHistory: [],
   lastUpdated: '',
 };
 
@@ -76,6 +96,23 @@ function extractTopics(text?: string): string[] {
   if (!text) return [];
   const normalized = text.toLowerCase();
   return TOPIC_WORDS.filter((topic) => normalized.includes(topic));
+}
+
+
+function extractComfortWords(text: string): ComfortWordEntry[] {
+  const lower = text.toLowerCase();
+  const date = new Date().toISOString().slice(0, 10);
+  return COMFORT_WORDS
+    .filter(word => lower.includes(word))
+    .map(word => ({ word, date }));
+}
+
+function extractDeferredPhrases(text: string): DeferredEntry[] {
+  const lower = text.toLowerCase();
+  const date = new Date().toISOString().slice(0, 10);
+  return DEFERRED_PHRASES
+    .filter(phrase => lower.includes(phrase))
+    .map(phrase => ({ phrase, date }));
 }
 
 function normalizeTopics(values: Array<string | undefined>): string[] {
@@ -129,7 +166,14 @@ function activityFromInput(input: CompanionActivityInput) {
     ...journalActivity.flatMap((entry) => entry.topics || []),
     ...safeArray(input.circlePosts).flatMap((post) => extractTopics(post?.text)),
   ]);
-  return { moodHistory, journalActivity, voiceBips, comfortUsage, recurringTopics };
+  const allJournalText = safeArray(input.journalEntries).map((e: any) => e?.text || '').join(' ');
+  const moodLabels = safeArray(input.moodHistory).map((e: any) => e?.mood || '').join(' ');
+  const comfortWordHistory = [
+    ...extractComfortWords(allJournalText),
+    ...extractComfortWords(moodLabels),
+  ];
+  const deferredGoalHistory = extractDeferredPhrases(allJournalText);
+  return { moodHistory, journalActivity, voiceBips, comfortUsage, recurringTopics, comfortWordHistory, deferredGoalHistory };
 }
 
 function normalizeMemory(value: Partial<SekretMemory> | undefined): SekretMemory {
@@ -146,6 +190,8 @@ function normalizeMemory(value: Partial<SekretMemory> | undefined): SekretMemory
       lastUpdated: value?.streaks?.lastUpdated || '',
     },
     recurringTopics: normalizeTopics(value?.recurringTopics || []),
+    comfortWordHistory: Array.isArray(value?.comfortWordHistory) ? value.comfortWordHistory : [],
+    deferredGoalHistory: Array.isArray(value?.deferredGoalHistory) ? value.deferredGoalHistory : [],
   };
 }
 
@@ -211,6 +257,8 @@ export async function updateSekretMemory(
     selectedPersonality: input.selectedSekret || base.selectedPersonality || 'soft',
     lastActiveAt: input.lastOpenDate || base.lastActiveAt || now,
     recurringTopics: normalizeTopics([...activity.recurringTopics, ...base.recurringTopics]),
+    comfortWordHistory: [...base.comfortWordHistory, ...activity.comfortWordHistory].slice(-80),
+    deferredGoalHistory: [...base.deferredGoalHistory, ...activity.deferredGoalHistory].slice(-40),
     lastUpdated: now,
   };
   await saveSekretMemory(next);
@@ -235,6 +283,25 @@ export function summarizeSekretMemory(memory: SekretMemory): MemorySummary {
     ...normalized.voiceBips, ...normalized.comfortUsage,
   ].map((entry) => entry.date).filter(Boolean));
 
+  // Comfort word pattern: most-used evasive word in recent 20 entries
+  const recentComfort = normalized.comfortWordHistory.slice(-20);
+  const comfortCounts: Record<string, number> = {};
+  recentComfort.forEach(({ word }) => { comfortCounts[word] = (comfortCounts[word] || 0) + 1; });
+  const topComfortEntry = Object.entries(comfortCounts).sort((a, b) => b[1] - a[1])[0];
+  const comfortWordPattern = topComfortEntry && topComfortEntry[1] >= 3 ? topComfortEntry[0] : undefined;
+
+  // Deferred goal: if same or similar phrase appears 2+ times across different dates
+  const deferDates = new Set(normalized.deferredGoalHistory.map(e => e.date));
+  const hasDeferredGoal = deferDates.size >= 2;
+
+  // Recurring entity: topic word that appears 3+ times in journal text
+  const topicFreq: Record<string, number> = {};
+  normalized.journalActivity.forEach(j => {
+    (j.topics || []).forEach((t: string) => { topicFreq[t] = (topicFreq[t] || 0) + 1; });
+  });
+  const topEntity = Object.entries(topicFreq).sort((a, b) => b[1] - a[1])[0];
+  const recurringEntity = topEntity && topEntity[1] >= 3 ? topEntity[0] : undefined;
+
   return {
     favoriteMood: countMostCommon(moods, 'Thoughtful'),
     favoriteSekret: normalized.selectedPersonality || 'soft',
@@ -255,5 +322,8 @@ export function summarizeSekretMemory(memory: SekretMemory): MemorySummary {
     journalsWritten: normalized.journalActivity.length,
     voiceBips: normalized.voiceBips.length,
     comfortActions: normalized.comfortUsage.length,
+    comfortWordPattern,
+    hasDeferredGoal,
+    recurringEntity,
   };
 }

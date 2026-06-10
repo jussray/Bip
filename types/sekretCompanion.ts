@@ -13,6 +13,10 @@ export interface MemorySummary {
   journalsWritten: number;
   voiceBips: number;
   comfortActions: number;
+  // Pattern noticing — drives Tolan-level companion awareness
+  comfortWordPattern?: string;   // most-used evasive word ('tired', 'fine', 'whatever')
+  hasDeferredGoal?: boolean;     // user has said 'monday'/'next week' 2+ times
+  recurringEntity?: string;      // name/word that keeps showing up in journals
 }
 
 export interface CompanionLevel {
