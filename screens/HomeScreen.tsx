@@ -260,9 +260,8 @@ export function HomeScreen({
 
   // ─── Reminder message (bounds-guarded) ───────────────────────────────────
   const reminder = HOME_MESSAGES[homeMessageIndex] ?? HOME_MESSAGES[0];
-  const memoryMessage = companion?.memorySummary?.commonTopics?.length
-    ? `I remember ${companion.memorySummary.commonTopics[0]} has been sitting heavy. I’m still here for that.`
-    : 'You’ve been showing up for yourself. I’m noticing it.';
+  const memoryMessage = companion?.presenceMessage
+    || 'You’ve been showing up for yourself. I’m noticing it.';
 
   const handleCompanionAction = (action: 'write' | 'voice' | 'comfort' | 'checkIn') => {
     if (action === 'write') setScreen('pages');

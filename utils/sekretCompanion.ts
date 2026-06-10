@@ -79,7 +79,7 @@ function buildCompanionMemory(previous?: MemorySummary, input?: CompanionActivit
 
 export function buildMemorySummary(input: CompanionActivityInput, previous?: MemorySummary): MemorySummary {
   const memory = buildCompanionMemory(previous, input);
-  return summarizeSekretMemory(memory, input);
+  return summarizeSekretMemory(memory);
 }
 
 export function buildCompanionLevel(summary: MemorySummary): CompanionLevel {
@@ -125,7 +125,7 @@ function getScreenPresence(input: CompanionActivityInput, summary: MemorySummary
 }
 
 export function buildCheckIn(summary: MemorySummary, input: CompanionActivityInput, personality: string): CompanionCheckIn | null {
-  return buildSekretCheckIn(summary, personality, input.mood, input.isLateNight);
+  return buildSekretCheckIn(summary, personality, input.mood, input.isLateNight, input);
 }
 
 export function buildGreeting(personality: string, level: CompanionLevel, mood?: string) {

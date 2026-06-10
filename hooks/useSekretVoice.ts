@@ -1,28 +1,30 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export function useSekretVoice() {
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceReady, setVoiceReady] = useState(true);
-
-  const speak = useCallback((text: string) => {
-    if (!text) return;
-    setIsSpeaking(true);
-    setVoiceReady(true);
-
-    // Placeholder voice architecture: no external service is invoked.
-    // This keeps the hook future-safe and free of paid APIs.
-    const timer = setTimeout(() => setIsSpeaking(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const voiceReady = true;
 
   const stop = useCallback(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
     setIsSpeaking(false);
   }, []);
 
-  return useMemo(() => ({
-    speak,
-    stop,
-    isSpeaking,
-    voiceReady,
-  }), [isSpeaking, speak, stop, voiceReady]);
+  const speak = useCallback((text: string) => {
+    stop();
+    if (!text.trim()) return;
+
+    // Placeholder only. A future on-device voice adapter can replace this timer
+    // without changing the companion UI or introducing a paid/external API now.
+    setIsSpeaking(true);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      setIsSpeaking(false);
+    }, 1200);
+  }, [stop]);
+
+  useEffect(() => stop, [stop]);
+
+  return { speak, stop, isSpeaking, voiceReady };
 }

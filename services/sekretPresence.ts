@@ -1,6 +1,8 @@
 import type { MemorySummary } from '../types/sekretCompanion';
 
-function normalizePersonality(value?: string) {
+export type SekretPersonality = 'raylene' | 'rylane' | 'cloud' | 'night';
+
+export function normalizeSekretPersonality(value?: string): SekretPersonality {
   const personality = (value || '').toLowerCase();
   if (personality.includes('rylane')) return 'rylane';
   if (personality.includes('cloud')) return 'cloud';
@@ -8,44 +10,50 @@ function normalizePersonality(value?: string) {
   return 'raylene';
 }
 
-export function buildSekretPresence(summary: Partial<MemorySummary> | undefined, personality?: string, screen?: string) {
-  const normalized = normalizePersonality(personality);
-  const topic = summary?.commonTopics?.[0] || 'what’s been sitting heavy';
+function context(summary: Partial<MemorySummary> | undefined) {
+  return {
+    topic: summary?.commonTopics?.[0],
+    emotion: summary?.recurringEmotions?.[0],
+    hasPages: (summary?.journalsWritten || 0) > 0,
+    hasVoice: (summary?.voiceBips || 0) > 0,
+    hasComfort: (summary?.comfortActions || 0) > 0,
+    hasStreak: (summary?.streakDays || 0) >= 3,
+  };
+}
 
-  if (normalized === 'rylane') {
-    if (screen === 'journal') {
-      if ((summary?.streakDays || 0) >= 3) return `You’ve been keeping your streak going. That’s real. I’m proud of you.`;
-      if ((summary?.journalsWritten || 0) > 0) return `You mentioned ${topic} before. We can keep it simple and talk it out.`;
-      return `No pressure. One honest page is enough.`;
-    }
-    if ((summary?.recurringStruggles?.length || 0) > 0) return `That ${summary?.recurringStruggles?.[0]} stuff keeps showing up. We’ll take it one piece at a time.`;
-    return `I’m here. No big speech, just me.`;
+export function buildSekretPresence(
+  summary: Partial<MemorySummary> | undefined,
+  personality?: string,
+  screen?: string,
+): string {
+  const voice = normalizeSekretPersonality(personality);
+  const memory = context(summary);
+
+  if (voice === 'rylane') {
+    if (screen === 'journal') return memory.topic ? `That ${memory.topic} situation came up before. Put it down plain—we’ll sort through it.` : 'Put it down how it happened. It does not have to sound pretty.';
+    if (screen === 'voiceBip') return memory.hasVoice ? 'You already know the move. Say it out loud and get it off your chest.' : 'Hit record and keep it real. I’m listening.';
+    if (screen === 'comfort') return memory.hasComfort ? 'You found what settles you before. Run that play again.' : 'Take a breath. We are not letting one hard moment run the whole night.';
+    if (memory.hasStreak) return `You kept showing up ${summary?.streakDays} days strong. That counts.`;
+    return memory.emotion ? `I remember ${memory.emotion} has been hanging around. What’s up for real?` : 'Aight, I’m here. What’s up for real?';
   }
 
-  if (normalized === 'cloud') {
-    if (screen === 'journal') {
-      if ((summary?.journalsWritten || 0) > 0) return `You mentioned ${topic} before. We can just sit with it for a minute.`;
-      return `You don’t have to solve everything tonight.`;
-    }
-    if ((summary?.recurringStruggles?.length || 0) > 0) return `That sounds heavy. We can just breathe through it together.`;
-    return `You can rest here. No pressure.`;
+  if (voice === 'cloud') {
+    if (screen === 'journal') return memory.topic ? `We can make a little room for ${memory.topic}. Just one honest line at a time.` : 'No rush. One quiet, honest line is enough.';
+    if (screen === 'voiceBip') return 'Let the words come slowly. Silence can stay in the recording too.';
+    if (screen === 'comfort') return memory.hasComfort ? 'You have found your way back to calm before. We can follow that same soft path.' : 'Let your shoulders drop. Nothing has to be solved right now.';
+    return memory.emotion ? `I remember ${memory.emotion} has been nearby. We can sit with it gently.` : 'Come rest here a minute. No pressure.';
   }
 
-  if (normalized === 'night') {
-    if (screen === 'journal') {
-      if ((summary?.journalsWritten || 0) > 0) return `Still awake? You mentioned ${topic} before. You don’t have to explain it perfectly.`;
-      return `Long day? It’s okay. I’m here.`;
-    }
-    if ((summary?.recurringStruggles?.length || 0) > 0) return `Still awake? I’m here. We can keep this simple.`;
-    return `You’re not alone tonight.`;
+  if (voice === 'night') {
+    if (screen === 'journal') return memory.topic ? `${memory.topic} followed you into the night again. Leave some of it on the page.` : 'The night gets loud sometimes. Leave a little of it on the page.';
+    if (screen === 'voiceBip') return 'Say the part that gets louder after dark. You do not have to polish it.';
+    if (screen === 'comfort') return 'Dim the noise. Unclench your jaw. We can keep tonight simple.';
+    return memory.emotion ? `${memory.emotion} is still awake too, huh? I’m right here.` : 'Still awake? I’m right here.';
   }
 
-  if (screen === 'journal') {
-    if ((summary?.streakDays || 0) >= 3) return `You’ve been showing up for yourself. That matters.`;
-    if ((summary?.journalsWritten || 0) > 0) return `You mentioned ${topic} before. I’m still here for that.`;
-    return `No pressure. One messy little page is enough.`;
-  }
-
-  if ((summary?.recurringStruggles?.length || 0) > 0) return `You’ve been carrying ${summary?.recurringStruggles?.[0]} around for a while. We can go slow.`;
-  return `I’m here with you. No big speech, just me.`;
+  if (screen === 'journal') return memory.topic ? `You brought up ${memory.topic} before. Start wherever your heart wants to start.` : 'Write it messy, love. Honest is enough.';
+  if (screen === 'voiceBip') return memory.hasVoice ? 'You know this space. Say what you could not say anywhere else.' : 'Go on and say it, love. I’m listening.';
+  if (screen === 'comfort') return memory.hasComfort ? 'You already found a little softness here. Let’s make some more room for it.' : 'Come here, love. We can slow the whole moment down.';
+  if (memory.hasStreak) return `Look at you, still showing up. ${summary?.streakDays} days is something to be proud of.`;
+  return memory.emotion ? `I remember ${memory.emotion} has been showing up. You do not have to act fine with me.` : 'Hey love, I’m here. You do not have to act fine with me.';
 }

@@ -12,20 +12,35 @@ const STORAGE_KEYS = {
   moodHistory: 'moodHistory',
   circlePosts: 'circlePosts',
   voiceNotes: 'voiceNotes',
+  comfortSessions: 'comfortSessions',
+  crewMembers: 'crewMembers',
+  crewCheckIns: 'crewCheckIns',
+  streakDays: 'streakDays',
+  lastOpenDate: 'lastOpenDate',
+  roomMemory: 'roomMemory',
   periodDays: 'periodDays',
   lastPeriodStart: 'lastPeriodStart',
 };
 
+const JSON_KEYS = new Set([
+  'entries', 'moodHistory', 'circlePosts', 'voiceNotes', 'comfortSessions',
+  'crewMembers', 'crewCheckIns', 'roomMemory', 'periodDays',
+]);
+
 export const loadState = async () => {
   try {
-    const keys = Object.values(STORAGE_KEYS);
-    const vals = await AsyncStorage.multiGet(keys);
+    const values = await AsyncStorage.multiGet(Object.values(STORAGE_KEYS));
     const state: Record<string, any> = {};
-    vals.forEach(([k, v]) => {
-      if (v) {
-        state[k] = ['entries', 'moodHistory', 'circlePosts', 'voiceNotes', 'periodDays'].includes(k)
-          ? JSON.parse(v)
-          : v;
+    values.forEach(([key, value]) => {
+      if (value === null) return;
+      if (!JSON_KEYS.has(key)) {
+        state[key] = value;
+        return;
+      }
+      try {
+        state[key] = JSON.parse(value);
+      } catch {
+        // Ignore a malformed optional value instead of blocking the whole restore.
       }
     });
     return state;
@@ -37,9 +52,9 @@ export const loadState = async () => {
 
 export const saveState = async (stateUpdates: Record<string, any>) => {
   try {
-    const pairs: [string, string][] = Object.entries(stateUpdates).map(([k, v]) => [
-      k,
-      typeof v === 'string' ? v : JSON.stringify(v),
+    const pairs: [string, string][] = Object.entries(stateUpdates).map(([key, value]) => [
+      key,
+      typeof value === 'string' ? value : JSON.stringify(value),
     ]);
     await AsyncStorage.multiSet(pairs);
   } catch (error) {
