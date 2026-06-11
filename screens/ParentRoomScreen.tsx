@@ -57,6 +57,23 @@ const PRESENCE = [
   "progress over perfection. always.",
 ];
 
+// ─── Se'kret responds to the mood you just chose ─────────────────────────────
+const MOOD_RESPONSE: Record<string, string> = {
+  heavy:   "heavy is okay. you don't have to perform okay right now.",
+  hopeful: "that feeling you're holding? protect it. it's real.",
+  worried: "worried means you care. that's not nothing.",
+  okay:    "okay is enough. seriously. okay is its own kind of win.",
+};
+
+// ─── Time badge labels (same pattern as teen room) ───────────────────────────
+const TIME_BADGE: Record<string, string> = {
+  day:       '☀️ day',
+  evening:   '🌆 evening',
+  night:     '🌙 night',
+  deepNight: '✨ late night',
+  rain:      '🌧️ rain',
+};
+
 // ─── Room hotspots — positioned over where the objects actually are ───────────
 // Fractions of W × H, approximated from the room art layout:
 //   journal on coffee table (center-low), mug left of table,
@@ -64,7 +81,7 @@ const PRESENCE = [
 //   cork board (right-upper), memory shelf (left-mid)
 const HOTSPOTS = [
   { icon: '📔', label: 'Pages',      route: 'pages',        xf: 0.42, yf: 0.58, delay: 0   },
-  { icon: '☕', label: 'Reflection', route: 'sekret',       xf: 0.20, yf: 0.65, delay: 350 },
+  { icon: '☕', label: 'Se’kret', route: 'parentBridge', xf: 0.20, yf: 0.65, delay: 350 },
   { icon: '🌉', label: 'Bridge',     route: 'parentBridge', xf: 0.74, yf: 0.52, delay: 600 },
   { icon: '🌐', label: 'Circle',     route: 'circle',       xf: 0.83, yf: 0.38, delay: 900 },
   { icon: '🏆', label: 'Wins',       route: 'growth',       xf: 0.13, yf: 0.47, delay: 450 },
@@ -157,6 +174,16 @@ export function ParentRoomScreen({
   const roomFade    = useRef(new Animated.Value(0)).current;
   const textFade    = useRef(new Animated.Value(0)).current;
   const cloudBreath = useRef(new Animated.Value(0)).current;
+  const moodPop     = useRef(new Animated.Value(1)).current;
+
+  // Se'kret reacts when the parent picks a mood
+  useEffect(() => {
+    if (!parentMood) return;
+    Animated.sequence([
+      Animated.timing(moodPop, { toValue: 1.30, duration: 140, useNativeDriver: true }),
+      Animated.timing(moodPop, { toValue: 1.00, duration: 220, useNativeDriver: true }),
+    ]).start();
+  }, [parentMood]);
 
   useEffect(() => {
     // Room fades in first, then text, then hotspots unlock
@@ -176,6 +203,11 @@ export function ParentRoomScreen({
   const cloudScale   = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] });
   const cloudOpacity = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [0.80, 1.0] });
 
+  // Presence: Se'kret responds to mood, otherwise ambient cycling quote
+  const presenceLine = (parentMood && MOOD_RESPONSE[parentMood])
+    ? MOOD_RESPONSE[parentMood]
+    : PRESENCE[presenceIdx];
+
   return (
     <View style={s.root}>
 
@@ -191,15 +223,23 @@ export function ParentRoomScreen({
         locations={[0, 0.28, 0.65, 1.0]}
       />
 
+      {/* ── TIME BADGE — small, top-left, same pattern as teen room ────────── */}
+      <Animated.View style={[s.timeBadge, { opacity: textFade }]}>
+        <Text style={[s.timeBadgeText, { color: tokens.sub }]}>{TIME_BADGE[slot] ?? slot}</Text>
+      </Animated.View>
+
       {/* ── GREETING + PRESENCE — floating text, no borders, no cards ────── */}
       <Animated.View style={[s.topText, { opacity: textFade }]}>
         <Text style={s.greeting}>{greeting}</Text>
         <TouchableOpacity
-          onPress={() => setPresenceIdx(i => (i + 1) % PRESENCE.length)}
-          activeOpacity={0.75}
+          onPress={() => {
+            if (parentMood) return;
+            setPresenceIdx(i => (i + 1) % PRESENCE.length);
+          }}
+          activeOpacity={parentMood ? 1 : 0.75}
         >
           <Text style={[s.presence, { color: tokens.soft }]}>
-            "{PRESENCE[presenceIdx]}"
+            "{presenceLine}"
           </Text>
         </TouchableOpacity>
       </Animated.View>
@@ -208,7 +248,7 @@ export function ParentRoomScreen({
       <Animated.View style={[
         s.cloudInRoom,
         { left: W * 0.50 - 28, top: H * 0.33 },
-        { transform: [{ scale: cloudScale }], opacity: cloudOpacity },
+        { transform: [{ scale: Animated.multiply(cloudScale, moodPop) }], opacity: cloudOpacity },
       ]}>
         <TouchableOpacity onPress={() => setScreen('parentBridge')} activeOpacity={0.75}>
           <Image source={IMAGES.cloudHeadphones} style={s.cloudImg} resizeMode="contain" />
@@ -265,12 +305,28 @@ export function ParentRoomScreen({
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#06030f' },
 
+  // Time badge — top-right, minimal pill
+  timeBadge: {
+    position: 'absolute',
+    top: TOP,
+    right: 18,
+    backgroundColor: 'rgba(0,0,0,0.42)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  timeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+
   // Top floating text — no borders, just shadows for readability
   topText: {
     position: 'absolute',
     top: TOP,
     left: 20,
-    right: 20,
+    right: 90,
   },
   greeting: {
     fontSize: 16,
