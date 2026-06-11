@@ -2,7 +2,7 @@
 // Se'kret Bip — Drop a Bip (Talk with Se'kret)
 //
 // Polish pass (2026-06-07): preserves ALL props, internal state, parent/teen split,
-// SEKRET_PROFILES fallback, and BASE_URL fetch. Adds:
+// SEKRET_PROFILES fallback, and personality-aware replies. Adds:
 //   • Time-of-day Room backdrop via getRoomBg(character, time)
 //   • Mood-tinted glow (happy/sad/angry/tired/calm)
 //   • Char-aware copy when selectedSekret is rylane vs raylene/soft
@@ -20,15 +20,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg } from '../constants/theme';
-
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
+import { fetchSekretReply } from '../utils/api';
 
 // ── Profiles (keep in sync with index.tsx SEKRET_PROFILES) ─────────────────
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se’kret",       emoji: '🌸', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. Aight, talk to me. What’s really going on?" },
+  soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
   rylane: { name: 'Rylane',              emoji: '⚡', title: 'Loyal Bro',           vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
-  cloud:  { name: "Cloud Se’kret",  emoji: '☁️', title: 'Quiet Comfort',       vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
-  night:  { name: "Night Se’kret",  emoji: '🌙', title: 'Late-Night Listener', vibe: 'Minimal words, calm energy, safe space.',        greeting: "You don’t have to explain it perfectly tonight. I’m here." },
+  cloud:  { name: "Cloud Se’kret",  emoji: '☁️', title: 'Quiet Observer',      vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
+  night:  { name: "Night Se’kret",  emoji: '🌙', title: 'The Light Left On',    vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
 };
 
 // ── Mood glow palette ──────────────────────────────────────────────────────
@@ -86,11 +85,11 @@ export function SekretScreen({
   // Char-aware copy overrides
   const heroTitle = isRylane ? 'Drop a Bip 🤝' : 'Drop a Bip 💜';
   const heroSub   = isRylane
-    ? 'No judgement. Just say it. Stays between us.'
-    : 'Your safe space. No pressure. Just real.';
+    ? 'Say it how it happened. I’ll keep it real.'
+    : 'Say it how you’d text it. Raylene can take it.';
   const stickyLine = isRylane
-    ? 'lock in. say it once, get it off your chest.'
-    : 'we see you. it doesn’t have to be perfect.';
+    ? 'say the part you keep leaving out.'
+    : 'no polished version. what actually happened?';
   const sendLabel = isRylane ? 'Send 🤝' : 'Send 💜';
   const greetingOverride = isRylane && profile === SEKRET_PROFILES.rylane
     ? profile.greeting
@@ -134,7 +133,7 @@ export function SekretScreen({
   const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1,    1.04] });
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1   ] });
 
-  // ── Send handler (unchanged behavior) ───────────────────────────────────
+  // ── Send handler ───────────────────────────────────────────────────────────
   const handleSend = async () => {
     const text = sekretMessage.trim();
     if (!text) return;
@@ -144,29 +143,9 @@ export function SekretScreen({
     setIsSekretTyping(true);
     setSekretReply('');
 
-    if (!BASE_URL) {
-      setTimeout(() => {
-        setIsSekretTyping(false);
-        setSekretReply(greetingOverride);
-      }, 1200);
-      return;
-    }
-
-    try {
-      const res = await fetch(`${BASE_URL}/api/sekret`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ message: text, mood, profile: selectedProfile }),
-      });
-      const data = await res.json();
-      setIsSekretTyping(false);
-      setSekretReply(data.reply ?? greetingOverride);
-    } catch {
-      setIsSekretTyping(false);
-      setSekretReply(isRylane
-        ? 'I’m here. Tell me when you’re ready. 🤝'
-        : 'I’m here. Tell me more when you’re ready. 💜');
-    }
+    const reply = await fetchSekretReply(text, 'chat', mood, selectedProfile);
+    setSekretReply(reply);
+    setIsSekretTyping(false);
   };
 
   // ── Parent side (preserved) ─────────────────────────────────────────────

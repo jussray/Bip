@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { IMAGES, getRoomBg } from '../constants/theme';
+import { fetchSekretReply } from '../utils/api';
 import {
   Text,
   TouchableOpacity,
@@ -44,28 +45,6 @@ function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
 
 const CLOUD_HP = IMAGES.cloudHeadphones;
 const CLOUD    = IMAGES.cloud;
-
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-
-async function fetchSekretReply(
-  text: string,
-  context = 'cloud',
-  mood?: string,
-): Promise<string> {
-  if (!BASE_URL) return "I hear you. You don't have to carry that alone 💜";
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ text, context, mood }),
-    });
-    if (!res.ok) throw new Error('api error');
-    const data = await res.json();
-    return data.reply || "I hear you. You don't have to carry that alone 💜";
-  } catch {
-    return "I hear you. That makes sense. You don't have to carry that by yourself 💜";
-  }
-}
 
 // ── Prompt sets — each mode has its own rotation ────────────────────────────
 
@@ -179,7 +158,7 @@ export function CloudThoughtsScreen({
     setSent(true);
     setIsThinking(true);
     // Fix C5: pass activeMode as context so the API can tune its tone
-    const r = await fetchSekretReply(text, activeMode, mood);
+    const r = await fetchSekretReply(text, activeMode, mood, selectedSekret);
     setReply(r);
     setIsThinking(false);
   };

@@ -326,11 +326,11 @@ export const SEKRET_PROFILES: Record<
   }
 > = {
   soft: {
-    name: "Se'kret",
+    name: "Raylene",
     emoji: "🌸",
-    title: "Soft Big Sis",
-    vibe: "Warm, expressive, protective, and real.",
-    greeting: "Hey love. I'm here. Tell me what's on your mind.",
+    title: "Favorite Older Sister",
+    vibe: "Funny, warm, protective, and impossible to fool.",
+    greeting: "friend... 😭 okay, what happened?",
   },
   rylane: {
     name: "Rylane",
@@ -342,16 +342,16 @@ export const SEKRET_PROFILES: Record<
   cloud: {
     name: "Cloud Se'kret",
     emoji: "☁️",
-    title: "Quiet Comfort",
-    vibe: "Soft, calm, low-pressure presence.",
-    greeting: "No pressure. We can just sit here for a minute.",
+    title: "Quiet Observer",
+    vibe: "Notices. Waits. Rarely pushes.",
+    greeting: "something feels different today.",
   },
   night: {
     name: "Night Se'kret",
     emoji: "🌙",
-    title: "Late-Night Listener",
-    vibe: "Minimal words, calm energy, safe space.",
-    greeting: "I'm here. You don't gotta explain perfectly.",
+    title: "The Light Left On",
+    vibe: "Presence. Not conversation.",
+    greeting: "rough night?",
   },
 };
 
