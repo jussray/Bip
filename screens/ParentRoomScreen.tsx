@@ -57,13 +57,60 @@ const PRESENCE = [
   "progress over perfection. always.",
 ];
 
-// ─── Se'kret responds to the mood you just chose ─────────────────────────────
-const MOOD_RESPONSE: Record<string, string> = {
-  heavy:   "heavy is okay. you don't have to perform okay right now.",
-  hopeful: "that feeling you're holding? protect it. it's real.",
-  worried: "worried means you care. that's not nothing.",
-  okay:    "okay is enough. seriously. okay is its own kind of win.",
+// ─── Se'kret responds to the mood you just chose (multiple options) ──────────
+const MOOD_RESPONSES: Record<string, string[]> = {
+  heavy: [
+    "heavy is okay. you don't have to perform okay right now.",
+    "when it's heavy, even breathing counts. you're still in it.",
+    "heavy days don't mean you're losing. they mean you're carrying real things.",
+    "put the weight down for five minutes. it'll still be there when you pick it back up. 😮‍💨",
+  ],
+  hopeful: [
+    "that feeling you're holding? protect it. it's real.",
+    "hopeful is a muscle. you just used it. 💜",
+    "hold onto that. the hard days will try to argue with it.",
+    "hope is not naive. it's brave. especially after the week you probably had.",
+  ],
+  worried: [
+    "worried means you care. that's not nothing.",
+    "worry without action is just pain. what's the one thing you can actually do today?",
+    "your kid is lucky you care enough to worry. now breathe. 😮‍💨",
+    "worried means you're paying attention. that's parenting.",
+  ],
+  okay: [
+    "okay is enough. seriously. okay is its own kind of win.",
+    "okay after a hard stretch is actually pretty solid. don't downplay that.",
+    "'okay' is underrated. it means you're upright. that counts.",
+    "okay today. that's real. 🧡",
+  ],
 };
+
+// ─── Se'kret remembers — surfaces naturally, not every time ──────────────────
+const MEMORY_PRESENCE: Record<string, string[]> = {
+  heavy: [
+    "you were carrying something heavy last time. still in it?",
+    "checked on you. how's that weight today? ☕",
+    "yesterday felt heavy. we taking it day by day today?",
+  ],
+  hopeful: [
+    "you had some hope going last time. still feeling it? 💜",
+    "you came in hopeful yesterday. holding onto that today?",
+  ],
+  worried: [
+    "you were worried last time. how's that sitting today?",
+    "yesterday had you anxious. checking in — how are we doing? ☕",
+    "still carrying that worry from last time?",
+  ],
+  okay: [
+    "you were holding it together last time. how we doing today?",
+    "yesterday was okay. what about today? 🧡",
+    "last time you said okay. just checking back in.",
+  ],
+};
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 // ─── Time badge labels (same pattern as teen room) ───────────────────────────
 const TIME_BADGE: Record<string, string> = {
@@ -151,6 +198,7 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
 interface ParentRoomScreenProps {
   parentRoomStyle: ParentRoomStyle;
   parentMood:      string;
+  previousMood?:   string;
   setParentMood:   (m: string) => void;
   setScreen:       (s: string) => void;
   weatherMode?:    string;
@@ -158,8 +206,8 @@ interface ParentRoomScreenProps {
 }
 
 export function ParentRoomScreen({
-  parentRoomStyle, parentMood, setParentMood,
-  setScreen, weatherMode, BottomNav,
+  parentRoomStyle, parentMood, previousMood,
+  setParentMood, setScreen, weatherMode, BottomNav,
 }: ParentRoomScreenProps) {
 
   const slot    = useMemo(() => getTimeSlot(weatherMode), [weatherMode]);
@@ -168,7 +216,40 @@ export function ParentRoomScreen({
   const overlay = OVERLAY[parentRoomStyle];
   const greeting = getGreeting(parentRoomStyle, slot);
 
-  const [presenceIdx,    setPresenceIdx]    = useState(() => Math.floor(Math.random() * PRESENCE.length));
+  // Memory line: computed once on mount — 60% chance when previous session had a mood
+  const [memoryLine] = useState<string>(() => {
+    if (!previousMood) return '';
+    const lines = MEMORY_PRESENCE[previousMood];
+    if (!lines || Math.random() > 0.60) return '';
+    return pick(lines);
+  });
+
+  // Cycling quotes: if Se'kret has a memory, it leads; ambient quotes follow
+  const [cyclingQuotes] = useState<string[]>(() =>
+    memoryLine ? [memoryLine, ...PRESENCE] : [...PRESENCE]
+  );
+
+  // presenceIdx starts at 0 (memory line) if one exists, else random ambient
+  const [presenceIdx, setPresenceIdx] = useState<number>(() =>
+    memoryLine ? 0 : Math.floor(Math.random() * PRESENCE.length)
+  );
+
+  // Mood response: one response picked per mood selection, stable until mood changes
+  const [moodResponse, setMoodResponse] = useState<string>(() => {
+    if (!parentMood) return '';
+    const opts = MOOD_RESPONSES[parentMood];
+    return opts ? pick(opts) : '';
+  });
+
+  useEffect(() => {
+    if (!parentMood) { setMoodResponse(''); return; }
+    const opts = MOOD_RESPONSES[parentMood];
+    if (opts) setMoodResponse(pick(opts));
+  }, [parentMood]);
+
+  // What Se'kret says: mood response → memory/ambient cycling
+  const presenceLine = moodResponse || cyclingQuotes[presenceIdx % cyclingQuotes.length];
+
   const [hotspotsReady,  setHotspotsReady]  = useState(false);
 
   const roomFade    = useRef(new Animated.Value(0)).current;
@@ -203,11 +284,6 @@ export function ParentRoomScreen({
   const cloudScale   = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] });
   const cloudOpacity = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [0.80, 1.0] });
 
-  // Presence: Se'kret responds to mood, otherwise ambient cycling quote
-  const presenceLine = (parentMood && MOOD_RESPONSE[parentMood])
-    ? MOOD_RESPONSE[parentMood]
-    : PRESENCE[presenceIdx];
-
   return (
     <View style={s.root}>
 
@@ -233,8 +309,9 @@ export function ParentRoomScreen({
         <Text style={s.greeting}>{greeting}</Text>
         <TouchableOpacity
           onPress={() => {
-            if (parentMood) return;
-            setPresenceIdx(i => (i + 1) % PRESENCE.length);
+            if (!parentMood) {
+              setPresenceIdx(i => (i + 1) % cyclingQuotes.length);
+            }
           }}
           activeOpacity={parentMood ? 1 : 0.75}
         >

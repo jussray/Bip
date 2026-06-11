@@ -136,6 +136,7 @@ export default function App() {
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
   const [parentRoomStyle, setParentRoomStyle] = useState<ParentRoomStyle>('mom');
   const [parentMood,      setParentMood]      = useState('');
+  const [parentMoodDate,  setParentMoodDate]  = useState('');
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
@@ -230,7 +231,8 @@ export default function App() {
         if (state.parentRoomStyle === 'mom' || state.parentRoomStyle === 'dad') {
           setParentRoomStyle(state.parentRoomStyle as ParentRoomStyle);
         }
-        if (state.parentMood) setParentMood(state.parentMood);
+        if (state.parentMood)     setParentMood(state.parentMood);
+        if (state.parentMoodDate) setParentMoodDate(state.parentMoodDate);
       } catch (e) {
         // Storage read failure — continue with defaults
       }
@@ -318,6 +320,7 @@ export default function App() {
         roomMemory:       JSON.stringify(roomMemory),
         parentRoomStyle,
         parentMood,
+        parentMoodDate,
       });
     } catch (e) {
       // Storage write failure — silent
@@ -327,7 +330,7 @@ export default function App() {
     journalText, journalEntries, moodHistory,
     circlePosts, voiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
-    roomMemory, parentRoomStyle, parentMood, isLoading,
+    roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
   ]);
 
   // ── Streak tracking (daily open) ──────────────────────────────────────────
@@ -441,16 +444,24 @@ export default function App() {
 
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
   if (screen === 'home') {
-    if (userSide === 'parent') return (
-      <ParentRoomScreen
-        parentRoomStyle={parentRoomStyle}
-        parentMood={parentMood}
-        setParentMood={(m) => setParentMood(m)}
-        setScreen={setScreen}
-        weatherMode={theme === 'rain' ? 'rain' : undefined}
-        BottomNav={nav}
-      />
-    );
+    if (userSide === 'parent') {
+      const today = new Date().toLocaleDateString();
+      const previousMood = (parentMoodDate && parentMoodDate !== today) ? parentMood : '';
+      return (
+        <ParentRoomScreen
+          parentRoomStyle={parentRoomStyle}
+          parentMood={parentMood}
+          previousMood={previousMood}
+          setParentMood={(m) => {
+            setParentMood(m);
+            setParentMoodDate(new Date().toLocaleDateString());
+          }}
+          setScreen={setScreen}
+          weatherMode={theme === 'rain' ? 'rain' : undefined}
+          BottomNav={nav}
+        />
+      );
+    }
     return (
       <RoomScreen
         mood={mood}
