@@ -30,7 +30,6 @@ import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
-import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 // IMPORTANT: loadState() takes NO args — returns full state object.
@@ -56,7 +55,7 @@ import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, Cr
 //
 // Do NOT add new require() calls here. Edit constants/theme.ts instead so
 // fallbacks stay centralized and no screen can drift out of sync.
-import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
+import { IMAGES, AVATARS, getRoomBg, THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 export { IMAGES, AVATARS, getRoomBg };
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -79,14 +78,6 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const THEME_PACKS: Record<string, any> = {
-  raylene: { name: "Raylene's Room", emoji: '\uD83D\uDC9C', background: '#1a0828', card: '#2a1040', accent: '#e879f9', soft: '#fde8ff' },
-  rylane:  { name: "Rylane's Space", emoji: '\u26A1', background: '#060d1c', card: '#0d1f3a', accent: '#4DA3FF', soft: '#b6dcff' },
-  cloud:   { name: "Cloud's World",  emoji: '\u2601\uFE0F', background: '#0a0818', card: '#18103a', accent: '#a78bfa', soft: '#ede9fe' },
-  night:   { name: 'Late Night',     emoji: '\uD83C\uDF19', background: '#05030f', card: '#100828', accent: '#c4b5fd', soft: '#ede9fe' },
-  rain:    { name: 'Rain Room',      emoji: '\uD83C\uDF27\uFE0F', background: '#060e18', card: '#0d1e30', accent: '#60a5fa', soft: '#bfdbfe' },
-  sunset:  { name: 'Sunset Vibe',   emoji: '\uD83C\uDF05', background: '#180a18', card: '#2a1428', accent: '#fb7185', soft: '#fce7f3' },
-};
 
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
@@ -175,9 +166,8 @@ export default function App() {
   const [isLoading, setIsLoading]               = useState(true);
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const t             = THEME_PACKS[theme] || THEME_PACKS.raylene;
   const vibeKey       = normalizeVibeKey(theme);
-  const t             = THEME_PACKS[vibeKey];
+  const currentTheme  = THEME_PACKS[vibeKey];
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
   const companionInput = useMemo(() => ({
     selectedSekret,
@@ -471,10 +461,11 @@ export default function App() {
         selectedSekret={selectedSekret as 'raylene' | 'rylane'}
         setSelectedSekret={val => setSelectedSekret(val)}
         setScreen={setScreen}
-        t={t}
+        t={currentTheme}
         updateRoomMemory={updateRoomMemory}
-        weatherMode={theme === 'rain' ? 'rain' : undefined}
+        vibe={vibeKey}
         BottomNav={nav}
+        companion={companion}
       />
     );
   }
@@ -484,7 +475,7 @@ export default function App() {
       selectedSekret={selectedSekret as 'raylene' | 'rylane'}
       setSelectedSekret={val => setSelectedSekret(val)}
       setScreen={setScreen}
-      t={t}
+      t={currentTheme}
       updateRoomMemory={updateRoomMemory}
       vibe={vibeKey}
       BottomNav={nav}
@@ -497,7 +488,7 @@ export default function App() {
     <HomeScreen
       mood={mood}
       selectMood={selectMood}
-      t={t}
+      t={currentTheme}
       currentSekret={currentSekret}
       selectedSekret={selectedSekret}
       homeMessageIndex={homeMessageIndex}
@@ -512,7 +503,7 @@ export default function App() {
 
   if (screen === 'cloudThoughts') return (
     <CloudThoughtsScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       setScreen={setScreen}
@@ -521,12 +512,12 @@ export default function App() {
   );
 
   if (screen === 'periodCalendar') return (
-    <PeriodCalendarScreen theme={t} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
+    <PeriodCalendarScreen theme={currentTheme} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
   );
 
   if (screen === 'voiceBip') return (
     <VoiceBipScreen
-      theme={t}
+      theme={currentTheme}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
       voiceNotes={voiceNotes}
@@ -545,7 +536,7 @@ export default function App() {
       journalEntries={journalEntries}
       saveJournalEntry={saveJournalEntry}
       mood={mood}
-      t={t}
+      t={currentTheme}
       setScreen={setScreen}
       BottomNav={nav}
       moodHistory={moodHistory}
@@ -556,7 +547,7 @@ export default function App() {
 
   if (screen === 'calm') return (
     <CalmScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       setMood={setMood}
       setScreen={setScreen}
@@ -567,7 +558,7 @@ export default function App() {
 
   if (screen === 'sekret') return (
     <SekretScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       currentSekret={currentSekret}
       selectedProfile={selectedSekret}
@@ -580,7 +571,7 @@ export default function App() {
 
   if (screen === 'circle') return (
     <CircleScreen
-      t={t}
+      t={currentTheme}
       circlePosts={circlePosts}
       circlePostText={circlePostText}
       setCirclePostText={setCirclePostText}
@@ -594,16 +585,16 @@ export default function App() {
   );
 
   if (screen === 'bridge') return (
-    <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
+    <BridgeScreen t={currentTheme} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
   );
 
   if (screen === 'parentBridge') return (
-    <ParentBridgeScreen t={t} setScreen={setScreen} BottomNav={nav} />
+    <ParentBridgeScreen t={currentTheme} setScreen={setScreen} BottomNav={nav} />
   );
 
   if (screen === 'bippin2') return (
     <Bippin2Screen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       setScreen={setScreen}
@@ -615,7 +606,7 @@ export default function App() {
 
   if (screen === 'growth') return (
     <GrowthScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       setScreen={setScreen}
@@ -627,7 +618,7 @@ export default function App() {
 
   if (screen === 'womanhood') return (
     <WomanhoodScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       setScreen={setScreen}
@@ -638,7 +629,7 @@ export default function App() {
 
   if (screen === 'manhood') return (
     <ManhoodScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       setScreen={setScreen}
@@ -649,7 +640,7 @@ export default function App() {
 
   if (screen === 'comfort') return (
     <ComfortScreen
-      t={t}
+      t={currentTheme}
       setScreen={setScreen}
       onComplete={() => trackActivity('comfort')}
       BottomNav={nav}
@@ -662,7 +653,7 @@ export default function App() {
   if (screen === 'mindReset' || screen === 'bodyReset') return (
     <MindBodyResetScreen
       screen={screen as 'mindReset' | 'bodyReset'}
-      t={t}
+      t={currentTheme}
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       onComplete={() => trackActivity('calm')}
@@ -673,7 +664,7 @@ export default function App() {
 
   if (screen === 'points') return (
     <PointsScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       moodHistory={moodHistory}
@@ -690,7 +681,7 @@ export default function App() {
 
   if (screen === 'crew') return (
     <BipCrewScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       crewMembers={crewMembers}
@@ -704,7 +695,7 @@ export default function App() {
 
   if (screen === 'comfortStreaks') return (
     <ComfortStreaksScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       comfortSessions={comfortSessions}
@@ -715,7 +706,7 @@ export default function App() {
 
   if (screen === 'history') return (
     <HistoryScreen
-      t={t}
+      t={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
       moodHistory={moodHistory}
@@ -730,7 +721,7 @@ export default function App() {
 
   if (screen === 'more') return (
     <MoreScreen
-      t={t}
+      t={currentTheme}
       userSide={userSide}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       setScreen={setScreen}
@@ -742,7 +733,7 @@ export default function App() {
 
   if (screen === 'settings') return (
     <SettingsScreen
-      t={t}
+      t={currentTheme}
       theme={theme}
       setTheme={setTheme}
       selectedSekret={selectedSekret}

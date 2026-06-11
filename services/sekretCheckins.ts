@@ -72,9 +72,9 @@ function messageFor(
 }
 
 export function buildSekretCheckIn(
-  _summary: Partial<MemorySummary> | undefined,
+  summary: Partial<MemorySummary> | undefined,
   personality?: string,
-  _mood?: string,
+  currentMood?: string,
   isLateNight?: boolean,
   input?: CompanionActivityInput,
   memory?: SekretMemory,
@@ -87,10 +87,16 @@ export function buildSekretCheckIn(
   const recentGrowth = summary?.recentGrowth;
   const proudMoodCount = summary?.proudMoodCount ?? 0;
 
+  const moodList = input?.moodHistory?.map(e => e.mood ?? '') ?? [];
+  const repeatedEmotion = currentMood
+    ? moodList.slice(0, 5).filter(m => m === currentMood).length >= 2
+    : false;
+  const missedStreak = (input?.streakDays ?? 0) === 0 && absentDays >= 1;
+
   let trigger: Parameters<typeof messageFor>[0] | null = null;
-  if (LOW_MOOD.test(currentMood) && repeatedEmotion) trigger = 'repeated-emotion';
-  else if (LOW_MOOD.test(currentMood)) trigger = 'low-mood';
-  else if (WINNING_MOOD.test(currentMood)) trigger = 'winning-mood';
+  if (LOW_MOOD.test(currentMood ?? '') && repeatedEmotion) trigger = 'repeated-emotion';
+  else if (LOW_MOOD.test(currentMood ?? '')) trigger = 'low-mood';
+  else if (WINNING_MOOD.test(currentMood ?? '')) trigger = 'winning-mood';
   else if (recentGrowth && proudMoodCount >= 3) trigger = 'growth-noticing';
   else if (absentDays >= 7) trigger = 'long-absence';
   else if (missedStreak) trigger = 'missed-streak';
