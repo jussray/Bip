@@ -122,29 +122,29 @@ const getHeroText = (mood: string, tod: TimeOfDay) => {
 
 const getMoodResponse = (mood: string, selectedSekret: string) => {
   if (selectedSekret === 'rylane') {
-    if (mood === 'Sad')     return "nah, you not carrying this by yourself. i’m right here.";
-    if (mood === 'Angry')   return "your feelings make sense. let it out. i got you.";
-    if (mood === 'Tired')   return "you gave it everything today. rest is part of the work.";
+    if (mood === 'Sad')     return "nah. who got you feeling like this?";
+    if (mood === 'Angry')   return "aight. who did what?";
+    if (mood === 'Tired')   return "you look cooked. sit down somewhere 😭";
     if (mood === 'Neutral') return "low-key kinda mid? bet. we can just sit here a sec.";
-    return "i see you. you doing better than you think.";
+    return "aight. what’s the story?";
   }
   if (selectedSekret === 'cloud') {
-    if (mood === 'Sad')     return "That sounds heavy. We can just sit with it for a minute.";
-    if (mood === 'Angry')   return "That sounds frustrating. You don’t have to solve everything tonight.";
-    if (mood === 'Tired')   return "Long day? You can rest here.";
-    return "You can be quiet here. No pressure.";
+    if (mood === 'Sad')     return "Something feels heavier today.";
+    if (mood === 'Angry')   return "There’s an edge to today.";
+    if (mood === 'Tired')   return "The room can stay quiet.";
+    return "Something feels different.";
   }
   if (selectedSekret === 'night') {
-    if (mood === 'Sad')     return "Still awake? It’s okay. I’m here.";
-    if (mood === 'Angry')   return "Long day? We can keep it simple tonight.";
-    if (mood === 'Tired')   return "You don’t have to explain it perfectly. Just be here.";
-    return "It’s okay to be quiet tonight.";
+    if (mood === 'Sad')     return "yeah. i know.";
+    if (mood === 'Angry')   return "stay here a minute.";
+    if (mood === 'Tired')   return "rest if you can.";
+    return "i’m here.";
   }
-  if (mood === 'Sad')     return "Aight, come here. Tell me what happened.";
-  if (mood === 'Angry')   return "That would've hurt my feelings too. You okay?";
-  if (mood === 'Tired')   return "Be nice to yourself today, okay?";
-  if (mood === 'Neutral') return "Sometimes a quiet middle is exactly where you need to be.";
-  return "I read your energy tonight. You’re doing better than you think.";
+  if (mood === 'Sad')     return "Girl... who made today weird?";
+  if (mood === 'Angry')   return "Nah because who irritated you 😭";
+  if (mood === 'Tired')   return "You look DONE 😭 what happened?";
+  if (mood === 'Neutral') return "Okay neutral... suspicious 😭 what’s up?";
+  return "Okayyy, I see the energy. What happened?";
 };
 
 // Streak language per vision: "we see you" — never punishing
