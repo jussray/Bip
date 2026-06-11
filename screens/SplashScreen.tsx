@@ -1,12 +1,12 @@
 // screens/SplashScreen.tsx
 // Se'kret Bip — Opening Screen
 //
-// splash-bg.png is the full neon Se'kret Bip artwork:
+// splash-bg.png is the full neon Se'kret Bip artwork (1024×1536):
 //   Raylene + Rylane back-to-back, cloud with headphones, neon title,
 //   "Press Se'kret Bip to enter your safe space", CTA + shortcuts — all baked in.
 //
-// This component renders the image full-screen and wires up touch targets.
-// No duplicate React Native text or buttons are overlaid on top of the artwork.
+// Hit targets are positioned as fractions of the rendered image so they scale
+// with any screen size. The Se'kret Bip CTA button is the primary entry point.
 
 import React, { useEffect, useRef } from "react";
 import {
@@ -22,6 +22,17 @@ import { StatusBar } from "expo-status-bar";
 
 const { width, height } = Dimensions.get("window");
 const splashBg = require("../assets/images/splash-bg.png");
+
+// Fractions measured against the 1024×1536 source artwork.
+// The Se'kret Bip CTA button occupies roughly 63%–71% vertically, 11%–89% horizontally.
+const CTA_TOP    = 0.63;
+const CTA_BOTTOM = 0.71;
+const CTA_LEFT   = 0.11;
+const CTA_RIGHT  = 0.89;
+
+// The four shortcut icons sit roughly 75%–85% down.
+const SC_TOP    = 0.75;
+const SC_BOTTOM = 0.85;
 
 const SHORTCUTS = [
   { label: "Write It Out", target: "pages" },
@@ -49,24 +60,34 @@ export function SplashScreen({ setScreen }: SplashScreenProps) {
     <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
       <StatusBar style="light" />
 
-      {/* Full-screen artwork — all visual UI is baked into the image */}
+      {/* Full-screen artwork — display only, no tap-to-enter */}
+      <Image
+        source={splashBg}
+        style={styles.bgImage}
+        resizeMode="cover"
+        pointerEvents="none"
+      />
+
+      {/* Se'kret Bip CTA button — the only way to enter the app */}
       <TouchableOpacity
-        style={StyleSheet.absoluteFill}
+        style={[styles.hitTarget, {
+          top:    height * CTA_TOP,
+          height: height * (CTA_BOTTOM - CTA_TOP),
+          left:   width  * CTA_LEFT,
+          right:  width  * (1 - CTA_RIGHT),
+        }]}
         onPress={() => setScreen("home")}
-        activeOpacity={0.92}
+        activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel="Enter Se'kret Bip"
-        accessibilityHint="Opens your safe space"
-      >
-        <Image
-          source={splashBg}
-          style={styles.bgImage}
-          resizeMode="cover"
-        />
-      </TouchableOpacity>
+        accessibilityLabel="Se'kret Bip — enter your safe space"
+        accessibilityHint="Opens the app"
+      />
 
       {/* Transparent hit-targets aligned with the shortcut row baked into the image */}
-      <View style={styles.shortcutRow} pointerEvents="box-none">
+      <View style={[styles.shortcutRow, {
+        top:    height * SC_TOP,
+        height: height * (SC_BOTTOM - SC_TOP),
+      }]}>
         {SHORTCUTS.map(({ label, target }) => (
           <TouchableOpacity
             key={target}
@@ -90,14 +111,13 @@ const styles = StyleSheet.create({
     width,
     height,
   },
+  hitTarget: {
+    position: "absolute",
+  },
   shortcutRow: {
     position: "absolute",
-    // The shortcuts row in the artwork sits in the bottom ~10% of the image.
-    // With cover scaling on a portrait device, it lands roughly here:
-    bottom: Platform.OS === "ios" ? 28 : 18,
     left: 0,
     right: 0,
-    height: height * 0.10,
     flexDirection: "row",
   },
   shortcutHit: {
