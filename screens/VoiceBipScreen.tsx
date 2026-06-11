@@ -23,6 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
+import { fetchSekretReply } from '../utils/api';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Animated, Image, StyleSheet, Easing,
@@ -92,25 +93,6 @@ const TIME_BADGE: Record<TimeOfDay, string> = {
   evening: '🌆 evening',
   night:   '🌙 night',
 };
-
-// ── API ────────────────────────────────────────────────────────────────────
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-
-async function fetchSekretReply(text: string, context = 'journal', mood?: string): Promise<string> {
-  if (!BASE_URL) return "I hear you. You don’t have to carry that alone 💜";
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ text, context, mood }),
-    });
-    if (!res.ok) throw new Error('api error');
-    const data = await res.json();
-    return data.reply || "I hear you. You don’t have to carry that alone 💜";
-  } catch {
-    return "I hear you. That makes sense. You don’t have to carry that by yourself 💜";
-  }
-}
 
 // ── Props ──────────────────────────────────────────────────────────────────
 interface VoiceBipScreenProps {
@@ -296,7 +278,9 @@ export function VoiceBipScreen({
     setIsThinking(true);
     const reply = await fetchSekretReply(
       'I just recorded a voice bip. I had some feelings I needed to get out.',
-      'journal'
+      'journal',
+      mood,
+      selectedSekret,
     );
     setSekretReply(reply);
     setIsThinking(false);

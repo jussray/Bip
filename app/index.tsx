@@ -30,6 +30,7 @@ import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
+import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 // IMPORTANT: loadState() takes NO args — returns full state object.
@@ -88,10 +89,10 @@ const THEME_PACKS: Record<string, any> = {
 };
 
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se’kret",       emoji: '🌸', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. Aight, talk to me. What’s really going on?" },
+  soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
   rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
-  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Comfort',        vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
-  night:  { name: "Night Se’kret", emoji: '🌙', title: 'Late-Night Listener',  vibe: 'Minimal words, calm energy, safe space.',        greeting: "You don’t have to explain it perfectly tonight. I’m here." },
+  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
+  night:  { name: "Night Se’kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
 };
 
 const HOME_MESSAGES = [
@@ -175,6 +176,8 @@ export default function App() {
 
   // ── Derived ──────────────────────────────────────────────────────────────
   const t             = THEME_PACKS[theme] || THEME_PACKS.raylene;
+  const vibeKey       = normalizeVibeKey(theme);
+  const t             = THEME_PACKS[vibeKey];
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
   const companionInput = useMemo(() => ({
     selectedSekret,
@@ -203,7 +206,7 @@ export default function App() {
       try {
         const state = await loadState();
 
-        if (state.theme)          setTheme(state.theme);
+        if (state.theme)          setTheme(normalizeVibeKey(state.theme));
         if (state.mood)           setMood(state.mood);
         if (state.userSide)       setUserSide(state.userSide);
         if (state.selectedSekret) setSelectedSekret(state.selectedSekret);
@@ -475,6 +478,19 @@ export default function App() {
       />
     );
   }
+  if (screen === 'home') return (
+    <RoomScreen
+      mood={mood}
+      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+      setSelectedSekret={val => setSelectedSekret(val)}
+      setScreen={setScreen}
+      t={t}
+      updateRoomMemory={updateRoomMemory}
+      vibe={vibeKey}
+      BottomNav={nav}
+      companion={companion}
+    />
+  );
 
   // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
@@ -530,11 +546,11 @@ export default function App() {
       saveJournalEntry={saveJournalEntry}
       mood={mood}
       t={t}
-      currentSekret={currentSekret}
-      selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
-      companion={companion}
+      moodHistory={moodHistory}
+      voiceNotes={voiceNotes}
+      streakDays={streakDays}
     />
   );
 
@@ -552,8 +568,8 @@ export default function App() {
   if (screen === 'sekret') return (
     <SekretScreen
       t={t}
-      currentSekret={currentSekret}
       mood={mood}
+      currentSekret={currentSekret}
       selectedProfile={selectedSekret}
       setSelectedProfile={setSelectedSekret}
       userSide={userSide}

@@ -72,19 +72,15 @@ function messageFor(
 }
 
 export function buildSekretCheckIn(
-  summary: Partial<MemorySummary> | undefined,
+  _summary: Partial<MemorySummary> | undefined,
   personality?: string,
-  mood?: string,
+  _mood?: string,
   isLateNight?: boolean,
   input?: CompanionActivityInput,
   memory?: SekretMemory,
 ): CompanionCheckIn | null {
-  const recentMoods = memory?.moodHistory.slice(-6).map((entry) => entry.mood || '') || [];
-  const currentMood = mood || recentMoods[recentMoods.length - 1] || '';
-  const repeatedEmotion = Boolean(currentMood) && recentMoods.filter((value) => value.toLowerCase() === currentMood.toLowerCase()).length >= 2;
   const lastActive = input?.lastOpenDate || memory?.lastActiveAt;
   const absentDays = daysSince(lastActive);
-  const missedStreak = (memory?.streaks.longest || 0) >= 2 && (summary?.streakDays || 0) <= 1 && absentDays >= 1;
 
   const comfortWordPattern = summary?.comfortWordPattern;
   const hasDeferredGoal = summary?.hasDeferredGoal;

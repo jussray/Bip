@@ -63,7 +63,7 @@ const EMOJI_PICKS = ['\u{1F49C}', '\u{1F319}', '☁\uFE0F', '\u{1F31F}', '\u{1F3
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  t: (k: string) => string;
+  t: Record<string, any>;
   mood: string;
   selectedSekret: 'rylane' | 'raylene' | string;
   crewMembers: CrewMember[];

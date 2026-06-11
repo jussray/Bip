@@ -128,22 +128,11 @@ export function buildCheckIn(summary: MemorySummary, input: CompanionActivityInp
   return buildSekretCheckIn(summary, personality, input.mood, input.isLateNight, input);
 }
 
-export function buildGreeting(personality: string, level: CompanionLevel, mood?: string) {
-  const moodTone = /sad|angry|tired|anxious|stress|overwhelmed/i.test(mood || '') ? 'softly' : 'warmly';
-  if (personality === 'Rylane') {
-    if (level.level >= 3) return `Aight, I’m here. We’ve been building something real ${moodTone}.`;
-    return "Aight, talk to me. What's really going on?";
-  }
-  if (personality === "Cloud Se'kret") {
-    return 'That sounds heavy. We can just sit here for a minute.';
-  }
-  if (personality === 'Night Se\'kret') {
-    return 'Still awake? It’s okay. I’m here.';
-  }
-  if (level.level >= 3) {
-    return `Hey love, I’m still here with you, ${moodTone}.`;
-  }
-  return "Hey love. Aight, talk to me. What's really going on?";
+export function buildGreeting(personality: string, _level: CompanionLevel, _mood?: string) {
+  if (personality === 'Rylane') return 'Aight. What REALLY happened?';
+  if (personality === "Cloud Se'kret") return 'Something feels different today.';
+  if (personality === 'Night Se\'kret') return 'Rough night?';
+  return 'Friend... 😭 okay, what happened?';
 }
 
 export function buildCompanionSnapshot(input: CompanionActivityInput, previousState?: CompanionState) {

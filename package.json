@@ -11,7 +11,8 @@
     "web": "expo start --web",
     "test": "jest",
     "lint": "eslint . --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
