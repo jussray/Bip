@@ -21,6 +21,9 @@ function context(summary: Partial<MemorySummary> | undefined) {
     comfortWord: summary?.comfortWordPattern,
     deferredGoal: summary?.hasDeferredGoal,
     recurringEntity: summary?.recurringEntity,
+    recentGrowth: summary?.recentGrowth,
+    proudMoodCount: summary?.proudMoodCount ?? 0,
+    winningStreak: summary?.winningStreak ?? 0,
   };
 }
 
@@ -31,6 +34,19 @@ export function buildSekretPresence(
 ): string {
   const voice = normalizeSekretPersonality(personality);
   const memory = context(summary);
+
+  // ── Growth noticing — celebrate wins, not just process pain ─────────────
+  if (memory.recentGrowth && !screen) {
+    if (voice === 'rylane') return `You've been ${memory.recentGrowth}. That's not a coincidence. That's you locking in.`;
+    if (voice === 'cloud') return `${memory.recentGrowth}. The pattern is shifting. I noticed before you did.`;
+    if (voice === 'night') return `${memory.recentGrowth}. Last month was different. Look at where you are now.`;
+    return `${memory.recentGrowth}, love. That's growth and I need you to see it.`;
+  }
+  if (memory.winningStreak >= 3 && !screen) {
+    if (voice === 'rylane') return `${memory.winningStreak} days winning in a row. That's a pattern now. Keep going.`;
+    if (voice === 'cloud') return `Something has been different the last ${memory.winningStreak} days. Something good.`;
+    return `${memory.winningStreak} days in a row feeling like yourself. Baby, that's not luck. That's you.`;
+  }
 
   // ── Tolan-level pattern noticing ────────────────────────────────────────
   if (memory.comfortWord && !screen) {

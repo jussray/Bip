@@ -4,6 +4,7 @@ import type { CompanionActivityInput, MemorySummary } from '../types/sekretCompa
 
 type ComfortWordEntry = { word: string; date: string };
 type DeferredEntry    = { phrase: string; date: string };
+type WinEntry         = { mood: string; date: string };
 type MemoryRecord = {
   sourceId?: string;
   date?: string;
@@ -30,6 +31,7 @@ export interface SekretMemory {
   recurringTopics: string[];
   comfortWordHistory: ComfortWordEntry[];
   deferredGoalHistory: DeferredEntry[];
+  winHistory: WinEntry[];
   lastUpdated: string;
 }
 
@@ -42,6 +44,12 @@ const TOPIC_WORDS = [
   'comfort', 'voice', 'circle', 'confidence', 'lonely', 'overthinking', 'relationship',
 ] as const;
 const MAX_ACTIVITY_ITEMS = 60;
+
+// Moods in the "winning" category — used to track growth over time
+const WINNING_MOODS = new Set([
+  'proud', 'motivated', 'confident', 'excited', 'accomplished', 'loved', 'connected',
+  'locked-in', 'celebrating', 'glow-up', 'feeling-seen',
+]);
 
 // Words teens use to mask harder emotions
 const COMFORT_WORDS = [
@@ -68,6 +76,7 @@ export const DEFAULT_SEKRET_MEMORY: SekretMemory = {
   recurringTopics: [],
   comfortWordHistory: [],
   deferredGoalHistory: [],
+  winHistory: [],
   lastUpdated: '',
 };
 
@@ -113,6 +122,13 @@ function extractDeferredPhrases(text: string): DeferredEntry[] {
   return DEFERRED_PHRASES
     .filter(phrase => lower.includes(phrase))
     .map(phrase => ({ phrase, date }));
+}
+
+function extractWins(moodHistory: Array<{ mood?: string; date?: string }>): WinEntry[] {
+  const date = new Date().toISOString().slice(0, 10);
+  return moodHistory
+    .filter(entry => entry.mood && WINNING_MOODS.has(entry.mood.toLowerCase()))
+    .map(entry => ({ mood: entry.mood!.toLowerCase(), date: entry.date || date }));
 }
 
 function normalizeTopics(values: Array<string | undefined>): string[] {
@@ -173,7 +189,8 @@ function activityFromInput(input: CompanionActivityInput) {
     ...extractComfortWords(moodLabels),
   ];
   const deferredGoalHistory = extractDeferredPhrases(allJournalText);
-  return { moodHistory, journalActivity, voiceBips, comfortUsage, recurringTopics, comfortWordHistory, deferredGoalHistory };
+  const winHistory = extractWins(safeArray(input.moodHistory));
+  return { moodHistory, journalActivity, voiceBips, comfortUsage, recurringTopics, comfortWordHistory, deferredGoalHistory, winHistory };
 }
 
 function normalizeMemory(value: Partial<SekretMemory> | undefined): SekretMemory {
@@ -192,6 +209,7 @@ function normalizeMemory(value: Partial<SekretMemory> | undefined): SekretMemory
     recurringTopics: normalizeTopics(value?.recurringTopics || []),
     comfortWordHistory: Array.isArray(value?.comfortWordHistory) ? value.comfortWordHistory : [],
     deferredGoalHistory: Array.isArray(value?.deferredGoalHistory) ? value.deferredGoalHistory : [],
+    winHistory: Array.isArray(value?.winHistory) ? value.winHistory : [],
   };
 }
 
@@ -259,6 +277,7 @@ export async function updateSekretMemory(
     recurringTopics: normalizeTopics([...activity.recurringTopics, ...base.recurringTopics]),
     comfortWordHistory: [...base.comfortWordHistory, ...activity.comfortWordHistory].slice(-80),
     deferredGoalHistory: [...base.deferredGoalHistory, ...activity.deferredGoalHistory].slice(-40),
+    winHistory: [...base.winHistory, ...activity.winHistory].slice(-100),
     lastUpdated: now,
   };
   await saveSekretMemory(next);
@@ -302,6 +321,35 @@ export function summarizeSekretMemory(memory: SekretMemory): MemorySummary {
   const topEntity = Object.entries(topicFreq).sort((a, b) => b[1] - a[1])[0];
   const recurringEntity = topEntity && topEntity[1] >= 3 ? topEntity[0] : undefined;
 
+  // Win / growth tracking
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const recentWins = normalized.winHistory.filter(w => (w.date || '') >= thirtyDaysAgo);
+  const proudMoodCount = recentWins.length;
+  const winMoments = [...new Set(recentWins.map(w => w.mood))];
+
+  // "You've picked Proud 3x this week" — detect meaningful winning-mood patterns
+  const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+  const weekWins = normalized.winHistory.filter(w => (w.date || '') >= sevenDaysAgo);
+  const topWinMood = weekWins.length > 0
+    ? Object.entries(weekWins.reduce<Record<string, number>>((acc, w) => {
+        acc[w.mood] = (acc[w.mood] || 0) + 1; return acc;
+      }, {})).sort((a, b) => b[1] - a[1])[0]
+    : null;
+  const recentGrowth = topWinMood && topWinMood[1] >= 2
+    ? `${topWinMood[1]}x ${topWinMood[0]} this week`
+    : undefined;
+
+  // Winning streak: consecutive days with any winning mood
+  const winDates = new Set(normalized.winHistory.map(w => w.date).filter(Boolean));
+  let winningStreak = 0;
+  const today = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    if (winDates.has(d.toISOString().slice(0, 10))) winningStreak++;
+    else break;
+  }
+
   return {
     favoriteMood: countMostCommon(moods, 'Thoughtful'),
     favoriteSekret: normalized.selectedPersonality || 'soft',
@@ -316,7 +364,8 @@ export function summarizeSekretMemory(memory: SekretMemory): MemorySummary {
       ...(normalized.journalActivity.length ? ['first page written'] : []),
       ...(normalized.voiceBips.length ? ['first voice bip'] : []),
       ...(normalized.comfortUsage.length ? ['comfort found'] : []),
-    ].slice(0, 4),
+      ...(proudMoodCount >= 3 ? [`feeling proud ${proudMoodCount}x`] : []),
+    ].slice(0, 5),
     daysActive: Math.max(activityDates.size, normalized.streaks.longest),
     conversations: normalized.moodHistory.length + normalized.journalActivity.length + normalized.voiceBips.length,
     journalsWritten: normalized.journalActivity.length,
@@ -325,5 +374,9 @@ export function summarizeSekretMemory(memory: SekretMemory): MemorySummary {
     comfortWordPattern,
     hasDeferredGoal,
     recurringEntity,
+    winMoments,
+    proudMoodCount,
+    recentGrowth,
+    winningStreak,
   };
 }
