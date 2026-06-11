@@ -89,6 +89,8 @@ interface SettingsScreenProps {
   setSekretMode:      (mode: string) => void;
   userSide:           string;
   setUserSide:        (side: string) => void;
+  parentRoomStyle?:   string;
+  setParentRoomStyle?:(style: string) => void;
   setScreen:          (screen: string) => void;
   BottomNav:          React.ReactNode;
   mood?:              string;
@@ -101,6 +103,7 @@ export function SettingsScreen({
   selectedSekret, setSelectedSekret,
   sekretMode, setSekretMode,
   userSide, setUserSide,
+  parentRoomStyle, setParentRoomStyle,
   setScreen, BottomNav,
 }: SettingsScreenProps) {
 
@@ -289,6 +292,35 @@ export function SettingsScreen({
             );
           })}
         </View>
+
+        {/* ── PARENT ROOM STYLE ── */}
+        {userSide === 'parent' && setParentRoomStyle && (
+          <>
+            <Text style={styles.sectionLabel}>Parent Room</Text>
+            <View style={glass({ flexDirection: 'row', gap: 10 })}>
+              {([['mom', '💜', 'Mom Room'], ['dad', '👑', 'Dad Room']] as const).map(([style, ico, label]) => {
+                const active = parentRoomStyle === style;
+                return (
+                  <TouchableOpacity
+                    key={style}
+                    onPress={() => setParentRoomStyle(style)}
+                    style={[
+                      styles.sideBtn,
+                      {
+                        borderColor: active ? glow : 'rgba(150,110,210,0.3)',
+                        backgroundColor: active ? glow + '22' : 'rgba(20,10,40,0.5)',
+                        flex: 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.sideBtnIcon}>{ico}</Text>
+                    <Text style={[styles.sideBtnLabel, { color: active ? glow : '#c4b5fd' }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
         {/* ── DONE ── */}
         <TouchableOpacity

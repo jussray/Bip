@@ -20,6 +20,8 @@ const STORAGE_KEYS = {
   roomMemory: 'roomMemory',
   periodDays: 'periodDays',
   lastPeriodStart: 'lastPeriodStart',
+  parentRoomStyle: 'parentRoomStyle',
+  parentMood: 'parentMood',
 };
 
 const JSON_KEYS = new Set([

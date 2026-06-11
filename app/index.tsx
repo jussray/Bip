@@ -24,6 +24,7 @@ import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
 import { ParentBridgeScreen }   from '../screens/ParentBridgeScreen';
+import { ParentRoomScreen, type ParentRoomStyle } from '../screens/ParentRoomScreen';
 import { MoreScreen }           from '../screens/MoreScreen';
 import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
@@ -107,7 +108,7 @@ const HOME_MESSAGES = [
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','🏠','Room'],['dashboard','📊','Home'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
+    ? [['home','🏠','Room'],['pages','📔','Pages'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
     : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
@@ -133,6 +134,8 @@ export default function App() {
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
+  const [parentRoomStyle, setParentRoomStyle] = useState<ParentRoomStyle>('mom');
+  const [parentMood,      setParentMood]      = useState('');
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
@@ -224,6 +227,10 @@ export default function App() {
             : state.roomMemory;
           setRoomMemory(rm);
         }
+        if (state.parentRoomStyle === 'mom' || state.parentRoomStyle === 'dad') {
+          setParentRoomStyle(state.parentRoomStyle as ParentRoomStyle);
+        }
+        if (state.parentMood) setParentMood(state.parentMood);
       } catch (e) {
         // Storage read failure — continue with defaults
       }
@@ -306,9 +313,11 @@ export default function App() {
         comfortSessions,
         crewMembers,
         crewCheckIns,
-        streakDays:    String(streakDays),
+        streakDays:       String(streakDays),
         lastOpenDate,
-        roomMemory:    JSON.stringify(roomMemory),
+        roomMemory:       JSON.stringify(roomMemory),
+        parentRoomStyle,
+        parentMood,
       });
     } catch (e) {
       // Storage write failure — silent
@@ -318,7 +327,7 @@ export default function App() {
     journalText, journalEntries, moodHistory,
     circlePosts, voiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
-    roomMemory, isLoading,
+    roomMemory, parentRoomStyle, parentMood, isLoading,
   ]);
 
   // ── Streak tracking (daily open) ──────────────────────────────────────────
@@ -431,18 +440,30 @@ export default function App() {
   //   periodCalendar · voiceBip · cloudThoughts · dashboard
 
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
-  if (screen === 'home') return (
-    <RoomScreen
-      mood={mood}
-      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
-      setSelectedSekret={val => setSelectedSekret(val)}
-      setScreen={setScreen}
-      t={t}
-      updateRoomMemory={updateRoomMemory}
-      weatherMode={theme === 'rain' ? 'rain' : undefined}
-      BottomNav={nav}
-    />
-  );
+  if (screen === 'home') {
+    if (userSide === 'parent') return (
+      <ParentRoomScreen
+        parentRoomStyle={parentRoomStyle}
+        parentMood={parentMood}
+        setParentMood={(m) => setParentMood(m)}
+        setScreen={setScreen}
+        weatherMode={theme === 'rain' ? 'rain' : undefined}
+        BottomNav={nav}
+      />
+    );
+    return (
+      <RoomScreen
+        mood={mood}
+        selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+        setSelectedSekret={val => setSelectedSekret(val)}
+        setScreen={setScreen}
+        t={t}
+        updateRoomMemory={updateRoomMemory}
+        weatherMode={theme === 'rain' ? 'rain' : undefined}
+        BottomNav={nav}
+      />
+    );
+  }
 
   // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
@@ -703,6 +724,8 @@ export default function App() {
       setSekretMode={setSekretMode}
       userSide={userSide}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
+      parentRoomStyle={parentRoomStyle}
+      setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
