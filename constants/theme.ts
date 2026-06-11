@@ -259,17 +259,6 @@ export function getParentRoomBg(
   return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
 }
 
-export const THEME_PACKS: Record<
-  string,
-  {
-    name: string;
-    emoji: string;
-    background: string;
-    card: string;
-    accent: string;
-    soft: string;
-  }
-> = {
 export type VibeKey = "raylene" | "rylane" | "cloud" | "night" | "rain" | "sunset";
 
 export type VibePack = {
