@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
@@ -24,6 +24,7 @@ import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
 import { ParentBridgeScreen }   from '../screens/ParentBridgeScreen';
+import { ParentRoomScreen, type ParentRoomStyle } from '../screens/ParentRoomScreen';
 import { MoreScreen }           from '../screens/MoreScreen';
 import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
@@ -78,6 +79,15 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
+const THEME_PACKS: Record<string, any> = {
+  raylene: { name: "Raylene's Room", emoji: '\uD83D\uDC9C', background: '#1a0828', card: '#2a1040', accent: '#e879f9', soft: '#fde8ff' },
+  rylane:  { name: "Rylane's Space", emoji: '\u26A1', background: '#060d1c', card: '#0d1f3a', accent: '#4DA3FF', soft: '#b6dcff' },
+  cloud:   { name: "Cloud's World",  emoji: '\u2601\uFE0F', background: '#0a0818', card: '#18103a', accent: '#a78bfa', soft: '#ede9fe' },
+  night:   { name: 'Late Night',     emoji: '\uD83C\uDF19', background: '#05030f', card: '#100828', accent: '#c4b5fd', soft: '#ede9fe' },
+  rain:    { name: 'Rain Room',      emoji: '\uD83C\uDF27\uFE0F', background: '#060e18', card: '#0d1e30', accent: '#60a5fa', soft: '#bfdbfe' },
+  sunset:  { name: 'Sunset Vibe',   emoji: '\uD83C\uDF05', background: '#180a18', card: '#2a1428', accent: '#fb7185', soft: '#fce7f3' },
+};
+
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
   rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
@@ -99,7 +109,7 @@ const HOME_MESSAGES = [
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']]
+    ? [['home','🏠','Room'],['pages','📔','Pages'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
     : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
@@ -125,6 +135,9 @@ export default function App() {
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
+  const [parentRoomStyle, setParentRoomStyle] = useState<ParentRoomStyle>('mom');
+  const [parentMood,      setParentMood]      = useState('');
+  const [parentMoodDate,  setParentMoodDate]  = useState('');
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
@@ -162,10 +175,11 @@ export default function App() {
   const [isLoading, setIsLoading]               = useState(true);
 
   // ── Derived ──────────────────────────────────────────────────────────────
+  const t             = THEME_PACKS[theme] || THEME_PACKS.raylene;
   const vibeKey       = normalizeVibeKey(theme);
   const t             = THEME_PACKS[vibeKey];
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
-  const companion = useSekretCompanion({
+  const companionInput = useMemo(() => ({
     selectedSekret,
     mood,
     journalEntries,
@@ -177,7 +191,8 @@ export default function App() {
     lastOpenDate,
     screen,
     isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
-  });
+  }), [selectedSekret, mood, journalEntries, moodHistory, voiceNotes, comfortSessions, circlePosts, streakDays, lastOpenDate, screen]);
+  const companion = useSekretCompanion(companionInput);
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
   // loadState() returns the full state object — no args needed.
@@ -216,6 +231,11 @@ export default function App() {
             : state.roomMemory;
           setRoomMemory(rm);
         }
+        if (state.parentRoomStyle === 'mom' || state.parentRoomStyle === 'dad') {
+          setParentRoomStyle(state.parentRoomStyle as ParentRoomStyle);
+        }
+        if (state.parentMood)     setParentMood(state.parentMood);
+        if (state.parentMoodDate) setParentMoodDate(state.parentMoodDate);
       } catch (e) {
         // Storage read failure — continue with defaults
       }
@@ -298,9 +318,12 @@ export default function App() {
         comfortSessions,
         crewMembers,
         crewCheckIns,
-        streakDays:    String(streakDays),
+        streakDays:       String(streakDays),
         lastOpenDate,
-        roomMemory:    JSON.stringify(roomMemory),
+        roomMemory:       JSON.stringify(roomMemory),
+        parentRoomStyle,
+        parentMood,
+        parentMoodDate,
       });
     } catch (e) {
       // Storage write failure — silent
@@ -310,7 +333,7 @@ export default function App() {
     journalText, journalEntries, moodHistory,
     circlePosts, voiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
-    roomMemory, isLoading,
+    roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
   ]);
 
   // ── Streak tracking (daily open) ──────────────────────────────────────────
@@ -321,10 +344,10 @@ export default function App() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
-      setStreakDays(wasYesterday ? streakDays + 1 : 1);
+      setStreakDays(prev => wasYesterday ? prev + 1 : 1);
       setLastOpenDate(today);
     }
-  }, [isLoading]);
+  }, [isLoading, lastOpenDate]);
 
   // ── Rotating home message ─────────────────────────────────────────────────
   useEffect(() => {
@@ -423,6 +446,38 @@ export default function App() {
   //   periodCalendar · voiceBip · cloudThoughts · dashboard
 
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
+  if (screen === 'home') {
+    if (userSide === 'parent') {
+      const today = new Date().toLocaleDateString();
+      const previousMood = (parentMoodDate && parentMoodDate !== today) ? parentMood : '';
+      return (
+        <ParentRoomScreen
+          parentRoomStyle={parentRoomStyle}
+          parentMood={parentMood}
+          previousMood={previousMood}
+          setParentMood={(m) => {
+            setParentMood(m);
+            setParentMoodDate(new Date().toLocaleDateString());
+          }}
+          setScreen={setScreen}
+          weatherMode={theme === 'rain' ? 'rain' : undefined}
+          BottomNav={nav}
+        />
+      );
+    }
+    return (
+      <RoomScreen
+        mood={mood}
+        selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+        setSelectedSekret={val => setSelectedSekret(val)}
+        setScreen={setScreen}
+        t={t}
+        updateRoomMemory={updateRoomMemory}
+        weatherMode={theme === 'rain' ? 'rain' : undefined}
+        BottomNav={nav}
+      />
+    );
+  }
   if (screen === 'home') return (
     <RoomScreen
       mood={mood}
@@ -577,6 +632,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
@@ -587,6 +643,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
@@ -694,6 +751,8 @@ export default function App() {
       setSekretMode={setSekretMode}
       userSide={userSide}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
+      parentRoomStyle={parentRoomStyle}
+      setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}

@@ -68,6 +68,58 @@ const MEDIA_TYPES: { id: MediaType; emoji: string; label: string; sub: string }[
   { id: 'growth', emoji: '⭐', label: 'Small win', sub: 'something shifted, even a little' },
 ];
 
+const SEED_POSTS: CirclePost[] = [
+  {
+    id: "seed-1",
+    text: "nobody asked if i was okay today. i was kind of not. but i smiled the whole time and now i’m tired in a different way.",
+    bipType: "text",
+    date: "a few hours ago",
+    reactions: { felt: 41, comfort: 22, proud: 0, stay: 17 },
+    quietRepliesCount: 8,
+  },
+  {
+    id: "seed-2",
+    text: "finished it at 2am. cried a little. submitted anyway. that’s the whole story.",
+    bipType: "growth",
+    date: "yesterday",
+    reactions: { felt: 29, comfort: 6, proud: 38, stay: 4 },
+    quietRepliesCount: 11,
+  },
+  {
+    id: "seed-3",
+    text: "anxiety was loud this morning. like really loud. i got up anyway. that’s my win today and i’m not minimizing it.",
+    bipType: "text",
+    date: "yesterday",
+    reactions: { felt: 53, comfort: 31, proud: 19, stay: 24 },
+    quietRepliesCount: 9,
+  },
+  {
+    id: "seed-4",
+    text: "i apologized to someone i hurt and they didn’t accept it. i’m trying to let that be okay.",
+    bipType: "text",
+    date: "2 days ago",
+    reactions: { felt: 44, comfort: 38, proud: 7, stay: 21 },
+    quietRepliesCount: 14,
+  },
+  {
+    id: "seed-5",
+    text: "i said no to something i didn’t want to do and i didn’t apologize for it. first time in a long time.",
+    bipType: "growth",
+    date: "3 days ago",
+    reactions: { felt: 18, comfort: 9, proud: 62, stay: 3 },
+    quietRepliesCount: 6,
+  },
+  {
+    id: "seed-6",
+    text: "sometimes i’m scared that being honest about how i feel will make people leave. so i stay quiet. and then i’m still alone anyway.",
+    bipType: "text",
+    date: "4 days ago",
+    reactions: { felt: 78, comfort: 51, proud: 0, stay: 34 },
+    quietRepliesCount: 19,
+  },
+];
+
+
 const QUOTE_REPLIES_RAYLENE = [
   'I felt this too.',
   'You are not alone in this.',
@@ -342,8 +394,18 @@ export function CircleScreen({
     : 'pull up a chair. somebody in here gets it.';
   const energyText = isRylane ? '⚡ support circle open' : '💜 support circle open';
   const cultureLines = isRylane
-    ? ['no bullying. no exposing. no chasing clout.', 'just real bips. real circle. respect.']
-    : ['no bullying. no exposing. no going viral.', 'just real bips, real connection, real safety.'];
+    ? [
+        'this is not the internet. nobody\'s getting exposed here.',
+        'no clout. no ratio. no drama.',
+        'just real ones, saying real things, held in real care.',
+        'what gets posted in the circle stays in the circle.',
+      ]
+    : [
+        'this is not a social media feed. it\'s a support circle.',
+        'no bullying. no exposing. no going viral.',
+        'your bips are held gently here, always.',
+        'every person in this circle is going through something real.',
+      ];
   const composerHint = isRylane ? 'say it plain. no filter.' : 'say it how it feels, gently.';
 
   return (
@@ -523,6 +585,32 @@ export function CircleScreen({
 
         <Animated.View style={cardStyle(fade4)}>
           <View style={[styles.sectionCard, { borderColor: glow, backgroundColor: 'rgba(20,12,40,0.7)' }]}>
+            <Text style={styles.sectionTitle}>circle bips</Text>
+            {circlePosts.length === 0 && (
+              <>
+                <Text style={styles.emptyText}>
+                  {isRylane ? "circle's quiet. drop something real." : "circle is quiet right now. you can be the first."}
+                </Text>
+                <Text style={styles.seedLabel}>what circle sounds like</Text>
+                {SEED_POSTS.map(post => (
+                  <View key={post.id} style={[styles.postCard, { borderColor: "#c4b5fd55" }]}>
+                    <Text style={[styles.postBipType, { color: "#c4b5fd" }]}>
+                      {MEDIA_TYPES.find(m => m.id === post.bipType)?.emoji ?? "💜"}{" "}
+                      {MEDIA_TYPES.find(m => m.id === post.bipType)?.label ?? "Bip"}
+                    </Text>
+                    <Text style={styles.postText}>{post.text}</Text>
+                    <Text style={styles.postDate}>{post.date}</Text>
+                    <View style={styles.reactionRow}>
+                      <Text style={styles.reactionBtn}>💜 {post.reactions?.felt ?? 0}</Text>
+                      <Text style={styles.reactionBtn}>🫶 {post.reactions?.comfort ?? 0}</Text>
+                      <Text style={styles.reactionBtn}>⭐ {post.reactions?.proud ?? 0}</Text>
+                      <Text style={styles.reactionBtn}>🌿 {post.reactions?.stay ?? 0}</Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+            {circlePosts.map(post => (
             <Text style={styles.sectionTitle}>what the circle is holding</Text>
             <View style={styles.circlePromise}>
               <Text style={styles.circlePromiseText}>You don't have to know them to not feel alone.</Text>
@@ -699,6 +787,9 @@ const styles = StyleSheet.create({
   sectionCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginTop: 6, marginBottom: 14 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
   emptyText: { color: '#cbb6f7', fontSize: 13, fontStyle: 'italic', textAlign: 'center', paddingVertical: 18 },
+  seedLabel: { color: '#c4b5fd', fontSize: 11, fontWeight: '700', textAlign: 'center', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10, marginTop: 4, opacity: 0.7 },
+  postDate: { color: '#8877a9', fontSize: 11, marginTop: 4, marginBottom: 6 },
+  postBipType: { fontSize: 12, fontWeight: '700', marginBottom: 6 },
   circlePromise: { padding: 13, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.055)', marginBottom: 12 },
   circlePromiseText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   circlePromiseSub: { color: '#bcaed2', fontSize: 10, letterSpacing: 0.5, marginTop: 3 },

@@ -16,12 +16,12 @@ const rayleneWriting = require("../assets/images/raylene-writing.png");
 const rayleneWindow = require("../assets/images/raylene-window.png");
 const rayleneFullbody = require("../assets/images/raylene-fullbody.png");
 const rayleneHappyV3 = require("../assets/images/raylene-happy-v3.png");
-const rayleneNeutralV3 = require("../assets/images/raylene-neutral-v3.png");
+const rayleneNeutralV3 = rayleneNeutral;
 
 // ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
 const rayleneThinking    = rayleneNeutral; // fallback → neutral
 const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
-const rayleneNightWindow = rayleneWindow; // fallback → window
+const rayleneNightWindow = rayleneWindowRainy; // night window → rainy window (closer semantic)
 const rayleneNightDoodle = rayleneWriting; // fallback → writing
 const rayleneVoiceDay    = require("../assets/images/raylene-voice-day.png");
 const rayleneVoiceNight  = require("../assets/images/raylene-voice-night.png");
@@ -46,6 +46,7 @@ const rylaneThinking   = require("../assets/images/rylane-thinking.png");
 const rylaneProfile    = rylaneFullbody; // fallback → fullbody portrait
 const rylaneVoiceDay   = require("../assets/images/rylane-voice-day.png");
 const rylaneVoiceNight = require("../assets/images/rylane-voice-night.png");
+const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
 const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
@@ -59,6 +60,19 @@ const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png")
 const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
 const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
+
+// ── Parent Room Backgrounds ────────────────────────────────────────────────
+const bgMomRoomDay       = require("../assets/images/bg-mom-room-day.png");
+const bgMomRoomEvening   = require("../assets/images/bg-mom-room-evening.png");
+const bgMomRoomNight     = require("../assets/images/bg-mom-room-night.png");
+const bgMomRoomDeepNight = require("../assets/images/bg-mom-room-deep-night.png");
+const bgMomRoomRain      = require("../assets/images/bg-mom-room-rain.png");
+
+const bgDadRoomDay       = require("../assets/images/bg-dad-room-day.png");
+const bgDadRoomEvening   = require("../assets/images/bg-dad-room-evening.png");
+const bgDadRoomNight     = require("../assets/images/bg-dad-room-night.png");
+const bgDadRoomDeepNight = require("../assets/images/bg-dad-room-deep-night.png");
+const bgDadRoomRain      = require("../assets/images/bg-dad-room-rain.png");
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
 const bgComfort         = require('../assets/images/comfort-bg.png');
@@ -119,6 +133,7 @@ export const IMAGES = {
   rylaneProfile,
   rylaneVoiceDay,
   rylaneVoiceNight,
+  rylaneWindowDay,
 
   // Rooms
   bgRayleneRoomDay,
@@ -131,6 +146,18 @@ export const IMAGES = {
   bgRylaneRoomRain,
   bgRylaneRoomNight,
   bgRylaneRoomDeepNight,
+
+  // Parent Rooms
+  bgMomRoomDay,
+  bgMomRoomEvening,
+  bgMomRoomNight,
+  bgMomRoomDeepNight,
+  bgMomRoomRain,
+  bgDadRoomDay,
+  bgDadRoomEvening,
+  bgDadRoomNight,
+  bgDadRoomDeepNight,
+  bgDadRoomRain,
 
   // Screen backgrounds
   bgComfort,
@@ -215,6 +242,34 @@ export function getRoomBg(
   return getRoomScene(character, phase);
 }
 
+export function getParentRoomBg(
+  style: "mom" | "dad",
+  weatherMode?: string,
+) {
+  const h = new Date().getHours();
+  let phase: RoomPhase;
+  if (weatherMode === "rain") phase = "rain";
+  else if (h >= 5  && h < 12) phase = "day";
+  else if (h >= 12 && h < 17) phase = "day";
+  else if (h >= 17 && h < 21) phase = "evening";
+  else if (h >= 21 || h < 1)  phase = "night";
+  else                         phase = "deepNight";
+  const prefix = style === "mom" ? "bgMomRoom" : "bgDadRoom";
+  const suffix = phase === "deepNight" ? "DeepNight" : phase.charAt(0).toUpperCase() + phase.slice(1);
+  return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
+}
+
+export const THEME_PACKS: Record<
+  string,
+  {
+    name: string;
+    emoji: string;
+    background: string;
+    card: string;
+    accent: string;
+    soft: string;
+  }
+> = {
 export type VibeKey = "raylene" | "rylane" | "cloud" | "night" | "rain" | "sunset";
 
 export type VibePack = {

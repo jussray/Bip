@@ -64,6 +64,29 @@ const TIME_HERO: Record<TimeOfDay, { sub: string; main: string; badge: string }>
 // ── HELPERS ────────────────────────────────────────────────────────────────
 const JOURNAL_TAGS = ['school', 'family', 'friends', 'pressure', 'grief', 'lonely', 'trying', 'peace'];
 
+const STARTER_PROMPTS: Record<TimeOfDay, { emoji: string; text: string }[]> = {
+  morning: [
+    { emoji: '☀️', text: "What's one thing you want to feel by the end of today?" },
+    { emoji: '🌱', text: "What would make today a good day for you?" },
+    { emoji: '💜', text: "What are you carrying into the morning that you didn't put down last night?" },
+  ],
+  day: [
+    { emoji: '💭', text: "What's been living in the back of your head all day?" },
+    { emoji: '🫶', text: "How are you actually doing right now — be honest." },
+    { emoji: '✨', text: "What's something small that went okay today?" },
+  ],
+  evening: [
+    { emoji: '🌆', text: "What's one thing from today you're still holding onto?" },
+    { emoji: '🍃', text: "What did you have to pretend was fine today?" },
+    { emoji: '💜', text: "What do you wish you could say to someone right now?" },
+  ],
+  night: [
+    { emoji: '🌙', text: "What's keeping you up that you haven't said out loud yet?" },
+    { emoji: '🕯️', text: "What do you need right now that nobody's offered?" },
+    { emoji: '🌧️', text: "What would you say if you knew nobody was judging you?" },
+  ],
+};
+
 // ── Props ──────────────────────────────────────────────────────────────────
 interface JournalScreenProps {
   journalText:       string;
@@ -85,6 +108,10 @@ export function JournalScreen({
   setScreen, BottomNav, moodHistory = [], voiceNotes = [], streakDays = 0,
 }: JournalScreenProps) {
 
+  const [showCheckIn,   setShowCheckIn]   = useState(false);
+  const [checkInMood,   setCheckInMood]   = useState('');
+  const [selectedTag,   setSelectedTag]   = useState('');
+  const [promptIdx,     setPromptIdx]     = useState(0);
   const [selectedTag, setSelectedTag] = useState('');
 
   const hour       = new Date().getHours();
@@ -213,6 +240,36 @@ export function JournalScreen({
           <Text style={[styles.floatCardText, { color: '#fff' }]}>Write it how it happened.</Text>
           <Text style={[styles.floatCardSub, { color: t.soft }]}>No lesson required. No polished version.</Text>
         </Animated.View>
+
+        {/* ── Starter prompt ───────────────────────────────────────── */}
+        {!journalText.trim() && (
+          <Animated.View
+            style={[
+              styles.floatCard,
+              { borderColor: moodGlow + '66', backgroundColor: 'rgba(20,12,35,0.82)', shadowColor: moodGlow },
+              cardAnim(0),
+            ]}
+          >
+            {(() => {
+              const prompts = STARTER_PROMPTS[timeOfDay];
+              const p = prompts[promptIdx % prompts.length];
+              return (
+                <>
+                  <Text style={{ fontSize: 24, marginBottom: 8 }}>{p.emoji}</Text>
+                  <Text style={[styles.floatCardSub, { color: '#f5f0ff', fontSize: 14, fontWeight: '600', lineHeight: 22 }]}>
+                    {p.text}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.promptCycleBtn, { borderColor: moodGlow + '66' }]}
+                    onPress={() => setPromptIdx(i => i + 1)}
+                  >
+                    <Text style={[styles.promptCycleBtnText, { color: moodGlow }]}>different prompt</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </Animated.View>
+        )}
 
         {/* ── Journal input ─────────────────────────────────────────── */}
         <Animated.View style={cardAnim(1)}>
@@ -370,6 +427,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16,
     shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
   },
+  floatCardEmoji:    { fontSize: 28, marginBottom: 6 },
+  promptCycleBtn:    { marginTop: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-start' },
+  promptCycleBtnText:{ fontSize: 12, fontWeight: '600' },
   oracleCard:     {
     marginHorizontal: 16, marginBottom: 14, borderRadius: 18, borderWidth: 1, padding: 18,
     backgroundColor: 'rgba(20,14,34,0.96)', shadowOpacity: 0.35, shadowRadius: 16,

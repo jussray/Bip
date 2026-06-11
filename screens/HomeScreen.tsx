@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { IMAGES } from '../constants/theme';
 import { SekretCompanionCard } from '../components/SekretCompanionCard';
 import type { CompanionCheckIn } from '../types/sekretCompanion';
@@ -45,7 +45,7 @@ const AMBIENT_BG: Record<string, Record<TimeOfDay, any>> = {
   rylane: {
     morning: IMAGES.bgRylaneRoomDay,
     day:     IMAGES.bgRylaneRoomDay,
-    evening: IMAGES.bgRayleneRoomEvening,
+    evening: IMAGES.bgRylaneRoomEvening,
     night:   IMAGES.bgRylaneRoomNight,
   },
 };
@@ -60,32 +60,98 @@ const getTimeOfDay = (): TimeOfDay => {
   return 'night';
 };
 
-// Neutral added so teens have an out for "I don't really know"
-const MOODS = [
-  { id: 'Happy',   emoji: '😊' },
-  { id: 'Neutral', emoji: '🙂' },
-  { id: 'Sad',     emoji: '😔' },
-  { id: 'Angry',   emoji: '😡' },
-  { id: 'Tired',   emoji: '😴' },
+// ─── Mood system — 3 categories + fun moods ──────────────────────────────────
+
+type MoodCat = 'heavy' | 'steady' | 'winning' | 'fun';
+
+const MOOD_CATS: { id: MoodCat; label: string; emoji: string; glow: string }[] = [
+  { id: 'heavy',   label: 'Heavy',   emoji: '🌧️', glow: '#7dd3fc' },
+  { id: 'steady',  label: 'Steady',  emoji: '☁️',  glow: '#c4b5fd' },
+  { id: 'winning', label: 'Winning', emoji: '🌟', glow: '#fbbf24' },
+  { id: 'fun',     label: 'Fun',     emoji: '✨',  glow: '#fb7185' },
 ];
+
+const MOODS_BY_CAT: Record<MoodCat, { id: string; emoji: string; label: string }[]> = {
+  heavy: [
+    { id: 'sad',          emoji: '😔', label: 'sad' },
+    { id: 'anxious',      emoji: '😰', label: 'anxious' },
+    { id: 'frustrated',   emoji: '😤', label: 'frustrated' },
+    { id: 'angry',        emoji: '😡', label: 'angry' },
+    { id: 'lonely',       emoji: '🥺', label: 'lonely' },
+    { id: 'overwhelmed',  emoji: '🌪️', label: 'overwhelmed' },
+    { id: 'hurt',         emoji: '💔', label: 'hurt' },
+    { id: 'disappointed', emoji: '😞', label: 'disappointed' },
+  ],
+  steady: [
+    { id: 'calm',        emoji: '😌', label: 'calm' },
+    { id: 'reflective',  emoji: '☁️', label: 'reflective' },
+    { id: 'tired',       emoji: '😴', label: 'tired' },
+    { id: 'okay',        emoji: '🙂', label: 'okay' },
+    { id: 'content',     emoji: '🌱', label: 'content' },
+    { id: 'thoughtful',  emoji: '💭', label: 'thoughtful' },
+    { id: 'hopeful',     emoji: '🌈', label: 'hopeful' },
+    { id: 'grateful',    emoji: '🙏', label: 'grateful' },
+  ],
+  winning: [
+    { id: 'proud',        emoji: '🌟', label: 'proud' },
+    { id: 'motivated',    emoji: '🔥', label: 'motivated' },
+    { id: 'confident',    emoji: '😎', label: 'confident' },
+    { id: 'excited',      emoji: '🥳', label: 'excited' },
+    { id: 'accomplished', emoji: '✨', label: 'accomplished' },
+    { id: 'loved',        emoji: '💜', label: 'loved' },
+    { id: 'connected',    emoji: '🤝', label: 'connected' },
+    { id: 'celebrating',  emoji: '🎉', label: 'celebrating' },
+  ],
+  fun: [
+    { id: 'crushing',      emoji: '😭',    label: 'crushing' },
+    { id: 'unbothered',    emoji: '💅',    label: 'unbothered' },
+    { id: 'curious',       emoji: '👀',    label: 'curious' },
+    { id: 'relieved',      emoji: '😮‍💨',  label: 'relieved' },
+    { id: 'feeling-seen',  emoji: '🫶',    label: 'feeling seen' },
+    { id: 'glow-up',       emoji: '📈',    label: 'glow up' },
+  ],
+};
 
 // Mood-tinted ambient glow — the room reads your energy
 const MOOD_GLOW: Record<string, string> = {
-  Happy:   '#fbbf24',  // warm gold
-  Neutral: '#c4b5fd',  // soft lavender
-  Sad:     '#7dd3fc',  // soft blue
-  Angry:   '#f472b6',  // warm pink
-  Tired:   '#6d28d9',  // deep purple
+  // Heavy
+  sad: '#7dd3fc', anxious: '#7dd3fc', frustrated: '#f472b6', angry: '#f472b6',
+  lonely: '#818cf8', overwhelmed: '#f472b6', hurt: '#7dd3fc', disappointed: '#a78bfa',
+  // Steady
+  calm: '#c4b5fd', reflective: '#a78bfa', tired: '#6d28d9', okay: '#c4b5fd',
+  content: '#86efac', thoughtful: '#a78bfa', hopeful: '#6ee7b7', grateful: '#fde68a',
+  // Winning
+  proud: '#fbbf24', motivated: '#fb923c', confident: '#fbbf24', excited: '#fb7185',
+  accomplished: '#fbbf24', loved: '#e879f9', connected: '#34d399', celebrating: '#fbbf24',
+  'locked-in': '#60a5fa', 'glow-up': '#fbbf24',
+  // Fun
+  crushing: '#fb7185', unbothered: '#c4b5fd', curious: '#60a5fa',
+  relieved: '#86efac', 'feeling-seen': '#e879f9',
+  // Legacy
+  Happy: '#fbbf24', Neutral: '#c4b5fd', Sad: '#7dd3fc', Angry: '#f472b6', Tired: '#6d28d9',
 };
 
+// Tiny wins — shown in the Bip Wins card
+const BIP_WINS = [
+  { emoji: '🛏️', win: 'Got out of bed' },
+  { emoji: '💧', win: 'Drank water' },
+  { emoji: '📚', win: 'Finished homework' },
+  { emoji: '🧹', win: 'Cleaned my space' },
+  { emoji: '🏃', win: 'Went outside' },
+  { emoji: '🤝', win: 'Asked for help' },
+  { emoji: '📝', win: 'Reached a goal' },
+  { emoji: '💪', win: 'Showed up anyway' },
+];
+
 const HOME_MESSAGES = [
-  "Don't stay up carrying the whole world tonight.",
-  'Rest is productive too.',
-  'You deserve softness too.',
+  "How you bippin today?",
+  'You showed up. That already counts.',
   'Heavy days do not define you.',
-  'Your mind deserves rest.',
-  'Breathe slowly tonight.',
-  'You made it through today.',
+  'Wins and hard days both belong here.',
+  "You're building something real.",
+  'The room remembers how far you have come.',
+  'Good days deserve celebrating too.',
+  'Still here. Still Bippin.',
 ];
 
 // Vision quick actions: Write It Out, Voice Bip, Calm Me, Circle, Comfort Mode.
@@ -99,52 +165,97 @@ const QUICK_ACTIONS: { emoji: string; label: string; to: string }[] = [
   { emoji: '🌉',  label: 'Bridge',       to: '__bridge__' },
 ];
 
-// Hero greeting — mood + time-of-day so morning doesn't read like night
+// Hero greeting — mood + time-of-day
 const getHeroText = (mood: string, tod: TimeOfDay) => {
-  const timeWord =
-    tod === 'morning' ? 'this morning' :
-    tod === 'day'     ? 'today'        :
-    tod === 'evening' ? 'tonight'      :
-                        'tonight';
-  const timeEmoji =
-    tod === 'morning' ? '☀️' :
-    tod === 'day'     ? '🌤️' :
-    tod === 'evening' ? '🌆' :
-                        '🌙';
-
-  if (mood === 'Happy')   return `I'm glad\nyou're smiling\n${timeWord} ${timeEmoji}`;
-  if (mood === 'Sad')     return `I'm here with\nyou ${timeWord} ☁️`;
-  if (mood === 'Angry')   return `Let it out,\nyou're safe here 🔥`;
-  if (mood === 'Tired')   return `Rest your heart\n${timeWord} 🌙`;
-  if (mood === 'Neutral') return `However you feel\n${timeWord} is okay ${timeEmoji}`;
+  const timeWord = tod === 'morning' ? 'this morning' : tod === 'day' ? 'today' : 'tonight';
+  const timeEmoji = tod === 'morning' ? '☀️' : tod === 'day' ? '🌤️' : tod === 'evening' ? '🌆' : '🌙';
+  const m = mood.toLowerCase();
+  // Heavy
+  if (m === 'sad' || m === 'hurt')       return `I'm here with\nyou ${timeWord} ☁️`;
+  if (m === 'angry' || m === 'frustrated') return `Let it out,\nyou're safe here 🔥`;
+  if (m === 'anxious' || m === 'overwhelmed') return `One thing\nat a time ${timeWord} 💙`;
+  if (m === 'lonely')                    return `You reached out.\nThat took something 💜`;
+  if (m === 'disappointed')              return `I see you.\nIt's okay to feel this ☁️`;
+  // Steady
+  if (m === 'tired')                     return `Rest your heart\n${timeWord} 🌙`;
+  if (m === 'calm')                      return `Calm and grounded\n${timeWord} ${timeEmoji}`;
+  if (m === 'content')                   return `Peace found\n${timeWord} 🌱`;
+  if (m === 'hopeful')                   return `Eyes on tomorrow\n${timeWord} 🌈`;
+  if (m === 'grateful')                  return `Counting the good\n${timeWord} 🙏`;
+  if (m === 'okay')                      return `Present and okay\n${timeWord} ${timeEmoji}`;
+  // Winning
+  if (m === 'proud')                     return `AS YOU SHOULD\nBE ${timeEmoji} 🌟`;
+  if (m === 'motivated')                 return `Let's not waste\nthis momentum 🔥`;
+  if (m === 'excited')                   return `That excitement\nis REAL ${timeEmoji}`;
+  if (m === 'accomplished')              return `You actually\ndid that. Look. ✨`;
+  if (m === 'confident')                 return `Walk in that.\nAll day ${timeEmoji}`;
+  if (m === 'celebrating')               return `We celebrating\ntoday ${timeEmoji} 🎉`;
+  if (m === 'loved')                     return `Feeling loved.\nSit in it 💜`;
+  // Fun
+  if (m === 'crushing')                  return `Oh we're\nbippin today 😭`;
+  if (m === 'glow-up')                   return `I see it.\nKeep going 📈`;
+  if (m === 'unbothered')                return `Protective\npeace. Respect 💅`;
+  // Legacy
+  if (m === 'happy')  return `I'm glad\nyou're smiling\n${timeWord} ${timeEmoji}`;
+  if (m === 'neutral') return `However you feel\n${timeWord} is okay ${timeEmoji}`;
   return `Welcome back ${timeEmoji}`;
 };
 
 const getMoodResponse = (mood: string, selectedSekret: string) => {
+  const m = mood.toLowerCase();
   if (selectedSekret === 'rylane') {
-    if (mood === 'Sad')     return "nah. who got you feeling like this?";
-    if (mood === 'Angry')   return "aight. who did what?";
-    if (mood === 'Tired')   return "you look cooked. sit down somewhere 😭";
-    if (mood === 'Neutral') return "low-key kinda mid? bet. we can just sit here a sec.";
-    return "aight. what’s the story?";
+    if (m === 'sad' || m === 'hurt')     return "nah, you not carrying this alone. i'm right here.";
+    if (m === 'angry' || m === 'frustrated') return "your feelings make sense. let it out. i got you.";
+    if (m === 'tired')                   return "you gave everything today. rest is part of the work.";
+    if (m === 'anxious' || m === 'overwhelmed') return "let's shrink it. not everything needs solving tonight.";
+    if (m === 'proud')                   return "real talk? that's you. you built that. own it.";
+    if (m === 'motivated')               return "bet. let's not waste the momentum.";
+    if (m === 'confident')               return "walk in that. no apologies.";
+    if (m === 'excited')                 return "BRO 😭 say it. what's happening??";
+    if (m === 'accomplished')            return "nah don't act like it's normal. you worked for that.";
+    if (m === 'celebrating')             return "we celebrating. say it out loud.";
+    if (m === 'grateful')                return "look at you noticing the good. that's growth.";
+    if (m === 'unbothered')              return "protective peace energy. not everyone deserves your attention.";
+    if (m === 'glow-up')                 return "bro I see the shift. what changed?";
+    return "i see you. you doing better than you think.";
   }
   if (selectedSekret === 'cloud') {
-    if (mood === 'Sad')     return "Something feels heavier today.";
-    if (mood === 'Angry')   return "There’s an edge to today.";
-    if (mood === 'Tired')   return "The room can stay quiet.";
-    return "Something feels different.";
+    if (m === 'sad' || m === 'hurt')     return "That sounds heavy. We can just sit with it for a minute.";
+    if (m === 'angry' || m === 'frustrated') return "That sounds frustrating. You don't have to solve everything right now.";
+    if (m === 'tired')                   return "Long day? You can rest here.";
+    if (m === 'overwhelmed')             return "Everything feels loud right now. Let's shrink the problem before we solve it.";
+    if (m === 'grateful')                return "I like this version of today. Let's remember it.";
+    if (m === 'proud')                   return "That growth landed somewhere real, didn't it.";
+    if (m === 'content')                 return "This is peace. It's quieter than people expect.";
+    if (m === 'hopeful')                 return "Hope is soft but it's strong. Hold it.";
+    if (m === 'feeling-seen')            return "Being fully seen is rare. Today it happened.";
+    return "You can be quiet here. No pressure.";
   }
   if (selectedSekret === 'night') {
-    if (mood === 'Sad')     return "yeah. i know.";
-    if (mood === 'Angry')   return "stay here a minute.";
-    if (mood === 'Tired')   return "rest if you can.";
-    return "i’m here.";
+    if (m === 'sad' || m === 'hurt')     return "Still awake with it? You don't have to sit with this alone.";
+    if (m === 'angry')                   return "Long day? We can keep tonight simple.";
+    if (m === 'tired')                   return "You don't have to explain it perfectly. Just be here.";
+    if (m === 'proud')                   return "Go to sleep proud. You earned it.";
+    if (m === 'hopeful')                 return "Tomorrow gets to be something new. You already believe it.";
+    if (m === 'relieved')                return "That weight finally lifted. Rest now.";
+    return "It's okay to be quiet tonight.";
   }
-  if (mood === 'Sad')     return "Girl... who made today weird?";
-  if (mood === 'Angry')   return "Nah because who irritated you 😭";
-  if (mood === 'Tired')   return "You look DONE 😭 what happened?";
-  if (mood === 'Neutral') return "Okay neutral... suspicious 😭 what’s up?";
-  return "Okayyy, I see the energy. What happened?";
+  // Raylene (default)
+  if (m === 'sad' || m === 'hurt')       return "Aight, come here. Tell me what happened.";
+  if (m === 'angry' || m === 'frustrated') return "That would've hurt my feelings too. You okay?";
+  if (m === 'tired')                     return "Be nice to yourself today, okay?";
+  if (m === 'lonely')                    return "You came here. That took something. I see you.";
+  if (m === 'overwhelmed')               return "Put something down, baby. You cannot carry all of this.";
+  if (m === 'proud')                     return "AS YOU SHOULD BE. 😭💜 Tell me what happened.";
+  if (m === 'motivated')                 return "Yes. Channel this somewhere real, love.";
+  if (m === 'excited')                   return "TELL ME EVERYTHING 😭💜";
+  if (m === 'accomplished')              return "LOOK AT YOU. Baby, look at what you built.";
+  if (m === 'grateful')                  return "I love this version of today too. Hold onto it.";
+  if (m === 'celebrating')               return "🎉 YES BABY YES. Tell me everything.";
+  if (m === 'glow-up')                   return "Okay I SEE YOU. What's shifting?";
+  if (m === 'content')                   return "Calm is a whole skill. Enjoy it.";
+  if (m === 'hopeful')                   return "Hope means you can still see ahead. That's not small.";
+  return "I read your energy. You're doing better than you think.";
 };
 
 // Streak language per vision: "we see you" — never punishing
@@ -195,7 +306,18 @@ export function HomeScreen({
   const cloudImg  = CLOUD_ASSETS[charKey];
   const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), []);
   const ambientBg = AMBIENT_BG[charKey]?.[timeOfDay];
-  const moodGlow  = MOOD_GLOW[mood] ?? t.accent;
+  const moodGlow  = MOOD_GLOW[mood.toLowerCase()] ?? MOOD_GLOW[mood] ?? t.accent;
+
+  // Mood category picker state — defaults to the category that matches current mood
+  const defaultCat = useMemo<MoodCat>(() => {
+    const m = mood.toLowerCase();
+    const h = MOODS_BY_CAT.heavy.some(x => x.id === m);
+    const s = MOODS_BY_CAT.steady.some(x => x.id === m);
+    const w = MOODS_BY_CAT.winning.some(x => x.id === m);
+    return h ? 'heavy' : s ? 'steady' : w ? 'winning' : 'steady';
+  }, []);
+  const [moodCat, setMoodCat] = useState<MoodCat>(defaultCat);
+  const [showWins, setShowWins] = useState(false);
 
   // ─── Animations ─────────────────────────────────────────────────────────
   const breatheAnim = useRef(new Animated.Value(1)).current;
@@ -261,7 +383,7 @@ export function HomeScreen({
   // ─── Reminder message (bounds-guarded) ───────────────────────────────────
   const reminder = HOME_MESSAGES[homeMessageIndex] ?? HOME_MESSAGES[0];
   const memoryMessage = companion?.presenceMessage
-    || 'You’ve been showing up for yourself. I’m noticing it.';
+    || "You've been showing up for yourself. I'm noticing it.";
 
   const handleCompanionAction = (action: 'write' | 'voice' | 'comfort' | 'checkIn') => {
     if (action === 'write') setScreen('pages');
@@ -318,7 +440,7 @@ export function HomeScreen({
 
         {/* ━━━ HEADER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <Text style={[styles.logo, { color: t.soft }]}>
-          Se’kret Bip {currentSekret.emoji}
+          Se'kret Bip {currentSekret.emoji}
         </Text>
         <Text style={styles.subtitle}>your space. your voice. always you.</Text>
 
@@ -347,7 +469,7 @@ export function HomeScreen({
             </View>
           </View>
           <Text style={styles.entryText}>
-            Your Se’kret is {currentSekret.name} energy.
+            Your Se'kret is {currentSekret.name} energy.
           </Text>
         </Animated.View>
 
@@ -357,39 +479,70 @@ export function HomeScreen({
             {timeOfDay === 'morning' ? 'Morning Reminder ✨'
               : timeOfDay === 'day'   ? 'A Note for Today ✨'
               : timeOfDay === 'evening' ? 'Evening Reminder ✨'
-                                        : 'Tonight’s Reminder ✨'}
+                                        : "Tonight's Reminder ✨"}
           </Text>
           <Text style={styles.entryText}>{reminder}</Text>
         </Animated.View>
 
-        {/* ━━━ MOOD SELECTOR + SEES-YOU ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        {/* ━━━ MOOD SELECTOR ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <Animated.View style={cardAnim(card4Anim)}>
           <Text style={[styles.sectionTitle, { color: t.soft }]}>
-            How’s your heart right now? 💜
+            How you bippin today?
           </Text>
-          <View style={styles.moodRow}>
-            {MOODS.map(m => {
-              const active = mood === m.id;
+
+          {/* Category tabs */}
+          <View style={styles.moodCatRow}>
+            {MOOD_CATS.map(cat => {
+              const active = moodCat === cat.id;
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  onPress={() => setMoodCat(cat.id)}
+                  style={[
+                    styles.moodCatTab,
+                    {
+                      borderColor: active ? cat.glow : 'rgba(150,120,200,0.25)',
+                      backgroundColor: active ? cat.glow + '28' : 'rgba(15,8,35,0.6)',
+                    },
+                  ]}
+                >
+                  <Text style={styles.moodCatEmoji}>{cat.emoji}</Text>
+                  <Text style={[styles.moodCatLabel, { color: active ? cat.glow : '#9b8ec4' }]}>
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Mood grid for selected category */}
+          <View style={styles.moodGrid}>
+            {MOODS_BY_CAT[moodCat].map(m => {
+              const active = mood.toLowerCase() === m.id;
               const tint   = MOOD_GLOW[m.id] ?? t.accent;
               return (
                 <TouchableOpacity
                   key={m.id}
                   style={[
-                    styles.moodBubble,
+                    styles.moodGridItem,
                     active && {
-                      backgroundColor: tint,
+                      backgroundColor: tint + '30',
+                      borderColor: tint,
                       shadowColor: tint,
-                      shadowOpacity: 0.7,
-                      shadowRadius: 12,
-                      elevation: 8,
+                      shadowOpacity: 0.6,
+                      shadowRadius: 8,
+                      elevation: 6,
                     },
                   ]}
                   onPress={() => handleMoodSelect(m.id)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Mood: ${m.id}`}
+                  accessibilityLabel={`Mood: ${m.label}`}
                   accessibilityState={{ selected: active }}
                 >
-                  <Text style={styles.moodEmoji}>{m.emoji}</Text>
+                  <Text style={styles.moodGridEmoji}>{m.emoji}</Text>
+                  <Text style={[styles.moodGridLabel, { color: active ? tint : '#9b8ec4' }]}>
+                    {m.label}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
@@ -414,14 +567,43 @@ export function HomeScreen({
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: t.card, borderWidth: 1, borderColor: t.accent + '66' }]}
-                onPress={() => setScreen('calm')}
+                onPress={() => setScreen(moodCat === 'winning' ? 'growth' : 'calm')}
                 accessibilityRole="button"
-                accessibilityLabel="Calm me"
+                accessibilityLabel={moodCat === 'winning' ? 'My growth' : 'Calm me'}
               >
-                <Text style={styles.actionBtnText}>🌙 Calm me</Text>
+                <Text style={styles.actionBtnText}>{moodCat === 'winning' ? '🌟 My growth' : '🌙 Calm me'}</Text>
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* BIP WINS — positive growth section */}
+          <TouchableOpacity
+            style={[card(), { borderColor: '#fbbf2444', marginTop: -4 }]}
+            onPress={() => setShowWins(v => !v)}
+            activeOpacity={0.85}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.cardText}>Bip Wins 🏆</Text>
+              <Text style={{ color: '#fbbf24', fontSize: 13 }}>{showWins ? 'less ↑' : 'log a win →'}</Text>
+            </View>
+            <Text style={[styles.entryText, { marginBottom: showWins ? 12 : 0 }]}>
+              {showWins ? 'Tap a win to log it. Every one counts.' : 'Your small wins build something real.'}
+            </Text>
+            {showWins && (
+              <View style={styles.winsGrid}>
+                {BIP_WINS.map(w => (
+                  <TouchableOpacity
+                    key={w.win}
+                    style={styles.winChip}
+                    onPress={() => handleMoodSelect('accomplished')}
+                  >
+                    <Text style={{ fontSize: 18 }}>{w.emoji}</Text>
+                    <Text style={styles.winChipLabel}>{w.win}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </TouchableOpacity>
         </Animated.View>
 
         {companion ? (
@@ -430,7 +612,7 @@ export function HomeScreen({
               personality={companion.personality}
               greeting={companion.greeting}
               memoryMessage={memoryMessage}
-              level={companion.companionLevel || { level: 1, title: 'First hello', progress: 0, nextLevel: 8, unlockedGreetings: ['Hey'], unlockedDepth: ['check-in'], encouragements: ['You’re doing enough.'], personalityResponses: ['gentle comfort'] }}
+              level={companion.companionLevel || { level: 1, title: 'First hello', progress: 0, nextLevel: 8, unlockedGreetings: ['Hey'], unlockedDepth: ['check-in'], encouragements: ["You're doing enough."], personalityResponses: ['gentle comfort'] }}
               checkIn={companion.checkIn}
               onAction={handleCompanionAction}
             />
@@ -541,12 +723,32 @@ const styles = StyleSheet.create({
 
   sectionTitle:   { fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 8 },
 
-  moodRow:        { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 18, gap: 6 },
-  moodBubble:     {
-    width: 58, height: 58, borderRadius: 29,
-    backgroundColor: '#1E293B', justifyContent: 'center', alignItems: 'center',
+  // ── Mood category tabs ──────────────────────────────────────────────────
+  moodCatRow:     { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  moodCatTab:     {
+    flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 16, borderWidth: 1, gap: 2,
   },
-  moodEmoji:      { fontSize: 26 },
+  moodCatEmoji:   { fontSize: 16 },
+  moodCatLabel:   { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+
+  // ── Mood grid ────────────────────────────────────────────────────────────
+  moodGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14 },
+  moodGridItem:   {
+    width: '22%', alignItems: 'center', paddingVertical: 10, borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(150,120,200,0.25)',
+    backgroundColor: 'rgba(15,8,35,0.55)',
+  },
+  moodGridEmoji:  { fontSize: 22, marginBottom: 3 },
+  moodGridLabel:  { fontSize: 9, fontWeight: '600', textAlign: 'center' },
+
+  // ── Bip Wins ─────────────────────────────────────────────────────────────
+  winsGrid:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  winChip:        {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 10, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: 'rgba(251,191,36,0.12)', borderWidth: 1, borderColor: 'rgba(251,191,36,0.35)',
+  },
+  winChipLabel:   { fontSize: 11, color: '#fde68a', fontWeight: '600' },
 
   actionRow:      { flexDirection: 'row', gap: 10, marginTop: 10 },
   actionBtn:      {

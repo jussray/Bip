@@ -13,6 +13,15 @@ export interface MemorySummary {
   journalsWritten: number;
   voiceBips: number;
   comfortActions: number;
+  // Pattern noticing — drives Tolan-level companion awareness
+  comfortWordPattern?: string;   // most-used evasive word ('tired', 'fine', 'whatever')
+  hasDeferredGoal?: boolean;     // user has said 'monday'/'next week' 2+ times
+  recurringEntity?: string;      // name/word that keeps showing up in journals
+  // Growth tracking — companions celebrate wins, not just process pain
+  winMoments?: string[];         // winning-category moods logged (proud, motivated, etc.)
+  proudMoodCount?: number;       // total winning moods in last 30 days
+  recentGrowth?: string;         // human-readable note, e.g. "3x proud this week"
+  winningStreak?: number;        // consecutive days with a winning mood logged
 }
 
 export interface CompanionLevel {

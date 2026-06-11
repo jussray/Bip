@@ -18,7 +18,7 @@
 // Previous fixes preserved: A1 (onSave), A4 (char-aware badge), B1 (box-none),
 // B2 (none on hint), B3 (heroArt overlay), D1 (archive count + link)
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
@@ -41,6 +41,34 @@ const HOTSPOTS = {
   journal:    { bottom: '4%',  left: '16%',  width: '44%', height: '22%', label: 'Journal 📖' },
   window:     { top: '4%',     right: '2%',  width: '38%', height: '40%', label: 'Window 🌙' },
   crystalJar: { bottom: '4%',  right: '2%',  width: '18%', height: '22%', label: 'Saved 💎' },
+};
+
+// ── VOICE COMPANION PROMPTS ───────────────────────────────────────────────
+const VOICE_PROMPTS: Record<string, { emoji: string; text: string }[]> = {
+  raylene: [
+    { emoji: '💜', text: "What's something you've been carrying that you haven't said out loud yet?" },
+    { emoji: '🌙', text: "Tell me about a moment this week that felt heavier than it should have." },
+    { emoji: '🫶', text: "What do you need right now that nobody's asked you about?" },
+    { emoji: '🌧️', text: "Say the thing you keep stopping yourself from saying." },
+    { emoji: '✨', text: "What went okay today — even just one small thing?" },
+  ],
+  rylane: [
+    { emoji: '⚡', text: "What's been sitting on your chest that you haven't put down yet?" },
+    { emoji: '🧠', text: "Say it plain. No filter. What's actually on your mind right now?" },
+    { emoji: '🎙️', text: "Talk me through the last 24 hours, for real." },
+    { emoji: '🔊', text: "What would you say if nobody was watching or judging?" },
+    { emoji: '🏆', text: "What's one thing you handled today that nobody gave you credit for?" },
+  ],
+  cloud: [
+    { emoji: '☁️', text: "Let the words come slowly. There's no rush here." },
+    { emoji: '🕯️', text: "What's one thing that felt heavy this week you haven't set down?" },
+    { emoji: '🌊', text: "Just breathe first. Then say whatever comes." },
+  ],
+  night: [
+    { emoji: '🌃', text: "What keeps replaying in your head at night?" },
+    { emoji: '🌙', text: "What are you too tired to pretend is fine right now?" },
+    { emoji: '😶‍🌫️', text: "Say the part that gets louder after dark." },
+  ],
 };
 
 // ── BIP TYPE MENU ──────────────────────────────────────────────────────────
@@ -88,6 +116,7 @@ export function VoiceBipScreen({
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
   const [showArchive,      setShowArchive]       = useState(false);
+  const [voicePromptIdx,   setVoicePromptIdx]    = useState(0);
   const [isRecording,      setIsRecording]       = useState(false);
   const [recorded,         setRecorded]          = useState(false);
   const [sekretReply,      setSekretReply]       = useState('');
@@ -467,6 +496,38 @@ export function VoiceBipScreen({
           <Text style={[styles.cardTitle, { color: '#fff' }]}>Voice-ready</Text>
           <Text style={[styles.tip, { color: '#c4b5fd' }]}>{voiceStatus.message}</Text>
         </View>
+
+        {/* ── Companion voice prompt ── */}
+        {!isRecording && !sekretReply && (() => {
+          const promptKey = isRylane ? 'rylane' : selectedSekret === 'cloud' ? 'cloud' : selectedSekret === 'night' ? 'night' : 'raylene';
+          const prompts = VOICE_PROMPTS[promptKey];
+          const p = prompts[voicePromptIdx % prompts.length];
+          return (
+            <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.45)', backgroundColor: 'rgba(20,12,40,0.88)', shadowColor: '#a855f7' }]}>
+              <Text style={{ color: '#a855f7', fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 }}>
+                {charName.toUpperCase()} · WHAT TO SAY
+              </Text>
+              <Text style={{ fontSize: 26, marginBottom: 8 }}>{p.emoji}</Text>
+              <Text style={{ color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 23, marginBottom: 14 }}>
+                {p.text}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  style={{ borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 }}
+                  onPress={() => setVoicePromptIdx(i => i + 1)}
+                >
+                  <Text style={{ color: '#c4b5fd', fontSize: 12, fontWeight: '600' }}>different prompt</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: '#7c3aed', borderRadius: 12, paddingVertical: 7, alignItems: 'center' }}
+                  onPress={() => setShowBipMenu(true)}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>🎙️ record now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* ── Tips ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>

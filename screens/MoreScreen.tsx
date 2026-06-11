@@ -64,9 +64,27 @@ export function MoreScreen({
         <TouchableOpacity style={btn()} onPress={() => setScreen('settings')}>
           <Text style={styles.buttonText}>⚙️ Vibe Lab</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('cloudThoughts')}>
+          <Text style={styles.buttonText}>☁️ Cloud Thoughts</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('bippin2')}>
           <Text style={styles.buttonText}>✨ Bippin2 / Insights</Text>
         </TouchableOpacity>
+        {userSide !== 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('womanhood')}>
+            <Text style={styles.buttonText}>🌸 Womanhood · growing at your pace</Text>
+          </TouchableOpacity>
+        )}
+        {userSide !== 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('manhood')}>
+            <Text style={styles.buttonText}>⚡ Manhood · building yourself</Text>
+          </TouchableOpacity>
+        )}
+        {userSide !== 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('periodCalendar')}>
+            <Text style={styles.buttonText}>🌙 Period Calendar · private tracker</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={btn()} onPress={() => setScreen('growth')}>
           <Text style={styles.buttonText}>🌱 Growth / Life Skills</Text>
         </TouchableOpacity>
