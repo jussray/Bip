@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -41,9 +40,8 @@ import { isSupabaseConfigured } from '../utils/supabase';
 import { useSekretCompanion } from '../hooks/useSekretCompanion';
 import {
   ensureAnonymousSession, pullAll,
-  syncMood, syncJournal, syncCirclePost, syncVoiceNote,
-  syncComfortSession, syncCrewMember, deleteCrewMember as cloudDeleteCrewMember,
-  syncCrewCheckIn,
+  syncMood, syncJournal, syncCirclePost,
+  syncComfortSession,
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
@@ -78,15 +76,6 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────
-
-const THEME_PACKS: Record<string, any> = {
-  raylene: { name: "Raylene's Room", emoji: '\uD83D\uDC9C', background: '#1a0828', card: '#2a1040', accent: '#e879f9', soft: '#fde8ff' },
-  rylane:  { name: "Rylane's Space", emoji: '\u26A1', background: '#060d1c', card: '#0d1f3a', accent: '#4DA3FF', soft: '#b6dcff' },
-  cloud:   { name: "Cloud's World",  emoji: '\u2601\uFE0F', background: '#0a0818', card: '#18103a', accent: '#a78bfa', soft: '#ede9fe' },
-  night:   { name: 'Late Night',     emoji: '\uD83C\uDF19', background: '#05030f', card: '#100828', accent: '#c4b5fd', soft: '#ede9fe' },
-  rain:    { name: 'Rain Room',      emoji: '\uD83C\uDF27\uFE0F', background: '#060e18', card: '#0d1e30', accent: '#60a5fa', soft: '#bfdbfe' },
-  sunset:  { name: 'Sunset Vibe',   emoji: '\uD83C\uDF05', background: '#180a18', card: '#2a1428', accent: '#fb7185', soft: '#fce7f3' },
-};
 
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
@@ -175,7 +164,6 @@ export default function App() {
   const [isLoading, setIsLoading]               = useState(true);
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const t             = THEME_PACKS[theme] || THEME_PACKS.raylene;
   const vibeKey       = normalizeVibeKey(theme);
   const t             = THEME_PACKS[vibeKey];
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
@@ -473,25 +461,12 @@ export default function App() {
         setScreen={setScreen}
         t={t}
         updateRoomMemory={updateRoomMemory}
-        weatherMode={theme === 'rain' ? 'rain' : undefined}
+        vibe={vibeKey}
         BottomNav={nav}
+        companion={companion}
       />
     );
   }
-  if (screen === 'home') return (
-    <RoomScreen
-      mood={mood}
-      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
-      setSelectedSekret={val => setSelectedSekret(val)}
-      setScreen={setScreen}
-      t={t}
-      updateRoomMemory={updateRoomMemory}
-      vibe={vibeKey}
-      BottomNav={nav}
-      companion={companion}
-    />
-  );
-
   // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
     <HomeScreen

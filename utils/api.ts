@@ -1,6 +1,7 @@
 import {
   buildSekretVoiceInstruction,
   getSekretFallback,
+  keepSekretReply,
 } from '../services/sekretVoice';
 import { normalizeSekretPersonality } from '../services/sekretPresence';
 
@@ -31,7 +32,7 @@ export async function fetchSekretReply(
     });
     if (!res.ok) throw new Error('api error');
     const data = await res.json();
-    return data.reply || fallback;
+    return keepSekretReply(data.reply, fallback);
   } catch {
     return fallback;
   }

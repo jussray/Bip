@@ -18,7 +18,7 @@
 // Previous fixes preserved: A1 (onSave), A4 (char-aware badge), B1 (box-none),
 // B2 (none on hint), B3 (heroArt overlay), D1 (archive count + link)
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';

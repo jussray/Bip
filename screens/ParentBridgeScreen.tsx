@@ -20,7 +20,6 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   PARENT_TOPICS,
-  PARENT_SEKRET_RESPONSES,
   getParentSekretResponse,
   type ParentTopicId,
   type ParentSekretResponse,
