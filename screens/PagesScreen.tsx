@@ -20,7 +20,6 @@ import {
   selectSessionQuestions,
 } from '../services/oracleProfile';
 import type { OracleQuestion, OracleRecord } from '../types/oracle';
-import type { JournalEntry } from '../types';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 
@@ -173,7 +172,7 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, oracleProfile, onCompleteOracleSession }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, oracleProfile, onCompleteOracleSession, selectedSekret, parentRoomStyle, weatherMode }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
   const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
@@ -486,7 +485,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   );
 }
 
-export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession }: PagesScreenProps) {
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession, selectedSekret, moodHistory, voiceNotes, streakDays }: PagesScreenProps) {
   return (
     <PagesWorkspace
       side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
