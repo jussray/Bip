@@ -51,6 +51,8 @@ type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 const ROOM_PHASE_OVERLAYS: Record<RoomPhase, string> = {
   day:       'rgba(255,225,180,0.08)',
+  midday:    'rgba(255,210,140,0.10)',
+  afternoon: 'rgba(200,130,60,0.12)',
   evening:   'rgba(91,45,120,0.18)',
   rain:      'rgba(35,85,125,0.30)',
   night:     'rgba(20,10,55,0.28)',

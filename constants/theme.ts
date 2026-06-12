@@ -66,20 +66,24 @@ const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-nigh
 // open journals, bean bag, headphones, brain-dump backpack, scrapbook walls.
 // NOT a floating sky — it's the place you go when your brain is loud.
 const bgCloudRoomDay       = require("../assets/images/bg-cloud-room-day.png");
+const bgCloudRoomMidday    = require("../assets/images/bg-cloud-room-midday.png");
+const bgCloudRoomAfternoon = require("../assets/images/bg-cloud-room-afternoon.png");
 const bgCloudRoomEvening   = require("../assets/images/bg-cloud-room-evening.png");
-const bgCloudRoomRain      = require("../assets/images/bg-cloud-room-rain.png");
 const bgCloudRoomNight     = require("../assets/images/bg-cloud-room-night.png");
 const bgCloudRoomDeepNight = require("../assets/images/bg-cloud-room-deep-night.png");
+const bgCloudRoomRain      = require("../assets/images/bg-cloud-room-rain.png");
 
 // ── Night Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Night Room identity: crescent moon chair, galaxy bedding, "Voice Bip Corner"
 // light-box sign, city window with clock, sticky notes everywhere, 2AM energy.
 // NOT Raylene's room — completely different furniture, palette, and spirit.
 const bgNightRoomDay       = require("../assets/images/bg-night-room-day.png");
+const bgNightRoomMidday    = require("../assets/images/bg-night-room-midday.png");
+const bgNightRoomAfternoon = require("../assets/images/bg-night-room-afternoon.png");
 const bgNightRoomEvening   = require("../assets/images/bg-night-room-evening.png");
-const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
 const bgNightRoomNight     = require("../assets/images/bg-night-room-night.png");
 const bgNightRoomDeepNight = require("../assets/images/bg-night-room-deep-night.png");
+const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
 
 // ── Night Avatar — REAL ASSETS NEEDED ─────────────────────────────────────
 // Replace when night-*.png ships: night-neutral · night-window · night-comfort · night-listening
@@ -173,19 +177,23 @@ export const IMAGES = {
   rylaneVoiceNight,
   rylaneWindowDay,
 
-  // Cloud Room Backgrounds (fallbacks until real art ships)
+  // Cloud Room Backgrounds
   bgCloudRoomDay,
+  bgCloudRoomMidday,
+  bgCloudRoomAfternoon,
   bgCloudRoomEvening,
-  bgCloudRoomRain,
   bgCloudRoomNight,
   bgCloudRoomDeepNight,
+  bgCloudRoomRain,
 
-  // Night Room Backgrounds (fallbacks until real art ships)
+  // Night Room Backgrounds
   bgNightRoomDay,
+  bgNightRoomMidday,
+  bgNightRoomAfternoon,
   bgNightRoomEvening,
-  bgNightRoomRain,
   bgNightRoomNight,
   bgNightRoomDeepNight,
+  bgNightRoomRain,
 
   // Cloud Avatars
   cloudAvatarNeutral,
@@ -286,7 +294,7 @@ export const AVATARS: Record<string, Record<string, any>> = {
 };
 
 export type TimeOfDay = "morning" | "day" | "evening" | "night";
-export type RoomPhase = "day" | "evening" | "rain" | "night" | "deepNight";
+export type RoomPhase = "day" | "midday" | "afternoon" | "evening" | "rain" | "night" | "deepNight";
 
 export function getRoomPhase(
   date = new Date(),
@@ -294,10 +302,12 @@ export function getRoomPhase(
 ): RoomPhase {
   if (weatherMode === "rain") return "rain";
   const hour = date.getHours();
-  if (hour >= 6 && hour < 17) return "day";
-  if (hour >= 17 && hour < 20) return "evening";
-  if (hour >= 20 || hour < 1) return "night";
-  return "deepNight";
+  if (hour >= 5  && hour < 10) return "day";
+  if (hour >= 10 && hour < 14) return "midday";
+  if (hour >= 14 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 21) return "evening";
+  if (hour >= 21 && hour < 24) return "night";
+  return "deepNight"; // midnight–5 AM
 }
 
 const ROOM_PREFIX: Record<Character, string> = {
@@ -312,11 +322,17 @@ export function getRoomScene(
   phase: RoomPhase,
 ): ImageSourcePropType {
   const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
-  const suffix =
-    phase === "deepNight"
-      ? "DeepNight"
-      : phase.charAt(0).toUpperCase() + phase.slice(1);
+  // deepNight → "DeepNight", midday → "Midday", afternoon → "Afternoon", etc.
+  const suffix = phase === "deepNight" ? "DeepNight"
+               : phase === "midday"    ? "Midday"
+               : phase === "afternoon" ? "Afternoon"
+               : phase.charAt(0).toUpperCase() + phase.slice(1);
   const key = `${prefix}${suffix}` as keyof typeof IMAGES;
+  // Raylene/Rylane don't have midday/afternoon art — fall back to nearest phase.
+  if (!IMAGES[key]) {
+    if (phase === "midday")    return getRoomScene(character, "day");
+    if (phase === "afternoon") return getRoomScene(character, "evening");
+  }
   return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
 }
 
