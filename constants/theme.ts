@@ -61,27 +61,25 @@ const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.p
 const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
-// ── Cloud Room Backgrounds — REAL ASSETS NEEDED ───────────────────────────
-// Replace these fallbacks when art ships:
-//   bg-cloud-room-day.png  · bg-cloud-room-night.png  · bg-cloud-room-rain.png
-// Cloud is NOT a bedroom. It's a floating thought-space: cloud islands, headphones,
-// blue-purple sky, no walls. Overlays in RoomScreen provide distinction until real art lands.
-const bgCloudRoomDay       = bgRayleneRoomDay;
-const bgCloudRoomEvening   = bgRayleneRoomEvening;
-const bgCloudRoomRain      = bgRayleneRoomRain;
-const bgCloudRoomNight     = bgRayleneRoomNight;
-const bgCloudRoomDeepNight = bgRayleneRoomDeepNight;
+// ── Cloud Room Backgrounds — REAL ASSETS ──────────────────────────────────
+// Cloud Room identity: cozy purple room, cloud neon sign, city window view,
+// open journals, bean bag, headphones, brain-dump backpack, scrapbook walls.
+// NOT a floating sky — it's the place you go when your brain is loud.
+const bgCloudRoomDay       = require("../assets/images/bg-cloud-room-day.png");
+const bgCloudRoomEvening   = require("../assets/images/bg-cloud-room-evening.png");
+const bgCloudRoomRain      = require("../assets/images/bg-cloud-room-rain.png");
+const bgCloudRoomNight     = require("../assets/images/bg-cloud-room-night.png");
+const bgCloudRoomDeepNight = require("../assets/images/bg-cloud-room-deep-night.png");
 
-// ── Night Room Backgrounds — REAL ASSETS NEEDED ───────────────────────────
-// Replace these fallbacks when art ships:
-//   bg-night-room.png  · bg-night-room-deep.png  · bg-night-room-rain.png
-// Night is NOT a bedroom. It's a midnight refuge: city skyline, giant window,
-// deep purple, huge moon, 2AM watching energy. Night always loads late-night scenes.
-const bgNightRoomDay       = bgRayleneRoomDeepNight;
-const bgNightRoomEvening   = bgRayleneRoomDeepNight;
-const bgNightRoomRain      = bgRayleneRoomRain;
-const bgNightRoomNight     = bgRayleneRoomDeepNight;
-const bgNightRoomDeepNight = bgRayleneRoomDeepNight;
+// ── Night Room Backgrounds — REAL ASSETS ──────────────────────────────────
+// Night Room identity: crescent moon chair, galaxy bedding, "Voice Bip Corner"
+// light-box sign, city window with clock, sticky notes everywhere, 2AM energy.
+// NOT Raylene's room — completely different furniture, palette, and spirit.
+const bgNightRoomDay       = require("../assets/images/bg-night-room-day.png");
+const bgNightRoomEvening   = require("../assets/images/bg-night-room-evening.png");
+const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
+const bgNightRoomNight     = require("../assets/images/bg-night-room-night.png");
+const bgNightRoomDeepNight = require("../assets/images/bg-night-room-deep-night.png");
 
 // ── Night Avatar — REAL ASSETS NEEDED ─────────────────────────────────────
 // Replace when night-*.png ships: night-neutral · night-window · night-comfort · night-listening
@@ -406,7 +404,7 @@ export const THEME_PACKS: Record<VibeKey, VibePack> = {
     card: "#555577",
     accent: "#c8c9f5",
     soft: "#f0efff",
-    room: bgCloudRoomDay,
+    room: bgCloudRoomEvening,
     overlay: ["rgba(229,231,255,0.16)", "rgba(143,148,194,0.22)", "rgba(42,37,70,0.52)"],
   },
   night: {
