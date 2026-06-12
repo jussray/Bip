@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
+
+const splashBg = require('../assets/images/splash-bg.png');
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -126,6 +128,7 @@ export default function App() {
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
+  const [switchingToParent, setSwitchingToParent] = useState(false);
   const [parentRoomStyle, setParentRoomStyle] = useState<ParentRoomStyle>('mom');
   const [parentMood,      setParentMood]      = useState('');
   const [parentMoodDate,  setParentMoodDate]  = useState('');
@@ -344,6 +347,20 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // ── Parent-side transition: show splash-bg briefly then reveal parent room ──
+  useEffect(() => {
+    if (!switchingToParent) return;
+    const t = setTimeout(() => setSwitchingToParent(false), 1800);
+    return () => clearTimeout(t);
+  }, [switchingToParent]);
+
+  const handleSetUserSide = (side: string) => {
+    const next = side as 'teen' | 'parent';
+    setUserSide(next);
+    setScreen('home');
+    if (next === 'parent') setSwitchingToParent(true);
+  };
+
   // ── Room Memory updater (Supabase-ready) ──────────────────────────────────
   const updateRoomMemory = (patch: Partial<RoomMemory>) => {
     setRoomMemory(prev => ({ ...prev, ...patch, visitCount: prev.visitCount + 1 }));
@@ -421,6 +438,13 @@ export default function App() {
 
   // The branded splash is the first paint; storage hydration must never hide it.
   if (screen === 'splash') return <SplashScreen setScreen={setScreen} />;
+
+  // Brief splash-bg transition when switching to the parent side
+  if (switchingToParent) {
+    return (
+      <ImageBackground source={splashBg} style={{ flex: 1, backgroundColor: '#06030f' }} resizeMode="cover" />
+    );
+  }
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (isLoading) return null;
@@ -711,7 +735,7 @@ export default function App() {
     <MoreScreen
       t={t}
       userSide={userSide}
-      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
+      setUserSide={handleSetUserSide}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
@@ -729,7 +753,7 @@ export default function App() {
       sekretMode={sekretMode}
       setSekretMode={setSekretMode}
       userSide={userSide}
-      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
+      setUserSide={handleSetUserSide}
       parentRoomStyle={parentRoomStyle}
       setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}
       setScreen={setScreen}
