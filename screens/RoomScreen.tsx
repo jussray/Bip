@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IMAGES, THEME_PACKS, getRoomPhase, type RoomPhase, type VibeKey } from '../constants/theme';
+import { IMAGES, THEME_PACKS, getRoomPhase, getRoomScene, type RoomPhase, type VibeKey } from '../constants/theme';
 import type { CompanionState } from '../types/sekretCompanion';
 
 const { width, height } = Dimensions.get('window');
@@ -357,13 +357,15 @@ export function RoomScreen({
   // ─── Derived ────────────────────────────────────────────────────────────
   const character: Character = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
 
-  // Resolve the room once for the current visit. Weather mode wins over
-  // clock time, matching the original room-selection hierarchy.
+  // Resolve the room once for the current visit. Always use the selected
+  // character's room at the current time of day — rain vibe overrides time.
   const now = useMemo(() => new Date(), []);
   const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
   const roomPhase = useMemo(() => getRoomPhase(now, vibe === 'rain' ? 'rain' : undefined), [now, vibe]);
   const vibePack = THEME_PACKS[vibe];
-  const roomImage = vibePack.room;
+  // Room background is always the character's own room at current phase,
+  // keeping the world consistent regardless of cosmetic vibe choice.
+  const roomImage = getRoomScene(character, roomPhase);
 
   const hotspots = useMemo(
     () => character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS,

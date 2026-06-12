@@ -26,7 +26,7 @@ import type { VoiceNote } from '../types/bridge';
 import { fetchSekretReply } from '../utils/api';
 import {
   Text, TouchableOpacity, ScrollView, View,
-  Animated, Image, StyleSheet, Easing,
+  Animated, Image, StyleSheet, Easing, Platform,
 } from 'react-native';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
@@ -329,7 +329,7 @@ export function VoiceBipScreen({
             <Image
               source={heroArt}
               style={styles.heroAvatar}
-              resizeMode="cover"
+              resizeMode="contain"
             />
             <LinearGradient
               colors={['rgba(13,9,20,0.55)', 'transparent']}
@@ -628,10 +628,10 @@ export function VoiceBipScreen({
 }
 
 const styles = StyleSheet.create({
-  root:               { flex: 1 },
+  root:               { flex: 1, backgroundColor: '#0d0914' },
   scrollView:          { flex: 1 },
-  scroll:             { paddingBottom: 100 },
-  roomWrap:           { position: 'relative', width: '100%', height: 340, marginBottom: 16, overflow: 'hidden' },
+  scroll:             { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
+  roomWrap:           { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 240 : 340, marginBottom: 16, overflow: 'hidden' },
   roomImage:          { width: '100%', height: '100%' },
   environmentLayer:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   heroAvatar:         { position: 'absolute', bottom: -20, alignSelf: 'center', width: '88%', height: '82%', opacity: 0.16, tintColor: '#fff' },

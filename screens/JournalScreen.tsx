@@ -20,12 +20,12 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, type TimeOfDay } from '../constants/theme';
+import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
 import { buildOracleInsight } from '../services/oracle';
 import {
   Text, TouchableOpacity, ScrollView,
-  TextInput, View, Image, StyleSheet, Alert, Animated, Easing,
+  TextInput, View, Image, StyleSheet, Alert, Animated, Easing, Platform,
 } from 'react-native';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
@@ -100,12 +100,14 @@ interface JournalScreenProps {
   moodHistory?:      MoodEntry[];
   voiceNotes?:       VoiceNote[];
   streakDays?:       number;
+  selectedSekret?:   string;
 }
 
 export function JournalScreen({
   journalText, setJournalText, journalEntries, saveJournalEntry,
   mood, t,
   setScreen, BottomNav, moodHistory = [], voiceNotes = [], streakDays = 0,
+  selectedSekret = 'soft',
 }: JournalScreenProps) {
 
   const [showCheckIn,   setShowCheckIn]   = useState(false);
@@ -116,7 +118,8 @@ export function JournalScreen({
   const hour       = new Date().getHours();
   const timeOfDay  = getTimeOfDay(hour);
   const hero       = TIME_HERO[timeOfDay];
-  const roomArt    = IMAGES.bgJournal;
+  const character: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const roomArt    = getRoomBg(character, timeOfDay);
   const moodGlow   = MOOD_GLOW[mood] ?? MOOD_GLOW.Neutral;
   const tagGlow    = selectedTag ? '#a855f7' : moodGlow;
 
@@ -390,10 +393,12 @@ export function JournalScreen({
   );
 }
 
+const WEB_MAX = Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {};
+
 const styles = StyleSheet.create({
-  root:           { flex: 1 },
-  scroll:         { paddingBottom: 100 },
-  roomWrap:       { position: 'relative', width: '100%', height: 240, marginBottom: 16, overflow: 'hidden' },
+  root:           { flex: 1, backgroundColor: '#0d0914' },
+  scroll:         { paddingBottom: 100, ...WEB_MAX },
+  roomWrap:       { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 180 : 240, marginBottom: 16, overflow: 'hidden' },
   roomImage:      { width: '100%', height: '100%' },
   moodScrim:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   roomGradient:   { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
@@ -423,7 +428,7 @@ const styles = StyleSheet.create({
   stickyHintText: { color: '#3d2563', fontSize: 10, fontWeight: '700', fontStyle: 'italic' },
   sectionTitle:   { fontSize: 16, fontWeight: '700', marginBottom: 10, marginTop: 14, marginHorizontal: 16 },
   floatCard:      {
-    marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16,
+    marginHorizontal: 16, marginBottom: Platform.OS === 'web' ? 8 : 12, borderRadius: 18, borderWidth: 1, padding: 16,
     shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
   },
   floatCardEmoji:    { fontSize: 28, marginBottom: 6 },

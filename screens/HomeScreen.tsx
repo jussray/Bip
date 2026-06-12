@@ -473,8 +473,32 @@ export function HomeScreen({
           </Text>
         </Animated.View>
 
+        {/* ━━━ QUICK ACTIONS — above the fold per Chromebook layout ━━━━━━━━━ */}
+        <Animated.View style={[cardAnim(card3Anim), { marginBottom: 6 }]}>
+          <Text style={[styles.sectionTitle, { color: t.soft, marginTop: 0, marginBottom: 10 }]}>Quick Actions ⚡</Text>
+          <View style={styles.actionsGrid}>
+            {QUICK_ACTIONS.map(action => {
+              const route = action.to === '__bridge__'
+                ? (userSide === 'parent' ? 'parentBridge' : 'bridge')
+                : action.to;
+              return (
+                <TouchableOpacity
+                  key={action.label}
+                  style={[styles.quickCard, { backgroundColor: t.card, borderColor: t.accent + '55' }]}
+                  onPress={() => setScreen(route)}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
+                >
+                  <Text style={styles.quickEmoji}>{action.emoji}</Text>
+                  <Text style={styles.quickLabel}>{action.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Animated.View>
+
         {/* ━━━ GENTLE REMINDER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <Animated.View style={[card(), cardAnim(card3Anim)]}>
+        <Animated.View style={[card(), cardAnim(card4Anim)]}>
           <Text style={styles.cardText}>
             {timeOfDay === 'morning' ? 'Morning Reminder ✨'
               : timeOfDay === 'day'   ? 'A Note for Today ✨'
@@ -619,30 +643,6 @@ export function HomeScreen({
           </Animated.View>
         ) : null}
 
-        {/* ━━━ QUICK ACTIONS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <Animated.View style={cardAnim(card5Anim)}>
-          <Text style={[styles.sectionTitle, { color: t.soft }]}>Quick Actions ⚡</Text>
-          <View style={styles.actionsGrid}>
-            {QUICK_ACTIONS.map(action => {
-              const route = action.to === '__bridge__'
-                ? (userSide === 'parent' ? 'parentBridge' : 'bridge')
-                : action.to;
-              return (
-                <TouchableOpacity
-                  key={action.label}
-                  style={[styles.quickCard, { backgroundColor: t.card, borderColor: t.accent + '55' }]}
-                  onPress={() => setScreen(route)}
-                  accessibilityRole="button"
-                  accessibilityLabel={action.label}
-                >
-                  <Text style={styles.quickEmoji}>{action.emoji}</Text>
-                  <Text style={styles.quickLabel}>{action.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </Animated.View>
-
         <View style={{ height: 36 }} />
       </Animated.ScrollView>
 
@@ -678,7 +678,7 @@ const styles = StyleSheet.create({
     opacity: 0.16,
     tintColor: '#fff',
   },
-  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   parentBadge:    { backgroundColor: '#065F46', borderRadius: 10, padding: 6, alignSelf: 'center', marginBottom: 10 },
   parentBadgeText:{ color: '#6EE7B7', fontSize: 12, fontWeight: '700' },
@@ -702,11 +702,11 @@ const styles = StyleSheet.create({
   streakFlame:    { fontSize: 14 },
   streakText:     { color: '#f5f0ff', fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
 
-  cloudWrap:      { alignItems: 'center', marginVertical: 14 },
-  cloudImg:       { width: 100, height: 100 },
+  cloudWrap:      { alignItems: 'center', marginVertical: Platform.OS === 'web' ? 6 : 14 },
+  cloudImg:       { width: Platform.OS === 'web' ? 64 : 100, height: Platform.OS === 'web' ? 64 : 100 },
 
   card:           {
-    padding: 18, borderRadius: 22, marginBottom: 16, borderWidth: 1,
+    padding: 16, borderRadius: 22, marginBottom: Platform.OS === 'web' ? 10 : 16, borderWidth: 1,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.22, shadowRadius: 8, elevation: 4,
   },

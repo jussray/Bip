@@ -6,9 +6,10 @@
 import React from 'react';
 import {
   Text, TouchableOpacity, ScrollView,
-  View, StyleSheet, Platform,
+  View, StyleSheet, Platform, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getRoomBg } from '../constants/theme';
 
 interface MoreScreenProps {
   t: Record<string, any>;
@@ -35,13 +36,17 @@ export function MoreScreen({
   mood, selectedSekret,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
-  const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }] as any;
+  const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow + '88', shadowColor: glow }] as any;
   const btn  = () => [styles.button, { backgroundColor: glow, shadowColor: glow }] as any;
+  const character: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const hour = new Date().getHours();
+  const timeOfDay = hour >= 5 && hour < 11 ? 'morning' : hour >= 11 && hour < 17 ? 'day' : hour >= 17 && hour < 21 ? 'evening' : 'night';
+  const roomBg = getRoomBg(character, timeOfDay as any);
 
   return (
-    <View style={styles.root}>
+    <ImageBackground source={roomBg} style={styles.root} resizeMode="cover">
       <LinearGradient
-        colors={['#241038', '#160b2b', '#0d0914']}
+        colors={['rgba(36,16,56,0.65)', 'rgba(22,11,43,0.80)', 'rgba(13,9,20,0.92)']}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView contentContainerStyle={styles.container}>
@@ -112,13 +117,13 @@ export function MoreScreen({
         <View style={{ height: 32 }} />
       </ScrollView>
       {BottomNav}
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   root:       { flex: 1, backgroundColor: '#0d0914' },
-  container:  { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 100 },
+  container:  { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   logo:       { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   subtitle:   { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
   card:       { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
