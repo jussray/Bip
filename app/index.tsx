@@ -606,6 +606,7 @@ export default function App() {
       theme={t}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
+      setSelectedSekret={setSelectedSekret}
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}

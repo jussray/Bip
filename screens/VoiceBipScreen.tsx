@@ -11,7 +11,7 @@
 //   - Tips list adapts per companion
 //   - Listening pill mirrors JournalScreen pattern (breath loop)
 //   - Sticky-note hint ("tap the mic") with -2deg tilt
-//   - Reply card credits the actual companion (charLabel), not hard-coded
+//   - Reply card credits the selected avatar, not a hard-coded companion
 //   - VoiceNote type properly imported
 //   - Curly quotes throughout
 //
@@ -20,7 +20,8 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { getRoomPhase, getRoomScene, type RoomPhase } from '../constants/theme';
+import { VOICE_BIP_AVATARS, VOICE_BIP_AVATAR_KEYS, getVoiceBipAvatar } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
 import { fetchSekretReply } from '../utils/api';
@@ -33,43 +34,12 @@ import {
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
 
-// ── ASSETS ─────────────────────────────────────────────────────────────────
-const CLOUD_HP = IMAGES.cloudHeadphones;
-
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
 const HOTSPOTS = {
   microphone: { top: '18%',    left: '30%',  width: '22%', height: '28%', label: 'Mic 🎙️' },
   journal:    { bottom: '4%',  left: '16%',  width: '44%', height: '22%', label: 'Journal 📖' },
   window:     { top: '4%',     right: '2%',  width: '38%', height: '40%', label: 'Window 🌙' },
   crystalJar: { bottom: '4%',  right: '2%',  width: '18%', height: '22%', label: 'Saved 💎' },
-};
-
-// ── VOICE COMPANION PROMPTS ───────────────────────────────────────────────
-const VOICE_PROMPTS: Record<string, { emoji: string; text: string }[]> = {
-  raylene: [
-    { emoji: '💜', text: "What's something you've been carrying that you haven't said out loud yet?" },
-    { emoji: '🌙', text: "Tell me about a moment this week that felt heavier than it should have." },
-    { emoji: '🫶', text: "What do you need right now that nobody's asked you about?" },
-    { emoji: '🌧️', text: "Say the thing you keep stopping yourself from saying." },
-    { emoji: '✨', text: "What went okay today — even just one small thing?" },
-  ],
-  rylane: [
-    { emoji: '⚡', text: "What's been sitting on your chest that you haven't put down yet?" },
-    { emoji: '🧠', text: "Say it plain. No filter. What's actually on your mind right now?" },
-    { emoji: '🎙️', text: "Talk me through the last 24 hours, for real." },
-    { emoji: '🔊', text: "What would you say if nobody was watching or judging?" },
-    { emoji: '🏆', text: "What's one thing you handled today that nobody gave you credit for?" },
-  ],
-  cloud: [
-    { emoji: '☁️', text: "Let the words come slowly. There's no rush here." },
-    { emoji: '🕯️', text: "What's one thing that felt heavy this week you haven't set down?" },
-    { emoji: '🌊', text: "Just breathe first. Then say whatever comes." },
-  ],
-  night: [
-    { emoji: '🌃', text: "What keeps replaying in your head at night?" },
-    { emoji: '🌙', text: "What are you too tired to pretend is fine right now?" },
-    { emoji: '😶‍🌫️', text: "Say the part that gets louder after dark." },
-  ],
 };
 
 // ── BIP TYPE MENU ──────────────────────────────────────────────────────────
@@ -80,26 +50,12 @@ const BIP_TYPES = [
   { id: 'cloud', emoji: '☁️', label: 'Cloud Bip',  sub: 'send to the clouds' },
 ];
 
-// ── TIME OF DAY ────────────────────────────────────────────────────────────
-function getTimeOfDay(hour: number): TimeOfDay {
-  if (hour >= 5  && hour < 11) return 'morning';
-  if (hour >= 11 && hour < 17) return 'day';
-  if (hour >= 17 && hour < 21) return 'evening';
-  return 'night';
-}
-
-const TIME_BADGE: Record<TimeOfDay, string> = {
-  morning: '☀️ morning',
-  day:     '🌤️ day',
-  evening: '🌆 evening',
-  night:   '🌙 night',
-};
-
 // ── Props ──────────────────────────────────────────────────────────────────
 interface VoiceBipScreenProps {
   theme:          Record<string, any>;
   setScreen:      (screen: string) => void;
   selectedSekret: string;
+  setSelectedSekret?: (avatarKey: string) => void;
   voiceNotes:     VoiceNote[];
   setVoiceNotes:  (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
   onSave?:        () => void;
@@ -114,7 +70,7 @@ interface VoiceBipScreenProps {
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
-  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
+  theme, setScreen, selectedSekret, setSelectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -146,25 +102,19 @@ export function VoiceBipScreen({
   ).current;
   const waveLoop = useRef<any>(null);
 
-  // Character / time
-  const hour       = new Date().getHours();
-  const timeOfDay  = getTimeOfDay(hour);
-  const isNight    = timeOfDay === 'night' || timeOfDay === 'evening';
-  const isRylane   = selectedSekret === 'rylane';
-  const character  = isRylane ? 'rylane' : 'raylene';
-  const charLabel  = isRylane ? 'rylane' : 'raylene';
-  const charName   = isRylane ? 'Rylane' : 'Raylene';
-  const charEmoji  = isRylane ? '⚡' : '💜';
-  const roomArt    = getRoomBg(character, timeOfDay);
+  // Normalize identity once. Every visible and future voice choice derives from this registry.
+  // Oracle-informed context remains private and is only passed through fetchSekretReply below.
+  const avatar = getVoiceBipAvatar(selectedSekret);
+  const avatarKey = avatar.key;
+  const roomPhase: RoomPhase = getRoomPhase();
+  const roomArt = getRoomScene(avatarKey, roomPhase);
+  const heroArt = avatar.heroArt(roomPhase);
   const { prepareVoiceSession, voiceStatus } = useVoiceCompanion({
-    personality: isRylane ? 'Rylane' : selectedSekret === 'cloud' ? "Cloud Se'kret" : selectedSekret === 'night' ? "Night Se'kret" : 'Raylene',
+    avatarKey,
+    personality: avatar.personality,
+    voiceIdKey: avatar.voiceIdKey,
     mood: mood || 'calm',
   });
-
-  const heroArt =
-    isRylane
-      ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
-      : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -189,7 +139,7 @@ export function VoiceBipScreen({
         Animated.timing(pillBreath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [cloudBreath, cloudFloat, pillBreath]);
 
   const cloudStyle = {
     transform: [
@@ -302,25 +252,12 @@ export function VoiceBipScreen({
     };
   }, []);
 
-  // Copy variants ───────────────────────────────────────────────────────────
-  const tips = isRylane
-    ? [
-        'Find your spot — car, garage, walk, wherever feels real',
-        'You don’t gotta sound smooth. Just say it.',
-        'Pause. Curse. Restart. All allowed.',
-        'I’m not grading you. I’m holding it with you.',
-      ]
-    : [
-        'Find a private spot — car, room, bathroom, wherever',
-        'You don’t need perfect words. Just talk.',
-        'It’s okay to cry, pause, or start over',
-        'I listen without judgment, always',
-      ];
-
-  const tipsTitle = isRylane ? 'Tips for Voice Bips 🌙' : 'Tips for Voice Bips 🌙';
-  const replyLabelText = `${charLabel} replied ${charEmoji}`;
-  const listeningPillText = `${charLabel} is listening… ${charEmoji}`;
-  const cloudListeningText = `${charLabel} is listening… ☁️`;
+  const selectAvatar = (nextAvatarKey: typeof avatarKey) => {
+    setVoicePromptIdx(0);
+    setSekretReply('');
+    setRecorded(false);
+    setSelectedSekret?.(VOICE_BIP_AVATARS[nextAvatarKey].selectionKey);
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
@@ -351,7 +288,7 @@ export function VoiceBipScreen({
 
           {/* Cloud companion — drifts above */}
           <Animated.View style={[styles.cloudWrap, cloudStyle]} pointerEvents="none">
-            <Image source={CLOUD_HP} style={styles.cloudImg} resizeMode="contain" />
+            <Image source={heroArt} style={styles.cloudImg} resizeMode="contain" />
           </Animated.View>
 
           {/* Purple recording overlay */}
@@ -364,13 +301,13 @@ export function VoiceBipScreen({
 
           {/* Time badge */}
           <View style={styles.timeBadge} pointerEvents="none">
-            <Text style={styles.timeBadgeText}>{TIME_BADGE[timeOfDay]}</Text>
+            <Text style={styles.timeBadgeText}>{roomPhase === 'deepNight' ? '🌌 deep night' : roomPhase === 'rain' ? '🌧️ rain' : `${avatar.emoji} ${roomPhase}`}</Text>
           </View>
 
           {/* Companion presence pill */}
           <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {companion?.presenceMessage || `${charLabel}’s here · headphone cloud`}
+              {companion?.presenceMessage || avatar.presence}
             </Text>
           </Animated.View>
 
@@ -378,7 +315,7 @@ export function VoiceBipScreen({
           {isRecording && (
             <View style={styles.listeningBadge} pointerEvents="none">
               <Text style={styles.listeningBadgeText}>
-                {charName} is listening… {charEmoji}
+                {avatar.listening}
               </Text>
             </View>
           )}
@@ -476,7 +413,7 @@ export function VoiceBipScreen({
         {recorded && !isRecording && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
             <Text style={[styles.savedLabel, { color: theme.soft }]}>
-              Saved to your journal {charEmoji}
+              Saved to your journal {avatar.emoji}
             </Text>
           </View>
         )}
@@ -484,20 +421,45 @@ export function VoiceBipScreen({
         {/* ── Companion thinking ── */}
         {isThinking && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)', flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
-            <Image source={CLOUD_HP} style={{ width: 36, height: 36 }} resizeMode="contain" />
-            <Text style={[styles.thinkingText, { color: theme.soft }]}>{cloudListeningText}</Text>
+            <Image source={heroArt} style={{ width: 36, height: 36 }} resizeMode="contain" />
+            <Text style={[styles.thinkingText, { color: theme.soft }]}>{avatar.thinking}</Text>
           </View>
         )}
 
         {/* ── Reply ── */}
         {sekretReply && !isThinking && (
           <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
-            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{replyLabelText}</Text>
+            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.replyLabel}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
           </View>
         )}
 
-{/* ── Voice-ready status ── */}
+        {/* ── Avatar selection ── */}
+        <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>Who do you want to talk to?</Text>
+          <View style={styles.avatarPicker}>
+            {VOICE_BIP_AVATAR_KEYS.map(key => {
+              const option = VOICE_BIP_AVATARS[key];
+              const active = key === avatarKey;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  disabled={isRecording || !setSelectedSekret}
+                  onPress={() => selectAvatar(key)}
+                  style={[styles.avatarOption, active && styles.avatarOptionActive]}
+                >
+                  <Text style={styles.avatarOptionEmoji}>{option.emoji}</Text>
+                  <Text style={[styles.avatarOptionName, active && styles.avatarOptionNameActive]}>{option.displayName}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={[styles.avatarEnergy, { color: '#c4b5fd' }]}>{avatar.energy}</Text>
+        </View>
+
+        {/* ── Voice-ready status ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
           <Text style={[styles.cardTitle, { color: '#fff' }]}>Voice-ready</Text>
           <Text style={[styles.tip, { color: '#c4b5fd' }]}>{voiceStatus.message}</Text>
@@ -505,13 +467,11 @@ export function VoiceBipScreen({
 
         {/* ── Companion voice prompt ── */}
         {!isRecording && !sekretReply && (() => {
-          const promptKey = isRylane ? 'rylane' : selectedSekret === 'cloud' ? 'cloud' : selectedSekret === 'night' ? 'night' : 'raylene';
-          const prompts = VOICE_PROMPTS[promptKey];
-          const p = prompts[voicePromptIdx % prompts.length];
+          const p = avatar.prompts[voicePromptIdx % avatar.prompts.length];
           return (
             <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.45)', backgroundColor: 'rgba(20,12,40,0.88)', shadowColor: '#a855f7' }]}>
               <Text style={{ color: '#a855f7', fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 }}>
-                {charName.toUpperCase()} · WHAT TO SAY
+                {avatar.displayName.toUpperCase()} · WHAT TO SAY
               </Text>
               <Text style={{ fontSize: 26, marginBottom: 8 }}>{p.emoji}</Text>
               <Text style={{ color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 23, marginBottom: 14 }}>
@@ -537,8 +497,8 @@ export function VoiceBipScreen({
 
         {/* ── Tips ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
-          <Text style={[styles.cardTitle, { color: '#fff' }]}>{tipsTitle}</Text>
-          {tips.map(tip => (
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips from {avatar.displayName} {avatar.emoji}</Text>
+          {avatar.tips.map(tip => (
             <Text key={tip} style={[styles.tip, { color: '#c4b5fd' }]}>• {tip}</Text>
           ))}
         </View>
@@ -552,7 +512,7 @@ export function VoiceBipScreen({
         <View style={styles.overlayWrap}>
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowBipMenu(false)} />
           <View style={[styles.bipMenuCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
-            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? {charEmoji}</Text>
+            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? {avatar.emoji}</Text>
             <Text style={[styles.bipMenuSub, { color: '#7c6899' }]}>Choose how you want to express right now</Text>
             {BIP_TYPES.map(bip => (
               <TouchableOpacity
@@ -583,12 +543,12 @@ export function VoiceBipScreen({
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowArchive(false)} />
           <View style={[styles.archiveCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
             <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>
-              {charName}’s journal 📖
+              {avatar.displayName}’s journal 📖
             </Text>
 
             {voiceNotes.length === 0 ? (
               <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                <Image source={CLOUD_HP} style={{ width: 48, height: 48, marginBottom: 10 }} resizeMode="contain" />
+                <Image source={heroArt} style={{ width: 48, height: 48, marginBottom: 10 }} resizeMode="contain" />
                 <Text style={[styles.emptyText, { color: '#7c6899' }]}>No bips yet. Your first one is waiting. 🎙️</Text>
               </View>
             ) : (
@@ -638,6 +598,13 @@ const styles = StyleSheet.create({
   scrollView:          { flex: 1 },
   scroll:             { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   roomWrap:           { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 240 : 340, marginBottom: 16, overflow: 'hidden' },
+  avatarPicker:       { flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 12 },
+  avatarOption:       { flex: 1, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)', borderRadius: 12, paddingVertical: 9, backgroundColor: 'rgba(30,18,52,0.65)' },
+  avatarOptionActive: { borderColor: '#a855f7', backgroundColor: 'rgba(124,58,237,0.3)' },
+  avatarOptionEmoji:  { fontSize: 20, marginBottom: 3 },
+  avatarOptionName:   { color: '#9c8bb8', fontSize: 10, fontWeight: '700' },
+  avatarOptionNameActive: { color: '#f5f0ff' },
+  avatarEnergy:       { fontSize: 12, fontStyle: 'italic', textAlign: 'center' },
   roomImage:          { width: '100%', height: '100%' },
   environmentLayer:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   heroAvatar:         { position: 'absolute', bottom: -20, alignSelf: 'center', width: '88%', height: '82%', opacity: 0.16, tintColor: '#fff' },
