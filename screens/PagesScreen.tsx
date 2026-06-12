@@ -149,7 +149,6 @@ const PARENT_TABS: TabDefinition[] = [
 const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
 const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
-
 function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
   if (source === 'parentSekret' || source === 'bridge' || source === 'oracle' || source === 'raylene' || source === 'rylane' || source === 'cloud') {
