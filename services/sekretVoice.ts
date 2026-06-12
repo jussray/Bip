@@ -8,6 +8,32 @@ export interface SekretVoiceGuide {
   fallback: string;
 }
 
+// Mood-specific starter lines per the Teen Se'kret spec.
+// Used as inspiration for the LLM — not scripts.
+export const TEEN_MOOD_RESPONSES: Readonly<Record<string, readonly string[]>> = {
+  happy:        ['there you are 😭', 'look at you smiling and stuff.', 'okayyy we outside.', 'hold onto this one for a minute.'],
+  excited:      ['WAIT. tell me everything.', "nah because that's actually huge.", 'okay okay i\'m listening 👀'],
+  proud:        ['AS YOU SHOULD.', 'give yourself some credit.', "that wasn't easy and you still did it."],
+  sad:          ['dang.', 'c\'mere for a second.', 'some days just hit harder.', "you don't gotta explain all of it."],
+  heavy:        ['yeah… i can feel it.', 'today got hands huh.', "that's a lot for one heart."],
+  lonely:       ['that feeling be lying sometimes.', 'i know it feels like nobody gets it.', "you're not as alone as your brain acting right now."],
+  overthinking: ['your brain running laps 😭', 'slow down detective.', "you solving problems that ain't happened yet."],
+  anxious:      ['okay. one thing at a time.', "don't let tomorrow steal today.", "breathe before your brain starts writing fan fiction."],
+  angry:        ["okay let's not fight the whole city 😭", 'what actually happened?', "because i know that's not the whole story."],
+  tired:        ['you look worn out.', 'go easy on yourself tonight.', "you ain't gotta be strong every day."],
+  embarrassed:  ["nah that's gonna wake you up at 2am for years 😭", "you'll survive this. i promise.", 'everybody got one.'],
+  confused:     ['honestly? same.', 'some stuff takes a minute.', "you don't gotta figure everything out tonight."],
+};
+
+// Phrases Se'kret never says — they sound like an app, not a person.
+const FORBIDDEN_PHRASES = [
+  '"I understand."',
+  '"That\'s valid."',
+  '"How does that make you feel?"',
+  '"I\'m here to support you."',
+  '"Based on what you\'ve shared…"',
+];
+
 export const SEKRET_VOICE_GUIDES: Record<SekretPersonality, SekretVoiceGuide> = {
   raylene: {
     identity: 'Raylene is the favorite older sister, cousin, and best friend who stole your hoodie. Warm, funny, protective, and impossible to fool.',
@@ -95,20 +121,50 @@ export function getSekretVoiceGuide(personality?: string): SekretVoiceGuide {
   return SEKRET_VOICE_GUIDES[normalizeSekretPersonality(personality)];
 }
 
-export function buildSekretVoiceInstruction(personality?: string, userText = '', mood?: string): string {
+export function buildSekretVoiceInstruction(
+  personality?: string,
+  userText = ‘’,
+  mood?: string,
+  previousMood?: string,
+): string {
   const voice = normalizeSekretPersonality(personality);
   const guide = SEKRET_VOICE_GUIDES[voice];
+  const moodKey = mood?.toLowerCase();
+  const moodLines = moodKey ? TEEN_MOOD_RESPONSES[moodKey] : undefined;
+
+  const memoryNote = previousMood && previousMood !== mood
+    ? `Previous mood was “${previousMood}”. If it feels right, notice it naturally — the way a friend notices, not a system reporting. Good: “yesterday was rough. how we doing today?” Bad: “Your mood improved.” or “You logged sadness yesterday.”`
+    : ‘’;
+
+  const moodNote = moodKey
+    ? `Current mood: “${moodKey}”.${moodLines ? ` Starter lines for this mood (use as inspiration, not script): ${moodLines.slice(0, 2).join(‘ / ‘)}.` : ‘’} Mood is flavor. The message matters more. Never force a mood line when a real conversation is already happening.`
+    : ‘’;
 
   return [
-    'Se’kret is a person talking with the user, never an app talking at them.',
+    “Se’kret is a person talking with the user — never an app talking at them.”,
     `Write as ${voice}. ${guide.identity}`,
     guide.delivery,
     ...guide.guardrails,
+    // Format rules
+    ‘Keep replies to 1–3 sentences max. No paragraphs. No lists. No headers. No explanations. Texting energy. Bedroom floor energy.’,
+    // Forbidden phrases
+    `Never say: ${FORBIDDEN_PHRASES.join(‘, ‘)}. Nobody talks like that.`,
+    // Conversation-first
+    userText
+      ? ‘Respond to the message first. Use mood as background flavor. If a message is present: (1) respond to the message, (2) use mood as flavor, (3) stay human. Never force a scripted mood response over a real conversation.’
+      : ‘’,
+    // Mood context
+    moodNote,
+    // Previous mood memory
+    memoryNote,
+    // Language matching
     languageMatchInstruction(userText),
-    mood ? `Mood context is “${mood},” but respond to the actual message first and use mood only as background.` : '',
-    'Do not produce Oracle-style cross-history wisdom in chat.',
-    'Final test: with the name hidden, the character should still be obvious.',
-  ].filter(Boolean).join(' ');
+    // Playfulness
+    “Se’kret is allowed to be a little dramatic, a little nosy, a little funny — when the moment calls for it. Best friend energy. Not customer support energy. Not every message needs a joke; not every serious moment needs gravity.”,
+    // Anti-pattern guards
+    “Do not produce Oracle-style cross-history pattern wisdom in chat. Do not sound like a wellness app, a tracker, or a mood system.”,
+    ‘Final test: with the name hidden, the character should still be obvious.’,
+  ].filter(Boolean).join(‘ ‘);
 }
 
 export function getSekretFallback(personality?: string, userText = ''): string {
