@@ -45,6 +45,34 @@ const rylaneProfile   = rylaneFullbody; // fallback → fullbody portrait
 const rylaneVoiceDay  = rylaneWindow;   // fallback → window
 const rylaneVoiceNight = rylaneWindow;  // fallback → window
 
+// ── Night (real assets) ────────────────────────────────────────────────────
+// Night is his own character: curly black hair, purple Se'kret hoodie,
+// headphones, sketchbook + mug. "Late night thoughts / protect his peace."
+//
+// The pixels for Night live in two files whose FILENAMES say "rylane" — these
+// are AI-generation mislabels from earlier iterations. The image content was
+// verified by visual scan: rylane-reference-board.png and rylane-profile-sheet.png
+// both depict the curly-hair/purple-hoodie Night character, NOT the
+// dreadlocks Rylane. We do not rename the files (every screen imports them);
+// we just expose them under correct character keys here.
+const nightReferenceBoard = require('../assets/images/rylane-reference-board.png');
+const nightProfileSheet   = require('../assets/images/rylane-profile-sheet.png');
+
+// ── Night (semantic aliases) ───────────────────────────────────────────────
+// Until per-state, single-pose Night art lands, every Night state maps onto
+// one of the two reference-sheet files. profile-sheet (vertical, portrait
+// oriented) handles intimate states; reference-board (wider, full layout)
+// handles open states. Both are real Night art — no placeholders, no
+// borrowed faces from other characters.
+const nightNeutral     = nightProfileSheet;
+const nightHappy       = nightReferenceBoard;
+const nightThinking    = nightProfileSheet;
+const nightWriting     = nightProfileSheet;
+const nightWindow      = nightProfileSheet;
+const nightVoiceDay    = nightReferenceBoard;
+const nightVoiceNight  = nightProfileSheet;
+const nightFullbody    = nightReferenceBoard;
+
 // ── Room Backgrounds ───────────────────────────────────────────────────────
 const roomBg              = require('../assets/images/room-bg.png');
 const roomBgDark          = require('../assets/images/room-bg-dark.png');
@@ -115,6 +143,18 @@ export const IMAGES = {
   rylaneProfile,
   rylaneVoiceDay,
   rylaneVoiceNight,
+
+  // Night (his own character — see comment block above for source files)
+  nightReferenceBoard,
+  nightProfileSheet,
+  nightNeutral,
+  nightHappy,
+  nightThinking,
+  nightWriting,
+  nightWindow,
+  nightVoiceDay,
+  nightVoiceNight,
+  nightFullbody,
 
   // Rooms
   bgRayleneRoomDay,

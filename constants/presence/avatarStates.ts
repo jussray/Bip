@@ -69,17 +69,13 @@ export const CHARACTER_NAME: Record<PresenceCharacter, string> = {
 
 /**
  * True iff this character's asset bank is still placeholder-only (i.e. no
- * dedicated per-state artwork exists in assets/images/ yet). The screen uses
- * this to show an "art coming soon" hint instead of pretending the character
- * is fully rendered.
- *
- * Night currently only has reference-sheet art (rylane-reference-board.png,
- * rylane-profile-sheet.png — file names are mislabels; the pixels show Night).
- * Until per-state Night art is added, his cells render the Se'kret splash
- * rather than borrowing Rylane's face.
+ * real artwork exists in assets/images/ yet). The screen can use this to show
+ * an "art coming soon" hint instead of pretending the character is fully
+ * rendered. All four characters now have real art, so this returns false for
+ * every character today. Kept as a hook for future-added characters.
  */
-export function isAwaitingArt(character: PresenceCharacter): boolean {
-  return character === 'night';
+export function isAwaitingArt(_character: PresenceCharacter): boolean {
+  return false;
 }
 
 /** Adapter from the existing selectedSekret string to PresenceCharacter. */
@@ -213,57 +209,53 @@ const CLOUD_CELLS: readonly AssetCell[] = [
 // "headphones on, world off", "protect his peace", "loyal, honest, real",
 // "it's okay to not be okay", "tired eyes", "music helps".
 //
-// IMPORTANT: There is currently NO per-state Night artwork on disk. The only
-// Night-design files in the repo are reference sheets named
-//   - rylane-reference-board.png
-//   - rylane-profile-sheet.png
-// (filenames are AI-generation mislabels; the pixels are Night, not Rylane.)
+// Night's only on-disk pixels live in two files whose filenames begin with
+// "rylane-" — those are AI-generation mislabels. Visually verified content:
+//   - rylane-reference-board.png   → wider layout, daytime/open energy
+//   - rylane-profile-sheet.png     → vertical portrait, intimate/night energy
+// Both depict the curly-hair/purple-hoodie Night character (NOT Rylane). They
+// are exposed via theme.ts under correct Night-prefixed IMAGES keys.
 //
-// Reference sheets are layout art, not game-ready single-pose sprites, so we
-// do NOT plug them into listening/thinking/responding/comforting cells.
-// Every Night cell renders the Se'kret splash placeholder until dedicated
-// Night art lands. We do NOT borrow Rylane's face — the user has stated
-// repeatedly that Rylane and Night are not the same person.
+// Mapping rules:
+//   - Daytime + open states (listening day/midday/afternoon, responding
+//     daytime) lean on the reference-board (warmer, more energy).
+//   - Evening/night + introspective states (thinking, writing, window,
+//     comforting at rest) lean on the profile-sheet (cooler, contemplative).
+//   - Rain falls back to profile-sheet — a "protect his peace" mood.
 //
-// EXPECTED ART FILES for Night (drop into assets/images/, add new keys to
-// IMAGES in constants/theme.ts, then replace placeholders below):
-//   night-voice-day.png      → listening, day/midday/afternoon
-//   night-voice-night.png    → listening, evening/night
-//   night-thinking.png       → thinking, all phases
-//   night-happy.png          → responding, day/midday/afternoon
-//   night-writing.png        → responding, evening/night
-//   night-neutral.png        → comforting, day/midday/afternoon
-//   night-window.png         → comforting, evening/night, all rain
-const NIGHT_PLACEHOLDER = IMAGES.sekretSplash;
-
+// Every cell renders REAL Night art. No placeholders. No borrowed faces.
 const NIGHT_CELLS: readonly AssetCell[] = [
-  { time: 'day',       state: 'listening',  asset: NIGHT_PLACEHOLDER },
-  { time: 'midday',    state: 'listening',  asset: NIGHT_PLACEHOLDER },
-  { time: 'afternoon', state: 'listening',  asset: NIGHT_PLACEHOLDER },
-  { time: 'evening',   state: 'listening',  asset: NIGHT_PLACEHOLDER },
-  { time: 'night',     state: 'listening',  asset: NIGHT_PLACEHOLDER },
-  { time: 'rain',      state: 'listening',  asset: NIGHT_PLACEHOLDER },
+  // Listening — attentive, "how we feelin' today?"
+  { time: 'day',       state: 'listening',  asset: IMAGES.nightVoiceDay },
+  { time: 'midday',    state: 'listening',  asset: IMAGES.nightVoiceDay },
+  { time: 'afternoon', state: 'listening',  asset: IMAGES.nightVoiceDay },
+  { time: 'evening',   state: 'listening',  asset: IMAGES.nightVoiceNight },
+  { time: 'night',     state: 'listening',  asset: IMAGES.nightVoiceNight },
+  { time: 'rain',      state: 'listening',  asset: IMAGES.nightWindow },
 
-  { time: 'day',       state: 'thinking',   asset: NIGHT_PLACEHOLDER },
-  { time: 'midday',    state: 'thinking',   asset: NIGHT_PLACEHOLDER },
-  { time: 'afternoon', state: 'thinking',   asset: NIGHT_PLACEHOLDER },
-  { time: 'evening',   state: 'thinking',   asset: NIGHT_PLACEHOLDER },
-  { time: 'night',     state: 'thinking',   asset: NIGHT_PLACEHOLDER },
-  { time: 'rain',      state: 'thinking',   asset: NIGHT_PLACEHOLDER },
+  // Thinking — "late night thoughts", "tired eyes", overthinks-big-heart.
+  { time: 'day',       state: 'thinking',   asset: IMAGES.nightThinking },
+  { time: 'midday',    state: 'thinking',   asset: IMAGES.nightThinking },
+  { time: 'afternoon', state: 'thinking',   asset: IMAGES.nightThinking },
+  { time: 'evening',   state: 'thinking',   asset: IMAGES.nightThinking },
+  { time: 'night',     state: 'thinking',   asset: IMAGES.nightThinking },
+  { time: 'rain',      state: 'thinking',   asset: IMAGES.nightWindow },
 
-  { time: 'day',       state: 'responding', asset: NIGHT_PLACEHOLDER },
-  { time: 'midday',    state: 'responding', asset: NIGHT_PLACEHOLDER },
-  { time: 'afternoon', state: 'responding', asset: NIGHT_PLACEHOLDER },
-  { time: 'evening',   state: 'responding', asset: NIGHT_PLACEHOLDER },
-  { time: 'night',     state: 'responding', asset: NIGHT_PLACEHOLDER },
-  { time: 'rain',      state: 'responding', asset: NIGHT_PLACEHOLDER },
+  // Responding — "it is what it is" / journal + mug energy.
+  { time: 'day',       state: 'responding', asset: IMAGES.nightHappy },
+  { time: 'midday',    state: 'responding', asset: IMAGES.nightHappy },
+  { time: 'afternoon', state: 'responding', asset: IMAGES.nightHappy },
+  { time: 'evening',   state: 'responding', asset: IMAGES.nightWriting },
+  { time: 'night',     state: 'responding', asset: IMAGES.nightWriting },
+  { time: 'rain',      state: 'responding', asset: IMAGES.nightWindow },
 
-  { time: 'day',       state: 'comforting', asset: NIGHT_PLACEHOLDER },
-  { time: 'midday',    state: 'comforting', asset: NIGHT_PLACEHOLDER },
-  { time: 'afternoon', state: 'comforting', asset: NIGHT_PLACEHOLDER },
-  { time: 'evening',   state: 'comforting', asset: NIGHT_PLACEHOLDER },
-  { time: 'night',     state: 'comforting', asset: NIGHT_PLACEHOLDER },
-  { time: 'rain',      state: 'comforting', asset: NIGHT_PLACEHOLDER },
+  // Comforting — "protect his peace". Settled, looking out the window, calm.
+  { time: 'day',       state: 'comforting', asset: IMAGES.nightNeutral },
+  { time: 'midday',    state: 'comforting', asset: IMAGES.nightNeutral },
+  { time: 'afternoon', state: 'comforting', asset: IMAGES.nightNeutral },
+  { time: 'evening',   state: 'comforting', asset: IMAGES.nightWindow },
+  { time: 'night',     state: 'comforting', asset: IMAGES.nightWindow },
+  { time: 'rain',      state: 'comforting', asset: IMAGES.nightWindow },
 ];
 
 /** All character cells, keyed for fast lookup. */
