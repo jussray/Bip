@@ -18,6 +18,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   PARENT_TOPICS,
   getParentSekretResponse,
@@ -62,6 +63,15 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
   const [sent,       setSent]       = useState(false);
   const [sending,    setSending]    = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [hasPending,      setHasPending]      = useState(false);
+
+  // Check if teen has marked something to share — parent sees gentle nudge only.
+  // Content stays on the teen side; this key is just a signal.
+  useEffect(() => {
+    AsyncStorage.getItem('parent_bridge_pending').then(val => {
+      if (val === 'true') setHasPending(true);
+    }).catch(() => {});
+  }, []);
 
   const fade1 = useRef(new Animated.Value(0)).current;
   const fade2 = useRef(new Animated.Value(0)).current;
@@ -149,6 +159,17 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
             </Text>
           </View>
         </Animated.View>
+
+        {/* ─── TEEN SHARE SIGNAL ──────────────────────────────────────────────── */}
+        {hasPending && (
+          <Animated.View style={cardSlide(fade2)}>
+            <View style={[styles.pendingBanner, { borderColor: P.accent + '66', backgroundColor: P.accent + '18' }]}>
+              <Text style={[styles.pendingText, { color: P.soft }]}>
+                💌 Your teen has something they chose to share with you.
+              </Text>
+            </View>
+          </Animated.View>
+        )}
 
         {/* ─── TABS ──────────────────────────────────────────────────────────── */}
         <Animated.View style={[cardSlide(fade2), styles.tabRow]}>
@@ -434,6 +455,10 @@ function ResponseSection({ id, label, icon, content, accent, soft, expanded, onT
 const styles = StyleSheet.create({
   root:   { flex: 1, backgroundColor: '#1e0f06' },
   scroll: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
+
+  // Teen share signal banner
+  pendingBanner: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 14, alignItems: 'center' },
+  pendingText:   { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   // Header
   header:        { alignItems: 'center', marginBottom: 20 },
