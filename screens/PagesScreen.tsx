@@ -124,6 +124,24 @@ const CLOUD_PROMPTS = [
   "What felt different today, even just a little.",
 ];
 
+// Oracle asks about the person — not the problem.
+// These questions make someone accidentally reveal who they are.
+// They should feel like being noticed, not studied.
+const ORACLE_QUESTIONS = [
+  "What do you care about that you'd never say out loud?",
+  "What did today reveal about you — even a tiny bit?",
+  "What's something you want that you haven't told anyone you want?",
+  "Who were you trying to be today? Were you that person?",
+  "What surprised you about yourself lately?",
+  "What do you do for other people that you never do for yourself?",
+  "What are you most yourself doing?",
+  "If someone really knew you, what's the first thing they'd understand?",
+  "What do you protect about yourself that nobody knows you protect?",
+  "What's something you've been pretending isn't a big deal to you?",
+  "What do you notice about yourself that you'd rather not notice?",
+  "What's the version of yourself you're trying to become — even slowly?",
+];
+
 // ── Small helpers ──────────────────────────────────────────────────────────
 
 function wordCount(text: string): number {
@@ -318,31 +336,47 @@ function MePanel({
 // ── Oracle Panel ───────────────────────────────────────────────────────────
 
 interface OraclePanelProps {
-  oracleText:    string;
-  setOracleText: (v: string) => void;
-  oracleInsight: OracleInsight | null;
-  t:             Record<string, any>;
-  onSave:        () => void;
-  entries:       JournalEntry[];
+  oracleText:     string;
+  setOracleText:  (v: string) => void;
+  oracleInsight:  OracleInsight | null;
+  oracleQIdx:     number;
+  onNextQuestion: () => void;
+  t:              Record<string, any>;
+  onSave:         () => void;
+  entries:        JournalEntry[];
 }
 
-function OraclePanel({ oracleText, setOracleText, oracleInsight, t, onSave, entries }: OraclePanelProps) {
+function OraclePanel({
+  oracleText, setOracleText, oracleInsight,
+  oracleQIdx, onNextQuestion,
+  t, onSave, entries,
+}: OraclePanelProps) {
   const wc = wordCount(oracleText);
+  const question = ORACLE_QUESTIONS[oracleQIdx % ORACLE_QUESTIONS.length];
+
   return (
     <>
       <View style={s.panelHeader}>
         <Text style={[s.panelTitle, { color: '#c4b5fd' }]}>Oracle</Text>
-        <Text style={s.panelSub}>quiet · wise · pattern-aware</Text>
+        <Text style={s.panelSub}>watching. noticing. wondering.</Text>
       </View>
 
       <View style={[s.oracleFrame, { borderColor: 'rgba(196,181,253,0.25)' }]}>
-        <Text style={s.oracleQuestion}>What should Se'kret understand better?</Text>
+        {/* Rotating curious question — about the person, not the problem */}
+        <Text style={s.oracleQuestion}>{question}</Text>
+
+        <TouchableOpacity
+          style={[s.cycleBtn, { borderColor: '#c4b5fd44', marginBottom: 12 }]}
+          onPress={onNextQuestion}
+        >
+          <Text style={[s.cycleBtnText, { color: '#c4b5fd' }]}>different question</Text>
+        </TouchableOpacity>
 
         <View style={[s.paperWrap, { borderColor: '#c4b5fd55', shadowColor: '#c4b5fd' }]}>
           <LinedPaper />
           <TextInput
             style={s.paperInput}
-            placeholder="What's beneath the surface right now…"
+            placeholder="answer it — or don't. just let something out."
             placeholderTextColor="#4a3d6b"
             multiline
             value={oracleText}
@@ -351,20 +385,20 @@ function OraclePanel({ oracleText, setOracleText, oracleInsight, t, onSave, entr
         </View>
 
         <Text style={s.wordCount}>{wc > 0 ? `${wc} word${wc === 1 ? '' : 's'}` : ''}</Text>
-        <Text style={s.privateNote}>🔒 Oracle memory — private.</Text>
+        <Text style={s.privateNote}>🔒 only Oracle holds this.</Text>
 
         <TouchableOpacity
-          style={[s.saveBtn, { backgroundColor: '#3b1d6b', shadowColor: '#c4b5fd' }]}
+          style={[s.saveBtn, { backgroundColor: '#2e1a5e', shadowColor: '#c4b5fd' }]}
           onPress={onSave}
         >
-          <Text style={s.saveBtnText}>Save to Oracle Memory 🔮</Text>
+          <Text style={s.saveBtnText}>Leave this with Oracle 🔮</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Pattern insight if history supports it */}
+      {/* Pattern insight — only appears when history earns it */}
       {oracleInsight && (
         <View style={s.oracleInsightCard}>
-          <Text style={s.oracleInsightLabel}>📖 PATTERN NOTICED</Text>
+          <Text style={s.oracleInsightLabel}>something Oracle noticed</Text>
           {oracleInsight.lines.map(line => (
             <Text key={line} style={s.oracleInsightLine}>{line}</Text>
           ))}
@@ -373,7 +407,7 @@ function OraclePanel({ oracleText, setOracleText, oracleInsight, t, onSave, entr
 
       {entries.length > 0 && (
         <>
-          <Text style={s.savedTitle}>Oracle Memory</Text>
+          <Text style={s.savedTitle}>Left with Oracle</Text>
           {entries.map(e => <EntryCard key={e.id} entry={e} t={t} />)}
         </>
       )}
@@ -494,6 +528,9 @@ export function PagesScreen({
   const [rylaneText,   setRylaneText]   = useState('');
   const [cloudText,    setCloudText]    = useState('');
 
+  // Oracle question rotation
+  const [oracleQIdx,   setOracleQIdx]   = useState(0);
+
   // Me tab prompt state
   const [showPrompt,   setShowPrompt]   = useState(false);
   const [mePromptIdx,  setMePromptIdx]  = useState(0);
@@ -613,6 +650,8 @@ export function PagesScreen({
               oracleText={oracleText}
               setOracleText={setOracleText}
               oracleInsight={oracleInsight}
+              oracleQIdx={oracleQIdx}
+              onNextQuestion={() => setOracleQIdx(i => i + 1)}
               t={t}
               onSave={saveOracle}
               entries={oracleEntries}
