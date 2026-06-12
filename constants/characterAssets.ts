@@ -1,573 +1,790 @@
 // constants/characterAssets.ts
-// Se'kret Bip — Character Asset Registry
+// Se'kret Bip — Character Asset Registry v2 + Sticker Expression Reference Library
 // ─────────────────────────────────────────────────────────────────────────────
-// Single source of truth for all character artwork metadata.
-// Every entry maps to an existing IMAGES key — no new filenames, no dynamic
-// require() paths, no UI changes.
+// SOURCE OF TRUTH for all character artwork metadata.
 //
-// referenceOnly: true  → sheet/board used for art direction only, never rendered
-// referenceOnly: false → finished PNG, safe to render in any screen
+// Each entry describes one piece of character art: its character, the exact key
+// it maps to in the IMAGES map (constants/theme.ts), its filename on disk, and a
+// rich set of tags (mood / state / pose / feature) used by the sticker expression
+// engine and design/reference tooling.
 //
-// Helpers exported at bottom:
-//   getCharacterSticker(character, mood, pose?)
-//   getVoicePresenceImage(character, timeOfDay)
-//   getReferenceAssets(character?)
+// referenceOnly: true  → art reference / disk-only / UUID file — never render in prod UI
+// referenceOnly: false → finished, safe to render
+// renderable:    true  → a real require() exists for this assetKey in IMAGES
+// renderable:    false → disk-only, UUID, or fallback-shared key — do NOT rely on it rendering
+//
+// To render: import { IMAGES } from './theme'; then use IMAGES[asset.assetKey]
+// (Helpers below operate on the registry only and never import IMAGES, to avoid
+//  circular deps. Callers resolve the actual image source via IMAGES[asset.assetKey].)
 // ─────────────────────────────────────────────────────────────────────────────
-
-import { IMAGES } from './theme';
-import type { ImageSourcePropType } from 'react-native';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type CharacterKey = 'raylene' | 'rylane' | 'cloud' | 'night';
 
-export type Mood =
-  | 'neutral'
-  | 'happy'
-  | 'thinking'
-  | 'writing'
-  | 'window'
-  | 'listening'
-  | 'sleepy'
-  | 'stormy';
+export type MoodTag =
+  | 'neutral' | 'happy' | 'calm' | 'focused' | 'reflective'
+  | 'sad' | 'stormy' | 'sleepy' | 'energetic' | 'loving'
+  | 'curious' | 'proud' | 'grounded';
 
-export type Pose =
-  | 'bust'        // cropped portrait — most chat/reaction uses
-  | 'fullbody'    // full standing — room entry, splash, bippin2 hero
-  | 'window'      // at-window pose — calm, home ambient
-  | 'voice'       // headphones/mic pose — voice bip screens
-  | 'profile';    // profile/ID card crop — settings, crew
+export type StateTag =
+  | 'idle' | 'writing' | 'thinking' | 'voice-active' | 'voice-night'
+  | 'voice-day' | 'window-day' | 'window-night' | 'window-rainy'
+  | 'fullbody' | 'sticker' | 'splash';
 
-export type TimeOfDay = 'day' | 'night';
+export type PoseTag =
+  | 'portrait' | 'fullbody' | 'window' | 'sitting' | 'standing'
+  | 'floating' | 'closeup';
 
-export type AssetFeature =
-  | 'sticker'         // small reaction/emotion chip
-  | 'presence'        // room ambient floating art
-  | 'hero'            // large screen hero
-  | 'voicePresence'   // VoiceBip character art
-  | 'periodSupport'   // PeriodCalendar companion
-  | 'reference';      // art direction / reference only
+export type FeatureTag =
+  | 'v1' | 'v2' | 'v3' | 'headphones' | 'writing-pose'
+  | 'rainy' | 'daytime' | 'nighttime' | 'uuid-reference';
 
-export interface CharacterAssetEntry {
-  key:           keyof typeof IMAGES;
-  character:     Character;
-  mood:          Mood;
-  pose:          Pose;
-  features:      AssetFeature[];
-  state?:        string;          // e.g. 'rainy', 'deepNight', 'v2', 'v3'
-  referenceOnly: boolean;
-  notes?:        string;
+export interface CharacterAsset {
+  character: CharacterKey;
+  assetKey: string;                // exact key in IMAGES map, or 'uuid_XXXXXXXX' for UUID files
+  filename: string;                // exact filename in assets/images/
+  type: 'character' | 'mascot' | 'uuid-reference';
+  moodTags: MoodTag[];
+  stateTags: StateTag[];
+  poseTags: PoseTag[];
+  featureTags: FeatureTag[];
+  referenceOnly: boolean;          // true = do NOT render in prod UI; false = safe to render
+  renderable: boolean;             // true = real require() exists in IMAGES; false = disk only or UUID
 }
 
 // ── Registry ──────────────────────────────────────────────────────────────────
+// To render: import { IMAGES } from './theme'; then use IMAGES[asset.assetKey]
 
-export const CHARACTER_ASSETS: CharacterAssetEntry[] = [
+export const CHARACTER_ASSETS: CharacterAsset[] = [
 
-  // ── Raylene ───────────────────────────────────────────────────────────────
-
+  // ── Raylene ─────────────────────────────────────────────────────────────────
   {
-    key: 'rayleneNeutral',
-    character: 'raylene', mood: 'neutral', pose: 'bust',
-    features: ['sticker', 'presence', 'hero'],
+    character: 'raylene',
+    assetKey: 'rayleneNeutral',
+    filename: 'raylene-neutral.png',
+    type: 'character',
+    moodTags: ['neutral', 'calm', 'grounded'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v1'],
     referenceOnly: false,
-    notes: 'Primary raylene neutral — most used across screens',
+    renderable: true,
   },
   {
-    key: 'rayleneNeutralV2',
-    character: 'raylene', mood: 'neutral', pose: 'bust',
-    features: ['sticker'],
-    state: 'v2',
+    character: 'raylene',
+    assetKey: 'rayleneNeutralV3',
+    filename: 'raylene-neutral-v3.png',
+    type: 'character',
+    moodTags: ['neutral', 'calm'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v3'],
     referenceOnly: false,
-    notes: 'Fallback → rayleneNeutral. Swap when v2 art ships.',
+    renderable: false,
   },
   {
-    key: 'rayleneNeutralV3',
-    character: 'raylene', mood: 'neutral', pose: 'bust',
-    features: ['sticker'],
-    state: 'v3',
+    character: 'raylene',
+    assetKey: 'rayleneHappy',
+    filename: 'raylene-happy.png',
+    type: 'character',
+    moodTags: ['happy', 'energetic', 'loving'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v1'],
     referenceOnly: false,
+    renderable: true,
   },
   {
-    key: 'rayleneHappy',
-    character: 'raylene', mood: 'happy', pose: 'bust',
-    features: ['sticker', 'presence'],
+    character: 'raylene',
+    assetKey: 'rayleneHappyV3',
+    filename: 'raylene-happy-v3.png',
+    type: 'character',
+    moodTags: ['happy', 'energetic'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v3'],
     referenceOnly: false,
+    renderable: true,
   },
   {
-    key: 'rayleneHappyV2',
-    character: 'raylene', mood: 'happy', pose: 'bust',
-    features: ['sticker'],
-    state: 'v2',
+    character: 'raylene',
+    assetKey: 'rayleneWriting',
+    filename: 'raylene-writing.png',
+    type: 'character',
+    moodTags: ['focused', 'reflective'],
+    stateTags: ['writing'],
+    poseTags: ['sitting'],
+    featureTags: ['writing-pose'],
     referenceOnly: false,
-    notes: 'Fallback → rayleneHappy',
+    renderable: true,
   },
   {
-    key: 'rayleneHappyV3',
-    character: 'raylene', mood: 'happy', pose: 'bust',
-    features: ['sticker'],
-    state: 'v3',
+    character: 'raylene',
+    assetKey: 'rayleneWindow',
+    filename: 'raylene-window.png',
+    type: 'character',
+    moodTags: ['reflective', 'calm'],
+    stateTags: ['window-night'],
+    poseTags: ['window'],
+    featureTags: ['nighttime'],
     referenceOnly: false,
+    renderable: true,
   },
   {
-    key: 'rayleneThinking',
-    character: 'raylene', mood: 'thinking', pose: 'bust',
-    features: ['sticker', 'presence'],
+    character: 'raylene',
+    assetKey: 'rayleneWindowRainy',
+    filename: 'raylene-window-rainy.png',
+    type: 'character',
+    moodTags: ['sad', 'reflective', 'calm'],
+    stateTags: ['window-rainy'],
+    poseTags: ['window'],
+    featureTags: ['rainy'],
     referenceOnly: false,
-    notes: 'Fallback → rayleneNeutral until raylene-thinking.png ships',
+    renderable: true,
   },
   {
-    key: 'rayleneWriting',
-    character: 'raylene', mood: 'writing', pose: 'bust',
-    features: ['sticker', 'presence'],
+    character: 'raylene',
+    assetKey: 'rayleneFullbody',
+    filename: 'raylene-fullbody.png',
+    type: 'character',
+    moodTags: ['neutral', 'grounded'],
+    stateTags: ['fullbody'],
+    poseTags: ['fullbody', 'standing'],
+    featureTags: ['v1'],
     referenceOnly: false,
-    notes: 'Used for journal, bippin2 fallbacks, period calendar fallback',
+    renderable: true,
   },
   {
-    key: 'rayleneWindow',
-    character: 'raylene', mood: 'neutral', pose: 'window',
-    features: ['hero', 'presence'],
+    character: 'raylene',
+    assetKey: 'rayleneVoiceDay',
+    filename: 'raylene-voice-day.png',
+    type: 'character',
+    moodTags: ['energetic', 'happy'],
+    stateTags: ['voice-active', 'voice-day'],
+    poseTags: ['portrait'],
+    featureTags: ['daytime'],
     referenceOnly: false,
-    notes: 'At-window pose — Calm hero, Home ambient',
+    renderable: true,
   },
   {
-    key: 'rayleneWindowRainy',
-    character: 'raylene', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    state: 'rainy',
+    character: 'raylene',
+    assetKey: 'rayleneVoiceNight',
+    filename: 'raylene-voice-night.png',
+    type: 'character',
+    moodTags: ['calm', 'reflective'],
+    stateTags: ['voice-active', 'voice-night'],
+    poseTags: ['portrait'],
+    featureTags: ['nighttime'],
     referenceOnly: false,
-    notes: 'Rainy-day window variant — also used as nightAvatarNeutral/Window fallback',
+    renderable: true,
   },
   {
-    key: 'rayleneWindowV2',
-    character: 'raylene', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    state: 'v2',
+    character: 'raylene',
+    assetKey: 'raylene_Bippin2Day',
+    filename: 'raylene-bippin2-day.png',
+    type: 'character',
+    moodTags: ['happy', 'energetic'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['daytime', 'v1'],
     referenceOnly: false,
-    notes: 'Fallback → rayleneWindow',
-  },
-  {
-    key: 'rayleneWindowV3',
-    character: 'raylene', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    state: 'v3',
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWindow',
-  },
-  {
-    key: 'rayleneNightWindow',
-    character: 'raylene', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    state: 'night',
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWindowRainy (closest semantic for night window)',
-  },
-  {
-    key: 'rayleneNightDoodle',
-    character: 'raylene', mood: 'writing', pose: 'bust',
-    features: ['presence'],
-    state: 'night',
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWriting',
-  },
-  {
-    key: 'rayleneFullbody',
-    character: 'raylene', mood: 'neutral', pose: 'fullbody',
-    features: ['hero'],
-    referenceOnly: false,
-    notes: 'Full standing — Room entry, Bippin2 hero',
-  },
-  {
-    key: 'rayleneVoiceDay',
-    character: 'raylene', mood: 'listening', pose: 'voice',
-    features: ['voicePresence'],
-    state: 'day',
-    referenceOnly: false,
-    notes: 'Headphones/mic — VoiceBip daytime',
-  },
-  {
-    key: 'rayleneVoiceNight',
-    character: 'raylene', mood: 'listening', pose: 'voice',
-    features: ['voicePresence'],
-    state: 'night',
-    referenceOnly: false,
-    notes: 'Headphones/mic — VoiceBip nighttime',
-  },
-  {
-    key: 'raylene_Bippin2Day',
-    character: 'raylene', mood: 'happy', pose: 'fullbody',
-    features: ['hero'],
-    state: 'day',
-    referenceOnly: false,
-    notes: 'Bippin2 / Womanhood hero — day variant',
-  },
-  {
-    key: 'raylene_Bippin2Night',
-    character: 'raylene', mood: 'happy', pose: 'fullbody',
-    features: ['hero'],
-    state: 'night',
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWriting until night Bippin2 art ships',
-  },
-  {
-    key: 'raylene_PeriodCalendar',
-    character: 'raylene', mood: 'neutral', pose: 'bust',
-    features: ['periodSupport', 'presence'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWriting until raylene-period-calendar-day.png ships',
+    renderable: true,
   },
 
-  // ── Rylane ────────────────────────────────────────────────────────────────
-
+  // ── Raylene — missing from disk (referenceOnly, share IMAGES keys as fallback) ─
   {
-    key: 'rylaneNeutral',
-    character: 'rylane', mood: 'neutral', pose: 'bust',
-    features: ['sticker', 'presence', 'hero'],
-    referenceOnly: false,
-    notes: 'Primary rylane neutral',
+    character: 'raylene',
+    assetKey: 'rayleneThinking',
+    filename: 'raylene-thinking.png',
+    type: 'character',
+    moodTags: ['curious', 'reflective'],
+    stateTags: ['thinking'],
+    poseTags: ['portrait'],
+    featureTags: ['v1'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'rylaneNeutralV2',
-    character: 'rylane', mood: 'neutral', pose: 'bust',
-    features: ['sticker'],
-    state: 'v2',
-    referenceOnly: false,
+    character: 'raylene',
+    assetKey: 'rayleneThinking',
+    filename: 'raylene-period-calendar-day.png',
+    type: 'character',
+    moodTags: ['calm', 'grounded'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['daytime'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'rylaneHappy',
-    character: 'rylane', mood: 'happy', pose: 'bust',
-    features: ['sticker', 'presence'],
-    referenceOnly: false,
-  },
-  {
-    key: 'rylaneThinking',
-    character: 'rylane', mood: 'thinking', pose: 'bust',
-    features: ['sticker', 'presence'],
-    referenceOnly: false,
-    notes: 'Real asset — rylane-thinking.png exists on disk',
-  },
-  {
-    key: 'rylaneWriting',
-    character: 'rylane', mood: 'writing', pose: 'bust',
-    features: ['sticker', 'presence'],
-    referenceOnly: false,
-  },
-  {
-    key: 'rylaneWindow',
-    character: 'rylane', mood: 'neutral', pose: 'window',
-    features: ['hero', 'presence'],
-    referenceOnly: false,
-  },
-  {
-    key: 'rylaneWindowDay',
-    character: 'rylane', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    state: 'day',
-    referenceOnly: false,
-    notes: 'Daytime window variant',
-  },
-  {
-    key: 'rylaneFullbody',
-    character: 'rylane', mood: 'neutral', pose: 'fullbody',
-    features: ['hero'],
-    referenceOnly: false,
-    notes: 'Full standing — Room entry, Bippin2 hero',
-  },
-  {
-    key: 'rylaneProfile',
-    character: 'rylane', mood: 'neutral', pose: 'profile',
-    features: ['sticker'],
-    referenceOnly: false,
-    notes: 'Fallback → rylaneFullbody. Used in Settings, MindBodyReset.',
-  },
-  {
-    key: 'rylaneVoiceDay',
-    character: 'rylane', mood: 'listening', pose: 'voice',
-    features: ['voicePresence'],
-    state: 'day',
-    referenceOnly: false,
-  },
-  {
-    key: 'rylaneVoiceNight',
-    character: 'rylane', mood: 'listening', pose: 'voice',
-    features: ['voicePresence'],
-    state: 'night',
-    referenceOnly: false,
+    character: 'raylene',
+    assetKey: 'raylene_Bippin2Day',
+    filename: 'raylene-bippin2-night.png',
+    type: 'character',
+    moodTags: ['calm', 'reflective'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['nighttime'],
+    referenceOnly: true,
+    renderable: false,
   },
 
-  // ── Cloud (mascot character) ───────────────────────────────────────────────
+  // ── Rylane ──────────────────────────────────────────────────────────────────
+  {
+    character: 'rylane',
+    assetKey: 'rylaneNeutral',
+    filename: 'rylane-neutral.png',
+    type: 'character',
+    moodTags: ['neutral', 'grounded'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v1'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneNeutralV2',
+    filename: 'rylane-neutral-v2.png',
+    type: 'character',
+    moodTags: ['neutral'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v2'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneHappy',
+    filename: 'rylane-happy.png',
+    type: 'character',
+    moodTags: ['happy', 'energetic'],
+    stateTags: ['idle'],
+    poseTags: ['portrait'],
+    featureTags: ['v1'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneThinking',
+    filename: 'rylane-thinking.png',
+    type: 'character',
+    moodTags: ['curious', 'reflective'],
+    stateTags: ['thinking'],
+    poseTags: ['portrait'],
+    featureTags: ['v1'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneWriting',
+    filename: 'rylane-writing.png',
+    type: 'character',
+    moodTags: ['focused', 'reflective'],
+    stateTags: ['writing'],
+    poseTags: ['sitting'],
+    featureTags: ['writing-pose'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneWindow',
+    filename: 'rylane-window.png',
+    type: 'character',
+    moodTags: ['reflective', 'calm'],
+    stateTags: ['window-night'],
+    poseTags: ['window'],
+    featureTags: ['nighttime'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneWindowDay',
+    filename: 'rylane-window-day.png',
+    type: 'character',
+    moodTags: ['calm', 'reflective'],
+    stateTags: ['window-day'],
+    poseTags: ['window'],
+    featureTags: ['daytime'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneFullbody',
+    filename: 'rylane-fullbody.png',
+    type: 'character',
+    moodTags: ['neutral', 'grounded'],
+    stateTags: ['fullbody'],
+    poseTags: ['fullbody', 'standing'],
+    featureTags: ['v1'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneVoiceDay',
+    filename: 'rylane-voice-day.png',
+    type: 'character',
+    moodTags: ['energetic', 'happy'],
+    stateTags: ['voice-active', 'voice-day'],
+    poseTags: ['portrait'],
+    featureTags: ['daytime'],
+    referenceOnly: false,
+    renderable: true,
+  },
+  {
+    character: 'rylane',
+    assetKey: 'rylaneVoiceNight',
+    filename: 'rylane-voice-night.png',
+    type: 'character',
+    moodTags: ['calm', 'reflective'],
+    stateTags: ['voice-active', 'voice-night'],
+    poseTags: ['portrait'],
+    featureTags: ['nighttime'],
+    referenceOnly: false,
+    renderable: true,
+  },
 
+  // ── Cloud (mascot) ────────────────────────────────────────────────────────────
   {
-    key: 'cloud',
-    character: 'cloud', mood: 'neutral', pose: 'bust',
-    features: ['sticker', 'presence'],
+    character: 'cloud',
+    assetKey: 'cloud',
+    filename: 'cloud.png',
+    type: 'mascot',
+    moodTags: ['neutral', 'calm'],
+    stateTags: ['idle'],
+    poseTags: ['floating'],
+    featureTags: ['v1'],
     referenceOnly: false,
-    notes: 'Base cloud mascot — Splash, MindBodyReset, CloudThoughts',
+    renderable: true,
   },
   {
-    key: 'cloudHappy',
-    character: 'cloud', mood: 'happy', pose: 'bust',
-    features: ['sticker', 'presence'],
+    character: 'cloud',
+    assetKey: 'cloudHappy',
+    filename: 'cloud-happy.png',
+    type: 'mascot',
+    moodTags: ['happy', 'energetic', 'loving'],
+    stateTags: ['idle'],
+    poseTags: ['floating'],
+    featureTags: ['v1'],
     referenceOnly: false,
-    notes: 'Also used as cloudAvatarHappy + cloudAvatarFullbody',
+    renderable: true,
   },
   {
-    key: 'cloudHeadphones',
-    character: 'cloud', mood: 'listening', pose: 'voice',
-    features: ['voicePresence', 'sticker'],
+    character: 'cloud',
+    assetKey: 'cloudHeadphones',
+    filename: 'cloud-headphones.png',
+    type: 'mascot',
+    moodTags: ['calm', 'focused'],
+    stateTags: ['voice-active'],
+    poseTags: ['floating'],
+    featureTags: ['headphones', 'v1'],
     referenceOnly: false,
-    notes: 'Calm, CloudThoughts, MindBodyReset, ParentRoom header',
+    renderable: true,
   },
   {
-    key: 'cloudHeadphonesV2',
-    character: 'cloud', mood: 'listening', pose: 'voice',
-    features: ['sticker'],
-    state: 'v2',
+    character: 'cloud',
+    assetKey: 'cloudHeadphonesV2',
+    filename: 'cloud-headphones-v2.png',
+    type: 'mascot',
+    moodTags: ['calm', 'focused', 'energetic'],
+    stateTags: ['voice-active'],
+    poseTags: ['floating'],
+    featureTags: ['headphones', 'v2'],
     referenceOnly: false,
-    notes: 'cloudAvatarWriting fallback — available but not yet used in screens',
+    renderable: true,
   },
   {
-    key: 'cloudSleepy',
-    character: 'cloud', mood: 'neutral', pose: 'window',
-    features: ['sticker'],
+    character: 'cloud',
+    assetKey: 'cloudSleepy',
+    filename: 'cloud-sleepy.png',
+    type: 'mascot',
+    moodTags: ['sleepy', 'calm'],
+    stateTags: ['idle'],
+    poseTags: ['floating'],
+    featureTags: ['v1'],
     referenceOnly: false,
-    notes: 'cloudAvatarWindow — available but not yet used directly in screens',
+    renderable: true,
   },
   {
-    key: 'cloudStormy',
-    character: 'cloud', mood: 'stormy', pose: 'bust',
-    features: ['sticker', 'presence'],
+    character: 'cloud',
+    assetKey: 'cloudStormy',
+    filename: 'cloud-stormy.png',
+    type: 'mascot',
+    moodTags: ['stormy', 'sad'],
+    stateTags: ['idle'],
+    poseTags: ['floating'],
+    featureTags: ['v1'],
     referenceOnly: false,
-    notes: 'Comfort screen, Circle screen',
-  },
-  {
-    key: 'cloudAvatarNeutral',
-    character: 'cloud', mood: 'neutral', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'RoomScreen cloud presence — maps to cloud',
-  },
-  {
-    key: 'cloudAvatarHappy',
-    character: 'cloud', mood: 'happy', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Maps to cloudHappy',
-  },
-  {
-    key: 'cloudAvatarThinking',
-    character: 'cloud', mood: 'thinking', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Maps to cloudHeadphones',
-  },
-  {
-    key: 'cloudAvatarWriting',
-    character: 'cloud', mood: 'writing', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Maps to cloudHeadphonesV2',
-  },
-  {
-    key: 'cloudAvatarWindow',
-    character: 'cloud', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Maps to cloudSleepy',
-  },
-  {
-    key: 'cloudAvatarFullbody',
-    character: 'cloud', mood: 'happy', pose: 'fullbody',
-    features: ['hero'],
-    referenceOnly: false,
-    notes: 'Maps to cloudHappy — fullbody art pending',
+    renderable: true,
   },
 
-  // ── Night (Se'kret Night identity) ───────────────────────────────────────
+  // ── Night (fallbacks → raylene; no dedicated night art on disk) ────────────────
+  {
+    character: 'night',
+    assetKey: 'nightAvatarDay',
+    filename: '(fallback → raylene-neutral.png)',
+    type: 'character',
+    moodTags: [],
+    stateTags: ['idle'],
+    poseTags: [],
+    featureTags: ['daytime'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'night',
+    assetKey: 'nightAvatarNight',
+    filename: '(fallback → raylene-voice-night.png)',
+    type: 'character',
+    moodTags: [],
+    stateTags: ['idle'],
+    poseTags: [],
+    featureTags: ['nighttime'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'night',
+    assetKey: 'nightAvatarRainy',
+    filename: '(fallback → raylene-window-rainy.png)',
+    type: 'character',
+    moodTags: [],
+    stateTags: ['window-rainy'],
+    poseTags: [],
+    featureTags: ['rainy'],
+    referenceOnly: true,
+    renderable: false,
+  },
 
+  // ── UUID reference files (unidentified art references — never render) ──────────
   {
-    key: 'nightAvatarNeutral',
-    character: 'night', mood: 'neutral', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWindowRainy. Replace when night-neutral.png ships.',
+    character: 'raylene',
+    assetKey: 'uuid_0E3D4BD6',
+    filename: '0E3D4BD6-E079-435A-9557-B02E7024656E.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'nightAvatarHappy',
-    character: 'night', mood: 'happy', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneNightWindow',
+    character: 'raylene',
+    assetKey: 'uuid_284231DD',
+    filename: '284231DD-7319-4872-AB67-0811F42132F4.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'nightAvatarThinking',
-    character: 'night', mood: 'thinking', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneThinking (which itself fallbacks to rayleneNeutral)',
+    character: 'raylene',
+    assetKey: 'uuid_2A27D30A',
+    filename: '2A27D30A-F5F2-4853-BFB5-100BAC56A34C.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'nightAvatarWriting',
-    character: 'night', mood: 'writing', pose: 'bust',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWriting',
+    character: 'raylene',
+    assetKey: 'uuid_4BB4A7DF',
+    filename: '4BB4A7DF-3B8C-4170-91B4-62FB2F404F68.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'nightAvatarWindow',
-    character: 'night', mood: 'neutral', pose: 'window',
-    features: ['presence'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneWindowRainy',
+    character: 'raylene',
+    assetKey: 'uuid_5397B783',
+    filename: '5397B783-61B8-47A4-8A46-98C418B0AEF1.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
   },
   {
-    key: 'nightAvatarFullbody',
-    character: 'night', mood: 'neutral', pose: 'fullbody',
-    features: ['hero'],
-    referenceOnly: false,
-    notes: 'Fallback → rayleneNeutral. Replace when night-fullbody.png ships.',
+    character: 'raylene',
+    assetKey: 'uuid_5886DDCD',
+    filename: '5886DDCD-4B72-4B62-BE54-E06E521E77AD.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_68238EB5',
+    filename: '68238EB5-14B3-4B30-B45F-0F7006410B43.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_6AEA1FF8',
+    filename: '6AEA1FF8-29D1-4BFF-8AD6-ADB0D1A4F256.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_6F71DD53',
+    filename: '6F71DD53-E869-4C34-B485-97792510119F.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_7814EE18',
+    filename: '7814EE18-ECA9-4C7E-8F6A-959085A0BD20.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_ACC1D780',
+    filename: 'ACC1D780-D22F-4CED-8CC1-3B0868C3F4E1.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_AD015F7B',
+    filename: 'AD015F7B-2956-430D-8CBA-97382DAE39CB.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_AFA90A45',
+    filename: 'AFA90A45-003E-4AF4-825A-D8C1C02CC275.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_B8350F20',
+    filename: 'B8350F20-D4AB-4256-B4F0-EDA698B28130.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_E250BCEA',
+    filename: 'E250BCEA-A80A-4D90-A382-1FDE4C714702.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_E88CD2C7',
+    filename: 'E88CD2C7-C930-4632-9B33-27463A71DDB9.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_EFF1CA3D',
+    filename: 'EFF1CA3D-E615-48E0-8D70-4A0A68AAFB8A.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
+  },
+  {
+    character: 'raylene',
+    assetKey: 'uuid_F952C378',
+    filename: 'F952C378-5A26-4287-8CDE-60C5059FA7E9.png',
+    type: 'uuid-reference',
+    moodTags: [],
+    stateTags: [],
+    poseTags: [],
+    featureTags: ['uuid-reference'],
+    referenceOnly: true,
+    renderable: false,
   },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+// These operate on CHARACTER_ASSETS only and return CharacterAsset objects.
+// To get the actual image source, the caller uses IMAGES[asset.assetKey].
 
 /**
- * getCharacterSticker(character, mood, pose?)
- *
- * Returns the best matching renderable image source for a given character + mood.
- * Optional pose narrows the match (e.g. 'window', 'fullbody').
- * Falls back to neutral bust if no exact match is found.
- *
- * Usage:
- *   <Image source={getCharacterSticker('raylene', 'happy')} />
- *   <Image source={getCharacterSticker('rylane', 'thinking', 'bust')} />
+ * getCharacterSticker(character, mood, state)
+ * Returns the best matching renderable CharacterAsset for a given character + mood + state.
+ * Prefers assets where renderable=true. Falls back to first renderable asset for character.
  */
 export function getCharacterSticker(
-  character: Character,
-  mood: Mood,
-  pose?: Pose,
-): ImageSourcePropType {
+  character: CharacterKey,
+  mood: MoodTag,
+  state?: StateTag,
+): CharacterAsset | undefined {
+  const renderable = CHARACTER_ASSETS.filter(
+    a => a.character === character && a.renderable,
+  );
+
+  // 1. mood + state match
+  if (state) {
+    const moodState = renderable.find(
+      a => a.moodTags.includes(mood) && a.stateTags.includes(state),
+    );
+    if (moodState) return moodState;
+  }
+
+  // 2. mood-only match
+  const moodOnly = renderable.find(a => a.moodTags.includes(mood));
+  if (moodOnly) return moodOnly;
+
+  // 3. first renderable asset for character
+  return renderable[0];
+}
+
+/**
+ * getVoicePresenceImage(character, timeOfDay, mood)
+ * Returns the best voice-active image for a character based on time of day.
+ * timeOfDay: 'day' | 'night'
+ */
+export function getVoicePresenceImage(
+  character: CharacterKey,
+  timeOfDay: 'day' | 'night',
+  mood?: MoodTag,
+): CharacterAsset | undefined {
+  const targetState: StateTag = timeOfDay === 'day' ? 'voice-day' : 'voice-night';
+
   const candidates = CHARACTER_ASSETS.filter(
     a =>
       a.character === character &&
-      a.mood === mood &&
-      !a.referenceOnly &&
-      (pose ? a.pose === pose : true) &&
-      (a.features.includes('sticker') ||
-       a.features.includes('presence') ||
-       a.features.includes('hero')),
+      a.renderable &&
+      a.stateTags.includes(targetState),
   );
 
-  // Prefer exact pose match, then any renderable match
-  const exact = candidates.find(a => pose && a.pose === pose);
-  const best  = exact ?? candidates[0];
-
-  if (!best) {
-    // Fallback chain: neutral bust for the character
-    const fallback = CHARACTER_ASSETS.find(
-      a => a.character === character && a.mood === 'neutral' && a.pose === 'bust' && !a.referenceOnly,
-    );
-    if (fallback) return IMAGES[fallback.key] as ImageSourcePropType;
-    return IMAGES.rayleneNeutral as ImageSourcePropType;
+  if (mood) {
+    const moodMatch = candidates.find(a => a.moodTags.includes(mood));
+    if (moodMatch) return moodMatch;
   }
 
-  return IMAGES[best.key] as ImageSourcePropType;
-}
+  if (candidates[0]) return candidates[0];
 
-/**
- * getVoicePresenceImage(character, timeOfDay)
- *
- * Returns the voice/headphones presence image for VoiceBip screen.
- * Cloud character returns cloudHeadphones regardless of time.
- *
- * Usage:
- *   <Image source={getVoicePresenceImage('raylene', 'night')} />
- */
-export function getVoicePresenceImage(
-  character: Character,
-  timeOfDay: TimeOfDay,
-): ImageSourcePropType {
-  const match = CHARACTER_ASSETS.find(
+  // Fall back to any renderable voice-active asset for the character
+  return CHARACTER_ASSETS.find(
     a =>
       a.character === character &&
-      a.features.includes('voicePresence') &&
-      !a.referenceOnly &&
-      (a.state === timeOfDay || !a.state),
+      a.renderable &&
+      a.stateTags.includes('voice-active'),
   );
-
-  if (match) return IMAGES[match.key] as ImageSourcePropType;
-
-  // Fallbacks by character if no voice art exists
-  const fallbacks: Record<Character, keyof typeof IMAGES> = {
-    raylene: 'rayleneNeutral',
-    rylane:  'rylaneNeutral',
-    cloud:   'cloudHeadphones',
-    night:   'nightAvatarWindow',
-  };
-  return IMAGES[fallbacks[character]] as ImageSourcePropType;
 }
 
 /**
- * getReferenceAssets(character?)
- *
- * Returns all asset entries tagged referenceOnly: true.
- * Optionally filter by character.
- * Use this to document what reference sheets exist — never pass these to <Image>.
- *
- * These are UUID-named files in assets/images/ that were uploaded as reference art.
- * They are documented here for inventory purposes only.
- *
- * Usage:
- *   const refs = getReferenceAssets('raylene');
- *   console.log(refs.map(r => r.key));
+ * getReferenceAssets(character)
+ * Returns all assets for a character, including referenceOnly ones.
+ * Use for design/reference tooling — NOT for rendering in prod.
  */
-export function getReferenceAssets(character?: Character): CharacterAssetEntry[] {
+export function getReferenceAssets(character: CharacterKey): CharacterAsset[] {
+  return CHARACTER_ASSETS.filter(a => a.character === character);
+}
+
+/**
+ * getStickerReferences(character, state)
+ * Returns all assets for a character matching a state tag.
+ * Filters to referenceOnly=true assets — these are art references for sticker generation.
+ */
+export function getStickerReferences(
+  character: CharacterKey,
+  state: StateTag,
+): CharacterAsset[] {
   return CHARACTER_ASSETS.filter(
-    a => a.referenceOnly && (character ? a.character === character : true),
+    a =>
+      a.character === character &&
+      a.referenceOnly &&
+      a.stateTags.includes(state),
   );
 }
 
 /**
- * getCharacterAvatar(character, mood)
- *
- * Convenience wrapper for RoomScreen / presence use cases.
- * Returns the room-presence avatar image for a character + mood.
- *
- * Usage:
- *   <Image source={getCharacterAvatar('cloud', 'thinking')} />
+ * getRenderableCharacterAssets(character)
+ * Returns only assets safe to render in the production UI.
+ * Filters: renderable=true AND referenceOnly=false.
  */
-export function getCharacterAvatar(
-  character: Character,
-  mood: Mood,
-): ImageSourcePropType {
-  const match = CHARACTER_ASSETS.find(
-    a =>
-      a.character === character &&
-      a.mood === mood &&
-      !a.referenceOnly &&
-      (a.features.includes('presence') || a.features.includes('sticker')),
+export function getRenderableCharacterAssets(character: CharacterKey): CharacterAsset[] {
+  return CHARACTER_ASSETS.filter(
+    a => a.character === character && a.renderable && !a.referenceOnly,
   );
-
-  if (match) return IMAGES[match.key] as ImageSourcePropType;
-  return getCharacterSticker(character, 'neutral', 'bust');
 }
-
-// ── Assets pending real art (checklist) ───────────────────────────────────────
-// These keys exist in IMAGES but currently use fallbacks.
-// When the real PNG ships, update constants/theme.ts require() — characterAssets.ts needs no change.
-//
-// raylene:
-//   rayleneThinking        → needs: raylene-thinking.png
-//   raylene_PeriodCalendar → needs: raylene-period-calendar-day.png
-//   raylene_Bippin2Night   → needs: raylene-bippin2-night.png
-//   rayleneNightDoodle     → needs: raylene-night-doodle.png (distinct art)
-//
-// night character:
-//   nightAvatarNeutral     → needs: night-neutral.png
-//   nightAvatarHappy       → needs: night-happy.png
-//   nightAvatarThinking    → needs: night-thinking.png
-//   nightAvatarWriting     → needs: night-writing.png
-//   nightAvatarWindow      → needs: night-window.png
-//   nightAvatarFullbody    → needs: night-fullbody.png
-//
-// cloud:
-//   cloudAvatarFullbody    → needs: cloud-fullbody.png (dedicated standing art)
