@@ -162,7 +162,7 @@ const QUICK_ACTIONS: { emoji: string; label: string; to: string }[] = [
   { emoji: '🌙',  label: 'Calm Me',      to: 'calm'       },
   { emoji: '☁️',  label: 'Comfort',      to: 'comfort'    },
   { emoji: '🌐',  label: 'Circle',       to: 'circle'     },
-  { emoji: '💌',  label: 'S2 Tell',      to: 's2tell'    },
+  { emoji: '🌉',  label: 'Bridge',       to: 'bridge'    },
 ];
 
 // Hero greeting — mood + time-of-day

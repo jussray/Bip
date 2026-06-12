@@ -64,6 +64,9 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
   const [sending,    setSending]    = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [hasPending,      setHasPending]      = useState(false);
+  const [responseText,    setResponseText]    = useState('');
+  const [responseSent,    setResponseSent]    = useState(false);
+  const [sendingResp,     setSendingResp]     = useState(false);
 
   // Check if teen has marked something to share — parent sees gentle nudge only.
   // Content stays on the teen side; this key is just a signal.
@@ -72,6 +75,23 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
       if (val === 'true') setHasPending(true);
     }).catch(() => {});
   }, []);
+
+  const handleSendResponse = async () => {
+    const text = responseText.trim();
+    if (!text) return;
+    setSendingResp(true);
+    try {
+      const raw = await AsyncStorage.getItem('parent_bridge_responses');
+      const existing = raw ? JSON.parse(raw) : [];
+      existing.unshift({ id: Date.now().toString(), text, respondedAt: new Date().toISOString() });
+      await AsyncStorage.setItem('parent_bridge_responses', JSON.stringify(existing));
+      await AsyncStorage.removeItem('parent_bridge_pending');
+    } catch {}
+    setResponseText('');
+    setResponseSent(true);
+    setHasPending(false);
+    setSendingResp(false);
+  };
 
   const fade1 = useRef(new Animated.Value(0)).current;
   const fade2 = useRef(new Animated.Value(0)).current;
@@ -160,14 +180,59 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
           </View>
         </Animated.View>
 
-        {/* ─── TEEN SHARE SIGNAL ──────────────────────────────────────────────── */}
-        {hasPending && (
+        {/* ─── TEEN SHARE SIGNAL + RESPONSE ──────────────────────────────────── */}
+        {(hasPending || responseSent) && (
           <Animated.View style={cardSlide(fade2)}>
-            <View style={[styles.pendingBanner, { borderColor: P.accent + '66', backgroundColor: P.accent + '18' }]}>
-              <Text style={[styles.pendingText, { color: P.soft }]}>
-                💌 Your teen has something they chose to share with you.
-              </Text>
-            </View>
+            {hasPending && (
+              <View style={[styles.pendingBanner, { borderColor: P.accent + '66', backgroundColor: P.accent + '18' }]}>
+                <Text style={[styles.pendingText, { color: P.soft }]}>
+                  💌 Your teen has something they chose to share with you.
+                </Text>
+              </View>
+            )}
+
+            {hasPending && !responseSent && (
+              <View style={[styles.pendingBanner, { borderColor: P.accent + '33', backgroundColor: 'transparent', marginTop: 8 }]}>
+                <Text style={[styles.pendingText, { color: P.soft, marginBottom: 10, fontStyle: 'italic' }]}>
+                  Write them a gentle response. It'll be waiting for them.
+                </Text>
+                <TextInput
+                  style={[styles.input, { borderColor: P.accent + '66', color: '#fff', marginBottom: 8 }]}
+                  placeholder="Your response..."
+                  placeholderTextColor={P.soft + '66'}
+                  multiline
+                  value={responseText}
+                  onChangeText={setResponseText}
+                  maxLength={280}
+                />
+                <TouchableOpacity
+                  style={[
+                    styles.sendBtn,
+                    {
+                      backgroundColor: responseText.trim() ? P.accent : 'rgba(60,30,10,0.55)',
+                      shadowColor:     P.accent,
+                      shadowOpacity:   responseText.trim() ? 0.4 : 0,
+                      shadowRadius:    10,
+                      marginBottom:    0,
+                    },
+                  ]}
+                  onPress={handleSendResponse}
+                  disabled={!responseText.trim() || sendingResp}
+                >
+                  <Text style={[styles.sendBtnText, { color: responseText.trim() ? P.deep : '#fff' }]}>
+                    {sendingResp ? 'saving…' : 'Send response 💌'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {responseSent && (
+              <View style={[styles.pendingBanner, { borderColor: P.accent + '44', backgroundColor: P.accent + '12' }]}>
+                <Text style={[styles.pendingText, { color: P.soft }]}>
+                  💌 Your response has been saved. It's waiting for your teen.
+                </Text>
+              </View>
+            )}
           </Animated.View>
         )}
 

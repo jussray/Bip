@@ -22,6 +22,7 @@ import { PointsScreen }         from '../screens/PointsScreen';
 import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
+import { BridgeHubScreen }      from '../screens/BridgeHubScreen';
 import { ParentBridgeScreen }   from '../screens/ParentBridgeScreen';
 import { S2TellScreen }         from '../screens/S2TellScreen';
 import { ParentRoomScreen, type ParentRoomStyle } from '../screens/ParentRoomScreen';
@@ -101,7 +102,7 @@ const HOME_MESSAGES = [
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
     ? [['home','🏠','Room'],['pages','📔','Pages'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
-    : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['s2tell','💌','S2 Tell'],['more','☰','More']];
+    : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['bridge','🌉','Bridge'],['more','☰','More']];
 
   return (
     <View style={styles.bottomNav}>
@@ -568,6 +569,10 @@ export default function App() {
   );
 
   if (screen === 'bridge') return (
+    <BridgeHubScreen t={t} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
+  );
+
+  if (screen === 'bridgeLegacy') return (
     <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
   );
 
