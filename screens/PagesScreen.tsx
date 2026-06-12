@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { JournalEntry } from '../types';
+import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
+import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 
 type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
@@ -46,6 +48,8 @@ interface SharedPagesProps {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   mood?: string;
+  oracleProfile?: OracleProfile;
+  onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
 
 export interface PagesScreenProps {
@@ -61,6 +65,8 @@ export interface PagesScreenProps {
   voiceNotes?: unknown[];
   streakDays?: number;
   selectedSekret?: string;
+  oracleProfile?: OracleProfile;
+  onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
 
 const TEEN_TABS: TabDefinition[] = [
@@ -149,7 +155,7 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, oracleProfile, onCompleteOracleSession }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
   const [activeTab, setActiveTab] = useState<PagesTab>('me');
@@ -226,11 +232,37 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
       </ScrollView>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {activeTab === 'oracle' ? (
+          <>
+            <OracleDiscoveryPanel
+              side={side}
+              profile={oracleProfile}
+              accent={tab.accent}
+              onComplete={onCompleteOracleSession}
+            />
+            {tabEntries.length ? (
+              <View>
+                <View style={styles.savedHeader}>
+                  <Text style={styles.savedTitle}>Earlier Oracle pages</Text>
+                  <Text style={styles.savedCount}>{tabEntries.length}</Text>
+                </View>
+                {tabEntries.map(entry => (
+                  <View key={String(entry.id)} style={styles.entryCard}>
+                    <Text style={styles.entryMeta}>{formatEntryMeta(entry)}</Text>
+                    {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
+                    {entry.imageUri ? <Image source={{ uri: entry.imageUri }} style={styles.savedImage as any} /> : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <>
         {activeTab !== 'me' && (
           <View style={styles.intro}>
             {tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null}
-            <Text style={[styles.title, activeTab === 'oracle' && styles.oracleTitle]}>{tab.title}</Text>
-            {tab.subtitle && activeTab !== 'oracle' ? <Text style={styles.subtitle}>{tab.subtitle}</Text> : null}
+            <Text style={styles.title}>{tab.title}</Text>
+            {tab.subtitle ? <Text style={styles.subtitle}>{tab.subtitle}</Text> : null}
           </View>
         )}
 
@@ -250,7 +282,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
             multiline
             value={text}
             onChangeText={updateText}
-            placeholder={activeTab === 'me' || activeTab === 'oracle' ? undefined : tab.placeholder}
+            placeholder={activeTab === 'me' ? undefined : tab.placeholder}
             placeholderTextColor="#736c82"
             style={styles.input}
             textAlignVertical="top"
@@ -310,17 +342,20 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
         )) : (
           <View style={styles.empty}><Text style={styles.emptyText}>Nothing saved here yet.</Text></View>
         )}
+          </>
+        )}
       </ScrollView>
       {BottomNav}
     </View>
   );
 }
 
-export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav }: PagesScreenProps) {
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession }: PagesScreenProps) {
   return (
     <PagesWorkspace
       side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
       onSave={entry => saveJournalEntry(entry)} mood={mood} setScreen={setScreen} BottomNav={BottomNav}
+      oracleProfile={oracleProfile} onCompleteOracleSession={onCompleteOracleSession}
     />
   );
 }

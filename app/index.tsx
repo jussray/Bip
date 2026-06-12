@@ -7,7 +7,6 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SplashScreen }         from '../screens/SplashScreen';
 import { HomeScreen }           from '../screens/HomeScreen';
 import { RoomScreen }           from '../screens/RoomScreen';
-import { JournalScreen }        from '../screens/JournalScreen';
 import { PagesScreen, type SavePageInput } from '../screens/PagesScreen';
 import { ParentPagesScreen }    from '../screens/ParentPagesScreen';
 import { CalmScreen }           from '../screens/CalmScreen';
@@ -33,6 +32,13 @@ import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
+import {
+  createOracleProfile,
+  normalizeOracleProfile,
+  normalizeOracleSessions,
+  type OracleProfile,
+  type OracleSessionSummary,
+} from '../services/oracleDiscovery';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 // IMPORTANT: loadState() takes NO args — returns full state object.
@@ -144,6 +150,10 @@ export default function App() {
   // Parent Pages are intentionally isolated from teen entries and cloud journal sync.
   const [parentPagesDraft, setParentPagesDraft] = useState('');
   const [parentPagesEntries, setParentPagesEntries] = useState<JournalEntry[]>([]);
+  const [oracleProfile, setOracleProfile] = useState<OracleProfile>(() => createOracleProfile('teen'));
+  const [parentOracleProfile, setParentOracleProfile] = useState<OracleProfile>(() => createOracleProfile('parent'));
+  const [oracleSessions, setOracleSessions] = useState<OracleSessionSummary[]>([]);
+  const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
   // ─── Circle ────────────────────────────────────────────────────────────
   const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
@@ -213,6 +223,10 @@ export default function App() {
         if (state.entries)        setJournalEntries(Array.isArray(state.entries) ? state.entries : []);
         if (state.parentPagesDraft) setParentPagesDraft(state.parentPagesDraft);
         if (state.parentPagesEntries) setParentPagesEntries(Array.isArray(state.parentPagesEntries) ? state.parentPagesEntries : []);
+        if (state.oracleProfile) setOracleProfile(normalizeOracleProfile(state.oracleProfile, 'teen'));
+        if (state.parentOracleProfile) setParentOracleProfile(normalizeOracleProfile(state.parentOracleProfile, 'parent'));
+        if (state.oracleSessions) setOracleSessions(normalizeOracleSessions(state.oracleSessions, 'teen'));
+        if (state.parentOracleSessions) setParentOracleSessions(normalizeOracleSessions(state.parentOracleSessions, 'parent'));
         if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
         if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
@@ -235,7 +249,7 @@ export default function App() {
         }
         if (state.parentMood)     setParentMood(state.parentMood);
         if (state.parentMoodDate) setParentMoodDate(state.parentMoodDate);
-      } catch (e) {
+      } catch {
         // Storage read failure — continue with defaults
       }
       setIsLoading(false);
@@ -312,6 +326,10 @@ export default function App() {
       entries:       journalEntries,   // storage key is 'entries'
       parentPagesDraft,
       parentPagesEntries,
+      oracleProfile,
+      parentOracleProfile,
+      oracleSessions,
+      parentOracleSessions,
       moodHistory,
       circlePosts,
       voiceNotes,
@@ -328,7 +346,8 @@ export default function App() {
     }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
-    journalText, journalEntries, parentPagesDraft, parentPagesEntries, moodHistory,
+    journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
+    oracleSessions, parentOracleSessions, moodHistory,
     circlePosts, voiceNotes, parentVoiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
     roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
@@ -455,6 +474,16 @@ export default function App() {
     ));
   };
 
+  const completeTeenOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
+    setOracleProfile(profile);
+    setOracleSessions(current => [session, ...current].slice(0, 50));
+  };
+
+  const completeParentOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
+    setParentOracleProfile(profile);
+    setParentOracleSessions(current => [session, ...current].slice(0, 50));
+  };
+
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
@@ -560,6 +589,8 @@ export default function App() {
       mood={parentMood || mood}
       setScreen={setScreen}
       BottomNav={nav}
+      oracleProfile={parentOracleProfile}
+      onCompleteOracleSession={completeParentOracleSession}
     />
   ) : (
     <PagesScreen
@@ -567,6 +598,8 @@ export default function App() {
       setJournalText={setJournalText}
       journalEntries={journalEntries}
       saveJournalEntry={saveJournalEntry}
+      oracleProfile={oracleProfile}
+      onCompleteOracleSession={completeTeenOracleSession}
       mood={mood}
       t={t}
       setScreen={setScreen}
