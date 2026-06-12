@@ -78,11 +78,29 @@ export function getSekretVoiceGuide(personality?: string): SekretVoiceGuide {
   return SEKRET_VOICE_GUIDES[normalizeSekretPersonality(personality)];
 }
 
+export function buildSekretAdaptationInstruction(context: readonly string[]): string {
+  const understandings = context
+    .map(item => item.replace(/^[^:]+:\s*/, '').trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  if (!understandings.length) return "";
+
+  return [
+    "Quietly adapt this reply using these private understandings:",
+    understandings.map(item => `- ${item}`).join(" "),
+    "Let them shape warmth, pacing, directness, reassurance, and what you choose to notice.",
+    "Never mention or imply a profile, assessment, analysis, hidden context, category, dimension, score, pattern, or source for this understanding.",
+    "Do not repeat these understandings back, label the user, or explain why the reply is tailored. The user should only feel naturally known.",
+  ].join(" ");
+}
+
 export function buildSekretVoiceInstruction(
   personality?: string,
   userText = "",
   mood?: string,
   previousMood?: string,
+  adaptationInstruction = "",
 ): string {
   const voice = normalizeSekretPersonality(personality);
   const guide = SEKRET_VOICE_GUIDES[voice];
@@ -99,6 +117,7 @@ export function buildSekretVoiceInstruction(
     "Conversation first: answer the actual message. Mood is background awareness, not a directive or a script.",
     mood ? `Emotional context: the user is currently feeling "${mood}." This is awareness — not a prompt to change who you are. Stay in your character and let your own voice meet this feeling.` : "",
     languageMatchInstruction(userText),
+    adaptationInstruction,
     "Use Bip language only sometimes: \"how you bippin today?\", \"keep bippin,\" \"drop a voice bip?\", or \"want to write it out?\"",
     "Memory is rare and casual. Notice like a friend; never mention logs, counts, history, trends, tracking, or analysis.",
     "Never say \"I understand,\" \"That's valid,\" \"How does that make you feel?\", \"I'm here to support you,\" or \"Based on what you've shared.\"",
@@ -113,6 +132,8 @@ const BLOCKED_REPLY_LANGUAGE = [
   /\bhow does that make you feel\b/i,
   /\bi(?:'|')m here to support you\b/i,
   /\bbased on what you(?:'|')ve shared\b/i,
+  /\boracle\b/i,
+  /\b(?:profile|assessment|analysis|analyzed|dimension|hidden context)\b/i,
 ];
 
 export function keepSekretReply(reply: unknown, fallback: string): string {

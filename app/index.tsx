@@ -559,6 +559,8 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
+      profileSide={userSide}
     />
   );
 
@@ -577,6 +579,8 @@ export default function App() {
       mood={mood}
       companion={userSide === 'parent' ? undefined : companion}
       BottomNav={nav}
+      privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
+      profileSide={userSide}
     />
   );
 
@@ -632,6 +636,7 @@ export default function App() {
       userSide={userSide}
       setScreen={setScreen}
       BottomNav={nav}
+      privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
     />
   );
 
@@ -655,7 +660,14 @@ export default function App() {
   );
 
   if (screen === 's2tell') return (
-    <S2TellScreen t={t} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
+    <S2TellScreen
+      t={t}
+      setScreen={setScreen}
+      BottomNav={nav}
+      selectedSekret={selectedSekret}
+      mood={mood}
+      privateProfile={oracleProfile}
+    />
   );
 
   if (screen === 'parentBridge') return (

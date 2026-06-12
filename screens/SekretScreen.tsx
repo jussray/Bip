@@ -21,6 +21,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg } from '../constants/theme';
 import { fetchSekretReply } from '../utils/api';
+import type { OracleProfile } from '../services/oracleDiscovery';
 
 // ── Profiles (keep in sync with index.tsx SEKRET_PROFILES) ─────────────────
 const SEKRET_PROFILES: Record<string, any> = {
@@ -59,11 +60,12 @@ interface SekretScreenProps {
   userSide:           'teen' | 'parent';
   setScreen:          (screen: string) => void;
   BottomNav:          React.ReactNode;
+  privateProfile?:     OracleProfile;
 }
 
 export function SekretScreen({
   t, mood, currentSekret,
-  selectedProfile, setSelectedProfile, userSide, setScreen, BottomNav,
+  selectedProfile, setSelectedProfile, userSide, setScreen, BottomNav, privateProfile,
 }: SekretScreenProps) {
 
   // Internal state — kept exactly as before
@@ -143,7 +145,7 @@ export function SekretScreen({
     setIsSekretTyping(true);
     setSekretReply('');
 
-    const reply = await fetchSekretReply(text, 'chat', mood, selectedProfile);
+    const reply = await fetchSekretReply(text, 'chat', mood, selectedProfile, undefined, privateProfile, userSide);
     setSekretReply(reply);
     setIsSekretTyping(false);
   };
