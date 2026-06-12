@@ -122,7 +122,7 @@ export function getSekretVoiceGuide(personality?: string): SekretVoiceGuide {
 
 export function buildSekretVoiceInstruction(
   personality?: string,
-  userText = ‘’,
+  userText = '',
   mood?: string,
   previousMood?: string,
 ): string {
