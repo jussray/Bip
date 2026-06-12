@@ -10,6 +10,7 @@ interface ParentPagesScreenProps {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   mood?: string;
+  parentRoomStyle?: 'mom' | 'dad';
 }
 
 export function ParentPagesScreen(props: ParentPagesScreenProps) {

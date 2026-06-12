@@ -146,8 +146,10 @@ export default function App() {
   const [parentPagesEntries, setParentPagesEntries] = useState<JournalEntry[]>([]);
 
   // ─── Circle ────────────────────────────────────────────────────────────
-  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
-  const [circlePostText, setCirclePostText] = useState('');
+  const [circlePosts, setCirclePosts]                   = useState<CirclePost[]>([]);
+  const [circlePostText, setCirclePostText]             = useState('');
+  const [parentCirclePosts, setParentCirclePosts]       = useState<CirclePost[]>([]);
+  const [parentCirclePostText, setParentCirclePostText] = useState('');
 
   // ─── Voice Bip ─────────────────────────────────────────────────────────
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
@@ -214,7 +216,8 @@ export default function App() {
         if (state.parentPagesDraft) setParentPagesDraft(state.parentPagesDraft);
         if (state.parentPagesEntries) setParentPagesEntries(Array.isArray(state.parentPagesEntries) ? state.parentPagesEntries : []);
         if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
-        if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.circlePosts)       setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.parentCirclePosts) setParentCirclePosts(Array.isArray(state.parentCirclePosts) ? state.parentCirclePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
         if (state.parentVoiceNotes) setParentVoiceNotes(Array.isArray(state.parentVoiceNotes) ? state.parentVoiceNotes : []);
         if (state.comfortSessions) setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
@@ -314,6 +317,7 @@ export default function App() {
       parentPagesEntries,
       moodHistory,
       circlePosts,
+      parentCirclePosts,
       voiceNotes,
       parentVoiceNotes,
       comfortSessions,
@@ -329,7 +333,7 @@ export default function App() {
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
     journalText, journalEntries, parentPagesDraft, parentPagesEntries, moodHistory,
-    circlePosts, voiceNotes, parentVoiceNotes, comfortSessions,
+    circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
     roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
   ]);
@@ -455,6 +459,27 @@ export default function App() {
     ));
   };
 
+  const saveParentCirclePost = () => {
+    if (!parentCirclePostText.trim()) return;
+    const post: CirclePost = {
+      id: Number(Date.now()), text: parentCirclePostText,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
+    };
+    setParentCirclePosts(p => [post, ...p]);
+    setParentCirclePostText('');
+  };
+
+  const reactToParentPost = (id: string | number, type: string) => {
+    const reactionKey = type as keyof CirclePost['reactions'];
+    setParentCirclePosts(posts => posts.map(p =>
+      String(p.id) === String(id)
+        ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
+        : p
+    ));
+  };
+
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
@@ -500,6 +525,7 @@ export default function App() {
         updateRoomMemory={updateRoomMemory}
         vibe={vibeKey}
         companion={companion}
+        sekretMode={selectedSekret}
         BottomNav={nav}
       />
     );
@@ -560,6 +586,7 @@ export default function App() {
       mood={parentMood || mood}
       setScreen={setScreen}
       BottomNav={nav}
+      parentRoomStyle={parentRoomStyle}
     />
   ) : (
     <PagesScreen
@@ -605,11 +632,11 @@ export default function App() {
   if (screen === 'circle') return (
     <CircleScreen
       t={t}
-      circlePosts={circlePosts}
-      circlePostText={circlePostText}
-      setCirclePostText={setCirclePostText}
-      saveCirclePost={saveCirclePost}
-      reactToPost={reactToPost}
+      circlePosts={userSide === 'parent' ? parentCirclePosts : circlePosts}
+      circlePostText={userSide === 'parent' ? parentCirclePostText : circlePostText}
+      setCirclePostText={userSide === 'parent' ? setParentCirclePostText : setCirclePostText}
+      saveCirclePost={userSide === 'parent' ? saveParentCirclePost : saveCirclePost}
+      reactToPost={userSide === 'parent' ? reactToParentPost : reactToPost}
       setScreen={setScreen}
       BottomNav={nav}
       selectedSekret={selectedSekret as 'raylene' | 'rylane'}

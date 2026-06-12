@@ -10,7 +10,8 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import type { JournalEntry } from '../types';
+import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
+import { buildOracleInsight, type OracleInsight } from '../services/oracle';
 
 type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
@@ -47,6 +48,10 @@ interface SharedPagesProps {
   BottomNav: React.ReactNode;
   mood?: string;
   selectedSekret?: string;
+  moodHistory?: MoodEntry[];
+  voiceNotes?: VoiceNote[];
+  streakDays?: number;
+  parentRoomStyle?: 'mom' | 'dad';
 }
 
 export interface PagesScreenProps {
@@ -58,8 +63,8 @@ export interface PagesScreenProps {
   t: Record<string, unknown>;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
-  moodHistory?: unknown[];
-  voiceNotes?: unknown[];
+  moodHistory?: MoodEntry[];
+  voiceNotes?: VoiceNote[];
   streakDays?: number;
   selectedSekret?: string;
 }
@@ -137,6 +142,17 @@ const PARENT_TABS: TabDefinition[] = [
 const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
 const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
+function getOracleCuriosity(insight: OracleInsight): string {
+  const id = insight.id;
+  if (id.startsWith('quitting')) return "What are you actually quitting — the situation, or yourself?";
+  if (id.startsWith('self-blame')) return "Whose voice does that sound like in your head?";
+  if (id.startsWith('cant-to-trying')) return "What changed between those two versions of you?";
+  if (id.startsWith('topic-')) return "What does that subject mean to you on a day it's going okay?";
+  if (id.startsWith('mood-')) return "What do you actually do when that feeling shows up?";
+  if (id.startsWith('showing-up')) return "What keeps pulling you back here?";
+  return "What do you notice that you haven't said out loud yet?";
+}
+
 function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
   if (source === 'parentSekret' || source === 'bridge' || source === 'oracle' || source === 'raylene' || source === 'rylane' || source === 'cloud') {
@@ -150,10 +166,11 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, selectedSekret }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, selectedSekret, moodHistory = [], voiceNotes = [], streakDays = 0, parentRoomStyle }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
-  const charRootBg = side === 'parent' ? '#14110f' : (isRylane ? '#090c1b' : '#100b18');
+  const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
+  const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
   const [activeTab, setActiveTab] = useState<PagesTab>('me');
   const [tabDrafts, setTabDrafts] = useState<Partial<Record<PagesTab, string>>>({});
@@ -169,6 +186,12 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   const tabEntries = useMemo(
     () => entries.filter(entry => normalizeSource(entry) === activeTab),
     [activeTab, entries],
+  );
+  const insight = useMemo(
+    () => side === 'teen'
+      ? buildOracleInsight({ journalEntries: entries, moodHistory, voiceNotes, streakDays })
+      : buildOracleInsight({ journalEntries: entries }),
+    [entries, moodHistory, voiceNotes, streakDays, side],
   );
   const visiblePrompt = Boolean(tab.prompts?.length) && promptVisible && !noPressure;
 
@@ -236,7 +259,9 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
             {activeTab === 'oracle' ? (
               <View style={styles.oraclePresence}>
                 <View style={styles.oracleDot} />
-                <Text style={[styles.oraclePresenceText, { color: tab.accent }]}>Oracle · collecting context quietly</Text>
+                <Text style={[styles.oraclePresenceText, { color: tab.accent }]}>
+                  {insight ? 'Oracle · caught something' : 'Oracle · collecting context quietly'}
+                </Text>
               </View>
             ) : (
               tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null
@@ -258,13 +283,34 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
           </View>
         ) : null}
 
+        {activeTab === 'oracle' && (
+          <View style={styles.oraclePanel}>
+            {insight ? (
+              <>
+                <View style={styles.oracleInsightBlock}>
+                  {insight.lines.map((line, i) => (
+                    <Text key={i} style={styles.oracleInsightLine}>{line}</Text>
+                  ))}
+                </View>
+                <Text style={styles.oracleCuriosity}>{getOracleCuriosity(insight)}</Text>
+              </>
+            ) : (
+              <Text style={styles.oracleListening}>
+                {entries.length < 2
+                  ? 'Oracle needs at least two pages to start noticing things.'
+                  : 'Oracle is listening. Nothing to surface yet.'}
+              </Text>
+            )}
+          </View>
+        )}
+
         <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
           <TextInput
             autoFocus={activeTab === 'me'}
             multiline
             value={text}
             onChangeText={updateText}
-            placeholder={activeTab === 'me' || activeTab === 'oracle' ? undefined : tab.placeholder}
+            placeholder={activeTab === 'oracle' ? (insight ? 'Write here if something landed…' : undefined) : activeTab === 'me' ? undefined : tab.placeholder}
             placeholderTextColor="#736c82"
             style={styles.input}
             textAlignVertical="top"
@@ -330,12 +376,12 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   );
 }
 
-export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, selectedSekret }: PagesScreenProps) {
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, selectedSekret, moodHistory, voiceNotes, streakDays }: PagesScreenProps) {
   return (
     <PagesWorkspace
       side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
       onSave={entry => saveJournalEntry(entry)} mood={mood} setScreen={setScreen} BottomNav={BottomNav}
-      selectedSekret={selectedSekret}
+      selectedSekret={selectedSekret} moodHistory={moodHistory} voiceNotes={voiceNotes} streakDays={streakDays}
     />
   );
 }
@@ -413,4 +459,33 @@ const styles = StyleSheet.create({
   savedImage: { height: 150, borderRadius: 6, marginTop: 10 },
   empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 12, padding: 22, alignItems: 'center' },
   emptyText: { color: '#746d7c', fontSize: 12 },
+  // Oracle insight panel
+  oraclePanel: { marginBottom: 14 },
+  oracleInsightBlock: {
+    backgroundColor: '#0d0b15',
+    borderWidth: 1,
+    borderColor: '#4a3f6b',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+  },
+  oracleInsightLine: {
+    color: '#e8e0f0',
+    fontSize: 16,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
+  oracleCuriosity: {
+    color: '#8b7bb8',
+    fontSize: 13,
+    lineHeight: 20,
+    fontStyle: 'italic',
+    paddingHorizontal: 4,
+  },
+  oracleListening: {
+    color: '#7a7086',
+    fontSize: 13,
+    lineHeight: 20,
+    paddingVertical: 6,
+  },
 });
