@@ -14,7 +14,9 @@ import {
   Platform, Dimensions, Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getParentRoomBg } from '../constants/theme';
+import { IMAGES } from '../constants/theme';
+
+const splashBg = require('../assets/images/splash-bg.png');
 
 const { width: W, height: H } = Dimensions.get('window');
 const NAV_H = Platform.OS === 'ios' ? 84 : 64;
@@ -212,7 +214,7 @@ export function ParentRoomScreen({
 
   const slot    = useMemo(() => getTimeSlot(weatherMode), [weatherMode]);
   const tokens  = T[parentRoomStyle];
-  const roomBg  = getParentRoomBg(parentRoomStyle, weatherMode);
+  const roomBg  = splashBg;
   const overlay = OVERLAY[parentRoomStyle];
   const greeting = getGreeting(parentRoomStyle, slot);
 
