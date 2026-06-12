@@ -590,7 +590,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: -100, alignSelf: 'center',
     width: 360, height: 360, borderRadius: 180,
   },
-  container:    { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 58 : 38 },
+  container:    { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 58 : 38, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   backChip:      { backgroundColor: 'rgba(20,12,40,0.75)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },

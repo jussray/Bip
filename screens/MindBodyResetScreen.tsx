@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: -120, alignSelf: 'center',
     width: 340, height: 340, borderRadius: 170,
   },
-  container:       { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  container:       { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   // Header
   headerRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

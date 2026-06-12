@@ -375,7 +375,7 @@ export function ComfortStreaksScreen({
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   bg:     { flex: 1 },
-  scroll: { padding: 20, paddingTop: 60 },
+  scroll: { padding: 20, paddingTop: 60, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   hero:      { alignItems: 'center', marginBottom: 22 },
   pill:      {

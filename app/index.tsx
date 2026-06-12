@@ -796,10 +796,11 @@ const styles = StyleSheet.create({
   bottomNav:     {
     flexDirection: 'row', justifyContent: 'space-around',
     paddingVertical: 14, backgroundColor: '#111827',
-    borderRadius: 20, marginTop: 28, marginBottom: 20,
+    borderRadius: 20, marginTop: 20, marginBottom: 16,
     flexWrap: 'wrap', gap: 8,
+    ...(Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {}),
   },
-  navItem:       { alignItems: 'center', minWidth: 48 },
+  navItem:       { alignItems: 'center', minWidth: 52 },
   navIcon:       { fontSize: 20, marginBottom: 3 },
   navText:       { color: '#94A3B8', fontSize: 11 },
   activeNavText: { color: '#fff', fontWeight: 'bold' },

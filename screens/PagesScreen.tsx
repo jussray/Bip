@@ -46,6 +46,7 @@ interface SharedPagesProps {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   mood?: string;
+  selectedSekret?: string;
 }
 
 export interface PagesScreenProps {
@@ -149,8 +150,10 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, selectedSekret }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
+  const isRylane = selectedSekret === 'rylane';
+  const charRootBg = side === 'parent' ? '#14110f' : (isRylane ? '#090c1b' : '#100b18');
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
   const [activeTab, setActiveTab] = useState<PagesTab>('me');
   const [tabDrafts, setTabDrafts] = useState<Partial<Record<PagesTab, string>>>({});
@@ -204,7 +207,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   };
 
   return (
-    <View style={[styles.root, side === 'parent' && styles.parentRoot]}>
+    <View style={[styles.root, { backgroundColor: charRootBg }]}>
       <View style={styles.header}>
         <View>
           <Text style={[styles.kicker, { color: tab.accent }]}>{side === 'teen' ? 'TEEN PAGES' : 'PARENT PAGES'}</Text>
@@ -213,23 +216,34 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
         <View style={styles.privatePill}><Text style={styles.privatePillText}>private by default</Text></View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-        {tabs.map(item => {
-          const active = item.id === activeTab;
-          return (
-            <TouchableOpacity key={item.id} onPress={() => changeTab(item.id)} style={[styles.tab, active && { borderColor: item.accent, backgroundColor: item.accent + '1f' }]}>
-              <Text style={[styles.tabIcon, active && { color: item.accent }]}>{item.icon}</Text>
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.tabsWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+          {tabs.map(item => {
+            const active = item.id === activeTab;
+            return (
+              <TouchableOpacity key={item.id} onPress={() => changeTab(item.id)} style={[styles.tab, active && { borderColor: item.accent, backgroundColor: item.accent + '20' }]}>
+                <Text style={[styles.tabIcon, active && { color: item.accent }]}>{item.icon}</Text>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, Platform.OS === 'web' && styles.contentWeb as any]} keyboardShouldPersistTaps="handled">
         {activeTab !== 'me' && (
           <View style={styles.intro}>
-            {tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null}
-            <Text style={[styles.title, activeTab === 'oracle' && styles.oracleTitle]}>{tab.title}</Text>
+            {activeTab === 'oracle' ? (
+              <View style={styles.oraclePresence}>
+                <View style={styles.oracleDot} />
+                <Text style={[styles.oraclePresenceText, { color: tab.accent }]}>Oracle · collecting context quietly</Text>
+              </View>
+            ) : (
+              tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null
+            )}
+            {activeTab !== 'oracle' ? (
+              <Text style={styles.title}>{tab.title}</Text>
+            ) : null}
             {tab.subtitle && activeTab !== 'oracle' ? <Text style={styles.subtitle}>{tab.subtitle}</Text> : null}
           </View>
         )}
@@ -316,11 +330,12 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   );
 }
 
-export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav }: PagesScreenProps) {
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, selectedSekret }: PagesScreenProps) {
   return (
     <PagesWorkspace
       side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
       onSave={entry => saveJournalEntry(entry)} mood={mood} setScreen={setScreen} BottomNav={BottomNav}
+      selectedSekret={selectedSekret}
     />
   );
 }
@@ -328,31 +343,35 @@ export function PagesScreen({ journalText, setJournalText, journalEntries, saveJ
 export { PagesWorkspace };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#100b18', paddingTop: Platform.OS === 'ios' ? 54 : 28 },
-  parentRoot: { backgroundColor: '#14110f' },
+  root: { flex: 1, paddingTop: Platform.OS === 'ios' ? 54 : 28 },
   header: { paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kicker: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800', marginTop: 2 },
   privatePill: { borderWidth: 1, borderColor: '#ffffff22', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
   privatePillText: { color: '#aaa2b5', fontSize: 10 },
-  tabs: { paddingHorizontal: 16, paddingVertical: 15, gap: 8 },
-  tab: { minWidth: 76, height: 58, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff18', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  tabIcon: { color: '#8c8498', fontSize: 15, marginBottom: 3 },
-  tabText: { color: '#8c8498', fontSize: 11, fontWeight: '700' },
-  tabTextActive: { color: '#fff' },
-  content: { paddingHorizontal: 18, paddingBottom: 24 },
-  intro: { minHeight: 76, justifyContent: 'flex-end', marginBottom: 14 },
+  tabsWrap: { borderBottomWidth: 1, borderBottomColor: '#ffffff0d' },
+  tabs: { paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
+  tab: { minWidth: 68, height: 52, borderRadius: 13, borderWidth: 1, borderColor: '#ffffff14', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 9 },
+  tabIcon: { color: '#8c8498', fontSize: 14, marginBottom: 3 },
+  tabText: { color: '#7e7690', fontSize: 11, fontWeight: '700' },
+  tabTextActive: { color: '#fff', fontWeight: '800' },
+  content: { paddingHorizontal: 18, paddingBottom: 32 },
+  contentWeb: { maxWidth: 520, width: '100%', alignSelf: 'center' as const },
+  intro: { minHeight: 72, justifyContent: 'flex-end', marginBottom: 14 },
   eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 7 },
-  title: { color: '#fff', fontSize: 23, lineHeight: 29, fontWeight: '700' },
-  oracleTitle: { color: '#b0a8bb', fontSize: 18, fontWeight: '600' },
+  title: { color: '#fff', fontSize: 22, lineHeight: 28, fontWeight: '700' },
   subtitle: { color: '#aaa2b5', fontSize: 13, lineHeight: 19, marginTop: 6 },
+  // Oracle silent mode indicator
+  oraclePresence: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  oracleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8b7bb8' },
+  oraclePresenceText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   promptCard: { borderWidth: 1, backgroundColor: '#ffffff08', borderRadius: 16, padding: 14, marginBottom: 12 },
   prompt: { color: '#f4eff7', fontSize: 15, lineHeight: 21 },
   promptActions: { flexDirection: 'row', gap: 18, marginTop: 12 },
   promptAction: { fontSize: 11, fontWeight: '800' },
   dismiss: { color: '#827b8d', fontSize: 11 },
-  paper: { minHeight: 245, backgroundColor: '#f4efe7', borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
-  input: { minHeight: 245, color: '#27212c', fontSize: 17, lineHeight: 29, padding: 18 },
+  paper: { minHeight: 240, backgroundColor: '#f4efe7', borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
+  input: { minHeight: 240, color: '#27212c', fontSize: 17, lineHeight: 29, padding: 18 },
   attachment: { height: 160, margin: 12, marginTop: 0, borderRadius: 12 },
   modeRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modeChip: { borderWidth: 1, borderColor: '#ffffff1c', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
@@ -370,15 +389,28 @@ const styles = StyleSheet.create({
   saveDisabled: { opacity: 0.3 },
   saveText: { color: '#171018', fontSize: 13, fontWeight: '900' },
   privacyLine: { color: '#77707f', fontSize: 10, lineHeight: 15, marginTop: 13 },
-  savedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 10 },
-  savedTitle: { color: '#e9e2ed', fontSize: 15, fontWeight: '800' },
+  savedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
+  savedTitle: { color: '#e9e2ed', fontSize: 14, fontWeight: '800', letterSpacing: 0.2 },
   savedCount: { color: '#827a89', fontSize: 11 },
-  entryCard: { backgroundColor: '#ffffff08', borderWidth: 1, borderColor: '#ffffff12', borderRadius: 15, padding: 14, marginBottom: 9 },
-  entryTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  entryMeta: { color: '#81798b', fontSize: 9, flex: 1 },
-  locked: { color: '#d9b8e3', fontSize: 9, fontWeight: '700' },
-  entryText: { color: '#e9e2ed', fontSize: 14, lineHeight: 21, marginTop: 8 },
-  savedImage: { height: 150, borderRadius: 10, marginTop: 10 },
-  empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 15, padding: 22, alignItems: 'center' },
+  // Journal page aesthetic for saved entries
+  entryCard: {
+    backgroundColor: '#faf7f3',
+    borderWidth: 1,
+    borderColor: '#e2dcd5',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  entryTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+  entryMeta: { color: '#9a8e86', fontSize: 9, flex: 1, letterSpacing: 0.3 },
+  locked: { color: '#7c4f99', fontSize: 9, fontWeight: '700' },
+  entryText: { color: '#2c2420', fontSize: 14, lineHeight: 22 },
+  savedImage: { height: 150, borderRadius: 6, marginTop: 10 },
+  empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 12, padding: 22, alignItems: 'center' },
   emptyText: { color: '#746d7c', fontSize: 12 },
 });

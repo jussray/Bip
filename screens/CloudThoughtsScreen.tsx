@@ -317,7 +317,7 @@ export function CloudThoughtsScreen({
 
 const styles = StyleSheet.create({
   root:          { flex: 1 },
-  scroll:        { paddingBottom: 100 },
+  scroll:        { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   header:        { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingHorizontal: 16, marginBottom: 8 },
   backBtn:       { alignSelf: 'flex-start' },
   backText:      { fontSize: 14 },
