@@ -345,8 +345,8 @@ const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
     cloud: {
       morning: 'Quiet in here. Brain dump when ready.',
       day:     'Cloud room is open. Let the thoughts land.',
-      evening: 'Neon's on. This is the brain dump hour.',
-      night:   'Just the cloud light and you. That's enough.',
+      evening: "Neon’s on. This is the brain dump hour.",
+      night:   "Just the cloud light and you. That’s enough.",
     },
     night: {
       morning: 'The world is waking. You stayed up.',
@@ -907,9 +907,9 @@ export function RoomScreen({
           accessibilityLabel={isSekretVisible ? "Hide Se\u2019kret" : "Call Se\u2019kret"}
         >
           <Text style={styles.greetingChar}>
-            {character === ‘raylene’ ? ‘💜 Raylene’ :
-             character === ‘rylane’  ? ‘⚡ Rylane’  :
-             character === ‘cloud’   ? "☁️ Cloud Se’kret" :
+            {character === 'raylene' ? "💜 Raylene" :
+             character === 'rylane'  ? "⚡ Rylane"  :
+             character === 'cloud'   ? "☁️ Cloud Se’kret" :
                                        "🌙 Night Se’kret"}
           </Text>
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>

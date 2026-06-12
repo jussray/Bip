@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -34,7 +34,6 @@ import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 import {
-  completeOracleSession,
   createOracleProfile,
   normalizeOracleProfile,
   normalizeOracleSessions,
@@ -57,16 +56,10 @@ import {
 import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
-// One clean place to see every image Se'kret Bip uses.
-//
-// The actual `require()` paths + safe fallbacks live in constants/theme.ts.
-// This map is re-exported here so the top of the root file documents — at a
-// glance — what art is wired into the app and to which character / screen.
-//
-// Do NOT add new require() calls here. Edit constants/theme.ts instead so
-// fallbacks stay centralized and no screen can drift out of sync.
-import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
-export { IMAGES, AVATARS, getRoomBg };
+// Re-exported so any screen can import IMAGES/AVATARS/getRoomBg from here
+// rather than reaching into constants/theme directly.
+// Do NOT add new require() calls here — edit constants/theme.ts instead.
+export { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
@@ -352,7 +345,6 @@ export default function App() {
     }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
-    journalText, journalEntries, parentPagesDraft, parentPagesEntries, moodHistory,
     journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
     oracleSessions, parentOracleSessions, moodHistory,
     circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
