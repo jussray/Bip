@@ -34,6 +34,7 @@ import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 import {
+  completeOracleSession,
   createOracleProfile,
   normalizeOracleProfile,
   normalizeOracleSessions,
@@ -159,10 +160,6 @@ export default function App() {
   // ─── Circle ────────────────────────────────────────────────────────────
   const [circlePosts, setCirclePosts]                   = useState<CirclePost[]>([]);
   const [circlePostText, setCirclePostText]             = useState('');
-  const [parentCirclePosts, setParentCirclePosts]       = useState<CirclePost[]>([]);
-  const [parentCirclePostText, setParentCirclePostText] = useState('');
-
-  // ─── Circle (Parent) — fully separated state ────────────────────────────
   const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
   const [parentCirclePostText, setParentCirclePostText] = useState('');
 
@@ -490,23 +487,34 @@ export default function App() {
 
   const saveParentCirclePost = () => {
     if (!parentCirclePostText.trim()) return;
-    const post: CirclePost = {
+    const post: ParentCirclePost = {
       id: Number(Date.now()), text: parentCirclePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
+      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
     };
     setParentCirclePosts(p => [post, ...p]);
     setParentCirclePostText('');
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
-    const reactionKey = type as keyof CirclePost['reactions'];
+    const reactionKey = type as keyof ParentCirclePost['reactions'];
     setParentCirclePosts(posts => posts.map(p =>
       String(p.id) === String(id)
         ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
         : p
     ));
+  };
+
+  // ── Oracle session completion ─────────────────────────────────────────────
+  const completeTeenOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
+    setOracleProfile(profile);
+    setOracleSessions(prev => [session, ...prev]);
+  };
+
+  const completeParentOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
+    setParentOracleProfile(profile);
+    setParentOracleSessions(prev => [session, ...prev]);
   };
 
   // ── Nav ───────────────────────────────────────────────────────────────────
