@@ -24,6 +24,7 @@ import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
 import { fetchSekretReply } from '../utils/api';
+import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Animated, Image, StyleSheet, Easing, Platform,
@@ -107,11 +108,13 @@ interface VoiceBipScreenProps {
     presenceMessage: string;
   };
   BottomNav: React.ReactNode;
+  privateProfile?: OracleProfile;
+  profileSide?: OracleSide;
 }
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
-  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav,
+  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -281,6 +284,9 @@ export function VoiceBipScreen({
       'journal',
       mood,
       selectedSekret,
+      undefined,
+      privateProfile,
+      profileSide,
     );
     setSekretReply(reply);
     setIsThinking(false);

@@ -11,13 +11,16 @@ const require = createRequire(import.meta.url);
 try {
   execFileSync(path.resolve('node_modules/.bin/tsc'), [
     'services/oracleDiscovery.ts',
+    'services/sekretPresence.ts',
+    'services/sekretVoice.ts',
     '--outDir', outputDirectory,
     '--target', 'ES2020',
     '--module', 'commonjs',
     '--skipLibCheck',
   ], { stdio: 'inherit' });
 
-  const oracle = require(path.join(outputDirectory, 'oracleDiscovery.js'));
+  const oracle = require(path.join(outputDirectory, 'services', 'oracleDiscovery.js'));
+  const voice = require(path.join(outputDirectory, 'services', 'sekretVoice.js'));
   const startedAt = '2026-06-12T00:00:00.000Z';
   const completedAt = '2026-06-12T00:05:00.000Z';
   const teenProfile = oracle.createOracleProfile('teen', startedAt);
@@ -64,7 +67,14 @@ try {
   );
   assert.equal(second.profile.understandings[0].observations, 2);
   assert.equal(second.profile.dimensions.Confidence, 'Growing');
-  assert.ok(oracle.buildOracleContext(second.profile, 'teen').length > 0);
+  const context = oracle.buildOracleContext(second.profile, 'teen');
+  assert.ok(context.length > 0);
+
+  const adaptation = voice.buildSekretAdaptationInstruction(context);
+  assert.ok(adaptation.includes('May value specific recognition more than broad approval.'));
+  assert.ok(!adaptation.includes('Confidence:'), 'response guidance must not expose dimension labels');
+  assert.equal(voice.keepSekretReply('My analysis says you need reassurance.', 'quiet fallback'), 'quiet fallback');
+  assert.equal(voice.keepSekretReply('That sounds like a lot. Take your time.', 'quiet fallback'), 'That sounds like a lot. Take your time.');
 
   const contaminated = {
     ...second.profile,

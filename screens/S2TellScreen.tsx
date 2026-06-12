@@ -18,6 +18,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchSekretReply } from '../utils/api';
+import type { OracleProfile } from '../services/oracleDiscovery';
 import { createStyles } from '../constants/styles';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ interface S2TellScreenProps {
   BottomNav:       React.ReactNode;
   selectedSekret?: string;
   mood?:           string;
+  privateProfile?: OracleProfile;
 }
 
 // ── Tone options ──────────────────────────────────────────────────────────────
@@ -53,7 +55,7 @@ type ToneId = (typeof TONES)[number]['id'];
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function S2TellScreen({
-  t, setScreen, BottomNav, selectedSekret, mood,
+  t, setScreen, BottomNav, selectedSekret, mood, privateProfile,
 }: S2TellScreenProps) {
   const styles = createStyles(t as { background: string; card: string; accent: string; soft: string; [key: string]: string });
 
@@ -116,6 +118,9 @@ export function S2TellScreen({
         's2tell',
         selectedTone.label,
         selectedSekret,
+        undefined,
+        privateProfile,
+        'teen',
       );
       setS2tellRewrite(reply);
       showResultCard();
