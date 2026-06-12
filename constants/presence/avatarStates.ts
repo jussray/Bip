@@ -11,6 +11,28 @@
 //
 // Inspiration: Tolan's emotional layering — a small base art set, animated
 // and lit by state, feels alive without exploding asset counts.
+//
+// ─── Source-of-truth note ────────────────────────────────────────────────────
+// Asset identities were verified by visually scanning every non-stub PNG in
+// assets/images/ (filenames are NOT trusted — many were AI-generation labels
+// from earlier iterations). Verified mappings:
+//
+//   raylene-*.png ........... girl, long curly hair, gold pendant.
+//   rylane-{neutral,happy,writing,window,fullbody,neutral-v2}.png
+//                              boy, brown-highlighted dreadlocks, gold chain,
+//                              black Se'kret hoodie. Signed "Rylane" in the
+//                              rylane-reference-sheet.png artwork itself.
+//   cloud-*.png ............. mascot.
+//   rylane-reference-board.png / rylane-profile-sheet.png
+//                              DIFFERENT character — curly black hair, purple
+//                              Se'kret hoodie, headphones. Per the user, this
+//                              is NIGHT (his own person, not Rylane). Only
+//                              exists in repo as reference sheets today, not
+//                              as game-ready single-pose state art.
+//
+// Hard rule the user repeated multiple times: "Rylane and Night are not the
+// same person." Never alias them to each other's art.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { IMAGES } from '../theme';
 import type { PresenceTime } from './timeOfDay';
@@ -27,10 +49,13 @@ export type PresenceState =
  * their own identity, voice, and asset bank. They are NEVER aliased to each
  * other — not for fallbacks, not for lighting variants, not for any reason.
  *
- *   raylene — her own character (girl)
- *   rylane  — his own character (boy, purple Se'kret hoodie)
+ *   raylene — her own character (girl, long curly hair)
+ *   rylane  — his own character (boy, brown-highlighted dreadlocks, gold chain,
+ *             black Se'kret hoodie)
  *   cloud   — its own character (mascot)
- *   night   — his own character. Art is pending; see `isAwaitingArt` below.
+ *   night   — his own character (boy, curly black hair, purple Se'kret hoodie,
+ *             headphones, "late night thoughts / protect his peace"). Only
+ *             reference-sheet art exists today; per-state art is pending.
  */
 export type PresenceCharacter = 'raylene' | 'rylane' | 'cloud' | 'night';
 
@@ -44,15 +69,17 @@ export const CHARACTER_NAME: Record<PresenceCharacter, string> = {
 
 /**
  * True iff this character's asset bank is still placeholder-only (i.e. no
- * dedicated artwork has been added to assets/images/ yet). The screen uses
+ * dedicated per-state artwork exists in assets/images/ yet). The screen uses
  * this to show an "art coming soon" hint instead of pretending the character
  * is fully rendered.
  *
- * Rylane currently has no dedicated art — the files on disk named
- * `rylane-*.png` actually depict Night. See RYLANE_CELLS below.
+ * Night currently only has reference-sheet art (rylane-reference-board.png,
+ * rylane-profile-sheet.png — file names are mislabels; the pixels show Night).
+ * Until per-state Night art is added, his cells render the Se'kret splash
+ * rather than borrowing Rylane's face.
  */
 export function isAwaitingArt(character: PresenceCharacter): boolean {
-  return character === 'rylane';
+  return character === 'night';
 }
 
 /** Adapter from the existing selectedSekret string to PresenceCharacter. */
@@ -108,50 +135,46 @@ const RAYLENE_CELLS: readonly AssetCell[] = [
   { time: 'rain',      state: 'comforting', asset: IMAGES.rayleneWindowRainy },
 ];
 
-// Rylane is his own character. The files currently named `rylane-*.png` on
-// disk actually depict NIGHT, not Rylane (a filename mislabel from earlier
-// work). Until dedicated Rylane artwork is added, every Rylane cell renders
-// the Se'kret splash placeholder rather than silently showing Night's face.
+// Rylane: dreadlocks, gold chain, black Se'kret hoodie. Verified via visual
+// scan of rylane-reference-sheet.png (signed "Rylane" in the artwork itself),
+// rylane-fullbody.png, rylane-neutral.png, rylane-neutral-v2.png,
+// rylane-happy.png, rylane-writing.png, rylane-window.png.
 //
-// EXPECTED ART FILES for Rylane (drop into assets/images/, wire into IMAGES
-// in constants/theme.ts under new keys, then replace placeholders below):
-//   rylane-voice-day.png      → listening, day/midday/afternoon
-//   rylane-voice-night.png    → listening, evening/night
-//   rylane-thinking.png       → thinking, all phases
-//   rylane-happy.png          → responding, day/midday/afternoon
-//   rylane-writing.png        → responding, evening/night
-//   rylane-neutral.png        → comforting, day/midday/afternoon
-//   rylane-window.png         → comforting, evening/night, all rain
-const RYLANE_PLACEHOLDER = IMAGES.sekretSplash;
-
+// IMAGES.rylane* keys all resolve (via theme.ts aliasing) to one of the real
+// rylane-*.png files above — so each cell here renders actual Rylane art,
+// never a stub byte and never another character's face.
 const RYLANE_CELLS: readonly AssetCell[] = [
-  { time: 'day',       state: 'listening',  asset: RYLANE_PLACEHOLDER },
-  { time: 'midday',    state: 'listening',  asset: RYLANE_PLACEHOLDER },
-  { time: 'afternoon', state: 'listening',  asset: RYLANE_PLACEHOLDER },
-  { time: 'evening',   state: 'listening',  asset: RYLANE_PLACEHOLDER },
-  { time: 'night',     state: 'listening',  asset: RYLANE_PLACEHOLDER },
-  { time: 'rain',      state: 'listening',  asset: RYLANE_PLACEHOLDER },
+  // Listening — calm, attentive. Window pose carries the "present" feel.
+  { time: 'day',       state: 'listening',  asset: IMAGES.rylaneVoiceDay },
+  { time: 'midday',    state: 'listening',  asset: IMAGES.rylaneVoiceDay },
+  { time: 'afternoon', state: 'listening',  asset: IMAGES.rylaneVoiceDay },
+  { time: 'evening',   state: 'listening',  asset: IMAGES.rylaneVoiceNight },
+  { time: 'night',     state: 'listening',  asset: IMAGES.rylaneVoiceNight },
+  { time: 'rain',      state: 'listening',  asset: IMAGES.rylaneWindow },
 
-  { time: 'day',       state: 'thinking',   asset: RYLANE_PLACEHOLDER },
-  { time: 'midday',    state: 'thinking',   asset: RYLANE_PLACEHOLDER },
-  { time: 'afternoon', state: 'thinking',   asset: RYLANE_PLACEHOLDER },
-  { time: 'evening',   state: 'thinking',   asset: RYLANE_PLACEHOLDER },
-  { time: 'night',     state: 'thinking',   asset: RYLANE_PLACEHOLDER },
-  { time: 'rain',      state: 'thinking',   asset: RYLANE_PLACEHOLDER },
+  // Thinking — looks inward; we alias to neutral (closest available pose)
+  { time: 'day',       state: 'thinking',   asset: IMAGES.rylaneThinking },
+  { time: 'midday',    state: 'thinking',   asset: IMAGES.rylaneThinking },
+  { time: 'afternoon', state: 'thinking',   asset: IMAGES.rylaneThinking },
+  { time: 'evening',   state: 'thinking',   asset: IMAGES.rylaneThinking },
+  { time: 'night',     state: 'thinking',   asset: IMAGES.rylaneThinking },
+  { time: 'rain',      state: 'thinking',   asset: IMAGES.rylaneWindow },
 
-  { time: 'day',       state: 'responding', asset: RYLANE_PLACEHOLDER },
-  { time: 'midday',    state: 'responding', asset: RYLANE_PLACEHOLDER },
-  { time: 'afternoon', state: 'responding', asset: RYLANE_PLACEHOLDER },
-  { time: 'evening',   state: 'responding', asset: RYLANE_PLACEHOLDER },
-  { time: 'night',     state: 'responding', asset: RYLANE_PLACEHOLDER },
-  { time: 'rain',      state: 'responding', asset: RYLANE_PLACEHOLDER },
+  // Responding — warm + open. Happy portrait by day, writing pose by night.
+  { time: 'day',       state: 'responding', asset: IMAGES.rylaneHappy },
+  { time: 'midday',    state: 'responding', asset: IMAGES.rylaneHappy },
+  { time: 'afternoon', state: 'responding', asset: IMAGES.rylaneHappy },
+  { time: 'evening',   state: 'responding', asset: IMAGES.rylaneWriting },
+  { time: 'night',     state: 'responding', asset: IMAGES.rylaneWriting },
+  { time: 'rain',      state: 'responding', asset: IMAGES.rylaneWindow },
 
-  { time: 'day',       state: 'comforting', asset: RYLANE_PLACEHOLDER },
-  { time: 'midday',    state: 'comforting', asset: RYLANE_PLACEHOLDER },
-  { time: 'afternoon', state: 'comforting', asset: RYLANE_PLACEHOLDER },
-  { time: 'evening',   state: 'comforting', asset: RYLANE_PLACEHOLDER },
-  { time: 'night',     state: 'comforting', asset: RYLANE_PLACEHOLDER },
-  { time: 'rain',      state: 'comforting', asset: RYLANE_PLACEHOLDER },
+  // Comforting — settled. Fullbody/neutral by day, at-the-window by night.
+  { time: 'day',       state: 'comforting', asset: IMAGES.rylaneNeutral },
+  { time: 'midday',    state: 'comforting', asset: IMAGES.rylaneNeutralV2 },
+  { time: 'afternoon', state: 'comforting', asset: IMAGES.rylaneNeutral },
+  { time: 'evening',   state: 'comforting', asset: IMAGES.rylaneWindow },
+  { time: 'night',     state: 'comforting', asset: IMAGES.rylaneWindow },
+  { time: 'rain',      state: 'comforting', asset: IMAGES.rylaneWindow },
 ];
 
 const CLOUD_CELLS: readonly AssetCell[] = [
@@ -185,50 +208,62 @@ const CLOUD_CELLS: readonly AssetCell[] = [
   { time: 'rain',      state: 'comforting', asset: IMAGES.cloudStormy },
 ];
 
-// Night is his own character: curly black hair, purple Se'kret hoodie,
-// headphones, sketchbook + mug. Emotional vocabulary: "late night thoughts",
+// Night: curly black hair, purple Se'kret hoodie, headphones, sketchbook +
+// mug. Emotional vocabulary per his reference sheets: "late night thoughts",
 // "headphones on, world off", "protect his peace", "loyal, honest, real",
-// "it's okay to not be okay", "tired eyes", "energy 24/7".
+// "it's okay to not be okay", "tired eyes", "music helps".
 //
-// IMPORTANT: The files on disk currently named `rylane-*.png` are actually
-// art OF NIGHT (a filename mislabel from earlier work — see comment in
-// constants/theme.ts on the IMAGES.rylane* keys). We use them here under
-// Night's bank because they depict Night. We do not rename the files —
-// renaming would touch every screen that already imports those keys, which
-// is out of scope for the presence work and unsafe given the recovery state.
+// IMPORTANT: There is currently NO per-state Night artwork on disk. The only
+// Night-design files in the repo are reference sheets named
+//   - rylane-reference-board.png
+//   - rylane-profile-sheet.png
+// (filenames are AI-generation mislabels; the pixels are Night, not Rylane.)
+//
+// Reference sheets are layout art, not game-ready single-pose sprites, so we
+// do NOT plug them into listening/thinking/responding/comforting cells.
+// Every Night cell renders the Se'kret splash placeholder until dedicated
+// Night art lands. We do NOT borrow Rylane's face — the user has stated
+// repeatedly that Rylane and Night are not the same person.
+//
+// EXPECTED ART FILES for Night (drop into assets/images/, add new keys to
+// IMAGES in constants/theme.ts, then replace placeholders below):
+//   night-voice-day.png      → listening, day/midday/afternoon
+//   night-voice-night.png    → listening, evening/night
+//   night-thinking.png       → thinking, all phases
+//   night-happy.png          → responding, day/midday/afternoon
+//   night-writing.png        → responding, evening/night
+//   night-neutral.png        → comforting, day/midday/afternoon
+//   night-window.png         → comforting, evening/night, all rain
+const NIGHT_PLACEHOLDER = IMAGES.sekretSplash;
+
 const NIGHT_CELLS: readonly AssetCell[] = [
-  // Listening — "headphones on, world off" / "how we feelin' today?"
-  { time: 'day',       state: 'listening',  asset: IMAGES.rylaneVoiceDay },
-  { time: 'midday',    state: 'listening',  asset: IMAGES.rylaneVoiceDay },
-  { time: 'afternoon', state: 'listening',  asset: IMAGES.rylaneVoiceDay },
-  { time: 'evening',   state: 'listening',  asset: IMAGES.rylaneVoiceNight },
-  { time: 'night',     state: 'listening',  asset: IMAGES.rylaneVoiceNight },
-  { time: 'rain',      state: 'listening',  asset: IMAGES.rylaneWindow },
+  { time: 'day',       state: 'listening',  asset: NIGHT_PLACEHOLDER },
+  { time: 'midday',    state: 'listening',  asset: NIGHT_PLACEHOLDER },
+  { time: 'afternoon', state: 'listening',  asset: NIGHT_PLACEHOLDER },
+  { time: 'evening',   state: 'listening',  asset: NIGHT_PLACEHOLDER },
+  { time: 'night',     state: 'listening',  asset: NIGHT_PLACEHOLDER },
+  { time: 'rain',      state: 'listening',  asset: NIGHT_PLACEHOLDER },
 
-  // Thinking — "late night thoughts", "tired eyes", overthinks-big-heart.
-  { time: 'day',       state: 'thinking',   asset: IMAGES.rylaneThinking },
-  { time: 'midday',    state: 'thinking',   asset: IMAGES.rylaneThinking },
-  { time: 'afternoon', state: 'thinking',   asset: IMAGES.rylaneThinking },
-  { time: 'evening',   state: 'thinking',   asset: IMAGES.rylaneThinking },
-  { time: 'night',     state: 'thinking',   asset: IMAGES.rylaneThinking },
-  { time: 'rain',      state: 'thinking',   asset: IMAGES.rylaneWindow },
+  { time: 'day',       state: 'thinking',   asset: NIGHT_PLACEHOLDER },
+  { time: 'midday',    state: 'thinking',   asset: NIGHT_PLACEHOLDER },
+  { time: 'afternoon', state: 'thinking',   asset: NIGHT_PLACEHOLDER },
+  { time: 'evening',   state: 'thinking',   asset: NIGHT_PLACEHOLDER },
+  { time: 'night',     state: 'thinking',   asset: NIGHT_PLACEHOLDER },
+  { time: 'rain',      state: 'thinking',   asset: NIGHT_PLACEHOLDER },
 
-  // Responding — "it is what it is" / journal + mug energy. Writing pose at
-  // night, warmer happy/profile poses in daylight.
-  { time: 'day',       state: 'responding', asset: IMAGES.rylaneHappy },
-  { time: 'midday',    state: 'responding', asset: IMAGES.rylaneHappy },
-  { time: 'afternoon', state: 'responding', asset: IMAGES.rylaneProfile },
-  { time: 'evening',   state: 'responding', asset: IMAGES.rylaneWriting },
-  { time: 'night',     state: 'responding', asset: IMAGES.rylaneWriting },
-  { time: 'rain',      state: 'responding', asset: IMAGES.rylaneWindow },
+  { time: 'day',       state: 'responding', asset: NIGHT_PLACEHOLDER },
+  { time: 'midday',    state: 'responding', asset: NIGHT_PLACEHOLDER },
+  { time: 'afternoon', state: 'responding', asset: NIGHT_PLACEHOLDER },
+  { time: 'evening',   state: 'responding', asset: NIGHT_PLACEHOLDER },
+  { time: 'night',     state: 'responding', asset: NIGHT_PLACEHOLDER },
+  { time: 'rain',      state: 'responding', asset: NIGHT_PLACEHOLDER },
 
-  // Comforting — "protect his peace". Settled, looking out the window, calm.
-  { time: 'day',       state: 'comforting', asset: IMAGES.rylaneNeutral },
-  { time: 'midday',    state: 'comforting', asset: IMAGES.rylaneNeutralV2 },
-  { time: 'afternoon', state: 'comforting', asset: IMAGES.rylaneNeutral },
-  { time: 'evening',   state: 'comforting', asset: IMAGES.rylaneWindow },
-  { time: 'night',     state: 'comforting', asset: IMAGES.rylaneWindow },
-  { time: 'rain',      state: 'comforting', asset: IMAGES.rylaneWindow },
+  { time: 'day',       state: 'comforting', asset: NIGHT_PLACEHOLDER },
+  { time: 'midday',    state: 'comforting', asset: NIGHT_PLACEHOLDER },
+  { time: 'afternoon', state: 'comforting', asset: NIGHT_PLACEHOLDER },
+  { time: 'evening',   state: 'comforting', asset: NIGHT_PLACEHOLDER },
+  { time: 'night',     state: 'comforting', asset: NIGHT_PLACEHOLDER },
+  { time: 'rain',      state: 'comforting', asset: NIGHT_PLACEHOLDER },
 ];
 
 /** All character cells, keyed for fast lookup. */
