@@ -55,10 +55,10 @@ function getTimeOfDay(hour: number): TimeOfDay {
 }
 
 const TIME_HERO: Record<TimeOfDay, { sub: string; main: string; badge: string }> = {
-  morning: { sub: 'morning pages',       main: 'The Oracle 📖', badge: '☀️ morning' },
-  day:     { sub: 'afternoon pages',     main: 'The Oracle 📖', badge: '🌤️ day' },
-  evening: { sub: 'evening pages',       main: 'The Oracle 📖', badge: '🌆 evening' },
-  night:   { sub: 'late-night pages',    main: 'The Oracle 📖', badge: '🌙 night' },
+  morning: { sub: 'morning pages',       main: 'Se’kret 📖', badge: '☀️ morning' },
+  day:     { sub: 'afternoon pages',     main: 'Se’kret 📖', badge: '🌤️ day' },
+  evening: { sub: 'evening pages',       main: 'Se’kret 📖', badge: '🌆 evening' },
+  night:   { sub: 'late-night pages',    main: 'Se’kret 📖', badge: '🌙 night' },
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
@@ -330,7 +330,7 @@ export function JournalScreen({
               cardAnim(3),
             ]}
           >
-            <Text style={styles.oracleLabel}>📖 THE ORACLE NOTICED</Text>
+            <Text style={styles.oracleLabel}>📖 SE’KRET NOTICED</Text>
             {oracleInsight.lines.map((line) => (
               <Text key={line} style={styles.oracleLine}>{line}</Text>
             ))}
