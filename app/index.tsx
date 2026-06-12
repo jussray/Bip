@@ -71,8 +71,7 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
   lastVisit:   '',
   lastHotspot: '',
   lastSummon:  '',
-  visitCount:  0,};
-  
+  visitCount:  0,
 };
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -131,7 +130,7 @@ export default function App() {
   const [theme, setTheme]                   = useState('neon');
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
-  const [userSide, setUserSide]             = useState('teen');
+  const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
@@ -391,10 +390,16 @@ export default function App() {
     syncCirclePost(post);
   };
 
-  const reactToPost = (id: number, type: string) => {
+  const reactToPost = (id: number | string, type: string) => {
     setCirclePosts(posts => posts.map(p =>
       p.id === id
-        ? { ...p, reactions: { ...p.reactions, [type]: (p.reactions[type] || 0) + 1 } }
+        ? {
+            ...p,
+            reactions: {
+              ...p.reactions,
+              [type]: ((p.reactions as Record<string, number>)[type] || 0) + 1,
+            },
+          }
         : p
     ));
   };
@@ -500,7 +505,6 @@ export default function App() {
       t={t}
       currentSekret={currentSekret}
       mood={mood}
-      selectedSekret={selectedSekret}
       selectedProfile={selectedSekret}
       setSelectedProfile={setSelectedSekret}
       userSide={userSide}
@@ -512,11 +516,11 @@ export default function App() {
   if (screen === 'circle') return (
     <CircleScreen
       t={t}
-      circlePosts={circlePosts}
+      circlePosts={circlePosts as any}
       circlePostText={circlePostText}
       setCirclePostText={setCirclePostText}
       saveCirclePost={saveCirclePost}
-      reactToPost={reactToPost}
+      reactToPost={reactToPost as any}
       setScreen={setScreen}
       BottomNav={nav}
       selectedSekret={selectedSekret as 'raylene' | 'rylane'}
@@ -658,7 +662,7 @@ export default function App() {
     <MoreScreen
       t={t}
       userSide={userSide}
-      setUserSide={setUserSide}
+      setUserSide={setUserSide as (side: string) => void}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
@@ -676,7 +680,7 @@ export default function App() {
       sekretMode={sekretMode}
       setSekretMode={setSekretMode}
       userSide={userSide}
-      setUserSide={setUserSide}
+      setUserSide={setUserSide as (side: string) => void}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}

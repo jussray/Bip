@@ -25,7 +25,15 @@ import type { VoiceNote } from '../types/bridge';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Animated, Image, StyleSheet, Easing,
+  type DimensionValue,
 } from 'react-native';
+import { PresenceAvatar } from '../components/PresenceAvatar';
+import { usePresence } from '../hooks/usePresence';
+import {
+  getPresenceTime,
+  PRESENCE_TIME_BADGE,
+} from '../constants/presence/timeOfDay';
+import { toPresenceCharacter } from '../constants/presence/avatarStates';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
@@ -34,7 +42,13 @@ const DEBUG_HOTSPOTS = false;
 const CLOUD_HP = IMAGES.cloudHeadphones;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
-const HOTSPOTS = {
+type Hotspot = {
+  top?: DimensionValue; bottom?: DimensionValue;
+  left?: DimensionValue; right?: DimensionValue;
+  width: DimensionValue; height: DimensionValue;
+  label: string;
+};
+const HOTSPOTS: Record<'microphone' | 'journal' | 'window' | 'crystalJar', Hotspot> = {
   microphone: { top: '18%',    left: '30%',  width: '22%', height: '28%', label: 'Mic 🎙️' },
   journal:    { bottom: '4%',  left: '16%',  width: '44%', height: '22%', label: 'Journal 📖' },
   window:     { top: '4%',     right: '2%',  width: '38%', height: '40%', label: 'Window 🌙' },
@@ -129,6 +143,8 @@ export function VoiceBipScreen({
   // Character / time
   const hour       = new Date().getHours();
   const timeOfDay  = getTimeOfDay(hour);
+  const presenceTime = getPresenceTime(hour);
+  const presenceCharacter = toPresenceCharacter(selectedSekret);
   const isNight    = timeOfDay === 'night' || timeOfDay === 'evening';
   const isRylane   = selectedSekret === 'rylane';
   const character  = isRylane ? 'rylane' : 'raylene';
@@ -137,10 +153,14 @@ export function VoiceBipScreen({
   const charEmoji  = isRylane ? '⚡' : '💜';
   const roomArt    = getRoomBg(character, timeOfDay);
 
-  const heroArt =
-    isRylane
-      ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
-      : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
+  // ── Presence state machine ──────────────────────────────────────────────
+  // Drives the listening → thinking → responding → comforting flow that
+  // makes Voice Bip feel like a conversation instead of a submission form.
+  // Oracle integration point: pass `notifyOracle` here when wiring Oracle.
+  const presence = usePresence({
+    character: presenceCharacter,
+    time: presenceTime,
+  });
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -186,6 +206,7 @@ export function VoiceBipScreen({
     setSekretReply('');
     setRecordingTime(0);
     setShowBipMenu(false);
+    presence.beginListening();
 
     pulseLoop.current = Animated.loop(
       Animated.sequence([
@@ -254,12 +275,14 @@ export function VoiceBipScreen({
     onSave?.();
 
     setIsThinking(true);
+    presence.endListening();
     const reply = await fetchSekretReply(
       'I just recorded a voice bip. I had some feelings I needed to get out.',
       'journal'
     );
     setSekretReply(reply);
     setIsThinking(false);
+    presence.markResponseReady();
     setSelectedBipType(null);
   };
 
@@ -300,12 +323,13 @@ export function VoiceBipScreen({
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.2} />
 
-          {/* Hero avatar */}
-          <Image
-            source={heroArt}
+          {/* Hero avatar — driven by the Voice Bip Presence System.
+              Listens / thinks / responds / settles instead of sitting still. */}
+          <PresenceAvatar
+            character={presenceCharacter}
+            time={presenceTime}
+            state={presence.state}
             style={styles.heroAvatar}
-            resizeMode="contain"
-            pointerEvents="none"
           />
 
           {/* Top scrim */}
@@ -334,9 +358,11 @@ export function VoiceBipScreen({
             />
           )}
 
-          {/* Time badge */}
+          {/* Time badge — 6-phase via PresenceTime, with legacy fallback */}
           <View style={styles.timeBadge} pointerEvents="none">
-            <Text style={styles.timeBadgeText}>{TIME_BADGE[timeOfDay]}</Text>
+            <Text style={styles.timeBadgeText}>
+              {PRESENCE_TIME_BADGE[presenceTime] ?? TIME_BADGE[timeOfDay]}
+            </Text>
           </View>
 
           {/* Companion presence pill */}

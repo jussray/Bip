@@ -269,8 +269,8 @@ export function PeriodCalendarScreen({
                     <View
                       style={[
                         styles.dayCircle,
-                        marked && { backgroundColor: '#e879a3' },
-                        todayCell && !marked && { borderWidth: 2, borderColor: glow },
+                        marked ? { backgroundColor: '#e879a3' } : null,
+                        todayCell && !marked ? { borderWidth: 2, borderColor: glow } : null,
                       ]}
                     >
                       <Text

@@ -25,6 +25,8 @@ export interface VoiceNote {
   date: string;
   time: string;
   duration: string;
+  /** Bip kind: 'voice' | 'video' | 'text' | 'cloud'. Optional for back-compat. */
+  type?: string;
 }
 
 export interface MoodEntry {

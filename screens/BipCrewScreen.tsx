@@ -22,6 +22,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
+import { syncCrewMember } from '../utils/sync';
 import type { CrewMember, CrewCheckIn } from '../types/index';
 
 const MAX_CREW = 6;
