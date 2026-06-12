@@ -461,7 +461,6 @@ export default function App() {
         vibe={vibeKey}
         companion={companion}
         BottomNav={nav}
-        companion={companion}
       />
     );
   }

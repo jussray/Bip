@@ -61,12 +61,13 @@ export function SplashScreen({ setScreen }: SplashScreenProps) {
       <StatusBar style="light" />
 
       {/* Full-screen artwork — display only, no tap-to-enter */}
-      <Image
-        source={splashBg}
-        style={styles.bgImage}
-        resizeMode="cover"
-        pointerEvents="none"
-      />
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Image
+          source={splashBg}
+          style={styles.bgImage}
+          resizeMode="cover"
+        />
+      </View>
 
       {/* Se'kret Bip CTA button — the only way to enter the app */}
       <TouchableOpacity
