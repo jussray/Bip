@@ -606,6 +606,8 @@ export default function App() {
       theme={t}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
+      onSelectAvatar={avatarKey => setSelectedSekret(avatarKey)}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}

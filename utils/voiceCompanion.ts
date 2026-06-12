@@ -6,15 +6,25 @@ export interface VoiceCompanionStatus {
 
 export interface VoiceCompanionSession {
   id: string;
+  avatarKey: string;
   personality: string;
+  voiceId: string | null;
   mood: string;
   status: VoiceCompanionStatus;
 }
 
-export function createVoiceCompanionSession(personality: string, mood: string, mode: VoiceCompanionStatus['mode'] = 'voice'): VoiceCompanionSession {
+export function createVoiceCompanionSession(
+  avatarKey: string,
+  personality: string,
+  mood: string,
+  mode: VoiceCompanionStatus['mode'] = 'voice',
+  voiceId: string | null = null,
+): VoiceCompanionSession {
   return {
     id: `voice-${Date.now()}`,
+    avatarKey,
     personality,
+    voiceId,
     mood,
     status: {
       ready: true,
