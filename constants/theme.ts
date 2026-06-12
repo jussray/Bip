@@ -318,16 +318,56 @@ export function getRoomPhase(
   return "deepNight"; // midnight–5 AM
 }
 
-const ROOM_PREFIX: Record<Character, string> = {
-  raylene: "bgRayleneRoom",
-  rylane:  "bgRylaneRoom",
-  cloud:   "bgCloudRoom",
-  night:   "bgNightRoom",
+const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
+  raylene: {
+    day: IMAGES.bgRayleneRoomDay,
+    midday: IMAGES.bgRayleneRoomDay,
+    afternoon: IMAGES.bgRayleneRoomEvening,
+    evening: IMAGES.bgRayleneRoomEvening,
+    night: IMAGES.bgRayleneRoomNight,
+    deepNight: IMAGES.bgRayleneRoomDeepNight,
+    rain: IMAGES.bgRayleneRoomRain,
+  },
+  rylane: {
+    day: IMAGES.bgRylaneRoomDay,
+    midday: IMAGES.bgRylaneRoomDay,
+    afternoon: IMAGES.bgRylaneRoomEvening,
+    evening: IMAGES.bgRylaneRoomEvening,
+    night: IMAGES.bgRylaneRoomNight,
+    deepNight: IMAGES.bgRylaneRoomDeepNight,
+    rain: IMAGES.bgRylaneRoomRain,
+  },
+  cloud: {
+    day: IMAGES.bgCloudRoomDay,
+    midday: IMAGES.bgCloudRoomMidday,
+    afternoon: IMAGES.bgCloudRoomAfternoon,
+    evening: IMAGES.bgCloudRoomEvening,
+    night: IMAGES.bgCloudRoomNight,
+    deepNight: IMAGES.bgCloudRoomDeepNight,
+    rain: IMAGES.bgCloudRoomRain,
+  },
+  night: {
+    day: IMAGES.bgNightRoomDay,
+    midday: IMAGES.bgNightRoomMidday,
+    afternoon: IMAGES.bgNightRoomAfternoon,
+    evening: IMAGES.bgNightRoomEvening,
+    night: IMAGES.bgNightRoomNight,
+    deepNight: IMAGES.bgNightRoomDeepNight,
+    rain: IMAGES.bgNightRoomRain,
+  },
 };
+
+function normalizeRoomPhase(phase: RoomPhase | string): RoomPhase {
+  if (phase === 'deep-night') return 'deepNight';
+  if (phase === 'day' || phase === 'midday' || phase === 'afternoon' || phase === 'evening' || phase === 'night' || phase === 'deepNight' || phase === 'rain') {
+    return phase;
+  }
+  return 'day';
+}
 
 export function getRoomScene(
   character: Character,
-  phase: RoomPhase,
+  phase: RoomPhase | string,
 ): ImageSourcePropType {
   const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
   // deepNight → "DeepNight", midday → "Midday", afternoon → "Afternoon", etc.
@@ -346,18 +386,11 @@ export function getRoomScene(
 
 export function getRoomBg(
   character: Character,
-  time: TimeOfDay,
+  time: TimeOfDay | RoomPhase | 'deep-night' | string,
   weatherMode?: string,
 ): ImageSourcePropType {
-  const phase =
-    weatherMode === "rain"
-      ? "rain"
-      : time === "evening"
-        ? "evening"
-        : time === "night"
-          ? getRoomPhase(new Date(), weatherMode)
-          : "day";
-  return getRoomScene(character, phase);
+  if (weatherMode === 'rain') return getRoomScene(character, 'rain');
+  return getRoomScene(character, time === 'morning' ? 'day' : time);
 }
 
 export function getParentRoomBg(

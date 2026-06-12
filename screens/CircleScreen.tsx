@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import type { CirclePost } from '../types';
 
 const CLOUD_HAPPY = IMAGES.cloudHappy;
 
@@ -26,27 +27,6 @@ type ScanResult = {
   level: SafetyLevel;
   reason?: string;
   suggestion?: string;
-};
-
-type CirclePost = {
-  id: number;
-  text: string;
-  date?: string;
-  time?: string;
-  bipType?: string;
-  mediaUri?: string;
-  mediaKind?: string;
-  postMood?: string;
-  circleTag?: string;
-  reactions?: {
-    felt: number;
-    comfort: number;
-    proud: number;
-    stay: number;
-    sameHere?: number;
-  };
-  quietRepliesCount?: number;
-  anonymousName?: string;
 };
 
 type CircleScreenProps = {

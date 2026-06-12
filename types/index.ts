@@ -13,12 +13,13 @@ export interface JournalEntry {
 }
 
 export interface CirclePost {
-  id: number;
+  id: number | string;
   text: string;
-  date: string;
-  time: string;
+  date?: string;
+  time?: string;
   bipType?: string;
-  mediaKind?: string;
+  mediaKind?: 'text' | 'struggle' | 'relatable' | 'growth';
+  mediaUri?: string;
   anonymousName?: string;
   circleTag?: string;
   postMood?: string;
