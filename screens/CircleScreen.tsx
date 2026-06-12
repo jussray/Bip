@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { IMAGES } from '../constants/theme';
+import { IMAGES, getRoomBg } from '../constants/theme';
 import {
   Text,
   TextInput,
@@ -260,9 +260,10 @@ export function CircleScreen({
 }: CircleScreenProps) {
   const isRylane = selectedSekret === 'rylane';
   const charLabel = isRylane ? 'rylane' : 'raylene';
-  // Circle is a community surface, not either companion's room. Its dedicated
-  // mockup is corrupt, so use the explicit valid Circle fallback from the map.
-  const bg = IMAGES.bgCircle;
+  const character: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
+  const hour = new Date().getHours();
+  const timeOfDay = hour >= 5 && hour < 11 ? 'morning' : hour >= 11 && hour < 17 ? 'day' : hour >= 17 && hour < 21 ? 'evening' : 'night';
+  const bg = getRoomBg(character, timeOfDay as any);
   const glow = useMemo(() => moodGlow(mood), [mood]);
 
   const QUOTE_REPLIES = isRylane ? QUOTE_REPLIES_RYLANE : QUOTE_REPLIES_RAYLENE;
@@ -459,7 +460,7 @@ export function CircleScreen({
         </Animated.View>
 
         <Animated.View style={cardStyle(fade2)}>
-          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow, shadowColor: glow }]}>
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.90)', borderColor: glow, shadowColor: glow }]}>
             <Text style={styles.cardEmoji}>🪑</Text>
             <Text style={styles.cardText}>this is a circle, not a feed.</Text>
             <Text style={styles.entryText}>
@@ -654,7 +655,7 @@ export function CircleScreen({
             ))}
           </View>
 
-          <View style={[styles.cultureCard, { borderColor: glow, backgroundColor: 'rgba(30,18,55,0.78)' }]}>
+          <View style={[styles.cultureCard, { borderColor: glow, backgroundColor: 'rgba(30,18,55,0.90)' }]}>
             <Text style={styles.cultureTitle}>circle culture 💜</Text>
             {cultureLines.map((line, i) => (
               <Text key={i} style={styles.cultureText}>{line}</Text>
@@ -721,7 +722,7 @@ export function CircleScreen({
 
 const styles = StyleSheet.create({
   bgImage: { flex: 1 },
-  container: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  container: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   logo: { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 },
   subtitle: { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 12, fontStyle: 'italic' },
   energyBadge: { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 },
@@ -742,7 +743,7 @@ const styles = StyleSheet.create({
   presencePill: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(20,12,40,0.6)' },
   presenceText: { fontSize: 12, fontWeight: '600' },
 
-  card: { padding: 18, borderRadius: 20, marginBottom: 14, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14 },
+  card: { padding: 16, borderRadius: 20, marginBottom: 10, borderWidth: 1, shadowOpacity: 0.45, shadowRadius: 14 },
   cardEmoji: { fontSize: 30, marginBottom: 6 },
   cardText: { color: '#fff', fontSize: 17, fontWeight: '700', marginBottom: 8 },
   entryText: { color: '#e9defc', fontSize: 14, lineHeight: 21 },
@@ -797,7 +798,7 @@ const styles = StyleSheet.create({
   anonymousName: { color: '#e8def7', fontSize: 11, fontWeight: '800', flex: 1 },
   circleTag: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
 
-  postCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 12, backgroundColor: 'rgba(20,12,40,0.4)' },
+  postCard: { borderWidth: 1, borderRadius: 20, padding: 16, marginBottom: 10, backgroundColor: 'rgba(20,12,40,0.82)' },
   postText: { color: '#fff', fontSize: 15, lineHeight: 22, marginBottom: 8 },
   postMedia: { color: '#cbb6f7', fontSize: 12, marginBottom: 10 },
   reactionRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 },

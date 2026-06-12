@@ -541,10 +541,10 @@ export function CalmScreen({
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:              { flex: 1 },
-  scroll:            { paddingBottom: 100 },
+  scroll:            { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   // Hero
-  heroWrap:          { width: '100%', height: 260, position: 'relative', marginBottom: 0, overflow: 'hidden' },
+  heroWrap:          { width: '100%', height: Platform.OS === 'web' ? 190 : 260, position: 'relative', marginBottom: 0, overflow: 'hidden' },
   heroImage:         { width: '100%', height: '100%' },
   heroMoodScrim:     { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   heroGradient:      { position: 'absolute', bottom: 0, left: 0, right: 0, height: 200 },

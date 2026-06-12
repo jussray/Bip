@@ -525,6 +525,7 @@ export default function App() {
       moodHistory={moodHistory}
       voiceNotes={voiceNotes}
       streakDays={streakDays}
+      selectedSekret={selectedSekret}
     />
   );
 
