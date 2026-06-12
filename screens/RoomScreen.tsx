@@ -51,18 +51,22 @@ type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 const ROOM_PHASE_OVERLAYS: Record<RoomPhase, string> = {
   day:       'rgba(255,225,180,0.08)',
+  midday:    'rgba(255,210,140,0.10)',
+  afternoon: 'rgba(200,130,60,0.12)',
   evening:   'rgba(91,45,120,0.18)',
   rain:      'rgba(35,85,125,0.30)',
   night:     'rgba(20,10,55,0.28)',
   deepNight: 'rgba(5,3,24,0.48)',
 };
 
-// Character-specific atmosphere tints layered on top of phase overlay
+// Character-specific atmosphere tints layered on top of phase overlay.
+// Cloud Room art is fully realized — no tint needed, art speaks for itself.
+// Night Room art is already very dark — light deepening tint only.
 const CHARACTER_OVERLAYS: Record<Character, string> = {
   raylene: 'transparent',
   rylane:  'transparent',
-  cloud:   'rgba(155,185,255,0.20)',  // soft sky-blue floating tint
-  night:   'rgba(6,2,22,0.45)',       // deep-violet midnight tint
+  cloud:   'transparent',
+  night:   'rgba(6,2,22,0.25)',
 };
 
 const AVATARS: Record<Character, AvatarMap> = THEME_AVATARS as Record<Character, AvatarMap>;
@@ -258,7 +262,7 @@ const CLOUD_HOTSPOTS: Hotspot[] = [
   },
 ];
 
-// Night Room: midnight refuge — city skyline, huge window, 2AM watching energy
+// Night Room: crescent moon chair, "Voice Bip Corner" sign, city window, desk with clock
 const NIGHT_HOTSPOTS: Hotspot[] = [
   {
     id: 'window',
@@ -266,7 +270,7 @@ const NIGHT_HOTSPOTS: Hotspot[] = [
     target: 'cloudThoughts',
     hint: 'look out',
     pulse: true,
-    style: { top: '8%', left: '12%', width: '62%', height: '42%' },
+    style: { top: '4%', left: '4%', width: '44%', height: '44%' },
   },
   {
     id: 'pages',
@@ -274,35 +278,35 @@ const NIGHT_HOTSPOTS: Hotspot[] = [
     target: 'pages',
     hint: 'tap the journal',
     pulse: true,
-    style: { bottom: '18%', left: '8%', width: '32%', height: '18%' },
+    style: { bottom: '16%', left: '6%', width: '50%', height: '20%' },
   },
   {
     id: 'voiceBip',
-    label: 'Mic 🎤',
+    label: 'Voice Bip Corner 🎙️',
     target: 'voiceBip',
-    hint: 'speak it',
-    style: { bottom: '18%', right: '10%', width: '18%', height: '14%' },
+    hint: 'voice bip corner',
+    style: { top: '20%', right: '2%', width: '26%', height: '28%' },
   },
   {
-    id: 'dreamCloud',
-    label: 'Dream Cloud ☁️',
-    target: 'cloudThoughts',
-    hint: 'tap the cloud',
-    style: { top: '10%', right: '6%', width: '18%', height: '14%' },
+    id: 'comfort',
+    label: 'Moon Chair 🌙',
+    target: 'comfort',
+    hint: 'sit in the chair',
+    style: { top: '26%', left: '34%', width: '36%', height: '40%' },
   },
   {
     id: 'bridge',
-    label: 'Tiny Bridge 🌉',
+    label: 'Reach Out 🌉',
     target: 'bridge',
     hint: 'reach out',
-    style: { bottom: '34%', left: '38%', width: '24%', height: '12%' },
+    style: { bottom: '30%', right: '6%', width: '22%', height: '16%' },
   },
   {
     id: 'summon',
     label: "Night Se'kret 🌙",
     target: 'sekret',
     hint: 'tap to wake',
-    style: { top: '52%', left: '6%', width: '28%', height: '30%' },
+    style: { bottom: '36%', left: '2%', width: '32%', height: '32%' },
   },
 ];
 
@@ -339,10 +343,10 @@ const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
       night:   'Late night mode. Keep it low and real.',
     },
     cloud: {
-      morning: 'Floating above the noise. Start here.',
-      day:     'Thoughts drift. Let them land where they want.',
-      evening: 'Quieter now. The cloud has space for you.',
-      night:   'Up here the world is very far down.',
+      morning: 'Quiet in here. Brain dump when ready.',
+      day:     'Cloud room is open. Let the thoughts land.',
+      evening: 'Neon's on. This is the brain dump hour.',
+      night:   'Just the cloud light and you. That's enough.',
     },
     night: {
       morning: 'The world is waking. You stayed up.',
@@ -365,14 +369,14 @@ const getPose = (mood: Mood, timeOfDay: TimeOfDay, isFirstVisit: boolean, isSekr
 const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isVisible: boolean): string => {
   const moodKey = String(mood).toLowerCase();
 
-  // Cloud \u2014 floats, observes, rarely pushes
+  // Cloud \u2014 observes, holds space, rarely pushes
   if (character === 'cloud') {
     if (moodKey.includes('sad'))   return 'Something feels heavy. You don\u2019t have to explain it.';
-    if (moodKey.includes('tired')) return 'Tired. Yeah. Float here for a bit.';
-    if (moodKey.includes('angry')) return 'It\u2019s loud in there. Up here it\u2019s quiet.';
+    if (moodKey.includes('tired')) return 'Tired. Yeah. Sit here for a bit. No pressure.';
+    if (moodKey.includes('angry')) return 'It\u2019s loud out there. In here it\u2019s quiet.';
     if (moodKey.includes('happy')) return 'Something light is happening. I noticed.';
-    if (timeOfDay === 'night')     return 'Late and drifting. That\u2019s okay.';
-    return 'Brain loud? Float it up here.';
+    if (timeOfDay === 'night')     return 'Late night brain dump? This is the spot.';
+    return 'Brain loud? This is the brain dump room.';
   }
 
   // Night \u2014 2AM energy, presence over conversation
@@ -719,15 +723,7 @@ export function RoomScreen({
         )}
       </Animated.View>
 
-      {/* ── Cloud atmospheric floaters ─────────────────────────────────── */}
-      {character === 'cloud' && (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-          <Text style={[styles.floatCloud, { top: '12%', left: '5%', opacity: 0.55, fontSize: 26 }]}>☁️</Text>
-          <Text style={[styles.floatCloud, { top: '32%', right: '8%', opacity: 0.38, fontSize: 18 }]}>☁️</Text>
-          <Text style={[styles.floatCloud, { top: '58%', left: '62%', opacity: 0.28, fontSize: 14 }]}>☁️</Text>
-          <Text style={[styles.floatCloud, { top: '20%', left: '42%', opacity: 0.45, fontSize: 22 }]}>☁️</Text>
-        </View>
-      )}
+      {/* Cloud Room: real art has cloud motifs — no emoji overlay needed */}
 
       {/* ── Night atmosphere — time badge ─────────────────────────────── */}
       {character === 'night' && (
