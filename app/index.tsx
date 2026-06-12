@@ -557,7 +557,7 @@ export default function App() {
     return (
       <RoomScreen
         mood={mood}
-        selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+        selectedSekret={selectedSekret}
         setSelectedSekret={val => setSelectedSekret(val)}
         setScreen={setScreen}
         t={t}
@@ -697,7 +697,7 @@ export default function App() {
         reactToPost={reactToPost}
         setScreen={setScreen}
         BottomNav={nav}
-        selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+        selectedSekret={selectedSekret}
         mood={mood}
       />
     );

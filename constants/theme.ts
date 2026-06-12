@@ -61,6 +61,38 @@ const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.p
 const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
+// ── Cloud Room Backgrounds — REAL ASSETS NEEDED ───────────────────────────
+// Replace these fallbacks when art ships:
+//   bg-cloud-room-day.png  · bg-cloud-room-night.png  · bg-cloud-room-rain.png
+// Cloud is NOT a bedroom. It's a floating thought-space: cloud islands, headphones,
+// blue-purple sky, no walls. Overlays in RoomScreen provide distinction until real art lands.
+const bgCloudRoomDay       = bgRayleneRoomDay;
+const bgCloudRoomEvening   = bgRayleneRoomEvening;
+const bgCloudRoomRain      = bgRayleneRoomRain;
+const bgCloudRoomNight     = bgRayleneRoomNight;
+const bgCloudRoomDeepNight = bgRayleneRoomDeepNight;
+
+// ── Night Room Backgrounds — REAL ASSETS NEEDED ───────────────────────────
+// Replace these fallbacks when art ships:
+//   bg-night-room.png  · bg-night-room-deep.png  · bg-night-room-rain.png
+// Night is NOT a bedroom. It's a midnight refuge: city skyline, giant window,
+// deep purple, huge moon, 2AM watching energy. Night always loads late-night scenes.
+const bgNightRoomDay       = bgRayleneRoomDeepNight;
+const bgNightRoomEvening   = bgRayleneRoomDeepNight;
+const bgNightRoomRain      = bgRayleneRoomRain;
+const bgNightRoomNight     = bgRayleneRoomDeepNight;
+const bgNightRoomDeepNight = bgRayleneRoomDeepNight;
+
+// ── Night Avatar — REAL ASSETS NEEDED ─────────────────────────────────────
+// Replace when night-*.png ships: night-neutral · night-window · night-comfort · night-listening
+// Night sits by the window — raylene-window-rainy is the closest semantic match.
+const nightAvatarNeutral  = rayleneWindowRainy;
+const nightAvatarHappy    = rayleneNightWindow;
+const nightAvatarThinking = rayleneThinking;
+const nightAvatarWriting  = rayleneWriting;
+const nightAvatarWindow   = rayleneWindowRainy;
+const nightAvatarFullbody = rayleneNeutral;
+
 // ── Parent Room Backgrounds ────────────────────────────────────────────────
 const bgMomRoomDay       = require("../assets/images/bg-mom-room-day.png");
 const bgMomRoomEvening   = require("../assets/images/bg-mom-room-evening.png");
@@ -92,6 +124,14 @@ const cloudHeadphones   = require('../assets/images/cloud-headphones.png');
 const cloudHeadphonesV2 = require('../assets/images/cloud-headphones-v2.png');
 const cloudSleepy       = require('../assets/images/cloud-sleepy.png');
 const cloudStormy       = require('../assets/images/cloud-stormy.png');
+
+// ── Cloud Avatar (cloud mascot IS Cloud's presence — declared after cloud assets) ─────────
+const cloudAvatarNeutral  = cloud;
+const cloudAvatarHappy    = cloudHappy;
+const cloudAvatarThinking = cloudHeadphones;
+const cloudAvatarWriting  = cloudHeadphonesV2;
+const cloudAvatarWindow   = cloudSleepy;
+const cloudAvatarFullbody = cloudHappy;
 
 // ── UI / Splash ────────────────────────────────────────────────────────────
 // The native splash is color-only in app.json. The branded splash experience is
@@ -134,6 +174,36 @@ export const IMAGES = {
   rylaneVoiceDay,
   rylaneVoiceNight,
   rylaneWindowDay,
+
+  // Cloud Room Backgrounds (fallbacks until real art ships)
+  bgCloudRoomDay,
+  bgCloudRoomEvening,
+  bgCloudRoomRain,
+  bgCloudRoomNight,
+  bgCloudRoomDeepNight,
+
+  // Night Room Backgrounds (fallbacks until real art ships)
+  bgNightRoomDay,
+  bgNightRoomEvening,
+  bgNightRoomRain,
+  bgNightRoomNight,
+  bgNightRoomDeepNight,
+
+  // Cloud Avatars
+  cloudAvatarNeutral,
+  cloudAvatarHappy,
+  cloudAvatarThinking,
+  cloudAvatarWriting,
+  cloudAvatarWindow,
+  cloudAvatarFullbody,
+
+  // Night Avatars (fallbacks until real art ships)
+  nightAvatarNeutral,
+  nightAvatarHappy,
+  nightAvatarThinking,
+  nightAvatarWriting,
+  nightAvatarWindow,
+  nightAvatarFullbody,
 
   // Rooms
   bgRayleneRoomDay,
@@ -180,22 +250,40 @@ export const IMAGES = {
   sekretSplash,
 } as const;
 
+export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';
+
 export const AVATARS: Record<string, Record<string, any>> = {
   raylene: {
-    neutral: IMAGES.rayleneNeutral,
-    happy: IMAGES.rayleneHappy,
+    neutral:  IMAGES.rayleneNeutral,
+    happy:    IMAGES.rayleneHappy,
     thinking: IMAGES.rayleneThinking,
-    writing: IMAGES.rayleneWriting,
-    window: IMAGES.rayleneWindow,
+    writing:  IMAGES.rayleneWriting,
+    window:   IMAGES.rayleneWindow,
     fullbody: IMAGES.rayleneFullbody,
   },
   rylane: {
-    neutral: IMAGES.rylaneNeutral,
-    happy: IMAGES.rylaneHappy,
+    neutral:  IMAGES.rylaneNeutral,
+    happy:    IMAGES.rylaneHappy,
     thinking: IMAGES.rylaneThinking,
-    writing: IMAGES.rylaneWriting,
-    window: IMAGES.rylaneWindow,
+    writing:  IMAGES.rylaneWriting,
+    window:   IMAGES.rylaneWindow,
     fullbody: IMAGES.rylaneFullbody,
+  },
+  cloud: {
+    neutral:  IMAGES.cloudAvatarNeutral,
+    happy:    IMAGES.cloudAvatarHappy,
+    thinking: IMAGES.cloudAvatarThinking,
+    writing:  IMAGES.cloudAvatarWriting,
+    window:   IMAGES.cloudAvatarWindow,
+    fullbody: IMAGES.cloudAvatarFullbody,
+  },
+  night: {
+    neutral:  IMAGES.nightAvatarNeutral,
+    happy:    IMAGES.nightAvatarHappy,
+    thinking: IMAGES.nightAvatarThinking,
+    writing:  IMAGES.nightAvatarWriting,
+    window:   IMAGES.nightAvatarWindow,
+    fullbody: IMAGES.nightAvatarFullbody,
   },
 };
 
@@ -214,23 +302,31 @@ export function getRoomPhase(
   return "deepNight";
 }
 
+const ROOM_PREFIX: Record<Character, string> = {
+  raylene: "bgRayleneRoom",
+  rylane:  "bgRylaneRoom",
+  cloud:   "bgCloudRoom",
+  night:   "bgNightRoom",
+};
+
 export function getRoomScene(
-  character: "raylene" | "rylane",
+  character: Character,
   phase: RoomPhase,
-) {
-  const prefix = character === "rylane" ? "bgRylaneRoom" : "bgRayleneRoom";
+): ImageSourcePropType {
+  const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
   const suffix =
     phase === "deepNight"
       ? "DeepNight"
       : phase.charAt(0).toUpperCase() + phase.slice(1);
-  return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
+  const key = `${prefix}${suffix}` as keyof typeof IMAGES;
+  return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
 }
 
 export function getRoomBg(
-  character: "raylene" | "rylane",
+  character: Character,
   time: TimeOfDay,
   weatherMode?: string,
-) {
+): ImageSourcePropType {
   const phase =
     weatherMode === "rain"
       ? "rain"
@@ -310,7 +406,7 @@ export const THEME_PACKS: Record<VibeKey, VibePack> = {
     card: "#555577",
     accent: "#c8c9f5",
     soft: "#f0efff",
-    room: bgRayleneRoomDay,
+    room: bgCloudRoomDay,
     overlay: ["rgba(229,231,255,0.16)", "rgba(143,148,194,0.22)", "rgba(42,37,70,0.52)"],
   },
   night: {
@@ -322,7 +418,7 @@ export const THEME_PACKS: Record<VibeKey, VibePack> = {
     card: "#2d2051",
     accent: "#bbb7ef",
     soft: "#e7e5ff",
-    room: bgRayleneRoomDeepNight,
+    room: bgNightRoomDeepNight,
     overlay: ["rgba(20,12,53,0.08)", "rgba(47,31,91,0.28)", "rgba(7,4,24,0.7)"],
   },
   rain: {
