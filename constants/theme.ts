@@ -50,6 +50,8 @@ const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
 const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
+const bgRayleneRoomMidday    = require("../assets/images/bg-raylene-room-midday.png");
+const bgRayleneRoomAfternoon = require("../assets/images/bg-raylene-room-afternoon.png");
 const bgRayleneRoomEvening   = require("../assets/images/bg-raylene-room-evening.png");
 const bgRayleneRoomRain      = require("../assets/images/bg-raylene-room-rain.png");
 const bgRayleneRoomNight     = require("../assets/images/bg-raylene-room-night.png");
@@ -57,6 +59,8 @@ const bgRayleneRoomDeepNight = require("../assets/images/bg-raylene-room-deep-ni
 
 const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
 const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png");
+const bgRylaneRoomMidday    = require("../assets/images/bg-rylane-room-midday.png");
+const bgRylaneRoomAfternoon = require("../assets/images/bg-rylane-room-afternoon.png");
 const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
 const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
@@ -213,11 +217,15 @@ export const IMAGES = {
 
   // Rooms
   bgRayleneRoomDay,
+  bgRayleneRoomMidday,
+  bgRayleneRoomAfternoon,
   bgRayleneRoomEvening,
   bgRayleneRoomRain,
   bgRayleneRoomNight,
   bgRayleneRoomDeepNight,
   bgRylaneRoomDay,
+  bgRylaneRoomMidday,
+  bgRylaneRoomAfternoon,
   bgRylaneRoomEvening,
   bgRylaneRoomRain,
   bgRylaneRoomNight,
@@ -361,8 +369,19 @@ export function getRoomScene(
   character: Character,
   phase: RoomPhase | string,
 ): ImageSourcePropType {
-  const scenes = ROOM_SCENES[character] ?? ROOM_SCENES.raylene;
-  return scenes[normalizeRoomPhase(phase)];
+  const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
+  // deepNight → "DeepNight", midday → "Midday", afternoon → "Afternoon", etc.
+  const suffix = phase === "deepNight" ? "DeepNight"
+               : phase === "midday"    ? "Midday"
+               : phase === "afternoon" ? "Afternoon"
+               : phase.charAt(0).toUpperCase() + phase.slice(1);
+  const key = `${prefix}${suffix}` as keyof typeof IMAGES;
+  // If an asset is truly missing for this phase, fall back to the nearest phase.
+  if (!IMAGES[key]) {
+    if (phase === "midday")    return getRoomScene(character, "day");
+    if (phase === "afternoon") return getRoomScene(character, "evening");
+  }
+  return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
 }
 
 export function getRoomBg(
@@ -489,6 +508,15 @@ export const normalizeVibeKey = (key?: string): VibeKey => {
   if (key === "galaxy") return "rylane";
   if (key === "neon") return "night";
   return "raylene";
+};
+
+// Normalize a sekret selector key (e.g. 'soft' from legacy code) to a Character.
+// 'soft' is the internal key for Raylene; all others map 1-to-1.
+export const normalizeCharacterKey = (key?: string): Character => {
+  if (key === "rylane") return "rylane";
+  if (key === "cloud")  return "cloud";
+  if (key === "night")  return "night";
+  return "raylene"; // 'soft', 'raylene', or any unknown → raylene
 };
 
 export const SEKRET_PROFILES: Record<

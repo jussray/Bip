@@ -56,16 +56,10 @@ import {
 import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
-// One clean place to see every image Se'kret Bip uses.
-//
-// The actual `require()` paths + safe fallbacks live in constants/theme.ts.
-// This map is re-exported here so the top of the root file documents — at a
-// glance — what art is wired into the app and to which character / screen.
-//
-// Do NOT add new require() calls here. Edit constants/theme.ts instead so
-// fallbacks stay centralized and no screen can drift out of sync.
-import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
-export { IMAGES, AVATARS, getRoomBg };
+// Re-exported so any screen can import IMAGES/AVATARS/getRoomBg from here
+// rather than reaching into constants/theme directly.
+// Do NOT add new require() calls here — edit constants/theme.ts instead.
+export { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
@@ -608,6 +602,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       onSelectAvatar={avatarKey => setSelectedSekret(avatarKey)}
       weatherMode={theme === 'rain' ? 'rain' : undefined}
+      setSelectedSekret={setSelectedSekret}
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}
