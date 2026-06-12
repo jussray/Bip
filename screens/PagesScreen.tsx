@@ -1,1085 +1,384 @@
-// screens/PagesScreen.tsx
-// Se'kret Bip — Pages v2 — Tabbed Expression Hub
-//
-// Five tabs on the left rail: Me · Oracle · Raylene · Rylane · Cloud
-// Me  — quiet writing, no avatar, no AI pressure, optional prompt
-// Oracle — what should Se'kret understand better? feeds companion memory
-// Raylene / Rylane / Cloud — character-voiced journal with matching assets
-//
-// Saved entries share journalEntries store via optional `source` field.
-// Old entries (no source) display in Me tab. Nothing breaks.
-
 import React, { useMemo, useState } from 'react';
 import {
-  Animated, Alert, Easing, Image, Platform, ScrollView, StyleSheet,
-  Text, TextInput, TouchableOpacity, View,
+  Image,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { IMAGES } from '../constants/theme';
-import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
-import { buildOracleInsight, type OracleInsight } from '../services/oracle';
+import * as ImagePicker from 'expo-image-picker';
+import type { JournalEntry } from '../types';
 
-// ── Types ──────────────────────────────────────────────────────────────────
+type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
+type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
+export type PagesTab = TeenTab | ParentTab;
 
-type TabId = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
+interface TabDefinition {
+  id: PagesTab;
+  label: string;
+  icon: string;
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  prompts?: string[];
+  placeholder?: string;
+  accent: string;
+}
+
+export interface SavePageInput {
+  text: string;
+  source: PagesTab;
+  moodTag?: string;
+  entryMode: 'typed' | 'voice';
+  locked: boolean;
+  imageUri?: string;
+}
+
+interface SharedPagesProps {
+  side: 'teen' | 'parent';
+  entries: JournalEntry[];
+  draft: string;
+  setDraft: (text: string) => void;
+  onSave: (entry: SavePageInput) => void;
+  setScreen: (screen: string) => void;
+  BottomNav: React.ReactNode;
+  mood?: string;
+}
 
 export interface PagesScreenProps {
-  journalText:       string;
-  setJournalText:    (text: string) => void;
-  journalEntries:    JournalEntry[];
-  saveJournalEntry:  (override?: { text: string; source: string }) => void;
-  mood:              string;
-  t:                 Record<string, any>;
-  setScreen:         (screen: string) => void;
-  BottomNav:         React.ReactNode;
-  moodHistory?:      MoodEntry[];
-  voiceNotes?:       VoiceNote[];
-  streakDays?:       number;
-  selectedSekret?:   string;
+  journalText: string;
+  setJournalText: (text: string) => void;
+  journalEntries: JournalEntry[];
+  saveJournalEntry: (override?: SavePageInput) => void;
+  mood: string;
+  t: Record<string, unknown>;
+  setScreen: (screen: string) => void;
+  BottomNav: React.ReactNode;
+  moodHistory?: unknown[];
+  voiceNotes?: unknown[];
+  streakDays?: number;
+  selectedSekret?: string;
 }
 
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const TABS: { id: TabId; emoji: string; short: string }[] = [
-  { id: 'me',      emoji: '📖', short: 'Me'  },
-  { id: 'oracle',  emoji: '🔮', short: 'Ora' },
-  { id: 'raylene', emoji: '💜', short: 'Ray' },
-  { id: 'rylane',  emoji: '⚡', short: 'Ryl' },
-  { id: 'cloud',   emoji: '☁️', short: 'Cld' },
+const TEEN_TABS: TabDefinition[] = [
+  { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#c4b5fd' },
+  { id: 'oracle', label: 'Oracle', icon: '◇', title: 'Oracle', accent: '#8b7bb8' },
+  {
+    id: 'raylene', label: 'Raylene', icon: '✦', eyebrow: 'Raylene pulled up',
+    title: 'You been a little too quiet. What happened?',
+    subtitle: 'Warm, curious, and already paying attention.', accent: '#e9a8d2',
+    prompts: [
+      'Okay, what happened for real?',
+      'What have you been acting unbothered about?',
+      'Who or what has been taking up too much space in your head?',
+      'What did you need somebody to notice today?',
+    ],
+    placeholder: 'Tell it how it happened…',
+  },
+  {
+    id: 'rylane', label: 'Rylane', icon: '—', eyebrow: 'Rylane keeps it real',
+    title: 'What’s real right now?',
+    subtitle: 'No cushion. No lecture.', accent: '#79aaf2',
+    prompts: [
+      'What are you avoiding?',
+      'What did you almost say?',
+      'Who showed up? Who didn’t?',
+      'Say the part you keep editing.',
+    ],
+    placeholder: 'Say it straight…',
+  },
+  {
+    id: 'cloud', label: 'Cloud', icon: '☁', eyebrow: 'Cloud can wait',
+    title: 'You don’t have to know the words yet.',
+    subtitle: 'Start anywhere. Or just sit here a minute.', accent: '#9bd8e5',
+    prompts: [
+      'A color, a feeling, one unfinished thought…',
+      'What feels closest to the surface?',
+      'If today had weather, what would it be?',
+      'One word is enough.',
+    ],
+    placeholder: 'Let it take shape slowly…',
+  },
 ];
 
-const MOOD_GLOW: Record<string, string> = {
-  Happy:   '#fbbf24',
-  Neutral: '#c4b5fd',
-  Sad:     '#7dd3fc',
-  Angry:   '#f472b6',
-  Tired:   '#6d28d9',
-};
-
-const MOOD_TAGS = [
-  'school', 'family', 'friends', 'pressure',
-  'grief', 'lonely', 'trying', 'peace',
+const PARENT_TABS: TabDefinition[] = [
+  { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#d8c9b8' },
+  { id: 'oracle', label: 'Oracle', icon: '◇', title: 'Oracle', accent: '#8d877f' },
+  {
+    id: 'parentSekret', label: 'Parent Se’kret', icon: '✦', eyebrow: 'Parent Se’kret',
+    title: 'Let’s get honest before this turns into a whole thing.',
+    subtitle: 'Calm, street-smart co-parent energy. No sugarcoating.', accent: '#d7a66d',
+    prompts: [
+      'What keeps setting you off in this situation?',
+      'What are you trying to protect — and what might your teen be hearing instead?',
+      'What part is yours to own before you ask them to own theirs?',
+      'Are you trying to connect, correct, or control right now?',
+    ],
+    placeholder: 'Work through your side of it…',
+  },
+  {
+    id: 'bridge', label: 'Bridge', icon: '⌁', eyebrow: 'Conversation prep',
+    title: 'Say it here before you say it to them.',
+    subtitle: 'This is prep, not monitoring. Their private pages never appear here.', accent: '#83b6a1',
+    prompts: [
+      'What do you need them to understand when this conversation is over?',
+      'What can you say without blame, threat, or a lecture?',
+      'What question could you ask — then actually listen to the answer?',
+      'What would repair sound like in your own words?',
+    ],
+    placeholder: 'Draft the conversation…',
+  },
 ];
 
-const CHAR_COLOR: Record<string, string> = {
-  raylene: '#c084fc',
-  rylane:  '#60a5fa',
-  cloud:   '#a5f3fc',
-};
+const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
+const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
-// ── Time helpers ───────────────────────────────────────────────────────────
-
-function getTimeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 11) return 'morning';
-  if (h >= 11 && h < 17) return 'day';
-  if (h >= 17 && h < 21) return 'evening';
-  return 'night';
+function normalizeSource(entry: JournalEntry): PagesTab {
+  const source = entry.activeTab || entry.source;
+  if (source === 'parentSekret' || source === 'bridge' || source === 'oracle' || source === 'raylene' || source === 'rylane' || source === 'cloud') {
+    return source;
+  }
+  return 'me';
 }
 
-// ── Prompts ────────────────────────────────────────────────────────────────
-
-const ME_PROMPTS: Record<string, string[]> = {
-  morning: [
-    "What's one thing you want to feel by the end of today?",
-    "What would make today a good day for you?",
-    "What are you carrying into the morning that you didn't put down last night?",
-  ],
-  day: [
-    "What's been living in the back of your head all day?",
-    "How are you actually doing right now — be honest.",
-    "What's something small that went okay today?",
-  ],
-  evening: [
-    "What's one thing from today you're still holding onto?",
-    "What did you have to pretend was fine today?",
-    "What do you wish you could say to someone right now?",
-  ],
-  night: [
-    "What's keeping you up that you haven't said out loud yet?",
-    "What do you need right now that nobody's offered?",
-    "What would you say if you knew nobody was judging you?",
-  ],
-};
-
-const RAYLENE_PROMPTS = [
-  "Okay spill — what actually happened today?",
-  "Who got on your nerves? Don't protect them.",
-  "What are you pretending you're fine about?",
-  "Something went wrong and nobody asked about it, huh.",
-  "What do you wish someone understood about you right now?",
-];
-
-const RYLANE_PROMPTS = [
-  "What's real right now.",
-  "What did you almost say but didn't.",
-  "Who showed up for you. Who didn't.",
-  "What are you not dealing with yet.",
-  "Say it straight. No softening needed.",
-];
-
-const CLOUD_PROMPTS = [
-  "What's still floating from today.",
-  "Something quiet that you noticed.",
-  "What you carried that no one saw.",
-  "What felt different today, even just a little.",
-];
-
-// Oracle asks about the person — not the problem.
-// These questions make someone accidentally reveal who they are.
-// They should feel like being noticed, not studied.
-const ORACLE_QUESTIONS = [
-  "What do you care about that you'd never say out loud?",
-  "What did today reveal about you — even a tiny bit?",
-  "What's something you want that you haven't told anyone you want?",
-  "Who were you trying to be today? Were you that person?",
-  "What surprised you about yourself lately?",
-  "What do you do for other people that you never do for yourself?",
-  "What are you most yourself doing?",
-  "If someone really knew you, what's the first thing they'd understand?",
-  "What do you protect about yourself that nobody knows you protect?",
-  "What's something you've been pretending isn't a big deal to you?",
-  "What do you notice about yourself that you'd rather not notice?",
-  "What's the version of yourself you're trying to become — even slowly?",
-];
-
-// ── Small helpers ──────────────────────────────────────────────────────────
-
-function wordCount(text: string): number {
-  return text.trim() ? text.trim().split(/\s+/).length : 0;
+function formatEntryMeta(entry: JournalEntry) {
+  const mode = entry.entryMode === 'voice' ? 'voice' : 'typed';
+  return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-// ── Decorative sub-components ──────────────────────────────────────────────
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood }: SharedPagesProps) {
+  const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
+  const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
+  const [activeTab, setActiveTab] = useState<PagesTab>('me');
+  const [tabDrafts, setTabDrafts] = useState<Partial<Record<PagesTab, string>>>({});
+  const [selectedTag, setSelectedTag] = useState('');
+  const [locked, setLocked] = useState(false);
+  const [imageUri, setImageUri] = useState<string>();
+  const [promptVisible, setPromptVisible] = useState(true);
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [noPressure, setNoPressure] = useState(false);
 
-function LinedPaper() {
-  return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <View key={i} style={[s.paperLine, { top: 28 + i * 26 }]} />
-      ))}
-    </View>
+  const tab = tabs.find(item => item.id === activeTab) || tabs[0];
+  const text = activeTab === 'me' ? draft : tabDrafts[activeTab] || '';
+  const tabEntries = useMemo(
+    () => entries.filter(entry => normalizeSource(entry) === activeTab),
+    [activeTab, entries],
   );
-}
+  const visiblePrompt = Boolean(tab.prompts?.length) && promptVisible && !noPressure;
 
-function TagRow({
-  selectedTag, setSelectedTag, t,
-}: {
-  selectedTag: string;
-  setSelectedTag: (v: string) => void;
-  t: Record<string, any>;
-}) {
-  return (
-    <View style={s.tagRow}>
-      {MOOD_TAGS.map(tag => {
-        const active = selectedTag === tag;
-        return (
-          <TouchableOpacity
-            key={tag}
-            onPress={() => setSelectedTag(active ? '' : tag)}
-            style={[
-              s.tagChip,
-              {
-                backgroundColor: active ? '#7c3aed' : 'rgba(13,9,20,0.82)',
-                borderColor: active ? '#a855f7' : t.accent,
-              },
-            ]}
-          >
-            <Text style={[s.tagChipText, { color: active ? '#fff' : t.soft }]}>{tag}</Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-  );
-}
+  const changeTab = (next: PagesTab) => {
+    setActiveTab(next);
+    setSelectedTag('');
+    setLocked(false);
+    setImageUri(undefined);
+    setPromptVisible(true);
+    setPromptIndex(0);
+  };
 
-function EntryCard({ entry, t }: { entry: JournalEntry; t: Record<string, any> }) {
-  return (
-    <View style={[s.entryCard, { borderColor: t.accent }]}>
-      <Text style={s.entryDate}>
-        {entry.date}{entry.time ? ` · ${entry.time}` : ''}{entry.mood ? ` · ${entry.mood}` : ''}
-      </Text>
-      <Text style={s.entryText}>"{entry.text}"</Text>
-    </View>
-  );
-}
+  const updateText = (value: string) => {
+    if (activeTab === 'me') setDraft(value);
+    else setTabDrafts(current => ({ ...current, [activeTab]: value }));
+  };
 
-// ── Me Panel ───────────────────────────────────────────────────────────────
+  const chooseImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled) setImageUri(result.assets[0]?.uri);
+  };
 
-interface MePanelProps {
-  journalText:    string;
-  setJournalText: (v: string) => void;
-  timeOfDay:      string;
-  showPrompt:     boolean;
-  onTogglePrompt: () => void;
-  onNextPrompt:   () => void;
-  currentPrompt:  string;
-  selectedTag:    string;
-  setSelectedTag: (v: string) => void;
-  moodGlow:       string;
-  t:              Record<string, any>;
-  setScreen:      (s: string) => void;
-  onSave:         () => void;
-  entries:        JournalEntry[];
-}
-
-function MePanel({
-  journalText, setJournalText,
-  showPrompt, onTogglePrompt, onNextPrompt, currentPrompt,
-  selectedTag, setSelectedTag,
-  moodGlow, t, setScreen, onSave, entries,
-}: MePanelProps) {
-  const tagGlow = selectedTag ? '#a855f7' : moodGlow;
-  const wc = wordCount(journalText);
+  const save = () => {
+    if (!text.trim() && !imageUri) return;
+    onSave({
+      text: text.trim(), source: activeTab, moodTag: selectedTag || mood,
+      entryMode: 'typed', locked, imageUri,
+    });
+    updateText('');
+    setSelectedTag('');
+    setLocked(false);
+    setImageUri(undefined);
+  };
 
   return (
-    <>
-      <View style={s.panelHeader}>
-        <Text style={s.panelTitle}>my page.</Text>
-        <Text style={s.panelSub}>my rules.</Text>
-      </View>
-
-      {/* Optional starter prompt — hidden by default */}
-      <TouchableOpacity
-        style={[s.starterBtn, { borderColor: moodGlow + '55' }]}
-        onPress={onTogglePrompt}
-      >
-        <Text style={[s.starterBtnText, { color: moodGlow }]}>
-          {showPrompt ? 'hide prompt' : 'need a starter?'}
-        </Text>
-      </TouchableOpacity>
-
-      {showPrompt && (
-        <View style={[s.promptCard, { borderColor: moodGlow + '44' }]}>
-          <Text style={s.promptCardText}>{currentPrompt}</Text>
-          <TouchableOpacity
-            style={[s.cycleBtn, { borderColor: moodGlow + '55' }]}
-            onPress={onNextPrompt}
-          >
-            <Text style={[s.cycleBtnText, { color: moodGlow }]}>different prompt</Text>
-          </TouchableOpacity>
+    <View style={[styles.root, side === 'parent' && styles.parentRoot]}>
+      <View style={styles.header}>
+        <View>
+          <Text style={[styles.kicker, { color: tab.accent }]}>{side === 'teen' ? 'TEEN PAGES' : 'PARENT PAGES'}</Text>
+          <Text style={styles.headerTitle}>Pages</Text>
         </View>
-      )}
-
-      {/* Lined journal paper input */}
-      <View style={[s.paperWrap, { borderColor: tagGlow + '88', shadowColor: tagGlow }]}>
-        <LinedPaper />
-        <TextInput
-          style={s.paperInput}
-          placeholder="Say it exactly how it felt…"
-          placeholderTextColor="#4a3d6b"
-          multiline
-          value={journalText}
-          onChangeText={setJournalText}
-        />
+        <View style={styles.privatePill}><Text style={styles.privatePillText}>private by default</Text></View>
       </View>
 
-      <Text style={s.wordCount}>{wc > 0 ? `${wc} word${wc === 1 ? '' : 's'}` : ''}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+        {tabs.map(item => {
+          const active = item.id === activeTab;
+          return (
+            <TouchableOpacity key={item.id} onPress={() => changeTab(item.id)} style={[styles.tab, active && { borderColor: item.accent, backgroundColor: item.accent + '1f' }]}>
+              <Text style={[styles.tabIcon, active && { color: item.accent }]}>{item.icon}</Text>
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-      {/* Mood tags — optional */}
-      <TagRow selectedTag={selectedTag} setSelectedTag={setSelectedTag} t={t} />
-
-      <Text style={s.privateNote}>🔒 only you can see this.</Text>
-
-      <TouchableOpacity
-        style={[s.saveBtn, { backgroundColor: t.accent, shadowColor: moodGlow }]}
-        onPress={onSave}
-      >
-        <Text style={s.saveBtnText}>Drop Bip 💜</Text>
-      </TouchableOpacity>
-
-      {/* Media tools row */}
-      <View style={s.mediaRow}>
-        <TouchableOpacity
-          style={[s.mediaTool, { borderColor: t.accent }]}
-          onPress={() => setScreen('voiceBip')}
-        >
-          <Text style={s.mediaEmoji}>🎙️</Text>
-          <Text style={[s.mediaLabel, { color: t.soft }]}>Voice</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.mediaTool, { borderColor: t.accent }]}
-          onPress={() => Alert.alert('Video Bip', 'Coming soon. 📹')}
-        >
-          <Text style={s.mediaEmoji}>📹</Text>
-          <Text style={[s.mediaLabel, { color: t.soft }]}>Video</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.mediaTool, { borderColor: t.accent }]}
-          onPress={() => Alert.alert('Photo Scrap', 'Coming soon. 🖼️')}
-        >
-          <Text style={s.mediaEmoji}>🖼️</Text>
-          <Text style={[s.mediaLabel, { color: t.soft }]}>Photo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.mediaTool, { borderColor: t.accent }]}
-          onPress={() => {/* private toggle — future feature */}}
-        >
-          <Text style={s.mediaEmoji}>🔒</Text>
-          <Text style={[s.mediaLabel, { color: t.soft }]}>Lock</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Saved Me pages */}
-      {entries.length > 0 ? (
-        <>
-          <Text style={s.savedTitle}>Saved Pages</Text>
-          {entries.map(e => <EntryCard key={e.id} entry={e} t={t} />)}
-        </>
-      ) : (
-        <View style={[s.emptyCard, { borderColor: t.accent }]}>
-          <Text style={s.emptyText}>No pages yet. Your truth has a place here.</Text>
-        </View>
-      )}
-    </>
-  );
-}
-
-// ── Oracle Panel ───────────────────────────────────────────────────────────
-
-interface OraclePanelProps {
-  oracleText:     string;
-  setOracleText:  (v: string) => void;
-  oracleInsight:  OracleInsight | null;
-  oracleQIdx:     number;
-  onNextQuestion: () => void;
-  t:              Record<string, any>;
-  onSave:         () => void;
-  entries:        JournalEntry[];
-}
-
-function OraclePanel({
-  oracleText, setOracleText, oracleInsight,
-  oracleQIdx, onNextQuestion,
-  t, onSave, entries,
-}: OraclePanelProps) {
-  const wc = wordCount(oracleText);
-  const question = ORACLE_QUESTIONS[oracleQIdx % ORACLE_QUESTIONS.length];
-
-  return (
-    <>
-      <View style={s.panelHeader}>
-        <Text style={[s.panelTitle, { color: '#c4b5fd' }]}>Oracle</Text>
-        <Text style={s.panelSub}>watching. noticing. wondering.</Text>
-      </View>
-
-      <View style={[s.oracleFrame, { borderColor: 'rgba(196,181,253,0.25)' }]}>
-        {/* Rotating curious question — about the person, not the problem */}
-        <Text style={s.oracleQuestion}>{question}</Text>
-
-        <TouchableOpacity
-          style={[s.cycleBtn, { borderColor: '#c4b5fd44', marginBottom: 12 }]}
-          onPress={onNextQuestion}
-        >
-          <Text style={[s.cycleBtnText, { color: '#c4b5fd' }]}>different question</Text>
-        </TouchableOpacity>
-
-        <View style={[s.paperWrap, { borderColor: '#c4b5fd55', shadowColor: '#c4b5fd' }]}>
-          <LinedPaper />
-          <TextInput
-            style={s.paperInput}
-            placeholder="answer it — or don't. just let something out."
-            placeholderTextColor="#4a3d6b"
-            multiline
-            value={oracleText}
-            onChangeText={setOracleText}
-          />
-        </View>
-
-        <Text style={s.wordCount}>{wc > 0 ? `${wc} word${wc === 1 ? '' : 's'}` : ''}</Text>
-        <Text style={s.privateNote}>🔒 only Oracle holds this.</Text>
-
-        <TouchableOpacity
-          style={[s.saveBtn, { backgroundColor: '#2e1a5e', shadowColor: '#c4b5fd' }]}
-          onPress={onSave}
-        >
-          <Text style={s.saveBtnText}>Leave this with Oracle 🔮</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Pattern insight — only appears when history earns it */}
-      {oracleInsight && (
-        <View style={s.oracleInsightCard}>
-          <Text style={s.oracleInsightLabel}>something Oracle noticed</Text>
-          {oracleInsight.lines.map(line => (
-            <Text key={line} style={s.oracleInsightLine}>{line}</Text>
-          ))}
-        </View>
-      )}
-
-      {entries.length > 0 && (
-        <>
-          <Text style={s.savedTitle}>Left with Oracle</Text>
-          {entries.map(e => <EntryCard key={e.id} entry={e} t={t} />)}
-        </>
-      )}
-    </>
-  );
-}
-
-// ── Character Panel (Raylene · Rylane · Cloud) ─────────────────────────────
-
-interface CharacterPanelProps {
-  character:      string;
-  promptText:     string;
-  onNextPrompt:   () => void;
-  totalPrompts:   number;
-  text:           string;
-  setText:        (v: string) => void;
-  selectedTag:    string;
-  setSelectedTag: (v: string) => void;
-  moodGlow:       string;
-  t:              Record<string, any>;
-  onSave:         () => void;
-  entries:        JournalEntry[];
-  label:          string;
-  saveLabel:      string;
-  placeholder:    string;
-  avatar:         any;
-  sub:            string;
-}
-
-function CharacterPanel({
-  character, promptText, onNextPrompt, totalPrompts,
-  text, setText, selectedTag, setSelectedTag,
-  moodGlow, t, onSave, entries,
-  label, saveLabel, placeholder, avatar, sub,
-}: CharacterPanelProps) {
-  const wc = wordCount(text);
-  const accentColor = CHAR_COLOR[character] ?? moodGlow;
-  const tagGlow = selectedTag ? '#a855f7' : moodGlow;
-
-  return (
-    <>
-      {/* Character header — avatar + name */}
-      <View style={s.charHeader}>
-        <Image source={avatar} style={s.charAvatar} resizeMode="contain" />
-        <View style={s.charHeaderText}>
-          <Text style={[s.charName, { color: accentColor }]}>{label}</Text>
-          <Text style={s.charSub}>{sub}</Text>
-        </View>
-      </View>
-
-      {/* Prompt card */}
-      <View style={[s.charPromptCard, { borderColor: accentColor + '44' }]}>
-        <Text style={s.charPromptText}>{promptText}</Text>
-        {totalPrompts > 1 && (
-          <TouchableOpacity
-            style={[s.cycleBtn, { borderColor: accentColor + '55' }]}
-            onPress={onNextPrompt}
-          >
-            <Text style={[s.cycleBtnText, { color: accentColor }]}>different prompt</Text>
-          </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {activeTab !== 'me' && (
+          <View style={styles.intro}>
+            {tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null}
+            <Text style={[styles.title, activeTab === 'oracle' && styles.oracleTitle]}>{tab.title}</Text>
+            {tab.subtitle && activeTab !== 'oracle' ? <Text style={styles.subtitle}>{tab.subtitle}</Text> : null}
+          </View>
         )}
-      </View>
 
-      {/* Lined journal paper */}
-      <View style={[s.paperWrap, { borderColor: tagGlow + '88', shadowColor: tagGlow }]}>
-        <LinedPaper />
-        <TextInput
-          style={s.paperInput}
-          placeholder={placeholder}
-          placeholderTextColor="#4a3d6b"
-          multiline
-          value={text}
-          onChangeText={setText}
-        />
-      </View>
+        {visiblePrompt && tab.prompts ? (
+          <View style={[styles.promptCard, { borderColor: tab.accent + '66' }]}>
+            <Text style={styles.prompt}>{tab.prompts[promptIndex % tab.prompts.length]}</Text>
+            <View style={styles.promptActions}>
+              <TouchableOpacity onPress={() => setPromptIndex(index => index + 1)}><Text style={[styles.promptAction, { color: tab.accent }]}>another</Text></TouchableOpacity>
+              <TouchableOpacity onPress={() => setPromptVisible(false)}><Text style={styles.dismiss}>dismiss</Text></TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
 
-      <Text style={s.wordCount}>{wc > 0 ? `${wc} word${wc === 1 ? '' : 's'}` : ''}</Text>
-
-      {/* Optional mood tag */}
-      <TagRow selectedTag={selectedTag} setSelectedTag={setSelectedTag} t={t} />
-      <Text style={s.privateNote}>🔒 only you can see this.</Text>
-
-      <TouchableOpacity
-        style={[s.saveBtn, { backgroundColor: t.accent, shadowColor: accentColor }]}
-        onPress={onSave}
-      >
-        <Text style={s.saveBtnText}>{saveLabel}</Text>
-      </TouchableOpacity>
-
-      {entries.length > 0 ? (
-        <>
-          <Text style={s.savedTitle}>Saved {label} Pages</Text>
-          {entries.map(e => <EntryCard key={e.id} entry={e} t={t} />)}
-        </>
-      ) : (
-        <View style={[s.emptyCard, { borderColor: accentColor + '44' }]}>
-          <Text style={s.emptyText}>No {label.toLowerCase()} pages yet.</Text>
+        <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
+          <TextInput
+            autoFocus={activeTab === 'me'}
+            multiline
+            value={text}
+            onChangeText={updateText}
+            placeholder={activeTab === 'me' || activeTab === 'oracle' ? undefined : tab.placeholder}
+            placeholderTextColor="#736c82"
+            style={styles.input}
+            textAlignVertical="top"
+          />
+          {imageUri ? <Image source={{ uri: imageUri }} style={styles.attachment as any} /> : null}
         </View>
-      )}
-    </>
-  );
-}
 
-// ── PagesScreen (main export) ─────────────────────────────────────────────
+        <View style={styles.modeRow}>
+          <TouchableOpacity onPress={() => setNoPressure(value => !value)} style={[styles.modeChip, noPressure && styles.modeChipActive]}>
+            <Text style={styles.modeChipText}>{noPressure ? 'no-pressure mode on' : 'no-pressure mode'}</Text>
+          </TouchableOpacity>
+          {tab.prompts?.length && !promptVisible && !noPressure ? (
+            <TouchableOpacity onPress={() => setPromptVisible(true)}><Text style={[styles.showPrompt, { color: tab.accent }]}>show a prompt</Text></TouchableOpacity>
+          ) : null}
+        </View>
 
-export function PagesScreen({
-  journalText, setJournalText,
-  journalEntries, saveJournalEntry,
-  mood, t, setScreen, BottomNav,
-  moodHistory = [], voiceNotes = [], streakDays = 0,
-  selectedSekret = 'soft',
-}: PagesScreenProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('me');
-
-  // Per-tab draft text — Me tab uses journalText prop (persisted at root)
-  const [oracleText,   setOracleText]   = useState('');
-  const [rayleneText,  setRayleneText]  = useState('');
-  const [rylaneText,   setRylaneText]   = useState('');
-  const [cloudText,    setCloudText]    = useState('');
-
-  // Oracle question rotation
-  const [oracleQIdx,   setOracleQIdx]   = useState(0);
-
-  // Me tab prompt state
-  const [showPrompt,   setShowPrompt]   = useState(false);
-  const [mePromptIdx,  setMePromptIdx]  = useState(0);
-  const [meTag,        setMeTag]        = useState('');
-
-  // Character tab states
-  const [raylenePromptIdx, setRaylenePromptIdx] = useState(0);
-  const [rylanePromptIdx,  setRylanePromptIdx]  = useState(0);
-  const [cloudPromptIdx,   setCloudPromptIdx]   = useState(0);
-  const [rayleneTag, setRayleneTag] = useState('');
-  const [rylaneTag,  setRylaneTag]  = useState('');
-  const [cloudTag,   setCloudTag]   = useState('');
-
-  const timeOfDay = getTimeOfDay();
-  const moodGlow  = MOOD_GLOW[mood] ?? MOOD_GLOW.Neutral;
-
-  const oracleInsight = useMemo(
-    () => buildOracleInsight({ journalEntries, moodHistory, voiceNotes, streakDays }),
-    [journalEntries, moodHistory, voiceNotes, streakDays],
-  );
-
-  // Filter entries by source — old entries (no source) go to Me tab
-  const meEntries      = journalEntries.filter(e => !e.source || e.source === 'me');
-  const oracleEntries  = journalEntries.filter(e => e.source === 'oracle');
-  const rayleneEntries = journalEntries.filter(e => e.source === 'raylene');
-  const rylaneEntries  = journalEntries.filter(e => e.source === 'rylane');
-  const cloudEntries   = journalEntries.filter(e => e.source === 'cloud');
-
-  // Save handlers
-  const saveMe = () => {
-    if (!journalText.trim()) return;
-    saveJournalEntry(); // reads journalText + clears it in App
-  };
-
-  const saveOracle = () => {
-    if (!oracleText.trim()) return;
-    saveJournalEntry({ text: oracleText, source: 'oracle' });
-    setOracleText('');
-  };
-
-  const saveRaylene = () => {
-    if (!rayleneText.trim()) return;
-    saveJournalEntry({ text: rayleneText, source: 'raylene' });
-    setRayleneText('');
-  };
-
-  const saveRylane = () => {
-    if (!rylaneText.trim()) return;
-    saveJournalEntry({ text: rylaneText, source: 'rylane' });
-    setRylaneText('');
-  };
-
-  const saveCloud = () => {
-    if (!cloudText.trim()) return;
-    saveJournalEntry({ text: cloudText, source: 'cloud' });
-    setCloudText('');
-  };
-
-  const mePrompts = ME_PROMPTS[timeOfDay] ?? ME_PROMPTS.day;
-
-  return (
-    <View style={s.root}>
-      {/* Ambient glow blobs — decorative only */}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        <View style={[s.glowBlob, { top: 60, right: 16, backgroundColor: moodGlow + '08' }]} />
-        <View style={[s.glowBlob, { bottom: 160, left: 8, width: 70, height: 70, backgroundColor: '#a855f707' }]} />
-      </View>
-
-      <View style={s.layout}>
-        {/* ── Left tab bar ──────────────────────────────────────── */}
-        <View style={s.tabBar}>
-          {TABS.map(tab => {
-            const active = activeTab === tab.id;
-            return (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => setActiveTab(tab.id)}
-                style={[s.tabItem, active && s.tabItemActive]}
-                activeOpacity={0.7}
-              >
-                <Text style={s.tabEmoji}>{tab.emoji}</Text>
-                <Text style={[s.tabLabel, active && s.tabLabelActive]}>{tab.short}</Text>
+        {!noPressure ? (
+          <View style={styles.tags}>
+            {moodTags.map(tag => (
+              <TouchableOpacity key={tag} onPress={() => setSelectedTag(current => current === tag ? '' : tag)} style={[styles.tag, selectedTag === tag && { borderColor: tab.accent, backgroundColor: tab.accent + '24' }]}>
+                <Text style={styles.tagText}>{tag}</Text>
               </TouchableOpacity>
-            );
-          })}
+            ))}
+          </View>
+        ) : null}
+
+        <View style={styles.toolRow}>
+          <TouchableOpacity style={styles.tool} onPress={() => setScreen('voiceBip')}><Text style={styles.toolIcon}>◉</Text><Text style={styles.toolText}>Voice</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.tool} onPress={chooseImage}><Text style={styles.toolIcon}>▧</Text><Text style={styles.toolText}>Image</Text></TouchableOpacity>
+          <TouchableOpacity style={[styles.tool, locked && { borderColor: tab.accent, backgroundColor: tab.accent + '20' }]} onPress={() => setLocked(value => !value)}>
+            <Text style={styles.toolIcon}>{locked ? '▣' : '▢'}</Text><Text style={styles.toolText}>Lock</Text>
+          </TouchableOpacity>
+          <TouchableOpacity disabled={!text.trim() && !imageUri} onPress={save} style={[styles.save, { backgroundColor: tab.accent }, !text.trim() && !imageUri && styles.saveDisabled]}>
+            <Text style={styles.saveText}>Save page</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Content panel ─────────────────────────────────────── */}
-        <ScrollView
-          key={activeTab}
-          style={s.contentPanel}
-          contentContainerStyle={s.contentScroll}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {activeTab === 'me' && (
-            <MePanel
-              journalText={journalText}
-              setJournalText={setJournalText}
-              timeOfDay={timeOfDay}
-              showPrompt={showPrompt}
-              onTogglePrompt={() => setShowPrompt(p => !p)}
-              onNextPrompt={() => setMePromptIdx(i => i + 1)}
-              currentPrompt={mePrompts[mePromptIdx % mePrompts.length]}
-              selectedTag={meTag}
-              setSelectedTag={setMeTag}
-              moodGlow={moodGlow}
-              t={t}
-              setScreen={setScreen}
-              onSave={saveMe}
-              entries={meEntries}
-            />
-          )}
+        <Text style={styles.privacyLine}>
+          {side === 'teen'
+            ? 'Only you can see these pages. Nothing goes to Parent Pages unless you deliberately choose to share elsewhere.'
+            : 'For your reflection only. Teen Pages are separate and never shown here.'}
+        </Text>
 
-          {activeTab === 'oracle' && (
-            <OraclePanel
-              oracleText={oracleText}
-              setOracleText={setOracleText}
-              oracleInsight={oracleInsight}
-              oracleQIdx={oracleQIdx}
-              onNextQuestion={() => setOracleQIdx(i => i + 1)}
-              t={t}
-              onSave={saveOracle}
-              entries={oracleEntries}
-            />
-          )}
-
-          {activeTab === 'raylene' && (
-            <CharacterPanel
-              character="raylene"
-              promptText={RAYLENE_PROMPTS[raylenePromptIdx % RAYLENE_PROMPTS.length]}
-              onNextPrompt={() => setRaylenePromptIdx(i => i + 1)}
-              totalPrompts={RAYLENE_PROMPTS.length}
-              text={rayleneText}
-              setText={setRayleneText}
-              selectedTag={rayleneTag}
-              setSelectedTag={setRayleneTag}
-              moodGlow={moodGlow}
-              t={t}
-              onSave={saveRaylene}
-              entries={rayleneEntries}
-              label="Raylene"
-              saveLabel="Save Page 💜"
-              placeholder="Write with Raylene sitting with you…"
-              avatar={IMAGES.rayleneWriting}
-              sub="big sis energy"
-            />
-          )}
-
-          {activeTab === 'rylane' && (
-            <CharacterPanel
-              character="rylane"
-              promptText={RYLANE_PROMPTS[rylanePromptIdx % RYLANE_PROMPTS.length]}
-              onNextPrompt={() => setRylanePromptIdx(i => i + 1)}
-              totalPrompts={RYLANE_PROMPTS.length}
-              text={rylaneText}
-              setText={setRylaneText}
-              selectedTag={rylaneTag}
-              setSelectedTag={setRylaneTag}
-              moodGlow={moodGlow}
-              t={t}
-              onSave={saveRylane}
-              entries={rylaneEntries}
-              label="Rylane"
-              saveLabel="Save Page ⚡"
-              placeholder="Write it straight…"
-              avatar={IMAGES.rylaneWriting}
-              sub="porch-cousin honesty"
-            />
-          )}
-
-          {activeTab === 'cloud' && (
-            <CharacterPanel
-              character="cloud"
-              promptText={CLOUD_PROMPTS[cloudPromptIdx % CLOUD_PROMPTS.length]}
-              onNextPrompt={() => setCloudPromptIdx(i => i + 1)}
-              totalPrompts={CLOUD_PROMPTS.length}
-              text={cloudText}
-              setText={setCloudText}
-              selectedTag={cloudTag}
-              setSelectedTag={setCloudTag}
-              moodGlow={moodGlow}
-              t={t}
-              onSave={saveCloud}
-              entries={cloudEntries}
-              label="Cloud"
-              saveLabel="Save Page ☁️"
-              placeholder="Let it drift onto the page…"
-              avatar={IMAGES.cloud}
-              sub="quiet reflection"
-            />
-          )}
-        </ScrollView>
-      </View>
-
+        <View style={styles.savedHeader}>
+          <Text style={styles.savedTitle}>Saved · {tab.label}</Text>
+          <Text style={styles.savedCount}>{tabEntries.length}</Text>
+        </View>
+        {tabEntries.length ? tabEntries.map(entry => (
+          <View key={String(entry.id)} style={styles.entryCard}>
+            <View style={styles.entryTop}>
+              <Text style={styles.entryMeta}>{formatEntryMeta(entry)}</Text>
+              {entry.locked ? <Text style={styles.locked}>extra private</Text> : null}
+            </View>
+            {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
+            {entry.imageUri ? <Image source={{ uri: entry.imageUri }} style={styles.savedImage as any} /> : null}
+          </View>
+        )) : (
+          <View style={styles.empty}><Text style={styles.emptyText}>Nothing saved here yet.</Text></View>
+        )}
+      </ScrollView>
       {BottomNav}
     </View>
   );
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav }: PagesScreenProps) {
+  return (
+    <PagesWorkspace
+      side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
+      onSave={entry => saveJournalEntry(entry)} mood={mood} setScreen={setScreen} BottomNav={BottomNav}
+    />
+  );
+}
 
-const WEB = Platform.OS === 'web';
+export { PagesWorkspace };
 
-const s = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#0d0914',
-  },
-  glowBlob: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 90,
-  },
-
-  // ── Layout ────────────────────────────────────────────────────────────────
-  layout: {
-    flex: 1,
-    flexDirection: 'row',
-    ...(WEB ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}),
-  },
-
-  // ── Tab bar ───────────────────────────────────────────────────────────────
-  tabBar: {
-    width: 52,
-    backgroundColor: '#070512',
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(168,85,247,0.12)',
-  },
-  tabItem: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    width: 52,
-  },
-  tabItemActive: {
-    backgroundColor: 'rgba(168,85,247,0.12)',
-    borderRightWidth: 2,
-    borderRightColor: '#a855f7',
-  },
-  tabEmoji: {
-    fontSize: 17,
-    marginBottom: 3,
-  },
-  tabLabel: {
-    fontSize: 9,
-    color: '#4a3d6b',
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  tabLabelActive: {
-    color: '#c4b5fd',
-  },
-
-  // ── Content panel ──────────────────────────────────────────────────────────
-  contentPanel: {
-    flex: 1,
-  },
-  contentScroll: {
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 100,
-  },
-
-  // ── Panel header ──────────────────────────────────────────────────────────
-  panelHeader: {
-    marginBottom: 14,
-  },
-  panelTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#f5f0ff',
-    fontStyle: 'italic',
-  },
-  panelSub: {
-    fontSize: 11,
-    color: '#6b5b9a',
-    letterSpacing: 0.6,
-    marginTop: 2,
-  },
-
-  // ── Starter prompt ────────────────────────────────────────────────────────
-  starterBtn: {
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 10,
-  },
-  starterBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  promptCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    backgroundColor: 'rgba(20,12,35,0.9)',
-    marginBottom: 12,
-  },
-  promptCardText: {
-    color: '#f5f0ff',
-    fontSize: 14,
-    lineHeight: 22,
-    fontWeight: '500',
-  },
-  cycleBtn: {
-    marginTop: 10,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-  },
-  cycleBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  // ── Lined paper input ────────────────────────────────────────────────────
-  paperWrap: {
-    borderWidth: 1,
-    borderRadius: 16,
-    minHeight: 170,
-    overflow: 'hidden',
-    backgroundColor: '#0f0b1a',
-    shadowOpacity: 0.28,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 0 },
-    marginBottom: 6,
-  },
-  paperLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(168,85,247,0.07)',
-  },
-  paperInput: {
-    flex: 1,
-    minHeight: 170,
-    padding: 14,
-    textAlignVertical: 'top',
-    fontSize: 14,
-    lineHeight: 26,
-    color: '#f5f0ff',
-    backgroundColor: 'transparent',
-    zIndex: 1,
-  },
-
-  // ── Word count ─────────────────────────────────────────────────────────────
-  wordCount: {
-    fontSize: 10,
-    color: '#4a3d6b',
-    textAlign: 'right',
-    marginBottom: 8,
-    fontStyle: 'italic',
-  },
-
-  // ── Mood tags ──────────────────────────────────────────────────────────────
-  tagRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
-    marginBottom: 8,
-  },
-  tagChip: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
-  },
-  tagChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-
-  // ── Private note ──────────────────────────────────────────────────────────
-  privateNote: {
-    fontSize: 10,
-    color: '#4a3d6b',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-
-  // ── Save button ───────────────────────────────────────────────────────────
-  saveBtn: {
-    padding: 15,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 14,
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  saveBtnText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-
-  // ── Media tools row ───────────────────────────────────────────────────────
-  mediaRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 18,
-  },
-  mediaTool: {
-    flex: 1,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(13,9,20,0.82)',
-  },
-  mediaEmoji: {
-    fontSize: 18,
-    marginBottom: 3,
-  },
-  mediaLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-  },
-
-  // ── Saved entries ─────────────────────────────────────────────────────────
-  savedTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#7c6899',
-    marginBottom: 8,
-    marginTop: 4,
-    letterSpacing: 0.4,
-  },
-  entryCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    backgroundColor: 'rgba(13,9,20,0.88)',
-  },
-  entryDate: {
-    fontSize: 10,
-    color: '#6b5b9a',
-    marginBottom: 5,
-  },
-  entryText: {
-    fontSize: 13,
-    lineHeight: 20,
-    color: '#e9d5ff',
-    fontStyle: 'italic',
-  },
-  emptyCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    backgroundColor: 'rgba(13,9,20,0.75)',
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 12,
-    color: '#4a3d6b',
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
-
-  // ── Oracle panel ─────────────────────────────────────────────────────────
-  oracleFrame: {
-    borderWidth: 1,
-    borderRadius: 18,
-    padding: 16,
-    backgroundColor: 'rgba(14,10,26,0.92)',
-    marginBottom: 14,
-  },
-  oracleQuestion: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#c4b5fd',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  oracleInsightCard: {
-    borderWidth: 1,
-    borderColor: 'rgba(196,181,253,0.4)',
-    borderRadius: 16,
-    padding: 16,
-    backgroundColor: 'rgba(20,14,34,0.96)',
-    marginBottom: 14,
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    shadowColor: '#c4b5fd',
-    shadowOffset: { width: 0, height: 0 },
-  },
-  oracleInsightLabel: {
-    color: '#c4b5fd',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    marginBottom: 10,
-  },
-  oracleInsightLine: {
-    color: '#f5f0ff',
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 3,
-    fontWeight: '600',
-  },
-
-  // ── Character panel ───────────────────────────────────────────────────────
-  charHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
-  },
-  charAvatar: {
-    width: 52,
-    height: 72,
-    borderRadius: 8,
-  },
-  charHeaderText: {
-    flex: 1,
-  },
-  charName: {
-    fontSize: 20,
-    fontWeight: '900',
-    fontStyle: 'italic',
-  },
-  charSub: {
-    fontSize: 11,
-    color: '#6b5b9a',
-    marginTop: 2,
-    letterSpacing: 0.4,
-  },
-  charPromptCard: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    backgroundColor: 'rgba(14,9,28,0.9)',
-    marginBottom: 12,
-  },
-  charPromptText: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#f5f0ff',
-    fontWeight: '500',
-    fontStyle: 'italic',
-  },
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#100b18', paddingTop: Platform.OS === 'ios' ? 54 : 28 },
+  parentRoot: { backgroundColor: '#14110f' },
+  header: { paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  kicker: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },
+  headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800', marginTop: 2 },
+  privatePill: { borderWidth: 1, borderColor: '#ffffff22', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
+  privatePillText: { color: '#aaa2b5', fontSize: 10 },
+  tabs: { paddingHorizontal: 16, paddingVertical: 15, gap: 8 },
+  tab: { minWidth: 76, height: 58, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff18', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  tabIcon: { color: '#8c8498', fontSize: 15, marginBottom: 3 },
+  tabText: { color: '#8c8498', fontSize: 11, fontWeight: '700' },
+  tabTextActive: { color: '#fff' },
+  content: { paddingHorizontal: 18, paddingBottom: 24 },
+  intro: { minHeight: 76, justifyContent: 'flex-end', marginBottom: 14 },
+  eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 7 },
+  title: { color: '#fff', fontSize: 23, lineHeight: 29, fontWeight: '700' },
+  oracleTitle: { color: '#b0a8bb', fontSize: 18, fontWeight: '600' },
+  subtitle: { color: '#aaa2b5', fontSize: 13, lineHeight: 19, marginTop: 6 },
+  promptCard: { borderWidth: 1, backgroundColor: '#ffffff08', borderRadius: 16, padding: 14, marginBottom: 12 },
+  prompt: { color: '#f4eff7', fontSize: 15, lineHeight: 21 },
+  promptActions: { flexDirection: 'row', gap: 18, marginTop: 12 },
+  promptAction: { fontSize: 11, fontWeight: '800' },
+  dismiss: { color: '#827b8d', fontSize: 11 },
+  paper: { minHeight: 245, backgroundColor: '#f4efe7', borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
+  input: { minHeight: 245, color: '#27212c', fontSize: 17, lineHeight: 29, padding: 18 },
+  attachment: { height: 160, margin: 12, marginTop: 0, borderRadius: 12 },
+  modeRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modeChip: { borderWidth: 1, borderColor: '#ffffff1c', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
+  modeChipActive: { backgroundColor: '#ffffff12' },
+  modeChipText: { color: '#a79eaf', fontSize: 10 },
+  showPrompt: { fontSize: 11, fontWeight: '700' },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 13 },
+  tag: { borderWidth: 1, borderColor: '#ffffff20', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
+  tagText: { color: '#beb6c7', fontSize: 11 },
+  toolRow: { flexDirection: 'row', gap: 7, alignItems: 'stretch' },
+  tool: { width: 57, borderWidth: 1, borderColor: '#ffffff1e', borderRadius: 13, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
+  toolIcon: { color: '#d9d1df', fontSize: 15 },
+  toolText: { color: '#a9a1b2', fontSize: 9, marginTop: 3 },
+  save: { flex: 1, borderRadius: 13, alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+  saveDisabled: { opacity: 0.3 },
+  saveText: { color: '#171018', fontSize: 13, fontWeight: '900' },
+  privacyLine: { color: '#77707f', fontSize: 10, lineHeight: 15, marginTop: 13 },
+  savedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 10 },
+  savedTitle: { color: '#e9e2ed', fontSize: 15, fontWeight: '800' },
+  savedCount: { color: '#827a89', fontSize: 11 },
+  entryCard: { backgroundColor: '#ffffff08', borderWidth: 1, borderColor: '#ffffff12', borderRadius: 15, padding: 14, marginBottom: 9 },
+  entryTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  entryMeta: { color: '#81798b', fontSize: 9, flex: 1 },
+  locked: { color: '#d9b8e3', fontSize: 9, fontWeight: '700' },
+  entryText: { color: '#e9e2ed', fontSize: 14, lineHeight: 21, marginTop: 8 },
+  savedImage: { height: 150, borderRadius: 10, marginTop: 10 },
+  empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 15, padding: 22, alignItems: 'center' },
+  emptyText: { color: '#746d7c', fontSize: 12 },
 });
