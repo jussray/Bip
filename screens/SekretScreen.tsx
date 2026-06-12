@@ -295,7 +295,7 @@ export function SekretScreen({
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:           { flex: 1 },
-  scroll:         { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
+  scroll:         { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 16 },
   companion:      { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, marginBottom: 20, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },

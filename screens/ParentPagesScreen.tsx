@@ -11,6 +11,8 @@ interface ParentPagesScreenProps {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   mood?: string;
+  parentRoomStyle?: 'mom' | 'dad';
+  weatherMode?: string;
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }

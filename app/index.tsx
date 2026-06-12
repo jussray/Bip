@@ -156,9 +156,11 @@ export default function App() {
   const [oracleSessions, setOracleSessions] = useState<OracleSessionSummary[]>([]);
   const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
-  // ─── Circle (Teen) ─────────────────────────────────────────────────────
-  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
-  const [circlePostText, setCirclePostText] = useState('');
+  // ─── Circle ────────────────────────────────────────────────────────────
+  const [circlePosts, setCirclePosts]                   = useState<CirclePost[]>([]);
+  const [circlePostText, setCirclePostText]             = useState('');
+  const [parentCirclePosts, setParentCirclePosts]       = useState<CirclePost[]>([]);
+  const [parentCirclePostText, setParentCirclePostText] = useState('');
 
   // ─── Circle (Parent) — fully separated state ────────────────────────────
   const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
@@ -353,6 +355,7 @@ export default function App() {
     }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
+    journalText, journalEntries, parentPagesDraft, parentPagesEntries, moodHistory,
     journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
     oracleSessions, parentOracleSessions, moodHistory,
     circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
@@ -485,38 +488,25 @@ export default function App() {
     ));
   };
 
-  // ── Circle (Parent) — isolated from teen ─────────────────────────────────
-  const saveParentCirclePost = (extra?: Partial<ParentCirclePost>) => {
-    const textToSave = extra?.text ?? parentCirclePostText;
-    if (!textToSave.trim()) return;
-    const post: ParentCirclePost = {
-      id: Number(Date.now()),
-      text: textToSave,
+  const saveParentCirclePost = () => {
+    if (!parentCirclePostText.trim()) return;
+    const post: CirclePost = {
+      id: Number(Date.now()), text: parentCirclePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      circleTag: extra?.circleTag,
-      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
     };
     setParentCirclePosts(p => [post, ...p]);
-    syncParentCirclePost(post);
+    setParentCirclePostText('');
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
+    const reactionKey = type as keyof CirclePost['reactions'];
     setParentCirclePosts(posts => posts.map(p =>
       String(p.id) === String(id)
-        ? { ...p, reactions: { ...p.reactions, [type]: ((p.reactions as any)[type] || 0) + 1 } }
+        ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
         : p
     ));
-  };
-
-  const completeTeenOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
-    setOracleProfile(profile);
-    setOracleSessions(current => [session, ...current].slice(0, 50));
-  };
-
-  const completeParentOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
-    setParentOracleProfile(profile);
-    setParentOracleSessions(current => [session, ...current].slice(0, 50));
   };
 
   // ── Nav ───────────────────────────────────────────────────────────────────
@@ -564,6 +554,7 @@ export default function App() {
         updateRoomMemory={updateRoomMemory}
         vibe={vibeKey}
         companion={companion}
+        sekretMode={selectedSekret}
         BottomNav={nav}
       />
     );
@@ -628,6 +619,8 @@ export default function App() {
       mood={parentMood || mood}
       setScreen={setScreen}
       BottomNav={nav}
+      parentRoomStyle={parentRoomStyle}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
       oracleProfile={parentOracleProfile}
       onCompleteOracleSession={completeParentOracleSession}
     />
@@ -889,10 +882,11 @@ const styles = StyleSheet.create({
   bottomNav:     {
     flexDirection: 'row', justifyContent: 'space-around',
     paddingVertical: 14, backgroundColor: '#111827',
-    borderRadius: 20, marginTop: 28, marginBottom: 20,
+    borderRadius: 20, marginTop: 20, marginBottom: 16,
     flexWrap: 'wrap', gap: 8,
+    ...(Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {}),
   },
-  navItem:       { alignItems: 'center', minWidth: 48 },
+  navItem:       { alignItems: 'center', minWidth: 52 },
   navIcon:       { fontSize: 20, marginBottom: 3 },
   navText:       { color: '#94A3B8', fontSize: 11 },
   activeNavText: { color: '#fff', fontWeight: 'bold' },

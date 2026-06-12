@@ -455,6 +455,7 @@ interface RoomScreenProps {
   vibe: VibeKey;
   BottomNav: React.ReactNode;
   companion?: CompanionState;
+  sekretMode?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -469,6 +470,7 @@ export function RoomScreen({
   vibe,
   BottomNav,
   companion,
+  sekretMode,
 }: RoomScreenProps) {
 
   // ─── Derived ────────────────────────────────────────────────────────────
@@ -680,6 +682,9 @@ export function RoomScreen({
   // ─── Derived display ──────────────────────────────────────────────────────
 
   const getPresence = () => {
+    if (sekretMode === 'cloud') return 'Cloud is drifting through.';
+    if (sekretMode === 'night') return 'Night mode is on.';
+    if (isSekretVisible) return character === 'raylene' ? 'Raylene is nearby' : 'Rylane is posted up';
     if (isSekretVisible) {
       if (character === 'raylene') return 'Raylene is nearby';
       if (character === 'rylane')  return 'Rylane is posted up';
@@ -830,8 +835,17 @@ export function RoomScreen({
 
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
-        <View style={styles.timeBadge}>
-          <Text style={styles.timeBadgeText}>{timeBadge}</Text>
+        <View style={styles.topLeft}>
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeBadgeText}>{timeBadge}</Text>
+          </View>
+          {(sekretMode === 'cloud' || sekretMode === 'night') && (
+            <View style={[styles.modeBadge, { backgroundColor: sekretMode === 'cloud' ? 'rgba(155,216,229,0.18)' : 'rgba(99,66,155,0.22)', borderColor: sekretMode === 'cloud' ? '#9bd8e5' : '#8b7bb8' }]}>
+              <Text style={[styles.modeBadgeText, { color: sekretMode === 'cloud' ? '#9bd8e5' : '#c4b5fd' }]}>
+                {sekretMode === 'cloud' ? "☁️ Cloud mode" : "🌙 Night mode"}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.characterToggle}>
@@ -996,6 +1010,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  topLeft:               { flexDirection: 'column', gap: 6 },
   timeBadge:             {
     backgroundColor: 'rgba(13,0,20,0.68)',
     borderRadius: 12,
@@ -1003,6 +1018,14 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   timeBadgeText:         { color: '#c4b5fd', fontSize: 12, fontWeight: '600' },
+  modeBadge:             {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  modeBadgeText:         { fontSize: 11, fontWeight: '700' },
 
   characterToggle:       { flexDirection: 'row', gap: 8 },
   toggleBtn:             {

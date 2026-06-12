@@ -64,4 +64,10 @@ export interface CompanionActivityInput {
   screen?: string;
   isLateNight?: boolean;
   journalText?: string;
+  oracleSignals?: {
+    personalityNote?: string;
+    growthEdge?: string;
+    strategyLead?: string;
+    strategyPole?: 'A' | 'B';
+  };
 }

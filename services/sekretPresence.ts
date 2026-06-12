@@ -39,12 +39,27 @@ export function buildSekretPresence(
   summary: Partial<MemorySummary> | undefined,
   personality?: string,
   screen?: string,
+  oracleSignals?: { personalityNote?: string; growthEdge?: string },
 ): string {
   const voice = normalizeSekretPersonality(personality);
   const memoryLine = shouldNoticeMemory(summary, screen) && summary
     ? rememberedPresence(summary, voice)
     : null;
   if (memoryLine) return memoryLine;
+
+  if (!screen && oracleSignals?.growthEdge) {
+    if (voice === 'rylane') return `i see you ${oracleSignals.growthEdge}. that's not nothing.`;
+    if (voice === 'cloud') return "something's shifting. i can feel it.";
+    if (voice === 'night') return 'still in it. and still going. that matters.';
+    return `i see it — you're ${oracleSignals.growthEdge}.`;
+  }
+
+  if (!screen && oracleSignals?.personalityNote && (summary?.conversations || 0) >= 5) {
+    if (voice === 'rylane') return 'i know how you move. stay real with me.';
+    if (voice === 'cloud') return "i'm starting to understand you.";
+    if (voice === 'night') return 'i know how you carry things.';
+    return "i'm starting to really understand you.";
+  }
 
   if (voice === 'rylane') {
     if (screen === 'voiceBip') return 'drop a voice bip. say it straight.';

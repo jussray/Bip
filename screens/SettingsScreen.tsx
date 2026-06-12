@@ -344,7 +344,7 @@ export function SettingsScreen({
 
 const styles = StyleSheet.create({
   root:      { flex: 1, backgroundColor: '#060210' },
-  container: { flexGrow: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingHorizontal: 16, paddingBottom: 120 },
+  container: { flexGrow: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingHorizontal: 16, paddingBottom: 120, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   header:    { alignItems: 'center', marginBottom: 22 },
   title:     { fontSize: 30, fontWeight: '900', color: '#fff', letterSpacing: 0.5, marginBottom: 6 },
