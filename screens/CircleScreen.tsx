@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import type { CirclePost } from '../types';
 
 const CLOUD_HAPPY = IMAGES.cloudHappy;
 
@@ -26,27 +27,6 @@ type ScanResult = {
   level: SafetyLevel;
   reason?: string;
   suggestion?: string;
-};
-
-type CirclePost = {
-  id: string | number;
-  text: string;
-  date?: string;
-  time?: string;
-  bipType?: string;
-  mediaUri?: string;
-  mediaKind?: MediaType;
-  postMood?: string;
-  circleTag?: string;
-  reactions?: {
-    felt?: number;
-    comfort?: number;
-    proud?: number;
-    stay?: number;
-    sameHere?: number;
-  };
-  quietRepliesCount?: number;
-  anonymousName?: string;
 };
 
 type CircleScreenProps = {
@@ -98,7 +78,7 @@ const TEEN_REACTIONS = [
 
 const SEED_POSTS: CirclePost[] = [
   {
-    id: 'seed-1',
+    id: -1,
     text: "nobody asked if i was okay today. i was kind of not. but i smiled the whole time and now i'm tired in a different way.",
     bipType: 'text',
     circleTag: 'needed to say it',
@@ -107,7 +87,7 @@ const SEED_POSTS: CirclePost[] = [
     quietRepliesCount: 8,
   },
   {
-    id: 'seed-2',
+    id: -2,
     text: "finished it at 2am. cried a little. submitted anyway. that's the whole story.",
     bipType: 'growth',
     circleTag: 'small win',
@@ -116,7 +96,7 @@ const SEED_POSTS: CirclePost[] = [
     quietRepliesCount: 11,
   },
   {
-    id: 'seed-3',
+    id: -3,
     text: "anxiety was loud this morning. like really loud. i got up anyway. that's my win today and i'm not minimizing it.",
     bipType: 'text',
     circleTag: 'small win',
@@ -125,7 +105,7 @@ const SEED_POSTS: CirclePost[] = [
     quietRepliesCount: 9,
   },
   {
-    id: 'seed-4',
+    id: -4,
     text: "i apologized to someone i hurt and they didn't accept it. i'm trying to let that be okay.",
     bipType: 'text',
     circleTag: 'just processing',
@@ -134,7 +114,7 @@ const SEED_POSTS: CirclePost[] = [
     quietRepliesCount: 14,
   },
   {
-    id: 'seed-5',
+    id: -5,
     text: "i said no to something i didn't want to do and i didn't apologize for it. first time in a long time.",
     bipType: 'growth',
     circleTag: 'small win',
@@ -143,7 +123,7 @@ const SEED_POSTS: CirclePost[] = [
     quietRepliesCount: 6,
   },
   {
-    id: 'seed-6',
+    id: -6,
     text: "sometimes i'm scared that being honest about how i feel will make people leave. so i stay quiet. and then i'm still alone anyway.",
     bipType: 'text',
     circleTag: 'anybody else?',
@@ -177,7 +157,7 @@ const QUOTE_REPLIES_RYLANE = [
 
 const COMMUNITY_BIPS: CirclePost[] = [
   {
-    id: 'community-1',
+    id: -10,
     anonymousName: 'anonymous bip · 17',
     circleTag: 'needed to say it',
     text: "I keep telling everybody I'm just tired, but honestly I think I'm sad. I don't need advice. I just didn't want to hold it by myself tonight.",
@@ -185,7 +165,7 @@ const COMMUNITY_BIPS: CirclePost[] = [
     quietRepliesCount: 12,
   },
   {
-    id: 'community-2',
+    id: -11,
     anonymousName: 'anonymous bip · 15',
     circleTag: 'small win',
     text: "I finally told my friend that joke actually hurt me. My voice was shaking bad 😭 but I said it.",
@@ -193,7 +173,7 @@ const COMMUNITY_BIPS: CirclePost[] = [
     quietRepliesCount: 8,
   },
   {
-    id: 'community-3',
+    id: -12,
     anonymousName: 'anonymous bip · 16',
     circleTag: 'anybody else?',
     text: "Does anybody else get quiet when they're mad because they're scared they'll say too much?",

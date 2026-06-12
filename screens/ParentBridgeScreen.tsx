@@ -454,7 +454,7 @@ function ResponseSection({ id, label, icon, content, accent, soft, expanded, onT
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:   { flex: 1, backgroundColor: '#1e0f06' },
-  scroll: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
+  scroll: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   // Teen share signal banner
   pendingBanner: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 14, alignItems: 'center' },

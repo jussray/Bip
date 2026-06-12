@@ -74,8 +74,9 @@ export function OracleDiscoveryPanel({ side, profile: profileValue, accent, onCo
         <Text style={styles.completionTitle}>That’s enough for now.</Text>
         <Text style={styles.completionText}>
           {completion === 'saved'
-            ? 'Oracle saved an evolving understanding — not a label, and not a transcript.'
-            : 'Oracle did not force a conclusion. You can discover something else another time.'}
+            ? 'Se’kret saved an evolving understanding — not a label, and not a transcript.'
+            : 'Se’kret did not force a conclusion. You can discover something else another time.'}
+            : 'Se’kret didn’t force a conclusion. You can discover something else another time.'}
         </Text>
         <TouchableOpacity onPress={reset} style={[styles.again, { borderColor: accent }]}>
           <Text style={[styles.againText, { color: accent }]}>start another discovery</Text>
@@ -87,7 +88,7 @@ export function OracleDiscoveryPanel({ side, profile: profileValue, accent, onCo
   return (
     <View>
       <View style={styles.intro}>
-        <Text style={[styles.eyebrow, { color: accent }]}>ORACLE DISCOVERY</Text>
+        <Text style={[styles.eyebrow, { color: accent }]}>SE’KRET DISCOVERY</Text>
         <Text style={styles.question}>{currentQuestion.text}</Text>
         <Text style={styles.progress}>{turns.length + 1} of up to 5 · curious, not corrective</Text>
       </View>
@@ -123,8 +124,8 @@ export function OracleDiscoveryPanel({ side, profile: profileValue, accent, onCo
       </TouchableOpacity>
       <Text style={styles.privacy}>
         {side === 'teen'
-          ? 'Oracle remembers evolving meanings, not a transcript. Teen discovery stays out of Parent Pages.'
-          : 'Oracle is learning about you, not your teen. Parent discovery stays separate from Teen Pages.'}
+          ? 'Se’kret remembers evolving meanings, not a transcript. Teen discovery stays out of Parent Pages.'
+          : 'Se’kret is learning about you, not your teen. Parent discovery stays separate from Teen Pages.'}
       </Text>
     </View>
   );

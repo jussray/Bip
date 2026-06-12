@@ -10,7 +10,8 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import type { JournalEntry } from '../types';
+import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
+import { getParentRoomBg } from '../constants/theme';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 
@@ -48,6 +49,12 @@ interface SharedPagesProps {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   mood?: string;
+  selectedSekret?: string;
+  moodHistory?: MoodEntry[];
+  voiceNotes?: VoiceNote[];
+  streakDays?: number;
+  parentRoomStyle?: 'mom' | 'dad';
+  weatherMode?: string;
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
@@ -61,8 +68,8 @@ export interface PagesScreenProps {
   t: Record<string, unknown>;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
-  moodHistory?: unknown[];
-  voiceNotes?: unknown[];
+  moodHistory?: MoodEntry[];
+  voiceNotes?: VoiceNote[];
   streakDays?: number;
   selectedSekret?: string;
   oracleProfile?: OracleProfile;
@@ -71,7 +78,7 @@ export interface PagesScreenProps {
 
 const TEEN_TABS: TabDefinition[] = [
   { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#c4b5fd' },
-  { id: 'oracle', label: 'Oracle', icon: '◇', title: 'Oracle', accent: '#8b7bb8' },
+  { id: 'oracle', label: 'Se’kret', icon: '◇', title: 'Se’kret Discovery', accent: '#8b7bb8' },
   {
     id: 'raylene', label: 'Raylene', icon: '✦', eyebrow: 'Raylene pulled up',
     title: 'You been a little too quiet. What happened?',
@@ -112,7 +119,7 @@ const TEEN_TABS: TabDefinition[] = [
 
 const PARENT_TABS: TabDefinition[] = [
   { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#d8c9b8' },
-  { id: 'oracle', label: 'Oracle', icon: '◇', title: 'Oracle', accent: '#8d877f' },
+  { id: 'oracle', label: 'Se’kret', icon: '◇', title: 'Se’kret Discovery', accent: '#8d877f' },
   {
     id: 'parentSekret', label: 'Parent Se’kret', icon: '✦', eyebrow: 'Parent Se’kret',
     title: 'Let’s get honest before this turns into a whole thing.',
@@ -155,8 +162,12 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, oracleProfile, onCompleteOracleSession }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, oracleProfile, onCompleteOracleSession, selectedSekret, parentRoomStyle, weatherMode }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
+  const isRylane = selectedSekret === 'rylane';
+  const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
+  const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
+  const parentRoomImage = side === 'parent' ? getParentRoomBg(parentRoomStyle ?? 'mom', weatherMode) : undefined;
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
   const [activeTab, setActiveTab] = useState<PagesTab>('me');
   const [tabDrafts, setTabDrafts] = useState<Partial<Record<PagesTab, string>>>({});
@@ -173,7 +184,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
     () => entries.filter(entry => normalizeSource(entry) === activeTab),
     [activeTab, entries],
   );
-  const visiblePrompt = Boolean(tab.prompts?.length) && promptVisible && !noPressure;
+  const visiblePrompt = Boolean(tab.prompts?.length) && promptVisible && !noPressure && activeTab !== 'oracle';
 
   const changeTab = (next: PagesTab) => {
     setActiveTab(next);
@@ -209,8 +220,15 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
     setImageUri(undefined);
   };
 
+
   return (
-    <View style={[styles.root, side === 'parent' && styles.parentRoot]}>
+    <View style={[styles.root, { backgroundColor: charRootBg }]}>
+      {parentRoomImage ? (
+        <>
+          <Image source={parentRoomImage} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <View style={[StyleSheet.absoluteFillObject, styles.parentRoomOverlay]} />
+        </>
+      ) : null}
       <View style={styles.header}>
         <View>
           <Text style={[styles.kicker, { color: tab.accent }]}>{side === 'teen' ? 'TEEN PAGES' : 'PARENT PAGES'}</Text>
@@ -219,17 +237,19 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
         <View style={styles.privatePill}><Text style={styles.privatePillText}>private by default</Text></View>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
-        {tabs.map(item => {
-          const active = item.id === activeTab;
-          return (
-            <TouchableOpacity key={item.id} onPress={() => changeTab(item.id)} style={[styles.tab, active && { borderColor: item.accent, backgroundColor: item.accent + '1f' }]}>
-              <Text style={[styles.tabIcon, active && { color: item.accent }]}>{item.icon}</Text>
-              <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+      <View style={styles.tabsWrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabs}>
+          {tabs.map(item => {
+            const active = item.id === activeTab;
+            return (
+              <TouchableOpacity key={item.id} onPress={() => changeTab(item.id)} style={[styles.tab, active && { borderColor: item.accent, backgroundColor: item.accent + '20' }]}>
+                <Text style={[styles.tabIcon, active && { color: item.accent }]}>{item.icon}</Text>
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {activeTab === 'oracle' ? (
@@ -243,7 +263,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
             {tabEntries.length ? (
               <View>
                 <View style={styles.savedHeader}>
-                  <Text style={styles.savedTitle}>Earlier Oracle pages</Text>
+                  <Text style={styles.savedTitle}>Earlier Se’kret discoveries</Text>
                   <Text style={styles.savedCount}>{tabEntries.length}</Text>
                 </View>
                 {tabEntries.map(entry => (
@@ -276,49 +296,49 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
           </View>
         ) : null}
 
-        <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
-          <TextInput
-            autoFocus={activeTab === 'me'}
-            multiline
-            value={text}
-            onChangeText={updateText}
-            placeholder={activeTab === 'me' ? undefined : tab.placeholder}
-            placeholderTextColor="#736c82"
-            style={styles.input}
-            textAlignVertical="top"
-          />
-          {imageUri ? <Image source={{ uri: imageUri }} style={styles.attachment as any} /> : null}
-        </View>
+            <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
+              <TextInput
+                autoFocus={activeTab === 'me'}
+                multiline
+                value={text}
+                onChangeText={updateText}
+                placeholder={activeTab === 'me' ? undefined : tab.placeholder}
+                placeholderTextColor="#736c82"
+                style={styles.input}
+                textAlignVertical="top"
+              />
+              {imageUri ? <Image source={{ uri: imageUri }} style={styles.attachment as any} /> : null}
+            </View>
 
-        <View style={styles.modeRow}>
-          <TouchableOpacity onPress={() => setNoPressure(value => !value)} style={[styles.modeChip, noPressure && styles.modeChipActive]}>
-            <Text style={styles.modeChipText}>{noPressure ? 'no-pressure mode on' : 'no-pressure mode'}</Text>
-          </TouchableOpacity>
-          {tab.prompts?.length && !promptVisible && !noPressure ? (
-            <TouchableOpacity onPress={() => setPromptVisible(true)}><Text style={[styles.showPrompt, { color: tab.accent }]}>show a prompt</Text></TouchableOpacity>
-          ) : null}
-        </View>
-
-        {!noPressure ? (
-          <View style={styles.tags}>
-            {moodTags.map(tag => (
-              <TouchableOpacity key={tag} onPress={() => setSelectedTag(current => current === tag ? '' : tag)} style={[styles.tag, selectedTag === tag && { borderColor: tab.accent, backgroundColor: tab.accent + '24' }]}>
-                <Text style={styles.tagText}>{tag}</Text>
+            <View style={styles.modeRow}>
+              <TouchableOpacity onPress={() => setNoPressure(value => !value)} style={[styles.modeChip, noPressure && styles.modeChipActive]}>
+                <Text style={styles.modeChipText}>{noPressure ? 'no-pressure mode on' : 'no-pressure mode'}</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
+              {tab.prompts?.length && !promptVisible && !noPressure ? (
+                <TouchableOpacity onPress={() => setPromptVisible(true)}><Text style={[styles.showPrompt, { color: tab.accent }]}>show a prompt</Text></TouchableOpacity>
+              ) : null}
+            </View>
 
-        <View style={styles.toolRow}>
-          <TouchableOpacity style={styles.tool} onPress={() => setScreen('voiceBip')}><Text style={styles.toolIcon}>◉</Text><Text style={styles.toolText}>Voice</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.tool} onPress={chooseImage}><Text style={styles.toolIcon}>▧</Text><Text style={styles.toolText}>Image</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.tool, locked && { borderColor: tab.accent, backgroundColor: tab.accent + '20' }]} onPress={() => setLocked(value => !value)}>
-            <Text style={styles.toolIcon}>{locked ? '▣' : '▢'}</Text><Text style={styles.toolText}>Lock</Text>
-          </TouchableOpacity>
-          <TouchableOpacity disabled={!text.trim() && !imageUri} onPress={save} style={[styles.save, { backgroundColor: tab.accent }, !text.trim() && !imageUri && styles.saveDisabled]}>
-            <Text style={styles.saveText}>Save page</Text>
-          </TouchableOpacity>
-        </View>
+            {!noPressure ? (
+              <View style={styles.tags}>
+                {moodTags.map(tag => (
+                  <TouchableOpacity key={tag} onPress={() => setSelectedTag(current => current === tag ? '' : tag)} style={[styles.tag, selectedTag === tag && { borderColor: tab.accent, backgroundColor: tab.accent + '24' }]}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+
+            <View style={styles.toolRow}>
+              <TouchableOpacity style={styles.tool} onPress={() => setScreen('voiceBip')}><Text style={styles.toolIcon}>◉</Text><Text style={styles.toolText}>Voice</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.tool} onPress={chooseImage}><Text style={styles.toolIcon}>▧</Text><Text style={styles.toolText}>Image</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.tool, locked && { borderColor: tab.accent, backgroundColor: tab.accent + '20' }]} onPress={() => setLocked(value => !value)}>
+                <Text style={styles.toolIcon}>{locked ? '▣' : '▢'}</Text><Text style={styles.toolText}>Lock</Text>
+              </TouchableOpacity>
+              <TouchableOpacity disabled={!text.trim() && !imageUri} onPress={save} style={[styles.save, { backgroundColor: tab.accent }, !text.trim() && !imageUri && styles.saveDisabled]}>
+                <Text style={styles.saveText}>Save page</Text>
+              </TouchableOpacity>
+            </View>
 
         <Text style={styles.privacyLine}>
           {side === 'teen'
@@ -350,11 +370,12 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   );
 }
 
-export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession }: PagesScreenProps) {
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession, selectedSekret, moodHistory, voiceNotes, streakDays }: PagesScreenProps) {
   return (
     <PagesWorkspace
       side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
       onSave={entry => saveJournalEntry(entry)} mood={mood} setScreen={setScreen} BottomNav={BottomNav}
+      selectedSekret={selectedSekret} moodHistory={moodHistory} voiceNotes={voiceNotes} streakDays={streakDays}
       oracleProfile={oracleProfile} onCompleteOracleSession={onCompleteOracleSession}
     />
   );
@@ -363,31 +384,35 @@ export function PagesScreen({ journalText, setJournalText, journalEntries, saveJ
 export { PagesWorkspace };
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#100b18', paddingTop: Platform.OS === 'ios' ? 54 : 28 },
-  parentRoot: { backgroundColor: '#14110f' },
+  root: { flex: 1, paddingTop: Platform.OS === 'ios' ? 54 : 28 },
   header: { paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   kicker: { fontSize: 10, fontWeight: '800', letterSpacing: 2 },
   headerTitle: { color: '#fff', fontSize: 30, fontWeight: '800', marginTop: 2 },
   privatePill: { borderWidth: 1, borderColor: '#ffffff22', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
   privatePillText: { color: '#aaa2b5', fontSize: 10 },
-  tabs: { paddingHorizontal: 16, paddingVertical: 15, gap: 8 },
-  tab: { minWidth: 76, height: 58, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff18', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-  tabIcon: { color: '#8c8498', fontSize: 15, marginBottom: 3 },
-  tabText: { color: '#8c8498', fontSize: 11, fontWeight: '700' },
-  tabTextActive: { color: '#fff' },
-  content: { paddingHorizontal: 18, paddingBottom: 24 },
-  intro: { minHeight: 76, justifyContent: 'flex-end', marginBottom: 14 },
+  tabsWrap: { borderBottomWidth: 1, borderBottomColor: '#ffffff0d' },
+  tabs: { paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
+  tab: { minWidth: 68, height: 52, borderRadius: 13, borderWidth: 1, borderColor: '#ffffff14', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 9 },
+  tabIcon: { color: '#8c8498', fontSize: 14, marginBottom: 3 },
+  tabText: { color: '#7e7690', fontSize: 11, fontWeight: '700' },
+  tabTextActive: { color: '#fff', fontWeight: '800' },
+  content: { paddingHorizontal: 18, paddingBottom: 32 },
+  contentWeb: { maxWidth: 520, width: '100%', alignSelf: 'center' as const },
+  intro: { minHeight: 72, justifyContent: 'flex-end', marginBottom: 14 },
   eyebrow: { fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 7 },
-  title: { color: '#fff', fontSize: 23, lineHeight: 29, fontWeight: '700' },
-  oracleTitle: { color: '#b0a8bb', fontSize: 18, fontWeight: '600' },
+  title: { color: '#fff', fontSize: 22, lineHeight: 28, fontWeight: '700' },
   subtitle: { color: '#aaa2b5', fontSize: 13, lineHeight: 19, marginTop: 6 },
+  // Oracle silent mode indicator
+  oraclePresence: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  oracleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#8b7bb8' },
+  oraclePresenceText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   promptCard: { borderWidth: 1, backgroundColor: '#ffffff08', borderRadius: 16, padding: 14, marginBottom: 12 },
   prompt: { color: '#f4eff7', fontSize: 15, lineHeight: 21 },
   promptActions: { flexDirection: 'row', gap: 18, marginTop: 12 },
   promptAction: { fontSize: 11, fontWeight: '800' },
   dismiss: { color: '#827b8d', fontSize: 11 },
-  paper: { minHeight: 245, backgroundColor: '#f4efe7', borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
-  input: { minHeight: 245, color: '#27212c', fontSize: 17, lineHeight: 29, padding: 18 },
+  paper: { minHeight: 240, backgroundColor: '#f4efe7', borderRadius: 18, borderWidth: 2, overflow: 'hidden' },
+  input: { minHeight: 240, color: '#27212c', fontSize: 17, lineHeight: 29, padding: 18 },
   attachment: { height: 160, margin: 12, marginTop: 0, borderRadius: 12 },
   modeRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modeChip: { borderWidth: 1, borderColor: '#ffffff1c', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 },
@@ -405,15 +430,86 @@ const styles = StyleSheet.create({
   saveDisabled: { opacity: 0.3 },
   saveText: { color: '#171018', fontSize: 13, fontWeight: '900' },
   privacyLine: { color: '#77707f', fontSize: 10, lineHeight: 15, marginTop: 13 },
-  savedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 10 },
-  savedTitle: { color: '#e9e2ed', fontSize: 15, fontWeight: '800' },
+  savedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28, marginBottom: 12 },
+  savedTitle: { color: '#e9e2ed', fontSize: 14, fontWeight: '800', letterSpacing: 0.2 },
   savedCount: { color: '#827a89', fontSize: 11 },
-  entryCard: { backgroundColor: '#ffffff08', borderWidth: 1, borderColor: '#ffffff12', borderRadius: 15, padding: 14, marginBottom: 9 },
-  entryTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  entryMeta: { color: '#81798b', fontSize: 9, flex: 1 },
-  locked: { color: '#d9b8e3', fontSize: 9, fontWeight: '700' },
-  entryText: { color: '#e9e2ed', fontSize: 14, lineHeight: 21, marginTop: 8 },
-  savedImage: { height: 150, borderRadius: 10, marginTop: 10 },
-  empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 15, padding: 22, alignItems: 'center' },
+  // Journal page aesthetic for saved entries
+  entryCard: {
+    backgroundColor: '#faf7f3',
+    borderWidth: 1,
+    borderColor: '#e2dcd5',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  entryTop: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginBottom: 6 },
+  entryMeta: { color: '#9a8e86', fontSize: 9, flex: 1, letterSpacing: 0.3 },
+  locked: { color: '#7c4f99', fontSize: 9, fontWeight: '700' },
+  entryText: { color: '#2c2420', fontSize: 14, lineHeight: 22 },
+  savedImage: { height: 150, borderRadius: 6, marginTop: 10 },
+  empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 12, padding: 22, alignItems: 'center' },
   emptyText: { color: '#746d7c', fontSize: 12 },
+  // Oracle conversation panel
+  oraclePanel: { marginBottom: 14 },
+  oracleListening: { color: '#7a7086', fontSize: 13, lineHeight: 20, paddingVertical: 6 },
+  oracleQuestionBlock: {
+    backgroundColor: '#0d0b15',
+    borderWidth: 1,
+    borderColor: '#4a3f6b',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+  },
+  oracleQuestionNum: { color: '#6b6077', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' },
+  oracleQuestionText: { color: '#e8e0f0', fontSize: 17, lineHeight: 27, fontWeight: '600' },
+  oracleInput: {
+    minHeight: 120,
+    backgroundColor: '#f4efe7',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#8b7bb870',
+    padding: 16,
+    color: '#27212c',
+    fontSize: 16,
+    lineHeight: 26,
+    marginBottom: 10,
+  },
+  oracleSubmit: {
+    backgroundColor: '#8b7bb8',
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginBottom: 8,
+  },
+  oracleSubmitDisabled: { opacity: 0.35 },
+  oracleSubmitText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  oracleAckBlock: {
+    minHeight: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  oracleAckText: { color: '#c4b5fd', fontSize: 22, fontWeight: '700', letterSpacing: 0.3 },
+  oracleDoneBlock: { paddingVertical: 8 },
+  oracleDoneText: { color: '#8b7bb8', fontSize: 14, lineHeight: 22, fontStyle: 'italic', marginBottom: 20 },
+  oracleHistoryHeader: { color: '#6b6077', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  oracleHistoryItem: {
+    backgroundColor: '#0d0b15',
+    borderWidth: 1,
+    borderColor: '#2e2840',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+  },
+  oracleHistoryQ: { color: '#7a7086', fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  oracleHistoryA: { color: '#c4b5fd', fontSize: 14, lineHeight: 22 },
+  parentRoomOverlay: {
+    backgroundColor: 'rgba(10, 5, 20, 0.70)',
+  },
 });

@@ -402,8 +402,8 @@ export function completeOracleSession(
     dimensions,
     understandings: theories,
     summary: theories.length
-      ? `Oracle explored ${dimensions.join(' and ')} and saved ${theories.length === 1 ? 'an evolving understanding' : 'a few evolving understandings'}.`
-      : `Oracle explored ${dimensions[0] || 'how this person moves through life'} without forcing a conclusion.`,
+      ? `Se’kret explored ${dimensions.join(' and ')} and saved ${theories.length === 1 ? 'an evolving understanding' : 'a few evolving understandings'}.`
+      : `Se’kret explored ${dimensions[0] || 'how this person moves through life'} without forcing a conclusion.`,
   };
 
   return {

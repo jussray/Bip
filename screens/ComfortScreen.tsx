@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, width: 1.5, height: 22,
     backgroundColor: 'rgba(180,210,255,0.55)', borderRadius: 1,
   },
-  scroll:        { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
+  scroll:        { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   presencePill:  {
     alignSelf: 'flex-end',
     backgroundColor: 'rgba(168,85,247,0.22)',

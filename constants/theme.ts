@@ -318,16 +318,56 @@ export function getRoomPhase(
   return "deepNight"; // midnight–5 AM
 }
 
-const ROOM_PREFIX: Record<Character, string> = {
-  raylene: "bgRayleneRoom",
-  rylane:  "bgRylaneRoom",
-  cloud:   "bgCloudRoom",
-  night:   "bgNightRoom",
+const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
+  raylene: {
+    day: IMAGES.bgRayleneRoomDay,
+    midday: IMAGES.bgRayleneRoomDay,
+    afternoon: IMAGES.bgRayleneRoomEvening,
+    evening: IMAGES.bgRayleneRoomEvening,
+    night: IMAGES.bgRayleneRoomNight,
+    deepNight: IMAGES.bgRayleneRoomDeepNight,
+    rain: IMAGES.bgRayleneRoomRain,
+  },
+  rylane: {
+    day: IMAGES.bgRylaneRoomDay,
+    midday: IMAGES.bgRylaneRoomDay,
+    afternoon: IMAGES.bgRylaneRoomEvening,
+    evening: IMAGES.bgRylaneRoomEvening,
+    night: IMAGES.bgRylaneRoomNight,
+    deepNight: IMAGES.bgRylaneRoomDeepNight,
+    rain: IMAGES.bgRylaneRoomRain,
+  },
+  cloud: {
+    day: IMAGES.bgCloudRoomDay,
+    midday: IMAGES.bgCloudRoomMidday,
+    afternoon: IMAGES.bgCloudRoomAfternoon,
+    evening: IMAGES.bgCloudRoomEvening,
+    night: IMAGES.bgCloudRoomNight,
+    deepNight: IMAGES.bgCloudRoomDeepNight,
+    rain: IMAGES.bgCloudRoomRain,
+  },
+  night: {
+    day: IMAGES.bgNightRoomDay,
+    midday: IMAGES.bgNightRoomMidday,
+    afternoon: IMAGES.bgNightRoomAfternoon,
+    evening: IMAGES.bgNightRoomEvening,
+    night: IMAGES.bgNightRoomNight,
+    deepNight: IMAGES.bgNightRoomDeepNight,
+    rain: IMAGES.bgNightRoomRain,
+  },
 };
+
+function normalizeRoomPhase(phase: RoomPhase | string): RoomPhase {
+  if (phase === 'deep-night') return 'deepNight';
+  if (phase === 'day' || phase === 'midday' || phase === 'afternoon' || phase === 'evening' || phase === 'night' || phase === 'deepNight' || phase === 'rain') {
+    return phase;
+  }
+  return 'day';
+}
 
 export function getRoomScene(
   character: Character,
-  phase: RoomPhase,
+  phase: RoomPhase | string,
 ): ImageSourcePropType {
   const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
   // deepNight → "DeepNight", midday → "Midday", afternoon → "Afternoon", etc.
@@ -336,23 +376,21 @@ export function getRoomScene(
                : phase === "afternoon" ? "Afternoon"
                : phase.charAt(0).toUpperCase() + phase.slice(1);
   const key = `${prefix}${suffix}` as keyof typeof IMAGES;
+  // If an asset is truly missing for this phase, fall back to the nearest phase.
+  if (!IMAGES[key]) {
+    if (phase === "midday")    return getRoomScene(character, "day");
+    if (phase === "afternoon") return getRoomScene(character, "evening");
+  }
   return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
 }
 
 export function getRoomBg(
   character: Character,
-  time: TimeOfDay,
+  time: TimeOfDay | RoomPhase | 'deep-night' | string,
   weatherMode?: string,
 ): ImageSourcePropType {
-  const phase =
-    weatherMode === "rain"
-      ? "rain"
-      : time === "evening"
-        ? "evening"
-        : time === "night"
-          ? getRoomPhase(new Date(), weatherMode)
-          : "day";
-  return getRoomScene(character, phase);
+  if (weatherMode === 'rain') return getRoomScene(character, 'rain');
+  return getRoomScene(character, time === 'morning' ? 'day' : time);
 }
 
 export function getParentRoomBg(
@@ -470,6 +508,15 @@ export const normalizeVibeKey = (key?: string): VibeKey => {
   if (key === "galaxy") return "rylane";
   if (key === "neon") return "night";
   return "raylene";
+};
+
+// Normalize a sekret selector key (e.g. 'soft' from legacy code) to a Character.
+// 'soft' is the internal key for Raylene; all others map 1-to-1.
+export const normalizeCharacterKey = (key?: string): Character => {
+  if (key === "rylane") return "rylane";
+  if (key === "cloud")  return "cloud";
+  if (key === "night")  return "night";
+  return "raylene"; // 'soft', 'raylene', or any unknown → raylene
 };
 
 export const SEKRET_PROFILES: Record<

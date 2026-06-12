@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -56,16 +56,10 @@ import {
 import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
-// One clean place to see every image Se'kret Bip uses.
-//
-// The actual `require()` paths + safe fallbacks live in constants/theme.ts.
-// This map is re-exported here so the top of the root file documents — at a
-// glance — what art is wired into the app and to which character / screen.
-//
-// Do NOT add new require() calls here. Edit constants/theme.ts instead so
-// fallbacks stay centralized and no screen can drift out of sync.
-import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
-export { IMAGES, AVATARS, getRoomBg };
+// Re-exported so any screen can import IMAGES/AVATARS/getRoomBg from here
+// rather than reaching into constants/theme directly.
+// Do NOT add new require() calls here — edit constants/theme.ts instead.
+export { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
@@ -156,11 +150,9 @@ export default function App() {
   const [oracleSessions, setOracleSessions] = useState<OracleSessionSummary[]>([]);
   const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
-  // ─── Circle (Teen) ─────────────────────────────────────────────────────
-  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
-  const [circlePostText, setCirclePostText] = useState('');
-
-  // ─── Circle (Parent) — fully separated state ────────────────────────────
+  // ─── Circle ────────────────────────────────────────────────────────────
+  const [circlePosts, setCirclePosts]                   = useState<CirclePost[]>([]);
+  const [circlePostText, setCirclePostText]             = useState('');
   const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
   const [parentCirclePostText, setParentCirclePostText] = useState('');
 
@@ -485,38 +477,37 @@ export default function App() {
     ));
   };
 
-  // ── Circle (Parent) — isolated from teen ─────────────────────────────────
-  const saveParentCirclePost = (extra?: Partial<ParentCirclePost>) => {
-    const textToSave = extra?.text ?? parentCirclePostText;
-    if (!textToSave.trim()) return;
+  const saveParentCirclePost = () => {
+    if (!parentCirclePostText.trim()) return;
     const post: ParentCirclePost = {
-      id: Number(Date.now()),
-      text: textToSave,
+      id: Number(Date.now()), text: parentCirclePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      circleTag: extra?.circleTag,
       reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
     };
     setParentCirclePosts(p => [post, ...p]);
+    setParentCirclePostText('');
     syncParentCirclePost(post);
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
+    const reactionKey = type as keyof ParentCirclePost['reactions'];
     setParentCirclePosts(posts => posts.map(p =>
       String(p.id) === String(id)
-        ? { ...p, reactions: { ...p.reactions, [type]: ((p.reactions as any)[type] || 0) + 1 } }
+        ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
         : p
     ));
   };
 
+  // ── Oracle session completion ─────────────────────────────────────────────
   const completeTeenOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
     setOracleProfile(profile);
-    setOracleSessions(current => [session, ...current].slice(0, 50));
+    setOracleSessions(prev => [session, ...prev]);
   };
 
   const completeParentOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
     setParentOracleProfile(profile);
-    setParentOracleSessions(current => [session, ...current].slice(0, 50));
+    setParentOracleSessions(prev => [session, ...prev]);
   };
 
   // ── Nav ───────────────────────────────────────────────────────────────────
@@ -564,6 +555,7 @@ export default function App() {
         updateRoomMemory={updateRoomMemory}
         vibe={vibeKey}
         companion={companion}
+        sekretMode={selectedSekret}
         BottomNav={nav}
       />
     );
@@ -608,6 +600,9 @@ export default function App() {
       theme={t}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
+      onSelectAvatar={avatarKey => setSelectedSekret(avatarKey)}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
+      setSelectedSekret={setSelectedSekret}
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}
@@ -628,6 +623,8 @@ export default function App() {
       mood={parentMood || mood}
       setScreen={setScreen}
       BottomNav={nav}
+      parentRoomStyle={parentRoomStyle}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
       oracleProfile={parentOracleProfile}
       onCompleteOracleSession={completeParentOracleSession}
     />
@@ -889,10 +886,11 @@ const styles = StyleSheet.create({
   bottomNav:     {
     flexDirection: 'row', justifyContent: 'space-around',
     paddingVertical: 14, backgroundColor: '#111827',
-    borderRadius: 20, marginTop: 28, marginBottom: 20,
+    borderRadius: 20, marginTop: 20, marginBottom: 16,
     flexWrap: 'wrap', gap: 8,
+    ...(Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {}),
   },
-  navItem:       { alignItems: 'center', minWidth: 48 },
+  navItem:       { alignItems: 'center', minWidth: 52 },
   navIcon:       { fontSize: 20, marginBottom: 3 },
   navText:       { color: '#94A3B8', fontSize: 11 },
   activeNavText: { color: '#fff', fontWeight: 'bold' },
