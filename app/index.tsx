@@ -8,6 +8,7 @@ import { SplashScreen }         from '../screens/SplashScreen';
 import { HomeScreen }           from '../screens/HomeScreen';
 import { RoomScreen }           from '../screens/RoomScreen';
 import { JournalScreen }        from '../screens/JournalScreen';
+import { PagesScreen }          from '../screens/PagesScreen';
 import { CalmScreen }           from '../screens/CalmScreen';
 import { SekretScreen }         from '../screens/SekretScreen';
 import { CircleScreen }         from '../screens/CircleScreen';
@@ -101,7 +102,7 @@ const HOME_MESSAGES = [
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
     ? [['home','🏠','Room'],['pages','📔','Pages'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
-    : [['home','🏠','Room'],['pages','📖','Pages'],['voiceBip','🎙','Voice'],['calm','🌙','Calm'],['s2tell','💌','S2 Tell'],['more','☰','More']];
+    : [['home','🏠','Room'],['pages','📖','Pages'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
     <View style={styles.bottomNav}>
@@ -379,16 +380,19 @@ export default function App() {
   };
 
   // ── Journal ───────────────────────────────────────────────────────────────
-  // RENAMED to match JournalScreen fixed interface
-  const saveJournalEntry = () => {
-    if (!journalText.trim()) return;
+  // override lets PagesScreen character tabs supply their own text + source tag.
+  // Calling with no args reads root journalText (Me tab default).
+  const saveJournalEntry = (override?: { text: string; source: string }) => {
+    const textToSave = override?.text ?? journalText;
+    if (!textToSave.trim()) return;
     const entry: JournalEntry = {
-      id: Date.now(), text: journalText, mood,
+      id: Date.now(), text: textToSave, mood,
+      source: override?.source ?? 'me',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setJournalEntries(e => [entry, ...e]);
-    setJournalText('');
+    if (!override) setJournalText('');
     syncJournal(entry);
     trackActivity('journal');
   };
@@ -513,7 +517,7 @@ export default function App() {
   );
 
   if (screen === 'pages') return (
-    <JournalScreen
+    <PagesScreen
       journalText={journalText}
       setJournalText={setJournalText}
       journalEntries={journalEntries}
