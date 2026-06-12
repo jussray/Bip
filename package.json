@@ -12,7 +12,8 @@
     "test": "jest",
     "lint": "eslint . --ext .ts,.tsx",
     "type-check": "tsc --noEmit",
-    "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs"
+    "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
+    "test:oracle": "node scripts/test-oracle-discovery.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
