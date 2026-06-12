@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -41,9 +40,8 @@ import { isSupabaseConfigured } from '../utils/supabase';
 import { useSekretCompanion } from '../hooks/useSekretCompanion';
 import {
   ensureAnonymousSession, pullAll,
-  syncMood, syncJournal, syncCirclePost, syncVoiceNote,
-  syncComfortSession, syncCrewMember, deleteCrewMember as cloudDeleteCrewMember,
-  syncCrewCheckIn,
+  syncMood, syncJournal, syncCirclePost,
+  syncComfortSession,
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
@@ -463,6 +461,7 @@ export default function App() {
         vibe={vibeKey}
         companion={companion}
         BottomNav={nav}
+        companion={companion}
       />
     );
   }

@@ -610,7 +610,6 @@ export function CircleScreen({
                 ))}
               </>
             )}
-            {circlePosts.map(post => (
             <Text style={styles.sectionTitle}>what the circle is holding</Text>
             <View style={styles.circlePromise}>
               <Text style={styles.circlePromiseText}>You don't have to know them to not feel alone.</Text>

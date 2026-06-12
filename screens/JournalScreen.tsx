@@ -112,7 +112,6 @@ export function JournalScreen({
   const [checkInMood,   setCheckInMood]   = useState('');
   const [selectedTag,   setSelectedTag]   = useState('');
   const [promptIdx,     setPromptIdx]     = useState(0);
-  const [selectedTag, setSelectedTag] = useState('');
 
   const hour       = new Date().getHours();
   const timeOfDay  = getTimeOfDay(hour);
@@ -437,7 +436,6 @@ const styles = StyleSheet.create({
   },
   oracleLabel:    { color: '#c4b5fd', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
   oracleLine:     { color: '#f5f0ff', fontSize: 15, lineHeight: 23, marginBottom: 4, fontWeight: '600' },
-  floatCardEmoji: { fontSize: 28, marginBottom: 6 },
   floatCardText:  { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   floatCardSub:   { fontSize: 13, lineHeight: 19 },
   journalInput:   {

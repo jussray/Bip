@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Text, TouchableOpacity, ScrollView,
+  Text, TouchableOpacity,
   View, Animated, Image, StyleSheet, Platform, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
