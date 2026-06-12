@@ -15,7 +15,7 @@
 
 import { getSupabase, TABLES } from './supabase';
 import type {
-  JournalEntry, MoodEntry, CirclePost, VoiceNote,
+  JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
 } from '../types/index';
 
@@ -97,7 +97,7 @@ export function syncJournal(entry: JournalEntry): void {
   });
 }
 
-// ── Circle ─────────────────────────────────────────────────────────────────
+// ── Circle (Teen) ──────────────────────────────────────────────────────────
 export function syncCirclePost(post: CirclePost): void {
   void safeUpsert(TABLES.circlePosts, {
     id:        post.id,
@@ -105,6 +105,21 @@ export function syncCirclePost(post: CirclePost): void {
     date:      post.date,
     time:      post.time,
     reactions: post.reactions,
+    circle_tag: post.circleTag ?? null,
+    post_mood:  post.postMood ?? null,
+    media_kind: post.mediaKind ?? null,
+  });
+}
+
+// ── Circle (Parent) ────────────────────────────────────────────────────────
+export function syncParentCirclePost(post: ParentCirclePost): void {
+  void safeUpsert(TABLES.parentCirclePosts, {
+    id:         post.id,
+    text:       post.text,
+    date:       post.date,
+    time:       post.time,
+    reactions:  post.reactions,
+    circle_tag: post.circleTag ?? null,
   });
 }
 

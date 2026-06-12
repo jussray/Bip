@@ -17,11 +17,35 @@ export interface CirclePost {
   text: string;
   date: string;
   time: string;
+  bipType?: string;
+  mediaKind?: string;
+  anonymousName?: string;
+  circleTag?: string;
+  postMood?: string;
+  quietRepliesCount?: number;
   reactions: {
     felt: number;
     comfort: number;
     proud: number;
     stay: number;
+    sameHere?: number;
+  };
+}
+
+export interface ParentCirclePost {
+  id: number;
+  text: string;
+  date: string;
+  time: string;
+  circleTag?: string;
+  anonymousName?: string;
+  quietRepliesCount?: number;
+  reactions: {
+    beenThere: number;
+    solidarity: number;
+    reminder: number;
+    needed: number;
+    strength: number;
   };
 }
 

@@ -12,6 +12,7 @@ import { ParentPagesScreen }    from '../screens/ParentPagesScreen';
 import { CalmScreen }           from '../screens/CalmScreen';
 import { SekretScreen }         from '../screens/SekretScreen';
 import { CircleScreen }         from '../screens/CircleScreen';
+import { ParentCircleScreen }   from '../screens/ParentCircleScreen';
 import { Bippin2Screen }        from '../screens/Bippin2Screen';
 import { GrowthScreen }         from '../screens/GrowthScreen';
 import { WomanhoodScreen }      from '../screens/WomanhoodScreen';
@@ -49,10 +50,10 @@ import { isSupabaseConfigured } from '../utils/supabase';
 import { useSekretCompanion } from '../hooks/useSekretCompanion';
 import {
   ensureAnonymousSession, pullAll,
-  syncMood, syncJournal, syncCirclePost,
+  syncMood, syncJournal, syncCirclePost, syncParentCirclePost,
   syncComfortSession,
 } from '../utils/sync';
-import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
+import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
 // One clean place to see every image Se'kret Bip uses.
@@ -155,9 +156,13 @@ export default function App() {
   const [oracleSessions, setOracleSessions] = useState<OracleSessionSummary[]>([]);
   const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
-  // ─── Circle ────────────────────────────────────────────────────────────
+  // ─── Circle (Teen) ─────────────────────────────────────────────────────
   const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
   const [circlePostText, setCirclePostText] = useState('');
+
+  // ─── Circle (Parent) — fully separated state ────────────────────────────
+  const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
+  const [parentCirclePostText, setParentCirclePostText] = useState('');
 
   // ─── Voice Bip ─────────────────────────────────────────────────────────
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
@@ -228,7 +233,8 @@ export default function App() {
         if (state.oracleSessions) setOracleSessions(normalizeOracleSessions(state.oracleSessions, 'teen'));
         if (state.parentOracleSessions) setParentOracleSessions(normalizeOracleSessions(state.parentOracleSessions, 'parent'));
         if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
-        if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.circlePosts)       setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.parentCirclePosts) setParentCirclePosts(Array.isArray(state.parentCirclePosts) ? state.parentCirclePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
         if (state.parentVoiceNotes) setParentVoiceNotes(Array.isArray(state.parentVoiceNotes) ? state.parentVoiceNotes : []);
         if (state.comfortSessions) setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
@@ -332,6 +338,7 @@ export default function App() {
       parentOracleSessions,
       moodHistory,
       circlePosts,
+      parentCirclePosts,
       voiceNotes,
       parentVoiceNotes,
       comfortSessions,
@@ -348,7 +355,7 @@ export default function App() {
     theme, mood, userSide, selectedSekret, sekretMode,
     journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
     oracleSessions, parentOracleSessions, moodHistory,
-    circlePosts, voiceNotes, parentVoiceNotes, comfortSessions,
+    circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
     roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
   ]);
@@ -451,25 +458,53 @@ export default function App() {
     setParentPagesEntries(current => [entry, ...current]);
   };
 
-  // ── Circle ────────────────────────────────────────────────────────────────
-  const saveCirclePost = () => {
-    if (!circlePostText.trim()) return;
+  // ── Circle (Teen) ────────────────────────────────────────────────────────
+  const saveCirclePost = (extra?: Partial<CirclePost>) => {
+    const textToSave = extra?.text ?? circlePostText;
+    if (!textToSave.trim()) return;
     const post: CirclePost = {
-      id: Number(Date.now()), text: circlePostText,
+      id: Number(Date.now()),
+      text: textToSave,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
+      bipType:   extra?.bipType,
+      mediaKind: extra?.mediaKind,
+      circleTag: extra?.circleTag,
+      postMood:  extra?.postMood,
+      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0, sameHere: 0 },
     };
     setCirclePosts(p => [post, ...p]);
-    setCirclePostText('');
     syncCirclePost(post);
   };
 
   const reactToPost = (id: string | number, type: string) => {
-    const reactionKey = type as keyof CirclePost['reactions'];
     setCirclePosts(posts => posts.map(p =>
       String(p.id) === String(id)
-        ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
+        ? { ...p, reactions: { ...p.reactions, [type]: ((p.reactions as any)[type] || 0) + 1 } }
+        : p
+    ));
+  };
+
+  // ── Circle (Parent) — isolated from teen ─────────────────────────────────
+  const saveParentCirclePost = (extra?: Partial<ParentCirclePost>) => {
+    const textToSave = extra?.text ?? parentCirclePostText;
+    if (!textToSave.trim()) return;
+    const post: ParentCirclePost = {
+      id: Number(Date.now()),
+      text: textToSave,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      circleTag: extra?.circleTag,
+      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+    };
+    setParentCirclePosts(p => [post, ...p]);
+    syncParentCirclePost(post);
+  };
+
+  const reactToParentPost = (id: string | number, type: string) => {
+    setParentCirclePosts(posts => posts.map(p =>
+      String(p.id) === String(id)
+        ? { ...p, reactions: { ...p.reactions, [type]: ((p.reactions as any)[type] || 0) + 1 } }
         : p
     ));
   };
@@ -640,20 +675,33 @@ export default function App() {
     />
   );
 
-  if (screen === 'circle') return (
-    <CircleScreen
-      t={t}
-      circlePosts={circlePosts}
-      circlePostText={circlePostText}
-      setCirclePostText={setCirclePostText}
-      saveCirclePost={saveCirclePost}
-      reactToPost={reactToPost}
-      setScreen={setScreen}
-      BottomNav={nav}
-      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
-      mood={mood}
-    />
-  );
+  if (screen === 'circle') {
+    if (userSide === 'parent') return (
+      <ParentCircleScreen
+        parentCirclePosts={parentCirclePosts}
+        parentCirclePostText={parentCirclePostText}
+        setParentCirclePostText={setParentCirclePostText}
+        saveParentCirclePost={saveParentCirclePost}
+        reactToParentPost={reactToParentPost}
+        setScreen={setScreen}
+        BottomNav={nav}
+      />
+    );
+    return (
+      <CircleScreen
+        t={t}
+        circlePosts={circlePosts}
+        circlePostText={circlePostText}
+        setCirclePostText={setCirclePostText}
+        saveCirclePost={saveCirclePost}
+        reactToPost={reactToPost}
+        setScreen={setScreen}
+        BottomNav={nav}
+        selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+        mood={mood}
+      />
+    );
+  }
 
   if (screen === 'bridge') return (
     <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
