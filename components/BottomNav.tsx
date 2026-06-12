@@ -17,12 +17,11 @@ export function BottomNav({ screen, setScreen, userSide }: BottomNavProps) {
         ['more',         '☰',  'More'],
       ]
     : [
-        ['home',     '🏠', 'Room'],
-        ['pages',    '📖', 'Pages'],
-        ['voiceBip', '🎙', 'Voice'],
-        ['calm',     '🌙', 'Calm'],
-        ['circle',   '🌐', 'Circle'],
-        ['more',     '☰',  'More'],
+        ['home',   '🏠', 'Room'],
+        ['pages',  '📖', 'Pages'],
+        ['calm',   '🌙', 'Calm'],
+        ['circle', '🌐', 'Circle'],
+        ['more',   '☰',  'More'],
       ];
 
   return (
