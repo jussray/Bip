@@ -5,7 +5,7 @@ import {
 } from '../services/sekretVoice';
 import { normalizeSekretPersonality } from '../services/sekretPresence';
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL || '';
 
 export async function fetchSekretReply(
   text: string,

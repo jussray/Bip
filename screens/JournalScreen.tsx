@@ -393,7 +393,7 @@ export function JournalScreen({
   );
 }
 
-const WEB_MAX = Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {};
+const WEB_MAX = Platform.OS === 'web' ? { maxWidth: 520, width: '100%' as const, alignSelf: 'center' as const } : {};
 
 const styles = StyleSheet.create({
   root:           { flex: 1, backgroundColor: '#0d0914' },

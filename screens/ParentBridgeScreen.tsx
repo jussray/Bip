@@ -27,7 +27,7 @@ import {
 } from '../constants/parentSekret';
 
 const { width: W } = Dimensions.get('window');
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL || '';
 
 // ─── palette ──────────────────────────────────────────────────────────────────
 const P = {

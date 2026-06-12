@@ -72,6 +72,9 @@ export function MoreScreen({
         <TouchableOpacity style={btn()} onPress={() => setScreen('cloudThoughts')}>
           <Text style={styles.buttonText}>☁️ Cloud Thoughts</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('voiceBip')}>
+          <Text style={styles.buttonText}>🎙️ Voice Bip · private reflection</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('bippin2')}>
           <Text style={styles.buttonText}>✨ Bippin2 / Insights</Text>
         </TouchableOpacity>

@@ -9,9 +9,12 @@ const STORAGE_KEYS = {
   growthPath: 'growthPath',
   journalText: 'journalText',
   entries: 'entries',
+  parentPagesEntries: 'parentPagesEntries',
+  parentPagesDraft: 'parentPagesDraft',
   moodHistory: 'moodHistory',
   circlePosts: 'circlePosts',
   voiceNotes: 'voiceNotes',
+  parentVoiceNotes: 'parentVoiceNotes',
   comfortSessions: 'comfortSessions',
   crewMembers: 'crewMembers',
   crewCheckIns: 'crewCheckIns',
@@ -26,7 +29,7 @@ const STORAGE_KEYS = {
 };
 
 const JSON_KEYS = new Set([
-  'entries', 'moodHistory', 'circlePosts', 'voiceNotes', 'comfortSessions',
+  'entries', 'parentPagesEntries', 'moodHistory', 'circlePosts', 'voiceNotes', 'parentVoiceNotes', 'comfortSessions',
   'crewMembers', 'crewCheckIns', 'roomMemory', 'periodDays',
 ]);
 

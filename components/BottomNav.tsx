@@ -10,10 +10,10 @@ interface BottomNavProps {
 export function BottomNav({ screen, setScreen, userSide }: BottomNavProps) {
   const items = userSide === 'parent'
     ? [
-        ['home',         '🏠', 'Room'],
+        ['home',         '🏠', 'Parent Room'],
         ['pages',        '📔', 'Pages'],
-        ['circle',       '🌐', 'Circle'],
         ['parentBridge', '🌉', 'Bridge'],
+        ['circle',       '🌐', 'Parent Circle'],
         ['more',         '☰',  'More'],
       ]
     : [

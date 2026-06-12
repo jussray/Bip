@@ -8,7 +8,8 @@ import { SplashScreen }         from '../screens/SplashScreen';
 import { HomeScreen }           from '../screens/HomeScreen';
 import { RoomScreen }           from '../screens/RoomScreen';
 import { JournalScreen }        from '../screens/JournalScreen';
-import { PagesScreen }          from '../screens/PagesScreen';
+import { PagesScreen, type SavePageInput } from '../screens/PagesScreen';
+import { ParentPagesScreen }    from '../screens/ParentPagesScreen';
 import { CalmScreen }           from '../screens/CalmScreen';
 import { SekretScreen }         from '../screens/SekretScreen';
 import { CircleScreen }         from '../screens/CircleScreen';
@@ -101,7 +102,7 @@ const HOME_MESSAGES = [
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','🏠','Room'],['pages','📔','Pages'],['circle','🌐','Circle'],['parentBridge','🌉','Bridge'],['more','☰','More']]
+    ? [['home','🏠','Parent Room'],['pages','📔','Pages'],['parentBridge','🌉','Bridge'],['circle','🌐','Parent Circle'],['more','☰','More']]
     : [['home','🏠','Room'],['pages','📖','Pages'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
@@ -140,6 +141,9 @@ export default function App() {
   // to match fixed JournalScreen prop interface
   const [journalText, setJournalText]       = useState('');
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  // Parent Pages are intentionally isolated from teen entries and cloud journal sync.
+  const [parentPagesDraft, setParentPagesDraft] = useState('');
+  const [parentPagesEntries, setParentPagesEntries] = useState<JournalEntry[]>([]);
 
   // ─── Circle ────────────────────────────────────────────────────────────
   const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
@@ -147,6 +151,7 @@ export default function App() {
 
   // ─── Voice Bip ─────────────────────────────────────────────────────────
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
+  const [parentVoiceNotes, setParentVoiceNotes] = useState<VoiceNote[]>([]);
 
   // ─── Comfort sessions (calm + comfort rituals) ─────────────────────────
   const [comfortSessions, setComfortSessions] = useState<ComfortSession[]>([]);
@@ -206,9 +211,12 @@ export default function App() {
         // 'entries' is the storage key (matches STORAGE_KEYS in storage.ts)
         // but we keep it as journalEntries in state
         if (state.entries)        setJournalEntries(Array.isArray(state.entries) ? state.entries : []);
+        if (state.parentPagesDraft) setParentPagesDraft(state.parentPagesDraft);
+        if (state.parentPagesEntries) setParentPagesEntries(Array.isArray(state.parentPagesEntries) ? state.parentPagesEntries : []);
         if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
         if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
+        if (state.parentVoiceNotes) setParentVoiceNotes(Array.isArray(state.parentVoiceNotes) ? state.parentVoiceNotes : []);
         if (state.comfortSessions) setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
         if (state.crewMembers)     setCrewMembers(Array.isArray(state.crewMembers) ? state.crewMembers : []);
         if (state.crewCheckIns)    setCrewCheckIns(Array.isArray(state.crewCheckIns) ? state.crewCheckIns : []);
@@ -302,9 +310,12 @@ export default function App() {
       sekretMode,
       journalText,
       entries:       journalEntries,   // storage key is 'entries'
+      parentPagesDraft,
+      parentPagesEntries,
       moodHistory,
       circlePosts,
       voiceNotes,
+      parentVoiceNotes,
       comfortSessions,
       crewMembers,
       crewCheckIns,
@@ -317,8 +328,8 @@ export default function App() {
     }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
-    journalText, journalEntries, moodHistory,
-    circlePosts, voiceNotes, comfortSessions,
+    journalText, journalEntries, parentPagesDraft, parentPagesEntries, moodHistory,
+    circlePosts, voiceNotes, parentVoiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
     roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
   ]);
@@ -382,12 +393,17 @@ export default function App() {
   // ── Journal ───────────────────────────────────────────────────────────────
   // override lets PagesScreen character tabs supply their own text + source tag.
   // Calling with no args reads root journalText (Me tab default).
-  const saveJournalEntry = (override?: { text: string; source: string }) => {
+  const saveJournalEntry = (override?: SavePageInput) => {
     const textToSave = override?.text ?? journalText;
-    if (!textToSave.trim()) return;
+    if (!textToSave.trim() && !override?.imageUri) return;
     const entry: JournalEntry = {
       id: Date.now(), text: textToSave, mood,
       source: override?.source ?? 'me',
+      activeTab: override?.source ?? 'me',
+      moodTag: override?.moodTag || mood,
+      entryMode: override?.entryMode || 'typed',
+      locked: override?.locked || false,
+      imageUri: override?.imageUri,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
@@ -395,6 +411,25 @@ export default function App() {
     if (!override) setJournalText('');
     syncJournal(entry);
     trackActivity('journal');
+  };
+
+  const saveParentPageEntry = (input: SavePageInput) => {
+    if (!input.text.trim() && !input.imageUri) return;
+    const entry: JournalEntry = {
+      id: Date.now(),
+      text: input.text,
+      mood: parentMood || mood,
+      source: input.source,
+      activeTab: input.source,
+      moodTag: input.moodTag || parentMood || mood,
+      entryMode: input.entryMode,
+      locked: input.locked,
+      imageUri: input.imageUri,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    // Parent reflection remains device-local and never joins teen journal sync.
+    setParentPagesEntries(current => [entry, ...current]);
   };
 
   // ── Circle ────────────────────────────────────────────────────────────────
@@ -507,16 +542,26 @@ export default function App() {
       theme={t}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
-      voiceNotes={voiceNotes}
-      setVoiceNotes={setVoiceNotes}
+      voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
+      setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}
       mood={mood}
-      companion={companion}
+      companion={userSide === 'parent' ? undefined : companion}
       BottomNav={nav}
     />
   );
 
-  if (screen === 'pages') return (
+  if (screen === 'pages') return userSide === 'parent' ? (
+    <ParentPagesScreen
+      entries={parentPagesEntries}
+      draft={parentPagesDraft}
+      setDraft={setParentPagesDraft}
+      onSave={saveParentPageEntry}
+      mood={parentMood || mood}
+      setScreen={setScreen}
+      BottomNav={nav}
+    />
+  ) : (
     <PagesScreen
       journalText={journalText}
       setJournalText={setJournalText}

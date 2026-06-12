@@ -4,7 +4,12 @@ export interface JournalEntry {
   mood: string;
   date: string;
   time: string;
-  source?: string; // 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' — undefined treated as 'me'
+  source?: string; // Legacy/current tab source; undefined is treated as 'me'.
+  activeTab?: string;
+  moodTag?: string;
+  entryMode?: 'typed' | 'voice';
+  locked?: boolean;
+  imageUri?: string;
 }
 
 export interface CirclePost {
