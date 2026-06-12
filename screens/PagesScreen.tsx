@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
   Platform,
@@ -11,8 +11,15 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
-import { buildOracleInsight, type OracleInsight } from '../services/oracle';
 import { getParentRoomBg } from '../constants/theme';
+import {
+  loadOracleRecord,
+  markSessionComplete,
+  processAnswer,
+  saveOracleRecord,
+  selectSessionQuestions,
+} from '../services/oracleProfile';
+import type { OracleQuestion, OracleRecord } from '../types/oracle';
 
 type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
@@ -144,16 +151,7 @@ const PARENT_TABS: TabDefinition[] = [
 const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
 const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
-function getOracleCuriosity(insight: OracleInsight): string {
-  const id = insight.id;
-  if (id.startsWith('quitting')) return "What are you actually quitting — the situation, or yourself?";
-  if (id.startsWith('self-blame')) return "Whose voice does that sound like in your head?";
-  if (id.startsWith('cant-to-trying')) return "What changed between those two versions of you?";
-  if (id.startsWith('topic-')) return "What does that subject mean to you on a day it's going okay?";
-  if (id.startsWith('mood-')) return "What do you actually do when that feeling shows up?";
-  if (id.startsWith('showing-up')) return "What keeps pulling you back here?";
-  return "What do you notice that you haven't said out loud yet?";
-}
+const ORACLE_ACKS = ['Noted.', 'Interesting.', 'That says something.', 'Got it.', 'Worth knowing.'];
 
 function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
@@ -184,19 +182,32 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   const [promptIndex, setPromptIndex] = useState(0);
   const [noPressure, setNoPressure] = useState(false);
 
+  const [oracleRecord, setOracleRecord] = useState<OracleRecord | null>(null);
+  const [oraclePhase, setOraclePhase] = useState<'loading' | 'questioning' | 'ack' | 'done'>('loading');
+  const [sessionQuestions, setSessionQuestions] = useState<OracleQuestion[]>([]);
+  const [sessionTurnIndex, setSessionTurnIndex] = useState(0);
+  const [oracleAnswer, setOracleAnswer] = useState('');
+  const [ackText, setAckText] = useState('');
+  const oracleLoaded = useRef(false);
+
+  useEffect(() => {
+    if (oracleLoaded.current) return;
+    oracleLoaded.current = true;
+    loadOracleRecord(side === 'teen' ? 'teen' : 'parent').then(record => {
+      setOracleRecord(record);
+      const questions = selectSessionQuestions(record, 3);
+      setSessionQuestions(questions);
+      setOraclePhase(questions.length > 0 ? 'questioning' : 'done');
+    });
+  }, [side]);
+
   const tab = tabs.find(item => item.id === activeTab) || tabs[0];
   const text = activeTab === 'me' ? draft : tabDrafts[activeTab] || '';
   const tabEntries = useMemo(
     () => entries.filter(entry => normalizeSource(entry) === activeTab),
     [activeTab, entries],
   );
-  const insight = useMemo(
-    () => side === 'teen'
-      ? buildOracleInsight({ journalEntries: entries, moodHistory, voiceNotes, streakDays })
-      : buildOracleInsight({ journalEntries: entries }),
-    [entries, moodHistory, voiceNotes, streakDays, side],
-  );
-  const visiblePrompt = Boolean(tab.prompts?.length) && promptVisible && !noPressure;
+  const visiblePrompt = Boolean(tab.prompts?.length) && promptVisible && !noPressure && activeTab !== 'oracle';
 
   const changeTab = (next: PagesTab) => {
     setActiveTab(next);
@@ -230,6 +241,30 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
     setSelectedTag('');
     setLocked(false);
     setImageUri(undefined);
+  };
+
+  const submitOracleAnswer = async () => {
+    if (!oracleAnswer.trim() || !oracleRecord || sessionTurnIndex >= sessionQuestions.length) return;
+    const question = sessionQuestions[sessionTurnIndex];
+    const updated = processAnswer(question, oracleAnswer, oracleRecord);
+    setOracleRecord(updated);
+    await saveOracleRecord(updated);
+    const ack = ORACLE_ACKS[updated.totalTurns % ORACLE_ACKS.length];
+    setAckText(ack);
+    setOraclePhase('ack');
+    setOracleAnswer('');
+    setTimeout(() => {
+      const next = sessionTurnIndex + 1;
+      if (next < sessionQuestions.length) {
+        setSessionTurnIndex(next);
+        setOraclePhase('questioning');
+      } else {
+        const completed = markSessionComplete(updated);
+        setOracleRecord(completed);
+        saveOracleRecord(completed);
+        setOraclePhase('done');
+      }
+    }, 1600);
   };
 
   return (
@@ -269,7 +304,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
               <View style={styles.oraclePresence}>
                 <View style={styles.oracleDot} />
                 <Text style={[styles.oraclePresenceText, { color: tab.accent }]}>
-                  {insight ? 'Oracle · caught something' : 'Oracle · collecting context quietly'}
+                  {oracleRecord && oracleRecord.totalTurns > 0 ? 'Oracle · learning you' : 'Oracle · listening'}
                 </Text>
               </View>
             ) : (
@@ -292,70 +327,112 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
           </View>
         ) : null}
 
-        {activeTab === 'oracle' && (
+        {activeTab === 'oracle' ? (
           <View style={styles.oraclePanel}>
-            {insight ? (
+            {oraclePhase === 'loading' && (
+              <Text style={styles.oracleListening}>Oracle is thinking…</Text>
+            )}
+            {oraclePhase === 'questioning' && sessionQuestions[sessionTurnIndex] && (
               <>
-                <View style={styles.oracleInsightBlock}>
-                  {insight.lines.map((line, i) => (
-                    <Text key={i} style={styles.oracleInsightLine}>{line}</Text>
-                  ))}
+                <View style={styles.oracleQuestionBlock}>
+                  <Text style={styles.oracleQuestionNum}>
+                    {sessionTurnIndex + 1} of {sessionQuestions.length}
+                  </Text>
+                  <Text style={styles.oracleQuestionText}>
+                    {sessionQuestions[sessionTurnIndex].text}
+                  </Text>
                 </View>
-                <Text style={styles.oracleCuriosity}>{getOracleCuriosity(insight)}</Text>
+                <TextInput
+                  multiline
+                  value={oracleAnswer}
+                  onChangeText={setOracleAnswer}
+                  placeholder="Say whatever comes first…"
+                  placeholderTextColor="#736c82"
+                  style={styles.oracleInput}
+                  textAlignVertical="top"
+                />
+                <TouchableOpacity
+                  onPress={submitOracleAnswer}
+                  disabled={!oracleAnswer.trim()}
+                  style={[styles.oracleSubmit, !oracleAnswer.trim() && styles.oracleSubmitDisabled]}
+                >
+                  <Text style={styles.oracleSubmitText}>Answer</Text>
+                </TouchableOpacity>
               </>
-            ) : (
-              <Text style={styles.oracleListening}>
-                {entries.length < 2
-                  ? 'Oracle needs at least two pages to start noticing things.'
-                  : 'Oracle is listening. Nothing to surface yet.'}
-              </Text>
+            )}
+            {oraclePhase === 'ack' && (
+              <View style={styles.oracleAckBlock}>
+                <Text style={styles.oracleAckText}>{ackText}</Text>
+              </View>
+            )}
+            {oraclePhase === 'done' && (
+              <View style={styles.oracleDoneBlock}>
+                <Text style={styles.oracleDoneText}>
+                  {oracleRecord && oracleRecord.totalTurns > 0
+                    ? "Oracle has what it needs for now. Come back and it'll have more questions."
+                    : 'Oracle is here. Come back to start a conversation.'}
+                </Text>
+                {oracleRecord && oracleRecord.history.length > 0 && (
+                  <>
+                    <Text style={styles.oracleHistoryHeader}>Earlier this session</Text>
+                    {oracleRecord.history.slice(-3).map((turn, i) => (
+                      <View key={i} style={styles.oracleHistoryItem}>
+                        <Text style={styles.oracleHistoryQ}>{turn.question}</Text>
+                        <Text style={styles.oracleHistoryA}>{turn.answer}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
             )}
           </View>
-        )}
+        ) : (
+          <>
+            <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
+              <TextInput
+                autoFocus={activeTab === 'me'}
+                multiline
+                value={text}
+                onChangeText={updateText}
+                placeholder={activeTab === 'me' ? undefined : tab.placeholder}
+                placeholderTextColor="#736c82"
+                style={styles.input}
+                textAlignVertical="top"
+              />
+              {imageUri ? <Image source={{ uri: imageUri }} style={styles.attachment as any} /> : null}
+            </View>
 
-        <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
-          <TextInput
-            autoFocus={activeTab === 'me'}
-            multiline
-            value={text}
-            onChangeText={updateText}
-            placeholder={activeTab === 'oracle' ? (insight ? 'Write here if something landed…' : undefined) : activeTab === 'me' ? undefined : tab.placeholder}
-            placeholderTextColor="#736c82"
-            style={styles.input}
-            textAlignVertical="top"
-          />
-          {imageUri ? <Image source={{ uri: imageUri }} style={styles.attachment as any} /> : null}
-        </View>
-
-        <View style={styles.modeRow}>
-          <TouchableOpacity onPress={() => setNoPressure(value => !value)} style={[styles.modeChip, noPressure && styles.modeChipActive]}>
-            <Text style={styles.modeChipText}>{noPressure ? 'no-pressure mode on' : 'no-pressure mode'}</Text>
-          </TouchableOpacity>
-          {tab.prompts?.length && !promptVisible && !noPressure ? (
-            <TouchableOpacity onPress={() => setPromptVisible(true)}><Text style={[styles.showPrompt, { color: tab.accent }]}>show a prompt</Text></TouchableOpacity>
-          ) : null}
-        </View>
-
-        {!noPressure ? (
-          <View style={styles.tags}>
-            {moodTags.map(tag => (
-              <TouchableOpacity key={tag} onPress={() => setSelectedTag(current => current === tag ? '' : tag)} style={[styles.tag, selectedTag === tag && { borderColor: tab.accent, backgroundColor: tab.accent + '24' }]}>
-                <Text style={styles.tagText}>{tag}</Text>
+            <View style={styles.modeRow}>
+              <TouchableOpacity onPress={() => setNoPressure(value => !value)} style={[styles.modeChip, noPressure && styles.modeChipActive]}>
+                <Text style={styles.modeChipText}>{noPressure ? 'no-pressure mode on' : 'no-pressure mode'}</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
+              {tab.prompts?.length && !promptVisible && !noPressure ? (
+                <TouchableOpacity onPress={() => setPromptVisible(true)}><Text style={[styles.showPrompt, { color: tab.accent }]}>show a prompt</Text></TouchableOpacity>
+              ) : null}
+            </View>
 
-        <View style={styles.toolRow}>
-          <TouchableOpacity style={styles.tool} onPress={() => setScreen('voiceBip')}><Text style={styles.toolIcon}>◉</Text><Text style={styles.toolText}>Voice</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.tool} onPress={chooseImage}><Text style={styles.toolIcon}>▧</Text><Text style={styles.toolText}>Image</Text></TouchableOpacity>
-          <TouchableOpacity style={[styles.tool, locked && { borderColor: tab.accent, backgroundColor: tab.accent + '20' }]} onPress={() => setLocked(value => !value)}>
-            <Text style={styles.toolIcon}>{locked ? '▣' : '▢'}</Text><Text style={styles.toolText}>Lock</Text>
-          </TouchableOpacity>
-          <TouchableOpacity disabled={!text.trim() && !imageUri} onPress={save} style={[styles.save, { backgroundColor: tab.accent }, !text.trim() && !imageUri && styles.saveDisabled]}>
-            <Text style={styles.saveText}>Save page</Text>
-          </TouchableOpacity>
-        </View>
+            {!noPressure ? (
+              <View style={styles.tags}>
+                {moodTags.map(tag => (
+                  <TouchableOpacity key={tag} onPress={() => setSelectedTag(current => current === tag ? '' : tag)} style={[styles.tag, selectedTag === tag && { borderColor: tab.accent, backgroundColor: tab.accent + '24' }]}>
+                    <Text style={styles.tagText}>{tag}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : null}
+
+            <View style={styles.toolRow}>
+              <TouchableOpacity style={styles.tool} onPress={() => setScreen('voiceBip')}><Text style={styles.toolIcon}>◉</Text><Text style={styles.toolText}>Voice</Text></TouchableOpacity>
+              <TouchableOpacity style={styles.tool} onPress={chooseImage}><Text style={styles.toolIcon}>▧</Text><Text style={styles.toolText}>Image</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.tool, locked && { borderColor: tab.accent, backgroundColor: tab.accent + '20' }]} onPress={() => setLocked(value => !value)}>
+                <Text style={styles.toolIcon}>{locked ? '▣' : '▢'}</Text><Text style={styles.toolText}>Lock</Text>
+              </TouchableOpacity>
+              <TouchableOpacity disabled={!text.trim() && !imageUri} onPress={save} style={[styles.save, { backgroundColor: tab.accent }, !text.trim() && !imageUri && styles.saveDisabled]}>
+                <Text style={styles.saveText}>Save page</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <Text style={styles.privacyLine}>
           {side === 'teen'
@@ -468,35 +545,61 @@ const styles = StyleSheet.create({
   savedImage: { height: 150, borderRadius: 6, marginTop: 10 },
   empty: { borderWidth: 1, borderColor: '#ffffff12', borderStyle: 'dashed', borderRadius: 12, padding: 22, alignItems: 'center' },
   emptyText: { color: '#746d7c', fontSize: 12 },
-  // Oracle insight panel
+  // Oracle conversation panel
   oraclePanel: { marginBottom: 14 },
-  oracleInsightBlock: {
+  oracleListening: { color: '#7a7086', fontSize: 13, lineHeight: 20, paddingVertical: 6 },
+  oracleQuestionBlock: {
     backgroundColor: '#0d0b15',
     borderWidth: 1,
     borderColor: '#4a3f6b',
     borderRadius: 14,
     padding: 16,
-    marginBottom: 10,
+    marginBottom: 12,
   },
-  oracleInsightLine: {
-    color: '#e8e0f0',
+  oracleQuestionNum: { color: '#6b6077', fontSize: 10, fontWeight: '700', letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' },
+  oracleQuestionText: { color: '#e8e0f0', fontSize: 17, lineHeight: 27, fontWeight: '600' },
+  oracleInput: {
+    minHeight: 120,
+    backgroundColor: '#f4efe7',
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#8b7bb870',
+    padding: 16,
+    color: '#27212c',
     fontSize: 16,
     lineHeight: 26,
-    fontWeight: '600',
+    marginBottom: 10,
   },
-  oracleCuriosity: {
-    color: '#8b7bb8',
-    fontSize: 13,
-    lineHeight: 20,
-    fontStyle: 'italic',
-    paddingHorizontal: 4,
+  oracleSubmit: {
+    backgroundColor: '#8b7bb8',
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginBottom: 8,
   },
-  oracleListening: {
-    color: '#7a7086',
-    fontSize: 13,
-    lineHeight: 20,
-    paddingVertical: 6,
+  oracleSubmitDisabled: { opacity: 0.35 },
+  oracleSubmitText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  oracleAckBlock: {
+    minHeight: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
   },
+  oracleAckText: { color: '#c4b5fd', fontSize: 22, fontWeight: '700', letterSpacing: 0.3 },
+  oracleDoneBlock: { paddingVertical: 8 },
+  oracleDoneText: { color: '#8b7bb8', fontSize: 14, lineHeight: 22, fontStyle: 'italic', marginBottom: 20 },
+  oracleHistoryHeader: { color: '#6b6077', fontSize: 10, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  oracleHistoryItem: {
+    backgroundColor: '#0d0b15',
+    borderWidth: 1,
+    borderColor: '#2e2840',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+  },
+  oracleHistoryQ: { color: '#7a7086', fontSize: 12, lineHeight: 18, marginBottom: 6 },
+  oracleHistoryA: { color: '#c4b5fd', fontSize: 14, lineHeight: 22 },
   parentRoomOverlay: {
     backgroundColor: 'rgba(10, 5, 20, 0.70)',
   },

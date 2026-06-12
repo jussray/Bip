@@ -7,6 +7,7 @@ import {
   updateSekretMemory,
   type SekretMemory,
 } from '../services/sekretMemory';
+import { extractOracleSignals, loadOracleRecord } from '../services/oracleProfile';
 import { buildSekretPresence, normalizeSekretPersonality } from '../services/sekretPresence';
 import type { CompanionActivityInput, CompanionLevel, CompanionState, MemorySummary } from '../types/sekretCompanion';
 
@@ -65,7 +66,11 @@ function buildGreeting(personality: string, summary: MemorySummary): string {
   return familiar ? 'Hey love, you’re back. Tell me what’s on your heart.' : 'Hey love, I’m here. You can be real with me.';
 }
 
-function snapshot(memory: SekretMemory, input: CompanionActivityInput): CompanionState {
+function snapshot(
+  memory: SekretMemory,
+  input: CompanionActivityInput,
+  oracleSignals?: { personalityNote?: string; growthEdge?: string },
+): CompanionState {
   const memorySummary = summarizeSekretMemory(memory);
   const voice = normalizeSekretPersonality(input.selectedSekret || memory.selectedPersonality);
   const personality = PERSONALITY_LABELS[voice];
@@ -73,7 +78,7 @@ function snapshot(memory: SekretMemory, input: CompanionActivityInput): Companio
     memorySummary,
     companionLevel: buildLevel(memorySummary),
     greeting: buildGreeting(personality, memorySummary),
-    presenceMessage: buildSekretPresence(memorySummary, personality, input.screen),
+    presenceMessage: buildSekretPresence(memorySummary, personality, input.screen, oracleSignals),
     checkIn: buildSekretCheckIn(memorySummary, personality, input.mood, input.isLateNight, input, memory),
     lastUpdated: memory.lastUpdated,
     personality,
@@ -88,9 +93,13 @@ export function useSekretCompanion(input: CompanionActivityInput) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const loaded = await loadSekretMemory();
+      const [loaded, oracleRecord] = await Promise.all([
+        loadSekretMemory(),
+        loadOracleRecord('teen'),
+      ]);
+      const oracleSignals = extractOracleSignals(oracleRecord);
       const updated = await updateSekretMemory(input, loaded);
-      const nextState = snapshot(updated, input);
+      const nextState = snapshot(updated, input, oracleSignals);
       if (nextState.checkIn) {
         updated.lastCheckIn = new Date().toISOString();
         await saveSekretMemory(updated);
