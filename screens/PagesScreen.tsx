@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   Platform,
@@ -12,14 +12,6 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
 import { getParentRoomBg } from '../constants/theme';
-import {
-  loadOracleRecord,
-  markSessionComplete,
-  processAnswer,
-  saveOracleRecord,
-  selectSessionQuestions,
-} from '../services/oracleProfile';
-import type { OracleQuestion, OracleRecord } from '../types/oracle';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 
@@ -157,7 +149,6 @@ const PARENT_TABS: TabDefinition[] = [
 const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
 const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
-const ORACLE_ACKS = ['Noted.', 'Interesting.', 'That says something.', 'Got it.', 'Worth knowing.'];
 
 function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
@@ -187,25 +178,6 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
   const [promptVisible, setPromptVisible] = useState(true);
   const [promptIndex, setPromptIndex] = useState(0);
   const [noPressure, setNoPressure] = useState(false);
-
-  const [oracleRecord, setOracleRecord] = useState<OracleRecord | null>(null);
-  const [oraclePhase, setOraclePhase] = useState<'loading' | 'questioning' | 'ack' | 'done'>('loading');
-  const [sessionQuestions, setSessionQuestions] = useState<OracleQuestion[]>([]);
-  const [sessionTurnIndex, setSessionTurnIndex] = useState(0);
-  const [oracleAnswer, setOracleAnswer] = useState('');
-  const [ackText, setAckText] = useState('');
-  const oracleLoaded = useRef(false);
-
-  useEffect(() => {
-    if (oracleLoaded.current) return;
-    oracleLoaded.current = true;
-    loadOracleRecord(side === 'teen' ? 'teen' : 'parent').then(record => {
-      setOracleRecord(record);
-      const questions = selectSessionQuestions(record, 3);
-      setSessionQuestions(questions);
-      setOraclePhase(questions.length > 0 ? 'questioning' : 'done');
-    });
-  }, [side]);
 
   const tab = tabs.find(item => item.id === activeTab) || tabs[0];
   const text = activeTab === 'me' ? draft : tabDrafts[activeTab] || '';
@@ -249,29 +221,6 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
     setImageUri(undefined);
   };
 
-  const submitOracleAnswer = async () => {
-    if (!oracleAnswer.trim() || !oracleRecord || sessionTurnIndex >= sessionQuestions.length) return;
-    const question = sessionQuestions[sessionTurnIndex];
-    const updated = processAnswer(question, oracleAnswer, oracleRecord);
-    setOracleRecord(updated);
-    await saveOracleRecord(updated);
-    const ack = ORACLE_ACKS[updated.totalTurns % ORACLE_ACKS.length];
-    setAckText(ack);
-    setOraclePhase('ack');
-    setOracleAnswer('');
-    setTimeout(() => {
-      const next = sessionTurnIndex + 1;
-      if (next < sessionQuestions.length) {
-        setSessionTurnIndex(next);
-        setOraclePhase('questioning');
-      } else {
-        const completed = markSessionComplete(updated);
-        setOracleRecord(completed);
-        saveOracleRecord(completed);
-        setOraclePhase('done');
-      }
-    }, 1600);
-  };
 
   return (
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
@@ -348,67 +297,6 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
           </View>
         ) : null}
 
-        {activeTab === 'oracle' ? (
-          <View style={styles.oraclePanel}>
-            {oraclePhase === 'loading' && (
-              <Text style={styles.oracleListening}>Oracle is thinking…</Text>
-            )}
-            {oraclePhase === 'questioning' && sessionQuestions[sessionTurnIndex] && (
-              <>
-                <View style={styles.oracleQuestionBlock}>
-                  <Text style={styles.oracleQuestionNum}>
-                    {sessionTurnIndex + 1} of {sessionQuestions.length}
-                  </Text>
-                  <Text style={styles.oracleQuestionText}>
-                    {sessionQuestions[sessionTurnIndex].text}
-                  </Text>
-                </View>
-                <TextInput
-                  multiline
-                  value={oracleAnswer}
-                  onChangeText={setOracleAnswer}
-                  placeholder="Say whatever comes first…"
-                  placeholderTextColor="#736c82"
-                  style={styles.oracleInput}
-                  textAlignVertical="top"
-                />
-                <TouchableOpacity
-                  onPress={submitOracleAnswer}
-                  disabled={!oracleAnswer.trim()}
-                  style={[styles.oracleSubmit, !oracleAnswer.trim() && styles.oracleSubmitDisabled]}
-                >
-                  <Text style={styles.oracleSubmitText}>Answer</Text>
-                </TouchableOpacity>
-              </>
-            )}
-            {oraclePhase === 'ack' && (
-              <View style={styles.oracleAckBlock}>
-                <Text style={styles.oracleAckText}>{ackText}</Text>
-              </View>
-            )}
-            {oraclePhase === 'done' && (
-              <View style={styles.oracleDoneBlock}>
-                <Text style={styles.oracleDoneText}>
-                  {oracleRecord && oracleRecord.totalTurns > 0
-                    ? "Oracle has what it needs for now. Come back and it'll have more questions."
-                    : 'Oracle is here. Come back to start a conversation.'}
-                </Text>
-                {oracleRecord && oracleRecord.history.length > 0 && (
-                  <>
-                    <Text style={styles.oracleHistoryHeader}>Earlier this session</Text>
-                    {oracleRecord.history.slice(-3).map((turn, i) => (
-                      <View key={i} style={styles.oracleHistoryItem}>
-                        <Text style={styles.oracleHistoryQ}>{turn.question}</Text>
-                        <Text style={styles.oracleHistoryA}>{turn.answer}</Text>
-                      </View>
-                    ))}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        ) : (
-          <>
             <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
               <TextInput
                 autoFocus={activeTab === 'me'}
@@ -452,8 +340,6 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
                 <Text style={styles.saveText}>Save page</Text>
               </TouchableOpacity>
             </View>
-          </>
-        )}
 
         <Text style={styles.privacyLine}>
           {side === 'teen'

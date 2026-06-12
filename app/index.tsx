@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -34,7 +34,6 @@ import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
 import {
-  completeOracleSession,
   createOracleProfile,
   normalizeOracleProfile,
   normalizeOracleSessions,
@@ -352,7 +351,6 @@ export default function App() {
     }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
-    journalText, journalEntries, parentPagesDraft, parentPagesEntries, moodHistory,
     journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
     oracleSessions, parentOracleSessions, moodHistory,
     circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
@@ -495,6 +493,7 @@ export default function App() {
     };
     setParentCirclePosts(p => [post, ...p]);
     setParentCirclePostText('');
+    syncParentCirclePost(post);
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
