@@ -50,15 +50,19 @@ const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
 const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
+const bgRayleneRoomMidday    = require("../assets/images/bg-raylene-room-midday.png");
+const bgRayleneRoomAfternoon = require("../assets/images/bg-raylene-room-afternoon.png");
 const bgRayleneRoomEvening   = require("../assets/images/bg-raylene-room-evening.png");
 const bgRayleneRoomRain      = require("../assets/images/bg-raylene-room-rain.png");
 const bgRayleneRoomNight     = require("../assets/images/bg-raylene-room-night.png");
 const bgRayleneRoomDeepNight = require("../assets/images/bg-raylene-room-deep-night.png");
 
-const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
 const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png");
+const bgRylaneRoomMidday    = require("../assets/images/bg-rylane-room-midday.png");
+const bgRylaneRoomAfternoon = require("../assets/images/bg-rylane-room-afternoon.png");
 const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
 const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
+const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
 // ── Cloud Room Backgrounds — REAL ASSETS ──────────────────────────────────
@@ -213,11 +217,15 @@ export const IMAGES = {
 
   // Rooms
   bgRayleneRoomDay,
+  bgRayleneRoomMidday,
+  bgRayleneRoomAfternoon,
   bgRayleneRoomEvening,
   bgRayleneRoomRain,
   bgRayleneRoomNight,
   bgRayleneRoomDeepNight,
   bgRylaneRoomDay,
+  bgRylaneRoomMidday,
+  bgRylaneRoomAfternoon,
   bgRylaneRoomEvening,
   bgRylaneRoomRain,
   bgRylaneRoomNight,
@@ -328,11 +336,6 @@ export function getRoomScene(
                : phase === "afternoon" ? "Afternoon"
                : phase.charAt(0).toUpperCase() + phase.slice(1);
   const key = `${prefix}${suffix}` as keyof typeof IMAGES;
-  // Raylene/Rylane don't have midday/afternoon art — fall back to nearest phase.
-  if (!IMAGES[key]) {
-    if (phase === "midday")    return getRoomScene(character, "day");
-    if (phase === "afternoon") return getRoomScene(character, "evening");
-  }
   return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
 }
 
