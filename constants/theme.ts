@@ -57,12 +57,12 @@ const bgRayleneRoomRain      = require("../assets/images/bg-raylene-room-rain.pn
 const bgRayleneRoomNight     = require("../assets/images/bg-raylene-room-night.png");
 const bgRayleneRoomDeepNight = require("../assets/images/bg-raylene-room-deep-night.png");
 
-const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
 const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png");
 const bgRylaneRoomMidday    = require("../assets/images/bg-rylane-room-midday.png");
 const bgRylaneRoomAfternoon = require("../assets/images/bg-rylane-room-afternoon.png");
 const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
 const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
+const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
 const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
 // ── Cloud Room Backgrounds — REAL ASSETS ──────────────────────────────────
