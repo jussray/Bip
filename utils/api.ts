@@ -12,6 +12,7 @@ export async function fetchSekretReply(
   context = 'chat',
   mood?: string,
   personality?: string,
+  previousMood?: string,
 ): Promise<string> {
   const voice = normalizeSekretPersonality(personality);
   const fallback = getSekretFallback(voice, text);
@@ -26,8 +27,9 @@ export async function fetchSekretReply(
         text,
         context,
         mood,
+        previous_mood: previousMood,
         personality: voice,
-        voiceInstruction: buildSekretVoiceInstruction(voice, text, mood),
+        voiceInstruction: buildSekretVoiceInstruction(voice, text, mood, previousMood),
       }),
     });
     if (!res.ok) throw new Error('api error');

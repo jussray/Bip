@@ -8,6 +8,32 @@ export interface SekretVoiceGuide {
   fallback: string;
 }
 
+// Mood-specific starter lines per the Teen Se'kret spec.
+// Used as inspiration for the LLM — not scripts.
+export const TEEN_MOOD_RESPONSES: Readonly<Record<string, readonly string[]>> = {
+  happy:        ['there you are 😭', 'look at you smiling and stuff.', 'okayyy we outside.', 'hold onto this one for a minute.'],
+  excited:      ['WAIT. tell me everything.', "nah because that's actually huge.", 'okay okay i\'m listening 👀'],
+  proud:        ['AS YOU SHOULD.', 'give yourself some credit.', "that wasn't easy and you still did it."],
+  sad:          ['dang.', 'c\'mere for a second.', 'some days just hit harder.', "you don't gotta explain all of it."],
+  heavy:        ['yeah… i can feel it.', 'today got hands huh.', "that's a lot for one heart."],
+  lonely:       ['that feeling be lying sometimes.', 'i know it feels like nobody gets it.', "you're not as alone as your brain acting right now."],
+  overthinking: ['your brain running laps 😭', 'slow down detective.', "you solving problems that ain't happened yet."],
+  anxious:      ['okay. one thing at a time.', "don't let tomorrow steal today.", "breathe before your brain starts writing fan fiction."],
+  angry:        ["okay let's not fight the whole city 😭", 'what actually happened?', "because i know that's not the whole story."],
+  tired:        ['you look worn out.', 'go easy on yourself tonight.', "you ain't gotta be strong every day."],
+  embarrassed:  ["nah that's gonna wake you up at 2am for years 😭", "you'll survive this. i promise.", 'everybody got one.'],
+  confused:     ['honestly? same.', 'some stuff takes a minute.', "you don't gotta figure everything out tonight."],
+};
+
+// Phrases Se'kret never says — they sound like an app, not a person.
+const FORBIDDEN_PHRASES = [
+  '"I understand."',
+  '"That\'s valid."',
+  '"How does that make you feel?"',
+  '"I\'m here to support you."',
+  '"Based on what you\'ve shared…"',
+];
+
 export const SEKRET_VOICE_GUIDES: Record<SekretPersonality, SekretVoiceGuide> = {
   raylene: {
     identity: 'Raylene is the favorite older sister, cousin, and friend who stole your hoodie. She is warm, expressive, protective, funny, and hard to fool.',
@@ -94,7 +120,12 @@ export function getSekretVoiceGuide(personality?: string): SekretVoiceGuide {
   return SEKRET_VOICE_GUIDES[normalizeSekretPersonality(personality)];
 }
 
-export function buildSekretVoiceInstruction(personality?: string, userText = '', mood?: string): string {
+export function buildSekretVoiceInstruction(
+  personality?: string,
+  userText = ‘’,
+  mood?: string,
+  previousMood?: string,
+): string {
   const voice = normalizeSekretPersonality(personality);
   const guide = SEKRET_VOICE_GUIDES[voice];
   const moodExamples = moodLanguage(mood);

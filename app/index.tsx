@@ -77,6 +77,7 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
+
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
   rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
@@ -291,31 +292,27 @@ export default function App() {
   // Note: storage.ts STORAGE_KEYS uses 'entries' not 'journalEntries'
   useEffect(() => {
     if (isLoading) return;
-    try {
-      saveState({
-        theme,
-        mood,
-        userSide,
-        selectedSekret,
-        sekretMode,
-        journalText,
-        entries:       journalEntries,   // storage key is 'entries'
-        moodHistory,
-        circlePosts,
-        voiceNotes,
-        comfortSessions,
-        crewMembers,
-        crewCheckIns,
-        streakDays:       String(streakDays),
-        lastOpenDate,
-        roomMemory:       JSON.stringify(roomMemory),
-        parentRoomStyle,
-        parentMood,
-        parentMoodDate,
-      });
-    } catch (e) {
-      // Storage write failure — silent
-    }
+    saveState({
+      theme,
+      mood,
+      userSide,
+      selectedSekret,
+      sekretMode,
+      journalText,
+      entries:       journalEntries,   // storage key is 'entries'
+      moodHistory,
+      circlePosts,
+      voiceNotes,
+      comfortSessions,
+      crewMembers,
+      crewCheckIns,
+      streakDays:       String(streakDays),
+      lastOpenDate,
+      roomMemory:       JSON.stringify(roomMemory),
+      parentRoomStyle,
+      parentMood,
+      parentMoodDate,
+    }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
     journalText, journalEntries, moodHistory,
@@ -355,7 +352,7 @@ export default function App() {
   const trackActivity = (type: 'calm' | 'comfort' | 'voice' | 'journal' | 'growth' | 'mood') => {
     updateRoomMemory({ lastVisit: new Date().toISOString() });
     const now = new Date();
-    const nextId = comfortSessions.length ? comfortSessions[0].id + 1 : 1;
+    const nextId = Date.now();
     const session: ComfortSession = {
       id:   nextId,
       type,
@@ -462,11 +459,13 @@ export default function App() {
         t={t}
         updateRoomMemory={updateRoomMemory}
         vibe={vibeKey}
+        companion={companion}
         BottomNav={nav}
         companion={companion}
       />
     );
   }
+
   // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
     <HomeScreen
