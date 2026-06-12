@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { IMAGES, getRoomBg } from '../constants/theme';
 import { fetchSekretReply } from '../utils/api';
+import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text,
   TouchableOpacity,
@@ -103,6 +104,8 @@ interface CloudThoughtsScreenProps {
   BottomNav:     React.ReactNode;
   backTarget?:   string;         // Fix A4: defaults to 'home'
   selectedSekret?: string;       // 'soft' | 'rylane' | 'cloud' | 'night'
+  privateProfile?: OracleProfile;
+  profileSide?: OracleSide;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -114,6 +117,8 @@ export function CloudThoughtsScreen({
   BottomNav,
   backTarget = 'home',
   selectedSekret,
+  privateProfile,
+  profileSide = 'teen',
 }: CloudThoughtsScreenProps) {
 
   // Character-aware display name
@@ -158,7 +163,7 @@ export function CloudThoughtsScreen({
     setSent(true);
     setIsThinking(true);
     // Fix C5: pass activeMode as context so the API can tune its tone
-    const r = await fetchSekretReply(text, activeMode, mood, selectedSekret);
+    const r = await fetchSekretReply(text, activeMode, mood, selectedSekret, undefined, privateProfile, profileSide);
     setReply(r);
     setIsThinking(false);
   };

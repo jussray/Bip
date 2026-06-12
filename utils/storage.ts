@@ -11,6 +11,10 @@ const STORAGE_KEYS = {
   entries: 'entries',
   parentPagesEntries: 'parentPagesEntries',
   parentPagesDraft: 'parentPagesDraft',
+  oracleProfile: 'oracleProfile',
+  parentOracleProfile: 'parentOracleProfile',
+  oracleSessions: 'oracleSessions',
+  parentOracleSessions: 'parentOracleSessions',
   moodHistory: 'moodHistory',
   circlePosts: 'circlePosts',
   parentCirclePosts: 'parentCirclePosts',
@@ -31,6 +35,7 @@ const STORAGE_KEYS = {
 
 const JSON_KEYS = new Set([
   'entries', 'parentPagesEntries', 'moodHistory', 'circlePosts', 'parentCirclePosts', 'voiceNotes', 'parentVoiceNotes', 'comfortSessions',
+  'entries', 'parentPagesEntries', 'oracleProfile', 'parentOracleProfile', 'oracleSessions', 'parentOracleSessions', 'moodHistory', 'circlePosts', 'parentCirclePosts', 'voiceNotes', 'parentVoiceNotes', 'comfortSessions',
   'crewMembers', 'crewCheckIns', 'roomMemory', 'periodDays',
 ]);
 

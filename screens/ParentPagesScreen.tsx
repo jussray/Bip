@@ -1,6 +1,7 @@
 import React from 'react';
 import type { JournalEntry } from '../types';
 import { PagesWorkspace, type SavePageInput } from './PagesScreen';
+import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 
 interface ParentPagesScreenProps {
   entries: JournalEntry[];
@@ -12,6 +13,8 @@ interface ParentPagesScreenProps {
   mood?: string;
   parentRoomStyle?: 'mom' | 'dad';
   weatherMode?: string;
+  oracleProfile?: OracleProfile;
+  onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
 
 export function ParentPagesScreen(props: ParentPagesScreenProps) {

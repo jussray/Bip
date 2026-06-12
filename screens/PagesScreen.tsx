@@ -20,6 +20,9 @@ import {
   selectSessionQuestions,
 } from '../services/oracleProfile';
 import type { OracleQuestion, OracleRecord } from '../types/oracle';
+import type { JournalEntry } from '../types';
+import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
+import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 
 type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
@@ -61,6 +64,8 @@ interface SharedPagesProps {
   streakDays?: number;
   parentRoomStyle?: 'mom' | 'dad';
   weatherMode?: string;
+  oracleProfile?: OracleProfile;
+  onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
 
 export interface PagesScreenProps {
@@ -76,6 +81,8 @@ export interface PagesScreenProps {
   voiceNotes?: VoiceNote[];
   streakDays?: number;
   selectedSekret?: string;
+  oracleProfile?: OracleProfile;
+  onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
 
 const TEEN_TABS: TabDefinition[] = [
@@ -166,7 +173,7 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, selectedSekret, moodHistory = [], voiceNotes = [], streakDays = 0, parentRoomStyle, weatherMode }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, oracleProfile, onCompleteOracleSession }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
   const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
@@ -297,23 +304,38 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
         </ScrollView>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content, Platform.OS === 'web' && styles.contentWeb as any]} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {activeTab === 'oracle' ? (
+          <>
+            <OracleDiscoveryPanel
+              side={side}
+              profile={oracleProfile}
+              accent={tab.accent}
+              onComplete={onCompleteOracleSession}
+            />
+            {tabEntries.length ? (
+              <View>
+                <View style={styles.savedHeader}>
+                  <Text style={styles.savedTitle}>Earlier Oracle pages</Text>
+                  <Text style={styles.savedCount}>{tabEntries.length}</Text>
+                </View>
+                {tabEntries.map(entry => (
+                  <View key={String(entry.id)} style={styles.entryCard}>
+                    <Text style={styles.entryMeta}>{formatEntryMeta(entry)}</Text>
+                    {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
+                    {entry.imageUri ? <Image source={{ uri: entry.imageUri }} style={styles.savedImage as any} /> : null}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <>
         {activeTab !== 'me' && (
           <View style={styles.intro}>
-            {activeTab === 'oracle' ? (
-              <View style={styles.oraclePresence}>
-                <View style={styles.oracleDot} />
-                <Text style={[styles.oraclePresenceText, { color: tab.accent }]}>
-                  {oracleRecord && oracleRecord.totalTurns > 0 ? 'Oracle · learning you' : 'Oracle · listening'}
-                </Text>
-              </View>
-            ) : (
-              tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null
-            )}
-            {activeTab !== 'oracle' ? (
-              <Text style={styles.title}>{tab.title}</Text>
-            ) : null}
-            {tab.subtitle && activeTab !== 'oracle' ? <Text style={styles.subtitle}>{tab.subtitle}</Text> : null}
+            {tab.eyebrow ? <Text style={[styles.eyebrow, { color: tab.accent }]}>{tab.eyebrow}</Text> : null}
+            <Text style={styles.title}>{tab.title}</Text>
+            {tab.subtitle ? <Text style={styles.subtitle}>{tab.subtitle}</Text> : null}
           </View>
         )}
 
@@ -456,18 +478,21 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
         )) : (
           <View style={styles.empty}><Text style={styles.emptyText}>Nothing saved here yet.</Text></View>
         )}
+          </>
+        )}
       </ScrollView>
       {BottomNav}
     </View>
   );
 }
 
-export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, selectedSekret, moodHistory, voiceNotes, streakDays }: PagesScreenProps) {
+export function PagesScreen({ journalText, setJournalText, journalEntries, saveJournalEntry, mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession }: PagesScreenProps) {
   return (
     <PagesWorkspace
       side="teen" entries={journalEntries} draft={journalText} setDraft={setJournalText}
       onSave={entry => saveJournalEntry(entry)} mood={mood} setScreen={setScreen} BottomNav={BottomNav}
       selectedSekret={selectedSekret} moodHistory={moodHistory} voiceNotes={voiceNotes} streakDays={streakDays}
+      oracleProfile={oracleProfile} onCompleteOracleSession={onCompleteOracleSession}
     />
   );
 }
