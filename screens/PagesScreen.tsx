@@ -12,6 +12,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
 import { buildOracleInsight, type OracleInsight } from '../services/oracle';
+import { getParentRoomBg } from '../constants/theme';
 
 type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
@@ -52,6 +53,7 @@ interface SharedPagesProps {
   voiceNotes?: VoiceNote[];
   streakDays?: number;
   parentRoomStyle?: 'mom' | 'dad';
+  weatherMode?: string;
 }
 
 export interface PagesScreenProps {
@@ -166,11 +168,12 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' · ');
 }
 
-function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, selectedSekret, moodHistory = [], voiceNotes = [], streakDays = 0, parentRoomStyle }: SharedPagesProps) {
+function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, BottomNav, mood, selectedSekret, moodHistory = [], voiceNotes = [], streakDays = 0, parentRoomStyle, weatherMode }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
   const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
   const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
+  const parentRoomImage = side === 'parent' ? getParentRoomBg(parentRoomStyle ?? 'mom', weatherMode) : undefined;
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
   const [activeTab, setActiveTab] = useState<PagesTab>('me');
   const [tabDrafts, setTabDrafts] = useState<Partial<Record<PagesTab, string>>>({});
@@ -231,6 +234,12 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
 
   return (
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
+      {parentRoomImage ? (
+        <>
+          <Image source={parentRoomImage} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+          <View style={[StyleSheet.absoluteFillObject, styles.parentRoomOverlay]} />
+        </>
+      ) : null}
       <View style={styles.header}>
         <View>
           <Text style={[styles.kicker, { color: tab.accent }]}>{side === 'teen' ? 'TEEN PAGES' : 'PARENT PAGES'}</Text>
@@ -487,5 +496,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     paddingVertical: 6,
+  },
+  parentRoomOverlay: {
+    backgroundColor: 'rgba(10, 5, 20, 0.70)',
   },
 });

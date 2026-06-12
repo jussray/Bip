@@ -11,6 +11,7 @@ interface ParentPagesScreenProps {
   BottomNav: React.ReactNode;
   mood?: string;
   parentRoomStyle?: 'mom' | 'dad';
+  weatherMode?: string;
 }
 
 export function ParentPagesScreen(props: ParentPagesScreenProps) {

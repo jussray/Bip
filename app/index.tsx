@@ -587,6 +587,7 @@ export default function App() {
       setScreen={setScreen}
       BottomNav={nav}
       parentRoomStyle={parentRoomStyle}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
     />
   ) : (
     <PagesScreen
