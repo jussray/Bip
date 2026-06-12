@@ -3,12 +3,24 @@ import { createVoiceCompanionSession, type VoiceCompanionSession, type VoiceComp
 import type { VoiceBipAvatarKey, VoiceBipVoiceIdKey } from '../constants/voiceBip';
 
 interface UseVoiceCompanionArgs {
+  avatarKey?: string;
   avatarKey?: VoiceBipAvatarKey;
   personality?: string;
   voiceIdKey?: VoiceBipVoiceIdKey;
   mood?: string;
+  voiceId?: string | null;
 }
 
+export function useVoiceCompanion({
+  avatarKey = 'raylene',
+  personality = 'raylene',
+  mood = 'calm',
+  voiceId = null,
+}: UseVoiceCompanionArgs) {
+  const [session, setSession] = useState<VoiceCompanionSession | null>(null);
+
+  const prepareVoiceSession = (mode: VoiceCompanionStatus['mode'] = 'voice') => {
+    const nextSession = createVoiceCompanionSession(avatarKey, personality, mood, mode, voiceId);
 export function useVoiceCompanion({ avatarKey = 'raylene', personality = 'Raylene', voiceIdKey = 'rayleneVoiceId', mood = 'calm' }: UseVoiceCompanionArgs) {
   const [session, setSession] = useState<VoiceCompanionSession | null>(null);
 

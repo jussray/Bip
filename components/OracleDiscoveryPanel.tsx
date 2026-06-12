@@ -75,6 +75,7 @@ export function OracleDiscoveryPanel({ side, profile: profileValue, accent, onCo
         <Text style={styles.completionText}>
           {completion === 'saved'
             ? 'Se’kret saved an evolving understanding — not a label, and not a transcript.'
+            : 'Se’kret did not force a conclusion. You can discover something else another time.'}
             : 'Se’kret didn’t force a conclusion. You can discover something else another time.'}
         </Text>
         <TouchableOpacity onPress={reset} style={[styles.again, { borderColor: accent }]}>

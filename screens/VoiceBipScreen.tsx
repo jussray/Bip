@@ -11,6 +11,7 @@
 //   - Tips list adapts per companion
 //   - Listening pill mirrors JournalScreen pattern (breath loop)
 //   - Sticky-note hint ("tap the mic") with -2deg tilt
+//   - Reply card credits the active avatar registry identity
 //   - Reply card credits the selected avatar, not a hard-coded companion
 //   - VoiceNote type properly imported
 //   - Curly quotes throughout
@@ -20,6 +21,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
+import {
+  VOICE_BIP_AVATARS,
+  VOICE_BIP_AVATAR_KEYS,
+  normalizeVoiceBipAvatar,
+  type VoiceBipAvatarKey,
+} from '../constants/voiceBip';
 import { getRoomPhase, getRoomScene, type RoomPhase } from '../constants/theme';
 import { VOICE_BIP_AVATARS, VOICE_BIP_AVATAR_KEYS, getVoiceBipAvatar } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
@@ -55,6 +63,8 @@ interface VoiceBipScreenProps {
   theme:          Record<string, any>;
   setScreen:      (screen: string) => void;
   selectedSekret: string;
+  onSelectAvatar?: (avatarKey: VoiceBipAvatarKey) => void;
+  weatherMode?: string;
   setSelectedSekret?: (avatarKey: string) => void;
   voiceNotes:     VoiceNote[];
   setVoiceNotes:  (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
@@ -70,6 +80,7 @@ interface VoiceBipScreenProps {
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
+  theme, setScreen, selectedSekret, onSelectAvatar, weatherMode, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
   theme, setScreen, selectedSekret, setSelectedSekret, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
 }: VoiceBipScreenProps) {
 
@@ -102,6 +113,20 @@ export function VoiceBipScreen({
   ).current;
   const waveLoop = useRef<any>(null);
 
+  // Avatar identity and room phase come from normalized registries. Oracle
+  // context can inform replies, but no Oracle identity is exposed in this UI.
+  const now = new Date();
+  const hour = now.getHours();
+  const timeOfDay = getTimeOfDay(hour);
+  const roomPhase = getRoomPhase(now, weatherMode);
+  const isNight = roomPhase === 'night' || roomPhase === 'deepNight';
+  const avatarKey = normalizeVoiceBipAvatar(selectedSekret);
+  const avatar = VOICE_BIP_AVATARS[avatarKey];
+  const roomArt = getRoomScene(avatarKey, roomPhase);
+  const heroArt = isNight ? avatar.heroArt.night : avatar.heroArt.day;
+  const { prepareVoiceSession } = useVoiceCompanion({
+    avatarKey,
+    personality: avatar.personality,
   // Normalize identity once. Every visible and future voice choice derives from this registry.
   // Oracle-informed context remains private and is only passed through fetchSekretReply below.
   const avatar = getVoiceBipAvatar(selectedSekret);
@@ -114,6 +139,7 @@ export function VoiceBipScreen({
     personality: avatar.personality,
     voiceIdKey: avatar.voiceIdKey,
     mood: mood || 'calm',
+    voiceId: avatar.voiceId,
   });
 
   const formatTime = (s: number) =>
@@ -233,7 +259,7 @@ export function VoiceBipScreen({
       'I just recorded a voice bip. I had some feelings I needed to get out.',
       'journal',
       mood,
-      selectedSekret,
+      avatarKey,
       undefined,
       privateProfile,
       profileSide,
@@ -252,6 +278,13 @@ export function VoiceBipScreen({
     };
   }, []);
 
+  const prompts = avatar.prompts;
+  const prompt = prompts[voicePromptIdx % prompts.length];
+  const selectAvatar = (nextAvatarKey: VoiceBipAvatarKey) => {
+    setVoicePromptIdx(0);
+    setSekretReply('');
+    setRecorded(false);
+    onSelectAvatar?.(nextAvatarKey);
   const selectAvatar = (nextAvatarKey: typeof avatarKey) => {
     setVoicePromptIdx(0);
     setSekretReply('');
@@ -263,17 +296,46 @@ export function VoiceBipScreen({
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
+        {/* Avatar Voice Bip — each companion keeps an independent identity. */}
+        <View style={styles.avatarSelector}>
+          {VOICE_BIP_AVATAR_KEYS.map(key => {
+            const option = VOICE_BIP_AVATARS[key];
+            const active = key === avatarKey;
+            return (
+              <TouchableOpacity
+                key={key}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => selectAvatar(key)}
+                style={[
+                  styles.avatarOption,
+                  active && { borderColor: option.accent, backgroundColor: `${option.accent}24` },
+                ]}
+              >
+                <Text style={styles.avatarOptionEmoji}>{option.emoji}</Text>
+                <Text style={[styles.avatarOptionName, active && { color: option.accent }]}>{option.displayName}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.avatarIntro}>
+          <Text style={[styles.avatarRole, { color: avatar.accent }]}>{avatar.role}</Text>
+          <Text style={styles.avatarGreeting}>“{avatar.greeting}”</Text>
+        </View>
+
         {/* ── Interactive Room ── */}
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.2} />
 
           {/* Environmental character art */}
           <View pointerEvents="none" style={styles.environmentLayer}>
-            <Image
-              source={heroArt}
-              style={styles.heroAvatar}
-              resizeMode="contain"
-            />
+            {heroArt ? (
+              <Image
+                source={heroArt}
+                style={styles.heroAvatar}
+                resizeMode="contain"
+              />
+            ) : null}
             <LinearGradient
               colors={['rgba(13,9,20,0.55)', 'transparent']}
               style={styles.topScrim}
@@ -421,6 +483,8 @@ export function VoiceBipScreen({
         {/* ── Companion thinking ── */}
         {isThinking && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)', flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
+            <Image source={CLOUD_HP} style={{ width: 36, height: 36 }} resizeMode="contain" />
+            <Text style={[styles.thinkingText, { color: theme.soft }]}>{avatar.listening}</Text>
             <Image source={heroArt} style={{ width: 36, height: 36 }} resizeMode="contain" />
             <Text style={[styles.thinkingText, { color: theme.soft }]}>{avatar.thinking}</Text>
           </View>
@@ -429,11 +493,18 @@ export function VoiceBipScreen({
         {/* ── Reply ── */}
         {sekretReply && !isThinking && (
           <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
+            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.responseLabel}</Text>
             <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.replyLabel}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
           </View>
         )}
 
+        {/* ── Companion voice prompt ── */}
+        {!isRecording && !sekretReply && (() => {
+          const p = prompt;
+          return (
+            <View style={[styles.floatCard, { borderColor: `${avatar.accent}73`, backgroundColor: 'rgba(20,12,40,0.88)', shadowColor: avatar.accent }]}>
+              <Text style={{ color: avatar.accent, fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 }}>
         {/* ── Avatar selection ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
           <Text style={[styles.cardTitle, { color: '#fff' }]}>Who do you want to talk to?</Text>
@@ -497,6 +568,7 @@ export function VoiceBipScreen({
 
         {/* ── Tips ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips for Voice Bips 🌙</Text>
           <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips from {avatar.displayName} {avatar.emoji}</Text>
           {avatar.tips.map(tip => (
             <Text key={tip} style={[styles.tip, { color: '#c4b5fd' }]}>• {tip}</Text>
@@ -543,6 +615,7 @@ export function VoiceBipScreen({
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowArchive(false)} />
           <View style={[styles.archiveCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
             <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>
+              {avatar.archiveTitle} 📖
               {avatar.displayName}’s journal 📖
             </Text>
 
@@ -597,6 +670,13 @@ const styles = StyleSheet.create({
   root:               { flex: 1, backgroundColor: '#0d0914' },
   scrollView:          { flex: 1 },
   scroll:             { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
+  avatarSelector:     { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },
+  avatarOption:       { flex: 1, minWidth: 0, alignItems: 'center', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(196,181,253,0.18)', backgroundColor: 'rgba(13,9,20,0.72)', paddingVertical: 8, paddingHorizontal: 4 },
+  avatarOptionEmoji:  { fontSize: 18, marginBottom: 3 },
+  avatarOptionName:   { color: '#9b91aa', fontSize: 11, fontWeight: '800' },
+  avatarIntro:        { paddingHorizontal: 16, paddingBottom: 12 },
+  avatarRole:         { fontSize: 10, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 },
+  avatarGreeting:     { color: '#f5f0ff', fontSize: 16, lineHeight: 22, fontWeight: '700' },
   roomWrap:           { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 240 : 340, marginBottom: 16, overflow: 'hidden' },
   avatarPicker:       { flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 12 },
   avatarOption:       { flex: 1, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.25)', borderRadius: 12, paddingVertical: 9, backgroundColor: 'rgba(30,18,52,0.65)' },

@@ -8,6 +8,9 @@ export interface VoiceCompanionStatus {
 
 export interface VoiceCompanionSession {
   id: string;
+  avatarKey: string;
+  personality: string;
+  voiceId: string | null;
   avatarKey: VoiceBipAvatarKey;
   personality: string;
   voiceIdKey: VoiceBipVoiceIdKey;
@@ -16,6 +19,11 @@ export interface VoiceCompanionSession {
 }
 
 export function createVoiceCompanionSession(
+  avatarKey: string,
+  personality: string,
+  mood: string,
+  mode: VoiceCompanionStatus['mode'] = 'voice',
+  voiceId: string | null = null,
   avatarKey: VoiceBipAvatarKey,
   personality: string,
   voiceIdKey: VoiceBipVoiceIdKey,
@@ -26,6 +34,7 @@ export function createVoiceCompanionSession(
     id: `voice-${Date.now()}`,
     avatarKey,
     personality,
+    voiceId,
     voiceIdKey,
     mood,
     status: {
