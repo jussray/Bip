@@ -266,18 +266,17 @@ export default function App() {
   }, []);
 
   // ── userSide change → snap to the correct home screen ─────────────────────
-  // When the user switches to parent mode, immediately open Parent Room ('home'
-  // renders ParentRoomScreen for the parent side).  When switching back to teen,
-  // open the teen Room ('home' renders RoomScreen for the teen side).
+  // Route 'home' is shared by both sides:
+  //   userSide === 'parent' → renders ParentRoomScreen  (Parent Room)
+  //   userSide === 'teen'   → renders RoomScreen        (teen Room)
+  // Switching sides always lands on 'home' so parents open Parent Room by
+  // default and teens open their normal Room — never the wrong side's screen.
   // Guard: skip on initial mount (isLoading still true) so the splash sequence
   // is not interrupted by a stored userSide value being hydrated.
   useEffect(() => {
     if (isLoading) return;
-    if (userSide === 'parent') {
-      setScreen('home');
-    } else {
-      setScreen('home');
-    }
+    // 'home' renders ParentRoomScreen for parent, RoomScreen for teen.
+    setScreen('home');
   }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
@@ -552,6 +551,9 @@ export default function App() {
   //   periodCalendar · voiceBip · cloudThoughts · dashboard
 
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
+  // 'home' is the shared route key for both sides:
+  //   parent → ParentRoomScreen   (Parent Room opens by default on parent mode)
+  //   teen   → RoomScreen         (normal teen Room)
   if (screen === 'home') {
     if (userSide === 'parent') {
       const today = new Date().toLocaleDateString();
