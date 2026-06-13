@@ -20,11 +20,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
+import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay, type RoomPhase } from '../constants/theme';
 import {
   VOICE_BIP_AVATARS,
   VOICE_BIP_AVATAR_KEYS,
   normalizeVoiceBipAvatar,
+  getVoiceBipAvatar,
   type VoiceBipAvatarKey,
 } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
@@ -33,8 +34,17 @@ import { fetchSekretReply } from '../utils/api';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text, TouchableOpacity, ScrollView, View,
+  Animated, Image, StyleSheet, Easing,
+  type DimensionValue,
   Animated, Image, StyleSheet, Easing, Platform,
 } from 'react-native';
+import { PresenceAvatar } from '../components/PresenceAvatar';
+import { usePresence } from '../hooks/usePresence';
+import {
+  getPresenceTime,
+  PRESENCE_TIME_BADGE,
+} from '../constants/presence/timeOfDay';
+import { toPresenceCharacter } from '../constants/presence/avatarStates';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
@@ -43,7 +53,13 @@ const DEBUG_HOTSPOTS = false;
 const CLOUD_HP = IMAGES.cloudHeadphones;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
-const HOTSPOTS = {
+type Hotspot = {
+  top?: DimensionValue; bottom?: DimensionValue;
+  left?: DimensionValue; right?: DimensionValue;
+  width: DimensionValue; height: DimensionValue;
+  label: string;
+};
+const HOTSPOTS: Record<'microphone' | 'journal' | 'window' | 'crystalJar', Hotspot> = {
   microphone: { top: '18%',    left: '30%',  width: '22%', height: '28%', label: 'Mic 🎙️' },
   journal:    { bottom: '4%',  left: '16%',  width: '44%', height: '22%', label: 'Journal 📖' },
   window:     { top: '4%',     right: '2%',  width: '38%', height: '40%', label: 'Window 🌙' },
@@ -257,6 +273,7 @@ export function VoiceBipScreen({
     onSave?.();
 
     setIsThinking(true);
+    presence.endListening();
     const reply = await fetchSekretReply(
       'I just recorded a voice bip. I had some feelings I needed to get out.',
       'journal',
@@ -268,6 +285,7 @@ export function VoiceBipScreen({
     );
     setSekretReply(reply);
     setIsThinking(false);
+    presence.markResponseReady();
     setSelectedBipType(null);
   };
 
@@ -324,6 +342,21 @@ export function VoiceBipScreen({
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.2} />
 
+          {/* Hero avatar — driven by the Voice Bip Presence System.
+              Listens / thinks / responds / settles instead of sitting still. */}
+          <PresenceAvatar
+            character={presenceCharacter}
+            time={presenceTime}
+            state={presence.state}
+            style={styles.heroAvatar}
+          />
+
+          {/* Top scrim */}
+          <LinearGradient
+            colors={['rgba(13,9,20,0.55)', 'transparent']}
+            style={styles.topScrim}
+            pointerEvents="none"
+          />
           {/* Environmental character art */}
           <View pointerEvents="none" style={styles.environmentLayer}>
             {heroArt ? (
@@ -358,7 +391,7 @@ export function VoiceBipScreen({
             />
           )}
 
-          {/* Time badge */}
+          {/* Time badge — 6-phase via PresenceTime, with legacy fallback */}
           <View style={styles.timeBadge} pointerEvents="none">
             <Text style={styles.timeBadgeText}>{TIME_BADGE[timeOfDay]}</Text>
           </View>

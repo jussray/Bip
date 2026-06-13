@@ -21,10 +21,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
 import { buildOracleInsight } from '../services/oracle';
 import {
   Text, TouchableOpacity, ScrollView,
+  TextInput, View, Image, StyleSheet, Alert, Animated, Easing,
+  type DimensionValue,
   TextInput, View, Image, StyleSheet, Alert, Animated, Easing, Platform,
 } from 'react-native';
 
@@ -32,7 +35,13 @@ import {
 const DEBUG_HOTSPOTS = false;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
-const HOTSPOTS = {
+type Hotspot = {
+  top?: DimensionValue; bottom?: DimensionValue;
+  left?: DimensionValue; right?: DimensionValue;
+  width: DimensionValue; height: DimensionValue;
+  label: string;
+};
+const HOTSPOTS: Record<'journal' | 'calendar', Hotspot> = {
   journal:  { bottom: '6%', left: '26%', width: '40%', height: '22%', label: 'Journal 📖' },
   calendar: { top: '6%', right: '2%', width: '44%', height: '40%', label: 'Calendar 📅' },
 };
@@ -188,6 +197,11 @@ export function JournalScreen({
 
           <View style={styles.timeBadge} pointerEvents="none">
             <Text style={styles.timeBadgeText}>{hero.badge}</Text>
+          </View>
+
+          {/* Mini sticker — Raylene/Rylane journal companion */}
+          <View style={{ position: 'absolute', top: 10, right: 10 }} pointerEvents="none">
+            <MiniReactionSticker character={character} screenContext="journal" size={40} />
           </View>
 
           {/* Page-memory status — not a companion voice */}

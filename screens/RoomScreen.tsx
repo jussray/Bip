@@ -555,6 +555,9 @@ export function RoomScreen({
   const guideAnim   = useRef(new Animated.Value(0)).current;
   const hintAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(0)).current;
+  // Slow ambient breath used by the presence pill at the bottom of the room.
+  // Subtle, infinite loop driven by the existing breath effect in the screen.
+  const breathAnim  = useRef(new Animated.Value(0)).current;
 
   // Loop refs for cleanup
   const glowLoopRef  = useRef<Animated.CompositeAnimation | null>(null);
@@ -589,6 +592,15 @@ export function RoomScreen({
     );
     pulseLoopRef.current.start();
 
+    // Slow ambient breath for the presence pill
+    const breathLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1, duration: 2400, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 0, duration: 2400, useNativeDriver: true }),
+      ])
+    );
+    breathLoop.start();
+
     // Auto hint on first load
     const guideTimer = setTimeout(() => {
       setHintSpot('pages');
@@ -599,6 +611,7 @@ export function RoomScreen({
       clearTimeout(guideTimer);
       glowLoopRef.current?.stop();
       pulseLoopRef.current?.stop();
+      breathLoop.stop();
     };
   }, []);
 

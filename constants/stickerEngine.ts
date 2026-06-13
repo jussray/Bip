@@ -198,3 +198,51 @@ export function getAllStatesForCharacter(
     entry,
   }));
 }
+
+// ── Cloud Expression Engine ─────────────────────────────────────────────────
+// Cloud's expressions map to the full-size Cloud mascot assets in theme.ts IMAGES.
+// These are the large mascot avatars, NOT the sticker layer.
+
+export type CloudExpression =
+  | 'happy' | 'sleepy' | 'stormy' | 'comfort' | 'listening'
+  | 'voice-bip' | 'journal' | 'hug' | 'proud' | 'crying'
+  | 'cozy' | 'dreamy' | 'thinking' | 'bippin-brb' | 'cheer';
+
+const CLOUD_EXPRESSIONS: Record<CloudExpression, keyof typeof IMAGES> = {
+  'happy':       'cloudHappy',
+  'sleepy':      'cloudSleepy',
+  'stormy':      'cloudStormy',
+  'comfort':     'cloud',
+  'listening':   'cloudHeadphones',
+  'voice-bip':   'cloudHeadphonesV2',
+  'journal':     'cloud',
+  'hug':         'cloudHappy',
+  'proud':       'cloudHappy',
+  'crying':      'cloudStormy',
+  'cozy':        'cloud',
+  'dreamy':      'cloudSleepy',
+  'thinking':    'cloud',
+  'bippin-brb':  'cloudSleepy',
+  'cheer':       'cloudHappy',
+};
+
+/**
+ * getExpressionAsset(character, expression)
+ *
+ * Resolves a character + expression to a renderable image source.
+ * Currently specialized for the Cloud mascot expression set:
+ *   getExpressionAsset('cloud', 'listening')  // → IMAGES.cloudHeadphones
+ *   getExpressionAsset('cloud', 'bippin-brb') // → IMAGES.cloudSleepy
+ */
+export function getExpressionAsset(
+  character: 'cloud',
+  expression: CloudExpression,
+): ImageSourcePropType {
+  if (character === 'cloud') {
+    const key = CLOUD_EXPRESSIONS[expression];
+    const source = key ? IMAGES[key] : undefined;
+    if (source) return source as ImageSourcePropType;
+    return IMAGES.cloud as ImageSourcePropType;
+  }
+  return IMAGES.cloud as ImageSourcePropType;
+}
