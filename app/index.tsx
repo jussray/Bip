@@ -84,13 +84,13 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
-  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
-  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
-  night:  { name: "Night Se’kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
+  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what's actually on your mind? No fake 'I'm fine'." },
+  cloud:  { name: "Cloud Se'kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
+  night:  { name: "Night Se'kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
 };
 
 const HOME_MESSAGES = [
-  "Don’t stay up carrying the whole world tonight.",
+  "Don't stay up carrying the whole world tonight.",
   'Rest is productive too.',
   'You deserve softness too.',
   'Heavy days do not define you.',
@@ -264,6 +264,21 @@ export default function App() {
       setIsLoading(false);
     })();
   }, []);
+
+  // ── userSide change → snap to the correct home screen ─────────────────────
+  // When the user switches to parent mode, immediately open Parent Room ('home'
+  // renders ParentRoomScreen for the parent side).  When switching back to teen,
+  // open the teen Room ('home' renders RoomScreen for the teen side).
+  // Guard: skip on initial mount (isLoading still true) so the splash sequence
+  // is not interrupted by a stored userSide value being hydrated.
+  useEffect(() => {
+    if (isLoading) return;
+    if (userSide === 'parent') {
+      setScreen('home');
+    } else {
+      setScreen('home');
+    }
+  }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
   //
