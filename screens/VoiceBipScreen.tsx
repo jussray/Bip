@@ -20,12 +20,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay, type RoomPhase } from '../constants/theme';
+import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
 import {
   VOICE_BIP_AVATARS,
   VOICE_BIP_AVATAR_KEYS,
   normalizeVoiceBipAvatar,
-  getVoiceBipAvatar,
   type VoiceBipAvatarKey,
 } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
@@ -35,8 +34,7 @@ import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Animated, Image, StyleSheet, Easing,
-  type DimensionValue,
-  Animated, Image, StyleSheet, Easing, Platform,
+  type DimensionValue, Platform,
 } from 'react-native';
 import { PresenceAvatar } from '../components/PresenceAvatar';
 import { usePresence } from '../hooks/usePresence';
@@ -151,6 +149,9 @@ export function VoiceBipScreen({
   const isNight = roomPhase === 'night' || roomPhase === 'deepNight';
   const avatarKey = normalizeVoiceBipAvatar(selectedSekret);
   const avatar = VOICE_BIP_AVATARS[avatarKey];
+  const presenceCharacter = toPresenceCharacter(avatarKey);
+  const presenceTime = getPresenceTime(hour, { isRaining: roomPhase === 'rain' });
+  const presence = usePresence({ character: presenceCharacter, time: presenceTime });
   const roomArt = getRoomScene(avatarKey, roomPhase);
   const heroArt = isNight ? avatar.heroArt.night : avatar.heroArt.day;
   const { prepareVoiceSession } = useVoiceCompanion({
@@ -205,6 +206,7 @@ export function VoiceBipScreen({
     setRecordingTime(0);
     setShowBipMenu(false);
     prepareVoiceSession('voice');
+    presence.beginListening();
 
     pulseLoop.current = Animated.loop(
       Animated.sequence([

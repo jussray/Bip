@@ -23,12 +23,9 @@
 //                              black Se'kret hoodie. Signed "Rylane" in the
 //                              rylane-reference-sheet.png artwork itself.
 //   cloud-*.png ............. mascot.
-//   rylane-reference-board.png / rylane-profile-sheet.png
-//                              DIFFERENT character — curly black hair, purple
-//                              Se'kret hoodie, headphones. Per the user, this
-//                              is NIGHT (his own person, not Rylane). Only
-//                              exists in repo as reference sheets today, not
-//                              as game-ready single-pose state art.
+//   Night .................... Dedicated game-ready single-pose state art is
+//                              still pending. Design references are not loaded
+//                              by the runtime.
 //
 // Hard rule the user repeated multiple times: "Rylane and Night are not the
 // same person." Never alias them to each other's art.
@@ -209,12 +206,8 @@ const CLOUD_CELLS: readonly AssetCell[] = [
 // "headphones on, world off", "protect his peace", "loyal, honest, real",
 // "it's okay to not be okay", "tired eyes", "music helps".
 //
-// Night's only on-disk pixels live in two files whose filenames begin with
-// "rylane-" — those are AI-generation mislabels. Visually verified content:
-//   - rylane-reference-board.png   → wider layout, daytime/open energy
-//   - rylane-profile-sheet.png     → vertical portrait, intimate/night energy
-// Both depict the curly-hair/purple-hoodie Night character (NOT Rylane). They
-// are exposed via theme.ts under correct Night-prefixed IMAGES keys.
+// Night assets remain null until dedicated runtime cutouts ship. Design
+// reference sheets are intentionally kept outside the runtime asset bank.
 //
 // Mapping rules:
 //   - Daytime + open states (listening day/midday/afternoon, responding

@@ -9,9 +9,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-   "vercel-build": "expo export -p web",
+    "vercel-build": "expo export -p web",
     "test": "node --test",
-    "lint": "eslint . --ext .ts,.tsx",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
     "test:oracle": "node scripts/test-oracle-discovery.mjs"
@@ -48,6 +48,7 @@
     "babel-preset-expo": "~10.0.0",
     "eslint": "^8.57.1",
     "eslint-config-expo": "^7.1.2",
-    "typescript": "~5.3.3"
+    "typescript": "~5.3.3",
+    "typescript-eslint": "^8.61.0"
   }
 }

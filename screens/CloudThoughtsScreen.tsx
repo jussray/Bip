@@ -285,7 +285,7 @@ export function CloudThoughtsScreen({
           >
             <Text style={styles.sendBtnText}>send to the clouds ☁️</Text>
           </TouchableOpacity>
-          <MiniReactionSticker character={character} screenContext="cloudThoughts" size={40} />
+          <MiniReactionSticker character={character ?? null} screenContext="cloudThoughts" size={40} />
         </View>
 
         {/* ── Thinking ── */}

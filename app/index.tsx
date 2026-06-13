@@ -277,7 +277,7 @@ export default function App() {
     if (isLoading) return;
     // 'home' renders ParentRoomScreen for parent, RoomScreen for teen.
     setScreen('home');
-  }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userSide]);
 
   // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
   //
@@ -735,11 +735,6 @@ export default function App() {
   if (screen === 's2tell') return (
     <S2TellScreen
       t={t}
-      circlePosts={circlePosts as any}
-      circlePostText={circlePostText}
-      setCirclePostText={setCirclePostText}
-      saveCirclePost={saveCirclePost}
-      reactToPost={reactToPost as any}
       setScreen={setScreen}
       BottomNav={nav}
       selectedSekret={selectedSekret}
@@ -757,7 +752,6 @@ export default function App() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
-      character={getActiveCharacter(selectedSekret)}
       setScreen={setScreen}
       onMilestone={() => trackActivity('growth')}
       streakDays={streakDays}
@@ -885,7 +879,6 @@ export default function App() {
     <MoreScreen
       t={t}
       userSide={userSide}
-      setUserSide={setUserSide as (side: string) => void}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       setScreen={setScreen}
       BottomNav={nav}
@@ -904,7 +897,6 @@ export default function App() {
       sekretMode={sekretMode}
       setSekretMode={setSekretMode}
       userSide={userSide}
-      setUserSide={setUserSide as (side: string) => void}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       parentRoomStyle={parentRoomStyle}
       setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}

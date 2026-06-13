@@ -52,21 +52,15 @@ const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 // Night is his own character: curly black hair, purple Se'kret hoodie,
 // headphones, sketchbook + mug. "Late night thoughts / protect his peace."
 //
-// The pixels for Night live in two files whose FILENAMES say "rylane" — these
-// are AI-generation mislabels from earlier iterations. The image content was
-// verified by visual scan: rylane-reference-board.png and rylane-profile-sheet.png
-// both depict the curly-hair/purple-hoodie Night character, NOT the
-// dreadlocks Rylane. We do not rename the files (every screen imports them);
-// we just expose them under correct character keys here.
-const nightReferenceBoard = require('../assets/images/rylane-reference-board.png');
-const nightProfileSheet   = require('../assets/images/rylane-profile-sheet.png');
+// Dedicated, runtime-ready Night cutouts have not shipped yet. Keep these
+// explicit nulls so Metro never attempts to bundle missing design-reference
+// sheets; callers use their existing safe fallback behavior.
+const nightReferenceBoard: ImageSourcePropType | null = null;
+const nightProfileSheet: ImageSourcePropType | null = null;
 
 // ── Night (semantic aliases) ───────────────────────────────────────────────
-// Until per-state, single-pose Night art lands, every Night state maps onto
-// one of the two reference-sheet files. profile-sheet (vertical, portrait
-// oriented) handles intimate states; reference-board (wider, full layout)
-// handles open states. Both are real Night art — no placeholders, no
-// borrowed faces from other characters.
+// Until per-state, single-pose Night art lands, Night states remain null.
+// Presence rendering falls back safely without borrowing another character.
 const nightNeutral     = nightProfileSheet;
 const nightHappy       = nightReferenceBoard;
 const nightThinking    = nightProfileSheet;
