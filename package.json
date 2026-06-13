@@ -15,6 +15,7 @@
     "type-check": "tsc --noEmit",
     "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
+    "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs"
     "deploy": "npm run vercel-build && wrangler deploy",
     "preview": "npm run vercel-build && wrangler dev"
   },
