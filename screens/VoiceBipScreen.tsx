@@ -21,15 +21,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
+import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay, type RoomPhase } from '../constants/theme';
 import {
   VOICE_BIP_AVATARS,
   VOICE_BIP_AVATAR_KEYS,
   normalizeVoiceBipAvatar,
+  getVoiceBipAvatar,
   type VoiceBipAvatarKey,
 } from '../constants/voiceBip';
-import { getRoomPhase, getRoomScene, type RoomPhase } from '../constants/theme';
-import { VOICE_BIP_AVATARS, VOICE_BIP_AVATAR_KEYS, getVoiceBipAvatar } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
 import { fetchSekretReply } from '../utils/api';
