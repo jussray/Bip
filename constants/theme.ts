@@ -139,6 +139,66 @@ const cloudAvatarWriting  = cloudHeadphonesV2;
 const cloudAvatarWindow   = cloudSleepy;
 const cloudAvatarFullbody = cloudHappy;
 
+// ── Sticker Layer (real assets — assets/images/stickers/) ──────────────────
+// 53 individual stickers cut from the character sticker sheets.
+// 19 raylene / 19 rylane / 15 cloud. These are the small sticker-layer art,
+// distinct from the full-size avatar/mascot images above.
+const rayStickerStanding    = require("../assets/images/stickers/raylene/raylene-sticker-standing.png");
+const rayStickerLounging    = require("../assets/images/stickers/raylene/raylene-sticker-lounging.png");
+const rayStickerStudying    = require("../assets/images/stickers/raylene/raylene-sticker-studying.png");
+const rayStickerSleepy      = require("../assets/images/stickers/raylene/raylene-sticker-sleepy.png");
+const rayStickerPeace       = require("../assets/images/stickers/raylene/raylene-sticker-peace.png");
+const rayStickerListening   = require("../assets/images/stickers/raylene/raylene-sticker-listening.png");
+const rayStickerComfort     = require("../assets/images/stickers/raylene/raylene-sticker-comfort.png");
+const rayStickerSunglasses  = require("../assets/images/stickers/raylene/raylene-sticker-sunglasses.png");
+const rayStickerHappy       = require("../assets/images/stickers/raylene/raylene-sticker-happy.png");
+const rayStickerJournaling  = require("../assets/images/stickers/raylene/raylene-sticker-journaling.png");
+const rayStickerThinking    = require("../assets/images/stickers/raylene/raylene-sticker-thinking.png");
+const rayStickerBoba        = require("../assets/images/stickers/raylene/raylene-sticker-boba.png");
+const rayStickerCrown       = require("../assets/images/stickers/raylene/raylene-sticker-crown.png");
+const rayStickerSunnies     = require("../assets/images/stickers/raylene/raylene-sticker-sunnies.png");
+const rayStickerHoodie      = require("../assets/images/stickers/raylene/raylene-sticker-hoodie.png");
+const rayStickerSekretBip   = require("../assets/images/stickers/raylene/raylene-sticker-sekret-bip.png");
+const rayStickerSekretHeart = require("../assets/images/stickers/raylene/raylene-sticker-sekret-heart.png");
+const rayStickerPillow      = require("../assets/images/stickers/raylene/raylene-sticker-pillow.png");
+const rayStickerIconCloud   = require("../assets/images/stickers/raylene/raylene-sticker-icon-cloud.png");
+
+const rylStickerMini        = require("../assets/images/stickers/rylane/rylane-sticker-mini.png");
+const rylStickerReading     = require("../assets/images/stickers/rylane/rylane-sticker-reading.png");
+const rylStickerPhone       = require("../assets/images/stickers/rylane/rylane-sticker-phone.png");
+const rylStickerThinking    = require("../assets/images/stickers/rylane/rylane-sticker-thinking.png");
+const rylStickerSitting     = require("../assets/images/stickers/rylane/rylane-sticker-sitting.png");
+const rylStickerHeadphones  = require("../assets/images/stickers/rylane/rylane-sticker-headphones.png");
+const rylStickerHoodie      = require("../assets/images/stickers/rylane/rylane-sticker-hoodie.png");
+const rylStickerCalm        = require("../assets/images/stickers/rylane/rylane-sticker-calm.png");
+const rylStickerStormy      = require("../assets/images/stickers/rylane/rylane-sticker-stormy.png");
+const rylStickerPeace       = require("../assets/images/stickers/rylane/rylane-sticker-peace.png");
+const rylStickerHappy       = require("../assets/images/stickers/rylane/rylane-sticker-happy.png");
+const rylStickerSleepy      = require("../assets/images/stickers/rylane/rylane-sticker-sleepy.png");
+const rylStickerNight       = require("../assets/images/stickers/rylane/rylane-sticker-night.png");
+const rylStickerMusic       = require("../assets/images/stickers/rylane/rylane-sticker-music.png");
+const rylStickerLateNight   = require("../assets/images/stickers/rylane/rylane-sticker-late-night.png");
+const rylStickerProtect     = require("../assets/images/stickers/rylane/rylane-sticker-protect.png");
+const rylStickerWhyILove    = require("../assets/images/stickers/rylane/rylane-sticker-why-i-love.png");
+const rylStickerWriting     = require("../assets/images/stickers/rylane/rylane-sticker-writing.png");
+const rylStickerSpeech      = require("../assets/images/stickers/rylane/rylane-sticker-speech.png");
+
+const cloudStickerSleepy    = require("../assets/images/stickers/cloud/cloud-sticker-sleepy.png");
+const cloudStickerHappy     = require("../assets/images/stickers/cloud/cloud-sticker-happy.png");
+const cloudStickerListening = require("../assets/images/stickers/cloud/cloud-sticker-listening.png");
+const cloudStickerVoiceBip  = require("../assets/images/stickers/cloud/cloud-sticker-voice-bip.png");
+const cloudStickerJournal   = require("../assets/images/stickers/cloud/cloud-sticker-journal.png");
+const cloudStickerComfort   = require("../assets/images/stickers/cloud/cloud-sticker-comfort.png");
+const cloudStickerHug       = require("../assets/images/stickers/cloud/cloud-sticker-hug.png");
+const cloudStickerProud     = require("../assets/images/stickers/cloud/cloud-sticker-proud.png");
+const cloudStickerStormy    = require("../assets/images/stickers/cloud/cloud-sticker-stormy.png");
+const cloudStickerCrying    = require("../assets/images/stickers/cloud/cloud-sticker-crying.png");
+const cloudStickerCozy      = require("../assets/images/stickers/cloud/cloud-sticker-cozy.png");
+const cloudStickerDreamy    = require("../assets/images/stickers/cloud/cloud-sticker-dreamy.png");
+const cloudStickerThinking  = require("../assets/images/stickers/cloud/cloud-sticker-thinking.png");
+const cloudStickerBippinBrb = require("../assets/images/stickers/cloud/cloud-sticker-bippin-brb.png");
+const cloudStickerCheer     = require("../assets/images/stickers/cloud/cloud-sticker-cheer.png");
+
 // ── UI / Splash ────────────────────────────────────────────────────────────
 // The native splash is color-only in app.json. The branded splash experience is
 // composed in SplashScreen from text, controls, mascots, and valid scene artwork.
@@ -259,6 +319,65 @@ export const IMAGES = {
   cloudHeadphonesV2,
   cloudSleepy,
   cloudStormy,
+
+  // Raylene stickers
+  rayStickerStanding,
+  rayStickerLounging,
+  rayStickerStudying,
+  rayStickerSleepy,
+  rayStickerPeace,
+  rayStickerListening,
+  rayStickerComfort,
+  rayStickerSunglasses,
+  rayStickerHappy,
+  rayStickerJournaling,
+  rayStickerThinking,
+  rayStickerBoba,
+  rayStickerCrown,
+  rayStickerSunnies,
+  rayStickerHoodie,
+  rayStickerSekretBip,
+  rayStickerSekretHeart,
+  rayStickerPillow,
+  rayStickerIconCloud,
+
+  // Rylane stickers
+  rylStickerMini,
+  rylStickerReading,
+  rylStickerPhone,
+  rylStickerThinking,
+  rylStickerSitting,
+  rylStickerHeadphones,
+  rylStickerHoodie,
+  rylStickerCalm,
+  rylStickerStormy,
+  rylStickerPeace,
+  rylStickerHappy,
+  rylStickerSleepy,
+  rylStickerNight,
+  rylStickerMusic,
+  rylStickerLateNight,
+  rylStickerProtect,
+  rylStickerWhyILove,
+  rylStickerWriting,
+  rylStickerSpeech,
+
+  // Cloud stickers
+  cloudStickerSleepy,
+  cloudStickerHappy,
+  cloudStickerListening,
+  cloudStickerVoiceBip,
+  cloudStickerJournal,
+  cloudStickerComfort,
+  cloudStickerHug,
+  cloudStickerProud,
+  cloudStickerStormy,
+  cloudStickerCrying,
+  cloudStickerCozy,
+  cloudStickerDreamy,
+  cloudStickerThinking,
+  cloudStickerBippinBrb,
+  cloudStickerCheer,
 
   // UI / Splash
   sekretSplash,
