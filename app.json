@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
+ "platforms": ["ios", "android", "web"],
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#160028"
