@@ -14,7 +14,9 @@
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
-    "test:oracle": "node scripts/test-oracle-discovery.mjs"
+    "test:oracle": "node scripts/test-oracle-discovery.mjs",
+    "deploy": "npm run vercel-build && wrangler deploy",
+    "preview": "npm run vercel-build && wrangler dev"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
@@ -49,6 +51,7 @@
     "eslint": "^8.57.1",
     "eslint-config-expo": "^7.1.2",
     "typescript": "~5.3.3",
-    "typescript-eslint": "^8.61.0"
+    "typescript-eslint": "^8.61.0",
+    "wrangler": "^4.100.0"
   }
 }
