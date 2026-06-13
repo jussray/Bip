@@ -719,6 +719,11 @@ export default function App() {
   if (screen === 's2tell') return (
     <S2TellScreen
       t={t}
+      circlePosts={circlePosts as any}
+      circlePostText={circlePostText}
+      setCirclePostText={setCirclePostText}
+      saveCirclePost={saveCirclePost}
+      reactToPost={reactToPost as any}
       setScreen={setScreen}
       BottomNav={nav}
       selectedSekret={selectedSekret}
@@ -864,6 +869,7 @@ export default function App() {
     <MoreScreen
       t={t}
       userSide={userSide}
+      setUserSide={setUserSide as (side: string) => void}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       setScreen={setScreen}
       BottomNav={nav}
@@ -882,6 +888,7 @@ export default function App() {
       sekretMode={sekretMode}
       setSekretMode={setSekretMode}
       userSide={userSide}
+      setUserSide={setUserSide as (side: string) => void}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       parentRoomStyle={parentRoomStyle}
       setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}
