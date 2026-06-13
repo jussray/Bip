@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
+import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import {
   Text, ScrollView, View, Image, StyleSheet,
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
@@ -64,12 +65,16 @@ interface ComfortScreenProps {
   onComplete?:     () => void;
   BottomNav:       React.ReactNode;
   selectedSekret?: string;
+  character?:      MiniStickerCharacter;
   mood?:           string;
+  companion?: {
+    presenceMessage: string;
+  };
 }
 
 export function ComfortScreen({
   t, setScreen, onComplete, BottomNav,
-  selectedSekret = 'raylene', mood,
+  selectedSekret = 'raylene', character, mood, companion,
 }: ComfortScreenProps) {
 
   const [checked, setChecked] = useState<number[]>([]);
@@ -220,7 +225,7 @@ export function ComfortScreen({
 
         {/* Companion presence pill (top right) */}
         <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
-          <Text style={styles.presenceText}>cloud is here · rainy room</Text>
+          <Text style={styles.presenceText}>{companion?.presenceMessage || 'cloud is here · rainy room'}</Text>
         </Animated.View>
 
         <Text style={[styles.logo, { textShadowColor: moodGlow + '99' }]}>{heroCopy.title}</Text>
@@ -236,6 +241,7 @@ export function ComfortScreen({
           <Text style={styles.cardEmoji}>💙</Text>
           <Text style={[styles.cardText, { color: '#fff' }]}>{notAloneCopy.title}</Text>
           <Text style={[styles.entryText, { color: t.soft }]}>{notAloneCopy.sub}</Text>
+          <MiniReactionSticker character={character} screenContext="comfort" size={40} />
         </View>
 
         {/* Grounding checklist */}
@@ -324,7 +330,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 0, width: 1.5, height: 22,
     backgroundColor: 'rgba(180,210,255,0.55)', borderRadius: 1,
   },
-  scroll:        { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40 },
+  scroll:        { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   presencePill:  {
     alignSelf: 'flex-end',
     backgroundColor: 'rgba(168,85,247,0.22)',

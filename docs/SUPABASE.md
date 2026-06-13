@@ -105,3 +105,29 @@ full history once they sign in (anon today, email later).
   round-trip cleanly through AsyncStorage and the cloud.
 - All sync helpers swallow errors so a broken cloud never breaks the local
   experience. Errors only surface in dev logs.
+
+## Running in GitHub Codespaces
+
+For the full step-by-step (open Codespace, install, env vars, start, smoke
+tests), see [`docs/CODESPACES.md`](./CODESPACES.md). The short version:
+
+1. Open the repo on GitHub → **Code** → **Codespaces** → **Create codespace on main**.
+2. In the Codespace terminal:
+   ```bash
+   npm install --legacy-peer-deps
+   cp .env.example .env.local
+   ```
+3. Fill `.env.local` with your `EXPO_PUBLIC_SUPABASE_URL` and
+   `EXPO_PUBLIC_SUPABASE_ANON_KEY` from Supabase → Settings → API.
+4. Run [`db/schema.sql`](../db/schema.sql) once in the Supabase SQL Editor.
+5. Start the app:
+   ```bash
+   npx expo start --web
+   ```
+6. Click the forwarded-port toast to open the app in a new tab. Watch
+   the DevTools console for `[sync] pullAll hydrated { ... }` to confirm
+   cloud restore fired on boot.
+
+Without `.env.local` the app still runs — it just stays offline-only and
+`pullAll` short-circuits silently. That's intentional so contributors can
+demo the UI without a Supabase project.

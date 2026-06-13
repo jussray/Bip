@@ -7,6 +7,7 @@
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
     "splash": {
+      "resizeMode": "contain",
       "backgroundColor": "#160028"
     },
     "ios": {
@@ -19,9 +20,9 @@
       },
       "package": "com.sekretbip.app"
     },
-   "plugins": [
-  "expo-router",
-  "expo-secure-store"
-]
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
   }
 }

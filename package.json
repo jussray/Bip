@@ -11,7 +11,9 @@
     "web": "expo start --web",
     "test": "jest",
     "lint": "eslint . --ext .ts,.tsx",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
+    "test:oracle": "node scripts/test-oracle-discovery.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
@@ -42,9 +44,9 @@
     "@babel/core": "^7.24.0",
     "@types/react": "~18.2.79",
     "babel-plugin-module-resolver": "^5.0.0",
-    "babel-preset-expo": "~11.0.0",
-    "eslint": "^9.39.4",
-    "typescript": "~5.3.3",
-    "typescript-eslint": "^8.61.0"
+    "babel-preset-expo": "~10.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-expo": "^7.1.2",
+    "typescript": "~5.3.3"
   }
 }

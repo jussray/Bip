@@ -6,6 +6,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
+import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Image, ImageBackground, Animated, StyleSheet, Platform, Easing,
@@ -319,6 +320,8 @@ export function Bippin2Screen({
             <View style={[styles.cloudBubble, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '66' }]}>
               <Text style={styles.cloudText}>{cloudSpeech}</Text>
             </View>
+            {/* Cloud mini sticker — Bippin BRB companion */}
+            <MiniReactionSticker character="cloud" screenContext="bippinBRB" size={36} />
           </View>
         </Animated.View>
 
@@ -590,7 +593,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: -100, alignSelf: 'center',
     width: 360, height: 360, borderRadius: 180,
   },
-  container:    { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 58 : 38 },
+  container:    { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 58 : 38, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   headerRow:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   backChip:      { backgroundColor: 'rgba(20,12,40,0.75)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },

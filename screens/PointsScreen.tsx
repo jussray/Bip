@@ -79,7 +79,7 @@ function tierFor(pts: number): Tier {
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  t: (k: string) => string;
+  t: Record<string, any>;
   mood: string;
   selectedSekret: 'rylane' | 'raylene' | string;
   moodHistory: MoodEntry[];
@@ -385,7 +385,7 @@ export function PointsScreen({
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   bg:     { flex: 1 },
-  scroll: { padding: 20, paddingTop: 60 },
+  scroll: { padding: 20, paddingTop: 60, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   hero:      { alignItems: 'center', marginBottom: 22 },
   pill:      {

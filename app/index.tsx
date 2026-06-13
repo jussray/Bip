@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -8,10 +7,12 @@ import { StatusBar } from 'expo-status-bar';
 import { SplashScreen }         from '../screens/SplashScreen';
 import { HomeScreen }           from '../screens/HomeScreen';
 import { RoomScreen }           from '../screens/RoomScreen';
-import { JournalScreen }        from '../screens/JournalScreen';
+import { PagesScreen, type SavePageInput } from '../screens/PagesScreen';
+import { ParentPagesScreen }    from '../screens/ParentPagesScreen';
 import { CalmScreen }           from '../screens/CalmScreen';
 import { SekretScreen }         from '../screens/SekretScreen';
 import { CircleScreen }         from '../screens/CircleScreen';
+import { ParentCircleScreen }   from '../screens/ParentCircleScreen';
 import { Bippin2Screen }        from '../screens/Bippin2Screen';
 import { GrowthScreen }         from '../screens/GrowthScreen';
 import { WomanhoodScreen }      from '../screens/WomanhoodScreen';
@@ -24,11 +25,21 @@ import { ComfortScreen }        from '../screens/ComfortScreen';
 import { MindBodyResetScreen }  from '../screens/MindBodyResetScreen';
 import { BridgeScreen }         from '../screens/BridgeScreen';
 import { ParentBridgeScreen }   from '../screens/ParentBridgeScreen';
+import { S2TellScreen }         from '../screens/S2TellScreen';
+import { ParentRoomScreen, type ParentRoomStyle } from '../screens/ParentRoomScreen';
 import { MoreScreen }           from '../screens/MoreScreen';
 import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
+import { THEME_PACKS, normalizeVibeKey } from '../constants/theme';
+import {
+  createOracleProfile,
+  normalizeOracleProfile,
+  normalizeOracleSessions,
+  type OracleProfile,
+  type OracleSessionSummary,
+} from '../services/oracleDiscovery';
 
 // ── Utils ──────────────────────────────────────────────────────────────────
 // IMPORTANT: loadState() takes NO args — returns full state object.
@@ -36,25 +47,19 @@ import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
 // Do NOT call loadState('key') or saveState('key', value).
 import { loadState, saveState } from '../utils/storage';
 import { isSupabaseConfigured } from '../utils/supabase';
+import { useSekretCompanion } from '../hooks/useSekretCompanion';
 import {
   ensureAnonymousSession, pullAll,
-  syncMood, syncJournal, syncCirclePost, syncVoiceNote,
-  syncComfortSession, syncCrewMember, deleteCrewMember as cloudDeleteCrewMember,
-  syncCrewCheckIn,
+  syncMood, syncJournal, syncCirclePost, syncParentCirclePost,
+  syncComfortSession,
 } from '../utils/sync';
-import type { JournalEntry, CirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
+import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
-// One clean place to see every image Se'kret Bip uses.
-//
-// The actual `require()` paths + safe fallbacks live in constants/theme.ts.
-// This map is re-exported here so the top of the root file documents — at a
-// glance — what art is wired into the app and to which character / screen.
-//
-// Do NOT add new require() calls here. Edit constants/theme.ts instead so
-// fallbacks stay centralized and no screen can drift out of sync.
-import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
-export { IMAGES, AVATARS, getRoomBg };
+// Re-exported so any screen can import IMAGES/AVATARS/getRoomBg from here
+// rather than reaching into constants/theme directly.
+// Do NOT add new require() calls here — edit constants/theme.ts instead.
+export { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
@@ -76,19 +81,12 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
-const THEME_PACKS: Record<string, any> = {
-  night:  { name: 'Golden Moon',  emoji: '\uD83C\uDF19', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
-  flower: { name: 'Soft Pink',    emoji: '\uD83C\uDF38', background: '#4A1028', card: '#6D1B3B', accent: '#FF4FA3', soft: '#FFD6E7' },
-  rain:   { name: 'Rain Blue',    emoji: '\uD83C\uDF27\uFE0F', background: '#243447', card: '#36506B', accent: '#4DA3FF', soft: '#B6DCFF' },
-  neon:   { name: 'Night Purple', emoji: '\uD83D\uDC9C', background: '#160028', card: '#2B0A4D', accent: '#D946EF', soft: '#F5B8FF' },
-  galaxy: { name: 'Galaxy Night', emoji: '\uD83C\uDF0C', background: '#151A40', card: '#2A2D73', accent: '#7C83FF', soft: '#D7D9FF' },
-};
 
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se’kret",       emoji: '\uD83C\uDF38', title: 'Soft Big Sis',        vibe: 'Warm, expressive, protective, and real.',        greeting: "Hey love. I’m here. Tell me what’s on your mind." },
-  rylane: { name: 'Rylane',             emoji: '\u26A1',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, I’m here. What’s been heavy?" },
-  cloud:  { name: "Cloud Se’kret", emoji: '☁\uFE0F', title: 'Quiet Comfort',        vibe: 'Soft, calm, low-pressure presence.',             greeting: "No pressure. We can just sit here for a minute." },
-  night:  { name: "Night Se’kret", emoji: '\uD83C\uDF19', title: 'Late-Night Listener',  vibe: 'Minimal words, calm energy, safe space.',        greeting: "I’m here. You don’t gotta explain perfectly." },
+  soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
+  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
+  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
+  night:  { name: "Night Se’kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
 };
 
 const HOME_MESSAGES = [
@@ -101,12 +99,23 @@ const HOME_MESSAGES = [
   'You made it through today.',
 ];
 
+// ── Active character resolver (for sticker layer) ──────────────────────────
+// Maps the active sekret/theme key to a sticker-layer character identity.
+// 'soft' is the legacy internal key for Raylene.
+function getActiveCharacter(themeKey: string): 'raylene' | 'rylane' | 'cloud' | 'night' | null {
+  if (themeKey === 'raylene' || themeKey === 'soft') return 'raylene';
+  if (themeKey === 'rylane') return 'rylane';
+  if (themeKey === 'cloud') return 'cloud';
+  if (themeKey === 'night') return 'night';
+  return null;
+}
+
 // ── Bottom Nav ─────────────────────────────────────────────────────────────
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
   const items: [string, string, string][] = userSide === 'parent'
-    ? [['home','\uD83C\uDFE0','Home'],['bridge','\uD83C\uDF09','Bridge'],['sekret','\uD83D\uDC9C',"Se’kret"],['pages','\uD83D\uDCD6','Pages'],['more','\u2630','More']]
-    : [['home','\uD83C\uDFE0','Home'],['pages','\uD83D\uDCD6','Pages'],['calm','\uD83C\uDF19','Calm'],['circle','\uD83C\uDF10','Circle'],['sekret','\uD83D\uDC9C',"Se’kret"],['more','\u2630','More']];
+    ? [['home','🏠','Parent Room'],['pages','📔','Pages'],['parentBridge','🌉','Bridge'],['circle','🌐','Parent Circle'],['more','☰','More']]
+    : [['home','🏠','Room'],['pages','📖','Pages'],['calm','🌙','Calm'],['circle','🌐','Circle'],['more','☰','More']];
 
   return (
     <View style={styles.bottomNav}>
@@ -127,10 +136,13 @@ export default function App() {
   const [screen, setScreen] = useState('splash');
 
   // ─── Theme & identity ──────────────────────────────────────────────────
-  const [theme, setTheme]                   = useState('neon');
+  const [theme, setTheme]                   = useState('raylene');
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
+  const [parentRoomStyle, setParentRoomStyle] = useState<ParentRoomStyle>('mom');
+  const [parentMood,      setParentMood]      = useState('');
+  const [parentMoodDate,  setParentMoodDate]  = useState('');
 
   // ─── Mood ──────────────────────────────────────────────────────────────
   const [mood, setMood]             = useState('Happy');
@@ -141,13 +153,23 @@ export default function App() {
   // to match fixed JournalScreen prop interface
   const [journalText, setJournalText]       = useState('');
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  // Parent Pages are intentionally isolated from teen entries and cloud journal sync.
+  const [parentPagesDraft, setParentPagesDraft] = useState('');
+  const [parentPagesEntries, setParentPagesEntries] = useState<JournalEntry[]>([]);
+  const [oracleProfile, setOracleProfile] = useState<OracleProfile>(() => createOracleProfile('teen'));
+  const [parentOracleProfile, setParentOracleProfile] = useState<OracleProfile>(() => createOracleProfile('parent'));
+  const [oracleSessions, setOracleSessions] = useState<OracleSessionSummary[]>([]);
+  const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
   // ─── Circle ────────────────────────────────────────────────────────────
-  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
-  const [circlePostText, setCirclePostText] = useState('');
+  const [circlePosts, setCirclePosts]                   = useState<CirclePost[]>([]);
+  const [circlePostText, setCirclePostText]             = useState('');
+  const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
+  const [parentCirclePostText, setParentCirclePostText] = useState('');
 
   // ─── Voice Bip ─────────────────────────────────────────────────────────
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
+  const [parentVoiceNotes, setParentVoiceNotes] = useState<VoiceNote[]>([]);
 
   // ─── Comfort sessions (calm + comfort rituals) ─────────────────────────
   const [comfortSessions, setComfortSessions] = useState<ComfortSession[]>([]);
@@ -168,8 +190,23 @@ export default function App() {
   const [isLoading, setIsLoading]               = useState(true);
 
   // ── Derived ──────────────────────────────────────────────────────────────
-  const t             = THEME_PACKS[theme] || THEME_PACKS.neon;
+  const vibeKey       = normalizeVibeKey(theme);
+  const t             = THEME_PACKS[vibeKey];
   const currentSekret = SEKRET_PROFILES[selectedSekret] || SEKRET_PROFILES.soft;
+  const companionInput = useMemo(() => ({
+    selectedSekret,
+    mood,
+    journalEntries,
+    moodHistory,
+    voiceNotes,
+    comfortSessions,
+    circlePosts,
+    streakDays,
+    lastOpenDate,
+    screen,
+    isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
+  }), [selectedSekret, mood, journalEntries, moodHistory, voiceNotes, comfortSessions, circlePosts, streakDays, lastOpenDate, screen]);
+  const companion = useSekretCompanion(companionInput);
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
   // loadState() returns the full state object — no args needed.
@@ -183,7 +220,7 @@ export default function App() {
       try {
         const state = await loadState();
 
-        if (state.theme)          setTheme(state.theme);
+        if (state.theme)          setTheme(normalizeVibeKey(state.theme));
         if (state.mood)           setMood(state.mood);
         if (state.userSide)       setUserSide(state.userSide);
         if (state.selectedSekret) setSelectedSekret(state.selectedSekret);
@@ -192,9 +229,17 @@ export default function App() {
         // 'entries' is the storage key (matches STORAGE_KEYS in storage.ts)
         // but we keep it as journalEntries in state
         if (state.entries)        setJournalEntries(Array.isArray(state.entries) ? state.entries : []);
+        if (state.parentPagesDraft) setParentPagesDraft(state.parentPagesDraft);
+        if (state.parentPagesEntries) setParentPagesEntries(Array.isArray(state.parentPagesEntries) ? state.parentPagesEntries : []);
+        if (state.oracleProfile) setOracleProfile(normalizeOracleProfile(state.oracleProfile, 'teen'));
+        if (state.parentOracleProfile) setParentOracleProfile(normalizeOracleProfile(state.parentOracleProfile, 'parent'));
+        if (state.oracleSessions) setOracleSessions(normalizeOracleSessions(state.oracleSessions, 'teen'));
+        if (state.parentOracleSessions) setParentOracleSessions(normalizeOracleSessions(state.parentOracleSessions, 'parent'));
         if (state.moodHistory)    setMoodHistory(Array.isArray(state.moodHistory) ? state.moodHistory : []);
-        if (state.circlePosts)    setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.circlePosts)       setCirclePosts(Array.isArray(state.circlePosts) ? state.circlePosts : []);
+        if (state.parentCirclePosts) setParentCirclePosts(Array.isArray(state.parentCirclePosts) ? state.parentCirclePosts : []);
         if (state.voiceNotes)     setVoiceNotes(Array.isArray(state.voiceNotes) ? state.voiceNotes : []);
+        if (state.parentVoiceNotes) setParentVoiceNotes(Array.isArray(state.parentVoiceNotes) ? state.parentVoiceNotes : []);
         if (state.comfortSessions) setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
         if (state.crewMembers)     setCrewMembers(Array.isArray(state.crewMembers) ? state.crewMembers : []);
         if (state.crewCheckIns)    setCrewCheckIns(Array.isArray(state.crewCheckIns) ? state.crewCheckIns : []);
@@ -208,7 +253,12 @@ export default function App() {
             : state.roomMemory;
           setRoomMemory(rm);
         }
-      } catch (e) {
+        if (state.parentRoomStyle === 'mom' || state.parentRoomStyle === 'dad') {
+          setParentRoomStyle(state.parentRoomStyle as ParentRoomStyle);
+        }
+        if (state.parentMood)     setParentMood(state.parentMood);
+        if (state.parentMoodDate) setParentMoodDate(state.parentMoodDate);
+      } catch {
         // Storage read failure — continue with defaults
       }
       setIsLoading(false);
@@ -275,34 +325,42 @@ export default function App() {
   // Note: storage.ts STORAGE_KEYS uses 'entries' not 'journalEntries'
   useEffect(() => {
     if (isLoading) return;
-    try {
-      saveState({
-        theme,
-        mood,
-        userSide,
-        selectedSekret,
-        sekretMode,
-        journalText,
-        entries:       journalEntries,   // storage key is 'entries'
-        moodHistory,
-        circlePosts,
-        voiceNotes,
-        comfortSessions,
-        crewMembers,
-        crewCheckIns,
-        streakDays:    String(streakDays),
-        lastOpenDate,
-        roomMemory:    JSON.stringify(roomMemory),
-      });
-    } catch (e) {
-      // Storage write failure — silent
-    }
+    saveState({
+      theme,
+      mood,
+      userSide,
+      selectedSekret,
+      sekretMode,
+      journalText,
+      entries:       journalEntries,   // storage key is 'entries'
+      parentPagesDraft,
+      parentPagesEntries,
+      oracleProfile,
+      parentOracleProfile,
+      oracleSessions,
+      parentOracleSessions,
+      moodHistory,
+      circlePosts,
+      parentCirclePosts,
+      voiceNotes,
+      parentVoiceNotes,
+      comfortSessions,
+      crewMembers,
+      crewCheckIns,
+      streakDays:       String(streakDays),
+      lastOpenDate,
+      roomMemory:       JSON.stringify(roomMemory),
+      parentRoomStyle,
+      parentMood,
+      parentMoodDate,
+    }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
-    journalText, journalEntries, moodHistory,
-    circlePosts, voiceNotes, comfortSessions,
+    journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
+    oracleSessions, parentOracleSessions, moodHistory,
+    circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
-    roomMemory, isLoading,
+    roomMemory, parentRoomStyle, parentMood, parentMoodDate, isLoading,
   ]);
 
   // ── Streak tracking (daily open) ──────────────────────────────────────────
@@ -313,10 +371,10 @@ export default function App() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
-      setStreakDays(wasYesterday ? streakDays + 1 : 1);
+      setStreakDays(prev => wasYesterday ? prev + 1 : 1);
       setLastOpenDate(today);
     }
-  }, [isLoading]);
+  }, [isLoading, lastOpenDate]);
 
   // ── Rotating home message ─────────────────────────────────────────────────
   useEffect(() => {
@@ -336,7 +394,7 @@ export default function App() {
   const trackActivity = (type: 'calm' | 'comfort' | 'voice' | 'journal' | 'growth' | 'mood') => {
     updateRoomMemory({ lastVisit: new Date().toISOString() });
     const now = new Date();
-    const nextId = comfortSessions.length ? comfortSessions[0].id + 1 : 1;
+    const nextId = Date.now();
     const session: ComfortSession = {
       id:   nextId,
       type,
@@ -362,50 +420,112 @@ export default function App() {
   };
 
   // ── Journal ───────────────────────────────────────────────────────────────
-  // RENAMED to match JournalScreen fixed interface
-  const saveJournalEntry = () => {
-    if (!journalText.trim()) return;
+  // override lets PagesScreen character tabs supply their own text + source tag.
+  // Calling with no args reads root journalText (Me tab default).
+  const saveJournalEntry = (override?: SavePageInput) => {
+    const textToSave = override?.text ?? journalText;
+    if (!textToSave.trim() && !override?.imageUri) return;
     const entry: JournalEntry = {
-      id: Date.now(), text: journalText, mood,
+      id: Date.now(), text: textToSave, mood,
+      source: override?.source ?? 'me',
+      activeTab: override?.source ?? 'me',
+      moodTag: override?.moodTag || mood,
+      entryMode: override?.entryMode || 'typed',
+      locked: override?.locked || false,
+      imageUri: override?.imageUri,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setJournalEntries(e => [entry, ...e]);
-    setJournalText('');
+    if (!override) setJournalText('');
     syncJournal(entry);
     trackActivity('journal');
   };
 
-  // ── Circle ────────────────────────────────────────────────────────────────
-  const saveCirclePost = () => {
-    if (!circlePostText.trim()) return;
+  const saveParentPageEntry = (input: SavePageInput) => {
+    if (!input.text.trim() && !input.imageUri) return;
+    const entry: JournalEntry = {
+      id: Date.now(),
+      text: input.text,
+      mood: parentMood || mood,
+      source: input.source,
+      activeTab: input.source,
+      moodTag: input.moodTag || parentMood || mood,
+      entryMode: input.entryMode,
+      locked: input.locked,
+      imageUri: input.imageUri,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    // Parent reflection remains device-local and never joins teen journal sync.
+    setParentPagesEntries(current => [entry, ...current]);
+  };
+
+  // ── Circle (Teen) ────────────────────────────────────────────────────────
+  const saveCirclePost = (extra?: Partial<CirclePost>) => {
+    const textToSave = extra?.text ?? circlePostText;
+    if (!textToSave.trim()) return;
     const post: CirclePost = {
-      id: Date.now(), text: circlePostText,
+      id: Number(Date.now()),
+      text: textToSave,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
+      bipType:   extra?.bipType,
+      mediaKind: extra?.mediaKind,
+      circleTag: extra?.circleTag,
+      postMood:  extra?.postMood,
+      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0, sameHere: 0 },
     };
     setCirclePosts(p => [post, ...p]);
-    setCirclePostText('');
     syncCirclePost(post);
   };
 
-  const reactToPost = (id: number | string, type: string) => {
+  const reactToPost = (id: string | number, type: string) => {
     setCirclePosts(posts => posts.map(p =>
-      p.id === id
-        ? {
-            ...p,
-            reactions: {
-              ...p.reactions,
-              [type]: ((p.reactions as Record<string, number>)[type] || 0) + 1,
-            },
-          }
+      String(p.id) === String(id)
+        ? { ...p, reactions: { ...p.reactions, [type]: ((p.reactions as any)[type] || 0) + 1 } }
         : p
     ));
   };
 
+  const saveParentCirclePost = () => {
+    if (!parentCirclePostText.trim()) return;
+    const post: ParentCirclePost = {
+      id: Number(Date.now()), text: parentCirclePostText,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+    };
+    setParentCirclePosts(p => [post, ...p]);
+    setParentCirclePostText('');
+    syncParentCirclePost(post);
+  };
+
+  const reactToParentPost = (id: string | number, type: string) => {
+    const reactionKey = type as keyof ParentCirclePost['reactions'];
+    setParentCirclePosts(posts => posts.map(p =>
+      String(p.id) === String(id)
+        ? { ...p, reactions: { ...p.reactions, [reactionKey]: (p.reactions[reactionKey] || 0) + 1 } }
+        : p
+    ));
+  };
+
+  // ── Oracle session completion ─────────────────────────────────────────────
+  const completeTeenOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
+    setOracleProfile(profile);
+    setOracleSessions(prev => [session, ...prev]);
+  };
+
+  const completeParentOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
+    setParentOracleProfile(profile);
+    setParentOracleSessions(prev => [session, ...prev]);
+  };
+
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
+
+  // The branded splash is the first paint; storage hydration must never hide it.
+  if (screen === 'splash') return <SplashScreen setScreen={setScreen} />;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (isLoading) return null;
@@ -416,21 +536,41 @@ export default function App() {
   //   mindReset · bodyReset · bridge · parentBridge · more · settings
   //   periodCalendar · voiceBip · cloudThoughts · dashboard
 
-  if (screen === 'splash') return (
-    <SplashScreen setScreen={setScreen} />
-  );
-
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
-  if (screen === 'home') return (
-    <RoomScreen
-      mood={mood}
-      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
-      setSelectedSekret={val => setSelectedSekret(val)}
-      setScreen={setScreen}
-      t={t}
-      updateRoomMemory={updateRoomMemory}
-    />
-  );
+  if (screen === 'home') {
+    if (userSide === 'parent') {
+      const today = new Date().toLocaleDateString();
+      const previousMood = (parentMoodDate && parentMoodDate !== today) ? parentMood : '';
+      return (
+        <ParentRoomScreen
+          parentRoomStyle={parentRoomStyle}
+          parentMood={parentMood}
+          previousMood={previousMood}
+          setParentMood={(m) => {
+            setParentMood(m);
+            setParentMoodDate(new Date().toLocaleDateString());
+          }}
+          setScreen={setScreen}
+          weatherMode={theme === 'rain' ? 'rain' : undefined}
+          BottomNav={nav}
+        />
+      );
+    }
+    return (
+      <RoomScreen
+        mood={mood}
+        selectedSekret={selectedSekret}
+        setSelectedSekret={val => setSelectedSekret(val)}
+        setScreen={setScreen}
+        t={t}
+        updateRoomMemory={updateRoomMemory}
+        vibe={vibeKey}
+        companion={companion}
+        sekretMode={selectedSekret}
+        BottomNav={nav}
+      />
+    );
+  }
 
   // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
@@ -446,6 +586,7 @@ export default function App() {
       onMoodSelect={(m) => trackActivity('mood')}
       BottomNav={nav}
       streakDays={streakDays}
+      companion={companion}
     />
   );
 
@@ -454,8 +595,11 @@ export default function App() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       setScreen={setScreen}
       BottomNav={nav}
+      privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
+      profileSide={userSide}
     />
   );
 
@@ -468,24 +612,50 @@ export default function App() {
       theme={t}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
-      voiceNotes={voiceNotes}
-      setVoiceNotes={setVoiceNotes}
+      onSelectAvatar={avatarKey => setSelectedSekret(avatarKey)}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
+      setSelectedSekret={setSelectedSekret}
+      voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
+      setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}
+      mood={mood}
+      companion={userSide === 'parent' ? undefined : companion}
+      BottomNav={nav}
+      privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
+      profileSide={userSide}
     />
   );
 
-  if (screen === 'pages') return (
-    <JournalScreen
+  if (screen === 'pages') return userSide === 'parent' ? (
+    <ParentPagesScreen
+      entries={parentPagesEntries}
+      draft={parentPagesDraft}
+      setDraft={setParentPagesDraft}
+      onSave={saveParentPageEntry}
+      mood={parentMood || mood}
+      setScreen={setScreen}
+      BottomNav={nav}
+      parentRoomStyle={parentRoomStyle}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
+      oracleProfile={parentOracleProfile}
+      onCompleteOracleSession={completeParentOracleSession}
+    />
+  ) : (
+    <PagesScreen
       journalText={journalText}
       setJournalText={setJournalText}
       journalEntries={journalEntries}
       saveJournalEntry={saveJournalEntry}
+      oracleProfile={oracleProfile}
+      onCompleteOracleSession={completeTeenOracleSession}
       mood={mood}
       t={t}
-      currentSekret={currentSekret}
-      selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      moodHistory={moodHistory}
+      voiceNotes={voiceNotes}
+      streakDays={streakDays}
+      selectedSekret={selectedSekret}
     />
   );
 
@@ -503,18 +673,51 @@ export default function App() {
   if (screen === 'sekret') return (
     <SekretScreen
       t={t}
-      currentSekret={currentSekret}
       mood={mood}
+      currentSekret={currentSekret}
       selectedProfile={selectedSekret}
       setSelectedProfile={setSelectedSekret}
       userSide={userSide}
       setScreen={setScreen}
       BottomNav={nav}
+      privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
     />
   );
 
-  if (screen === 'circle') return (
-    <CircleScreen
+  if (screen === 'circle') {
+    if (userSide === 'parent') return (
+      <ParentCircleScreen
+        parentCirclePosts={parentCirclePosts}
+        parentCirclePostText={parentCirclePostText}
+        setParentCirclePostText={setParentCirclePostText}
+        saveParentCirclePost={saveParentCirclePost}
+        reactToParentPost={reactToParentPost}
+        setScreen={setScreen}
+        BottomNav={nav}
+      />
+    );
+    return (
+      <CircleScreen
+        t={t}
+        circlePosts={circlePosts}
+        circlePostText={circlePostText}
+        setCirclePostText={setCirclePostText}
+        saveCirclePost={saveCirclePost}
+        reactToPost={reactToPost}
+        setScreen={setScreen}
+        BottomNav={nav}
+        selectedSekret={selectedSekret}
+        mood={mood}
+      />
+    );
+  }
+
+  if (screen === 'bridge') return (
+    <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
+  );
+
+  if (screen === 's2tell') return (
+    <S2TellScreen
       t={t}
       circlePosts={circlePosts as any}
       circlePostText={circlePostText}
@@ -523,13 +726,10 @@ export default function App() {
       reactToPost={reactToPost as any}
       setScreen={setScreen}
       BottomNav={nav}
-      selectedSekret={selectedSekret as 'raylene' | 'rylane'}
+      selectedSekret={selectedSekret}
       mood={mood}
+      privateProfile={oracleProfile}
     />
-  );
-
-  if (screen === 'bridge') return (
-    <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={selectedSekret} mood={mood} />
   );
 
   if (screen === 'parentBridge') return (
@@ -541,6 +741,7 @@ export default function App() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       setScreen={setScreen}
       onMilestone={() => trackActivity('growth')}
       streakDays={streakDays}
@@ -567,6 +768,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
@@ -577,6 +779,7 @@ export default function App() {
       selectedSekret={selectedSekret}
       setScreen={setScreen}
       BottomNav={nav}
+      streakDays={streakDays}
     />
   );
 
@@ -586,6 +789,10 @@ export default function App() {
       setScreen={setScreen}
       onComplete={() => trackActivity('comfort')}
       BottomNav={nav}
+      selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
+      mood={mood}
+      companion={companion}
     />
   );
 
@@ -663,6 +870,7 @@ export default function App() {
       t={t}
       userSide={userSide}
       setUserSide={setUserSide as (side: string) => void}
+      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
@@ -681,6 +889,9 @@ export default function App() {
       setSekretMode={setSekretMode}
       userSide={userSide}
       setUserSide={setUserSide as (side: string) => void}
+      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
+      parentRoomStyle={parentRoomStyle}
+      setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
@@ -696,10 +907,11 @@ const styles = StyleSheet.create({
   bottomNav:     {
     flexDirection: 'row', justifyContent: 'space-around',
     paddingVertical: 14, backgroundColor: '#111827',
-    borderRadius: 20, marginTop: 28, marginBottom: 20,
+    borderRadius: 20, marginTop: 20, marginBottom: 16,
     flexWrap: 'wrap', gap: 8,
+    ...(Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {}),
   },
-  navItem:       { alignItems: 'center', minWidth: 48 },
+  navItem:       { alignItems: 'center', minWidth: 52 },
   navIcon:       { fontSize: 20, marginBottom: 3 },
   navText:       { color: '#94A3B8', fontSize: 11 },
   activeNavText: { color: '#fff', fontWeight: 'bold' },

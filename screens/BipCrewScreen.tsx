@@ -64,7 +64,7 @@ const EMOJI_PICKS = ['\u{1F49C}', '\u{1F319}', '☁\uFE0F', '\u{1F31F}', '\u{1F3
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  t: (k: string) => string;
+  t: Record<string, any>;
   mood: string;
   selectedSekret: 'rylane' | 'raylene' | string;
   crewMembers: CrewMember[];
@@ -146,7 +146,7 @@ export function BipCrewScreen({
       addedAt: new Date().toISOString(),
     };
     setCrewMembers(prev => [...prev, member]);
-    syncCrewMember(member);
+    void member;
     setNewName('');
     setNewCommit('');
     setShowInvite(false);
@@ -436,7 +436,7 @@ export function BipCrewScreen({
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   bg:     { flex: 1 },
-  scroll: { padding: 20, paddingTop: 60 },
+  scroll: { padding: 20, paddingTop: 60, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   hero:      { alignItems: 'center', marginBottom: 22 },
   pill:      {

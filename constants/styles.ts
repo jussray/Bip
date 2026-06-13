@@ -47,6 +47,7 @@ export const createStyles = (theme: {
       flexGrow:   1,
       padding:    20,
       paddingTop: Platform.OS === 'ios' ? 60 : 40,
+      ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}),
     },
 
     // ── Alias — same as container, more descriptive name ────────────────────
@@ -54,6 +55,7 @@ export const createStyles = (theme: {
       flexGrow:   1,
       padding:    20,
       paddingTop: Platform.OS === 'ios' ? 60 : 40,
+      ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}),
     },
 
     // ── Typography ───────────────────────────────────────────────────────────

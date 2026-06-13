@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Text, TouchableOpacity, ScrollView,
+  Text, TouchableOpacity,
   View, Animated, Image, StyleSheet, Platform, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -171,7 +171,7 @@ export function MindBodyResetScreen({
   // ─── Tool stub alerts ────────────────────────────────────────────────────
   const handleTool = (label: string) => {
     // Stub — future: navigate or open modal
-    // e.g. if (label === 'Brain Dump') setScreen('journal');
+    // e.g. if (label === 'Brain Dump') setScreen('pages');
     //      if (label === 'Calm Sounds') setScreen('calm');
   };
 
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
     position: 'absolute', top: -120, alignSelf: 'center',
     width: 340, height: 340, borderRadius: 170,
   },
-  container:       { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  container:       { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   // Header
   headerRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

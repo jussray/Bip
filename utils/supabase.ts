@@ -16,8 +16,8 @@ import 'react-native-url-polyfill/auto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const SUPABASE_URL  = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_URL  = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON);
 
@@ -53,17 +53,18 @@ export function getSupabase(): SupabaseClient | null {
 // Centralized so Phase 2 wiring touches one file when schema names change.
 // These match the planned Supabase schema — do not rename without migrating.
 export const TABLES = {
-  journalEntries:  'journal_entries',
-  moodHistory:     'mood_history',
-  circlePosts:     'circle_posts',
-  voiceNotes:      'voice_notes',
-  bridgeShares:    'bridge_shares',
-  roomMemory:      'room_memory',
-  periodDays:      'period_days',
-  comfortSessions: 'comfort_sessions',
-  crewMembers:     'crew_members',
-  crewCheckIns:    'crew_check_ins',
-  bipPoints:       'bip_points',
+  journalEntries:   'journal_entries',
+  moodHistory:      'mood_history',
+  circlePosts:      'circle_posts',
+  parentCirclePosts:'parent_circle_posts',
+  voiceNotes:       'voice_notes',
+  bridgeShares:     'bridge_shares',
+  roomMemory:       'room_memory',
+  periodDays:       'period_days',
+  comfortSessions:  'comfort_sessions',
+  crewMembers:      'crew_members',
+  crewCheckIns:     'crew_check_ins',
+  bipPoints:        'bip_points',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

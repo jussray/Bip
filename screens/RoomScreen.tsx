@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IMAGES } from '../constants/theme';
+import { IMAGES, AVATARS as THEME_AVATARS, THEME_PACKS, getRoomPhase, getRoomScene, type Character, type RoomPhase, type VibeKey } from '../constants/theme';
+import type { CompanionState } from '../types/sekretCompanion';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,7 +23,7 @@ const DEBUG_HOTSPOTS = false;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Character  = 'raylene' | 'rylane';
+// Character type imported from constants/theme (raylene | rylane | cloud | night)
 type TimeOfDay  = 'morning' | 'day' | 'evening' | 'night';
 type Pose       = 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody';
 type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
@@ -31,8 +32,8 @@ type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
 // setScreen prop is widened to string to match index.tsx.
 type RoomTarget =
   | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
-  | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge'
-  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar';
+  | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge' | 's2tell'
+  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard';
 
 type Hotspot = {
   id: string;
@@ -48,48 +49,33 @@ type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 // ─── Room / Avatar assets ─────────────────────────────────────────────────────
 
-const ROOMS: Record<Character, AssetMap> = {
-  raylene: {
-    morning: IMAGES.bgRayleneRoomDay,
-    day:     IMAGES.bgRayleneRoomDay,
-    evening: IMAGES.roomBgDark,
-    night:   IMAGES.bgRayleneRoomNight,
-  },
-  rylane: {
-    morning: IMAGES.bgRylaneRoomDay,
-    day:     IMAGES.bgRylaneRoomDay,
-    evening: IMAGES.roomBgDark,
-    night:   IMAGES.bgRylaneRoomNight,
-  },
+const ROOM_PHASE_OVERLAYS: Record<RoomPhase, string> = {
+  day:       'rgba(255,225,180,0.08)',
+  midday:    'rgba(255,210,140,0.10)',
+  afternoon: 'rgba(200,130,60,0.12)',
+  evening:   'rgba(91,45,120,0.18)',
+  rain:      'rgba(35,85,125,0.30)',
+  night:     'rgba(20,10,55,0.28)',
+  deepNight: 'rgba(5,3,24,0.48)',
 };
 
-const AVATARS: Record<Character, AvatarMap> = {
-  raylene: {
-    neutral:  IMAGES.rayleneNeutral,
-    happy:    IMAGES.rayleneHappy,
-    thinking: IMAGES.rayleneThinking,
-    writing:  IMAGES.rayleneWriting,
-    window:   IMAGES.rayleneWindow,
-    fullbody: IMAGES.rayleneFullbody,
-  },
-  rylane: {
-    neutral:  IMAGES.rylaneNeutral,
-    happy:    IMAGES.rylaneHappy,
-    thinking: IMAGES.rylaneThinking,
-    writing:  IMAGES.rylaneWriting,
-    window:   IMAGES.rylaneWindow,
-    fullbody: IMAGES.rylaneFullbody,
-  },
+// Character-specific atmosphere tints layered on top of phase overlay.
+// Cloud Room art is fully realized — no tint needed, art speaks for itself.
+// Night Room art is already very dark — light deepening tint only.
+const CHARACTER_OVERLAYS: Record<Character, string> = {
+  raylene: 'transparent',
+  rylane:  'transparent',
+  cloud:   'transparent',
+  night:   'rgba(6,2,22,0.25)',
 };
 
-const FALLBACK_ROOM: Record<Character, ImageSourcePropType> = {
-  raylene: IMAGES.bgRayleneRoomDay,
-  rylane:  IMAGES.bgRylaneRoomDay,
-};
+const AVATARS: Record<Character, AvatarMap> = THEME_AVATARS as Record<Character, AvatarMap>;
 
 const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
   raylene: IMAGES.rayleneNeutral,
   rylane:  IMAGES.rylaneNeutral,
+  cloud:   IMAGES.cloudAvatarNeutral,
+  night:   IMAGES.nightAvatarNeutral,
 };
 
 // ─── Hotspot maps ─────────────────────────────────────────────────────────────
@@ -142,12 +128,19 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     style: { top: '4%', right: '0%', width: '18%', height: '55%' },
   },
   {
-    id: 'calm',
-    label: 'Window 🌤️',
-    target: 'calm',
+    id: 'moodCheckIn',
+    label: 'Mood Check-In 🌤️',
+    target: 'dashboard',
     hint: 'tap the window',
     pulse: true,
     style: { top: '4%', left: '0%', width: '18%', height: '50%' },
+  },
+  {
+    id: 'bridge',
+    label: 'Bridge 🌉',
+    target: 'bridge',
+    hint: 'tap the bridge object',
+    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
   },
   {
     id: 'summon',
@@ -204,12 +197,19 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     style: { top: '2%', right: '0%', width: '20%', height: '50%' },
   },
   {
-    id: 'calm',
-    label: 'Window 🌤️',
-    target: 'calm',
+    id: 'moodCheckIn',
+    label: 'Mood Check-In 🌤️',
+    target: 'dashboard',
     hint: 'tap the window',
     pulse: true,
     style: { top: '2%', left: '0%', width: '20%', height: '55%' },
+  },
+  {
+    id: 'bridge',
+    label: 'Bridge 🌉',
+    target: 'bridge',
+    hint: 'tap the bridge object',
+    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
   },
   {
     id: 'summon',
@@ -217,6 +217,96 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     target: 'sekret',
     hint: "call Se’kret",
     style: { top: '30%', left: '2%', width: '24%', height: '36%' },
+  },
+];
+
+// Cloud Room: floating thought-space — no walls, cloud islands, headphones, journal drifting
+const CLOUD_HOTSPOTS: Hotspot[] = [
+  {
+    id: 'headphones',
+    label: 'Headphones 🎧',
+    target: 'calm',
+    hint: 'tap headphones',
+    pulse: true,
+    style: { top: '28%', left: '8%', width: '24%', height: '18%' },
+  },
+  {
+    id: 'pages',
+    label: 'Floating Journal 📖',
+    target: 'pages',
+    hint: 'tap the journal',
+    pulse: true,
+    style: { top: '44%', left: '32%', width: '36%', height: '20%' },
+  },
+  {
+    id: 'voiceBip',
+    label: 'Cloud Mic 🎤',
+    target: 'voiceBip',
+    hint: 'tap the mic',
+    style: { top: '22%', right: '10%', width: '20%', height: '16%' },
+  },
+  {
+    id: 'cloudThoughts',
+    label: 'Big Cloud ☁️',
+    target: 'cloudThoughts',
+    hint: 'float up here',
+    pulse: true,
+    style: { top: '8%', left: '22%', width: '56%', height: '20%' },
+  },
+  {
+    id: 'summon',
+    label: "Cloud Se'kret ☁️",
+    target: 'sekret',
+    hint: 'tap to float',
+    style: { top: '62%', left: '18%', width: '64%', height: '22%' },
+  },
+];
+
+// Night Room: crescent moon chair, "Voice Bip Corner" sign, city window, desk with clock
+const NIGHT_HOTSPOTS: Hotspot[] = [
+  {
+    id: 'window',
+    label: 'Window 🪟',
+    target: 'cloudThoughts',
+    hint: 'look out',
+    pulse: true,
+    style: { top: '4%', left: '4%', width: '44%', height: '44%' },
+  },
+  {
+    id: 'pages',
+    label: 'Journal 📖',
+    target: 'pages',
+    hint: 'tap the journal',
+    pulse: true,
+    style: { bottom: '16%', left: '6%', width: '50%', height: '20%' },
+  },
+  {
+    id: 'voiceBip',
+    label: 'Voice Bip Corner 🎙️',
+    target: 'voiceBip',
+    hint: 'voice bip corner',
+    style: { top: '20%', right: '2%', width: '26%', height: '28%' },
+  },
+  {
+    id: 'comfort',
+    label: 'Moon Chair 🌙',
+    target: 'comfort',
+    hint: 'sit in the chair',
+    style: { top: '26%', left: '34%', width: '36%', height: '40%' },
+  },
+  {
+    id: 'bridge',
+    label: 'Reach Out 🌉',
+    target: 'bridge',
+    hint: 'reach out',
+    style: { bottom: '30%', right: '6%', width: '22%', height: '16%' },
+  },
+  {
+    id: 'summon',
+    label: "Night Se'kret 🌙",
+    target: 'sekret',
+    hint: 'tap to wake',
+    style: { bottom: '36%', left: '2%', width: '32%', height: '32%' },
   },
 ];
 
@@ -231,6 +321,8 @@ const getTimeOfDay = (): TimeOfDay => {
 };
 
 const getPresenceLine = (character: Character, timeOfDay: TimeOfDay): string => {
+  if (character === 'cloud') return 'Cloud is drifting nearby.';
+  if (character === 'night') return timeOfDay === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
   if (timeOfDay === 'night') return 'Cloud is floating around.';
   if (character === 'raylene') return 'Raylene is nearby.';
   return 'Rylane is posted up.';
@@ -250,6 +342,18 @@ const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
       evening: 'Evening\u2019s here. That means real talk time.',
       night:   'Late night mode. Keep it low and real.',
     },
+    cloud: {
+      morning: 'Quiet in here. Brain dump when ready.',
+      day:     'Cloud room is open. Let the thoughts land.',
+      evening: "Neon's on. This is the brain dump hour.",
+      night:   "Just the cloud light and you. That's enough.",
+    },
+    night: {
+      morning: 'The world is waking. You stayed up.',
+      day:     'Day is loud. But this window stays open.',
+      evening: 'Getting late. Good. This is our time.',
+      night:   'Everybody asleep. Only us awake.',
+    },
   };
   return map[character][timeOfDay];
 };
@@ -264,6 +368,26 @@ const getPose = (mood: Mood, timeOfDay: TimeOfDay, isFirstVisit: boolean, isSekr
 
 const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isVisible: boolean): string => {
   const moodKey = String(mood).toLowerCase();
+
+  // Cloud \u2014 observes, holds space, rarely pushes
+  if (character === 'cloud') {
+    if (moodKey.includes('sad'))   return 'Something feels heavy. You don\u2019t have to explain it.';
+    if (moodKey.includes('tired')) return 'Tired. Yeah. Sit here for a bit. No pressure.';
+    if (moodKey.includes('angry')) return 'It\u2019s loud out there. In here it\u2019s quiet.';
+    if (moodKey.includes('happy')) return 'Something light is happening. I noticed.';
+    if (timeOfDay === 'night')     return 'Late night brain dump? This is the spot.';
+    return 'Brain loud? This is the brain dump room.';
+  }
+
+  // Night \u2014 2AM energy, presence over conversation
+  if (character === 'night') {
+    if (moodKey.includes('sad'))   return 'Still up because of it. I know.';
+    if (moodKey.includes('tired')) return 'Exhausted but can\u2019t sleep. This window stays open.';
+    if (moodKey.includes('angry')) return 'Something\u2019s burning. Let it sit here.';
+    if (moodKey.includes('happy')) return 'You\u2019re up late and smiling. That\u2019s rare. Good.';
+    if (timeOfDay === 'night')     return 'Just us. No performance required.';
+    return 'The world is asleep. You found your way here.';
+  }
 
   if (isVisible && timeOfDay === 'night') {
     return character === 'raylene'
@@ -327,11 +451,15 @@ const safeImage = (
 
 interface RoomScreenProps {
   mood: Mood;
-  selectedSekret: Character;
-  setSelectedSekret: (value: Character) => void;
-  setScreen: (screen: string) => void;   // widened to string — matches index.tsx
+  selectedSekret: string;           // sekret key: 'soft' | 'rylane' | 'cloud' | 'night'
+  setSelectedSekret: (value: string) => void;
+  setScreen: (screen: string) => void;
   t: Record<string, any>;
-  updateRoomMemory?: (patch: Record<string, any>) => void;  // Supabase/RoomMemory hook
+  updateRoomMemory?: (patch: Record<string, any>) => void;
+  vibe: VibeKey;
+  BottomNav: React.ReactNode;
+  companion?: CompanionState;
+  sekretMode?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -343,23 +471,35 @@ export function RoomScreen({
   setScreen,
   t,
   updateRoomMemory,
+  vibe,
+  BottomNav,
+  companion,
+  sekretMode,
 }: RoomScreenProps) {
 
   // ─── Derived ────────────────────────────────────────────────────────────
-  const character: Character = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const character: Character =
+    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'cloud'  ? 'cloud'  :
+    selectedSekret === 'night'  ? 'night'  :
+    'raylene';
 
-  // timeOfDay calculated once per mount (doesn't change during a session)
-  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), []);
+  // Resolve the room once for the current visit. Always use the selected
+  // character's room at the current time of day — rain vibe overrides time.
+  const now = useMemo(() => new Date(), []);
+  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
+  const roomPhase = useMemo(() => getRoomPhase(now, vibe === 'rain' ? 'rain' : undefined), [now, vibe]);
+  const vibePack = THEME_PACKS[vibe];
+  // Room background is always the character's own room at current phase,
+  // keeping the world consistent regardless of cosmetic vibe choice.
+  const roomImage = getRoomScene(character, roomPhase);
 
-  const roomImage = useMemo(
-    () => safeImage(ROOMS[character]?.[timeOfDay], FALLBACK_ROOM[character]),
-    [character, timeOfDay]
-  );
-
-  const hotspots = useMemo(
-    () => character === 'rylane' ? RYLANE_HOTSPOTS : RAYLENE_HOTSPOTS,
-    [character]
-  );
+  const hotspots = useMemo(() => {
+    if (character === 'rylane') return RYLANE_HOTSPOTS;
+    if (character === 'cloud')  return CLOUD_HOTSPOTS;
+    if (character === 'night')  return NIGHT_HOTSPOTS;
+    return RAYLENE_HOTSPOTS;
+  }, [character]);
 
   // ─── State ──────────────────────────────────────────────────────────────
   const [isSekretVisible, setIsSekretVisible] = useState(false);
@@ -371,6 +511,31 @@ export function RoomScreen({
   );
 
   const pose = getPose(mood, timeOfDay, isFirstVisit, isSekretVisible);
+
+  const rememberedLine = useMemo(() => {
+    if (!companion) return null;
+
+    const repeatedMood = companion.checkIn?.id.includes('repeated-emotion');
+    const moodKey = String(mood).toLowerCase();
+    if (repeatedMood && moodKey.includes('tired')) {
+      return "You've been calling a lot of things tired lately. I peeped that.";
+    }
+    if (repeatedMood && moodKey) {
+      return `${mood} keeps pulling up lately. I remember.`;
+    }
+
+    const topic = companion.memorySummary.commonTopics[0];
+    if (topic && companion.memorySummary.journalsWritten >= 2) {
+      return `You keep circling back to ${topic}. We can stay with that part.`;
+    }
+    if (companion.memorySummary.streakDays >= 3) {
+      return `You came back ${companion.memorySummary.streakDays} days straight. Lowkey proud of you.`;
+    }
+    if (companion.memorySummary.conversations >= 3) {
+      return companion.presenceMessage;
+    }
+    return null;
+  }, [companion, mood]);
 
   // ─── AsyncStorage: first-visit persistence ───────────────────────────────
   useEffect(() => {
@@ -386,6 +551,7 @@ export function RoomScreen({
   const avatarSlide = useRef(new Animated.Value(14)).current;
   const avatarScale = useRef(new Animated.Value(0.96)).current;
   const glowAnim    = useRef(new Animated.Value(0.2)).current;
+  const breathAnim  = useRef(new Animated.Value(1)).current;
   const guideAnim   = useRef(new Animated.Value(0)).current;
   const hintAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(0)).current;
@@ -410,6 +576,13 @@ export function RoomScreen({
       ])
     );
     glowLoopRef.current.start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathAnim, { toValue: 1.04, duration: 2200, useNativeDriver: true }),
+        Animated.timing(breathAnim, { toValue: 1,    duration: 2200, useNativeDriver: true }),
+      ])
+    ).start();
 
     pulseLoopRef.current = Animated.loop(
       Animated.sequence([
@@ -511,27 +684,34 @@ export function RoomScreen({
     setScreen(target);
   };
 
+  // sekretKey maps Character → the key used in selectedSekret / SEKRET_PROFILES
+  const sekretKey = (char: Character): string =>
+    char === 'raylene' ? 'soft' : char;
+
   const handleCharacterSwitch = (char: Character) => {
-    setSelectedSekret(char);
+    setSelectedSekret(sekretKey(char));
     setIsSekretVisible(false);
     setHintSpot('summon');
-    setTimeout(() => setHintSpot(null), 1500);  // FIXED: hint was never cleared on toggle
+    setTimeout(() => setHintSpot(null), 1500);
     updateRoomMemory?.({ character: char });
   };
 
   // ─── Derived display ──────────────────────────────────────────────────────
 
   const getPresence = () => {
+    if (sekretMode === 'cloud') return 'Cloud is drifting through.';
+    if (sekretMode === 'night') return 'Night mode is on.';
     if (isSekretVisible) return character === 'raylene' ? 'Raylene is nearby' : 'Rylane is posted up';
+    if (isSekretVisible) {
+      if (character === 'raylene') return 'Raylene is nearby';
+      if (character === 'rylane')  return 'Rylane is posted up';
+      if (character === 'cloud')   return 'Cloud is floating';
+      return 'Night is here with you';
+    }
     return getPresenceLine(character, timeOfDay);
   };
 
-  const timeBadge = {
-    morning: '☀️ morning',
-    day:     '🌤️ afternoon',
-    evening: '🌆 evening',
-    night:   '🌙 late night',
-  }[timeOfDay];
+  const timeBadge = `${vibePack.emoji} ${vibePack.feeling}`;
 
   // ─── Render ───────────────────────────────────────────────────────────────
 
@@ -548,8 +728,32 @@ export function RoomScreen({
           accessibilityIgnoresInvertColors
           onError={() => undefined}
         />
-        <View style={styles.overlay} />
+        <View style={[styles.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
+        <View style={[styles.overlay, { backgroundColor: vibePack.background + '22' }]} />
+        {/* Character-specific atmosphere tint */}
+        {CHARACTER_OVERLAYS[character] !== 'transparent' && (
+          <View style={[styles.overlay, { backgroundColor: CHARACTER_OVERLAYS[character] }]} />
+        )}
       </Animated.View>
+
+      {/* Cloud Room: real art has cloud motifs — no emoji overlay needed */}
+
+      {/* ── Night atmosphere — time badge ─────────────────────────────── */}
+      {character === 'night' && (
+        <View style={styles.nightTimeWrap} pointerEvents="none">
+          <Text style={styles.nightTimeText}>
+            {(() => {
+              const now2 = new Date();
+              const h = now2.getHours();
+              const m = now2.getMinutes();
+              const h12 = h % 12 || 12;
+              const ampm = h >= 12 ? 'PM' : 'AM';
+              return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+            })()}
+          </Text>
+          <Text style={styles.nightStars}>✦ ✧ ✦</Text>
+        </View>
+      )}
 
       {/* ── Hotspots ────────────────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
@@ -625,29 +829,53 @@ export function RoomScreen({
         />
       </Animated.View>
 
+      {/* Cloud mascot shortcut — only shown when not in Cloud identity mode */}
+      {character !== 'cloud' && (
+        <TouchableOpacity
+          style={[styles.cloudPresence, { borderColor: vibePack.accent + '88' }]}
+          onPress={() => setScreen('cloudThoughts')}
+          accessibilityRole="button"
+          accessibilityLabel="Cloud is here. Open Cloud Thoughts"
+        >
+          <Image source={IMAGES.cloudHappy} style={styles.cloudPresenceImage} resizeMode="contain" />
+          <Text style={styles.cloudPresenceText}>Cloud's here</Text>
+        </TouchableOpacity>
+      )}
+
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
       <Animated.View style={[styles.topBar, { opacity: fadeAnim }]}>
-        <View style={styles.timeBadge}>
-          <Text style={styles.timeBadgeText}>{timeBadge}</Text>
+        <View style={styles.topLeft}>
+          <View style={styles.timeBadge}>
+            <Text style={styles.timeBadgeText}>{timeBadge}</Text>
+          </View>
+          {(sekretMode === 'cloud' || sekretMode === 'night') && (
+            <View style={[styles.modeBadge, { backgroundColor: sekretMode === 'cloud' ? 'rgba(155,216,229,0.18)' : 'rgba(99,66,155,0.22)', borderColor: sekretMode === 'cloud' ? '#9bd8e5' : '#8b7bb8' }]}>
+              <Text style={[styles.modeBadgeText, { color: sekretMode === 'cloud' ? '#9bd8e5' : '#c4b5fd' }]}>
+                {sekretMode === 'cloud' ? "☁️ Cloud mode" : "🌙 Night mode"}
+              </Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.characterToggle}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, character === 'raylene' && styles.toggleBtnActivePink]}
-            onPress={() => handleCharacterSwitch('raylene')}
-            accessibilityRole="button"
-            accessibilityLabel="Switch to Raylene"
-          >
-            <Text style={styles.toggleText}>💜 Raylene</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, character === 'rylane' && styles.toggleBtnActivePurple]}
-            onPress={() => handleCharacterSwitch('rylane')}
-            accessibilityRole="button"
-            accessibilityLabel="Switch to Rylane"
-          >
-            <Text style={styles.toggleText}>⚡ Rylane</Text>
-          </TouchableOpacity>
+          {(
+            [
+              { char: 'raylene' as Character, label: '💜 Raylene', active: styles.toggleBtnActivePink },
+              { char: 'rylane'  as Character, label: '⚡ Rylane',  active: styles.toggleBtnActivePurple },
+              { char: 'cloud'   as Character, label: '☁️ Cloud',   active: styles.toggleBtnActiveCloud },
+              { char: 'night'   as Character, label: '🌙 Night',   active: styles.toggleBtnActiveNight },
+            ] as const
+          ).map(({ char, label, active }) => (
+            <TouchableOpacity
+              key={char}
+              style={[styles.toggleBtn, character === char && active]}
+              onPress={() => handleCharacterSwitch(char)}
+              accessibilityRole="button"
+              accessibilityLabel={`Switch to ${char}`}
+            >
+              <Text style={styles.toggleText}>{label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       </Animated.View>
 
@@ -692,77 +920,25 @@ export function RoomScreen({
           accessibilityLabel={isSekretVisible ? "Hide Se\u2019kret" : "Call Se\u2019kret"}
         >
           <Text style={styles.greetingChar}>
-            {character === 'raylene' ? '💜 Raylene' : '⚡ Rylane'}
+            {character === 'raylene' ? '💜 Raylene' :
+             character === 'rylane'  ? '⚡ Rylane'  :
+             character === 'cloud'   ? "☁️ Cloud Se’kret" :
+                                       "🌙 Night Se’kret"}
           </Text>
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
-          <Text style={styles.greetingText}>"{greeting}"</Text>
+          {!!rememberedLine && (
+            <View style={styles.memoryTag}>
+              <Text style={styles.memoryTagLabel}>I REMEMBER</Text>
+              <Text style={styles.memoryTagText}>{rememberedLine}</Text>
+            </View>
+          )}
+          <Text style={styles.greetingText}>"{rememberedLine || greeting}"</Text>
           <Text style={[styles.greetingTap, { color: t.soft }]}>
             {isSekretVisible ? 'tap to dismiss' : "tap to call Se\u2019kret"}
           </Text>
         </TouchableOpacity>
 
-        {/* Drop a Bip CTA */}
-        <TouchableOpacity
-          style={[styles.mainBtn, { borderColor: t.accent }]}
-          onPress={() => setScreen('sekret')}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Drop a Bip"
-        >
-          <Text style={[styles.mainBtnText, { color: t.accent }]}>
-            Drop a Bip {character === 'raylene' ? '💜' : '⚡'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Control row */}
-        <View style={styles.controlRow}>
-          <TouchableOpacity
-            style={styles.guideBtn}
-            onPress={() => {
-              setShowGuide(true);
-              setHintSpot('pages');
-              setTimeout(() => setHintSpot(null), 2000);
-            }}
-            accessibilityRole="button"
-            accessibilityLabel="Room Guide"
-          >
-            <Text style={styles.guideBtnText}>Room Guide</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.guideBtn}
-            onPress={() => setHintSpot(prev => prev ? null : 'pages')}
-            accessibilityRole="button"
-            accessibilityLabel="Tap hint"
-          >
-            <Text style={styles.guideBtnText}>Tap Hint</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Quick row — FIXED: now includes voiceBip and calm */}
-        <View style={styles.quickRow}>
-          {([
-            { emoji: '🏠',       label: 'Home',   target: 'home'    },
-            { emoji: '📖',       label: 'Pages',  target: 'pages'   },
-            { emoji: '🎙️', label: 'Voice',  target: 'voiceBip' },
-            { emoji: '🌙',       label: 'Calm',   target: 'calm'    },
-            { emoji: '🌐',       label: 'Circle', target: 'circle'  },
-            { emoji: '⭐',             label: 'Growth', target: 'bippin2' },
-          ] as { emoji: string; label: string; target: string }[]).map(({ emoji, label, target }) => (
-            <TouchableOpacity
-              key={target}
-              style={styles.quickBtn}
-              onPress={() => setScreen(target)}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-            >
-              <Text style={styles.quickEmoji}>{emoji}</Text>
-              <Text style={styles.quickLabel}>{label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <Text style={styles.tagline}>your room. your voice. always you. ♡</Text>
+        {BottomNav}
       </Animated.View>
     </View>
   );
@@ -773,7 +949,10 @@ export function RoomScreen({
 const styles = StyleSheet.create({
   root:                  { flex: 1, backgroundColor: '#0d0014' },
   bg:                    { width, height },
-  overlay:               { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(13,0,20,0.34)' },
+  overlay:               { ...StyleSheet.absoluteFillObject },
+  cloudPresence:         { position: 'absolute', top: Platform.OS === 'ios' ? 116 : 94, right: 18, width: 76, height: 76, borderRadius: 24, borderWidth: 1, backgroundColor: 'rgba(22,12,42,0.58)', alignItems: 'center', justifyContent: 'center', zIndex: 8 },
+  cloudPresenceImage:    { width: 47, height: 40 },
+  cloudPresenceText:     { color: '#f3edff', fontSize: 9, fontWeight: '700', marginTop: -2 },
 
   hotspot:               { position: 'absolute' },
   hotspotGlow:           {
@@ -840,6 +1019,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  topLeft:               { flexDirection: 'column', gap: 6 },
   timeBadge:             {
     backgroundColor: 'rgba(13,0,20,0.68)',
     borderRadius: 12,
@@ -847,6 +1027,14 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   timeBadgeText:         { color: '#c4b5fd', fontSize: 12, fontWeight: '600' },
+  modeBadge:             {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+  },
+  modeBadgeText:         { fontSize: 11, fontWeight: '700' },
 
   characterToggle:       { flexDirection: 'row', gap: 8 },
   toggleBtn:             {
@@ -859,7 +1047,20 @@ const styles = StyleSheet.create({
   },
   toggleBtnActivePink:   { backgroundColor: 'rgba(217,70,239,0.24)', borderColor: '#d946ef' },
   toggleBtnActivePurple: { backgroundColor: 'rgba(124,58,237,0.24)', borderColor: '#7c3aed' },
+  toggleBtnActiveCloud:  { backgroundColor: 'rgba(155,185,255,0.28)', borderColor: '#9bb9ff' },
+  toggleBtnActiveNight:  { backgroundColor: 'rgba(47,31,91,0.50)', borderColor: '#bbb7ef' },
   toggleText:            { color: '#f5f0ff', fontSize: 11, fontWeight: '700' },
+
+  floatCloud:            { position: 'absolute' },
+
+  nightTimeWrap:         {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 116 : 94,
+    left: 18,
+    alignItems: 'flex-start',
+  },
+  nightTimeText:         { color: 'rgba(187,183,239,0.75)', fontSize: 13, fontWeight: '300', letterSpacing: 1.5 },
+  nightStars:            { color: 'rgba(187,183,239,0.45)', fontSize: 10, marginTop: 2, letterSpacing: 4 },
 
   presencePill:          {
     position: 'absolute',
@@ -881,7 +1082,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 10,
     paddingHorizontal: 16,
   },
   greetingBubble:        {
@@ -893,6 +1094,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   greetingChar:          { color: '#c4b5fd', fontSize: 11, fontWeight: '700', marginBottom: 5 },
+  memoryTag:             { borderLeftWidth: 2, borderLeftColor: '#d8b4fe', paddingLeft: 9, marginTop: 8, marginBottom: 9 },
+  memoryTagLabel:        { color: '#bca7d5', fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginBottom: 3 },
+  memoryTagText:         { color: '#f4eaff', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   roomCopy:              { color: '#f5f0ff', fontSize: 12, fontWeight: '700', opacity: 0.9, marginBottom: 6 },
   greetingText:          { color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 22, fontStyle: 'italic', marginBottom: 6 },
   greetingTap:           { fontSize: 10, fontStyle: 'italic' },

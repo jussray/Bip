@@ -4,18 +4,49 @@ export interface JournalEntry {
   mood: string;
   date: string;
   time: string;
+  source?: string; // Legacy/current tab source; undefined is treated as 'me'.
+  activeTab?: string;
+  moodTag?: string;
+  entryMode?: 'typed' | 'voice';
+  locked?: boolean;
+  imageUri?: string;
 }
 
 export interface CirclePost {
-  id: number;
+  id: number | string;
   text: string;
-  date: string;
-  time: string;
+  date?: string;
+  time?: string;
+  bipType?: string;
+  mediaKind?: 'text' | 'struggle' | 'relatable' | 'growth';
+  mediaUri?: string;
+  anonymousName?: string;
+  circleTag?: string;
+  postMood?: string;
+  quietRepliesCount?: number;
   reactions: {
     felt: number;
     comfort: number;
     proud: number;
     stay: number;
+    sameHere?: number;
+  };
+}
+
+export interface ParentCirclePost {
+  id: number;
+  text: string;
+  date: string;
+  time: string;
+  circleTag?: string;
+  anonymousName?: string;
+  quietRepliesCount?: number;
+  reactions: {
+    beenThere: number;
+    solidarity: number;
+    reminder: number;
+    needed: number;
+    strength: number;
   };
 }
 
