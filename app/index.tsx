@@ -99,6 +99,17 @@ const HOME_MESSAGES = [
   'You made it through today.',
 ];
 
+// ── Active character resolver (for sticker layer) ──────────────────────────
+// Maps the active sekret/theme key to a sticker-layer character identity.
+// 'soft' is the legacy internal key for Raylene.
+function getActiveCharacter(themeKey: string): 'raylene' | 'rylane' | 'cloud' | 'night' | null {
+  if (themeKey === 'raylene' || themeKey === 'soft') return 'raylene';
+  if (themeKey === 'rylane') return 'rylane';
+  if (themeKey === 'cloud') return 'cloud';
+  if (themeKey === 'night') return 'night';
+  return null;
+}
+
 // ── Bottom Nav ─────────────────────────────────────────────────────────────
 
 function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen: (s: string) => void; userSide: string }) {
@@ -584,6 +595,7 @@ export default function App() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       setScreen={setScreen}
       BottomNav={nav}
       privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
@@ -724,6 +736,7 @@ export default function App() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       setScreen={setScreen}
       onMilestone={() => trackActivity('growth')}
       streakDays={streakDays}
@@ -772,6 +785,7 @@ export default function App() {
       onComplete={() => trackActivity('comfort')}
       BottomNav={nav}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       mood={mood}
       companion={companion}
     />

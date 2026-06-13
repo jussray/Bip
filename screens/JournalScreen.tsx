@@ -21,6 +21,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
 import { buildOracleInsight } from '../services/oracle';
 import {
@@ -188,6 +189,11 @@ export function JournalScreen({
 
           <View style={styles.timeBadge} pointerEvents="none">
             <Text style={styles.timeBadgeText}>{hero.badge}</Text>
+          </View>
+
+          {/* Mini sticker — Raylene/Rylane journal companion */}
+          <View style={{ position: 'absolute', top: 10, right: 10 }} pointerEvents="none">
+            <MiniReactionSticker character={character} screenContext="journal" size={40} />
           </View>
 
           {/* Page-memory status — not a companion voice */}

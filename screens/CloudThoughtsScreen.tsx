@@ -10,6 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { IMAGES, getRoomBg } from '../constants/theme';
 import { fetchSekretReply } from '../utils/api';
+import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text,
@@ -104,6 +105,7 @@ interface CloudThoughtsScreenProps {
   BottomNav:     React.ReactNode;
   backTarget?:   string;         // Fix A4: defaults to 'home'
   selectedSekret?: string;       // 'soft' | 'rylane' | 'cloud' | 'night'
+  character?:    MiniStickerCharacter;
   privateProfile?: OracleProfile;
   profileSide?: OracleSide;
 }
@@ -117,6 +119,7 @@ export function CloudThoughtsScreen({
   BottomNav,
   backTarget = 'home',
   selectedSekret,
+  character,
   privateProfile,
   profileSide = 'teen',
 }: CloudThoughtsScreenProps) {
@@ -282,6 +285,7 @@ export function CloudThoughtsScreen({
           >
             <Text style={styles.sendBtnText}>send to the clouds ☁️</Text>
           </TouchableOpacity>
+          <MiniReactionSticker character={character} screenContext="cloudThoughts" size={40} />
         </View>
 
         {/* ── Thinking ── */}

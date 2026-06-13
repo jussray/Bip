@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
+import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import {
   Text, ScrollView, View, Image, StyleSheet,
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
@@ -64,6 +65,7 @@ interface ComfortScreenProps {
   onComplete?:     () => void;
   BottomNav:       React.ReactNode;
   selectedSekret?: string;
+  character?:      MiniStickerCharacter;
   mood?:           string;
   companion?: {
     presenceMessage: string;
@@ -72,7 +74,7 @@ interface ComfortScreenProps {
 
 export function ComfortScreen({
   t, setScreen, onComplete, BottomNav,
-  selectedSekret = 'raylene', mood, companion,
+  selectedSekret = 'raylene', character, mood, companion,
 }: ComfortScreenProps) {
 
   const [checked, setChecked] = useState<number[]>([]);
@@ -239,6 +241,7 @@ export function ComfortScreen({
           <Text style={styles.cardEmoji}>💙</Text>
           <Text style={[styles.cardText, { color: '#fff' }]}>{notAloneCopy.title}</Text>
           <Text style={[styles.entryText, { color: t.soft }]}>{notAloneCopy.sub}</Text>
+          <MiniReactionSticker character={character} screenContext="comfort" size={40} />
         </View>
 
         {/* Grounding checklist */}
