@@ -551,7 +551,6 @@ export function RoomScreen({
   const avatarSlide = useRef(new Animated.Value(14)).current;
   const avatarScale = useRef(new Animated.Value(0.96)).current;
   const glowAnim    = useRef(new Animated.Value(0.2)).current;
-  const breathAnim  = useRef(new Animated.Value(1)).current;
   const guideAnim   = useRef(new Animated.Value(0)).current;
   const hintAnim    = useRef(new Animated.Value(0)).current;
   const pulseAnim   = useRef(new Animated.Value(0)).current;

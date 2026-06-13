@@ -27,8 +27,7 @@ import { buildOracleInsight } from '../services/oracle';
 import {
   Text, TouchableOpacity, ScrollView,
   TextInput, View, Image, StyleSheet, Alert, Animated, Easing,
-  type DimensionValue,
-  TextInput, View, Image, StyleSheet, Alert, Animated, Easing, Platform,
+  type DimensionValue, Platform,
 } from 'react-native';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────

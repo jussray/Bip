@@ -241,7 +241,7 @@ export function ComfortScreen({
           <Text style={styles.cardEmoji}>💙</Text>
           <Text style={[styles.cardText, { color: '#fff' }]}>{notAloneCopy.title}</Text>
           <Text style={[styles.entryText, { color: t.soft }]}>{notAloneCopy.sub}</Text>
-          <MiniReactionSticker character={character} screenContext="comfort" size={40} />
+          <MiniReactionSticker character={character ?? null} screenContext="comfort" size={40} />
         </View>
 
         {/* Grounding checklist */}
