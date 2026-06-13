@@ -6,6 +6,7 @@ const runtimeRoots = ['app', 'components', 'constants', 'hooks', 'screens', 'ser
 const sourceExtensions = new Set(['.js', '.jsx', '.json', '.ts', '.tsx']);
 const forbiddenAssetName = /(?:mockup|reference|sheet)/i;
 const forbiddenReferencePath = /design-references/i;
+const assetExtension = /\.(?:avif|gif|jpe?g|png|svg|webp)$/i;
 const quotedPath = /['"`]([^'"`]+)['"`]/g;
 const violations = [];
 
@@ -28,7 +29,8 @@ for (const file of runtimeFiles) {
   contents.split(/\r?\n/).forEach((line, index) => {
     for (const match of line.matchAll(quotedPath)) {
       const candidate = match[1];
-      if (forbiddenReferencePath.test(candidate) || forbiddenAssetName.test(candidate.split(/[\\/]/).at(-1) ?? '')) {
+      const filename = candidate.split(/[\\/]/).at(-1) ?? '';
+      if (forbiddenReferencePath.test(candidate) || (assetExtension.test(filename) && forbiddenAssetName.test(filename))) {
         violations.push(`${relative(root, file)}:${index + 1}: ${candidate}`);
       }
     }

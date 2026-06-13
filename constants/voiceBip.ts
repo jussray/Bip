@@ -70,7 +70,7 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
     role: 'Big sister',
     energy: 'Come here. Talk to me.',
     personality: 'raylene',
-    voiceId: AVATAR_VOICE_PROFILES.raylene.voiceId,
+    voiceId: VOICE_BIP_VOICE_IDS.rayleneVoiceId,
     accent: '#e9a8d2',
     heroArt: { day: IMAGES.rayleneVoiceDay, night: IMAGES.rayleneVoiceNight },
     prompts: [
@@ -99,7 +99,7 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
     role: 'Big brother / older cousin',
     energy: 'Aight. Say it straight.',
     personality: 'rylane',
-    voiceId: AVATAR_VOICE_PROFILES.rylane.voiceId,
+    voiceId: VOICE_BIP_VOICE_IDS.rylaneVoiceId,
     accent: '#8f9cff',
     heroArt: { day: IMAGES.rylaneVoiceDay, night: IMAGES.rylaneVoiceNight },
     prompts: [
@@ -128,7 +128,7 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
     role: 'Reflection',
     energy: 'We don’t have to rush this.',
     personality: 'cloud',
-    voiceId: AVATAR_VOICE_PROFILES.cloud.voiceId,
+    voiceId: VOICE_BIP_VOICE_IDS.cloudVoiceId,
     accent: '#c8c9f5',
     heroArt: { day: AVATARS.cloud.fullbody, night: AVATARS.cloud.fullbody },
     prompts: [
@@ -156,7 +156,7 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
     role: 'Late-night presence',
     energy: 'I’m here while everybody else is asleep.',
     personality: 'night',
-    voiceId: AVATAR_VOICE_PROFILES.night.voiceId,
+    voiceId: VOICE_BIP_VOICE_IDS.nightVoiceId,
     accent: '#bbb7ef',
     // Night has no dedicated avatar cutout yet. Keep Night’s complete room
     // identity rather than borrowing another character’s body art.

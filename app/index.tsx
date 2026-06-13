@@ -58,16 +58,10 @@ import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import { normalizeOracleJournalEntries } from '../services/voiceBipIntelligence';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
-// One clean place to see every image Se'kret Bip uses.
-//
-// The actual `require()` paths + safe fallbacks live in constants/theme.ts.
-// This map is re-exported here so the top of the root file documents — at a
-// glance — what art is wired into the app and to which character / screen.
-//
-// Do NOT add new require() calls here. Edit constants/theme.ts instead so
-// fallbacks stay centralized and no screen can drift out of sync.
-import { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
-export { IMAGES, AVATARS, getRoomBg };
+// Re-exported so any screen can import IMAGES/AVATARS/getRoomBg from here
+// rather than reaching into constants/theme directly.
+// Do NOT add new require() calls here — edit constants/theme.ts instead.
+export { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 // RoomMemory: tracks room interactions for future Supabase room_memory table
@@ -92,13 +86,13 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
-  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
-  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
-  night:  { name: "Night Se’kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
+  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what's actually on your mind? No fake 'I'm fine'." },
+  cloud:  { name: "Cloud Se'kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
+  night:  { name: "Night Se'kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
 };
 
 const HOME_MESSAGES = [
-  "Don’t stay up carrying the whole world tonight.",
+  "Don't stay up carrying the whole world tonight.",
   'Rest is productive too.',
   'You deserve softness too.',
   'Heavy days do not define you.',
@@ -106,6 +100,17 @@ const HOME_MESSAGES = [
   'Breathe slowly tonight.',
   'You made it through today.',
 ];
+
+// ── Active character resolver (for sticker layer) ──────────────────────────
+// Maps the active sekret/theme key to a sticker-layer character identity.
+// 'soft' is the legacy internal key for Raylene.
+function getActiveCharacter(themeKey: string): 'raylene' | 'rylane' | 'cloud' | 'night' | null {
+  if (themeKey === 'raylene' || themeKey === 'soft') return 'raylene';
+  if (themeKey === 'rylane') return 'rylane';
+  if (themeKey === 'cloud') return 'cloud';
+  if (themeKey === 'night') return 'night';
+  return null;
+}
 
 // ── Bottom Nav ─────────────────────────────────────────────────────────────
 
@@ -263,6 +268,20 @@ export default function App() {
       setIsLoading(false);
     })();
   }, []);
+
+  // ── userSide change → snap to the correct home screen ─────────────────────
+  // Route 'home' is shared by both sides:
+  //   userSide === 'parent' → renders ParentRoomScreen  (Parent Room)
+  //   userSide === 'teen'   → renders RoomScreen        (teen Room)
+  // Switching sides always lands on 'home' so parents open Parent Room by
+  // default and teens open their normal Room — never the wrong side's screen.
+  // Guard: skip on initial mount (isLoading still true) so the splash sequence
+  // is not interrupted by a stored userSide value being hydrated.
+  useEffect(() => {
+    if (isLoading) return;
+    // 'home' renders ParentRoomScreen for parent, RoomScreen for teen.
+    setScreen('home');
+  }, [userSide]);
 
   // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
   //
@@ -537,6 +556,9 @@ export default function App() {
   //   periodCalendar · voiceBip · cloudThoughts · dashboard
 
   // ── Se'kret's Room (THE home — Room is the heart of Bip) ──────────────────
+  // 'home' is the shared route key for both sides:
+  //   parent → ParentRoomScreen   (Parent Room opens by default on parent mode)
+  //   teen   → RoomScreen         (normal teen Room)
   if (screen === 'home') {
     if (userSide === 'parent') {
       const today = new Date().toLocaleDateString();
@@ -595,6 +617,7 @@ export default function App() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       setScreen={setScreen}
       BottomNav={nav}
       privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
@@ -786,6 +809,7 @@ export default function App() {
       onComplete={() => trackActivity('comfort')}
       BottomNav={nav}
       selectedSekret={selectedSekret}
+      character={getActiveCharacter(selectedSekret)}
       mood={mood}
       companion={companion}
     />
