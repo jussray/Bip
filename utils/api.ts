@@ -6,6 +6,7 @@ import {
 } from '../services/sekretVoice';
 import { normalizeSekretPersonality } from '../services/sekretPresence';
 import { buildOracleContext, type OracleProfile, type OracleSide } from '../services/oracleDiscovery';
+import type { AvatarResponseRequest } from '../types/voiceIntelligence';
 
 const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL || '';
 
@@ -17,11 +18,12 @@ export async function fetchSekretReply(
   previousMood?: string,
   privateProfile?: OracleProfile,
   profileSide: OracleSide = 'teen',
+  privateContext: readonly string[] = [],
 ): Promise<string> {
   const voice = normalizeSekretPersonality(personality);
   const fallback = getSekretFallback(voice, text);
   const adaptationInstruction = buildSekretAdaptationInstruction(
-    buildOracleContext(privateProfile, profileSide),
+    [...buildOracleContext(privateProfile, profileSide), ...privateContext].slice(0, 8),
   );
 
   if (!BASE_URL) return fallback;
@@ -51,4 +53,19 @@ export async function fetchSekretReply(
   } catch {
     return fallback;
   }
+}
+
+
+/** Public response boundary: Se’kret reasoning informs the selected avatar. */
+export async function fetchAvatarVoiceBipReply(request: AvatarResponseRequest): Promise<string> {
+  return fetchSekretReply(
+    request.transcriptText,
+    'voice-bip',
+    request.mood,
+    request.avatarKey,
+    undefined,
+    request.privateProfile,
+    request.profileSide,
+    [request.sekretUnderstanding.responseBrief, ...request.sekretUnderstanding.memoryContext],
+  );
 }

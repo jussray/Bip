@@ -78,7 +78,7 @@ export interface PagesScreenProps {
 
 const TEEN_TABS: TabDefinition[] = [
   { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#c4b5fd' },
-  { id: 'oracle', label: 'Oracle', icon: '◇', title: 'Oracle', accent: '#8b7bb8' },
+  { id: 'oracle', label: 'Se’kret', icon: '◇', title: 'Se’kret Discovery', accent: '#8b7bb8' },
   {
     id: 'raylene', label: 'Raylene', icon: '✦', eyebrow: 'Raylene pulled up',
     title: 'You been a little too quiet. What happened?',
@@ -119,7 +119,7 @@ const TEEN_TABS: TabDefinition[] = [
 
 const PARENT_TABS: TabDefinition[] = [
   { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#d8c9b8' },
-  { id: 'oracle', label: 'Oracle', icon: '◇', title: 'Oracle', accent: '#8d877f' },
+  { id: 'oracle', label: 'Se’kret', icon: '◇', title: 'Se’kret Discovery', accent: '#8d877f' },
   {
     id: 'parentSekret', label: 'Parent Se’kret', icon: '✦', eyebrow: 'Parent Se’kret',
     title: 'Let’s get honest before this turns into a whole thing.',
@@ -264,7 +264,7 @@ function PagesWorkspace({ side, entries, draft, setDraft, onSave, setScreen, Bot
             {tabEntries.length ? (
               <View>
                 <View style={styles.savedHeader}>
-                  <Text style={styles.savedTitle}>Earlier Oracle pages</Text>
+                  <Text style={styles.savedTitle}>Earlier Se’kret discoveries</Text>
                   <Text style={styles.savedCount}>{tabEntries.length}</Text>
                 </View>
                 {tabEntries.map(entry => (

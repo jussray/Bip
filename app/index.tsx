@@ -54,6 +54,8 @@ import {
   syncComfortSession,
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
+import type { OracleJournalEntry } from '../types/voiceIntelligence';
+import { normalizeOracleJournalEntries } from '../services/voiceBipIntelligence';
 
 // ── IMAGES ─────────────────────────────────────────────────────────────────
 // One clean place to see every image Se'kret Bip uses.
@@ -151,6 +153,7 @@ export default function App() {
   // Parent Pages are intentionally isolated from teen entries and cloud journal sync.
   const [parentPagesDraft, setParentPagesDraft] = useState('');
   const [parentPagesEntries, setParentPagesEntries] = useState<JournalEntry[]>([]);
+  const [oracleJournalEntries, setOracleJournalEntries] = useState<OracleJournalEntry[]>([]);
   const [oracleProfile, setOracleProfile] = useState<OracleProfile>(() => createOracleProfile('teen'));
   const [parentOracleProfile, setParentOracleProfile] = useState<OracleProfile>(() => createOracleProfile('parent'));
   const [oracleSessions, setOracleSessions] = useState<OracleSessionSummary[]>([]);
@@ -226,6 +229,7 @@ export default function App() {
         if (state.entries)        setJournalEntries(Array.isArray(state.entries) ? state.entries : []);
         if (state.parentPagesDraft) setParentPagesDraft(state.parentPagesDraft);
         if (state.parentPagesEntries) setParentPagesEntries(Array.isArray(state.parentPagesEntries) ? state.parentPagesEntries : []);
+        if (state.oracleJournalEntries) setOracleJournalEntries(normalizeOracleJournalEntries(state.oracleJournalEntries, 'teen'));
         if (state.oracleProfile) setOracleProfile(normalizeOracleProfile(state.oracleProfile, 'teen'));
         if (state.parentOracleProfile) setParentOracleProfile(normalizeOracleProfile(state.parentOracleProfile, 'parent'));
         if (state.oracleSessions) setOracleSessions(normalizeOracleSessions(state.oracleSessions, 'teen'));
@@ -328,6 +332,7 @@ export default function App() {
       sekretMode,
       journalText,
       entries:       journalEntries,   // storage key is 'entries'
+      oracleJournalEntries,
       parentPagesDraft,
       parentPagesEntries,
       oracleProfile,
@@ -351,7 +356,7 @@ export default function App() {
     }).catch(() => {});
   }, [
     theme, mood, userSide, selectedSekret, sekretMode,
-    journalText, journalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
+    journalText, journalEntries, oracleJournalEntries, parentPagesDraft, parentPagesEntries, oracleProfile, parentOracleProfile,
     oracleSessions, parentOracleSessions, moodHistory,
     circlePosts, parentCirclePosts, voiceNotes, parentVoiceNotes, comfortSessions,
     crewMembers, crewCheckIns, streakDays, lastOpenDate,
@@ -606,6 +611,8 @@ export default function App() {
       theme={t}
       setScreen={setScreen}
       selectedSekret={selectedSekret}
+      onSelectAvatar={avatarKey => setSelectedSekret(avatarKey)}
+      weatherMode={theme === 'rain' ? 'rain' : undefined}
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
       onSave={() => trackActivity('voice')}
@@ -614,6 +621,10 @@ export default function App() {
       BottomNav={nav}
       privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
       profileSide={userSide}
+      oracleJournalEntries={userSide === 'teen' ? oracleJournalEntries : []}
+      onStoreOracleMemory={(entry: OracleJournalEntry) => {
+        if (userSide === 'teen') setOracleJournalEntries(current => [entry, ...current].slice(0, 250));
+      }}
     />
   );
 

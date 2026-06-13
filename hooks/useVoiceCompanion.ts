@@ -2,15 +2,22 @@ import { useMemo, useState } from 'react';
 import { createVoiceCompanionSession, type VoiceCompanionSession, type VoiceCompanionStatus } from '../utils/voiceCompanion';
 
 interface UseVoiceCompanionArgs {
+  avatarKey?: string;
   personality?: string;
   mood?: string;
+  voiceId?: string | null;
 }
 
-export function useVoiceCompanion({ personality = 'Raylene', mood = 'calm' }: UseVoiceCompanionArgs) {
+export function useVoiceCompanion({
+  avatarKey = 'raylene',
+  personality = 'raylene',
+  mood = 'calm',
+  voiceId = null,
+}: UseVoiceCompanionArgs) {
   const [session, setSession] = useState<VoiceCompanionSession | null>(null);
 
   const prepareVoiceSession = (mode: VoiceCompanionStatus['mode'] = 'voice') => {
-    const nextSession = createVoiceCompanionSession(personality, mood, mode);
+    const nextSession = createVoiceCompanionSession(avatarKey, personality, mood, mode, voiceId);
     setSession(nextSession);
     return nextSession;
   };
