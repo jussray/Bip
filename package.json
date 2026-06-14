@@ -23,6 +23,7 @@
     "@expo/metro-runtime": "~3.2.3",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "2.74.0",
+    "@vercel/analytics": "^2.0.1",
     "expo": "~51.0.28",
     "expo-av": "~14.0.7",
     "expo-constants": "~16.0.2",

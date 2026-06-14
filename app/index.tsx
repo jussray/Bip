@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { Analytics } from '../components/Analytics';
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -133,7 +134,7 @@ function BottomNav({ screen, setScreen, userSide }: { screen: string; setScreen:
 
 // ── Main App ───────────────────────────────────────────────────────────────
 
-export default function App() {
+function AppContent() {
   // ─── Navigation ────────────────────────────────────────────────────────
   const [screen, setScreen] = useState('splash');
 
@@ -594,7 +595,7 @@ export default function App() {
     );
   }
 
-  // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
+  // ─��� Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
     <HomeScreen
       mood={mood}
@@ -917,6 +918,17 @@ export default function App() {
   );
 
   return null;
+}
+
+// ── App Wrapper with Analytics ─────────────────────────────────────────────
+// Wrap the app with Vercel Analytics (web-only)
+export default function App() {
+  return (
+    <>
+      <AppContent />
+      {Platform.OS === 'web' && <Analytics />}
+    </>
+  );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
