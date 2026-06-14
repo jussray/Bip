@@ -5,7 +5,8 @@
 // SEKRET_PROFILES fallback, and personality-aware replies. Adds:
 //   • Time-of-day Room backdrop via getRoomBg(character, time)
 //   • Mood-tinted glow (happy/sad/angry/tired/calm)
-//   • Char-aware copy when selectedSekret is rylane vs raylene/soft
+//   • Per-character copy: Raylene, Rylane, Cloud, Night each have distinct
+//     heroSub / stickyLine / sendLabel / placeholder / greeting
 //   • Stagger entrance fade-ins, breath loop on profile emoji
 //   • Scrapbook sticky-note quiet line
 //   • Gradient overlay on hero
@@ -26,19 +27,19 @@ import type { OracleProfile } from '../services/oracleDiscovery';
 // ── Profiles (keep in sync with index.tsx SEKRET_PROFILES) ─────────────────
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
-  rylane: { name: 'Rylane',              emoji: '⚡', title: 'Loyal Bro',           vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
-  cloud:  { name: "Cloud Se’kret",  emoji: '☁️', title: 'Quiet Observer',      vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
-  night:  { name: "Night Se’kret",  emoji: '🌙', title: 'The Light Left On',    vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
+  rylane: { name: 'Rylane',         emoji: '⚡', title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.',   greeting: "Aight, what's actually on your mind? No fake 'I'm fine'." },
+  cloud:  { name: "Cloud Se'kret",  emoji: '☁️', title: 'Quiet Observer',      vibe: 'Notices. Waits. Rarely pushes.',                    greeting: 'something feels different today.' },
+  night:  { name: "Night Se'kret",  emoji: '🌙', title: 'The Light Left On',   vibe: 'Presence. Not conversation.',                       greeting: 'rough night?' },
 };
 
 // ── Mood glow palette ──────────────────────────────────────────────────────
 function glowFor(mood: string): string {
   const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))       return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
+  if (m.includes('happy'))                              return '#fbbf24';
+  if (m.includes('sad') || m.includes('anx'))           return '#7dd3fc';
   if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))       return '#6d28d9';
-  if (m.includes('calm'))        return '#c4b5fd';
+  if (m.includes('tired'))                              return '#6d28d9';
+  if (m.includes('calm'))                               return '#c4b5fd';
   return '#c4b5fd';
 }
 
@@ -48,6 +49,59 @@ function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
   if (h >= 11 && h < 17) return 'day';
   if (h >= 17 && h < 21) return 'evening';
   return 'night';
+}
+
+// ── Per-character UI copy ──────────────────────────────────────────────────
+// Each character must sound like itself at every surface — not like Raylene.
+interface CharacterCopy {
+  heroTitle:   string;
+  heroSub:     string;
+  stickyLine:  string;
+  sendLabel:   string;
+  placeholder: string;
+  greeting:    string;
+}
+
+function copyFor(profileKey: string, profileName: string): CharacterCopy {
+  switch (profileKey) {
+    case 'rylane':
+      return {
+        heroTitle:   'Drop a Bip 🤝',
+        heroSub:     'Say it how it happened. I'll keep it real.',
+        stickyLine:  'say the part you keep leaving out.',
+        sendLabel:   'Send 🤝',
+        placeholder: `Talk to ${profileName}… no cap`,
+        greeting:    "Aight. I'm here. Drop it.",
+      };
+    case 'cloud':
+      return {
+        heroTitle:   'Drop a Bip ☁️',
+        heroSub:     'No rush. Let it take shape when it's ready.',
+        stickyLine:  'even fragments count.',
+        sendLabel:   'Send ☁️',
+        placeholder: `Talk to ${profileName}… let it come slowly`,
+        greeting:    'something feels close to the surface.',
+      };
+    case 'night':
+      return {
+        heroTitle:   'Drop a Bip 🌙',
+        heroSub:     'You don\'t have to explain it. Just show up.',
+        stickyLine:  'you don\'t have to be okay right this second.',
+        sendLabel:   'Send 🌙',
+        placeholder: `Talk to ${profileName}… the night hears you`,
+        greeting:    'rough night?',
+      };
+    // 'soft' (Raylene) and any unknown key both land here
+    default:
+      return {
+        heroTitle:   'Drop a Bip 💜',
+        heroSub:     'Say it how you'd text it. Raylene can take it.',
+        stickyLine:  'no polished version. what actually happened?',
+        sendLabel:   'Send 💜',
+        placeholder: `Talk to ${profileName}…`,
+        greeting:    SEKRET_PROFILES.soft.greeting,
+      };
+  }
 }
 
 // ── Props ──────────────────────────────────────────────────────────────────
@@ -75,28 +129,21 @@ export function SekretScreen({
   const [lastSent,       setLastSent]       = useState('');
 
   // Safe profile fallback
-  const profile = currentSekret ?? SEKRET_PROFILES[selectedProfile] ?? SEKRET_PROFILES.soft;
-
-  // Char awareness — Rylane = manhood/loyal-bro, otherwise Raylene/soft-big-sis energy
-  const isRylane  = selectedProfile === 'rylane';
-  const charKey   = isRylane ? 'rylane' : 'raylene';
+  const profile   = currentSekret ?? SEKRET_PROFILES[selectedProfile] ?? SEKRET_PROFILES.soft;
+  const charKey   = normalizeCharacterKey(selectedProfile);
   const glow      = glowFor(mood);
   const tod       = timeOfDay();
   const bgSource  = useMemo(() => getRoomBg(charKey, tod), [charKey, tod]);
-  const characterArt = AVATARS[normalizeCharacterKey(selectedProfile)]?.fullbody;
+  const characterArt = AVATARS[charKey]?.fullbody;
 
-  // Char-aware copy overrides
-  const heroTitle = isRylane ? 'Drop a Bip 🤝' : 'Drop a Bip 💜';
-  const heroSub   = isRylane
-    ? 'Say it how it happened. I’ll keep it real.'
-    : 'Say it how you’d text it. Raylene can take it.';
-  const stickyLine = isRylane
-    ? 'say the part you keep leaving out.'
-    : 'no polished version. what actually happened?';
-  const sendLabel = isRylane ? 'Send 🤝' : 'Send 💜';
-  const greetingOverride = isRylane && profile === SEKRET_PROFILES.rylane
-    ? profile.greeting
-    : (isRylane ? 'Aight. I’m here. Drop it.' : profile.greeting);
+  // Per-character copy — no single isRylane gate
+  const copy = copyFor(selectedProfile, profile.name);
+
+  // Respect profile-level greeting override if the loaded profile has one
+  const greetingDisplay =
+    (currentSekret?.greeting && currentSekret.greeting !== SEKRET_PROFILES.soft.greeting)
+      ? currentSekret.greeting
+      : copy.greeting;
 
   // ── Animations ──────────────────────────────────────────────────────────
   const fadeHero   = useRef(new Animated.Value(0)).current;
@@ -159,12 +206,12 @@ export function SekretScreen({
         style={StyleSheet.absoluteFill}
       />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.logo}>Se’kret Bridge 💜</Text>
-        <Text style={styles.subtitle}>Your teen’s safe space. You can reach in with love.</Text>
+        <Text style={styles.logo}>Se'kret Bridge 💜</Text>
+        <Text style={styles.subtitle}>Your teen's safe space. You can reach in with love.</Text>
         <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
-          <Text style={[styles.cardText, { color: '#fff' }]}>This is your teen’s private space.</Text>
+          <Text style={[styles.cardText, { color: '#fff' }]}>This is your teen's private space.</Text>
           <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
-            Se’kret helps them process emotions safely. You can send a message of support through the Bridge.
+            Se'kret helps them process emotions safely. You can send a message of support through the Bridge.
           </Text>
           <TouchableOpacity
             style={[styles.button, { backgroundColor: glow, shadowColor: glow, marginTop: 12 }]}
@@ -190,8 +237,8 @@ export function SekretScreen({
 
         {/* Hero */}
         <Animated.View style={{ opacity: fadeHero, transform: [{ translateY: transHero }] }}>
-          <Text style={styles.logo}>{heroTitle}</Text>
-          <Text style={styles.subtitle}>{heroSub}</Text>
+          <Text style={styles.logo}>{copy.heroTitle}</Text>
+          <Text style={styles.subtitle}>{copy.heroSub}</Text>
 
           {/* Companion presence pill */}
           <Animated.View style={[
@@ -221,7 +268,7 @@ export function SekretScreen({
 
           {/* Scrapbook sticky-note */}
           <View style={styles.sticky}>
-            <Text style={styles.stickyText}>{stickyLine}</Text>
+            <Text style={styles.stickyText}>{copy.stickyLine}</Text>
           </View>
         </Animated.View>
 
@@ -243,7 +290,7 @@ export function SekretScreen({
           ) : (
             <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', shadowColor: glow }]}>
               <Text style={[styles.entryText, { color: t.soft }]}>
-                {greetingOverride}
+                {greetingDisplay}
               </Text>
             </View>
           )}
@@ -253,7 +300,7 @@ export function SekretScreen({
         <Animated.View style={{ opacity: fadeInput, transform: [{ translateY: transInput }] }}>
           <TextInput
             style={[styles.journalInput, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', color: '#fff' }]}
-            placeholder={isRylane ? `Talk to ${profile.name}… no cap` : `Talk to ${profile.name}…`}
+            placeholder={copy.placeholder}
             placeholderTextColor="#94A3B8"
             multiline
             value={sekretMessage}
@@ -263,13 +310,13 @@ export function SekretScreen({
             style={[styles.button, { backgroundColor: glow, shadowColor: glow }]}
             onPress={handleSend}
           >
-            <Text style={styles.buttonText}>{sendLabel}</Text>
+            <Text style={styles.buttonText}>{copy.sendLabel}</Text>
           </TouchableOpacity>
         </Animated.View>
 
         {/* Profile picker */}
         <Animated.View style={{ opacity: fadePicker, transform: [{ translateY: transPicker }] }}>
-          <Text style={[styles.sectionTitle, { color: '#fff' }]}>Choose Your Se’kret</Text>
+          <Text style={[styles.sectionTitle, { color: '#fff' }]}>Choose Your Se'kret</Text>
           <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }]}>
             {Object.keys(SEKRET_PROFILES).map(key => (
               <TouchableOpacity
@@ -317,7 +364,7 @@ const styles = StyleSheet.create({
   sticky:         { alignSelf: 'center', backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 18, transform: [{ rotate: '-2deg' }] },
   stickyText:     { color: '#3b1f6b', fontStyle: 'italic', fontSize: 13 },
   characterStage: { height: 260, borderRadius: 24, overflow: 'hidden', borderWidth: 1, marginBottom: 12, backgroundColor: 'rgba(20,12,38,0.78)', shadowOpacity: 0.45, shadowRadius: 18, shadowOffset: { width: 0, height: 0 } },
-  characterArt: { width: '100%', height: '100%' },
+  characterArt:   { width: '100%', height: '100%' },
   characterCaption: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 50, paddingHorizontal: 18, paddingBottom: 16 },
-  characterRole: { color: '#ddd4e8', textAlign: 'center', fontSize: 12, lineHeight: 17 },
+  characterRole:  { color: '#ddd4e8', textAlign: 'center', fontSize: 12, lineHeight: 17 },
 });

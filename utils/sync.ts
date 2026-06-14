@@ -79,32 +79,39 @@ export async function ensureAnonymousSession(): Promise<string | null> {
 // ── Mood ────────────────────────────────────────────────────────────────────
 export function syncMood(entry: MoodEntry): void {
   void safeUpsert(TABLES.moodHistory, {
-    id:     entry.id,
-    mood:   entry.mood,
-    date:   entry.date,
-    time:   entry.time,
+    id:   entry.id,
+    mood: entry.mood,
+    date: entry.date,
+    time: entry.time,
   });
 }
 
 // ── Journal ────────────────────────────────────────────────────────────────
+// sekret_reply is written when present so the reply survives device migration.
+// The column is nullable — older rows without a reply write NULL, which is safe.
+// MIGRATION REQUIRED before this field persists to Supabase:
+//   supabase/migrations/add_sekret_reply.sql
+//   ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS sekret_reply text;
 export function syncJournal(entry: JournalEntry): void {
   void safeUpsert(TABLES.journalEntries, {
-    id:    entry.id,
-    text:  entry.text,
-    mood:  entry.mood,
-    date:  entry.date,
-    time:  entry.time,
+    id:           entry.id,
+    text:         entry.text,
+    mood:         entry.mood,
+    date:         entry.date,
+    time:         entry.time,
+    // sekretTyping is transient — never persisted.
+    sekret_reply: entry.sekretReply ?? null,
   });
 }
 
 // ── Circle (Teen) ──────────────────────────────────────────────────────────
 export function syncCirclePost(post: CirclePost): void {
   void safeUpsert(TABLES.circlePosts, {
-    id:        post.id,
-    text:      post.text,
-    date:      post.date,
-    time:      post.time,
-    reactions: post.reactions,
+    id:         post.id,
+    text:       post.text,
+    date:       post.date,
+    time:       post.time,
+    reactions:  post.reactions,
     circle_tag: post.circleTag ?? null,
     post_mood:  post.postMood ?? null,
     media_kind: post.mediaKind ?? null,
@@ -181,7 +188,7 @@ export async function snapshotPoints(total: number): Promise<void> {
   if (!uid) return;
   try {
     await sb.from(TABLES.bipPoints).insert({
-      user_id: uid,
+      user_id:     uid,
       total,
       captured_at: new Date().toISOString(),
     });
@@ -193,6 +200,7 @@ export async function snapshotPoints(total: number): Promise<void> {
 // ── Bulk pull (initial restore — optional, opt-in from app boot) ───────────
 // Reads cloud rows for the signed-in user. Useful when migrating a fresh
 // install. Returns null if offline — caller falls back to local state.
+// sekret_reply is mapped back to sekretReply on the JournalEntry shape.
 export async function pullAll(): Promise<{
   moodHistory:     MoodEntry[];
   journalEntries:  JournalEntry[];
@@ -216,8 +224,15 @@ export async function pullAll(): Promise<{
     );
     const [mood, journal, circle, voice, comfort, crew, check] = results.map(r => r.data || []);
     return {
-      moodHistory:     mood     as MoodEntry[],
-      journalEntries:  journal  as JournalEntry[],
+      moodHistory:    mood     as MoodEntry[],
+      // Map snake_case sekret_reply back to the camelCase JournalEntry field.
+      // Rows created before the migration have no sekret_reply column — the
+      // select returns undefined for those rows, which the nullish coalesce
+      // converts to undefined, leaving sekretReply absent (correct behavior).
+      journalEntries: (journal as any[]).map(r => ({
+        ...r,
+        sekretReply: r.sekret_reply ?? undefined,
+      })) as JournalEntry[],
       circlePosts:     circle   as CirclePost[],
       voiceNotes:      voice    as VoiceNote[],
       comfortSessions: comfort  as ComfortSession[],
