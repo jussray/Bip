@@ -18,7 +18,7 @@ import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
 
-type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
+type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' | 'night';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
 export type PagesTab = TeenTab | ParentTab;
 
@@ -125,6 +125,18 @@ const TEEN_TABS: TabDefinition[] = [
     ],
     placeholder: 'Let it take shape slowly\u2026',
   },
+  {
+    id: 'night', label: 'Night', icon: '\u{1F319}', eyebrow: "Night Se\u2019kret",
+    title: "You don\u2019t have to say much. Just don\u2019t be alone in it.",
+    subtitle: 'Presence. Not conversation.', accent: '#7b8fcf',
+    prompts: [
+      "What\u2019s still in your head that you can\u2019t put down?",
+      'What almost broke you open today?',
+      "What do you wish you didn\u2019t have to carry alone?",
+      'You can just start with one word.',
+    ],
+    placeholder: 'The night hears you\u2026',
+  },
 ];
 
 const PARENT_TABS: TabDefinition[] = [
@@ -163,6 +175,7 @@ function tabToStickerCharacter(tab: PagesTab): MiniAvatarCharacter {
   if (tab === 'raylene') return 'raylene';
   if (tab === 'rylane') return 'rylane';
   if (tab === 'cloud') return 'cloud';
+  if (tab === 'night') return 'night';
   return null;
 }
 
@@ -170,7 +183,7 @@ function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
   if (
     source === 'parentSekret' || source === 'bridge' || source === 'oracle' ||
-    source === 'raylene' || source === 'rylane' || source === 'cloud'
+    source === 'raylene' || source === 'rylane' || source === 'cloud' || source === 'night'
   ) {
     return source;
   }
