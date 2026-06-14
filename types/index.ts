@@ -14,6 +14,10 @@ export interface JournalEntry {
   hidden?: boolean;
   locked?: boolean;
   imageUri?: string;
+  /** Se'kret reply text, stored after Worker responds. Undefined until reply arrives. */
+  sekretReply?: string;
+  /** Transient: true while the Worker call is in flight. Never persisted to AsyncStorage. */
+  sekretTyping?: boolean;
 }
 
 export interface CirclePost {
