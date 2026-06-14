@@ -29,7 +29,7 @@ import {
 } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
-import { fetchAvatarVoiceBipReply } from '../utils/api';
+import { fetchSekretReply } from '../utils/api';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
@@ -113,6 +113,7 @@ interface VoiceBipScreenProps {
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
   theme, setScreen, selectedSekret, onSelectAvatar, weatherMode, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
+  oracleJournalEntries, onStoreOracleMemory,
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -153,6 +154,9 @@ export function VoiceBipScreen({
   const isNight = roomPhase === 'night' || roomPhase === 'deepNight';
   const avatarKey = normalizeVoiceBipAvatar(selectedSekret);
   const avatar = VOICE_BIP_AVATARS[avatarKey];
+  const presenceCharacter = toPresenceCharacter(avatarKey);
+  const presenceTime = getPresenceTime(hour, { isRaining: weatherMode === 'rain' });
+  const presence = usePresence({ character: presenceCharacter, time: presenceTime });
   const roomArt = getRoomScene(avatarKey, roomPhase);
   const heroArt = isNight ? avatar.heroArt.night : avatar.heroArt.day;
   const { prepareVoiceSession } = useVoiceCompanion({

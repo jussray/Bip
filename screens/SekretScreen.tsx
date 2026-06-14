@@ -19,7 +19,7 @@ import {
   ImageBackground, Animated, Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getRoomBg } from '../constants/theme';
+import { AVATARS, getRoomBg, normalizeCharacterKey } from '../constants/theme';
 import { fetchSekretReply } from '../utils/api';
 import type { OracleProfile } from '../services/oracleDiscovery';
 
@@ -83,6 +83,7 @@ export function SekretScreen({
   const glow      = glowFor(mood);
   const tod       = timeOfDay();
   const bgSource  = useMemo(() => getRoomBg(charKey, tod), [charKey, tod]);
+  const characterArt = AVATARS[normalizeCharacterKey(selectedProfile)]?.fullbody;
 
   // Char-aware copy overrides
   const heroTitle = isRylane ? 'Drop a Bip 🤝' : 'Drop a Bip 💜';
@@ -206,13 +207,16 @@ export function SekretScreen({
 
         {/* Profile card with breathing emoji */}
         <Animated.View style={{ opacity: fadeProf, transform: [{ translateY: transProf }] }}>
-          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }]}>
-            <Animated.Text style={[styles.cardEmoji, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}>
-              {profile.emoji}
-            </Animated.Text>
-            <Text style={[styles.cardText, { color: '#fff' }]}>{profile.name}</Text>
-            <Text style={[styles.entryText, { color: '#E2E8F0' }]}>{profile.title}</Text>
-            <Text style={[styles.entryText, { color: t.soft }]}>{profile.vibe}</Text>
+          <View style={[styles.characterStage, { borderColor: glow + '88', shadowColor: glow }]}>
+            {characterArt ? <Animated.Image
+              source={characterArt}
+              style={[styles.characterArt, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            /> : null}
+            <LinearGradient colors={['transparent', 'rgba(13,9,20,0.92)']} style={styles.characterCaption}>
+              <Text style={styles.cardText}>{profile.name}</Text>
+              <Text style={styles.characterRole}>{profile.title} · {profile.vibe}</Text>
+            </LinearGradient>
           </View>
 
           {/* Scrapbook sticky-note */}
@@ -312,4 +316,8 @@ const styles = StyleSheet.create({
   choiceButton:   { backgroundColor: 'rgba(30,41,59,0.7)', padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
   sticky:         { alignSelf: 'center', backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 18, transform: [{ rotate: '-2deg' }] },
   stickyText:     { color: '#3b1f6b', fontStyle: 'italic', fontSize: 13 },
+  characterStage: { height: 260, borderRadius: 24, overflow: 'hidden', borderWidth: 1, marginBottom: 12, backgroundColor: 'rgba(20,12,38,0.78)', shadowOpacity: 0.45, shadowRadius: 18, shadowOffset: { width: 0, height: 0 } },
+  characterArt: { width: '100%', height: '100%' },
+  characterCaption: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 50, paddingHorizontal: 18, paddingBottom: 16 },
+  characterRole: { color: '#ddd4e8', textAlign: 'center', fontSize: 12, lineHeight: 17 },
 });
