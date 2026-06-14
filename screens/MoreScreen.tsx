@@ -19,6 +19,7 @@ interface MoreScreenProps {
   BottomNav: React.ReactNode;
   mood?: string;
   selectedSekret?: string;
+  onSideChanged?: () => void;
 }
 
 function glowFor(mood?: string): string {
@@ -34,6 +35,7 @@ function glowFor(mood?: string): string {
 export function MoreScreen({
   t, userSide, setUserSide, setScreen, BottomNav,
   mood, selectedSekret,
+  onSideChanged,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
   const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow + '88', shadowColor: glow }] as any;
@@ -58,13 +60,31 @@ export function MoreScreen({
           <Text style={styles.cardText}>Current Side: {userSide === 'parent' ? 'Parent Side' : 'Teen Side'}</Text>
           <TouchableOpacity
             style={btn()}
-            onPress={() => setUserSide(userSide === 'parent' ? 'teen' : 'parent')}
+            onPress={() => {
+              setUserSide(userSide === 'parent' ? 'teen' : 'parent');
+              onSideChanged?.();
+            }}
           >
             <Text style={styles.buttonText}>
               Switch to {userSide === 'parent' ? 'Teen Side' : 'Parent Side'}
             </Text>
           </TouchableOpacity>
         </View>
+
+        {userSide === 'parent' ? (
+          <View style={card()}>
+            <Text style={styles.futureLabel}>FAMILY ACCOUNT · COMING LATER</Text>
+            <Text style={styles.cardText}>Premium family setup</Text>
+            <Text style={styles.futureBody}>
+              Parent-created plans will eventually manage consent, subscriptions, upgrades, and intentionally shared Bridge features—without opening teen Pages.
+            </Text>
+            <View style={styles.futureSteps}>
+              <Text style={styles.futureStep}>1  Parent account</Text>
+              <Text style={styles.futureStep}>2  Invite + permissions</Text>
+              <Text style={styles.futureStep}>3  Premium family tools</Text>
+            </View>
+          </View>
+        ) : null}
 
         <TouchableOpacity style={btn()} onPress={() => setScreen('settings')}>
           <Text style={styles.buttonText}>⚙️ Vibe Lab</Text>
@@ -134,4 +154,8 @@ const styles = StyleSheet.create({
   cardText:   { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
   button:     { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center', shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  futureLabel: { color: '#d8b9ef', fontSize: 10, fontWeight: '900', letterSpacing: 1.4, marginBottom: 8 },
+  futureBody: { color: '#d7cfdf', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 12 },
+  futureSteps: { gap: 7, alignSelf: 'stretch' },
+  futureStep: { color: '#eee7f4', fontSize: 12, padding: 9, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)' },
 });

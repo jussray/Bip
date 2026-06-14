@@ -544,7 +544,7 @@ export default function App() {
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
   // The branded splash is the first paint; storage hydration must never hide it.
-  if (screen === 'splash') return <SplashScreen setScreen={setScreen} />;
+  if (screen === 'splash') return <SplashScreen setScreen={setScreen} userSide={userSide} />;
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (isLoading) return null;
@@ -889,6 +889,7 @@ export default function App() {
       t={t}
       userSide={userSide}
       setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
+      onSideChanged={() => setScreen('splash')}
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}

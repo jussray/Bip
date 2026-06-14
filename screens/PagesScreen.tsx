@@ -364,6 +364,12 @@ function PagesWorkspace({
 
             {/* Paper card — mini sticker sits bottom-right, pointer-events:none */}
             <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
+              <View pointerEvents="none" style={styles.paperMargin} />
+              <View pointerEvents="none" style={styles.paperLines}>
+                {Array.from({ length: 10 }, (_, index) => (
+                  <View key={index} style={styles.paperLine} />
+                ))}
+              </View>
               <TextInput
                 autoFocus={activeTab === 'me'}
                 multiline
@@ -536,12 +542,14 @@ const styles = StyleSheet.create({
   },
   privatePillText: { color: '#aaa2b5', fontSize: 10 },
   tabsWrap: { borderBottomWidth: 1, borderBottomColor: '#ffffff0d' },
-  tabs: { paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
+  tabs: { paddingHorizontal: 14, paddingTop: 12, gap: 4, alignItems: 'flex-end' },
   tab: {
     minWidth: 68,
-    height: 52,
-    borderRadius: 13,
+    height: 46,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     borderWidth: 1,
+    borderBottomWidth: 0,
     borderColor: '#ffffff14',
     alignItems: 'center',
     justifyContent: 'center',
@@ -573,18 +581,41 @@ const styles = StyleSheet.create({
   promptAction: { fontSize: 11, fontWeight: '800' },
   dismiss: { color: '#827b8d', fontSize: 11 },
   paper: {
-    minHeight: 240,
-    backgroundColor: '#f4efe7',
-    borderRadius: 18,
+    minHeight: 220,
+    backgroundColor: '#fbf6e9',
+    borderRadius: 8,
     borderWidth: 2,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  paperMargin: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 38,
+    width: 1,
+    backgroundColor: 'rgba(219, 116, 129, 0.38)',
+  },
+  paperLines: { ...StyleSheet.absoluteFillObject, paddingTop: 26 },
+  paperLine: {
+    height: 29,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(92, 134, 160, 0.28)',
   },
   input: {
-    minHeight: 240,
+    minHeight: 220,
     color: '#27212c',
     fontSize: 17,
     lineHeight: 29,
-    padding: 18,
+    paddingTop: 20,
+    paddingRight: 18,
+    paddingBottom: 18,
+    paddingLeft: 50,
+    fontFamily: Platform.select({ ios: 'Bradley Hand', android: 'sans-serif', default: 'cursive' }),
   },
   attachment: { height: 160, margin: 12, marginTop: 0, borderRadius: 12 },
   modeRow: {
