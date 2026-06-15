@@ -172,7 +172,7 @@ declare t text;
 begin
   for t in
     select unnest(array[
-      'mood_history','journal_entries','circle_posts','parent_circle_posts','voice_notes',
+      'mood_history','journal_entries','circle_posts','voice_notes',
       'comfort_sessions','crew_members','crew_check_ins',
       'bridge_shares','period_days','room_memory','bip_points'
     ])
@@ -194,6 +194,31 @@ begin
       'create policy "%s_owner_delete" on public.%I for delete using (auth.uid() = user_id);', t, t);
   end loop;
 end $$;
+
+-- ── parent_circle_posts RLS (explicit — uses _own suffix, not _owner_) ────
+alter table public.parent_circle_posts enable row level security;
+
+drop policy if exists "parent_circle_posts_select_own" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_insert_own" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_update_own" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_delete_own" on public.parent_circle_posts;
+
+create policy "parent_circle_posts_select_own"
+  on public.parent_circle_posts for select
+  using (auth.uid() = user_id);
+
+create policy "parent_circle_posts_insert_own"
+  on public.parent_circle_posts for insert
+  with check (auth.uid() = user_id);
+
+create policy "parent_circle_posts_update_own"
+  on public.parent_circle_posts for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "parent_circle_posts_delete_own"
+  on public.parent_circle_posts for delete
+  using (auth.uid() = user_id);
 
 -- ── Helpful indexes ────────────────────────────────────────────────────────
 create index if not exists idx_mood_user_date           on public.mood_history     (user_id, date);

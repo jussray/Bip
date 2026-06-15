@@ -32,24 +32,25 @@ create table if not exists public.parent_circle_posts (
 -- 4. RLS on parent_circle_posts (owner-only, matches every other table)
 alter table public.parent_circle_posts enable row level security;
 
-drop policy if exists "parent_circle_posts_owner_select" on public.parent_circle_posts;
-drop policy if exists "parent_circle_posts_owner_insert" on public.parent_circle_posts;
-drop policy if exists "parent_circle_posts_owner_update" on public.parent_circle_posts;
-drop policy if exists "parent_circle_posts_owner_delete" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_select_own" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_insert_own" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_update_own" on public.parent_circle_posts;
+drop policy if exists "parent_circle_posts_delete_own" on public.parent_circle_posts;
 
-create policy "parent_circle_posts_owner_select"
+create policy "parent_circle_posts_select_own"
   on public.parent_circle_posts for select
   using (auth.uid() = user_id);
 
-create policy "parent_circle_posts_owner_insert"
+create policy "parent_circle_posts_insert_own"
   on public.parent_circle_posts for insert
   with check (auth.uid() = user_id);
 
-create policy "parent_circle_posts_owner_update"
+create policy "parent_circle_posts_update_own"
   on public.parent_circle_posts for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
-create policy "parent_circle_posts_owner_delete"
+create policy "parent_circle_posts_delete_own"
   on public.parent_circle_posts for delete
   using (auth.uid() = user_id);
 
