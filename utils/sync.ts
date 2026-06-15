@@ -161,7 +161,7 @@ export function syncCrewMember(m: CrewMember): void {
     commitment:  m.commitment,
     cadence:     m.cadence,
     invite_code: m.inviteCode,
-    added_at:    m.addedAt,
+    added_at:    new Date(m.addedAt).toISOString(),
   });
 }
 

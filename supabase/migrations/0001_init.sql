@@ -1,27 +1,12 @@
 -- ───────────────────────────────────────────────────────────────────────────
--- Se'kret Bip — Supabase schema (Phase 2 backend wiring)
--- ───────────────────────────────────────────────────────────────────────────
--- Apply: paste into the Supabase SQL editor, or run via the CLI:
---   supabase db push
---
--- All tables are scoped per-user via RLS. The client uses anonymous auth, so
--- every user gets a stable auth.uid() without giving up an email. When the
--- user is ready, an upgrade to email+OTP is one row change away.
---
--- IMPORTANT:
---   • the service_role key NEVER ships in the app — only EXPO_PUBLIC_*.
---   • every table has user_id NOT NULL + RLS "owner only" policies.
---   • we accept the device-generated integer id as the primary key paired
---     with user_id, so AsyncStorage-side ids round-trip cleanly.
+-- Se'kret Bip — initial migration (mirror of db/schema.sql)
 -- ───────────────────────────────────────────────────────────────────────────
 
--- ── Helpers ────────────────────────────────────────────────────────────────
 create extension if not exists "pgcrypto";
 
 create or replace function bip_now() returns timestamptz
   language sql stable as $$ select now() $$;
 
--- ── mood_history ───────────────────────────────────────────────────────────
 create table if not exists public.mood_history (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -32,7 +17,6 @@ create table if not exists public.mood_history (
   primary key (user_id, id)
 );
 
--- ── journal_entries ────────────────────────────────────────────────────────
 create table if not exists public.journal_entries (
   user_id      uuid        not null references auth.users(id) on delete cascade,
   id           bigint      not null,
@@ -45,7 +29,6 @@ create table if not exists public.journal_entries (
   primary key (user_id, id)
 );
 
--- ── circle_posts (still scoped per-user; Circle is the user's own private wall) --
 create table if not exists public.circle_posts (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -60,7 +43,6 @@ create table if not exists public.circle_posts (
   primary key (user_id, id)
 );
 
--- ── voice_notes ────────────────────────────────────────────────────────────
 create table if not exists public.voice_notes (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -73,7 +55,6 @@ create table if not exists public.voice_notes (
   primary key (user_id, id)
 );
 
--- ── comfort_sessions (calm + comfort + voice + journal + growth + mood) ───
 create table if not exists public.comfort_sessions (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -85,7 +66,6 @@ create table if not exists public.comfort_sessions (
   primary key (user_id, id)
 );
 
--- ── crew_members (Bip Crew — invite-only accountability) ──────────────────
 create table if not exists public.crew_members (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -98,7 +78,6 @@ create table if not exists public.crew_members (
   primary key (user_id, id)
 );
 
--- ── crew_check_ins ─────────────────────────────────────────────────────────
 create table if not exists public.crew_check_ins (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -111,7 +90,6 @@ create table if not exists public.crew_check_ins (
   primary key (user_id, id)
 );
 
--- ── bridge_shares (Parent Window) ──────────────────────────────────────────
 create table if not exists public.bridge_shares (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -120,7 +98,6 @@ create table if not exists public.bridge_shares (
   primary key (user_id, id)
 );
 
--- ── period_days (Womanhood cycle layer) ────────────────────────────────────
 create table if not exists public.period_days (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   date        text        not null,
@@ -131,7 +108,6 @@ create table if not exists public.period_days (
   primary key (user_id, date)
 );
 
--- ── room_memory (RoomMemory: visit-count, lastVisit, lastHotspot, etc) ─────
 create table if not exists public.room_memory (
   user_id      uuid        not null references auth.users(id) on delete cascade,
   character    text        not null default 'raylene',
@@ -143,7 +119,6 @@ create table if not exists public.room_memory (
   primary key (user_id)
 );
 
--- ── bip_points (optional snapshots) ────────────────────────────────────────
 create table if not exists public.bip_points (
   id           bigserial primary key,
   user_id      uuid        not null references auth.users(id) on delete cascade,
@@ -151,7 +126,6 @@ create table if not exists public.bip_points (
   captured_at  timestamptz not null default bip_now()
 );
 
--- ── parent_circle_posts ────────────────────────────────────────────────────
 create table if not exists public.parent_circle_posts (
   user_id        uuid        not null references auth.users(id) on delete cascade,
   id             bigint      not null,
@@ -164,9 +138,6 @@ create table if not exists public.parent_circle_posts (
   primary key (user_id, id)
 );
 
--- ───────────────────────────────────────────────────────────────────────────
--- Row Level Security — every table is owner-only.
--- ───────────────────────────────────────────────────────────────────────────
 do $$
 declare t text;
 begin
@@ -196,7 +167,6 @@ begin
   end loop;
 end $$;
 
--- ── Helpful indexes ────────────────────────────────────────────────────────
 create index if not exists idx_mood_user_date           on public.mood_history        (user_id, date);
 create index if not exists idx_journal_user_date        on public.journal_entries     (user_id, date);
 create index if not exists idx_circle_user_date         on public.circle_posts        (user_id, date);
