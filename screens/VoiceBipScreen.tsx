@@ -11,7 +11,7 @@
 //   - Tips list adapts per companion
 //   - Listening pill mirrors JournalScreen pattern (breath loop)
 //   - Sticky-note hint ("tap the mic") with -2deg tilt
-//   - Reply card credits the actual companion (charLabel), not hard-coded
+//   - Reply card credits the active avatar registry identity
 //   - VoiceNote type properly imported
 //   - Curly quotes throughout
 //
@@ -20,12 +20,31 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
+import {
+  VOICE_BIP_AVATARS,
+  VOICE_BIP_AVATAR_KEYS,
+  normalizeVoiceBipAvatar,
+  type VoiceBipAvatarKey,
+} from '../constants/voiceBip';
+import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import type { VoiceNote } from '../types/bridge';
+import { fetchSekretReply } from '../utils/api';
+import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
+import type { OracleJournalEntry } from '../types/voiceIntelligence';
+import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text, TouchableOpacity, ScrollView, View,
   Animated, Image, StyleSheet, Easing,
+  type DimensionValue, Platform,
 } from 'react-native';
+import { PresenceAvatar } from '../components/PresenceAvatar';
+import { usePresence } from '../hooks/usePresence';
+import {
+  getPresenceTime,
+  PRESENCE_TIME_BADGE,
+} from '../constants/presence/timeOfDay';
+import { toPresenceCharacter } from '../constants/presence/avatarStates';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
@@ -34,7 +53,13 @@ const DEBUG_HOTSPOTS = false;
 const CLOUD_HP = IMAGES.cloudHeadphones;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
-const HOTSPOTS = {
+type Hotspot = {
+  top?: DimensionValue; bottom?: DimensionValue;
+  left?: DimensionValue; right?: DimensionValue;
+  width: DimensionValue; height: DimensionValue;
+  label: string;
+};
+const HOTSPOTS: Record<'microphone' | 'journal' | 'window' | 'crystalJar', Hotspot> = {
   microphone: { top: '18%',    left: '30%',  width: '22%', height: '28%', label: 'Mic 🎙️' },
   journal:    { bottom: '4%',  left: '16%',  width: '44%', height: '22%', label: 'Journal 📖' },
   window:     { top: '4%',     right: '2%',  width: '38%', height: '40%', label: 'Window 🌙' },
@@ -64,42 +89,36 @@ const TIME_BADGE: Record<TimeOfDay, string> = {
   night:   '🌙 night',
 };
 
-// ── API ────────────────────────────────────────────────────────────────────
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-
-async function fetchSekretReply(text: string, context = 'journal', mood?: string): Promise<string> {
-  if (!BASE_URL) return "I hear you. You don’t have to carry that alone 💜";
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ text, context, mood }),
-    });
-    if (!res.ok) throw new Error('api error');
-    const data = await res.json();
-    return data.reply || "I hear you. You don’t have to carry that alone 💜";
-  } catch {
-    return "I hear you. That makes sense. You don’t have to carry that by yourself 💜";
-  }
-}
-
 // ── Props ──────────────────────────────────────────────────────────────────
 interface VoiceBipScreenProps {
   theme:          Record<string, any>;
   setScreen:      (screen: string) => void;
   selectedSekret: string;
+  onSelectAvatar?: (avatarKey: VoiceBipAvatarKey) => void;
+  weatherMode?: string;
   voiceNotes:     VoiceNote[];
   setVoiceNotes:  (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
   onSave?:        () => void;
+  mood?:          string;
+  companion?:     {
+    presenceMessage: string;
+  };
+  BottomNav: React.ReactNode;
+  privateProfile?: OracleProfile;
+  profileSide?: OracleSide;
+  oracleJournalEntries?: readonly OracleJournalEntry[];
+  onStoreOracleMemory?: (entry: OracleJournalEntry) => void;
 }
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
-  theme, setScreen, selectedSekret, voiceNotes, setVoiceNotes, onSave,
+  theme, setScreen, selectedSekret, onSelectAvatar, weatherMode, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
+  oracleJournalEntries, onStoreOracleMemory,
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
   const [showArchive,      setShowArchive]       = useState(false);
+  const [voicePromptIdx,   setVoicePromptIdx]    = useState(0);
   const [isRecording,      setIsRecording]       = useState(false);
   const [recorded,         setRecorded]          = useState(false);
   const [sekretReply,      setSekretReply]       = useState('');
@@ -126,21 +145,34 @@ export function VoiceBipScreen({
   ).current;
   const waveLoop = useRef<any>(null);
 
-  // Character / time
-  const hour       = new Date().getHours();
-  const timeOfDay  = getTimeOfDay(hour);
-  const isNight    = timeOfDay === 'night' || timeOfDay === 'evening';
-  const isRylane   = selectedSekret === 'rylane';
-  const character  = isRylane ? 'rylane' : 'raylene';
-  const charLabel  = isRylane ? 'rylane' : 'raylene';
-  const charName   = isRylane ? 'Rylane' : 'Raylene';
-  const charEmoji  = isRylane ? '⚡' : '💜';
-  const roomArt    = getRoomBg(character, timeOfDay);
-
-  const heroArt =
-    isRylane
-      ? (isNight ? IMAGES.rylaneVoiceNight : IMAGES.rylaneVoiceDay)
-      : (isNight ? IMAGES.rayleneVoiceNight : IMAGES.rayleneVoiceDay);
+  // Avatar identity and room phase come from normalized registries. Oracle
+  // context can inform replies, but no Oracle identity is exposed in this UI.
+  const now = new Date();
+  const hour = now.getHours();
+  const timeOfDay = getTimeOfDay(hour);
+  const roomPhase = getRoomPhase(now, weatherMode);
+  const isNight = roomPhase === 'night' || roomPhase === 'deepNight';
+  const avatarKey = normalizeVoiceBipAvatar(selectedSekret);
+  const avatar = VOICE_BIP_AVATARS[avatarKey];
+  const presenceCharacter = toPresenceCharacter(avatarKey);
+  const presenceTime = getPresenceTime(hour, { isRaining: weatherMode === 'rain' });
+  const presence = usePresence({ character: presenceCharacter, time: presenceTime });
+  const roomArt = getRoomScene(avatarKey, roomPhase);
+  const heroArt = isNight ? avatar.heroArt.night : avatar.heroArt.day;
+  const { prepareVoiceSession } = useVoiceCompanion({
+    avatarKey,
+    personality: avatar.personality,
+    mood: mood || 'calm',
+    voiceId: avatar.voiceId,
+  });
+  const { prepareIntelligence } = useVoiceBipIntelligence({
+    avatarKey,
+    side: profileSide,
+    mood,
+    privateProfile,
+    oracleJournalEntries,
+    onStoreOracleMemory,
+  });
 
   const formatTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -165,7 +197,7 @@ export function VoiceBipScreen({
         Animated.timing(pillBreath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [cloudBreath, cloudFloat, pillBreath]);
 
   const cloudStyle = {
     transform: [
@@ -186,6 +218,8 @@ export function VoiceBipScreen({
     setSekretReply('');
     setRecordingTime(0);
     setShowBipMenu(false);
+    prepareVoiceSession('voice');
+    presence.beginListening();
 
     pulseLoop.current = Animated.loop(
       Animated.sequence([
@@ -241,25 +275,37 @@ export function VoiceBipScreen({
     glowAnim.setValue(0);
     waveAnims.forEach(a => a.setValue(0.3));
 
+    const noteId = Date.now();
+    // Real transcription is a Phase 4 provider boundary. Never fabricate it.
+    const intelligence = prepareIntelligence(noteId, null);
     const note: VoiceNote = {
-      id:       Date.now(),
-      title:    selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
-      date:     new Date().toLocaleDateString(),
-      time:     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      id: noteId,
+      title: selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: formatTime(recordingTime),
-      type:     selectedBipType || 'voice',
+      type: selectedBipType || 'voice',
+      avatarKey,
+      transcriptId: intelligence.transcript.id,
     };
 
     setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
     onSave?.();
 
     setIsThinking(true);
+    presence.endListening();
     const reply = await fetchSekretReply(
       'I just recorded a voice bip. I had some feelings I needed to get out.',
-      'journal'
+      'journal',
+      mood,
+      avatarKey,
+      undefined,
+      privateProfile,
+      profileSide,
     );
     setSekretReply(reply);
     setIsThinking(false);
+    presence.markResponseReady();
     setSelectedBipType(null);
   };
 
@@ -272,40 +318,57 @@ export function VoiceBipScreen({
     };
   }, []);
 
-  // Copy variants ───────────────────────────────────────────────────────────
-  const tips = isRylane
-    ? [
-        'Find your spot — car, garage, walk, wherever feels real',
-        'You don’t gotta sound smooth. Just say it.',
-        'Pause. Curse. Restart. All allowed.',
-        'I’m not grading you. I’m holding it with you.',
-      ]
-    : [
-        'Find a private spot — car, room, bathroom, wherever',
-        'You don’t need perfect words. Just talk.',
-        'It’s okay to cry, pause, or start over',
-        'I listen without judgment, always',
-      ];
-
-  const tipsTitle = isRylane ? 'Tips for Voice Bips 🌙' : 'Tips for Voice Bips 🌙';
-  const replyLabelText = `${charLabel} replied ${charEmoji}`;
-  const listeningPillText = `${charLabel} is listening… ${charEmoji}`;
-  const cloudListeningText = `${charLabel} is listening… ☁️`;
+  const prompts = avatar.prompts;
+  const prompt = prompts[voicePromptIdx % prompts.length];
+  const selectAvatar = (nextAvatarKey: VoiceBipAvatarKey) => {
+    setVoicePromptIdx(0);
+    setSekretReply('');
+    setRecorded(false);
+    onSelectAvatar?.(nextAvatarKey);
+  };
 
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+
+        {/* Avatar Voice Bip — each companion keeps an independent identity. */}
+        <View style={styles.avatarSelector}>
+          {VOICE_BIP_AVATAR_KEYS.map(key => {
+            const option = VOICE_BIP_AVATARS[key];
+            const active = key === avatarKey;
+            return (
+              <TouchableOpacity
+                key={key}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                onPress={() => selectAvatar(key)}
+                style={[
+                  styles.avatarOption,
+                  active && { borderColor: option.accent, backgroundColor: `${option.accent}24` },
+                ]}
+              >
+                <Text style={styles.avatarOptionEmoji}>{option.emoji}</Text>
+                <Text style={[styles.avatarOptionName, active && { color: option.accent }]}>{option.displayName}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View style={styles.avatarIntro}>
+          <Text style={[styles.avatarRole, { color: avatar.accent }]}>{avatar.role}</Text>
+          <Text style={styles.avatarGreeting}>“{avatar.greeting}”</Text>
+        </View>
 
         {/* ── Interactive Room ── */}
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.2} />
 
-          {/* Hero avatar */}
-          <Image
-            source={heroArt}
+          {/* Hero avatar — driven by the Voice Bip Presence System.
+              Listens / thinks / responds / settles instead of sitting still. */}
+          <PresenceAvatar
+            character={presenceCharacter}
+            time={presenceTime}
+            state={presence.state}
             style={styles.heroAvatar}
-            resizeMode="contain"
-            pointerEvents="none"
           />
 
           {/* Top scrim */}
@@ -314,6 +377,20 @@ export function VoiceBipScreen({
             style={styles.topScrim}
             pointerEvents="none"
           />
+          {/* Environmental character art */}
+          <View pointerEvents="none" style={styles.environmentLayer}>
+            {heroArt ? (
+              <Image
+                source={heroArt}
+                style={styles.heroAvatar}
+                resizeMode="contain"
+              />
+            ) : null}
+            <LinearGradient
+              colors={['rgba(13,9,20,0.55)', 'transparent']}
+              style={styles.topScrim}
+            />
+          </View>
           {/* Bottom scrim */}
           <LinearGradient
             colors={['transparent', 'rgba(13,9,20,0.55)', 'rgba(13,9,20,0.95)']}
@@ -334,7 +411,7 @@ export function VoiceBipScreen({
             />
           )}
 
-          {/* Time badge */}
+          {/* Time badge — 6-phase via PresenceTime, with legacy fallback */}
           <View style={styles.timeBadge} pointerEvents="none">
             <Text style={styles.timeBadgeText}>{TIME_BADGE[timeOfDay]}</Text>
           </View>
@@ -342,7 +419,7 @@ export function VoiceBipScreen({
           {/* Companion presence pill */}
           <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {charLabel}’s here · headphone cloud
+              {companion?.presenceMessage || avatar.presence}
             </Text>
           </Animated.View>
 
@@ -350,7 +427,7 @@ export function VoiceBipScreen({
           {isRecording && (
             <View style={styles.listeningBadge} pointerEvents="none">
               <Text style={styles.listeningBadgeText}>
-                {charName} is listening… {charEmoji}
+                {avatar.listening}
               </Text>
             </View>
           )}
@@ -360,7 +437,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { top: HOTSPOTS.microphone.top, left: HOTSPOTS.microphone.left, width: HOTSPOTS.microphone.width, height: HOTSPOTS.microphone.height },
+              { top: HOTSPOTS.microphone.top as any, left: HOTSPOTS.microphone.left as any, width: HOTSPOTS.microphone.width as any, height: HOTSPOTS.microphone.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => {
@@ -376,7 +453,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { bottom: HOTSPOTS.journal.bottom, left: HOTSPOTS.journal.left, width: HOTSPOTS.journal.width, height: HOTSPOTS.journal.height },
+              { bottom: HOTSPOTS.journal.bottom as any, left: HOTSPOTS.journal.left as any, width: HOTSPOTS.journal.width as any, height: HOTSPOTS.journal.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => setShowArchive(true)}
@@ -389,7 +466,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { top: HOTSPOTS.window.top, right: HOTSPOTS.window.right, width: HOTSPOTS.window.width, height: HOTSPOTS.window.height },
+              { top: HOTSPOTS.window.top as any, right: HOTSPOTS.window.right as any, width: HOTSPOTS.window.width as any, height: HOTSPOTS.window.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => setScreen('cloudThoughts')}
@@ -402,7 +479,7 @@ export function VoiceBipScreen({
             activeOpacity={0.8}
             style={[
               styles.hotspot,
-              { bottom: HOTSPOTS.crystalJar.bottom, right: HOTSPOTS.crystalJar.right, width: HOTSPOTS.crystalJar.width, height: HOTSPOTS.crystalJar.height },
+              { bottom: HOTSPOTS.crystalJar.bottom as any, right: HOTSPOTS.crystalJar.right as any, width: HOTSPOTS.crystalJar.width as any, height: HOTSPOTS.crystalJar.height as any },
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => setShowArchive(true)}
@@ -448,7 +525,7 @@ export function VoiceBipScreen({
         {recorded && !isRecording && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
             <Text style={[styles.savedLabel, { color: theme.soft }]}>
-              Saved to your journal {charEmoji}
+              Saved to your journal {avatar.emoji}
             </Text>
           </View>
         )}
@@ -457,34 +534,66 @@ export function VoiceBipScreen({
         {isThinking && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)', flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
             <Image source={CLOUD_HP} style={{ width: 36, height: 36 }} resizeMode="contain" />
-            <Text style={[styles.thinkingText, { color: theme.soft }]}>{cloudListeningText}</Text>
+            <Text style={[styles.thinkingText, { color: theme.soft }]}>{avatar.listening}</Text>
           </View>
         )}
 
         {/* ── Reply ── */}
         {sekretReply && !isThinking && (
           <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
-            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{replyLabelText}</Text>
+            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.responseLabel}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
           </View>
         )}
 
+        {/* ── Companion voice prompt ── */}
+        {!isRecording && !sekretReply && (() => {
+          const p = prompt;
+          return (
+            <View style={[styles.floatCard, { borderColor: `${avatar.accent}73`, backgroundColor: 'rgba(20,12,40,0.88)', shadowColor: avatar.accent }]}>
+              <Text style={{ color: avatar.accent, fontSize: 11, fontWeight: '700', marginBottom: 8, letterSpacing: 0.5 }}>
+                {avatar.displayName.toUpperCase()} · WHAT TO SAY
+              </Text>
+              <Text style={{ fontSize: 26, marginBottom: 8 }}>{p.emoji}</Text>
+              <Text style={{ color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 23, marginBottom: 14 }}>
+                {p.text}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <TouchableOpacity
+                  style={{ borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 }}
+                  onPress={() => setVoicePromptIdx(i => i + 1)}
+                >
+                  <Text style={{ color: '#c4b5fd', fontSize: 12, fontWeight: '600' }}>different prompt</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1, backgroundColor: '#7c3aed', borderRadius: 12, paddingVertical: 7, alignItems: 'center' }}
+                  onPress={() => setShowBipMenu(true)}
+                >
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>🎙️ record now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        })()}
+
         {/* ── Tips ── */}
         <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
-          <Text style={[styles.cardTitle, { color: '#fff' }]}>{tipsTitle}</Text>
-          {tips.map(tip => (
+          <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips for Voice Bips 🌙</Text>
+          {avatar.tips.map(tip => (
             <Text key={tip} style={[styles.tip, { color: '#c4b5fd' }]}>• {tip}</Text>
           ))}
         </View>
 
       </ScrollView>
 
+      {BottomNav}
+
       {/* ── Bip type menu ── */}
       {showBipMenu && (
         <View style={styles.overlayWrap}>
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowBipMenu(false)} />
           <View style={[styles.bipMenuCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
-            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? {charEmoji}</Text>
+            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? {avatar.emoji}</Text>
             <Text style={[styles.bipMenuSub, { color: '#7c6899' }]}>Choose how you want to express right now</Text>
             {BIP_TYPES.map(bip => (
               <TouchableOpacity
@@ -515,7 +624,7 @@ export function VoiceBipScreen({
           <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowArchive(false)} />
           <View style={[styles.archiveCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
             <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>
-              {charName}’s journal 📖
+              {avatar.archiveTitle} 📖
             </Text>
 
             {voiceNotes.length === 0 ? (
@@ -566,12 +675,21 @@ export function VoiceBipScreen({
 }
 
 const styles = StyleSheet.create({
-  root:               { flex: 1 },
-  scroll:             { paddingBottom: 100 },
-  roomWrap:           { position: 'relative', width: '100%', height: 340, marginBottom: 16, overflow: 'hidden' },
+  root:               { flex: 1, backgroundColor: '#0d0914' },
+  scrollView:          { flex: 1 },
+  scroll:             { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
+  avatarSelector:     { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },
+  avatarOption:       { flex: 1, minWidth: 0, alignItems: 'center', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(196,181,253,0.18)', backgroundColor: 'rgba(13,9,20,0.72)', paddingVertical: 8, paddingHorizontal: 4 },
+  avatarOptionEmoji:  { fontSize: 18, marginBottom: 3 },
+  avatarOptionName:   { color: '#9b91aa', fontSize: 11, fontWeight: '800' },
+  avatarIntro:        { paddingHorizontal: 16, paddingBottom: 12 },
+  avatarRole:         { fontSize: 10, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 },
+  avatarGreeting:     { color: '#f5f0ff', fontSize: 16, lineHeight: 22, fontWeight: '700' },
+  roomWrap:           { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 240 : 340, marginBottom: 16, overflow: 'hidden' },
   roomImage:          { width: '100%', height: '100%' },
-  heroAvatar:         { position: 'absolute', bottom: 0, alignSelf: 'center', width: '70%', height: '90%' },
-  topScrim:           { position: 'absolute', top: 0, left: 0, right: 0, height: 90 },
+  environmentLayer:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  heroAvatar:         { position: 'absolute', bottom: -20, alignSelf: 'center', width: '88%', height: '82%', opacity: 0.16, tintColor: '#fff' },
+  topScrim:           { position: 'absolute', top: 0, left: 0, right: 0, height: 100 },
   bottomScrim:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
   cloudWrap:          { position: 'absolute', top: 36, right: 24 },
   cloudImg:           { width: 64, height: 64 },

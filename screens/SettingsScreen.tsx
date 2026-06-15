@@ -1,259 +1,400 @@
+// screens/SettingsScreen.tsx
+// Se'kret Bip — Vibe Lab
+// Choosing the emotional atmosphere of your room.
+
 import React from 'react';
 import {
-  Text, TouchableOpacity, ScrollView,
-  View, Image, StyleSheet, Platform, ImageBackground,
+  Text, TouchableOpacity, ScrollView, ImageBackground,
+  View, Image, StyleSheet, Platform, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomBg } from '../constants/theme';
+import { IMAGES } from '../constants/theme';
 
-function glowFor(mood?: string): string {
-  const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))       return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
-  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))       return '#6d28d9';
-  if (m.includes('calm'))        return '#c4b5fd';
-  return '#c4b5fd';
-}
+const { width: W } = Dimensions.get('window');
 
-function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 11) return 'morning';
-  if (h >= 11 && h < 17) return 'day';
-  if (h >= 17 && h < 21) return 'evening';
-  return 'night';
-}
+// ── Vibe config — ties each theme key to room assets + color identity ────────
 
-// ─── Theme & Profile Data (local — no prop needed) ───────────────────────────
-
-const THEME_PACKS: Record<string, any> = {
-  night:  { name: 'Golden Moon',  emoji: '🌙', background: '#3A2503', card: '#5B3A00', accent: '#FFD84D', soft: '#FFF3B0' },
-  flower: { name: 'Soft Pink',    emoji: '🌸', background: '#4A1028', card: '#6D1B3B', accent: '#FF4FA3', soft: '#FFD6E7' },
-  rain:   { name: 'Rain Blue',    emoji: '🌧️', background: '#243447', card: '#36506B', accent: '#4DA3FF', soft: '#B6DCFF' },
-  neon:   { name: 'Night Purple', emoji: '💜', background: '#160028', card: '#2B0A4D', accent: '#D946EF', soft: '#F5B8FF' },
-  galaxy: { name: 'Galaxy Night', emoji: '🌌', background: '#151A40', card: '#2A2D73', accent: '#7C83FF', soft: '#D7D9FF' },
+const VIBE_CONFIG: Record<string, {
+  name: string; tagline: string; emoji: string;
+  previewBg: any; glow: string; gtop: string; gbot: string;
+}> = {
+  raylene: {
+    name: "Raylene's Room",  tagline: 'lavender · fairy lights · cozy bedroom',
+    emoji: '💜', previewBg: IMAGES.bgRayleneRoomEvening,
+    glow: '#e879f9', gtop: 'rgba(80,0,80,0.55)',  gbot: 'rgba(20,0,45,0.90)',
+  },
+  rylane: {
+    name: "Rylane's Space",  tagline: 'midnight blue · city lights · chill night',
+    emoji: '⚡', previewBg: IMAGES.bgRylaneRoomNight,
+    glow: '#4DA3FF', gtop: 'rgba(0,20,70,0.55)',  gbot: 'rgba(0,8,30,0.90)',
+  },
+  cloud: {
+    name: "Cloud's World",   tagline: 'dreamy · lavender mist · floating calm',
+    emoji: '☁️', previewBg: IMAGES.bgRayleneRoomDay,
+    glow: '#a78bfa', gtop: 'rgba(40,20,80,0.45)', gbot: 'rgba(10,5,30,0.88)',
+  },
+  night: {
+    name: 'Late Night',      tagline: 'deep violet · moonlight · just you and the stars',
+    emoji: '🌙', previewBg: IMAGES.bgRayleneRoomDeepNight,
+    glow: '#c4b5fd', gtop: 'rgba(20,10,50,0.45)', gbot: 'rgba(5,3,16,0.92)',
+  },
+  rain: {
+    name: 'Rain Room',       tagline: 'window rain · muted blue · reflective mood',
+    emoji: '🌧️', previewBg: IMAGES.bgRayleneRoomRain,
+    glow: '#60a5fa', gtop: 'rgba(10,30,60,0.50)', gbot: 'rgba(5,14,28,0.90)',
+  },
+  sunset: {
+    name: 'Sunset Vibe',     tagline: 'purple-orange sky · warm evening room',
+    emoji: '🌅', previewBg: IMAGES.bgRylaneRoomEvening,
+    glow: '#fb7185', gtop: 'rgba(80,20,40,0.50)', gbot: 'rgba(25,8,18,0.90)',
+  },
 };
 
-const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: "Se'kret",       emoji: '🌸', title: 'Soft Big Sis' },
-  rylane: { name: 'Rylane',        emoji: '⚡', title: 'Loyal Bro' },
-  cloud:  { name: "Cloud Se'kret", emoji: '☁️', title: 'Quiet Comfort' },
-  night:  { name: "Night Se'kret", emoji: '🌙', title: 'Late-Night Listener' },
+// ── Companion profiles ───────────────────────────────────────────────────────
+
+const SEKRET_PROFILES: Record<string, {
+  name: string; emoji: string; title: string; tagline: string; avatar: any; accent: string;
+}> = {
+  soft:   {
+    name: 'Raylene', emoji: '💜', title: 'Big Sis',
+    tagline: 'warm, protective, emotionally real',
+    avatar: IMAGES.rayleneNeutral, accent: '#e879f9',
+  },
+  rylane: {
+    name: 'Rylane',  emoji: '⚡', title: 'Loyal Bro',
+    tagline: 'street smart, down to earth, no cap',
+    avatar: IMAGES.rylaneNeutral, accent: '#4DA3FF',
+  },
 };
 
-const SEKRET_MODES: Record<string, any> = {
-  soft:     { emoji: '🌙', label: 'Soft',        description: 'Gentle comfort & reassurance' },
-  realTalk: { emoji: '🧠', label: 'Real Talk',   description: 'Honest, caring, keeps it real' },
-  distract: { emoji: '😂', label: 'Distract Me', description: 'Light jokes, low-pressure vibes' },
-  listen:   { emoji: '☁️', label: 'Just Listen', description: 'No fixing. Just presence.' },
-  push:     { emoji: '🔥', label: 'Push Me',     description: 'Motivation & accountability' },
+// ── Mode buttons ─────────────────────────────────────────────────────────────
+
+const SEKRET_MODES: Record<string, { emoji: string; label: string }> = {
+  soft:     { emoji: '🌙', label: 'Soft' },
+  realTalk: { emoji: '🧠', label: 'Real Talk' },
+  distract: { emoji: '😂', label: 'Distract' },
+  listen:   { emoji: '☁️', label: 'Just Listen' },
+  push:     { emoji: '🔥', label: 'Push Me' },
 };
 
-// ─── Character avatar assets ──────────────────────────────────────────────────
-// Save your character images at these paths in assets/images/
-// raylene → assets/images/raylene-neutral.png  (use raylene-avatar.png when available)
-// rylane  → assets/images/rylane-profile.png
-// others  → assets/images/raylene-neutral.png  (use sekret-avatar.png when available)
-const AVATAR_ASSETS: Record<string, any> = {
-  soft:   IMAGES.rayleneNeutral,
-  rylane: IMAGES.rylaneProfile,
-  cloud:  IMAGES.rayleneNeutral,
-  night:  IMAGES.rayleneNeutral,
-};
-
-// ─── Props ────────────────────────────────────────────────────────────────────
+// ── Props ────────────────────────────────────────────────────────────────────
 
 interface SettingsScreenProps {
-  t: Record<string, any>;
-  theme: string;
-  setTheme: (theme: string) => void;
-  selectedSekret: string;
-  setSelectedSekret: (key: string) => void;
-  sekretMode: string;
-  setSekretMode: (mode: string) => void;
-  userSide: string;
-  setUserSide: (side: string) => void;
-  setScreen: (screen: string) => void;
-  BottomNav: React.ReactNode;
-  mood?: string;
+  t:                  Record<string, any>;
+  theme:              string;
+  setTheme:           (theme: string) => void;
+  selectedSekret:     string;
+  setSelectedSekret:  (key: string) => void;
+  sekretMode:         string;
+  setSekretMode:      (mode: string) => void;
+  userSide:           string;
+  setUserSide:        (side: string) => void;
+  parentRoomStyle?:   string;
+  setParentRoomStyle?:(style: string) => void;
+  setScreen:          (screen: string) => void;
+  BottomNav:          React.ReactNode;
+  mood?:              string;
 }
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export function SettingsScreen({
   t, theme, setTheme,
   selectedSekret, setSelectedSekret,
   sekretMode, setSekretMode,
   userSide, setUserSide,
-  setScreen,
-  BottomNav,
-  mood,
+  parentRoomStyle, setParentRoomStyle,
+  setScreen, BottomNav,
 }: SettingsScreenProps) {
 
-  // ─── Mood glow + room backdrop ─────────────────────────────────────────────
-  const glow     = glowFor(mood);
-  const charKey  = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
-  const bgSource = getRoomBg(charKey, timeOfDay());
+  const vibe   = VIBE_CONFIG[theme] || VIBE_CONFIG.raylene;
+  const glow   = vibe.glow;
+  const cardBg = 'rgba(10,6,24,0.72)';
 
-  // ─── Style helpers ─────────────────────────────────────────────────────────
-  const card      = () => [styles.card,        { backgroundColor: 'rgba(30,18,55,0.82)', borderColor: glow + '88', shadowColor: glow }] as any;
-  const btn       = () => [styles.button,      { backgroundColor: glow,                  shadowColor: glow }] as any;
-  const choiceBtn = (active: boolean) => [
-    styles.choiceButton,
-    { backgroundColor: 'rgba(30,41,59,0.7)', borderColor: active ? glow : '#334155', borderWidth: active ? 2 : 1 },
+  const glass = (extra?: object) => [
+    styles.glassCard,
+    { backgroundColor: cardBg, borderColor: glow + '44' },
+    extra,
   ] as any;
 
-  // ─── Character avatar (safe — falls back to emoji header if image missing) ──
-  const avatarSource = AVATAR_ASSETS[selectedSekret] ?? AVATAR_ASSETS.soft;
-
   return (
-    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+    <View style={styles.root}>
+      {/* Atmospheric room background */}
+      <ImageBackground
+        source={vibe.previewBg}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      />
       <LinearGradient
-        colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
+        colors={["rgba(5,3,14,0.68)", "rgba(8,4,20,0.84)", "rgba(3,2,10,0.96)"]}
         style={StyleSheet.absoluteFill}
       />
+
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ─────────────────────────────────────────────────────── */}
-        <Text style={styles.logo}>Vibe Lab 💜</Text>
-        <Text style={styles.subtitle}>Make Se'kret feel like yours.</Text>
-
-        {/* ── Character Avatar (character-aware, no crash) ────────────────── */}
-        <Image
-          source={avatarSource}
-          style={styles.artworkPortrait}
-          resizeMode="contain"
-        />
-
-        {/* ── Current Theme chip ─────────────────────────────────────────── */}
-        <View style={card()}>
-          <Text style={styles.cardText}>Current Theme</Text>
-          <Text style={styles.entryText}>{t.emoji} {t.name}</Text>
+        {/* ── HEADER ── */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Vibe Lab ✨</Text>
+          <Text style={styles.subtitle}>Choose the feeling of your room.</Text>
         </View>
 
-        {/* ── Theme Packs ────────────────────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Theme Packs</Text>
-        <View style={styles.themeRow}>
-          {Object.keys(THEME_PACKS).map(key => (
+        {/* ── ACTIVE VIBE HERO ── */}
+        <View style={[styles.heroWrap, { borderColor: glow + '70' }]}>
+          <ImageBackground
+            source={vibe.previewBg}
+            style={styles.heroBg}
+            resizeMode="cover"
+            borderRadius={22}
+          >
+            <LinearGradient
+              colors={[vibe.gtop, vibe.gbot] as any}
+              style={styles.heroOverlay}
+            >
+              <Text style={styles.heroEmoji}>{vibe.emoji}</Text>
+              <Text style={[styles.heroName, { color: glow }]}>{vibe.name}</Text>
+              <Text style={styles.heroTagline}>{vibe.tagline}</Text>
+              <View style={[styles.activePill, { borderColor: glow + '99', backgroundColor: glow + '22' }]}>
+                <Text style={[styles.activePillText, { color: glow }]}>active vibe</Text>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
+
+        {/* ── VIBE PICKER ── */}
+        <Text style={styles.sectionLabel}>Pick Your Vibe</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.vibeRow}
+          style={{ marginBottom: 20 }}
+        >
+          {Object.entries(VIBE_CONFIG).map(([key, cfg]) => {
+            const active = theme === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setTheme(key)}
+                activeOpacity={0.8}
+                style={[
+                  styles.vibeCard,
+                  { borderColor: active ? cfg.glow : 'rgba(120,80,160,0.25)', borderWidth: active ? 2.5 : 1 },
+                ]}
+              >
+                <ImageBackground
+                  source={cfg.previewBg}
+                  style={styles.vibeCardBg}
+                  resizeMode="cover"
+                  borderRadius={16}
+                >
+                  <LinearGradient
+                    colors={[cfg.gtop, cfg.gbot] as any}
+                    style={styles.vibeCardGradient}
+                  >
+                    <Text style={styles.vibeEmoji}>{cfg.emoji}</Text>
+                    <Text style={[styles.vibeName, { color: active ? cfg.glow : '#e2d8ff' }]}>
+                      {cfg.name}
+                    </Text>
+                    {active && (
+                      <View style={[styles.vibeActiveDot, { backgroundColor: cfg.glow }]} />
+                    )}
+                  </LinearGradient>
+                </ImageBackground>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* ── YOUR SE'KRET ── */}
+        <Text style={styles.sectionLabel}>Your Se'kret</Text>
+        {Object.entries(SEKRET_PROFILES).map(([key, profile]) => {
+          const active = selectedSekret === key;
+          return (
             <TouchableOpacity
               key={key}
+              onPress={() => setSelectedSekret(key)}
+              activeOpacity={0.8}
               style={[
-                styles.themeBubble,
+                styles.companionCard,
                 {
-                  backgroundColor: THEME_PACKS[key].card,
-                  borderColor: theme === key ? THEME_PACKS[key].accent : '#334155',
-                  borderWidth: theme === key ? 3 : 1,
+                  backgroundColor: active ? profile.accent + '18' : cardBg,
+                  borderColor: active ? profile.accent + '99' : 'rgba(120,80,160,0.28)',
                 },
               ]}
-              onPress={() => setTheme(key)}
             >
-              <Text style={styles.themeEmoji}>{THEME_PACKS[key].emoji}</Text>
+              <Image source={profile.avatar} style={styles.companionAvatar} resizeMode="contain" />
+              <View style={styles.companionInfo}>
+                <Text style={[styles.companionName, { color: active ? profile.accent : '#fff' }]}>
+                  {profile.emoji} {profile.name}
+                </Text>
+                <Text style={styles.companionTitle}>{profile.title}</Text>
+                <Text style={styles.companionTagline}>{profile.tagline}</Text>
+              </View>
+              {active && (
+                <View style={[styles.checkBadge, { backgroundColor: profile.accent }]}>
+                  <Text style={styles.checkBadgeText}>✓</Text>
+                </View>
+              )}
             </TouchableOpacity>
-          ))}
+          );
+        })}
+
+        {/* ── SE'KRET MODE ── */}
+        <Text style={styles.sectionLabel}>Se'kret Mode</Text>
+        <View style={glass({ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingVertical: 18 })}>
+          {Object.entries(SEKRET_MODES).map(([key, mode]) => {
+            const active = sekretMode === key;
+            return (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setSekretMode(key)}
+                style={[
+                  styles.modePill,
+                  {
+                    borderColor: active ? glow : 'rgba(150,110,210,0.3)',
+                    backgroundColor: active ? glow + '22' : 'rgba(20,10,40,0.5)',
+                  },
+                ]}
+              >
+                <Text style={styles.modePillEmoji}>{mode.emoji}</Text>
+                <Text style={[styles.modePillLabel, { color: active ? glow : '#c4b5fd' }]}>
+                  {mode.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* ── Choose Your Se'kret ────────────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Choose Your Se'kret</Text>
-        <View style={card()}>
-          {Object.keys(SEKRET_PROFILES).map(key => (
-            <TouchableOpacity
-              key={key}
-              style={choiceBtn(selectedSekret === key)}
-              onPress={() => setSelectedSekret(key)}
-            >
-              <Text style={styles.entryText}>
-                {SEKRET_PROFILES[key].emoji} {SEKRET_PROFILES[key].name}
-              </Text>
-              <Text style={styles.miniText}>{SEKRET_PROFILES[key].title}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* ── ACCOUNT SIDE ── */}
+        <Text style={styles.sectionLabel}>Account</Text>
+        <View style={glass({ flexDirection: 'row', gap: 10 })}>
+          {([['teen', '🧑', 'Teen Side'], ['parent', '👨‍👩‍👧', 'Parent']] as const).map(([side, ico, label]) => {
+            const active = userSide === side;
+            return (
+              <TouchableOpacity
+                key={side}
+                onPress={() => setUserSide(side)}
+                style={[
+                  styles.sideBtn,
+                  {
+                    borderColor: active ? glow : 'rgba(150,110,210,0.3)',
+                    backgroundColor: active ? glow + '22' : 'rgba(20,10,40,0.5)',
+                    flex: 1,
+                  },
+                ]}
+              >
+                <Text style={styles.sideBtnIcon}>{ico}</Text>
+                <Text style={[styles.sideBtnLabel, { color: active ? glow : '#c4b5fd' }]}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {/* ── Se'kret Mode ───────────────────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Se'kret Mode</Text>
-        <View style={card()}>
-          {Object.keys(SEKRET_MODES).map(key => (
-            <TouchableOpacity
-              key={key}
-              style={choiceBtn(sekretMode === key)}
-              onPress={() => setSekretMode(key)}
-            >
-              <Text style={styles.entryText}>
-                {SEKRET_MODES[key].emoji} {SEKRET_MODES[key].label}
-              </Text>
-              <Text style={styles.miniText}>{SEKRET_MODES[key].description}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* ── PARENT ROOM STYLE ── */}
+        {userSide === 'parent' && setParentRoomStyle && (
+          <>
+            <Text style={styles.sectionLabel}>Parent Room</Text>
+            <View style={glass({ flexDirection: 'row', gap: 10 })}>
+              {([['mom', '💜', 'Mom Room'], ['dad', '👑', 'Dad Room']] as const).map(([style, ico, label]) => {
+                const active = parentRoomStyle === style;
+                return (
+                  <TouchableOpacity
+                    key={style}
+                    onPress={() => setParentRoomStyle(style)}
+                    style={[
+                      styles.sideBtn,
+                      {
+                        borderColor: active ? glow : 'rgba(150,110,210,0.3)',
+                        backgroundColor: active ? glow + '22' : 'rgba(20,10,40,0.5)',
+                        flex: 1,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.sideBtnIcon}>{ico}</Text>
+                    <Text style={[styles.sideBtnLabel, { color: active ? glow : '#c4b5fd' }]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </>
+        )}
 
-        {/* ── Account Side ───────────────────────────────────────────────── */}
-        <Text style={styles.sectionTitle}>Account Side</Text>
-        <View style={card()}>
-          <TouchableOpacity
-            style={[btn(), userSide === 'teen' && styles.activeSide]}
-            onPress={() => setUserSide('teen')}
-          >
-            <Text style={styles.buttonText}>🧑 Teen Side</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[btn(), { marginTop: 10 }, userSide === 'parent' && styles.activeSide]}
-            onPress={() => setUserSide('parent')}
-          >
-            <Text style={styles.buttonText}>👨‍👩‍👧 Parent Side</Text>
-          </TouchableOpacity>
-          <Text style={[styles.entryText, { marginTop: 10 }]}>
-            Current: {userSide === 'parent' ? 'Parent 🌿' : 'Teen 💜'}
-          </Text>
-        </View>
-
-        {/* ── Done button ────────────────────────────────────────────────── */}
+        {/* ── DONE ── */}
         <TouchableOpacity
-          style={[btn(), styles.doneButton]}
+          style={[
+            styles.doneBtn,
+            { borderColor: glow + '88', backgroundColor: glow + '20', shadowColor: glow },
+          ]}
           onPress={() => setScreen('home')}
         >
-          <Text style={styles.buttonText}>Done ✓</Text>
+          <Text style={[styles.doneBtnText, { color: glow }]}>Done ✓</Text>
         </TouchableOpacity>
-
-        <View style={{ height: 32 }} />
+        <View style={{ height: 110 }} />
       </ScrollView>
 
-      {/* BottomNav pinned outside ScrollView so it never scrolls away */}
       {BottomNav}
-    </ImageBackground>
+    </View>
   );
 }
 
+// ── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  root:           { flex: 1 },
-  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
+  root:      { flex: 1, backgroundColor: '#060210' },
+  container: { flexGrow: 1, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingHorizontal: 16, paddingBottom: 120, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
-  logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  subtitle:       { fontSize: 15, color: '#CBD5E1', textAlign: 'center', marginBottom: 20 },
+  header:    { alignItems: 'center', marginBottom: 22 },
+  title:     { fontSize: 30, fontWeight: '900', color: '#fff', letterSpacing: 0.5, marginBottom: 6 },
+  subtitle:  { fontSize: 14, color: '#b0a8d4', fontStyle: 'italic' },
 
-  sectionTitle:   { color: '#fff', fontSize: 20, fontWeight: 'bold', marginBottom: 12, marginTop: 18 },
+  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#9b8ec4', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 10, marginTop: 4 },
 
-  card:           { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 } },
-  cardText:       { color: '#fff', fontSize: 17, fontWeight: '600', marginBottom: 8 },
-  entryText:      { color: '#E2E8F0', fontSize: 14, marginBottom: 6, lineHeight: 20 },
-  miniText:       { color: '#CBD5E1', fontSize: 12, textAlign: 'center' },
+  // Hero active vibe
+  heroWrap:    { borderRadius: 22, borderWidth: 1.5, overflow: 'hidden', marginBottom: 24, height: 210 },
+  heroBg:      { flex: 1 },
+  heroOverlay: { flex: 1, padding: 22, justifyContent: 'flex-end' },
+  heroEmoji:   { fontSize: 32, marginBottom: 4 },
+  heroName:    { fontSize: 22, fontWeight: '900', marginBottom: 4 },
+  heroTagline: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginBottom: 12, lineHeight: 18 },
+  activePill:  { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  activePillText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8 },
 
-  button:         {
-    padding: 16, borderRadius: 18, marginBottom: 12,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 6, elevation: 4,
-  },
-  buttonText:     { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  activeSide:     { opacity: 0.7, borderWidth: 2, borderColor: '#fff' },
+  // Vibe picker
+  vibeRow:     { paddingLeft: 2, paddingRight: 16, gap: 10, flexDirection: 'row' },
+  vibeCard:    { width: W * 0.38, height: 170, borderRadius: 16, overflow: 'hidden' },
+  vibeCardBg:  { flex: 1 },
+  vibeCardGradient: { flex: 1, padding: 12, justifyContent: 'flex-end' },
+  vibeEmoji:   { fontSize: 22, marginBottom: 4 },
+  vibeName:    { fontSize: 12, fontWeight: '800', lineHeight: 16 },
+  vibeActiveDot: { width: 8, height: 8, borderRadius: 4, marginTop: 6 },
 
-  choiceButton:   {
-    padding: 14, borderRadius: 16, marginBottom: 10,
-  },
+  // Glass card
+  glassCard:   { borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 20 },
 
-  themeRow:       { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 18, flexWrap: 'wrap', gap: 10 },
-  themeBubble:    { width: 58, height: 58, borderRadius: 29, justifyContent: 'center', alignItems: 'center' },
-  themeEmoji:     { fontSize: 26 },
+  // Companion cards
+  companionCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 1.5, padding: 14, marginBottom: 12 },
+  companionAvatar: { width: 64, height: 80, borderRadius: 12, marginRight: 14 },
+  companionInfo: { flex: 1 },
+  companionName: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  companionTitle:{ fontSize: 12, color: '#9b8ec4', marginBottom: 4 },
+  companionTagline: { fontSize: 12, color: '#c4b5fd', lineHeight: 17 },
+  checkBadge:  { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+  checkBadgeText: { color: '#fff', fontSize: 13, fontWeight: '900' },
 
-  artworkPortrait:{ width: 180, height: 220, alignSelf: 'center', marginBottom: 16 },
+  // Mode pills
+  modePill:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 30, borderWidth: 1, gap: 6 },
+  modePillEmoji: { fontSize: 15 },
+  modePillLabel: { fontSize: 12, fontWeight: '700' },
 
-  doneButton:     { marginTop: 8, marginBottom: 4 },
+  // Side buttons
+  sideBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderRadius: 18, borderWidth: 1 },
+  sideBtnIcon: { fontSize: 18 },
+  sideBtnLabel:{ fontSize: 13, fontWeight: '700' },
+
+  // Done
+  doneBtn:     { marginTop: 8, marginBottom: 4, paddingVertical: 16, borderRadius: 24, borderWidth: 1.5, alignItems: 'center', shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
+  doneBtnText: { fontSize: 17, fontWeight: '900', letterSpacing: 0.5 },
 });

@@ -1,37 +1,46 @@
 // screens/JournalScreen.tsx
 // Se'kret Bip — Write It Out (Se'kret Pages)
-// Vision: Late-night diary. Cozy desk, notebook, candle. Raylene appears here most.
-// No pressure. No judgment. Private emotional dumping ground.
+// Vision: Late-night diary and Oracle. The page holds the mirror; companions do not.
+// The Oracle only speaks when saved history supports a specific pattern.
 //
 // Polish pass (2026-06-07):
-//   - Time-of-day backdrop via getRoomBg() — morning / day / evening / night
+//   - Journal-specific backdrop with time-of-day framing
 //   - Real LinearGradient scrim (replaces flat overlay)
-//   - Character-aware copy: Raylene soft, Rylane direct
+//   - Oracle copy remains separate from every companion voice
 //   - Mood-tinted glow on input border + greeting card (Happy/Neutral/Sad/Angry/Tired)
 //   - Selected mood tag also tints the glow
 //   - Staggered card fade-ins (140ms apart)
 //   - Time-of-day hero copy: "morning pages" → "afternoon download" → "evening unload" → "late-night thoughts"
-//   - Companion presence pill ("raylene's here · late night")
+//   - Page-memory status stays neutral and non-charactered
 //   - Scrapbook-style sticky-note for the calendar hint
 //   - Curly quotes throughout
 //
 // Previous fixes preserved:
 //   A1/A2/A3, B1/B2/B3/B4/B7/B8, C1/C2/C3/C4, D2
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
-import type { JournalEntry } from '../types/bridge';
+import { MiniReactionSticker } from '../components/MiniReactionSticker';
+import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
+import { buildOracleInsight } from '../services/oracle';
 import {
   Text, TouchableOpacity, ScrollView,
   TextInput, View, Image, StyleSheet, Alert, Animated, Easing,
+  type DimensionValue, Platform,
 } from 'react-native';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
-const HOTSPOTS = {
+type Hotspot = {
+  top?: DimensionValue; bottom?: DimensionValue;
+  left?: DimensionValue; right?: DimensionValue;
+  width: DimensionValue; height: DimensionValue;
+  label: string;
+};
+const HOTSPOTS: Record<'journal' | 'calendar', Hotspot> = {
   journal:  { bottom: '6%', left: '26%', width: '40%', height: '22%', label: 'Journal 📖' },
   calendar: { top: '6%', right: '2%', width: '44%', height: '40%', label: 'Calendar 📅' },
 };
@@ -54,22 +63,37 @@ function getTimeOfDay(hour: number): TimeOfDay {
 }
 
 const TIME_HERO: Record<TimeOfDay, { sub: string; main: string; badge: string }> = {
-  morning: { sub: 'morning pages',       main: 'soft start ☀️',          badge: '☀️ morning' },
-  day:     { sub: 'afternoon download',  main: 'unload it here 💜',      badge: '🌤️ day' },
-  evening: { sub: 'evening unload',      main: 'let the day out 🌙',     badge: '🌆 evening' },
-  night:   { sub: 'late-night thoughts', main: 'Se’kret Pages 💜',  badge: '🌙 night' },
+  morning: { sub: 'morning pages',       main: 'Se’kret 📖', badge: '☀️ morning' },
+  day:     { sub: 'afternoon pages',     main: 'Se’kret 📖', badge: '🌤️ day' },
+  evening: { sub: 'evening pages',       main: 'Se’kret 📖', badge: '🌆 evening' },
+  night:   { sub: 'late-night pages',    main: 'Se’kret 📖', badge: '🌙 night' },
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
-const getDynamicTags = (selectedSekret: string) => {
-  if (selectedSekret === 'rylane')  return ['focused', 'mind heavy', 'protecting my peace', 'trying harder', 'locked in', 'building myself'];
-  if (selectedSekret === 'raylene') return ['soft but strong', 'healing', 'trying my best', 'late night thoughts', 'emotional', 'peaceful'];
-  if (selectedSekret === 'soft')    return ['soft but strong', 'healing', 'trying my best', 'late night thoughts', 'emotional', 'peaceful'];
-  if (selectedSekret === 'cloud')   return ['resting', 'breathing', 'quiet', 'healing', 'calm', 'soft day'];
-  return ['good vibes', 'overthinking', 'protecting my peace', 'growing', 'learning myself', 'late night thoughts'];
-};
+const JOURNAL_TAGS = ['school', 'family', 'friends', 'pressure', 'grief', 'lonely', 'trying', 'peace'];
 
-const CHECK_IN_MOODS = ['worse', 'still heavy', 'a little better', 'better', 'okay'];
+const STARTER_PROMPTS: Record<TimeOfDay, { emoji: string; text: string }[]> = {
+  morning: [
+    { emoji: '☀️', text: "What's one thing you want to feel by the end of today?" },
+    { emoji: '🌱', text: "What would make today a good day for you?" },
+    { emoji: '💜', text: "What are you carrying into the morning that you didn't put down last night?" },
+  ],
+  day: [
+    { emoji: '💭', text: "What's been living in the back of your head all day?" },
+    { emoji: '🫶', text: "How are you actually doing right now — be honest." },
+    { emoji: '✨', text: "What's something small that went okay today?" },
+  ],
+  evening: [
+    { emoji: '🌆', text: "What's one thing from today you're still holding onto?" },
+    { emoji: '🍃', text: "What did you have to pretend was fine today?" },
+    { emoji: '💜', text: "What do you wish you could say to someone right now?" },
+  ],
+  night: [
+    { emoji: '🌙', text: "What's keeping you up that you haven't said out loud yet?" },
+    { emoji: '🕯️', text: "What do you need right now that nobody's offered?" },
+    { emoji: '🌧️', text: "What would you say if you knew nobody was judging you?" },
+  ],
+};
 
 // ── Props ──────────────────────────────────────────────────────────────────
 interface JournalScreenProps {
@@ -79,28 +103,30 @@ interface JournalScreenProps {
   saveJournalEntry:  () => void;
   mood:              string;
   t:                 Record<string, any>;
-  currentSekret?:    Record<string, any>;
-  selectedSekret?:   string;
   setScreen:         (screen: string) => void;
   BottomNav:         React.ReactNode;
+  moodHistory?:      MoodEntry[];
+  voiceNotes?:       VoiceNote[];
+  streakDays?:       number;
+  selectedSekret?:   string;
 }
 
 export function JournalScreen({
   journalText, setJournalText, journalEntries, saveJournalEntry,
-  mood, t, currentSekret, selectedSekret = 'raylene',
-  setScreen, BottomNav,
+  mood, t,
+  setScreen, BottomNav, moodHistory = [], voiceNotes = [], streakDays = 0,
+  selectedSekret = 'soft',
 }: JournalScreenProps) {
 
-  const [showCheckIn, setShowCheckIn] = useState(false);
-  const [checkInMood, setCheckInMood] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
+  const [showCheckIn,   setShowCheckIn]   = useState(false);
+  const [checkInMood,   setCheckInMood]   = useState('');
+  const [selectedTag,   setSelectedTag]   = useState('');
+  const [promptIdx,     setPromptIdx]     = useState(0);
 
   const hour       = new Date().getHours();
   const timeOfDay  = getTimeOfDay(hour);
   const hero       = TIME_HERO[timeOfDay];
-  const isRylane   = selectedSekret === 'rylane';
-  const character  = isRylane ? 'rylane' : 'raylene';
-  const charLabel  = isRylane ? 'rylane' : 'raylene';
+  const character: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
   const roomArt    = getRoomBg(character, timeOfDay);
   const moodGlow   = MOOD_GLOW[mood] ?? MOOD_GLOW.Neutral;
   const tagGlow    = selectedTag ? '#a855f7' : moodGlow;
@@ -119,7 +145,7 @@ export function JournalScreen({
     transform: [{ translateY: cards[i].interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
   });
 
-  // Companion breath loop ───────────────────────────────────────────────────
+  // Page-memory breath loop ───────────────────────────────────────────────────
   const breath = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.loop(
@@ -134,20 +160,15 @@ export function JournalScreen({
     transform: [{ scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
   };
 
-  // Listening reply variants ────────────────────────────────────────────────
-  const listeningCopy = isRylane
-    ? 'Heavy day. You don’t gotta carry it solo — I see you putting it down. That’s real.'
-    : 'That sounds heavy. You’ve been carrying a lot quietly. I’m glad you let some of it out.';
-
-  const greetingCopy = isRylane
-    ? { title: 'Lock in. Write it raw.', sub: 'No filter. No proof-reading. Just truth.' }
-    : { title: 'Write freely.',           sub: 'No pressure. No perfect wording. Just honesty.' };
+  const oracleInsight = useMemo(
+    () => buildOracleInsight({ journalEntries, moodHistory, voiceNotes, streakDays }),
+    [journalEntries, moodHistory, voiceNotes, streakDays],
+  );
 
   const btn = () => [styles.btn, { backgroundColor: t.accent, shadowColor: moodGlow }] as any;
 
   const handleSave = () => {
     saveJournalEntry();
-    setShowCheckIn(true);
   };
 
   return (
@@ -157,6 +178,8 @@ export function JournalScreen({
         {/* ── Room with hotspots ─────────────────────────────────────── */}
         <View style={styles.roomWrap} pointerEvents="box-none">
           <Image source={roomArt} style={styles.roomImage} resizeMode="cover" blurRadius={1.5} />
+
+
 
           {/* Mood-tinted scrim — top */}
           <View
@@ -175,10 +198,15 @@ export function JournalScreen({
             <Text style={styles.timeBadgeText}>{hero.badge}</Text>
           </View>
 
-          {/* Companion presence pill */}
+          {/* Mini sticker — Raylene/Rylane journal companion */}
+          <View style={{ position: 'absolute', top: 10, right: 10 }} pointerEvents="none">
+            <MiniReactionSticker character={character} screenContext="journal" size={40} />
+          </View>
+
+          {/* Page-memory status — not a companion voice */}
           <Animated.View style={[styles.presencePill, breathStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {charLabel}’s here · {timeOfDay === 'night' ? 'late night' : timeOfDay}
+              the page remembers
             </Text>
           </Animated.View>
 
@@ -192,7 +220,7 @@ export function JournalScreen({
           {/* HOTSPOT — Journal (already here) */}
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.hotspot, { bottom: HOTSPOTS.journal.bottom, left: HOTSPOTS.journal.left, width: HOTSPOTS.journal.width, height: HOTSPOTS.journal.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            style={[styles.hotspot, { bottom: HOTSPOTS.journal.bottom as any, left: HOTSPOTS.journal.left as any, width: HOTSPOTS.journal.width as any, height: HOTSPOTS.journal.height as any }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
             onPress={() => {/* already on journal */}}
           >
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.journal.label}</Text>}
@@ -201,7 +229,7 @@ export function JournalScreen({
           {/* HOTSPOT — Calendar */}
           <TouchableOpacity
             activeOpacity={0.7}
-            style={[styles.hotspot, { top: HOTSPOTS.calendar.top, right: HOTSPOTS.calendar.right, width: HOTSPOTS.calendar.width, height: HOTSPOTS.calendar.height }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
+            style={[styles.hotspot, { top: HOTSPOTS.calendar.top as any, right: HOTSPOTS.calendar.right as any, width: HOTSPOTS.calendar.width as any, height: HOTSPOTS.calendar.height as any }, DEBUG_HOTSPOTS && styles.hotspotDebug]}
             onPress={() => setScreen('bippin2')}
           >
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.calendar.label}</Text>}
@@ -223,10 +251,40 @@ export function JournalScreen({
             cardAnim(0),
           ]}
         >
-          <Text style={styles.floatCardEmoji}>{currentSekret?.emoji ?? '💜'}</Text>
-          <Text style={[styles.floatCardText, { color: '#fff' }]}>{greetingCopy.title}</Text>
-          <Text style={[styles.floatCardSub, { color: t.soft }]}>{greetingCopy.sub}</Text>
+          <Text style={styles.floatCardEmoji}>📖</Text>
+          <Text style={[styles.floatCardText, { color: '#fff' }]}>Write it how it happened.</Text>
+          <Text style={[styles.floatCardSub, { color: t.soft }]}>No lesson required. No polished version.</Text>
         </Animated.View>
+
+        {/* ── Starter prompt ───────────────────────────────────────── */}
+        {!journalText.trim() && (
+          <Animated.View
+            style={[
+              styles.floatCard,
+              { borderColor: moodGlow + '66', backgroundColor: 'rgba(20,12,35,0.82)', shadowColor: moodGlow },
+              cardAnim(0),
+            ]}
+          >
+            {(() => {
+              const prompts = STARTER_PROMPTS[timeOfDay];
+              const p = prompts[promptIdx % prompts.length];
+              return (
+                <>
+                  <Text style={{ fontSize: 24, marginBottom: 8 }}>{p.emoji}</Text>
+                  <Text style={[styles.floatCardSub, { color: '#f5f0ff', fontSize: 14, fontWeight: '600', lineHeight: 22 }]}>
+                    {p.text}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.promptCycleBtn, { borderColor: moodGlow + '66' }]}
+                    onPress={() => setPromptIdx(i => i + 1)}
+                  >
+                    <Text style={[styles.promptCycleBtnText, { color: moodGlow }]}>different prompt</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </Animated.View>
+        )}
 
         {/* ── Journal input ─────────────────────────────────────────── */}
         <Animated.View style={cardAnim(1)}>
@@ -240,7 +298,7 @@ export function JournalScreen({
                 shadowColor: tagGlow,
               },
             ]}
-            placeholder={isRylane ? 'Lock in. Type it out…' : 'Bip it out softly…'}
+            placeholder="Say it exactly how it felt…"
             placeholderTextColor="#4a3d6b"
             multiline
             value={journalText}
@@ -276,39 +334,19 @@ export function JournalScreen({
           </TouchableOpacity>
         </Animated.View>
 
-        {/* ── Se'kret is listening ──────────────────────────────────── */}
-        {journalText.trim() ? (
+        {/* ── The Oracle only speaks when the history supports it ─── */}
+        {oracleInsight ? (
           <Animated.View
             style={[
-              styles.floatCard,
-              { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.9)', shadowColor: '#a855f7' },
+              styles.oracleCard,
+              { borderColor: 'rgba(196,181,253,0.55)', shadowColor: '#c4b5fd' },
               cardAnim(3),
             ]}
           >
-            <Text style={[styles.replyLabel, { color: '#a855f7' }]}>
-              {charLabel} is listening… 💜
-            </Text>
-            <Text style={[styles.replyText, { color: t.soft }]}>{listeningCopy}</Text>
-            <View style={styles.replyBtns}>
-              <TouchableOpacity
-                style={[styles.replyBtn, { borderColor: t.accent }]}
-                onPress={() => setScreen('sekret')}
-              >
-                <Text style={[styles.replyBtnText, { color: t.soft }]}>💜 Talk more</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.replyBtn, { borderColor: t.accent }]}
-                onPress={() => setScreen('sekret')}
-              >
-                <Text style={[styles.replyBtnText, { color: t.soft }]}>✨ Advice</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.replyBtn, { borderColor: t.accent }]}
-                onPress={() => setScreen('comfort')}
-              >
-                <Text style={[styles.replyBtnText, { color: t.soft }]}>🫶 Comfort</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={styles.oracleLabel}>📖 SE’KRET NOTICED</Text>
+            {oracleInsight.lines.map((line) => (
+              <Text key={line} style={styles.oracleLine}>{line}</Text>
+            ))}
           </Animated.View>
         ) : null}
 
@@ -316,7 +354,7 @@ export function JournalScreen({
         <Animated.View style={cardAnim(4)}>
           <Text style={[styles.sectionTitle, { color: '#fff' }]}>Mood Tags</Text>
           <View style={styles.tagRow}>
-            {getDynamicTags(selectedSekret).map(tag => {
+            {JOURNAL_TAGS.map(tag => {
               const active = selectedTag === tag;
               return (
                 <TouchableOpacity
@@ -337,61 +375,13 @@ export function JournalScreen({
           </View>
 
           <View style={styles.savePrivateRow}>
-            <Text style={styles.savePrivateText}>🔒 Save Privately — only you & {charLabel} can see this.</Text>
+            <Text style={styles.savePrivateText}>🔒 Save privately — only you can see this.</Text>
           </View>
 
           <TouchableOpacity style={btn()} onPress={handleSave}>
             <Text style={styles.btnText}>Save Page 💜</Text>
           </TouchableOpacity>
         </Animated.View>
-
-        {/* ── Today's Check-In ──────────────────────────────────────── */}
-        {showCheckIn && (
-          <View style={[styles.floatCard, { borderColor: t.accent, backgroundColor: 'rgba(13,9,20,0.92)' }]}>
-            <Text style={[styles.floatCardText, { color: '#fff' }]}>Today’s Check-In</Text>
-            <Text style={[styles.floatCardSub, { color: t.soft }]}>How are you feeling now?</Text>
-            <View style={styles.checkInRow}>
-              {CHECK_IN_MOODS.map(m => {
-                const active = checkInMood === m;
-                return (
-                  <TouchableOpacity
-                    key={m}
-                    style={[
-                      styles.checkInChip,
-                      { backgroundColor: active ? t.accent : 'rgba(13,9,20,0.7)', borderColor: t.accent },
-                    ]}
-                    onPress={() => setCheckInMood(m)}
-                  >
-                    <Text style={[styles.checkInChipText, { color: active ? '#fff' : t.soft }]}>{m}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {checkInMood ? (
-              <View style={styles.insightsRow}>
-                <View style={[styles.insightBadge, { borderColor: t.accent }]}>
-                  <Text style={[styles.insightLabel, { color: '#7c6899' }]}>Key Theme</Text>
-                  <Text style={[styles.insightVal, { color: t.soft }]}>{selectedTag || mood}</Text>
-                </View>
-                <View style={[styles.insightBadge, { borderColor: t.accent }]}>
-                  <Text style={[styles.insightLabel, { color: '#7c6899' }]}>Energy Level</Text>
-                  <Text style={[styles.insightVal, { color: t.soft }]}>
-                    {['worse','still heavy'].includes(checkInMood) ? 'low' : ['better','okay'].includes(checkInMood) ? 'rising' : 'low'}
-                  </Text>
-                </View>
-                <View style={[styles.insightBadge, { borderColor: t.accent }]}>
-                  <Text style={[styles.insightLabel, { color: '#7c6899' }]}>{charLabel}’s Tip</Text>
-                  <Text style={[styles.insightVal, { color: t.soft }]}>
-                    {['worse','still heavy'].includes(checkInMood)
-                      ? (isRylane ? 'rest. recharge.' : 'rest + breathe')
-                      : (isRylane ? 'lock in 💪' : 'keep going 💜')}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-          </View>
-        )}
 
         {/* ── Saved pages ───────────────────────────────────────────── */}
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>Saved Pages</Text>
@@ -416,10 +406,12 @@ export function JournalScreen({
   );
 }
 
+const WEB_MAX = Platform.OS === 'web' ? { maxWidth: 520, width: '100%' as const, alignSelf: 'center' as const } : {};
+
 const styles = StyleSheet.create({
-  root:           { flex: 1 },
-  scroll:         { paddingBottom: 100 },
-  roomWrap:       { position: 'relative', width: '100%', height: 240, marginBottom: 16, overflow: 'hidden' },
+  root:           { flex: 1, backgroundColor: '#0d0914' },
+  scroll:         { paddingBottom: 100, ...WEB_MAX },
+  roomWrap:       { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 180 : 240, marginBottom: 16, overflow: 'hidden' },
   roomImage:      { width: '100%', height: '100%' },
   moodScrim:      { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   roomGradient:   { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
@@ -449,10 +441,19 @@ const styles = StyleSheet.create({
   stickyHintText: { color: '#3d2563', fontSize: 10, fontWeight: '700', fontStyle: 'italic' },
   sectionTitle:   { fontSize: 16, fontWeight: '700', marginBottom: 10, marginTop: 14, marginHorizontal: 16 },
   floatCard:      {
-    marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16,
+    marginHorizontal: 16, marginBottom: Platform.OS === 'web' ? 8 : 12, borderRadius: 18, borderWidth: 1, padding: 16,
     shadowOpacity: 0.35, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
   },
-  floatCardEmoji: { fontSize: 28, marginBottom: 6 },
+  floatCardEmoji:    { fontSize: 28, marginBottom: 6 },
+  promptCycleBtn:    { marginTop: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7, alignSelf: 'flex-start' },
+  promptCycleBtnText:{ fontSize: 12, fontWeight: '600' },
+  oracleCard:     {
+    marginHorizontal: 16, marginBottom: 14, borderRadius: 18, borderWidth: 1, padding: 18,
+    backgroundColor: 'rgba(20,14,34,0.96)', shadowOpacity: 0.35, shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  oracleLabel:    { color: '#c4b5fd', fontSize: 10, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
+  oracleLine:     { color: '#f5f0ff', fontSize: 15, lineHeight: 23, marginBottom: 4, fontWeight: '600' },
   floatCardText:  { fontSize: 16, fontWeight: '700', marginBottom: 4 },
   floatCardSub:   { fontSize: 13, lineHeight: 19 },
   journalInput:   {
@@ -465,11 +466,6 @@ const styles = StyleSheet.create({
   mediaEmoji:     { fontSize: 20, marginBottom: 4 },
   mediaBtnLabel:  { fontSize: 11, fontWeight: '600', textAlign: 'center' },
   mediaBtnSub:    { fontSize: 10, color: '#7c6899', marginTop: 2 },
-  replyLabel:     { fontSize: 10, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 },
-  replyText:      { fontSize: 13, lineHeight: 20, marginBottom: 12, fontStyle: 'italic' },
-  replyBtns:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  replyBtn:       { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
-  replyBtnText:   { fontSize: 11, fontWeight: '600' },
   tagRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginHorizontal: 16, marginBottom: 10 },
   tag:            { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
   tagText:        { fontSize: 12, fontWeight: '600' },
@@ -480,14 +476,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4, shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
   },
   btnText:        { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  checkInRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  checkInChip:    { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
-  checkInChipText:{ fontSize: 11, fontWeight: '600' },
-  insightsRow:    { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
-  insightBadge:   { flex: 1, borderWidth: 1, borderRadius: 12, padding: 10, minWidth: 90, alignItems: 'center' },
-  insightLabel:   { fontSize: 10, marginBottom: 3 },
-  insightVal:     { fontSize: 12, fontWeight: '700', textAlign: 'center' },
   entryDate:      { fontSize: 11, marginBottom: 6 },
   entryText:      { fontSize: 14, lineHeight: 22, fontStyle: 'italic' },
   emptyText:      { fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
+
 });

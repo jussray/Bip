@@ -2,20 +2,20 @@
 // Se'kret Bip — Cloud sync layer (Phase 2 backend)
 //
 // All cloud writes go through here. Every helper is a SAFE NO-OP when
-// Supabase isn't configured — the app keeps working off AsyncStorage, no
+// Supabase isn’t configured — the app keeps working off AsyncStorage, no
 // errors thrown. This lets us ship the UI now and add credentials later.
 //
-// Auth model: each row is scoped to auth.uid() via RLS. If there's no
-// signed-in user yet, writes are silently skipped (kept locally only). We'll
-// add anonymous sign-in (supabase.auth.signInAnonymously) once we're ready
+// Auth model: each row is scoped to auth.uid() via RLS. If there’s no
+// signed-in user yet, writes are silently skipped (kept locally only). We’ll
+// add anonymous sign-in (supabase.auth.signInAnonymously) once we’re ready
 // to flip the switch in app/index.tsx.
 //
-// IMPORTANT: never throw. The user's local experience must never break
+// IMPORTANT: never throw. The user’s local experience must never break
 // because the cloud is down. Errors are logged and swallowed.
 
 import { getSupabase, TABLES } from './supabase';
 import type {
-  JournalEntry, MoodEntry, CirclePost, VoiceNote,
+  JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
 } from '../types/index';
 
@@ -79,32 +79,54 @@ export async function ensureAnonymousSession(): Promise<string | null> {
 // ── Mood ────────────────────────────────────────────────────────────────────
 export function syncMood(entry: MoodEntry): void {
   void safeUpsert(TABLES.moodHistory, {
-    id:     entry.id,
-    mood:   entry.mood,
-    date:   entry.date,
-    time:   entry.time,
+    id:   entry.id,
+    mood: entry.mood,
+    date: entry.date,
+    time: entry.time,
   });
 }
 
 // ── Journal ────────────────────────────────────────────────────────────────
+// sekret_reply is written when present so the reply survives device migration.
+// The column is nullable — older rows without a reply write NULL, which is safe.
+// MIGRATION REQUIRED before this field persists to Supabase:
+//   supabase/migrations/add_sekret_reply.sql
+//   ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS sekret_reply text;
 export function syncJournal(entry: JournalEntry): void {
   void safeUpsert(TABLES.journalEntries, {
-    id:    entry.id,
-    text:  entry.text,
-    mood:  entry.mood,
-    date:  entry.date,
-    time:  entry.time,
+    id:           entry.id,
+    text:         entry.text,
+    mood:         entry.mood,
+    date:         entry.date,
+    time:         entry.time,
+    // sekretTyping is transient — never persisted.
+    sekret_reply: entry.sekretReply ?? null,
   });
 }
 
-// ── Circle ─────────────────────────────────────────────────────────────────
+// ── Circle (Teen) ──────────────────────────────────────────────────────────
 export function syncCirclePost(post: CirclePost): void {
   void safeUpsert(TABLES.circlePosts, {
-    id:        post.id,
-    text:      post.text,
-    date:      post.date,
-    time:      post.time,
-    reactions: post.reactions,
+    id:         post.id,
+    text:       post.text,
+    date:       post.date,
+    time:       post.time,
+    reactions:  post.reactions,
+    circle_tag: post.circleTag ?? null,
+    post_mood:  post.postMood ?? null,
+    media_kind: post.mediaKind ?? null,
+  });
+}
+
+// ── Circle (Parent) ────────────────────────────────────────────────────────
+export function syncParentCirclePost(post: ParentCirclePost): void {
+  void safeUpsert(TABLES.parentCirclePosts, {
+    id:         post.id,
+    text:       post.text,
+    date:       post.date,
+    time:       post.time,
+    reactions:  post.reactions,
+    circle_tag: post.circleTag ?? null,
   });
 }
 
@@ -139,7 +161,7 @@ export function syncCrewMember(m: CrewMember): void {
     commitment:  m.commitment,
     cadence:     m.cadence,
     invite_code: m.inviteCode,
-    added_at:    m.addedAt,
+    added_at:    new Date(m.addedAt).toISOString(),
   });
 }
 
@@ -166,7 +188,7 @@ export async function snapshotPoints(total: number): Promise<void> {
   if (!uid) return;
   try {
     await sb.from(TABLES.bipPoints).insert({
-      user_id: uid,
+      user_id:     uid,
       total,
       captured_at: new Date().toISOString(),
     });
@@ -178,14 +200,33 @@ export async function snapshotPoints(total: number): Promise<void> {
 // ── Bulk pull (initial restore — optional, opt-in from app boot) ───────────
 // Reads cloud rows for the signed-in user. Useful when migrating a fresh
 // install. Returns null if offline — caller falls back to local state.
+//
+// Mapping notes:
+//   journal_entries     : sekret_reply   → sekretReply
+//   crew_members        : invite_code    → inviteCode, added_at → addedAt
+//   crew_check_ins      : member_id      → memberId
+//   parent_circle_posts : circle_tag     → circleTag
+//                         reactions passes through as-is (JSONB keys match type)
+//   room_memory         : last_visit     → lastVisit
+//                         last_hotspot   → lastHotspot
+//                         last_summon    → lastSummon
+//                         visit_count    → visitCount
 export async function pullAll(): Promise<{
-  moodHistory:     MoodEntry[];
-  journalEntries:  JournalEntry[];
-  circlePosts:     CirclePost[];
-  voiceNotes:      VoiceNote[];
-  comfortSessions: ComfortSession[];
-  crewMembers:     CrewMember[];
-  crewCheckIns:    CrewCheckIn[];
+  moodHistory:       MoodEntry[];
+  journalEntries:    JournalEntry[];
+  circlePosts:       CirclePost[];
+  voiceNotes:        VoiceNote[];
+  comfortSessions:   ComfortSession[];
+  crewMembers:       CrewMember[];
+  crewCheckIns:      CrewCheckIn[];
+  parentCirclePosts: ParentCirclePost[];
+  roomMemory: {
+    character:   string;
+    lastVisit:   string;
+    lastHotspot: string;
+    lastSummon:  string;
+    visitCount:  number;
+  } | null;
 } | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -195,17 +236,35 @@ export async function pullAll(): Promise<{
     const tables = [
       TABLES.moodHistory, TABLES.journalEntries, TABLES.circlePosts,
       TABLES.voiceNotes, TABLES.comfortSessions, TABLES.crewMembers, TABLES.crewCheckIns,
+      TABLES.parentCirclePosts,
     ];
     const results = await Promise.all(
       tables.map(t => sb.from(t).select('*').eq('user_id', uid).order('id', { ascending: false })),
     );
-    const [mood, journal, circle, voice, comfort, crew, check] = results.map(r => r.data || []);
+    const [mood, journal, circle, voice, comfort, crew, check, parentCircle] =
+      results.map(r => r.data || []);
+
+    // room_memory is a single-row-per-user table (PK is user_id only), so
+    // query it separately without ordering by id.
+    const { data: roomRow } = await sb
+      .from(TABLES.roomMemory)
+      .select('*')
+      .eq('user_id', uid)
+      .maybeSingle();
+
     return {
-      moodHistory:     mood     as MoodEntry[],
-      journalEntries:  journal  as JournalEntry[],
-      circlePosts:     circle   as CirclePost[],
-      voiceNotes:      voice    as VoiceNote[],
-      comfortSessions: comfort  as ComfortSession[],
+      moodHistory:    mood as MoodEntry[],
+      // Map snake_case sekret_reply back to the camelCase JournalEntry field.
+      // Rows created before the migration have no sekret_reply column — the
+      // select returns undefined for those rows, which the nullish coalesce
+      // converts to undefined, leaving sekretReply absent (correct behavior).
+      journalEntries: (journal as any[]).map(r => ({
+        ...r,
+        sekretReply: r.sekret_reply ?? undefined,
+      })) as JournalEntry[],
+      circlePosts:     circle  as CirclePost[],
+      voiceNotes:      voice   as VoiceNote[],
+      comfortSessions: comfort as ComfortSession[],
       crewMembers:     (crew as any[]).map(r => ({
         id: r.id, name: r.name, emoji: r.emoji, commitment: r.commitment,
         cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
@@ -214,6 +273,28 @@ export async function pullAll(): Promise<{
         id: r.id, memberId: r.member_id, note: r.note,
         mood: r.mood, date: r.date, time: r.time,
       })),
+      // Map snake_case DB columns back to the local ParentCirclePost shape.
+      // reactions is stored as JSONB and passes through as-is (keys match the
+      // ParentCirclePost type: beenThere, solidarity, reminder, needed, strength).
+      parentCirclePosts: (parentCircle as any[]).map(r => ({
+        id:        r.id,
+        text:      r.text,
+        date:      r.date,
+        time:      r.time,
+        reactions: r.reactions ?? {
+          beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0,
+        },
+        circleTag: r.circle_tag ?? undefined,
+      })) as ParentCirclePost[],
+      // room_memory is a single row per user. Map snake_case → camelCase.
+      // Returns null if the user has no room_memory row yet (first install).
+      roomMemory: roomRow ? {
+        character:   roomRow.character    ?? 'raylene',
+        lastVisit:   roomRow.last_visit   ?? '',
+        lastHotspot: roomRow.last_hotspot ?? '',
+        lastSummon:  roomRow.last_summon  ?? '',
+        visitCount:  roomRow.visit_count  ?? 0,
+      } : null,
     };
   } catch (e) {
     if (__DEV__) console.warn('[sync] pullAll failed', e);

@@ -1,22 +1,71 @@
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+import {
+  buildSekretAdaptationInstruction,
+  buildSekretVoiceInstruction,
+  getSekretFallback,
+  keepSekretReply,
+} from '../services/sekretVoice';
+import { normalizeSekretPersonality } from '../services/sekretPresence';
+import { buildOracleContext, type OracleProfile, type OracleSide } from '../services/oracleDiscovery';
+import type { AvatarResponseRequest } from '../types/voiceIntelligence';
+
+const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL || '';
 
 export async function fetchSekretReply(
   text: string,
-  context = 'journal',
-  mood?: string
+  context = 'chat',
+  mood?: string,
+  personality?: string,
+  previousMood?: string,
+  privateProfile?: OracleProfile,
+  profileSide: OracleSide = 'teen',
+  privateContext: readonly string[] = [],
 ): Promise<string> {
+  const voice = normalizeSekretPersonality(personality);
+  const fallback = getSekretFallback(voice, text);
+  const adaptationInstruction = buildSekretAdaptationInstruction(
+    [...buildOracleContext(privateProfile, profileSide), ...privateContext].slice(0, 8),
+  );
+
+  if (!BASE_URL) return fallback;
+
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, context, mood }),
+      body: JSON.stringify({
+        text,
+        context,
+        mood,
+        previous_mood: previousMood,
+        personality: voice,
+        voiceInstruction: buildSekretVoiceInstruction(
+          voice,
+          text,
+          mood,
+          previousMood,
+          adaptationInstruction,
+        ),
+      }),
     });
     if (!res.ok) throw new Error('api error');
     const data = await res.json();
-    return (
-      data.reply || "I hear you. You don't have to carry that alone 💜"
-    );
+    return keepSekretReply(data.reply, fallback);
   } catch {
-    return "I hear you. That makes sense. You don't have to carry that by yourself 💜";
+    return fallback;
   }
+}
+
+
+/** Public response boundary: Se’kret reasoning informs the selected avatar. */
+export async function fetchAvatarVoiceBipReply(request: AvatarResponseRequest): Promise<string> {
+  return fetchSekretReply(
+    request.transcriptText,
+    'voice-bip',
+    request.mood,
+    request.avatarKey,
+    undefined,
+    request.privateProfile,
+    request.profileSide,
+    [request.sekretUnderstanding.responseBrief, ...request.sekretUnderstanding.memoryContext],
+  );
 }

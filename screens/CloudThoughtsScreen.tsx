@@ -9,6 +9,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { IMAGES, getRoomBg } from '../constants/theme';
+import { fetchSekretReply } from '../utils/api';
+import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
+import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text,
   TouchableOpacity,
@@ -44,28 +47,6 @@ function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
 
 const CLOUD_HP = IMAGES.cloudHeadphones;
 const CLOUD    = IMAGES.cloud;
-
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
-
-async function fetchSekretReply(
-  text: string,
-  context = 'cloud',
-  mood?: string,
-): Promise<string> {
-  if (!BASE_URL) return "I hear you. You don't have to carry that alone 💜";
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ text, context, mood }),
-    });
-    if (!res.ok) throw new Error('api error');
-    const data = await res.json();
-    return data.reply || "I hear you. You don't have to carry that alone 💜";
-  } catch {
-    return "I hear you. That makes sense. You don't have to carry that by yourself 💜";
-  }
-}
 
 // ── Prompt sets — each mode has its own rotation ────────────────────────────
 
@@ -124,6 +105,9 @@ interface CloudThoughtsScreenProps {
   BottomNav:     React.ReactNode;
   backTarget?:   string;         // Fix A4: defaults to 'home'
   selectedSekret?: string;       // 'soft' | 'rylane' | 'cloud' | 'night'
+  character?:    MiniStickerCharacter;
+  privateProfile?: OracleProfile;
+  profileSide?: OracleSide;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -135,6 +119,9 @@ export function CloudThoughtsScreen({
   BottomNav,
   backTarget = 'home',
   selectedSekret,
+  character,
+  privateProfile,
+  profileSide = 'teen',
 }: CloudThoughtsScreenProps) {
 
   // Character-aware display name
@@ -179,7 +166,7 @@ export function CloudThoughtsScreen({
     setSent(true);
     setIsThinking(true);
     // Fix C5: pass activeMode as context so the API can tune its tone
-    const r = await fetchSekretReply(text, activeMode, mood);
+    const r = await fetchSekretReply(text, activeMode, mood, selectedSekret, undefined, privateProfile, profileSide);
     setReply(r);
     setIsThinking(false);
   };
@@ -219,11 +206,18 @@ export function CloudThoughtsScreen({
 
         {/* ── Hero ── */}
         <View style={styles.heroWrap}>
-          <Animated.Image
-            source={CLOUD_HP}
-            style={[styles.heroCloud, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
-            resizeMode="contain"
-          />
+          <View pointerEvents="none" style={styles.envCloudLayer}>
+            <Animated.Image
+              source={CLOUD}
+              style={[styles.envCloud, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            />
+            <Animated.Image
+              source={CLOUD_HP}
+              style={[styles.envCloudSmall, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}
+              resizeMode="contain"
+            />
+          </View>
           <Text style={[styles.heroSub, { color: glow }]}>
             {isNight ? 'late night thoughts 🌙' : 'cloud thoughts ☁️'}
           </Text>
@@ -291,6 +285,7 @@ export function CloudThoughtsScreen({
           >
             <Text style={styles.sendBtnText}>send to the clouds ☁️</Text>
           </TouchableOpacity>
+          <MiniReactionSticker character={character ?? null} screenContext="cloudThoughts" size={40} />
         </View>
 
         {/* ── Thinking ── */}
@@ -331,12 +326,29 @@ export function CloudThoughtsScreen({
 
 const styles = StyleSheet.create({
   root:          { flex: 1 },
-  scroll:        { paddingBottom: 100 },
+  scroll:        { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   header:        { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingHorizontal: 16, marginBottom: 8 },
   backBtn:       { alignSelf: 'flex-start' },
   backText:      { fontSize: 14 },
   heroWrap:      { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
   heroCloud:     { width: 80, height: 80, marginBottom: 12 },
+  envCloudLayer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  envCloud: {
+    width: 260, height: 260,
+    position: 'absolute',
+    top: -24,
+    right: -40,
+  },
+  envCloudSmall: {
+    width: 140, height: 140,
+    position: 'absolute',
+    bottom: -8,
+    left: -18,
+  },
   heroSub:       { fontSize: 11, letterSpacing: 1, marginBottom: 4 },
   heroTitle:     { fontSize: 30, fontWeight: '900', fontStyle: 'italic', marginBottom: 6 },
   heroMini:      { fontSize: 13, textAlign: 'center', lineHeight: 20 },

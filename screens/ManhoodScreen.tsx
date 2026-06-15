@@ -1,324 +1,280 @@
 // screens/ManhoodScreen.tsx
-// Se'kret Bip — Bippin 2: Manhood content layer (Rylane-led)
-//
-// Phase 2 build. Loyal-bro energy. Topics:
-//   • Puberty guide
-//   • Body changes
-//   • Confidence boost
-//   • Hygiene + self-care
-//   • Emotions (yes, them too)
-//   • Respect + how you treat people
-//
-// Each topic expands into a mini-lesson with 3 micro-actions and a Rylane hook.
-// Voice: short, real, no fluff, no shame. Never talks down.
+// Se'kret Bip — Bippin 2: Manhood Dashboard (Rylane-led)
+// Layout matches the Manhood mockup:
+//   Hero → Greeting + Streak → Quick Access Grid →
+//   Energy + Sleep cards → Quick Tip → Mood Check-In →
+//   Goal Tracker → BIP FLOW steps
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Text, TouchableOpacity, ScrollView, View,
-  ImageBackground, Animated, Easing, StyleSheet, Platform,
+  ImageBackground, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getRoomBg, TimeOfDay } from '../constants/theme';
-
-function glowFor(mood?: string): string {
-  const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))       return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
-  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))       return '#6d28d9';
-  if (m.includes('calm'))        return '#c4b5fd';
-  return '#4DA3FF';
-}
-function timeOfDay(): TimeOfDay {
-  const h = new Date().getHours();
-  if (h >= 5  && h < 11) return 'morning';
-  if (h >= 11 && h < 17) return 'day';
-  if (h >= 17 && h < 21) return 'evening';
-  return 'night';
-}
-
-type TopicKey =
-  | 'puberty' | 'body' | 'confidence' | 'hygiene' | 'emotions' | 'respect';
-
-interface Topic {
-  key: TopicKey; emoji: string; title: string; sub: string;
-  lesson: string; hook: string; micro: string[]; route?: string;
-}
-
-const TOPICS: Topic[] = [
-  {
-    key: 'puberty',
-    emoji: '⚡',
-    title: 'Puberty Guide',
-    sub: 'what’s going on with the body',
-    lesson: 'puberty is the body upgrading. voice changes, growth spurts, new hair, more sweat. all normal. not a contest with your friends.',
-    hook: 'no rush. your body knows what it’s doing.',
-    micro: [
-      'Drink water. Like, more than you think.',
-      'Sleep is the cheat code. Aim for 8+ when you can.',
-      'Eat real food before the snacks.',
-    ],
-  },
-  {
-    key: 'body',
-    emoji: '🧠',
-    title: 'Body Changes',
-    sub: 'don’t compare, just grow',
-    lesson: 'everyone’s on a different schedule. comparing yourself to dudes on the internet is rigged. your only competition is yesterday-you.',
-    hook: 'your body, your timeline. respect.',
-    micro: [
-      'Move your body for 15 min today. Walk counts.',
-      'Stretch before bed — 30 sec, that’s it.',
-      'Notice one thing your body did for you today.',
-    ],
-  },
-  {
-    key: 'confidence',
-    emoji: '🕊️',
-    title: 'Confidence Boost',
-    sub: 'real, not loud',
-    lesson: 'confidence isn’t flexing. it’s being okay with who you are when no one’s watching. quiet confidence > loud insecurity.',
-    hook: 'walk in like you belong. you do.',
-    micro: [
-      'Pick one small thing you handled this week. Own it.',
-      'Stand tall. Shoulders back. It actually works.',
-      'Compliment someone else without expecting anything.',
-    ],
-  },
-  {
-    key: 'hygiene',
-    emoji: '🌻',
-    title: 'Hygiene + Self-Care',
-    sub: 'basic but powerful',
-    lesson: 'showering, brushing teeth, deodorant, fresh clothes — not optional. self-care isn’t soft, it’s self-respect.',
-    hook: 'taking care of you is the move.',
-    micro: [
-      'Shower daily, especially after sports.',
-      'Brush teeth morning + night. Floss when you can.',
-      'Deodorant after the shower, not before.',
-    ],
-  },
-  {
-    key: 'emotions',
-    emoji: '🌊',
-    title: 'Emotions (Yes, Them Too)',
-    sub: 'feeling stuff is human',
-    lesson: 'bottling it up doesn’t make you tough. it makes you tired. real strength is naming what you feel and dealing with it.',
-    hook: 'feeling things doesn’t make you weak. ignoring them makes you stuck.',
-    micro: [
-      'Name one feeling today. Out loud or in your head.',
-      'Walk it out for 5 min if it’s big.',
-      'Talk to one trusted person this week. Or drop it here.',
-    ],
-    route: 'sekret',
-  },
-  {
-    key: 'respect',
-    emoji: '🤝',
-    title: 'Respect + How You Treat People',
-    sub: 'consent is the standard',
-    lesson: 'real ones don’t pressure. real ones ask. respecting people’s no — about anything, anytime — is the baseline, not a bonus.',
-    hook: 'how you treat people is your reputation.',
-    micro: [
-      'Hear no the first time.',
-      'Hype people up instead of putting them down.',
-      'Apologize when you mess up. Then change it.',
-    ],
-  },
-];
+import { IMAGES } from '../constants/theme';
 
 interface ManhoodScreenProps {
-  t:               Record<string, any>;
-  mood:            string;
-  selectedSekret:  string;
-  setScreen:       (s: string) => void;
-  BottomNav:       React.ReactNode;
+  t:              Record<string, any>;
+  setScreen:      (screen: string) => void;
+  BottomNav:      React.ReactNode;
+  mood?:          string;
+  selectedSekret?: string;
+  streakDays?:    number;
 }
 
+function glowFor(mood?: string) {
+  const m = (mood || '').toLowerCase();
+  if (m.includes('happy'))  return '#fbbf24';
+  if (m.includes('sad') || m.includes('anx')) return '#7dd3fc';
+  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
+  if (m.includes('tired'))  return '#6d28d9';
+  if (m.includes('calm'))   return '#c4b5fd';
+  return '#4DA3FF';
+}
+
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return 'Good morning';
+  if (h >= 12 && h < 17) return 'Good afternoon';
+  if (h >= 17 && h < 21) return 'Good evening';
+  return 'Good night';
+}
+
+const QUICK_ACCESS = [
+  { emoji: '⚡', label: 'puberty\nguide',         target: null },
+  { emoji: '💪', label: 'body\nchanges',           target: null },
+  { emoji: '⭐', label: 'confidence\nboost',       target: null },
+  { emoji: '🧼', label: 'hygiene +\nself-care',   target: null },
+  { emoji: '🧠', label: 'mind\ncheck-in',          target: 'sekret' },
+  { emoji: '📔', label: 'private\njournal',        target: 'pages' },
+];
+
+const MOOD_CHECK = [
+  { emoji: '😊', label: 'happy' },
+  { emoji: '😌', label: 'calm' },
+  { emoji: '😤', label: 'stressed' },
+  { emoji: '😠', label: 'angry' },
+  { emoji: '😴', label: 'tired' },
+  { emoji: '😶', label: 'okay' },
+];
+
+const BIP_FLOW = [
+  { emoji: '⚡',  step: 'notice',   sub: "what's up" },
+  { emoji: '📔',  step: 'name it',  sub: 'be honest' },
+  { emoji: '🔄',  step: 'reset',    sub: 'refocus' },
+  { emoji: '🌊',  step: 'release',  sub: 'clear it out' },
+  { emoji: '🏆',  step: 'grow',     sub: 'level up' },
+];
+
+const TIPS = [
+  "Small habits. Big future. Stay focused, stay you.",
+  "Consistency beats motivation every time.",
+  "Rest is part of the plan, not a setback.",
+  "Who you're becoming matters more than what you look like.",
+];
+
 export function ManhoodScreen({
-  t, mood, selectedSekret, setScreen, BottomNav,
+  t, setScreen, BottomNav, mood, selectedSekret, streakDays = 0,
 }: ManhoodScreenProps) {
+  const glow = useMemo(() => glowFor(mood), [mood]);
+  const greeting = timeGreeting();
+  const [checkedMood, setCheckedMood] = useState<string | null>(null);
+  const [tipIdx] = useState(() => Math.floor(Math.random() * TIPS.length));
 
-  const time     = useMemo(() => timeOfDay(), []);
-  const bgSource = useMemo(() => getRoomBg('rylane', time), [time]);
-  const glow     = useMemo(() => glowFor(mood), [mood]);
-  const [open, setOpen] = useState<TopicKey | null>(null);
-
-  const fadeHero = useRef(new Animated.Value(0)).current;
-  const fadeGrid = useRef(new Animated.Value(0)).current;
-  const fadeNote = useRef(new Animated.Value(0)).current;
-  const transHero = useRef(new Animated.Value(10)).current;
-  const transGrid = useRef(new Animated.Value(10)).current;
-  const transNote = useRef(new Animated.Value(10)).current;
-  const breath = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const stagger = (op: Animated.Value, tr: Animated.Value, delay: number) =>
-      Animated.parallel([
-        Animated.timing(op, { toValue: 1, duration: 400, delay, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
-        Animated.timing(tr, { toValue: 0, duration: 400, delay, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
-      ]);
-    Animated.parallel([
-      stagger(fadeHero, transHero, 0),
-      stagger(fadeGrid, transGrid, 200),
-      stagger(fadeNote, transNote, 400),
-    ]).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(breath, { toValue: 1, duration: 2100, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-        Animated.timing(breath, { toValue: 0, duration: 2100, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
-      ])
-    ).start();
-  }, []);
-  const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
-  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
+  const cardBg = 'rgba(8,18,40,0.90)';
+  const card = [styles.card, { backgroundColor: cardBg, borderColor: glow + '55' }];
+  const cardHalf = [styles.cardHalf, { backgroundColor: cardBg, borderColor: glow + '44' }];
 
   return (
-    <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+    <View style={styles.root}>
+      <ImageBackground
+        source={IMAGES.rylaneVoiceNight}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+      />
       <LinearGradient
-        colors={['rgba(10,20,40,0.55)', 'rgba(20,30,60,0.72)', 'rgba(8,12,25,0.92)']}
+        colors={["rgba(5,10,25,0.25)", "rgba(5,10,30,0.82)", "rgba(3,6,18,0.97)"]}
+        locations={[0, 0.45, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backChip} onPress={() => setScreen('bippin2')}>
-            <Text style={styles.backChipText}>← bippin 2</Text>
-          </TouchableOpacity>
-          <View style={[styles.privateBadge, { borderColor: glow + '66' }]}>
-            <Text style={styles.privateBadgeText}>🔒 just you</Text>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── HERO ── */}
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>Bippin 2{"\n"}Manhood ⚡</Text>
+          <Text style={styles.heroSub}>growing into yourself. 💙</Text>
+        </View>
+
+        {/* ── GREETING + STREAK ── */}
+        <View style={styles.row}>
+          <View style={[cardHalf, { flex: 1.6 }]}>
+            <Text style={styles.greetLabel}>{greeting}, Rylane ⚡</Text>
+            <Text style={styles.greetBody}>
+              Keep building the best{"\n"}version of you.{"\n"}You've got this.
+            </Text>
+          </View>
+          <View style={[cardHalf, { flex: 1, alignItems: 'center' }]}>
+            <Text style={{ fontSize: 26 }}>🔥</Text>
+            <Text style={[styles.streakNum, { color: glow }]}>
+              {streakDays > 0 ? streakDays : "💙"}
+            </Text>
+            {streakDays > 0
+              ? <Text style={styles.streakSub}>day streak{"\n"}consistency builds confidence</Text>
+              : <Text style={styles.streakSub}>proud of you{"\n"}seriously.</Text>
+            }
           </View>
         </View>
 
-        <Animated.View style={{ opacity: fadeHero, transform: [{ translateY: transHero }] }}>
-          <Text style={[styles.title, { color: glow }]}>Manhood 🪱</Text>
-          <Text style={styles.subtitle}>rylane’s corner. real talk, no fluff.</Text>
+        {/* ── QUICK ACCESS GRID ── */}
+        <View style={styles.gridRow}>
+          {QUICK_ACCESS.map(item => (
+            <TouchableOpacity
+              key={item.label}
+              style={[styles.gridItem, { borderColor: glow + '44' }]}
+              onPress={() => item.target && setScreen(item.target)}
+              activeOpacity={0.75}
+            >
+              <Text style={styles.gridEmoji}>{item.emoji}</Text>
+              <Text style={styles.gridLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-          <Animated.View style={[
-            styles.companion,
-            { backgroundColor: 'rgba(10,20,40,0.78)', borderColor: glow + '88', shadowColor: glow,
-              opacity: breathOpacity, transform: [{ scale: breathScale }] },
-          ]}>
-            <Text style={styles.companionText}>⚡  rylane got you</Text>
-          </Animated.View>
-
-          <View style={styles.cloudRow}>
-            <Animated.Text style={[styles.cloudMascot, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}>☁️</Animated.Text>
-            <View style={[styles.cloudBubble, { backgroundColor: 'rgba(10,20,40,0.82)', borderColor: glow + '66' }]}>
-              <Text style={styles.cloudText}>
-                ask whatever. no judgement. stays here.
-              </Text>
+        {/* ── ENERGY + SLEEP CARDS ── */}
+        <View style={styles.row}>
+          <TouchableOpacity style={[cardHalf, { flex: 1 }]} onPress={() => setScreen('sekret')}>
+            <Text style={[styles.cardTitle, { color: glow }]}>energy check-in</Text>
+            <Text style={styles.cardBody}>How are you feeling right now?</Text>
+            <View style={[styles.energyBar, { borderColor: glow }]}>
+              <View style={[styles.energyFill, { backgroundColor: glow, width: '72%' }]} />
             </View>
-          </View>
-        </Animated.View>
+            <Text style={[styles.cardLink, { color: glow }]}>check in →</Text>
+          </TouchableOpacity>
 
-        <Animated.View style={{ opacity: fadeGrid, transform: [{ translateY: transGrid }] }}>
-          <Text style={styles.sectionTitle}>topics</Text>
-          {TOPICS.map(topic => {
-            const isOpen = open === topic.key;
-            return (
+          <View style={[cardHalf, { flex: 1 }]}>
+            <Text style={[styles.cardTitle, { color: glow }]}>sleep tracker</Text>
+            <Text style={styles.cardBody}>How'd you sleep?</Text>
+            <Text style={{ fontSize: 30, marginBottom: 4 }}>🌙</Text>
+            <Text style={[styles.cardLink, { color: glow }]}>track sleep →</Text>
+          </View>
+        </View>
+
+        {/* ── QUICK TIP ── */}
+        <View style={card}>
+          <Text style={[styles.cardTitle, { color: glow }]}>quick tip ⚡</Text>
+          <Text style={styles.cardBody}>{TIPS[tipIdx]}</Text>
+          <TouchableOpacity onPress={() => setScreen('growth')}>
+            <Text style={[styles.cardLink, { color: glow }]}>more tips →</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── MOOD CHECK-IN ── */}
+        <View style={card}>
+          <Text style={[styles.cardTitle, { color: glow }]}>mood check-in</Text>
+          <Text style={styles.cardBody}>How are you feeling right now?</Text>
+          <View style={styles.moodRow}>
+            {MOOD_CHECK.map(({ emoji, label }) => (
               <TouchableOpacity
-                key={topic.key}
+                key={label}
                 style={[
-                  styles.topicCard,
-                  { backgroundColor: isOpen ? 'rgba(10,20,40,0.92)' : 'rgba(10,20,40,0.78)',
-                    borderColor: glow + (isOpen ? 'cc' : '88'),
-                    shadowColor: glow },
+                  styles.moodBtn,
+                  checkedMood === label && { backgroundColor: glow + '33', borderColor: glow },
                 ]}
-                onPress={() => setOpen(isOpen ? null : topic.key)}
+                onPress={() => setCheckedMood(label)}
               >
-                <View style={styles.topicHeader}>
-                  <Text style={styles.topicEmoji}>{topic.emoji}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.topicTitle}>{topic.title}</Text>
-                    <Text style={styles.topicSub}>{topic.sub}</Text>
-                  </View>
-                  <Text style={styles.chev}>{isOpen ? '▾' : '▸'}</Text>
-                </View>
-
-                {isOpen ? (
-                  <View style={styles.topicBody}>
-                    <Text style={styles.lesson}>{topic.lesson}</Text>
-                    <Text style={[styles.hook, { color: glow }]}>{topic.hook}</Text>
-                    <View style={styles.microList}>
-                      {topic.micro.map((step, i) => (
-                        <View key={i} style={styles.microRow}>
-                          <Text style={[styles.microBullet, { color: glow }]}>•</Text>
-                          <Text style={styles.microText}>{step}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    {topic.route ? (
-                      <TouchableOpacity
-                        style={[styles.routeBtn, { backgroundColor: glow, shadowColor: glow }]}
-                        onPress={() => setScreen(topic.route!)}
-                      >
-                        <Text style={styles.routeBtnText}>open the tool →</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                ) : null}
+                <Text style={styles.moodEmoji}>{emoji}</Text>
+                <Text style={styles.moodLabel}>{label}</Text>
               </TouchableOpacity>
-            );
-          })}
-        </Animated.View>
-
-        <Animated.View style={{ opacity: fadeNote, transform: [{ translateY: transNote }], alignItems: 'center' }}>
-          <View style={styles.sticky}>
-            <Text style={styles.stickyText}>
-              real strength is being honest with yourself first. lock in. respect.
-            </Text>
+            ))}
           </View>
-        </Animated.View>
+        </View>
 
-        <View style={{ height: 40 }} />
+        {/* ── GOAL TRACKER ── */}
+        <TouchableOpacity style={card} onPress={() => setScreen('growth')}>
+          <View style={styles.rowBetween}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitle, { color: glow }]}>goal tracker 🎯</Text>
+              <Text style={styles.cardBody}>Track your goals and level up. every day.</Text>
+              <Text style={[styles.cardLink, { color: glow }]}>view goals →</Text>
+            </View>
+            <Text style={{ fontSize: 40, marginLeft: 10 }}>🎯</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* ── BIP FLOW ── */}
+        <View style={card}>
+          <Text style={[styles.cardTitle, { color: glow }]}>BIP FLOW ⚡</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.flowRow}>
+              {BIP_FLOW.map((item, i) => (
+                <View key={item.step} style={styles.flowItem}>
+                  <View style={[styles.flowCircle, { borderColor: glow }]}>
+                    <Text style={styles.flowEmoji}>{item.emoji}</Text>
+                  </View>
+                  <Text style={[styles.flowStep, { color: glow }]}>{item.step}</Text>
+                  <Text style={styles.flowSub}>{item.sub}</Text>
+                  {i < BIP_FLOW.length - 1 && (
+                    <Text style={[styles.flowArrow, { color: glow }]}>→</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+
+        <View style={{ height: 24 }} />
       </ScrollView>
+
       {BottomNav}
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root:         { flex: 1 },
-  container:    { padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 100 },
-  headerRow:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  backChip:     { backgroundColor: 'rgba(20,12,40,0.7)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
-  backChipText: { color: '#b6dcff', fontSize: 13, fontWeight: '600' },
-  privateBadge: { backgroundColor: 'rgba(20,12,40,0.7)', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
-  privateBadgeText: { color: '#b6dcff', fontSize: 12, fontWeight: '600' },
+  root:      { flex: 1, backgroundColor: '#030612' },
+  container: { flexGrow: 1, paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingHorizontal: 16, paddingBottom: 100 },
 
-  title:        { fontSize: 30, fontWeight: '900', textAlign: 'center', marginTop: 6, marginBottom: 6 },
-  subtitle:     { fontSize: 14, color: '#b6dcff', textAlign: 'center', marginBottom: 14, lineHeight: 20, fontStyle: 'italic' },
+  hero:      { marginBottom: 18, paddingTop: 8 },
+  heroTitle: { fontSize: 32, fontWeight: '900', color: '#fff', lineHeight: 38, marginBottom: 6 },
+  heroSub:   { fontSize: 15, color: '#a8d4ff', fontStyle: 'italic' },
 
-  companion:    { alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, marginBottom: 14, shadowOpacity: 0.45, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
-  companionText:{ color: '#F8FAFC', fontSize: 13, fontWeight: '600' },
+  row:       { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  rowBetween:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
-  cloudRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 18 },
-  cloudMascot:  { fontSize: 28, marginTop: 4 },
-  cloudBubble:  { flex: 1, padding: 12, borderRadius: 16, borderWidth: 1 },
-  cloudText:    { color: '#e2eeff', fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
+  card:      { borderRadius: 20, borderWidth: 1, padding: 16, marginBottom: 12 },
+  cardHalf:  { borderRadius: 18, borderWidth: 1, padding: 14 },
 
-  sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 12, marginTop: 4 },
+  greetLabel:{ fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },
+  greetBody: { fontSize: 13, color: '#c8deff', lineHeight: 19 },
 
-  topicCard:    { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 12, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
-  topicHeader:  { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  topicEmoji:   { fontSize: 26 },
-  topicTitle:   { color: '#fff', fontSize: 16, fontWeight: '700' },
-  topicSub:     { color: '#b6dcff', fontSize: 12, marginTop: 2, fontStyle: 'italic' },
-  chev:         { color: '#b6dcff', fontSize: 18 },
+  streakNum: { fontSize: 28, fontWeight: '900', marginTop: 4 },
+  streakSub: { fontSize: 11, color: '#b0c8e8', textAlign: 'center', lineHeight: 16, marginTop: 4 },
 
-  topicBody:    { marginTop: 14 },
-  lesson:       { color: '#dcecff', fontSize: 14, lineHeight: 21, marginBottom: 8 },
-  hook:         { fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
+  gridRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  gridItem:  { width: '30%', backgroundColor: 'rgba(10,20,50,0.85)', borderWidth: 1, borderRadius: 16, padding: 10, alignItems: 'center' },
+  gridEmoji: { fontSize: 24, marginBottom: 4 },
+  gridLabel: { fontSize: 10, color: '#c8deff', textAlign: 'center', lineHeight: 14 },
 
-  microList:    { marginBottom: 14 },
-  microRow:     { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 6 },
-  microBullet:  { fontSize: 16, lineHeight: 20 },
-  microText:    { color: '#eef6ff', fontSize: 13, lineHeight: 20, flex: 1 },
+  cardTitle: { fontSize: 14, fontWeight: '700', marginBottom: 6 },
+  cardBody:  { fontSize: 13, color: '#c8deff', lineHeight: 19, marginBottom: 8 },
+  cardLink:  { fontSize: 13, fontWeight: '700' },
 
-  routeBtn:     { paddingVertical: 12, borderRadius: 14, alignItems: 'center', shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
-  routeBtnText: { color: '#0a1428', fontSize: 14, fontWeight: '800' },
+  energyBar: { height: 10, borderRadius: 5, borderWidth: 1, backgroundColor: 'rgba(20,40,80,0.5)', marginBottom: 10, overflow: 'hidden' },
+  energyFill:{ height: '100%', borderRadius: 5 },
 
-  sticky:       { backgroundColor: '#fff8e7', borderColor: '#4DA3FF', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, transform: [{ rotate: '-2deg' }], maxWidth: 320 },
-  stickyText:   { color: '#0a2050', fontStyle: 'italic', fontSize: 13, textAlign: 'center' },
+  moodRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  moodBtn:   { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(100,150,220,0.3)', backgroundColor: 'rgba(10,25,60,0.5)' },
+  moodEmoji: { fontSize: 22, marginBottom: 3 },
+  moodLabel: { fontSize: 10, color: '#b0c8e8' },
+
+  flowRow:   { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 8 },
+  flowItem:  { alignItems: 'center', marginRight: 6, width: 60, position: 'relative' },
+  flowCircle:{ width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginBottom: 4, backgroundColor: 'rgba(10,25,60,0.6)' },
+  flowEmoji: { fontSize: 20 },
+  flowStep:  { fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  flowSub:   { fontSize: 10, color: '#b0c8e8', textAlign: 'center', lineHeight: 13 },
+  flowArrow: { position: 'absolute', right: -10, top: 14, fontSize: 16 },
 });

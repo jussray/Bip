@@ -95,7 +95,7 @@ function computeStreaks(sessions: ComfortSession[]): { current: number; longest:
 
 // ── Props ────────────────────────────────────────────────────────────────────
 interface Props {
-  t: (k: string) => string;
+  t: Record<string, any>;
   mood: string;
   selectedSekret: 'rylane' | 'raylene' | string;
   comfortSessions: ComfortSession[];
@@ -375,7 +375,7 @@ export function ComfortStreaksScreen({
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   bg:     { flex: 1 },
-  scroll: { padding: 20, paddingTop: 60 },
+  scroll: { padding: 20, paddingTop: 60, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   hero:      { alignItems: 'center', marginBottom: 22 },
   pill:      {

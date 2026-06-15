@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 
 interface BottomNavProps {
   screen: string;
@@ -8,23 +8,21 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ screen, setScreen, userSide }: BottomNavProps) {
-  const items =
-    userSide === 'parent'
-      ? [
-          ['home', '🏠', 'Home'],
-          ['bridge', '🌉', 'Bridge'],
-          ['sekret', '💜', "Se'kret"],
-          ['pages', '📖', 'Pages'],
-          ['more', '☰', 'More'],
-        ]
-      : [
-          ['home', '🏠', 'Home'],
-          ['pages', '📖', 'Pages'],
-          ['calm', '🌙', 'Calm'],
-          ['circle', '🌐', 'Circle'],
-          ['sekret', '💜', "Se'kret"],
-          ['more', '☰', 'More'],
-        ];
+  const items = userSide === 'parent'
+    ? [
+        ['home',         '🏠', 'Parent Room'],
+        ['pages',        '📔', 'Pages'],
+        ['parentBridge', '🌉', 'Bridge'],
+        ['circle',       '🌐', 'Parent Circle'],
+        ['more',         '☰',  'More'],
+      ]
+    : [
+        ['home',   '🏠', 'Room'],
+        ['pages',  '📖', 'Pages'],
+        ['calm',   '🌙', 'Calm'],
+        ['circle', '🌐', 'Circle'],
+        ['more',   '☰',  'More'],
+      ];
 
   return (
     <View style={styles.bottomNav}>
@@ -56,14 +54,15 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: '#111827',
     borderRadius: 20,
-    marginTop: 28,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 16,
     flexWrap: 'wrap',
     gap: 8,
+    ...(Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {}),
   },
   navItem: {
     alignItems: 'center',
-    minWidth: 48,
+    minWidth: 52,
   },
   navIcon: {
     fontSize: 20,
