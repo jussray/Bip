@@ -34,17 +34,18 @@ create table if not exists public.mood_history (
 
 -- ── journal_entries ────────────────────────────────────────────────────────
 create table if not exists public.journal_entries (
-  user_id     uuid        not null references auth.users(id) on delete cascade,
-  id          bigint      not null,
-  text        text        not null,
-  mood        text        not null,
-  date        text        not null,
-  time        text        not null,
-  created_at  timestamptz not null default bip_now(),
+  user_id      uuid        not null references auth.users(id) on delete cascade,
+  id           bigint      not null,
+  text         text        not null,
+  mood         text        not null,
+  date         text        not null,
+  time         text        not null,
+  sekret_reply text,
+  created_at   timestamptz not null default bip_now(),
   primary key (user_id, id)
 );
 
--- ── circle_posts (still scoped per-user; Circle is the user's own private wall) --
+-- ── circle_posts (teen-side; still scoped per-user — Circle is a private wall) ─
 create table if not exists public.circle_posts (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
@@ -52,6 +53,22 @@ create table if not exists public.circle_posts (
   date        text        not null,
   time        text        not null,
   reactions   jsonb       not null default '{"felt":0,"comfort":0,"proud":0,"stay":0}'::jsonb,
+  circle_tag  text,
+  post_mood   text,
+  media_kind  text,
+  created_at  timestamptz not null default bip_now(),
+  primary key (user_id, id)
+);
+
+-- ── parent_circle_posts (parent-side Circle wall) ─────────────────────────
+create table if not exists public.parent_circle_posts (
+  user_id     uuid        not null references auth.users(id) on delete cascade,
+  id          bigint      not null,
+  text        text        not null,
+  date        text        not null,
+  time        text        not null,
+  reactions   jsonb       not null default '{"beenThere":0,"solidarity":0,"reminder":0,"needed":0,"strength":0}'::jsonb,
+  circle_tag  text,
   created_at  timestamptz not null default bip_now(),
   primary key (user_id, id)
 );
@@ -155,7 +172,7 @@ declare t text;
 begin
   for t in
     select unnest(array[
-      'mood_history','journal_entries','circle_posts','voice_notes',
+      'mood_history','journal_entries','circle_posts','parent_circle_posts','voice_notes',
       'comfort_sessions','crew_members','crew_check_ins',
       'bridge_shares','period_days','room_memory','bip_points'
     ])
@@ -181,7 +198,8 @@ end $$;
 -- ── Helpful indexes ────────────────────────────────────────────────────────
 create index if not exists idx_mood_user_date           on public.mood_history     (user_id, date);
 create index if not exists idx_journal_user_date        on public.journal_entries  (user_id, date);
-create index if not exists idx_circle_user_date         on public.circle_posts     (user_id, date);
+create index if not exists idx_circle_user_date         on public.circle_posts        (user_id, date);
+create index if not exists idx_parent_circle_user_date  on public.parent_circle_posts (user_id, date);
 create index if not exists idx_voice_user_date          on public.voice_notes      (user_id, date);
 create index if not exists idx_comfort_user_date        on public.comfort_sessions (user_id, date);
 create index if not exists idx_checkins_user_member     on public.crew_check_ins   (user_id, member_id);
