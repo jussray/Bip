@@ -67,7 +67,7 @@ function copyFor(profileKey: string, profileName: string): CharacterCopy {
     case 'rylane':
       return {
         heroTitle:   'Drop a Bip 🤝',
-        heroSub:     'Say it how it happened. I'll keep it real.',
+        heroSub:     "Say it how it happened. I'll keep it real.",
         stickyLine:  'say the part you keep leaving out.',
         sendLabel:   'Send 🤝',
         placeholder: `Talk to ${profileName}… no cap`,
@@ -76,7 +76,7 @@ function copyFor(profileKey: string, profileName: string): CharacterCopy {
     case 'cloud':
       return {
         heroTitle:   'Drop a Bip ☁️',
-        heroSub:     'No rush. Let it take shape when it's ready.',
+        heroSub:     "No rush. Let it take shape when it's ready.",
         stickyLine:  'even fragments count.',
         sendLabel:   'Send ☁️',
         placeholder: `Talk to ${profileName}… let it come slowly`,
@@ -85,8 +85,8 @@ function copyFor(profileKey: string, profileName: string): CharacterCopy {
     case 'night':
       return {
         heroTitle:   'Drop a Bip 🌙',
-        heroSub:     'You don\'t have to explain it. Just show up.',
-        stickyLine:  'you don\'t have to be okay right this second.',
+        heroSub:     "You don't have to explain it. Just show up.",
+        stickyLine:  "you don't have to be okay right this second.",
         sendLabel:   'Send 🌙',
         placeholder: `Talk to ${profileName}… the night hears you`,
         greeting:    'rough night?',
@@ -95,7 +95,7 @@ function copyFor(profileKey: string, profileName: string): CharacterCopy {
     default:
       return {
         heroTitle:   'Drop a Bip 💜',
-        heroSub:     'Say it how you'd text it. Raylene can take it.',
+        heroSub:     "Say it how you'd text it. Raylene can take it.",
         stickyLine:  'no polished version. what actually happened?',
         sendLabel:   'Send 💜',
         placeholder: `Talk to ${profileName}…`,
