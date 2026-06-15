@@ -270,18 +270,19 @@ function AppContent() {
     })();
   }, []);
 
-  // ── userSide change → snap to the correct home screen ─────────────────────
+  // ── userSide change → show splash then snap to the correct home screen ────
   // Route 'home' is shared by both sides:
   //   userSide === 'parent' → renders ParentRoomScreen  (Parent Room)
   //   userSide === 'teen'   → renders RoomScreen        (teen Room)
-  // Switching sides always lands on 'home' so parents open Parent Room by
-  // default and teens open their normal Room — never the wrong side's screen.
+  // On switch, briefly show SplashScreen (which selects parent-space-splash.png
+  // when userSide === 'parent') before landing on the new side's home.
   // Guard: skip on initial mount (isLoading still true) so the splash sequence
   // is not interrupted by a stored userSide value being hydrated.
   useEffect(() => {
     if (isLoading) return;
-    // 'home' renders ParentRoomScreen for parent, RoomScreen for teen.
-    setScreen('home');
+    setScreen('splash');
+    const timer = setTimeout(() => setScreen('home'), 1200);
+    return () => clearTimeout(timer);
   }, [userSide]);
 
   // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
