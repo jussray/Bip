@@ -66,8 +66,8 @@ export function MoreScreen({
             onPress={() => {
               if (userSide === 'parent') {
                 setUserSide('teen');
+                setScreen('splash');
               } else {
-                // Gate: switch side then show parent splash so entry requires explicit button press.
                 setUserSide('parent');
                 setScreen('splash');
               }

@@ -2,10 +2,13 @@
 // Se'kret Bip — Opening Screen
 //
 // Teen splash (splash-bg.png): Raylene + Rylane back-to-back, cloud with headphones,
-//   neon title, "Press Se'kret Bip to enter your safe space", CTA + shortcuts baked in.
-// Parent splash (parent-space-splash.png): Parent Space artwork, single CTA button.
-//   Shortcuts in the artwork are decorative — only the CTA button is a hit target.
-//   This gates the parent/guardian path so entry requires the explicit button press.
+//   neon title, "Press Se'kret Bip to enter your safe space".
+// Parent splash (parent-space-splash.png): Parent Space artwork.
+//
+// Both splashes: ONLY the CTA button is a hit target.
+// No shortcut hit targets on either side — the CTA is the gate.
+// Shortcuts visible in the artwork are decorative; the app routes to 'home'
+// which renders RoomScreen (teen) or ParentRoomScreen (parent) based on userSide.
 //
 // Hit targets are positioned as fractions of the rendered image so they scale
 // with any screen size.
@@ -26,28 +29,15 @@ const { width, height } = Dimensions.get("window");
 const teenSplashBg   = require("../assets/images/splash-bg.png");
 const parentSplashBg = require("../assets/images/parent-space-splash.png");
 
-// ── Teen splash hit targets (fractions of 1024×1536 source artwork) ──────────
-// CTA button: roughly 63%–71% vertically, 11%–89% horizontally.
+// ── Teen CTA hit target (fractions of 1024×1536 source artwork) ──────────────
+// "Se'kret Bip" button: roughly 63%–71% vertically, 11%–89% horizontally.
 const T_CTA_TOP    = 0.63;
 const T_CTA_BOTTOM = 0.71;
 const T_CTA_LEFT   = 0.11;
 const T_CTA_RIGHT  = 0.89;
 
-// Shortcut row: roughly 75%–85% down.
-const T_SC_TOP    = 0.75;
-const T_SC_BOTTOM = 0.85;
-
-const TEEN_SHORTCUTS = [
-  { label: "Write It Out", target: "pages"    },
-  { label: "Voice Bip",   target: "voiceBip" },
-  { label: "Calm Me",     target: "calm"      },
-  { label: "Circle",      target: "circle"    },
-] as const;
-
-// ── Parent splash hit targets (fractions of parent-space-splash.png) ──────────
-// "Se'kret Bip ♡" CTA button: roughly 72%–82% vertically, 5%–95% horizontally.
-// Shortcut row visible in artwork (~88%–97%) is intentionally NOT tappable —
-// parent/guardian entry must go through the CTA button only.
+// ── Parent CTA hit target (fractions of parent-space-splash.png) ─────────────
+// "Se'kret Bip ♡" button: roughly 72%–82% vertically, 5%–95% horizontally.
 const P_CTA_TOP    = 0.72;
 const P_CTA_BOTTOM = 0.82;
 const P_CTA_LEFT   = 0.05;
@@ -84,7 +74,7 @@ export function SplashScreen({ setScreen, userSide }: SplashScreenProps) {
         />
       </View>
 
-      {/* CTA button — the only way to enter */}
+      {/* CTA button — sole entry point for both sides */}
       <TouchableOpacity
         style={[styles.hitTarget, isParent ? {
           top:    height * P_CTA_TOP,
@@ -103,24 +93,6 @@ export function SplashScreen({ setScreen, userSide }: SplashScreenProps) {
         accessibilityLabel={isParent ? "Se'kret Bip — enter your parent space" : "Se'kret Bip — enter your safe space"}
         accessibilityHint="Opens the app"
       />
-
-      {/* Teen shortcuts only — parent splash shortcuts are decorative, not tappable */}
-      {!isParent && (
-        <View style={[styles.shortcutRow, {
-          top:    height * T_SC_TOP,
-          height: height * (T_SC_BOTTOM - T_SC_TOP),
-        }]}>
-          {TEEN_SHORTCUTS.map(({ label, target }) => (
-            <TouchableOpacity
-              key={target}
-              style={styles.shortcutHit}
-              onPress={() => setScreen(target)}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-            />
-          ))}
-        </View>
-      )}
     </Animated.View>
   );
 }
@@ -136,15 +108,5 @@ const styles = StyleSheet.create({
   },
   hitTarget: {
     position: "absolute",
-  },
-  shortcutRow: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-  },
-  shortcutHit: {
-    flex: 1,
-    height: "100%",
   },
 });
