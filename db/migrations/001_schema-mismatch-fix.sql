@@ -17,17 +17,23 @@ alter table public.circle_posts
   add column if not exists media_kind text;
 
 -- 3. parent_circle_posts: create table (parent-side Circle wall)
+-- NOTE: reactions default was applied with teen keys (felt/comfort/proud/stay).
+-- Run the ALTER below (step 3b) to correct it to parent keys.
 create table if not exists public.parent_circle_posts (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
   text        text        not null,
   date        text        not null,
   time        text        not null,
-  reactions   jsonb       not null default '{"beenThere":0,"solidarity":0,"reminder":0,"needed":0,"strength":0}'::jsonb,
+  reactions   jsonb       not null default '{"felt":0,"comfort":0,"proud":0,"stay":0}'::jsonb,
   circle_tag  text,
-  created_at  timestamptz not null default bip_now(),
+  created_at  timestamptz not null default now(),
   primary key (user_id, id)
 );
+
+-- 3b. Fix reactions column default to use parent keys (safe to run any time)
+alter table public.parent_circle_posts
+  alter column reactions set default '{"beenThere":0,"solidarity":0,"reminder":0,"needed":0,"strength":0}'::jsonb;
 
 -- 4. RLS on parent_circle_posts (owner-only, matches every other table)
 alter table public.parent_circle_posts enable row level security;

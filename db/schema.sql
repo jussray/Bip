@@ -61,15 +61,21 @@ create table if not exists public.circle_posts (
 );
 
 -- ── parent_circle_posts (parent-side Circle wall) ─────────────────────────
+-- NOTE: reactions column default was created with teen keys (felt/comfort/proud/stay)
+-- instead of parent keys (beenThere/solidarity/reminder/needed/strength).
+-- The app always provides reactions explicitly on upsert so runtime is unaffected,
+-- but the column default should be corrected with:
+--   ALTER TABLE public.parent_circle_posts
+--     ALTER COLUMN reactions SET DEFAULT '{"beenThere":0,"solidarity":0,"reminder":0,"needed":0,"strength":0}'::jsonb;
 create table if not exists public.parent_circle_posts (
   user_id     uuid        not null references auth.users(id) on delete cascade,
   id          bigint      not null,
   text        text        not null,
   date        text        not null,
   time        text        not null,
-  reactions   jsonb       not null default '{"beenThere":0,"solidarity":0,"reminder":0,"needed":0,"strength":0}'::jsonb,
+  reactions   jsonb       not null default '{"felt":0,"comfort":0,"proud":0,"stay":0}'::jsonb,
   circle_tag  text,
-  created_at  timestamptz not null default bip_now(),
+  created_at  timestamptz not null default now(),
   primary key (user_id, id)
 );
 
