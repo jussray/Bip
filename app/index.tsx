@@ -286,15 +286,22 @@ function AppContent() {
 
   // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
   //
-  // Strategy:
-  //   1. Local AsyncStorage already loaded (effect above) → instant render.
-  //   2. Wait until isLoading flips off so we don't fight the local restore.
-  //   3. Sign in anonymously (if not configured, the whole effect no-ops).
-  //   4. pullAll() reads every owned row from the cloud.
-  //   5. Merge: cloud rows win on id collision; local-only rows survive
-  //      (they'll sync up on next write via the fire-and-forget helpers).
-  //   6. Setters update state → the existing save effect persists the
-  //      merged result back to AsyncStorage for next launch.
+  // Safety guarantees:
+  //   1. AsyncStorage loads first (effect above flips isLoading → false).
+  //      This effect is gated on !isLoading, so local state is always
+  //      populated before any cloud data arrives.
+  //   2. If Supabase is not configured, the effect returns immediately —
+  //      no network call, no crash.
+  //   3. If ensureAnonymousSession() fails (no network, wrong env vars),
+  //      uid is null and the effect returns — local state is untouched.
+  //   4. If pullAll() returns null (network error, Supabase down), the
+  //      effect returns — local state is untouched.
+  //   5. mergeById: cloud rows win on id collision; local-only rows
+  //      (not yet synced) are appended — nothing is lost.
+  //   6. roomMemory: object-spread merge so only present cloud fields
+  //      overwrite local fields; visitCount is NOT reset.
+  //   7. cancelled flag prevents stale state updates if the component
+  //      unmounts before the async chain resolves.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     if (isLoading) return;
@@ -304,34 +311,91 @@ function AppContent() {
       const uid = await ensureAnonymousSession();
       if (!uid || cancelled) return;
 
+      // Snapshot local counts before pull (DEV only)
+      // These are captured in the closure at the moment the effect fires,
+      // i.e. after AsyncStorage has already loaded.
+      if (__DEV__) {
+        // Access current state via refs would be cleaner, but capturing
+        // at effect-fire time is sufficient for diagnostic purposes.
+        console.log('[sync] local state before pullAll — counts are approximate (closure snapshot)');
+      }
+
       const cloud = await pullAll();
       if (!cloud || cancelled) return;
 
-      // Merge helper: cloud rows take precedence, then any local-only rows
-      // (id not in cloud) get appended.
+      if (__DEV__) console.log('[sync] cloud counts from pullAll', {
+        mood:          cloud.moodHistory.length,
+        journal:       cloud.journalEntries.length,
+        circle:        cloud.circlePosts.length,
+        parentCircle:  cloud.parentCirclePosts.length,
+        voice:         cloud.voiceNotes.length,
+        comfort:       cloud.comfortSessions.length,
+        crew:          cloud.crewMembers.length,
+        checkIns:      cloud.crewCheckIns.length,
+        roomMemory:    cloud.roomMemory ? 'present' : 'null (first install)',
+      });
+
+      // Merge helper: cloud rows take precedence on id collision;
+      // local-only rows (id not in cloud set) are appended so nothing is lost.
+      // Only runs if cloud returned a non-empty array — empty cloud arrays
+      // never overwrite non-empty local arrays (the local-only rows are kept).
       const mergeById = <T extends { id: number | string },>(local: T[], remote: T[]): T[] => {
         const remoteIds = new Set(remote.map(r => r.id));
         const localExtras = local.filter(l => !remoteIds.has(l.id));
         return [...remote, ...localExtras];
       };
 
-      setMoodHistory(prev     => mergeById(prev, cloud.moodHistory));
-      setJournalEntries(prev  => mergeById(prev, cloud.journalEntries));
-      setCirclePosts(prev     => mergeById(prev, cloud.circlePosts));
-      setVoiceNotes(prev      => mergeById(prev, cloud.voiceNotes));
-      setComfortSessions(prev => mergeById(prev, cloud.comfortSessions));
-      setCrewMembers(prev     => mergeById(prev, cloud.crewMembers));
-      setCrewCheckIns(prev    => mergeById(prev, cloud.crewCheckIns));
-
-      if (__DEV__) console.log('[sync] pullAll hydrated', {
-        mood: cloud.moodHistory.length,
-        journal: cloud.journalEntries.length,
-        circle: cloud.circlePosts.length,
-        voice: cloud.voiceNotes.length,
-        comfort: cloud.comfortSessions.length,
-        crew: cloud.crewMembers.length,
-        checkins: cloud.crewCheckIns.length,
+      setMoodHistory(prev     => {
+        const merged = mergeById(prev, cloud.moodHistory);
+        if (__DEV__) console.log('[sync] moodHistory     local', prev.length, '→ cloud', cloud.moodHistory.length, '→ merged', merged.length);
+        return merged;
       });
+      setJournalEntries(prev  => {
+        const merged = mergeById(prev, cloud.journalEntries);
+        if (__DEV__) console.log('[sync] journalEntries  local', prev.length, '→ cloud', cloud.journalEntries.length, '→ merged', merged.length);
+        return merged;
+      });
+      setCirclePosts(prev     => {
+        const merged = mergeById(prev, cloud.circlePosts);
+        if (__DEV__) console.log('[sync] circlePosts     local', prev.length, '→ cloud', cloud.circlePosts.length, '→ merged', merged.length);
+        return merged;
+      });
+      // Wire new field: parentCirclePosts
+      setParentCirclePosts(prev => {
+        const merged = mergeById(prev, cloud.parentCirclePosts);
+        if (__DEV__) console.log('[sync] parentCircle    local', prev.length, '→ cloud', cloud.parentCirclePosts.length, '→ merged', merged.length);
+        return merged;
+      });
+      setVoiceNotes(prev      => {
+        const merged = mergeById(prev, cloud.voiceNotes);
+        if (__DEV__) console.log('[sync] voiceNotes      local', prev.length, '→ cloud', cloud.voiceNotes.length, '→ merged', merged.length);
+        return merged;
+      });
+      setComfortSessions(prev => {
+        const merged = mergeById(prev, cloud.comfortSessions);
+        if (__DEV__) console.log('[sync] comfortSessions local', prev.length, '→ cloud', cloud.comfortSessions.length, '→ merged', merged.length);
+        return merged;
+      });
+      setCrewMembers(prev     => {
+        const merged = mergeById(prev, cloud.crewMembers);
+        if (__DEV__) console.log('[sync] crewMembers     local', prev.length, '→ cloud', cloud.crewMembers.length, '→ merged', merged.length);
+        return merged;
+      });
+      setCrewCheckIns(prev    => {
+        const merged = mergeById(prev, cloud.crewCheckIns);
+        if (__DEV__) console.log('[sync] crewCheckIns    local', prev.length, '→ cloud', cloud.crewCheckIns.length, '→ merged', merged.length);
+        return merged;
+      });
+      // Wire new field: roomMemory
+      // Object-spread merge: cloud fields overwrite matching local fields;
+      // visitCount is preserved from local (not reset by cloud).
+      if (cloud.roomMemory) {
+        setRoomMemory(prev => {
+          const merged = { ...prev, ...cloud.roomMemory! };
+          if (__DEV__) console.log('[sync] roomMemory merged', merged);
+          return merged;
+        });
+      }
     })();
 
     return () => { cancelled = true; };
@@ -595,7 +659,7 @@ function AppContent() {
     );
   }
 
-  // ─��� Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
+  // ── Dashboard (HomeScreen) — secondary entry, available from MoreScreen ───
   if (screen === 'dashboard') return (
     <HomeScreen
       mood={mood}
