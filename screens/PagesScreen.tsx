@@ -35,6 +35,7 @@ interface TabDefinition {
 }
 
 export interface SavePageInput {
+  id?: number;
   text: string;
   source: PagesTab;
   moodTag?: string;
@@ -325,8 +326,14 @@ function PagesWorkspace({
 
     const entryMoodTag = selectedTag || mood || '';
 
-    // 1. Persist the entry immediately (local-first, unchanged behavior).
+    // 1. Generate a stable id shared with App.tsx — must happen BEFORE onSave
+    //    so saveJournalEntry receives the same id that patchJournalEntry will
+    //    search for when the Worker reply arrives.
+    const entryId = Date.now();
+
+    // 2. Persist the entry immediately (local-first, unchanged behavior).
     onSave({
+      id: entryId,
       text: text.trim(), source: activeTab, moodTag: entryMoodTag,
       entryMode: 'typed', locked, imageUri,
     });
@@ -338,28 +345,23 @@ function PagesWorkspace({
     setLocked(false);
     setImageUri(undefined);
 
-    // 2. Only Se'kret tabs get an AI reply. Me, Oracle, parentSekret, bridge: skip.
+    // 3. Only Se'kret tabs get an AI reply. Me, Oracle, parentSekret, bridge: skip.
     if (!tabToAvatarKey(activeTab)) return;
 
-    // Derive the entry id the parent will have assigned.
-    // Convention (matches App.tsx saveJournalEntry): id = Date.now() at save time.
-    // We snapshot it here so the async reply patches the right entry.
-    const entryId = Date.now();
-
-    // 3. Show typing indicator immediately.
+    // 4. Show typing indicator immediately.
     setReplyState(prev => ({ ...prev, [entryId]: { typing: true } }));
 
-    // 4. Call Worker (fetchPagesReply never throws).
+    // 5. Call Worker (fetchPagesReply never throws).
     const reply = await fetchPagesReply({
       tab: activeTab,
       text: savedText,
       mood: entryMoodTag,
     });
 
-    // 5. Store reply locally for immediate display.
+    // 6. Store reply locally for immediate display.
     setReplyState(prev => ({ ...prev, [entryId]: { typing: false, reply } }));
 
-    // 6. Persist reply to the entry via parent callback so it survives
+    // 7. Persist reply to the entry via parent callback so it survives
     //    navigation and app restarts via AsyncStorage.
     onSekretReplyRef.current?.(entryId, reply);
   };
