@@ -507,11 +507,13 @@ function AppContent() {
   // ── Journal ───────────────────────────────────────────────────────────────
   // override lets PagesScreen character tabs supply their own text + source tag.
   // Calling with no args reads root journalText (Me tab default).
-  const saveJournalEntry = (override?: SavePageInput) => {
+  // override.id: when PagesWorkspace pre-mints an id (for sekretReply correlation),
+  // honour it so patchJournalEntry can find the entry by the same id.
+  const saveJournalEntry = (override?: SavePageInput & { id?: number }) => {
     const textToSave = override?.text ?? journalText;
     if (!textToSave.trim() && !override?.imageUri) return;
     const entry: JournalEntry = {
-      id: Date.now(), text: textToSave, mood,
+      id: override?.id ?? Date.now(), text: textToSave, mood,
       source: override?.source ?? 'me',
       activeTab: override?.source ?? 'me',
       moodTag: override?.moodTag || mood,
@@ -525,6 +527,23 @@ function AppContent() {
     if (!override) setJournalText('');
     syncJournal(entry);
     trackActivity('journal');
+  };
+
+  /**
+   * patchJournalEntry — called by PagesScreen once the avatar Worker reply
+   * arrives. Finds the matching entry by id, attaches sekretReply, and
+   * re-persists via syncJournal so the reply survives navigation and restarts.
+   */
+  const patchJournalEntry = (entryId: number, reply: string) => {
+    if (!reply) return;
+    setJournalEntries(prev => {
+      const next = prev.map(entry =>
+        entry.id === entryId ? { ...entry, sekretReply: reply } : entry
+      );
+      const patched = next.find(entry => entry.id === entryId);
+      if (patched) syncJournal(patched);
+      return next;
+    });
   };
 
   const saveParentPageEntry = (input: SavePageInput) => {
@@ -739,6 +758,7 @@ function AppContent() {
       saveJournalEntry={saveJournalEntry}
       oracleProfile={oracleProfile}
       onCompleteOracleSession={completeTeenOracleSession}
+      onSekretReply={patchJournalEntry}
       mood={mood}
       t={t}
       setScreen={setScreen}
