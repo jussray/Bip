@@ -51,7 +51,7 @@ export function getSupabase(): SupabaseClient | null {
 
 // ── Table name constants ────────────────────────────────────────────────────
 // Centralized so Phase 2 wiring touches one file when schema names change.
-// These match the planned Supabase schema — do not rename without migrating.
+// These match the Supabase schema defined in supabase/migrations/sekret_bip_full_bootstrap.sql
 export const TABLES = {
   // Core tables
   journalEntries:     'journal_entries',
@@ -65,23 +65,36 @@ export const TABLES = {
   crewCheckIns:       'crew_check_ins',
   bipPoints:          'bip_points',
 
-  // Legacy circle (used by app/index.tsx pullAll + syncCirclePost)
+  // Legacy circle (used by pullAll drain path only — do not use for new writes)
+  // Will be removed once pullAll is migrated to the V1 schema.
   circlePosts:        'circle_posts',
   parentCirclePosts:  'parent_circle_posts',
 
-  // Circle V1 — per-tab tables with RLS identity enforcement
-  // See supabase/migrations/circle_v1_tables.sql for schema + RLS policies.
-  //   circlePostsPublic  → readable by all authenticated users;
-  //                        user_id is stored but NEVER returned by the view.
-  //   circlePostsFriends → readable by mutual circle_connections only.
-  //   circlePostsCrew    → readable by crew_members of the same crew.
-  //   parentCirclePosts  → readable by parent account type only;
-  //                        identity_revealed computed via join on parent_connections.
-  //   circleReactions    → junction table; unique on (post_id, post_type, user_id, reaction).
-  circlePostsPublic:  'circle_posts_public',
-  circlePostsFriends: 'circle_posts_friends',
-  circlePostsCrew:    'circle_posts_crew',
-  circleReactions:    'circle_reactions',
+  // Circle V1 — unified schema
+  // See supabase/migrations/sekret_bip_full_bootstrap.sql for schema + RLS policies.
+  //
+  //   circles        → one row per user per circle kind (public/friends/crew/parent)
+  //   posts          → all posts; circle_id FK determines visibility via RLS
+  //   circleMembers  → friends and crew membership join table
+  //   crews          → crew metadata (max 15 members)
+  //   friendships    → mutual follow join table
+  //   parentLinks    → one-to-one teen ↔ parent connection
+  //   postReactions  → reactions junction table; unique on (post_id, user_id, reaction)
+  //   postComments   → comments scoped to posts; visibility mirrors post RLS
+  //   moods          → per-user mood entries (private)
+  //   parentMoodSummaries → aggregated mood data surfaced to Parent Bridge only
+  //   safetyAlerts   → triggered alerts routed to linked parent only
+  circles:              'circles',
+  posts:                'posts',
+  circleMembers:        'circle_members',
+  crews:                'crews',
+  friendships:          'friendships',
+  parentLinks:          'parent_links',
+  postReactions:        'post_reactions',
+  postComments:         'post_comments',
+  moods:                'moods',
+  parentMoodSummaries:  'parent_mood_summaries',
+  safetyAlerts:         'safety_alerts',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

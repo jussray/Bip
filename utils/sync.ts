@@ -111,7 +111,9 @@ export function syncJournal(entry: JournalEntry): void {
   });
 }
 
-// ── Circle (legacy — used by app/index.tsx pullAll + saveCirclePost) ────────
+// ── Circle (legacy — used by pullAll drain path only) ───────────────────────
+// Do not use syncCirclePost or syncParentCirclePost for new writes.
+// These exist only to keep pullAll working until the V1 migration is complete.
 export function syncCirclePost(post: CirclePost): void {
   void safeUpsert(TABLES.circlePosts, {
     id:         post.id,
@@ -125,7 +127,6 @@ export function syncCirclePost(post: CirclePost): void {
   });
 }
 
-// ── Circle (Parent — legacy) ───────────────────────────────────────────────
 export function syncParentCirclePost(post: ParentCirclePost): void {
   void safeUpsert(TABLES.parentCirclePosts, {
     id:         post.id,
@@ -137,19 +138,44 @@ export function syncParentCirclePost(post: ParentCirclePost): void {
   });
 }
 
+// ── Circle V1: resolve circle_id for a tab ──────────────────────────────────
+//
+// Fetches the calling user's own circle row for the given kind.
+// Returns null if not found (circle not yet created for this user).
+// Callers: writeCirclePost, loadCircleFeed (friends/crew need circle_id for
+// the feed owner — public reads all circles of kind='public').
+async function resolveOwnCircleId(
+  uid: string,
+  kind: 'public' | 'friends' | 'crew',
+): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb
+      .from(TABLES.circles)
+      .select('id')
+      .eq('owner_user_id', uid)
+      .eq('kind', kind)
+      .maybeSingle();
+    if (error) throw error;
+    return data?.id ?? null;
+  } catch (e) {
+    if (__DEV__) console.warn(`[sync] resolveOwnCircleId(${kind}) failed`, e);
+    return null;
+  }
+}
+
 // ── Circle V1: Live feed reads ───────────────────────────────────────────────
 //
-// loadCircleFeed() pulls posts for the active tab from the correct Supabase
-// table. Identity rules are enforced server-side via RLS policies — this
-// function only maps DB rows to the typed shapes used by CircleScreen.
+// Reads posts from the unified `posts` table, filtered by circle kind via a
+// join on `circles`. RLS enforces visibility server-side — this function only
+// maps DB rows to the typed shapes used by CircleScreen.
 //
-// Tab → table mapping:
-//   public  → circle_posts_public   (RLS: readable by all authenticated users;
-//                                    user_id stripped by the view — never returned)
-//   friends → circle_posts_friends  (RLS: readable by mutual circle_connections only)
-//   crew    → circle_posts_crew     (RLS: readable by crew_members of the same crew)
-//   parent  → parent_circle_posts   (RLS: readable by parent account type only;
-//                                    identity_revealed computed via join on parent_connections)
+// Tab → circle kind:
+//   public  → circles.kind = 'public'   (all users; user_id omitted from select)
+//   friends → circles.kind = 'friends'  (mutual friendships; nickname via profile join)
+//   crew    → circles.kind = 'crew'     (crew members only; nickname via profile join)
+//   parent  → circles.kind = 'parent'   (parent bridge; summary only, no raw posts)
 //
 // Returns null when Supabase is not configured — caller falls back to mock data.
 export async function loadCircleFeed(
@@ -158,55 +184,97 @@ export async function loadCircleFeed(
 ): Promise<PublicCirclePost[] | FriendsCirclePost[] | CrewCirclePost[] | CircleParentPost[] | null> {
   const sb = getSupabase();
   if (!sb) return null;
+
+  // Parent tab does not surface raw posts — caller renders mood summary instead.
+  if (tab === 'parent') return [];
+
   try {
     if (tab === 'public') {
+      // Select posts in any public circle. user_id intentionally excluded.
       const { data, error } = await sb
-        .from(TABLES.circlePostsPublic)
-        .select('id, text, post_mood, media_kind, reactions, created_at')
+        .from(TABLES.posts)
+        .select(`
+          id,
+          body,
+          mood_tag,
+          is_identity_revealed,
+          created_at,
+          circles!inner ( kind )
+        `)
+        .eq('circles.kind', 'public')
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []) as PublicCirclePost[];
+      return (data ?? []).map(r => ({
+        id:           r.id,
+        text:         r.body,
+        post_mood:    r.mood_tag    ?? null,
+        media_kind:   null,
+        reactions:    {},
+        created_at:   r.created_at,
+      })) as PublicCirclePost[];
     }
 
     if (tab === 'friends') {
       const { data, error } = await sb
-        .from(TABLES.circlePostsFriends)
-        .select('id, user_id, nickname, avatar_emoji, text, post_mood, media_kind, reactions, created_at')
+        .from(TABLES.posts)
+        .select(`
+          id,
+          author_user_id,
+          body,
+          mood_tag,
+          created_at,
+          circles!inner ( kind )
+        `)
+        .eq('circles.kind', 'friends')
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []) as FriendsCirclePost[];
+      return (data ?? []).map(r => ({
+        id:           r.id,
+        user_id:      r.author_user_id,
+        nickname:     '',    // populated from profile join in screen layer
+        avatar_emoji: '',
+        text:         r.body,
+        post_mood:    r.mood_tag ?? null,
+        media_kind:   null,
+        reactions:    {},
+        created_at:   r.created_at,
+      })) as FriendsCirclePost[];
     }
 
     if (tab === 'crew') {
       const { data, error } = await sb
-        .from(TABLES.circlePostsCrew)
-        .select('id, user_id, nickname, avatar_emoji, text, post_mood, media_kind, reactions, created_at')
+        .from(TABLES.posts)
+        .select(`
+          id,
+          author_user_id,
+          body,
+          mood_tag,
+          created_at,
+          circles!inner ( kind )
+        `)
+        .eq('circles.kind', 'crew')
+        .eq('is_deleted', false)
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []) as CrewCirclePost[];
+      return (data ?? []).map(r => ({
+        id:           r.id,
+        user_id:      r.author_user_id,
+        nickname:     '',
+        avatar_emoji: '',
+        text:         r.body,
+        post_mood:    r.mood_tag ?? null,
+        media_kind:   null,
+        reactions:    {},
+        created_at:   r.created_at,
+      })) as CrewCirclePost[];
     }
 
-    // parent tab
-    const { data, error } = await sb
-      .from(TABLES.parentCirclePosts)
-      .select('id, user_id, text, reactions, circle_tag, created_at, identity_revealed, nickname, avatar_emoji')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return (data ?? []).map(r => ({
-      id:                r.id,
-      user_id:           r.user_id,
-      text:              r.text,
-      reactions:         r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
-      circle_tag:        r.circle_tag  ?? null,
-      created_at:        r.created_at,
-      identity_revealed: r.identity_revealed ?? false,
-      nickname:          r.nickname    ?? undefined,
-      avatar_emoji:      r.avatar_emoji ?? undefined,
-    })) as CircleParentPost[];
+    return null;
   } catch (e) {
     if (__DEV__) console.warn(`[sync] loadCircleFeed(${tab}) failed`, e);
     return null;
@@ -215,16 +283,13 @@ export async function loadCircleFeed(
 
 // ── Circle V1: Reaction sync ─────────────────────────────────────────────────
 //
-// Upserts a reaction to the circle_reactions junction table.
-// UNIQUE constraint on (post_id, post_type, user_id, reaction) prevents
-// double-tapping. ignoreDuplicates:true means a second tap is a no-op on DB.
+// Upserts a reaction to post_reactions.
+// UNIQUE constraint on (post_id, user_id, reaction) prevents double-tapping.
+// ignoreDuplicates:true means a second tap is a no-op on DB.
 // The optimistic update in CircleScreen is the user-visible change — this
 // call keeps the cloud count eventually consistent.
-//
-// MIGRATION REQUIRED: see supabase/migrations/circle_v1_tables.sql
 export async function syncCircleReaction(
-  postId: number,
-  postType: CircleTab,
+  postId: string,
   reaction: string,
 ): Promise<void> {
   const sb = getSupabase();
@@ -233,10 +298,10 @@ export async function syncCircleReaction(
   if (!uid) return;
   try {
     await sb
-      .from(TABLES.circleReactions)
+      .from(TABLES.postReactions)
       .upsert(
-        { post_id: postId, post_type: postType, user_id: uid, reaction },
-        { onConflict: 'post_id,post_type,user_id,reaction', ignoreDuplicates: true },
+        { post_id: postId, user_id: uid, reaction },
+        { onConflict: 'post_id,user_id,reaction', ignoreDuplicates: true },
       );
   } catch (e) {
     if (__DEV__) console.warn('[sync] syncCircleReaction failed', e);
@@ -245,35 +310,44 @@ export async function syncCircleReaction(
 
 // ── Circle V1: Post write ────────────────────────────────────────────────────
 //
-// Routes a new post to the correct per-tab table.
-// Identity fields (user_id) are attached server-side via RLS auth.uid().
-// For the Public tab, user_id is stored in the table but the RLS view
-// that clients read from never returns it — enforcing anonymity at the DB layer.
+// Routes a new post to the unified `posts` table using the circle_id resolved
+// from the calling user's own circle for the selected tab.
+// Identity fields (author_user_id) are set explicitly from auth.uid().
+// For the Public tab, is_identity_revealed defaults to false (anonymous).
 export async function writeCirclePost(
   tab: CircleTab,
   text: string,
-  opts: { postMood?: string; circleTag?: string; mediaKind?: string } = {},
+  opts: { postMood?: string; circleTag?: string; mediaKind?: string; revealIdentity?: boolean } = {},
 ): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
   const uid = await currentUserId();
   if (!uid) return;
-  const base = {
-    user_id:    uid,
-    text,
-    post_mood:  opts.postMood  ?? null,
-    circle_tag: opts.circleTag ?? null,
-    media_kind: opts.mediaKind ?? null,
-    reactions:  {},
-    created_at: new Date().toISOString(),
-  };
+
+  // Parent tab is not a post destination — it is a read-only bridge.
+  if (tab === 'parent') {
+    if (__DEV__) console.warn('[sync] writeCirclePost: parent tab is not a post destination');
+    return;
+  }
+
+  const kind = tab as 'public' | 'friends' | 'crew';
+  const circleId = await resolveOwnCircleId(uid, kind);
+  if (!circleId) {
+    if (__DEV__) console.warn(`[sync] writeCirclePost: no circle found for kind=${kind}`);
+    return;
+  }
+
   try {
-    const table =
-      tab === 'public'  ? TABLES.circlePostsPublic  :
-      tab === 'friends' ? TABLES.circlePostsFriends :
-      tab === 'crew'    ? TABLES.circlePostsCrew    :
-      TABLES.parentCirclePosts;
-    await sb.from(table).insert(base);
+    await sb.from(TABLES.posts).insert({
+      author_user_id:       uid,
+      circle_id:            circleId,
+      body:                 text,
+      mood_tag:             opts.postMood  ?? null,
+      content_warning:      opts.circleTag ?? null,
+      is_identity_revealed: kind === 'public' ? (opts.revealIdentity ?? false) : true,
+      is_deleted:           false,
+      created_at:           new Date().toISOString(),
+    });
   } catch (e) {
     if (__DEV__) console.warn(`[sync] writeCirclePost(${tab}) failed`, e);
   }
@@ -350,16 +424,9 @@ export async function snapshotPoints(total: number): Promise<void> {
 // Reads cloud rows for the signed-in user. Useful when migrating a fresh
 // install. Returns null if offline — caller falls back to local state.
 //
-// Mapping notes:
-//   journal_entries     : sekret_reply   → sekretReply
-//   crew_members        : invite_code    → inviteCode, added_at → addedAt
-//   crew_check_ins      : member_id      → memberId
-//   parent_circle_posts : circle_tag     → circleTag
-//                         reactions passes through as-is (JSONB keys match type)
-//   room_memory         : last_visit     → lastVisit
-//                         last_hotspot   → lastHotspot
-//                         last_summon    → lastSummon
-//                         visit_count    → visitCount
+// NOTE: circlePosts and parentCirclePosts still read the legacy flat tables
+// as a drain path. Once pullAll is migrated to V1 (posts + circles), remove
+// those keys and switch to loadCircleFeed.
 export async function pullAll(): Promise<{
   moodHistory:       MoodEntry[];
   journalEntries:    JournalEntry[];
