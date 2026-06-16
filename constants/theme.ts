@@ -321,8 +321,8 @@ export function getRoomPhase(
 const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
   raylene: {
     day: IMAGES.bgRayleneRoomDay,
-    midday: IMAGES.bgRayleneRoomDay,
-    afternoon: IMAGES.bgRayleneRoomEvening,
+    midday: IMAGES.bgRayleneRoomMidday,
+    afternoon: IMAGES.bgRayleneRoomAfternoon,
     evening: IMAGES.bgRayleneRoomEvening,
     night: IMAGES.bgRayleneRoomNight,
     deepNight: IMAGES.bgRayleneRoomDeepNight,
@@ -330,8 +330,8 @@ const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
   },
   rylane: {
     day: IMAGES.bgRylaneRoomDay,
-    midday: IMAGES.bgRylaneRoomDay,
-    afternoon: IMAGES.bgRylaneRoomEvening,
+    midday: IMAGES.bgRylaneRoomMidday,
+    afternoon: IMAGES.bgRylaneRoomAfternoon,
     evening: IMAGES.bgRylaneRoomEvening,
     night: IMAGES.bgRylaneRoomNight,
     deepNight: IMAGES.bgRylaneRoomDeepNight,
@@ -369,19 +369,9 @@ export function getRoomScene(
   character: Character,
   phase: RoomPhase | string,
 ): ImageSourcePropType {
-  const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
-  // deepNight → "DeepNight", midday → "Midday", afternoon → "Afternoon", etc.
-  const suffix = phase === "deepNight" ? "DeepNight"
-               : phase === "midday"    ? "Midday"
-               : phase === "afternoon" ? "Afternoon"
-               : phase.charAt(0).toUpperCase() + phase.slice(1);
-  const key = `${prefix}${suffix}` as keyof typeof IMAGES;
-  // If an asset is truly missing for this phase, fall back to the nearest phase.
-  if (!IMAGES[key]) {
-    if (phase === "midday")    return getRoomScene(character, "day");
-    if (phase === "afternoon") return getRoomScene(character, "evening");
-  }
-  return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
+  const normalizedPhase = normalizeRoomPhase(phase);
+  const scenes = ROOM_SCENES[character] ?? ROOM_SCENES.raylene;
+  return scenes[normalizedPhase] ?? IMAGES.bgRayleneRoomDay;
 }
 
 export function getRoomBg(
