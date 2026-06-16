@@ -4,7 +4,7 @@
  * Cloudflare Worker. Holds OPENAI_API_KEY as a Worker secret.
  * The Expo client calls this via EXPO_PUBLIC_BACKEND_URL.
  *
- * Secrets (set with `wrangler secret put`):
+ * Secrets (set with `wrangler secret put` — NEVER in any file):
  *   OPENAI_API_KEY
  *
  * Deploy:
@@ -27,9 +27,20 @@ interface RequestBody {
   voiceInstruction?: unknown;
 }
 
+// ── Startup guard ────────────────────────────────────────────────────────────
+// If OPENAI_API_KEY is missing, the worker returns a soft fallback rather than
+// crashing or leaking an error message to the client.
+function assertSecrets(env: Env): string | null {
+  if (!env.OPENAI_API_KEY) {
+    console.error('[sekret-reply] OPENAI_API_KEY is not configured. Set it with: wrangler secret put OPENAI_API_KEY');
+    return 'missing_key';
+  }
+  return null;
+}
+
 // ── Allowed origins ─────────────────────────────────────────────────────────
 // Expo Go, EAS builds, and a local dev server all send different origins.
-// We allow all for now; restrict to your production domain before public launch.
+// Restrict to your production domain before public launch.
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -46,7 +57,6 @@ function normalizePersonality(value?: unknown): SekretPersonality {
 }
 
 // ── Per-character token budgets ───────────────────────────────────────────
-// Night and Cloud speak shorter; Raylene and Rylane can run a bit longer.
 const MAX_TOKENS: Record<SekretPersonality, number> = {
   raylene: 120,
   rylane: 100,
@@ -77,16 +87,12 @@ function isCleanReply(text: string): boolean {
   return !BLOCKED.some((re) => re.test(text));
 }
 
-// ── Build system prompt from voiceInstruction or construct a minimal one ──
+// ── Build system prompt ───────────────────────────────────────────────────
 function buildSystemPrompt(body: RequestBody): string {
-  // If the Expo client sends a full voiceInstruction (built by
-  // services/sekretVoice.ts → buildSekretVoiceInstruction), use it verbatim.
-  // This keeps the worker stateless and the voice logic in one place.
   if (typeof body.voiceInstruction === 'string' && body.voiceInstruction.trim().length > 40) {
     return body.voiceInstruction.trim();
   }
 
-  // Minimal fallback so the worker stays useful even if voiceInstruction is absent.
   const voice = normalizePersonality(body.personality);
   const moodLine = typeof body.mood === 'string' && body.mood
     ? `Emotional context: the user is feeling "${body.mood}". Let your character meet this naturally.`
@@ -120,6 +126,16 @@ export default {
     if (request.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
         status: 405,
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── Secret guard ──────────────────────────────────────────────────────
+    const secretError = assertSecrets(env);
+    if (secretError) {
+      // Return a soft fallback — never surface config errors to the client.
+      return new Response(JSON.stringify({ reply: FALLBACKS.raylene }), {
+        status: 200,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
@@ -169,7 +185,6 @@ export default {
 
       if (!openaiRes.ok) {
         console.error('OpenAI error', openaiRes.status, await openaiRes.text());
-        // Return fallback — never surface OpenAI errors to the client.
         return new Response(JSON.stringify({ reply: fallback }), {
           status: 200,
           headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
@@ -182,12 +197,9 @@ export default {
 
       const raw = data.choices?.[0]?.message?.content ?? '';
       const trimmed = raw.trim();
-
-      // Validate: must be non-empty and pass the blocked-language filter.
       reply = trimmed && isCleanReply(trimmed) ? trimmed : fallback;
     } catch (err) {
       console.error('Worker fetch error', err);
-      // Silent fallback — client never sees a 5xx.
     }
 
     return new Response(JSON.stringify({ reply }), {
