@@ -39,9 +39,9 @@ export function getSupabase(): SupabaseClient | null {
 
   _client = createClient(SUPABASE_URL!, SUPABASE_ANON!, {
     auth: {
-      storage:        AsyncStorage,
-      autoRefreshToken: true,
-      persistSession:   true,
+      storage:            AsyncStorage,
+      autoRefreshToken:   true,
+      persistSession:     true,
       detectSessionInUrl: false, // RN / Expo — no URL session detection
     },
   });
@@ -53,18 +53,35 @@ export function getSupabase(): SupabaseClient | null {
 // Centralized so Phase 2 wiring touches one file when schema names change.
 // These match the planned Supabase schema — do not rename without migrating.
 export const TABLES = {
-  journalEntries:   'journal_entries',
-  moodHistory:      'mood_history',
-  circlePosts:      'circle_posts',
-  parentCirclePosts:'parent_circle_posts',
-  voiceNotes:       'voice_notes',
-  bridgeShares:     'bridge_shares',
-  roomMemory:       'room_memory',
-  periodDays:       'period_days',
-  comfortSessions:  'comfort_sessions',
-  crewMembers:      'crew_members',
-  crewCheckIns:     'crew_check_ins',
-  bipPoints:        'bip_points',
+  // Core tables
+  journalEntries:     'journal_entries',
+  moodHistory:        'mood_history',
+  voiceNotes:         'voice_notes',
+  bridgeShares:       'bridge_shares',
+  roomMemory:         'room_memory',
+  periodDays:         'period_days',
+  comfortSessions:    'comfort_sessions',
+  crewMembers:        'crew_members',
+  crewCheckIns:       'crew_check_ins',
+  bipPoints:          'bip_points',
+
+  // Legacy circle (used by app/index.tsx pullAll + syncCirclePost)
+  circlePosts:        'circle_posts',
+  parentCirclePosts:  'parent_circle_posts',
+
+  // Circle V1 — per-tab tables with RLS identity enforcement
+  // See supabase/migrations/circle_v1_tables.sql for schema + RLS policies.
+  //   circlePostsPublic  → readable by all authenticated users;
+  //                        user_id is stored but NEVER returned by the view.
+  //   circlePostsFriends → readable by mutual circle_connections only.
+  //   circlePostsCrew    → readable by crew_members of the same crew.
+  //   parentCirclePosts  → readable by parent account type only;
+  //                        identity_revealed computed via join on parent_connections.
+  //   circleReactions    → junction table; unique on (post_id, post_type, user_id, reaction).
+  circlePostsPublic:  'circle_posts_public',
+  circlePostsFriends: 'circle_posts_friends',
+  circlePostsCrew:    'circle_posts_crew',
+  circleReactions:    'circle_reactions',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
