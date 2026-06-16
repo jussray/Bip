@@ -5,7 +5,7 @@ import { validateEnv } from '../utils/env';
 
 // Run once at startup — logs warnings for missing vars, security error if
 // OPENAI_API_KEY or service_role ever appear in the client bundle.
-voidvalidateEnv();
+void validateEnv();
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
