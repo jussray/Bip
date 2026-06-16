@@ -15,11 +15,20 @@ module.exports = function (api) {
         {
           root: ['./'],
           alias: {
-            '@constants': './constants',
-            '@screens':   './screens',
-            '@utils':     './utils',
-            '@hooks':     './hooks',
-            '@types':     './types',
+            // ── Legacy aliases (unchanged — existing imports keep working) ──
+            '@constants':  './constants',
+            '@screens':    './screens',
+            '@utils':      './utils',
+            '@hooks':      './hooks',
+            '@types':      './types',
+            '@components': './components',
+
+            // ── src/ aliases (new convention for refactored code) ──
+            '@/hooks':     './src/hooks',
+            '@/utils':     './src/utils',
+            '@/constants': './src/constants',
+            '@/types':     './src/types',
+            '@/services':  './src/services',
           },
         },
       ],
