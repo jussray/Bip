@@ -1,0 +1,1 @@
+export { SekretCompanionCard } from '../SekretCompanionCard';

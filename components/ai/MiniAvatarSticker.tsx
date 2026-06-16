@@ -1,0 +1,1 @@
+export { MiniAvatarSticker } from '../MiniAvatarSticker';
