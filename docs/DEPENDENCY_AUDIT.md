@@ -1,40 +1,50 @@
-# Dependency Audit — policy and enforcement
+# Dependency Audit
 
-This is the live policy doc. For the historical branch-by-branch audit that
-established these pins, see [`DEPENDENCY_AUDIT.md`](../DEPENDENCY_AUDIT.md)
-at the repo root.
+This document tracks the version pins for all major dependencies and explains how they are enforced.
 
-## Policy
+## Core Version Pins
 
-- The repo targets **Expo SDK 51** (`expo ~51.0.28`). Any `expo` or `expo-*`
-  range that implies a different SDK major is a bug, not a feature — fix the
-  version instead of installing it.
-- `react-native`, `react-native-gesture-handler`,
-  `react-native-safe-area-context`, `react-native-screens`, and
-  `babel-preset-expo` must stay on the versions `expo install` resolves for
-  SDK 51. Don't hand-bump these independently.
-- Run `npx expo install --check` after any dependency change and resolve
-  every mismatch it reports before committing.
-- New dependencies are added with `npx expo install <package>` when an Expo
-  module exists for it, and `npm install --legacy-peer-deps <package>`
-  otherwise. The `--legacy-peer-deps` flag is required for every install in
-  this repo — see [`CODESPACES.md`](./CODESPACES.md).
+| Package | Pinned Version | Why pinned |
+|---|---|---|
+| `expo` | `~51.0.28` | Expo SDK 51 — stable release for React Native 0.74 |
+| `react-native` | `0.74.5` | Matches Expo SDK 51 compatibility matrix |
+| `react` | `18.2.0` | Required by RN 0.74 |
+| `expo-router` | `~3.5.23` | File-based routing — tied to SDK 51 |
+| `@supabase/supabase-js` | `2.74.0` | Phase 2 backend — pinned to avoid breaking API changes |
+| `typescript` | `~5.3.3` | Matched to `@types/react` 18.2.x |
+| `eslint` | `^8.57.1` | ESLint 8 — `eslint-config-expo` not yet compatible with ESLint 9 |
+| `wrangler` | `^4.100.0` | Cloudflare Workers deployment |
 
-## Enforcement
-
-These rules are backed by commands, not just review:
+## Audit Commands
 
 ```bash
-npm run type-check   # tsc --noEmit — catches type-level breakage from a bad bump
-npm run lint          # eslint . — catches import/usage breakage
-npm run verify:bundle  # expo export --platform web --clear — catches resolution/version conflicts that only show up at bundle time
-```
+# Check for outdated packages
+npm outdated
 
-All three (plus the asset checks below) run together via:
+# Check for known vulnerabilities
+npm audit
 
-```bash
+# Full pre-push verification (includes asset and type checks)
 npm run verify:prepush
 ```
 
-Run `verify:prepush` before every push. If it fails, the dependency change
-is not safe to ship — fix the pin, don't bypass the script.
+## Update Policy
+
+- **Expo SDK upgrades** require a dedicated branch and full QA pass across iOS, Android, and web.
+- **React Native upgrades** must match the Expo SDK compatibility matrix exactly. Do not upgrade RN independently.
+- **Supabase JS upgrades** require testing all Phase 2 data paths (journal, bridge, circle) before merging.
+- **ESLint upgrades** to v9+ are blocked until `eslint-config-expo` publishes a compatible version.
+- **Patch-level upgrades** (`~` range) are low-risk and may be applied in bulk after `npm audit` confirms no vulnerabilities.
+
+## Adding New Dependencies
+
+Before adding any new package:
+
+1. Confirm it supports Expo SDK 51 / React Native 0.74.
+2. Check bundle size impact — run `npm run verify:bundle` after installing.
+3. If it requires native modules, confirm it works in Expo Go and in the bare workflow.
+4. Add it to this table with its pin reason.
+
+## Automated Enforcement
+
+`npm run verify:prepush` runs `type-check` and `lint` on every push, catching dependency-related type errors and import issues before they reach main.

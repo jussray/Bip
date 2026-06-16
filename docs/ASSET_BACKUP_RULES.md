@@ -1,59 +1,86 @@
-# Asset Backup Rules — Room Art
+# Asset Backup Rules
 
-Room backgrounds (`assets/images/bg-*.png`) are the most expensive art asset
-in this repo to regenerate. Before any of them can be touched by Phase 2
-work, each one must have a verified backup.
+This document defines the backup requirements for all room background PNGs before any Phase 2 compositing work begins.
 
-## The rule
+## The Rule
 
-For every `assets/images/bg-*.png`:
+**Every file in `assets/images/bg-*.png` must have a matching backup in `assets/images/archive/` before any composite is applied.**
 
-1. A matching file must exist at `assets/images/archive/bg-*.png` (same
-   filename).
-2. The archive file must be **at least 1 MB**. A URL, a text stub, or any
-   other placeholder is not a backup.
-3. The archive file's contents must be **byte-identical** to the live file
-   (verified by SHA-256 hash, not just file size).
+The backup must:
+- Have the exact same filename as the live file
+- Be a real PNG (minimum 1 MB — not a Git LFS pointer stub)
+- Have an identical SHA-256 hash to the live file
 
-If any of these three conditions fails for any room background, the
-backup set is invalid.
+## Why This Matters
 
-## Enforcement
+Git LFS stores binary files as pointer stubs on disk until explicitly pulled. A naive `cp` of an LFS-tracked file copies the pointer (86–95 bytes), not the real image. This creates a fake backup that cannot restore the original artwork.
+
+The verification script (`scripts/verify-room-archives.js`) enforces all three rules above and blocks Phase 2 if any check fails.
+
+## How to Create Valid Backups
+
+```bash
+# Step 1 — pull real binary files from LFS storage
+git lfs pull
+
+# Step 2 — confirm one file is MB-sized (not bytes)
+ls -lh assets/images/bg-raylene-room-day.png
+# Must show ~2.7M
+
+# Step 3 — copy real files to archive
+mkdir -p assets/images/archive
+cp assets/images/bg-*.png assets/images/archive/
+
+# Step 4 — verify all 28 pass
+npm run verify:room-archives
+
+# Step 5 — commit only after verification passes
+git add assets/images/archive/
+git commit -m "archive: replace stub room backups with real originals"
+git push origin main
+```
+
+## Verification
 
 ```bash
 npm run verify:room-archives
 ```
 
-This runs [`scripts/verify-room-archives.js`](../scripts/verify-room-archives.js),
-which:
+Expected output when all 28 archives are valid:
 
-- Walks every `assets/images/bg-*.png`.
-- Confirms the matching `assets/images/archive/bg-*.png` exists.
-- Fails if the archive file is missing.
-- Fails if the archive file is under 1 MB.
-- Fails if the live and archive SHA-256 hashes don't match.
-- Prints `DO NOT START PHASE 2` and exits non-zero if anything above fails.
+```
+✅ bg-raylene-room-day.png          2876578 bytes
+✅ bg-raylene-room-midday.png       2810555 bytes
+... (all 28)
 
-This script is also part of `npm run verify:prepush`, so a broken backup
-set blocks every push, not just a manual check.
-
-## What counts as a real backup
-
-Copying the actual PNG bytes:
-
-```bash
-cp assets/images/bg-raylene-room-night.png assets/images/archive/bg-raylene-room-night.png
+✅ ALL 28 ARCHIVE FILES MATCH LIVE — Phase 2 may proceed.
 ```
 
-What does **not** count: a text file containing a GitHub raw URL, a git-lfs
-pointer, a symlink, or any file under 1 MB. `verify:room-archives` treats
-all of those as an invalid backup and will fail loudly.
+If any file is missing, undersized, or mismatched:
 
-## Why this exists
+```
+❌ bg-raylene-room-day.png — archive is 88 bytes (LFS stub)
 
-Phase 2 room work (re-wiring room backgrounds through Supabase, swapping in
-new art, restructuring `constants/theme.ts`'s image map) is destructive if
-something goes wrong — there's no undo for a PNG that gets overwritten and
-has no real backup. This script is the gate: if it fails, fix the archive
-before doing any Phase 2 room integration work. See
-[`PHASE_2_ROOM_INTEGRATION.md`](./PHASE_2_ROOM_INTEGRATION.md).
+❌ DO NOT START PHASE 2 — fix archive backups first.
+```
+
+## Rules for the Archive Folder
+
+- `assets/images/archive/` is write-once before Phase 2 begins.
+- Do not overwrite archive files with composite outputs.
+- Do not delete archive files.
+- The archive is used for rollback only — see [PHASE_2_ROOM_INTEGRATION.md](PHASE_2_ROOM_INTEGRATION.md).
+
+## Git LFS and the Archive
+
+The archive PNGs are also tracked by Git LFS. After committing real backups, confirm the push includes LFS objects:
+
+```bash
+git lfs push origin main
+```
+
+If the remote shows archive files as 86–95 bytes after push, LFS objects did not transfer. Re-push with:
+
+```bash
+git lfs push --all origin main
+```

@@ -1,56 +1,103 @@
 # Room Art Guide
 
-Rules for the Room background art: the full-screen images behind the
-companion in the home/Room screen, and the equivalent rooms for Mom/Dad
-bridge views and the Cloud/Night companions.
+This guide defines naming conventions, format requirements, fallback rules, and the asset map for all room background PNGs in Se'kret Bip.
 
-## Naming convention
+## Naming Convention
+
+All room backgrounds follow this exact pattern:
 
 ```
-bg-<companion>-room-<time>.png
+bg-{sekret}-room-{time-of-day}.png
 ```
 
-- `<companion>`: `raylene`, `rylane`, `cloud`, `night`, `mom`, `dad`
-- `<time>`: `day`, `midday`, `afternoon`, `evening`, `night`, `deep-night`,
-  `rain` (not every companion ships every time slot — see
-  `constants/theme.ts` for the live set)
+### Se'kret slugs
 
-These files live in `assets/images/` and are `require()`'d in
-`constants/theme.ts`. Do not rename a shipped file without updating every
-`require()` reference, and do not add a new time slot without wiring it
-into the room-background selection logic alongside the asset.
+| Se'kret | Slug |
+|---|---|
+| Raylene | `raylene` |
+| Rylane | `rylane` |
+| Cloud | `cloud` |
+| Night | `night` |
 
-## Format requirements
+### Time-of-day slugs
 
-- PNG, full-bleed room background, no embedded UI chrome (the app draws
-  cards/text/nav on top).
-- Match the resolution and aspect ratio of the existing files for the same
-  companion family — check `assets/images/bg-<companion>-room-*.png` with
-  `file` or `sips -g pixelWidth -g pixelHeight` before adding a new one.
+| Slug | Light condition |
+|---|---|
+| `day` | Morning sunlight |
+| `midday` | Bright overhead sun |
+| `afternoon` | Warm directional light |
+| `evening` | Golden hour / low sun |
+| `night` | Moonlit / window glow |
+| `deep-night` | Dark ambient only |
+| `rain` | Grey overcast / window rain |
 
-## Fallback policy
+### Full file list (28 files)
 
-Per `docs/MISSING_ASSETS.md` at the repo root: if a real room background
-isn't ready yet, `constants/theme.ts` maps the missing slot to an existing,
-loadable piece of art (currently `bg-raylene-room-night.png` for missing
-room variants). Never point a slot at a two-byte placeholder, a
-`design-references/` mockup, or anything matching `*mockup*` /
-`*reference*` / `*sheet*` — `npm run audit:runtime-assets` enforces this and
-will fail the build if it happens.
+```
+bg-raylene-room-day.png
+bg-raylene-room-midday.png
+bg-raylene-room-afternoon.png
+bg-raylene-room-evening.png
+bg-raylene-room-night.png
+bg-raylene-room-deep-night.png
+bg-raylene-room-rain.png
 
-## Backup requirement
+bg-rylane-room-day.png
+bg-rylane-room-midday.png
+bg-rylane-room-afternoon.png
+bg-rylane-room-evening.png
+bg-rylane-room-night.png
+bg-rylane-room-deep-night.png
+bg-rylane-room-rain.png
 
-Every file matching `assets/images/bg-*.png` is a **room art asset** and
-must have a real, verified backup under `assets/images/archive/` before any
-Phase 2 room work touches it. The rules for that backup — and the script
-that enforces them — are in [`ASSET_BACKUP_RULES.md`](./ASSET_BACKUP_RULES.md).
+bg-cloud-room-day.png
+bg-cloud-room-midday.png
+bg-cloud-room-afternoon.png
+bg-cloud-room-evening.png
+bg-cloud-room-night.png
+bg-cloud-room-deep-night.png
+bg-cloud-room-rain.png
 
-## Changing a room background
+bg-night-room-day.png
+bg-night-room-midday.png
+bg-night-room-afternoon.png
+bg-night-room-evening.png
+bg-night-room-night.png
+bg-night-room-deep-night.png
+bg-night-room-rain.png
+```
 
-1. Drop the new PNG in `assets/images/`, named per the convention above.
-2. Copy the same file into `assets/images/archive/` (see
-   [`ASSET_BACKUP_RULES.md`](./ASSET_BACKUP_RULES.md) for what "copy" means —
-   a placeholder or URL stub does not count).
-3. Run `npm run verify:room-archives` — it must pass before you commit.
-4. Run `npm run audit:runtime-assets` — it must pass before you commit.
-5. Run `npm run verify:prepush` before pushing.
+## Format Requirements
+
+| Property | Requirement |
+|---|---|
+| File format | PNG |
+| Minimum size | 1 MB (confirms real art, not a stub or placeholder) |
+| Dimensions | Match original canvas — do not resize |
+| Color space | sRGB |
+| Transparency | Not required — rooms are full-bleed backgrounds |
+
+## Fallback Rules
+
+If a room background is missing or fails to load at runtime:
+
+1. `constants/theme.ts` → `IMAGES` map provides the fallback chain.
+2. The `BackgroundLayer` component falls back to the nearest time-of-day variant for the same Se'kret.
+3. If no variant exists for that Se'kret, it falls back to the `day` variant.
+4. If no day variant exists, it renders the solid theme color for that Se'kret.
+
+Do not remove any `bg-*.png` entries from the `IMAGES` map in `constants/theme.ts` without updating the fallback chain.
+
+## Art Style Rules
+
+- Room layout must remain unchanged between variants — only lighting changes.
+- Character composites (Phase 2) must be painted into the room, not layered on top.
+- No floating avatars, no PNG overlays, no sticker-style placements.
+- See [PHASE_2_ROOM_INTEGRATION.md](PHASE_2_ROOM_INTEGRATION.md) for the full composite spec.
+
+## Enforced By
+
+```bash
+npm run audit:runtime-assets   # confirms IMAGES keys resolve to real files
+npm run verify:room-archives   # confirms archive backups are real and match live SHAs
+```
