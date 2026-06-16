@@ -49,10 +49,14 @@ import {
 import { loadState, saveState } from '../utils/storage';
 import { isSupabaseConfigured } from '../utils/supabase';
 import { useSekretCompanion } from '../hooks/useSekretCompanion';
+import { useSyncStatus } from '../hooks/useSyncStatus';
+import { useSleepGuard } from '../hooks/useSleepGuard';
+import { SleepGate } from '../components/SleepGate';
+import { AgeGate, type AgeGateStatus } from '../components/AgeGate';
 import {
   ensureAnonymousSession, pullAll,
   syncMood, syncJournal, syncCirclePost, syncParentCirclePost,
-  syncComfortSession,
+  syncComfortSession, syncVoiceNote,
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
@@ -185,6 +189,7 @@ function AppContent() {
   // ─── Streak tracking ───────────────────────────────────────────────────
   const [streakDays, setStreakDays]     = useState(0);
   const [lastOpenDate, setLastOpenDate] = useState('');
+  const [streakJustReset, setStreakJustReset] = useState(false);
 
   // ─── Room Memory (Supabase-ready) ──────────────────────────────────────
   const [roomMemory, setRoomMemory] = useState<RoomMemory>(DEFAULT_ROOM_MEMORY);
@@ -211,6 +216,8 @@ function AppContent() {
     isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
   }), [selectedSekret, mood, journalEntries, moodHistory, voiceNotes, comfortSessions, circlePosts, streakDays, lastOpenDate, screen]);
   const companion = useSekretCompanion(companionInput);
+  const { syncStatus, withSyncWrap } = useSyncStatus();
+  const { sleepActive, sleepWindow, setSleepWindow } = useSleepGuard();
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
   // loadState() returns the full state object — no args needed.
@@ -456,7 +463,12 @@ function AppContent() {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
-      setStreakDays(prev => wasYesterday ? prev + 1 : 1);
+      setStreakDays(prev => {
+        if (wasYesterday) return prev + 1;
+        // Missed a day or more — soften the reset, never shame it.
+        setStreakJustReset(prev > 1);
+        return 1;
+      });
       setLastOpenDate(today);
     }
   }, [isLoading, lastOpenDate]);
@@ -488,7 +500,7 @@ function AppContent() {
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
     setComfortSessions(prev => [session, ...prev].slice(0, 365));
-    syncComfortSession(session);
+    void withSyncWrap(async () => syncComfortSession(session));
   };
 
   // ── Mood ──────────────────────────────────────────────────────────────────
@@ -500,7 +512,7 @@ function AppContent() {
       time: new Date().toLocaleTimeString(),
     };
     setMoodHistory(h => [entry, ...h]);
-    syncMood(entry);
+    void withSyncWrap(async () => syncMood(entry));
     trackActivity('mood');
   };
 
@@ -525,7 +537,7 @@ function AppContent() {
     };
     setJournalEntries(e => [entry, ...e]);
     if (!override) setJournalText('');
-    syncJournal(entry);
+    void withSyncWrap(async () => syncJournal(entry));
     trackActivity('journal');
   };
 
@@ -541,7 +553,7 @@ function AppContent() {
         entry.id === entryId ? { ...entry, sekretReply: reply } : entry
       );
       const patched = next.find(entry => entry.id === entryId);
-      if (patched) syncJournal(patched);
+      if (patched) void withSyncWrap(async () => syncJournal(patched));
       return next;
     });
   };
@@ -581,7 +593,7 @@ function AppContent() {
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0, sameHere: 0 },
     };
     setCirclePosts(p => [post, ...p]);
-    syncCirclePost(post);
+    void withSyncWrap(async () => syncCirclePost(post));
   };
 
   const reactToPost = (id: string | number, type: string) => {
@@ -602,7 +614,7 @@ function AppContent() {
     };
     setParentCirclePosts(p => [post, ...p]);
     setParentCirclePostText('');
-    syncParentCirclePost(post);
+    void withSyncWrap(async () => syncParentCirclePost(post));
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
@@ -634,6 +646,11 @@ function AppContent() {
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (isLoading) return null;
 
+  // Sleep guardrail: block normal wandering during the configured sleep
+  // window, but Comfort (and its sub-screens) always stays reachable.
+  const allowComfort = ['comfort', 'calm', 'mindReset', 'bodyReset'].includes(screen);
+
+  const renderRoute = (): React.ReactNode => {
   // ━━━ RENDER SWITCH ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   // Route map:
   //   splash · home · pages · calm · sekret · circle · bippin2 · comfort
@@ -693,7 +710,9 @@ function AppContent() {
       onMoodSelect={(m) => trackActivity('mood')}
       BottomNav={nav}
       streakDays={streakDays}
+      streakJustReset={streakJustReset}
       companion={companion}
+      syncStatus={syncStatus}
     />
   );
 
@@ -723,12 +742,17 @@ function AppContent() {
       weatherMode={theme === 'rain' ? 'rain' : undefined}
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : setVoiceNotes}
-      onSave={() => trackActivity('voice')}
+      onSave={(note: VoiceNote) => {
+        // Parent voice notes stay device-local, same privacy boundary as Parent Pages.
+        if (userSide === 'teen') void withSyncWrap(async () => syncVoiceNote(note));
+        trackActivity('voice');
+      }}
       mood={mood}
       companion={userSide === 'parent' ? undefined : companion}
       BottomNav={nav}
       privateProfile={userSide === 'parent' ? parentOracleProfile : oracleProfile}
       profileSide={userSide}
+      syncStatus={userSide === 'teen' ? syncStatus : undefined}
       oracleJournalEntries={userSide === 'teen' ? oracleJournalEntries : []}
       onStoreOracleMemory={(entry: OracleJournalEntry) => {
         if (userSide === 'teen') setOracleJournalEntries(current => [entry, ...current].slice(0, 250));
@@ -767,6 +791,7 @@ function AppContent() {
       voiceNotes={voiceNotes}
       streakDays={streakDays}
       selectedSekret={selectedSekret}
+      syncStatus={syncStatus}
     />
   );
 
@@ -819,6 +844,7 @@ function AppContent() {
         BottomNav={nav}
         selectedSekret={selectedSekret}
         mood={mood}
+        syncStatus={syncStatus}
       />
     );
   }
@@ -898,6 +924,7 @@ function AppContent() {
       character={getActiveCharacter(selectedSekret)}
       mood={mood}
       companion={companion}
+      syncStatus={syncStatus}
     />
   );
 
@@ -941,6 +968,8 @@ function AppContent() {
       setCrewCheckIns={setCrewCheckIns}
       setScreen={setScreen}
       BottomNav={nav}
+      syncStatus={syncStatus}
+      withSyncWrap={withSyncWrap}
     />
   );
 
@@ -999,10 +1028,21 @@ function AppContent() {
       setScreen={setScreen}
       BottomNav={nav}
       mood={mood}
+      sleepWindow={sleepWindow}
+      setSleepWindow={setSleepWindow}
     />
   );
 
   return null;
+  };
+
+  return (
+    <AgeGate onResolved={(next: AgeGateStatus) => { if (next === 'guardian') setUserSide('parent'); }}>
+      <SleepGate sleepActive={sleepActive} allowComfort={allowComfort} onComfort={() => setScreen('comfort')}>
+        {renderRoute()}
+      </SleepGate>
+    </AgeGate>
+  );
 }
 
 // ── App Wrapper with Analytics ─────────────────────────────────────────────

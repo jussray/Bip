@@ -17,6 +17,8 @@ import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
+import { BipEmptyState } from '../components/BipEmptyState';
 
 type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' | 'night';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
@@ -67,6 +69,7 @@ interface SharedPagesProps {
    * Receives the entry id and the reply string.
    */
   onSekretReply?: (entryId: number, reply: string) => void;
+  syncStatus?: SyncStatus;
 }
 
 export interface PagesScreenProps {
@@ -85,6 +88,7 @@ export interface PagesScreenProps {
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
   onSekretReply?: (entryId: number, reply: string) => void;
+  syncStatus?: SyncStatus;
 }
 
 const TEEN_TABS: TabDefinition[] = [
@@ -249,7 +253,7 @@ const replyStyles = StyleSheet.create({
 function PagesWorkspace({
   side, entries, draft, setDraft, onSave, setScreen, BottomNav,
   mood, oracleProfile, onCompleteOracleSession, selectedSekret,
-  parentRoomStyle, weatherMode, onSekretReply,
+  parentRoomStyle, weatherMode, onSekretReply, syncStatus,
 }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
@@ -579,6 +583,7 @@ function PagesWorkspace({
               <Text style={styles.savedTitle}>Saved \u00b7 {tab.label}</Text>
               <Text style={styles.savedCount}>{tabEntries.length}</Text>
             </View>
+            <SyncBadge status={syncStatus ?? 'idle'} />
 
             {tabEntries.length ? tabEntries.map(entry => {
               // Determine reply display:
@@ -611,9 +616,7 @@ function PagesWorkspace({
                 </View>
               );
             }) : (
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>Nothing saved here yet.</Text>
-              </View>
+              <BipEmptyState type="empty" message="Nothing saved here yet. Your words will live here." />
             )}
           </>
         )}
@@ -627,6 +630,7 @@ export function PagesScreen({
   journalText, setJournalText, journalEntries, saveJournalEntry,
   mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession,
   selectedSekret, moodHistory, voiceNotes, streakDays, onSekretReply,
+  syncStatus,
 }: PagesScreenProps) {
   return (
     <PagesWorkspace
@@ -645,6 +649,7 @@ export function PagesScreen({
       oracleProfile={oracleProfile}
       onCompleteOracleSession={onCompleteOracleSession}
       onSekretReply={onSekretReply}
+      syncStatus={syncStatus}
     />
   );
 }

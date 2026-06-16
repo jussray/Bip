@@ -11,7 +11,15 @@ import {
   ImageBackground, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES } from '../constants/theme';
+import { getRoomBg, type TimeOfDay } from '../constants/theme';
+
+function timeOfDay(): TimeOfDay {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 11) return 'morning';
+  if (h >= 11 && h < 17) return 'day';
+  if (h >= 17 && h < 21) return 'evening';
+  return 'night';
+}
 
 interface WomanhoodScreenProps {
   t:              Record<string, any>;
@@ -71,6 +79,8 @@ export function WomanhoodScreen({
 }: WomanhoodScreenProps) {
   const glow = useMemo(() => glowFor(mood), [mood]);
   const greeting = timeGreeting();
+  const time = useMemo(() => timeOfDay(), []);
+  const bgSource = useMemo(() => getRoomBg('raylene', time), [time]);
   const [checkedMood, setCheckedMood] = useState<string | null>(null);
   const [expandedPeriod, setExpandedPeriod] = useState(false);
 
@@ -81,7 +91,7 @@ export function WomanhoodScreen({
   return (
     <View style={styles.root}>
       <ImageBackground
-        source={IMAGES.rayleneVoiceNight}
+        source={bgSource}
         style={StyleSheet.absoluteFill}
         resizeMode="cover"
       />

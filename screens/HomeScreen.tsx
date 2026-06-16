@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { IMAGES } from '../constants/theme';
 import { SekretCompanionCard } from '../components/SekretCompanionCard';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { CompanionCheckIn } from '../types/sekretCompanion';
 import {
   Text, TouchableOpacity,
@@ -259,7 +260,10 @@ const getMoodResponse = (mood: string, selectedSekret: string) => {
 };
 
 // Streak language per vision: "we see you" — never punishing
-const getStreakCopy = (days: number, isRylane: boolean) => {
+const getStreakCopy = (days: number, isRylane: boolean, justReset?: boolean) => {
+  if (days === 1 && justReset) {
+    return isRylane ? "missed a few. you're back. that's what counts." : "missed a few days? all good — you picked it back up. 💜";
+  }
   if (days <= 0)  return isRylane ? "first day. let's lock in." : "first day. we got this.";
   if (days === 1) return isRylane ? "day 1 bip. you here. that counts." : "day 1 bip. you showed up.";
   if (days < 7)   return isRylane ? `${days} days bippin. keep going.` : `${days} days bippin. we see you.`;
@@ -282,6 +286,7 @@ interface HomeScreenProps {
   onMoodSelect?: (mood: string) => void;  // Supabase/RoomMemory hook
   BottomNav: React.ReactNode;
   streakDays?: number;              // vision: streak lives on the dashboard
+  streakJustReset?: boolean;        // missed-day reset — soften, don't shame
   companion?: {
     greeting: string;
     presenceMessage: string;
@@ -290,6 +295,7 @@ interface HomeScreenProps {
     companionLevel?: any;
     personality: string;
   };
+  syncStatus?: SyncStatus;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -297,7 +303,7 @@ interface HomeScreenProps {
 export function HomeScreen({
   mood, selectMood, t, currentSekret, selectedSekret,
   homeMessageIndex, userSide, setScreen, onMoodSelect, BottomNav,
-  streakDays = 0, companion,
+  streakDays = 0, streakJustReset, companion, syncStatus,
 }: HomeScreenProps) {
 
   const isRylane  = selectedSekret === 'rylane';
@@ -443,11 +449,12 @@ export function HomeScreen({
           Se'kret Bip {currentSekret.emoji}
         </Text>
         <Text style={styles.subtitle}>your space. your voice. always you.</Text>
+        <SyncBadge status={syncStatus ?? 'idle'} />
 
         {/* ━━━ STREAK PILL — "we see you" per vision ━━━━━━━━━━━━━━━━━━━━━ */}
         <Animated.View style={[styles.streakPill, cardAnim(card1Anim), { borderColor: moodGlow + '88' }]}>
           <Text style={styles.streakFlame}>🔥</Text>
-          <Text style={styles.streakText}>{getStreakCopy(streakDays, isRylane)}</Text>
+          <Text style={styles.streakText}>{getStreakCopy(streakDays, isRylane, streakJustReset)}</Text>
         </Animated.View>
 
         {/* ━━━ BREATHING CLOUD ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
