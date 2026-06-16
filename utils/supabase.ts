@@ -1,25 +1,20 @@
 // utils/supabase.ts
-// Se'kret Bip — Supabase client (scaffold for Phase 2)
+// Se'kret Bip — Supabase client
 //
-// PHASE 1 (now): screen polish. Supabase is OPTIONAL — if env vars are
-// missing, the exported client is a safe no-op so nothing crashes and
-// every screen keeps working off AsyncStorage via utils/storage.ts.
+// Env vars are sourced from utils/env.ts (single source of truth).
+// If SUPABASE_URL or SUPABASE_ANON are blank, getSupabase() returns null
+// and every caller falls back gracefully to local AsyncStorage.
 //
-// PHASE 2 (next): wire real journal / mood / circle / bridge / voice
-// tables. Add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY
-// to .env.local (NEVER commit them — .env.local is gitignored).
-//
-// IMPORTANT: only use EXPO_PUBLIC_* env vars on the client. NEVER expose
-// the service_role key on the device — that key stays server-side only.
+// IMPORTANT: only EXPO_PUBLIC_* vars are used here.
+// NEVER reference service_role keys in client code.
 
 import 'react-native-url-polyfill/auto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SUPABASE_URL, SUPABASE_ANON, isSupabaseReady } from './env';
 
-const SUPABASE_URL  = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_SUPABASE_URL;
-const SUPABASE_ANON = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_SUPABASE_ANON_KEY;
-
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON);
+/** True when both Supabase env vars are present and non-empty. */
+export const isSupabaseConfigured = isSupabaseReady;
 
 let _client: SupabaseClient | null = null;
 
@@ -37,7 +32,7 @@ export function getSupabase(): SupabaseClient | null {
   if (!isSupabaseConfigured) return null;
   if (_client) return _client;
 
-  _client = createClient(SUPABASE_URL!, SUPABASE_ANON!, {
+  _client = createClient(SUPABASE_URL, SUPABASE_ANON, {
     auth: {
       storage:            AsyncStorage,
       autoRefreshToken:   true,
@@ -49,9 +44,9 @@ export function getSupabase(): SupabaseClient | null {
   return _client;
 }
 
-// ── Table name constants ────────────────────────────────────────────────────
-// Centralized so Phase 2 wiring touches one file when schema names change.
-// These match the Supabase schema defined in supabase/migrations/sekret_bip_full_bootstrap.sql
+// ── Table name constants ─────────────────────────────────────────────────────────
+// Centralized so schema renames touch one file.
+// These match supabase/migrations/sekret_bip_full_bootstrap.sql
 export const TABLES = {
   // Core tables
   journalEntries:     'journal_entries',
@@ -65,25 +60,11 @@ export const TABLES = {
   crewCheckIns:       'crew_check_ins',
   bipPoints:          'bip_points',
 
-  // Legacy circle (used by pullAll drain path only — do not use for new writes)
-  // Will be removed once pullAll is migrated to the V1 schema.
+  // Legacy circle (pullAll drain path only — do not use for new writes)
   circlePosts:        'circle_posts',
   parentCirclePosts:  'parent_circle_posts',
 
   // Circle V1 — unified schema
-  // See supabase/migrations/sekret_bip_full_bootstrap.sql for schema + RLS policies.
-  //
-  //   circles        → one row per user per circle kind (public/friends/crew/parent)
-  //   posts          → all posts; circle_id FK determines visibility via RLS
-  //   circleMembers  → friends and crew membership join table
-  //   crews          → crew metadata (max 15 members)
-  //   friendships    → mutual follow join table
-  //   parentLinks    → one-to-one teen ↔ parent connection
-  //   postReactions  → reactions junction table; unique on (post_id, user_id, reaction)
-  //   postComments   → comments scoped to posts; visibility mirrors post RLS
-  //   moods          → per-user mood entries (private)
-  //   parentMoodSummaries → aggregated mood data surfaced to Parent Bridge only
-  //   safetyAlerts   → triggered alerts routed to linked parent only
   circles:              'circles',
   posts:                'posts',
   circleMembers:        'circle_members',

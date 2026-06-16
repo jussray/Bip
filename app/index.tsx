@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Analytics } from '../components/Analytics';
+import { validateEnv } from '../utils/env';
+
+// Run once at startup — logs warnings for missing vars, security error if
+// OPENAI_API_KEY or service_role ever appear in the client bundle.
+voidvalidateEnv();
 
 // ── Screens ────────────────────────────────────────────────────────────────
 // NOTE: HomeScreen is imported for the 'dashboard' route (MoreScreen → Dashboard).
@@ -1022,52 +1027,53 @@ function AppContent() {
       sekretMode={sekretMode}
       setSekretMode={setSekretMode}
       userSide={userSide}
-      setUserSide={(side: string) => setUserSide(side as 'teen' | 'parent')}
-      parentRoomStyle={parentRoomStyle}
-      setParentRoomStyle={(s) => setParentRoomStyle(s as ParentRoomStyle)}
+      setUserSide={setUserSide}
       setScreen={setScreen}
       BottomNav={nav}
-      mood={mood}
       sleepWindow={sleepWindow}
       setSleepWindow={setSleepWindow}
+      parentRoomStyle={parentRoomStyle}
+      setParentRoomStyle={setParentRoomStyle}
     />
   );
 
-  return null;
-  };
+  // Fallback — should never reach here
+  return (
+    <RoomScreen
+      mood={mood}
+      selectedSekret={selectedSekret}
+      setSelectedSekret={val => setSelectedSekret(val)}
+      setScreen={setScreen}
+      t={t}
+      updateRoomMemory={updateRoomMemory}
+      vibe={vibeKey}
+      companion={companion}
+      sekretMode={selectedSekret}
+      BottomNav={nav}
+    />
+  );
+  }; // end renderRoute
 
   return (
-    <AgeGate onResolved={(next: AgeGateStatus) => { if (next === 'guardian') setUserSide('parent'); }}>
-      <SleepGate sleepActive={sleepActive} allowComfort={allowComfort} onComfort={() => setScreen('comfort')}>
-        {renderRoute()}
-      </SleepGate>
-    </AgeGate>
+    <View style={styles.container}>
+      <Analytics />
+      {sleepActive && !allowComfort
+        ? <SleepGate setScreen={setScreen} sleepWindow={sleepWindow} />
+        : renderRoute()
+      }
+    </View>
   );
 }
 
-// ── App Wrapper with Analytics ─────────────────────────────────────────────
-// Wrap the app with Vercel Analytics (web-only)
 export default function App() {
-  return (
-    <>
-      <AppContent />
-      {Platform.OS === 'web' && <Analytics />}
-    </>
-  );
+  return <AppContent />;
 }
-
-// ── Styles ─────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  bottomNav:     {
-    flexDirection: 'row', justifyContent: 'space-around',
-    paddingVertical: 14, backgroundColor: '#111827',
-    borderRadius: 20, marginTop: 20, marginBottom: 16,
-    flexWrap: 'wrap', gap: 8,
-    ...(Platform.OS === 'web' ? { maxWidth: 500, width: '100%', alignSelf: 'center' as const } : {}),
-  },
-  navItem:       { alignItems: 'center', minWidth: 52 },
-  navIcon:       { fontSize: 20, marginBottom: 3 },
-  navText:       { color: '#94A3B8', fontSize: 11 },
-  activeNavText: { color: '#fff', fontWeight: 'bold' },
+  container:     { flex: 1 },
+  bottomNav:     { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 8, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#eee' },
+  navItem:       { alignItems: 'center', flex: 1 },
+  navIcon:       { fontSize: 20 },
+  navText:       { fontSize: 10, color: '#888', marginTop: 2 },
+  activeNavText: { color: '#6B46C1', fontWeight: '600' },
 });
