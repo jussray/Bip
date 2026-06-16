@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { CirclePost } from '../types';
 
 const CLOUD_HAPPY = IMAGES.cloudHappy;
@@ -41,6 +42,7 @@ type CircleScreenProps = {
   sendQuietReply?: (postId: string, replyText: string) => void;
   selectedSekret?: 'raylene' | 'rylane' | string;
   mood?: string;
+  syncStatus?: SyncStatus;
 };
 
 const MEDIA_TYPES: { id: MediaType; emoji: string; label: string; sub: string }[] = [
@@ -225,6 +227,7 @@ export function CircleScreen({
   sendQuietReply,
   selectedSekret,
   mood,
+  syncStatus,
 }: CircleScreenProps) {
   const isRylane = selectedSekret === 'rylane';
   const charLabel = isRylane ? 'rylane' : 'raylene';
@@ -380,6 +383,8 @@ export function CircleScreen({
           >
             <Text style={[styles.energyText, { color: glow }]}>{energyText}</Text>
           </Animated.View>
+
+          <SyncBadge status={syncStatus ?? 'idle'} />
 
           <View style={styles.circleFloor}>
             {[

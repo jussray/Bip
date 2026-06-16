@@ -21,6 +21,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import {
   Text, ScrollView, View, Image, StyleSheet,
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
@@ -70,11 +71,12 @@ interface ComfortScreenProps {
   companion?: {
     presenceMessage: string;
   };
+  syncStatus?: SyncStatus;
 }
 
 export function ComfortScreen({
   t, setScreen, onComplete, BottomNav,
-  selectedSekret = 'raylene', character, mood, companion,
+  selectedSekret = 'raylene', character, mood, companion, syncStatus,
 }: ComfortScreenProps) {
 
   const [checked, setChecked] = useState<number[]>([]);
@@ -230,6 +232,7 @@ export function ComfortScreen({
 
         <Text style={[styles.logo, { textShadowColor: moodGlow + '99' }]}>{heroCopy.title}</Text>
         <Text style={styles.subtitle}>{heroCopy.sub}</Text>
+        <SyncBadge status={syncStatus ?? 'idle'} />
 
         {/* Cloud stormy with breath/drift */}
         <Animated.View style={[styles.cloudWrap, cloudStyle]}>
