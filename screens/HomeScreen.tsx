@@ -19,19 +19,6 @@ const CLOUD_ASSETS: Record<string, any> = {
   rylane:  IMAGES.cloud,
 };
 
-const ART: Record<string, Record<string, any>> = {
-  raylene: {
-    neutral:  IMAGES.rayleneNeutral,
-    thinking: IMAGES.rayleneThinking,
-    window:   IMAGES.rayleneWindow,
-  },
-  rylane: {
-    neutral:  IMAGES.rylaneNeutral,
-    thinking: IMAGES.rylaneThinking,
-    window:   IMAGES.rylaneWindow,
-  },
-};
-
 // Time-of-day ambient room background per vision:
 // morning → bright room · afternoon → sunny room · night → purple cozy room
 // (late-night rainy city is owned by ComfortScreen — Home stays softer)
@@ -302,7 +289,6 @@ export function HomeScreen({
 
   const isRylane  = selectedSekret === 'rylane';
   const charKey   = isRylane ? 'rylane' : 'raylene';
-  const art       = ART[charKey];
   const cloudImg  = CLOUD_ASSETS[charKey];
   const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), []);
   const ambientBg = AMBIENT_BG[charKey]?.[timeOfDay];
@@ -315,6 +301,9 @@ export function HomeScreen({
     const s = MOODS_BY_CAT.steady.some(x => x.id === m);
     const w = MOODS_BY_CAT.winning.some(x => x.id === m);
     return h ? 'heavy' : s ? 'steady' : w ? 'winning' : 'steady';
+    // Captures the mood category once at mount only; re-running on `mood`
+    // changes would override the user's manual category selection.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [moodCat, setMoodCat] = useState<MoodCat>(defaultCat);
   const [showWins, setShowWins] = useState(false);
@@ -359,7 +348,7 @@ export function HomeScreen({
     glow.start();
 
     return () => { breathe.stop(); glow.stop(); };
-  }, []);
+  }, [fadeIn, card1Anim, card2Anim, card3Anim, card4Anim, card5Anim, breatheAnim, glowAnim]);
 
   const glowOpacity = glowAnim.interpolate({ inputRange: [0.4, 1], outputRange: [0.18, 0.42] });
 

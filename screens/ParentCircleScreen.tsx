@@ -131,8 +131,6 @@ const SEED_POSTS: ParentCirclePost[] = [
 
 const WARM = '#d97706';
 const WARM_SOFT = '#fbbf24';
-const SAGE = '#059669';
-const SAGE_SOFT = '#34d399';
 const AMBER_GLOW = '#f59e0b';
 
 const postSticker = (id: string | number): string => {

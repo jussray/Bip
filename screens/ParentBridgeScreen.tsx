@@ -89,7 +89,7 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
     ]));
     loop.start();
     return () => loop.stop();
-  }, []);
+  }, [fade1, fade2, fade3, breath]);
 
   const animateResponse = () => {
     responseAnim.setValue(0);

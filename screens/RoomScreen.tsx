@@ -44,7 +44,6 @@ type Hotspot = {
   pulse?: boolean;
 };
 
-type AssetMap  = Record<TimeOfDay, ImageSourcePropType>;
 type AvatarMap = Record<Pose, ImageSourcePropType>;
 
 // ─── Room / Avatar assets ─────────────────────────────────────────────────────
@@ -487,7 +486,7 @@ export function RoomScreen({
   // Resolve the room once for the current visit. Always use the selected
   // character's room at the current time of day — rain vibe overrides time.
   const now = useMemo(() => new Date(), []);
-  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
+  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), []);
   const roomPhase = useMemo(() => getRoomPhase(now, vibe === 'rain' ? 'rain' : undefined), [now, vibe]);
   const vibePack = THEME_PACKS[vibe];
   // Room background is always the character's own room at current phase,
@@ -600,7 +599,7 @@ export function RoomScreen({
       glowLoopRef.current?.stop();
       pulseLoopRef.current?.stop();
     };
-  }, []);
+  }, [fadeAnim, greetAnim, glowAnim, breathAnim, pulseAnim]);
 
   // ─── hintAnim drives hint opacity — now actually wired ──────────────────
   // FIXED: hintAnim was never started; hint was permanently invisible
@@ -610,7 +609,7 @@ export function RoomScreen({
     } else {
       Animated.timing(hintAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
     }
-  }, [hintSpot]);
+  }, [hintSpot, hintAnim]);
 
   // Greeting updates on mood/character/time change
   useEffect(() => {
@@ -627,7 +626,7 @@ export function RoomScreen({
       }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [showGuide]);
+  }, [showGuide, guideAnim]);
 
   // Avatar entrance / exit
   useEffect(() => {
@@ -647,7 +646,7 @@ export function RoomScreen({
         tension: 60, friction: 9, useNativeDriver: true,
       }),
     ]).start();
-  }, [isSekretVisible]);
+  }, [isSekretVisible, avatarAnim, avatarSlide, avatarScale]);
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 

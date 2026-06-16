@@ -174,7 +174,7 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
       ])).start();
     }, delay + 200);
     return () => clearTimeout(timer);
-  }, [visible]);
+  }, [visible, appear, glow, delay]);
 
   const scale   = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
   const opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.60, 1.0] });
@@ -264,7 +264,7 @@ export function ParentRoomScreen({
       Animated.timing(moodPop, { toValue: 1.30, duration: 140, useNativeDriver: true }),
       Animated.timing(moodPop, { toValue: 1.00, duration: 220, useNativeDriver: true }),
     ]).start();
-  }, [parentMood]);
+  }, [parentMood, moodPop]);
 
   useEffect(() => {
     // Room fades in first, then text, then hotspots unlock
@@ -279,7 +279,7 @@ export function ParentRoomScreen({
     ]));
     loop.start();
     return () => loop.stop();
-  }, []);
+  }, [roomFade, textFade, cloudBreath]);
 
   const cloudScale   = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] });
   const cloudOpacity = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [0.80, 1.0] });

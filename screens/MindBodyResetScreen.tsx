@@ -113,14 +113,13 @@ export function MindBodyResetScreen({
   const fadeIn       = useRef(new Animated.Value(0)).current;
   const [breathing, setBreathing] = useState(false);
   const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale' | 'rest'>('inhale');
-  const breathLoopRef = useRef<any>(null);
 
   // Page fade-in
   useEffect(() => {
     Animated.timing(fadeIn, {
       toValue: 1, duration: 600, useNativeDriver: true,
     }).start();
-  }, []);
+  }, [fadeIn]);
 
   // Ambient glow pulse (always running)
   useEffect(() => {
@@ -132,7 +131,7 @@ export function MindBodyResetScreen({
     );
     glow.start();
     return () => glow.stop();
-  }, []);
+  }, [glowAnim]);
 
   // Breathe circle — only runs when user taps Start
   const startBreathing = () => {
@@ -176,8 +175,11 @@ export function MindBodyResetScreen({
   };
 
   // ─── onComplete hook ─────────────────────────────────────────────────────
+  // Intentionally fires once on mount, not on every onComplete identity
+  // change from the parent re-rendering.
   useEffect(() => {
     onComplete?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Style helpers ────────────────────────────────────────────────────────

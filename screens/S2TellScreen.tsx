@@ -83,7 +83,7 @@ export function S2TellScreen({
       Animated.timing(fade2, { toValue: 1, duration: dur, easing: ease, useNativeDriver: true }),
       Animated.timing(fade3, { toValue: 1, duration: dur, easing: ease, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [fade1, fade2, fade3]);
 
   const slide = (val: Animated.Value) => ({
     opacity: val,

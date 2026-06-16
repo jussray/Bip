@@ -242,7 +242,7 @@ export function CircleScreen({
   const [selectedPostMood, setSelectedPostMood]   = useState<string>('');
   const [selectedTag, setSelectedTag]             = useState<string>('');
   const [showTagPicker, setShowTagPicker]         = useState(false);
-  const [scanResult, setScanResult]               = useState<ScanResult | null>(null);
+  const [, setScanResult]                         = useState<ScanResult | null>(null);
   const [isSubmitting, setIsSubmitting]           = useState(false);
   const [showSoftCheckIn, setShowSoftCheckIn]     = useState(false);
   const [showBridgeSuggestion, setShowBridgeSuggestion] = useState(false);

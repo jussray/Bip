@@ -54,11 +54,11 @@ export interface CompanionState {
 export interface CompanionActivityInput {
   selectedSekret?: string;
   mood?: string;
-  journalEntries?: Array<{ id?: string | number; text?: string; mood?: string; date?: string }>;
-  moodHistory?: Array<{ id?: string | number; mood?: string; date?: string }>;
-  voiceNotes?: Array<{ id?: string | number; title?: string; type?: string; date?: string }>;
-  comfortSessions?: Array<{ id?: string | number; type?: string; date?: string }>;
-  circlePosts?: Array<{ id?: string | number; text?: string; date?: string }>;
+  journalEntries?: { id?: string | number; text?: string; mood?: string; date?: string }[];
+  moodHistory?: { id?: string | number; mood?: string; date?: string }[];
+  voiceNotes?: { id?: string | number; title?: string; type?: string; date?: string }[];
+  comfortSessions?: { id?: string | number; type?: string; date?: string }[];
+  circlePosts?: { id?: string | number; text?: string; date?: string }[];
   streakDays?: number;
   lastOpenDate?: string;
   screen?: string;

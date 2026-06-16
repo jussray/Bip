@@ -146,7 +146,7 @@ export function CalmScreen({
   const [comfortIdx, setComfortIdx] = useState(0);
   const [plan, setPlan] = useState(DEFAULT_PLAN);
   const [showBreathe, setShowBreathe] = useState(false);
-  const [breatheStep, setBreatheStep] = useState(0);
+  const [, setBreatheStep] = useState(0);
   const [breatheRunning, setBreatheRunning] = useState(false);
 
   const scrollRef = useRef<ScrollView>(null);
@@ -198,7 +198,7 @@ export function CalmScreen({
         Animated.timing(pillBreath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [pillBreath]);
   const pillStyle = {
     opacity: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] }),
     transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
@@ -210,7 +210,7 @@ export function CalmScreen({
     Animated.stagger(140, cards.map(v =>
       Animated.timing(v, { toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true })
     )).start();
-  }, []);
+  }, [cards]);
   const cardAnim = (i: number) => ({
     opacity: cards[i],
     transform: [{ translateY: cards[i].interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],

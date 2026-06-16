@@ -36,7 +36,7 @@ function countMatches(entries: JournalEntry[], pattern: RegExp): number {
   return entries.filter((entry) => pattern.test(entry.text)).length;
 }
 
-function countTopics(entries: JournalEntry[]): Array<[string, number]> {
+function countTopics(entries: JournalEntry[]): [string, number][] {
   return TOPICS
     .map((topic): [string, number] => [
       topic,
@@ -46,7 +46,7 @@ function countTopics(entries: JournalEntry[]): Array<[string, number]> {
     .sort((a, b) => b[1] - a[1]);
 }
 
-function moodCounts(moods: MoodEntry[]): Array<[string, number]> {
+function moodCounts(moods: MoodEntry[]): [string, number][] {
   const counts = moods.reduce<Record<string, number>>((all, entry) => {
     const mood = entry.mood?.trim().toLowerCase();
     if (mood) all[mood] = (all[mood] || 0) + 1;

@@ -88,7 +88,7 @@ export const MOOD_CATEGORY_INFO: Record<MoodCategory, { label: string; emoji: st
   fun:     { label: 'Fun',     emoji: '✨',  glow: '#fb7185' },
 };
 
-export const MOODS_BY_CATEGORY: Record<MoodCategory, Array<{ id: MoodKey; emoji: string; label: string }>> = {
+export const MOODS_BY_CATEGORY: Record<MoodCategory, { id: MoodKey; emoji: string; label: string }[]> = {
   heavy: [
     { id: 'sad',          emoji: '😔',   label: 'sad' },
     { id: 'anxious',      emoji: '😰',   label: 'anxious' },

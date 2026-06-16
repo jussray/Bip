@@ -20,7 +20,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
-import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { getRoomBg, type TimeOfDay } from '../constants/theme';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
 import { buildOracleInsight } from '../services/oracle';
 import {
@@ -110,8 +110,6 @@ export function JournalScreen({
   selectedSekret = 'soft',
 }: JournalScreenProps) {
 
-  const [showCheckIn,   setShowCheckIn]   = useState(false);
-  const [checkInMood,   setCheckInMood]   = useState('');
   const [selectedTag,   setSelectedTag]   = useState('');
   const [promptIdx,     setPromptIdx]     = useState(0);
 
@@ -131,7 +129,7 @@ export function JournalScreen({
         toValue: 1, duration: 380, easing: Easing.out(Easing.cubic), useNativeDriver: true,
       })
     )).start();
-  }, []);
+  }, [cards]);
   const cardAnim = (i: number) => ({
     opacity: cards[i],
     transform: [{ translateY: cards[i].interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
@@ -146,7 +144,7 @@ export function JournalScreen({
         Animated.timing(breath, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [breath]);
   const breathStyle = {
     opacity: breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] }),
     transform: [{ scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],

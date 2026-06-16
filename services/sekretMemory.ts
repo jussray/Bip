@@ -124,14 +124,14 @@ function extractDeferredPhrases(text: string): DeferredEntry[] {
     .map(phrase => ({ phrase, date }));
 }
 
-function extractWins(moodHistory: Array<{ mood?: string; date?: string }>): WinEntry[] {
+function extractWins(moodHistory: { mood?: string; date?: string }[]): WinEntry[] {
   const date = new Date().toISOString().slice(0, 10);
   return moodHistory
     .filter(entry => entry.mood && WINNING_MOODS.has(entry.mood.toLowerCase()))
     .map(entry => ({ mood: entry.mood!.toLowerCase(), date: entry.date || date }));
 }
 
-function normalizeTopics(values: Array<string | undefined>): string[] {
+function normalizeTopics(values: (string | undefined)[]): string[] {
   return Array.from(new Set(values
     .filter((value): value is string => Boolean(value?.trim()))
     .map((value) => value.toLowerCase().trim())))
@@ -147,7 +147,7 @@ function mergeUnique<T extends MemoryRecord>(existing: T[], incoming: T[]): T[] 
   return Array.from(records.values()).slice(-MAX_ACTIVITY_ITEMS);
 }
 
-function countMostCommon(values: Array<string | undefined>, fallback: string): string {
+function countMostCommon(values: (string | undefined)[], fallback: string): string {
   const counts = values.reduce<Record<string, number>>((all, value) => {
     if (value) all[value] = (all[value] || 0) + 1;
     return all;

@@ -130,7 +130,7 @@ export function SekretScreen({
         Animated.timing(breath, { toValue: 0, duration: 2000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
       ])
     ).start();
-  }, []);
+  }, [breath, fadeChat, fadeHero, fadeInput, fadePicker, fadeProf, transChat, transHero, transInput, transPicker, transProf]);
 
   const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1,    1.04] });
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1   ] });

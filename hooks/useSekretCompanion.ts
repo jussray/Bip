@@ -111,6 +111,9 @@ export function useSekretCompanion(input: CompanionActivityInput) {
       }
     })();
     return () => { cancelled = true; };
+    // `signature` is a content-based proxy for `input` (see above) so the
+    // effect only re-runs when input actually changes, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
 
   return { ...state, state, isReady };

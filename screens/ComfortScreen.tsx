@@ -103,9 +103,11 @@ export function ComfortScreen({
     ? 'I’m good now ›'
     : 'I’m feeling a little better ›';
 
-  // Track session on mount
+  // Track session on mount — intentionally fires once, not on every
+  // onComplete identity change from the parent re-rendering.
   useEffect(() => {
     onComplete?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cloud float + breath loops
@@ -131,7 +133,7 @@ export function ComfortScreen({
         Animated.timing(pillBreath, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ])
     ).start();
-  }, []);
+  }, [cloudFloat, cloudBreath, pillBreath]);
 
   const cloudStyle = {
     transform: [
@@ -165,7 +167,7 @@ export function ComfortScreen({
       // stagger starts
       setTimeout(loop, i * 180 + Math.random() * 400);
     });
-  }, []);
+  }, [rainAnims]);
 
   const toggleStep = (id: number, action?: string) => {
     setChecked(prev =>

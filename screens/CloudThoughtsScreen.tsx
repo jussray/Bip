@@ -128,7 +128,7 @@ export function CloudThoughtsScreen({
   const [reply,      setReply]      = useState('');
   const [isThinking, setIsThinking] = useState(false);
   const [promptIdx,  setPromptIdx]  = useState(0);
-  const [sent,       setSent]       = useState(false);
+  const [, setSent]                 = useState(false);
   const [activeMode, setActiveMode] = useState<ModeKey>('cloud');   // Fix C5
 
   const hour    = new Date().getHours();
@@ -148,7 +148,7 @@ export function CloudThoughtsScreen({
         Animated.timing(breath, { toValue: 0, duration: 2100, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
       ])
     ).start();
-  }, []);
+  }, [breath]);
   const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1] });
 
