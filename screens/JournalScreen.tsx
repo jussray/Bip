@@ -21,6 +21,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
 import { buildOracleInsight } from '../services/oracle';
@@ -43,15 +44,6 @@ type Hotspot = {
 const HOTSPOTS: Record<'journal' | 'calendar', Hotspot> = {
   journal:  { bottom: '6%', left: '26%', width: '40%', height: '22%', label: 'Journal 📖' },
   calendar: { top: '6%', right: '2%', width: '44%', height: '40%', label: 'Calendar 📅' },
-};
-
-// ── MOOD GLOW (same palette as HomeScreen) ─────────────────────────────────
-const MOOD_GLOW: Record<string, string> = {
-  Happy:   '#fbbf24',
-  Neutral: '#c4b5fd',
-  Sad:     '#7dd3fc',
-  Angry:   '#f472b6',
-  Tired:   '#6d28d9',
 };
 
 // ── TIME OF DAY ────────────────────────────────────────────────────────────

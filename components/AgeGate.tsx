@@ -3,11 +3,17 @@
  *
  * Guardrail 6 — Age boundary guardrail.
  *
- * Shown once, after the branded splash but before any teen onboarding
- * content. Confirms the person opening the app is in an allowed age
- * range before letting them continue — under-13 visitors are guided
- * toward a parent/guardian instead of being onboarded as a teen, and
- * nothing beyond the single answer itself is collected or stored.
+ * The branded splash (children) always renders first and stays visible —
+ * the age question rides on top of it as a sheet rather than replacing it,
+ * so a brand-new user's first impression is "entering a space" (per
+ * docs/VISION.md's Opening Screen brief) rather than a bare form. Only
+ * the 'blocked' (under-13) outcome takes over the full screen, since that
+ * one has to be a hard stop rather than an ambient overlay.
+ *
+ * Confirms the person opening the app is in an allowed age range before
+ * letting them continue — under-13 visitors are guided toward a parent/
+ * guardian instead of being onboarded as a teen, and nothing beyond the
+ * single answer itself is collected or stored.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -39,9 +45,9 @@ export function AgeGate({ children, onResolved }: Props) {
     onResolved?.(next);
   };
 
-  if (status === 'loading') return null;
-
-  if (status === 'teen' || status === 'guardian') return <>{children}</>;
+  if (status === 'loading' || status === 'teen' || status === 'guardian') {
+    return <>{children}</>;
+  }
 
   if (status === 'blocked') {
     return (
@@ -60,30 +66,56 @@ export function AgeGate({ children, onResolved }: Props) {
     );
   }
 
+  // status === 'unset' — first launch ever. Keep the branded splash
+  // visible underneath; the question rides on top of it as a sheet so
+  // the very first thing a new user sees is the room, not a form.
   return (
-    <View style={styles.root}>
-      <Text style={styles.emoji}>👋</Text>
-      <Text style={styles.title}>Quick check before we start</Text>
-      <Text style={styles.body}>
-        How old are you? This just helps us show you the right space —
-        nothing else is collected.
-      </Text>
+    <View style={styles.unsetRoot}>
+      {children}
+      <View style={styles.backdrop}>
+        <View style={styles.sheet}>
+          <Text style={styles.emoji}>👋</Text>
+          <Text style={styles.title}>Quick check before you come in</Text>
+          <Text style={styles.body}>
+            How old are you? This just helps us show you the right space —
+            nothing else is collected.
+          </Text>
 
-      <TouchableOpacity style={styles.optionBtn} onPress={() => choose('teen')}>
-        <Text style={styles.optionText}>I'm 13–17</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.optionBtn} onPress={() => choose('guardian')}>
-        <Text style={styles.optionText}>I'm a parent or guardian (18+)</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.optionBtnSubtle} onPress={() => choose('blocked')}>
-        <Text style={styles.optionTextSubtle}>I'm under 13</Text>
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.optionBtn} onPress={() => choose('teen')}>
+            <Text style={styles.optionText}>I'm 13–17</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionBtn} onPress={() => choose('guardian')}>
+            <Text style={styles.optionText}>I'm a parent or guardian (18+)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionBtnSubtle} onPress={() => choose('blocked')}>
+            <Text style={styles.optionTextSubtle}>I'm under 13</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0d0820', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  unsetRoot: { flex: 1 },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8,4,18,0.55)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#150b28',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(200,120,255,0.28)',
+    borderBottomWidth: 0,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
   emoji: { fontSize: 40, marginBottom: 14 },
   title: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 10 },
   body: { fontSize: 14, color: '#c4b5fd', textAlign: 'center', lineHeight: 20, marginBottom: 24 },

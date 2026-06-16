@@ -19,6 +19,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { MOOD_GLOW } from '../constants/moodGlow';
 import {
   Text,
   TouchableOpacity,
@@ -34,21 +35,6 @@ import {
 
 // ── Assets ─────────────────────────────────────────────────────────────────
 const CLOUD_HEADPHONES = IMAGES.cloudHeadphones;
-
-// ── MOOD GLOW ──────────────────────────────────────────────────────────────
-const MOOD_GLOW: Record<string, string> = {
-  Happy:       '#fbbf24',
-  Neutral:     '#c4b5fd',
-  Sad:         '#7dd3fc',
-  Angry:       '#f472b6',
-  Tired:       '#6d28d9',
-  anxious:     '#7dd3fc',
-  overwhelmed: '#f472b6',
-  sad:         '#7dd3fc',
-  stressed:    '#f472b6',
-  tired:       '#6d28d9',
-  calm:        '#c4b5fd',
-};
 
 // ── TIME OF DAY ────────────────────────────────────────────────────────────
 function getTimeOfDay(hour: number): TimeOfDay {

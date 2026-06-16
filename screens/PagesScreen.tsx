@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -330,6 +331,10 @@ function PagesWorkspace({
 
     const entryMoodTag = selectedTag || mood || '';
 
+    // Snapshot before the save so we can tell this was the very first
+    // page ever written — a one-time "first win" beat for onboarding.
+    const isFirstEverEntry = entries.length === 0;
+
     // 1. Generate a stable id shared with App.tsx — must happen BEFORE onSave
     //    so saveJournalEntry receives the same id that patchJournalEntry will
     //    search for when the Worker reply arrives.
@@ -341,6 +346,10 @@ function PagesWorkspace({
       text: text.trim(), source: activeTab, moodTag: entryMoodTag,
       entryMode: 'typed', locked, imageUri,
     });
+
+    if (isFirstEverEntry) {
+      Alert.alert('there it is. 💜', "that's your first page in here. come back whenever you need to put something down — it'll be waiting.");
+    }
 
     // Clear the draft right away so the user is unblocked.
     const savedText = text.trim();

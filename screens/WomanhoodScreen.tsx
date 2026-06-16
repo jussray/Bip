@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg, type TimeOfDay } from '../constants/theme';
+import { glowForMood } from '../constants/moodGlow';
 
 function timeOfDay(): TimeOfDay {
   const h = new Date().getHours();
@@ -30,15 +31,7 @@ interface WomanhoodScreenProps {
   streakDays?:    number;
 }
 
-function glowFor(mood?: string) {
-  const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))  return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx')) return '#7dd3fc';
-  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))  return '#6d28d9';
-  if (m.includes('calm'))   return '#c4b5fd';
-  return '#e879a3';
-}
+const glowFor = (mood?: string) => glowForMood(mood, '#e879a3');
 
 function timeGreeting() {
   const h = new Date().getHours();
