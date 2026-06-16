@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
+import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import {
@@ -31,14 +32,6 @@ const CLOUD_STORMY = IMAGES.cloudStormy;
 const RAINY_BG     = IMAGES.bgComfort;
 
 const { width: SCREEN_W } = Dimensions.get('window');
-
-// ── MOOD GLOW ──────────────────────────────────────────────────────────────
-const MOOD_GLOW: Record<string, string> = {
-  Happy: '#fbbf24', Neutral: '#c4b5fd', Sad: '#7dd3fc',
-  Angry: '#f472b6', Tired: '#6d28d9',
-  anxious: '#7dd3fc', overwhelmed: '#f472b6', sad: '#7dd3fc',
-  stressed: '#f472b6', tired: '#6d28d9', calm: '#c4b5fd',
-};
 
 // ── Comfort messages ───────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [

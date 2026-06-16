@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { IMAGES } from '../constants/theme';
+import { MOOD_GLOW } from '../constants/moodGlow';
 import { SekretCompanionCard } from '../components/SekretCompanionCard';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { CompanionCheckIn } from '../types/sekretCompanion';
@@ -111,25 +112,6 @@ const MOODS_BY_CAT: Record<MoodCat, { id: string; emoji: string; label: string }
     { id: 'feeling-seen',  emoji: '🫶',    label: 'feeling seen' },
     { id: 'glow-up',       emoji: '📈',    label: 'glow up' },
   ],
-};
-
-// Mood-tinted ambient glow — the room reads your energy
-const MOOD_GLOW: Record<string, string> = {
-  // Heavy
-  sad: '#7dd3fc', anxious: '#7dd3fc', frustrated: '#f472b6', angry: '#f472b6',
-  lonely: '#818cf8', overwhelmed: '#f472b6', hurt: '#7dd3fc', disappointed: '#a78bfa',
-  // Steady
-  calm: '#c4b5fd', reflective: '#a78bfa', tired: '#6d28d9', okay: '#c4b5fd',
-  content: '#86efac', thoughtful: '#a78bfa', hopeful: '#6ee7b7', grateful: '#fde68a',
-  // Winning
-  proud: '#fbbf24', motivated: '#fb923c', confident: '#fbbf24', excited: '#fb7185',
-  accomplished: '#fbbf24', loved: '#e879f9', connected: '#34d399', celebrating: '#fbbf24',
-  'locked-in': '#60a5fa', 'glow-up': '#fbbf24',
-  // Fun
-  crushing: '#fb7185', unbothered: '#c4b5fd', curious: '#60a5fa',
-  relieved: '#86efac', 'feeling-seen': '#e879f9',
-  // Legacy
-  Happy: '#fbbf24', Neutral: '#c4b5fd', Sad: '#7dd3fc', Angry: '#f472b6', Tired: '#6d28d9',
 };
 
 // Tiny wins — shown in the Bip Wins card

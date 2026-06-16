@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AVATARS, getRoomBg, normalizeCharacterKey } from '../constants/theme';
+import { glowForMood as glowFor } from '../constants/moodGlow';
 import { fetchSekretReply } from '../utils/api';
 import type { OracleProfile } from '../services/oracleDiscovery';
 
@@ -33,16 +34,6 @@ const SEKRET_PROFILES: Record<string, any> = {
 };
 
 // ── Mood glow palette ──────────────────────────────────────────────────────
-function glowFor(mood: string): string {
-  const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))                              return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx'))           return '#7dd3fc';
-  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))                              return '#6d28d9';
-  if (m.includes('calm'))                               return '#c4b5fd';
-  return '#c4b5fd';
-}
-
 function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
   const h = new Date().getHours();
   if (h >= 5  && h < 11) return 'morning';
