@@ -96,10 +96,22 @@ If a row is in AsyncStorage but not Supabase, sync helpers are fire-and-forget â
 Whenever you change `package.json`, `app/index.tsx`, or anything in `constants/theme.ts` / `types/`, run this before pushing:
 
 ```bash
-npx expo export --platform web --clear
+npm run verify:bundle
 ```
 
 Success looks like `Exported: dist` at the end. This is exactly what the pre-standup cron checks every weekday at 8am EDT â€” if it bundles here, the cron stays silent.
+
+For a full pre-push gate (asset audit, type-check, lint, bundle, and room
+art backup verification all in one command), run:
+
+```bash
+npm run verify:prepush
+```
+
+See [`DEPENDENCY_AUDIT.md`](./DEPENDENCY_AUDIT.md),
+[`ROOM_ART_GUIDE.md`](./ROOM_ART_GUIDE.md), and
+[`ASSET_BACKUP_RULES.md`](./ASSET_BACKUP_RULES.md) for what each check in
+that gate enforces and why.
 
 ---
 
