@@ -10,6 +10,8 @@ export interface JournalEntry {
   entryMode?: 'typed' | 'voice';
   locked?: boolean;
   imageUri?: string;
+  sekretReply?: string;   // Se'kret's saved reply shown below the entry
+  sekretTyping?: boolean; // transient — true while reply is being streamed
 }
 
 export interface CirclePost {
@@ -56,6 +58,8 @@ export interface VoiceNote {
   time: string;
   duration: string;
   type?: string;
+  avatarKey?: string;     // which Se'kret avatar recorded / responded
+  transcriptId?: string;  // reference to the Supabase transcript row
 }
 
 export interface MoodEntry {
