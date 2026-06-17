@@ -2,14 +2,19 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "module": "esnext",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
     "paths": {
-      "@hooks/*":      ["./hooks/*"],
-      "@utils/*":      ["./utils/*"],
+      "@/*":           ["./*"],
+      "@hooks/*":      ["./hooks/*",      "./src/hooks/*"],
+      "@utils/*":      ["./utils/*",      "./src/utils/*"],
       "@components/*": ["./components/*"],
-      "@constants/*":  ["./constants/*"],
+      "@constants/*":  ["./constants/*",  "./src/constants/*"],
       "@screens/*":    ["./screens/*"],
-      "@types/*":      ["./types/*"]
+      "@types/*":      ["./types/*",      "./src/types/*"],
+      "@store/*":      ["./src/store/*"],
+      "@handlers/*":   ["./src/handlers/*"]
     }
   }
 }

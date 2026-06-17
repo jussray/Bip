@@ -21,29 +21,29 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { MOOD_GLOW } from '../constants/moodGlow';
+import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
 import { buildOracleInsight } from '../services/oracle';
 import {
   Text, TouchableOpacity, ScrollView,
-  TextInput, View, Image, StyleSheet, Alert, Animated, Easing, Platform,
+  TextInput, View, Image, StyleSheet, Alert, Animated, Easing,
+  type DimensionValue, Platform,
 } from 'react-native';
 
 // ── DEBUG ──────────────────────────────────────────────────────────────────
 const DEBUG_HOTSPOTS = false;
 
 // ── HOTSPOTS ───────────────────────────────────────────────────────────────
-const HOTSPOTS = {
+type Hotspot = {
+  top?: DimensionValue; bottom?: DimensionValue;
+  left?: DimensionValue; right?: DimensionValue;
+  width: DimensionValue; height: DimensionValue;
+  label: string;
+};
+const HOTSPOTS: Record<'journal' | 'calendar', Hotspot> = {
   journal:  { bottom: '6%', left: '26%', width: '40%', height: '22%', label: 'Journal 📖' },
   calendar: { top: '6%', right: '2%', width: '44%', height: '40%', label: 'Calendar 📅' },
-};
-
-// ── MOOD GLOW (same palette as HomeScreen) ─────────────────────────────────
-const MOOD_GLOW: Record<string, string> = {
-  Happy:   '#fbbf24',
-  Neutral: '#c4b5fd',
-  Sad:     '#7dd3fc',
-  Angry:   '#f472b6',
-  Tired:   '#6d28d9',
 };
 
 // ── TIME OF DAY ────────────────────────────────────────────────────────────
@@ -55,10 +55,10 @@ function getTimeOfDay(hour: number): TimeOfDay {
 }
 
 const TIME_HERO: Record<TimeOfDay, { sub: string; main: string; badge: string }> = {
-  morning: { sub: 'morning pages',       main: 'The Oracle 📖', badge: '☀️ morning' },
-  day:     { sub: 'afternoon pages',     main: 'The Oracle 📖', badge: '🌤️ day' },
-  evening: { sub: 'evening pages',       main: 'The Oracle 📖', badge: '🌆 evening' },
-  night:   { sub: 'late-night pages',    main: 'The Oracle 📖', badge: '🌙 night' },
+  morning: { sub: 'morning pages',       main: 'Se’kret 📖', badge: '☀️ morning' },
+  day:     { sub: 'afternoon pages',     main: 'Se’kret 📖', badge: '🌤️ day' },
+  evening: { sub: 'evening pages',       main: 'Se’kret 📖', badge: '🌆 evening' },
+  night:   { sub: 'late-night pages',    main: 'Se’kret 📖', badge: '🌙 night' },
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
@@ -188,6 +188,11 @@ export function JournalScreen({
 
           <View style={styles.timeBadge} pointerEvents="none">
             <Text style={styles.timeBadgeText}>{hero.badge}</Text>
+          </View>
+
+          {/* Mini sticker — Raylene/Rylane journal companion */}
+          <View style={{ position: 'absolute', top: 10, right: 10 }} pointerEvents="none">
+            <MiniReactionSticker character={character} screenContext="journal" size={40} />
           </View>
 
           {/* Page-memory status — not a companion voice */}
@@ -330,7 +335,7 @@ export function JournalScreen({
               cardAnim(3),
             ]}
           >
-            <Text style={styles.oracleLabel}>📖 THE ORACLE NOTICED</Text>
+            <Text style={styles.oracleLabel}>📖 SE’KRET NOTICED</Text>
             {oracleInsight.lines.map((line) => (
               <Text key={line} style={styles.oracleLine}>{line}</Text>
             ))}

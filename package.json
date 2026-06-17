@@ -9,16 +9,24 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "test": "jest",
-    "lint": "eslint . --ext .ts,.tsx",
+    "vercel-build": "expo export -p web",
+    "test": "node --test",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
-    "test:oracle": "node scripts/test-oracle-discovery.mjs"
+    "verify:room-archives": "node scripts/verify-room-archives.js",
+    "verify:bundle": "npx expo export --platform web --clear",
+    "verify:prepush": "npm run audit:runtime-assets && npm run type-check && npm run lint && npm run verify:bundle && npm run verify:room-archives",
+    "test:oracle": "node scripts/test-oracle-discovery.mjs",
+    "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
+    "deploy": "npm run vercel-build && wrangler deploy",
+    "preview": "npm run vercel-build && wrangler dev"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
     "@react-native-async-storage/async-storage": "1.23.1",
     "@supabase/supabase-js": "2.74.0",
+    "@vercel/analytics": "^2.0.1",
     "expo": "~51.0.28",
     "expo-av": "~14.0.7",
     "expo-constants": "~16.0.2",
@@ -44,9 +52,11 @@
     "@babel/core": "^7.24.0",
     "@types/react": "~18.2.79",
     "babel-plugin-module-resolver": "^5.0.0",
-    "babel-preset-expo": "~11.0.0",
+    "babel-preset-expo": "~10.0.0",
     "eslint": "^8.57.1",
     "eslint-config-expo": "^7.1.2",
-    "typescript": "~5.3.3"
+    "typescript": "~5.3.3",
+    "typescript-eslint": "^8.61.0",
+    "wrangler": "^4.100.0"
   }
 }
