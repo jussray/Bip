@@ -4,6 +4,11 @@
   "devCommand": "expo",
   "cleanUrls": true,
   "framework": null,
+  "build": {
+    "env": {
+      "NODE_VERSION": "20"
+    }
+  },
   "rewrites": [
     {
       "source": "/:path*",

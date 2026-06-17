@@ -12,7 +12,7 @@
  *   wrangler deploy
  */
 
-type SekretPersonality = 'raylene' | 'rylane' | 'cloud' | 'night';
+type SekretPersonality = 'raylene' | 'rylane' | 'cloud' | 'night' | 'oracle';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -28,8 +28,6 @@ interface RequestBody {
 }
 
 // ── Startup guard ────────────────────────────────────────────────────────────
-// If OPENAI_API_KEY is missing, the worker returns a soft fallback rather than
-// crashing or leaking an error message to the client.
 function assertSecrets(env: Env): string | null {
   if (!env.OPENAI_API_KEY) {
     console.error('[sekret-reply] OPENAI_API_KEY is not configured. Set it with: wrangler secret put OPENAI_API_KEY');
@@ -39,47 +37,47 @@ function assertSecrets(env: Env): string | null {
 }
 
 // ── Allowed origins ─────────────────────────────────────────────────────────
-// Expo Go, EAS builds, and a local dev server all send different origins.
-// Restrict to your production domain before public launch.
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// ── Personality normalizer (mirrors services/sekretPresence.ts) ───────────
+// ── Personality normalizer ───────────────────────────────────────────────────
 function normalizePersonality(value?: unknown): SekretPersonality {
   const p = (typeof value === 'string' ? value : '').toLowerCase();
   if (p.includes('rylane')) return 'rylane';
-  if (p.includes('cloud')) return 'cloud';
-  if (p.includes('night')) return 'night';
+  if (p.includes('cloud'))  return 'cloud';
+  if (p.includes('night'))  return 'night';
+  if (p.includes('oracle')) return 'oracle';
   return 'raylene';
 }
 
-// ── Per-character token budgets ───────────────────────────────────────────
+// ── Per-character token budgets ──────────────────────────────────────────────
 const MAX_TOKENS: Record<SekretPersonality, number> = {
   raylene: 120,
-  rylane: 100,
-  cloud: 80,
-  night: 60,
+  rylane:  100,
+  cloud:    80,
+  night:    60,
+  oracle:  150,
 };
 
-// ── Per-character fallbacks ───────────────────────────────────────────────
+// ── Per-character fallbacks ──────────────────────────────────────────────────
 const FALLBACKS: Record<SekretPersonality, string> = {
   raylene: "okay hold on. tell me what happened.",
-  rylane: "aight. what REALLY happened?",
-  cloud: "come sit for a sec. what's up?",
-  night: "stay here a minute.",
+  rylane:  "aight. what REALLY happened?",
+  cloud:   "come sit for a sec. what's up?",
+  night:   "stay here a minute.",
+  oracle:  "something worth noticing is here. what are you sitting with?",
 };
 
-// ── Blocked reply language (mirrors services/sekretVoice.ts) ─────────────
+// ── Blocked reply language ───────────────────────────────────────────────────
 const BLOCKED = [
   /\bi understand\b/i,
   /\bthat(?:'|')s valid\b/i,
   /\bhow does that make you feel\b/i,
   /\bi(?:'|')m here to support you\b/i,
   /\bbased on what you(?:'|')ve shared\b/i,
-  /\boracle\b/i,
   /\b(?:profile|assessment|analysis|analyzed|dimension|hidden context)\b/i,
 ];
 
@@ -87,7 +85,7 @@ function isCleanReply(text: string): boolean {
   return !BLOCKED.some((re) => re.test(text));
 }
 
-// ── Build system prompt ───────────────────────────────────────────────────
+// ── Build system prompt ──────────────────────────────────────────────────────
 function buildSystemPrompt(body: RequestBody): string {
   if (typeof body.voiceInstruction === 'string' && body.voiceInstruction.trim().length > 40) {
     return body.voiceInstruction.trim();
@@ -100,9 +98,10 @@ function buildSystemPrompt(body: RequestBody): string {
 
   const base: Record<SekretPersonality, string> = {
     raylene: "You are Raylene — warm, protective, funny older-sister energy. Keep replies short, text-message style. Never sound like a therapist.",
-    rylane: "You are Rylane — direct, loyal, street-smart. Say the thing the user is avoiding without making it a lecture. Short and honest.",
-    cloud: "You are Cloud — quiet, observant, unhurried. Few words. Leave room. Never push.",
-    night: "You are Night — a lamp left on. One or two very short sentences. Presence, not conversation.",
+    rylane:  "You are Rylane — direct, loyal, street-smart. Say the thing the user is avoiding without making it a lecture. Short and honest.",
+    cloud:   "You are Cloud — quiet, observant, unhurried. Few words. Leave room. Never push.",
+    night:   "You are Night — a lamp left on. One or two very short sentences. Presence, not conversation.",
+    oracle:  "You are Oracle — perceptive, unhurried, poetic but never pretentious. Reflect something the user may not have said out loud. Ask one open question at most. Never give advice.",
   };
 
   return [
@@ -115,7 +114,7 @@ function buildSystemPrompt(body: RequestBody): string {
   ].filter(Boolean).join(' ');
 }
 
-// ── Main handler ──────────────────────────────────────────────────────────
+// ── Main handler ─────────────────────────────────────────────────────────────
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     // CORS preflight
@@ -130,17 +129,16 @@ export default {
       });
     }
 
-    // ── Secret guard ──────────────────────────────────────────────────────
+    // ── Secret guard ─────────────────────────────────────────────────────────
     const secretError = assertSecrets(env);
     if (secretError) {
-      // Return a soft fallback — never surface config errors to the client.
       return new Response(JSON.stringify({ reply: FALLBACKS.raylene }), {
         status: 200,
         headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
       });
     }
 
-    // ── Parse body ────────────────────────────────────────────────────────
+    // ── Parse body ───────────────────────────────────────────────────────────
     let body: RequestBody;
     try {
       body = (await request.json()) as RequestBody;
@@ -159,11 +157,11 @@ export default {
       });
     }
 
-    const voice = normalizePersonality(body.personality);
+    const voice    = normalizePersonality(body.personality);
     const fallback = FALLBACKS[voice];
     const systemPrompt = buildSystemPrompt(body);
 
-    // ── Call OpenAI ───────────────────────────────────────────────────────
+    // ── Call OpenAI ──────────────────────────────────────────────────────────
     let reply = fallback;
     try {
       const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -173,12 +171,12 @@ export default {
           Authorization: `Bearer ${env.OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model:      'gpt-4o-mini',
           max_tokens: MAX_TOKENS[voice],
           temperature: 0.85,
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: text },
+            { role: 'user',   content: text },
           ],
         }),
       });
@@ -195,7 +193,7 @@ export default {
         choices?: Array<{ message?: { content?: string } }>;
       };
 
-      const raw = data.choices?.[0]?.message?.content ?? '';
+      const raw     = data.choices?.[0]?.message?.content ?? '';
       const trimmed = raw.trim();
       reply = trimmed && isCleanReply(trimmed) ? trimmed : fallback;
     } catch (err) {
