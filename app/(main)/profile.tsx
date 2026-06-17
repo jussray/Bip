@@ -4,6 +4,7 @@
  * User profile — mood history, journal streak, growth path.
  * Full Supabase-backed persistence in a later sprint.
  */
+import React from 'react';
 import {
   View,
   Text,

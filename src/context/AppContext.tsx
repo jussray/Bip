@@ -63,6 +63,7 @@ interface AppContextValue {
   journalText: string;
   setJournalText: (text: string) => void;
   entries: JournalEntry[];
+  setEntries: React.Dispatch<React.SetStateAction<JournalEntry[]>>;
   saveEntry: () => void;
 
   // Circle
@@ -171,6 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     journalText,
     setJournalText,
     entries,
+    setEntries,
     saveEntry,
     circlePosts,
     setCirclePosts,

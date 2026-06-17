@@ -21,6 +21,9 @@ export const BACKEND_URL   = env.EXPO_PUBLIC_BACKEND_URL       ?? '';
 export const isSupabaseReady = Boolean(SUPABASE_URL && SUPABASE_ANON);
 export const isBackendReady  = Boolean(BACKEND_URL);
 
+// Safe __DEV__ guard — RN global is undefined in Node/Vercel SSG context
+const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
+
 /**
  * validateEnv()
  *
@@ -33,24 +36,21 @@ export function validateEnv(): void {
   // ── Required for cloud sync ──────────────────────────────────────────────
   if (!SUPABASE_URL) {
     console.warn(
-      "[Se'kret Bip] \u26A0\uFE0F  EXPO_PUBLIC_SUPABASE_URL is not set.\n" +
+      "[Se'kret Bip] ⚠️  EXPO_PUBLIC_SUPABASE_URL is not set.\n" +
       '   Cloud sync is disabled. Add it to .env.local (see .env.example).'
     );
   }
   if (!SUPABASE_ANON) {
     console.warn(
-      "[Se'kret Bip] \u26A0\uFE0F  EXPO_PUBLIC_SUPABASE_ANON_KEY is not set.\n" +
+      "[Se'kret Bip] ⚠️  EXPO_PUBLIC_SUPABASE_ANON_KEY is not set.\n" +
       '   Cloud sync is disabled. Add it to .env.local (see .env.example).'
     );
   }
 
   // ── Required for AI replies — hard error ────────────────────────────────
-  // Unlike Supabase (graceful degradation), a missing Worker URL causes
-  // Se'kret AI to drop replies silently mid-chat with no user-visible feedback.
-  // Fail loudly here so it is caught before the app reaches testers.
   if (!BACKEND_URL) {
     console.error(
-      "[Se'kret Bip] \uD83D\uDEA8 EXPO_PUBLIC_BACKEND_URL is not set.\n" +
+      "[Se'kret Bip] 🚨 EXPO_PUBLIC_BACKEND_URL is not set.\n" +
       "   Se'kret AI WILL silently drop all replies without this.\n" +
       '   Set it to your Cloudflare Worker URL after `wrangler deploy`.\n' +
       '   Example: EXPO_PUBLIC_BACKEND_URL=https://sekret-reply.<account>.workers.dev'
@@ -62,14 +62,14 @@ export function validateEnv(): void {
   for (const key of BANNED) {
     if (env[key]) {
       console.error(
-        `[Se'kret Bip] \uD83D\uDEA8 SECURITY: "${key}" is present in client environment.\n` +
+        `[Se'kret Bip] 🚨 SECURITY: "${key}" is present in client environment.\n` +
         '   This key must NEVER be in Expo, Vercel, or client code.\n' +
         '   Remove it immediately and rotate the secret.'
       );
     }
   }
 
-  if (__DEV__ && SUPABASE_URL && SUPABASE_ANON && BACKEND_URL) {
-    console.log("[Se'kret Bip] \u2705 All environment variables configured.");
+  if (isDev && SUPABASE_URL && SUPABASE_ANON && BACKEND_URL) {
+    console.log("[Se'kret Bip] ✅ All environment variables configured.");
   }
 }

@@ -4,6 +4,7 @@
  * Personality picker tab.
  * Shows all 5 companions as cards — tap to enter the chat.
  */
+import React from 'react';
 import {
   View,
   Text,
