@@ -1,9 +1,8 @@
 /**
  * src/utils/index.ts
  *
- * Utilities barrel — re-exports from legacy utils/ directory.
- * Physical files move here in Step 3.
- *
- * Usage: import { validateEnv } from '@/utils';
+ * Canonical utils barrel.
+ * Import via: import { loadState, saveState, fetchSekretReply } from '@/utils';
  */
-export * from '../../utils/env';
+export { loadState, saveState } from './storage';
+export { fetchSekretReply }     from './api';

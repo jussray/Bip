@@ -1,52 +1,9 @@
-export interface JournalEntry {
-  id: number;
-  text: string;
-  mood: string;
-  date: string;
-  time: string;
-}
-
-export interface CirclePost {
-  id: number;
-  text: string;
-  date: string;
-  time: string;
-  reactions: {
-    felt: number;
-    comfort: number;
-    proud: number;
-    stay: number;
-  };
-}
-
-export interface VoiceNote {
-  id: number;
-  title: string;
-  date: string;
-  time: string;
-  duration: string;
-}
-
-export interface MoodEntry {
-  id: number;
-  mood: string;
-  date: string;
-  time: string;
-}
-
-export interface Theme {
-  name: string;
-  emoji: string;
-  background: string;
-  card: string;
-  accent: string;
-  soft: string;
-}
-
-export interface SekretProfile {
-  name: string;
-  emoji: string;
-  title: string;
-  vibe: string;
-  greeting: string;
-}
+/**
+ * types/index.ts
+ *
+ * LEGACY SHIM — do not edit types here.
+ * Canonical types are now in src/types/index.ts.
+ *
+ * TODO Step 5: delete after all @types/* imports are migrated.
+ */
+export type * from '../src/types/index';

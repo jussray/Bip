@@ -1,9 +1,14 @@
 /**
  * src/constants/index.ts
  *
- * Constants barrel — re-exports from legacy constants/ directory.
- * Physical files move here in Step 3.
- *
- * Usage: import { THEME_PACKS } from '@/constants';
+ * Canonical constants barrel.
+ * Import via: import { THEME_PACKS, MOODS, HOME_MESSAGES } from '@/constants';
  */
-export * from '../../constants/theme';
+export {
+  THEME_PACKS,
+  SEKRET_PROFILES,
+  MOODS,
+  COMFORT_MESSAGES,
+  HOME_MESSAGES,
+  HEAVY_WORDS,
+} from './theme';

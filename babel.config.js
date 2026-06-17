@@ -1,18 +1,17 @@
 // babel.config.js
 // Se'kret Bip — Babel configuration
 //
-// babel-plugin-module-resolver is configured here to match the path aliases
-// declared in tsconfig.json. Both files must stay in sync.
-// After changing this file, restart Expo with: npx expo start --clear
+// Must stay in sync with tsconfig.json paths.
+// After any change here: npx expo start --clear
 //
-// Alias map:
-//   @/*          → ./src/*        (NEW — use for all new code)
-//   @components  → ./components   (legacy, keep until screens/ retired)
-//   @screens     → ./screens      (legacy)
-//   @hooks       → ./hooks        (legacy)
-//   @utils       → ./utils        (legacy)
-//   @constants   → ./constants    (legacy)
-//   @types       → ./types        (legacy)
+// Alias map (Step 3):
+//   @        → ./src        (canonical — use for all new code)
+//   @hooks   → ./src/hooks  (legacy alias now points directly to src/)
+//   @utils   → ./src/utils
+//   @components → ./src/components
+//   @constants  → ./src/constants
+//   @types      → ./src/types
+//   @screens    → ./screens  (legacy — retire in Step 5)
 
 module.exports = function (api) {
   api.cache(true);
@@ -24,16 +23,18 @@ module.exports = function (api) {
         {
           root: ['./'],
           alias: {
-            // New canonical — all new code uses this
-            '@':          './src',
+            // Canonical
+            '@':            './src',
 
-            // Legacy — kept for backward compatibility
-            '@components': './components',
-            '@constants':  './constants',
-            '@screens':    './screens',
-            '@utils':      './utils',
-            '@hooks':      './hooks',
-            '@types':      './types',
+            // Legacy — now point directly to src/ (no shim hop)
+            '@hooks':       './src/hooks',
+            '@utils':       './src/utils',
+            '@components':  './src/components',
+            '@constants':   './src/constants',
+            '@types':       './src/types',
+
+            // Screens — retire in Step 5
+            '@screens':     './screens',
           },
         },
       ],

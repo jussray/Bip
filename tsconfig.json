@@ -5,21 +5,17 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      // ── New canonical alias (points into src/) ──────────────────────
-      // Use @/* for ALL new code going forward.
-      // e.g. import { useAuthStore } from '@/store';
-      //      import { AgeGate }       from '@/components/safety';
+      // ── Canonical alias (new code uses this) ──────────────────────────────
       "@/*": ["./src/*"],
 
-      // ── Legacy aliases (kept for backward compatibility) ────────────
-      // These still resolve so no existing import breaks.
-      // Migrate to @/* over time; remove these once screens/ is retired.
-      "@hooks/*":      ["./hooks/*"],
-      "@utils/*":      ["./utils/*"],
-      "@components/*": ["./components/*"],
-      "@constants/*":  ["./constants/*"],
+      // ── Legacy aliases (resolve to src/ via shim files) ───────────────────
+      // Keep until Step 5 (screens/ retirement). Do not remove early.
+      "@hooks/*":      ["./src/hooks/*"],
+      "@utils/*":      ["./src/utils/*"],
+      "@components/*": ["./src/components/*"],
+      "@constants/*":  ["./src/constants/*"],
       "@screens/*":    ["./screens/*"],
-      "@types/*":      ["./types/*"]
+      "@types/*":      ["./src/types/*"]
     }
   }
 }
