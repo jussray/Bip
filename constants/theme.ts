@@ -89,15 +89,15 @@ const bgNightRoomNight     = require("../assets/images/bg-night-room-night.png")
 const bgNightRoomDeepNight = require("../assets/images/bg-night-room-deep-night.png");
 const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
 
-// ── Night Avatar — REAL ASSETS NEEDED ─────────────────────────────────────
-// Replace when night-*.png ships: night-neutral · night-window · night-comfort · night-listening
-// Night sits by the window — raylene-window-rainy is the closest semantic match.
+// ── Night Avatar ───────────────────────────────────────────────────────────
+const nightFullbody = require("../assets/images/night-fullbody.png");
+// Portraits ship separately (night-neutral etc.) — using Raylene fallbacks until then
 const nightAvatarNeutral  = rayleneWindowRainy;
 const nightAvatarHappy    = rayleneNightWindow;
 const nightAvatarThinking = rayleneThinking;
 const nightAvatarWriting  = rayleneWriting;
 const nightAvatarWindow   = rayleneWindowRainy;
-const nightAvatarFullbody = rayleneNeutral;
+const nightAvatarFullbody = nightFullbody;
 
 // ── Parent Room Backgrounds ────────────────────────────────────────────────
 const bgMomRoomDay       = require("../assets/images/bg-mom-room-day.png");
@@ -143,6 +143,16 @@ const cloudAvatarFullbody = cloudHappy;
 // The native splash is color-only in app.json. The branded splash experience is
 // composed in SplashScreen from text, controls, mascots, and valid scene artwork.
 const sekretSplash = bgRayleneRoomNight;
+
+// ── Scene composites (character + room background merged) ──────────────────
+const rayleneRoomDayScene   = require("../assets/images/raylene-room-day-scene.png");
+const rayleneRoomNightScene = require("../assets/images/raylene-room-night-scene.png");
+const rayleneRoomRainScene  = require("../assets/images/raylene-room-rain-scene.png");
+const rylaneRoomDayScene    = require("../assets/images/rylane-room-day-scene.png");
+const rylaneRoomNightScene  = require("../assets/images/rylane-room-night-scene.png");
+const rylaneRoomRainScene   = require("../assets/images/rylane-room-rain-scene.png");
+const cloudRoomDayScene     = require("../assets/images/cloud-room-day-scene.png");
+const nightRoomNightScene   = require("../assets/images/night-room-night-scene.png");
 
 
 export const IMAGES = {
@@ -214,6 +224,17 @@ export const IMAGES = {
   nightAvatarWriting,
   nightAvatarWindow,
   nightAvatarFullbody,
+  nightFullbody,
+
+  // Scene composites
+  rayleneRoomDayScene,
+  rayleneRoomNightScene,
+  rayleneRoomRainScene,
+  rylaneRoomDayScene,
+  rylaneRoomNightScene,
+  rylaneRoomRainScene,
+  cloudRoomDayScene,
+  nightRoomNightScene,
 
   // Rooms
   bgRayleneRoomDay,
