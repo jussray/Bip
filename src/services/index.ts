@@ -2,7 +2,7 @@
  * src/services/index.ts
  *
  * Service layer barrel.
- * Supabase client + AI services + Worker calls.
+ * Import via: import { sendMessage, AI_PERSONALITIES } from '@/services';
  */
 export * from './ai';
 export * from './worker';

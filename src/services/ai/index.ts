@@ -1,20 +1,10 @@
 /**
  * src/services/ai/index.ts
  *
- * Per-personality AI service stubs.
- * Implementations land here in Step 3 when services/ logic is
- * extracted from screens and centralised.
- *
- * Personalities: Raylene, Rylane, Cloud, Night, Oracle
+ * AI service barrel.
+ * Import via: import { sendMessage, AI_PERSONALITIES, PERSONALITY_CONFIG } from '@/services/ai';
  */
-
-// Placeholder — replace with real implementations in Step 3
-export const AI_PERSONALITIES = [
-  'raylene',
-  'rylane',
-  'cloud',
-  'night',
-  'oracle',
-] as const;
-
-export type PersonalityId = typeof AI_PERSONALITIES[number];
+export { sendMessage, makeUserMessage, makeAssistantMessage } from './chat';
+export type { ChatMessage }                                   from './chat';
+export { AI_PERSONALITIES, PERSONALITY_CONFIG }               from './personalities';
+export type { PersonalityConfig }                             from './personalities';

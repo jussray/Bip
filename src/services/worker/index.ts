@@ -1,10 +1,39 @@
 /**
  * src/services/worker/index.ts
  *
- * Cloudflare Worker API calls.
- * Extracted from inline fetch() calls in screens during Step 3.
+ * Cloudflare Worker helpers.
+ * These are thin wrappers around the Worker's HTTP API.
  *
- * Base URL is read from EXPO_PUBLIC_BACKEND_URL (set in Vercel env).
+ * All AI calls go through src/services/ai/chat.ts instead.
+ * This file handles non-AI Worker routes (health, moderation, etc.).
  */
-export const WORKER_BASE_URL =
-  process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
+const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
+
+/** Check that the Cloudflare Worker is reachable */
+export async function checkWorkerHealth(): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/health`, { method: 'GET' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Run a quick content moderation check on user-submitted text.
+ * Returns true if the text is safe to display.
+ */
+export async function moderateContent(text: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/api/moderate`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ text }),
+    });
+    if (!res.ok) return true; // fail open on network error
+    const data = await res.json();
+    return data.safe ?? true;
+  } catch {
+    return true;
+  }
+}
