@@ -28,6 +28,7 @@ import {
   type VoiceBipAvatarKey,
 } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { VoiceNote } from '../types/bridge';
 import { fetchSekretReply } from '../utils/api';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
@@ -98,7 +99,7 @@ interface VoiceBipScreenProps {
   weatherMode?: string;
   voiceNotes:     VoiceNote[];
   setVoiceNotes:  (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
-  onSave?:        () => void;
+  onSave?:        (note: VoiceNote) => void;
   mood?:          string;
   companion?:     {
     presenceMessage: string;
@@ -108,12 +109,13 @@ interface VoiceBipScreenProps {
   profileSide?: OracleSide;
   oracleJournalEntries?: readonly OracleJournalEntry[];
   onStoreOracleMemory?: (entry: OracleJournalEntry) => void;
+  syncStatus?: SyncStatus;
 }
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
   theme, setScreen, selectedSekret, onSelectAvatar, weatherMode, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
-  oracleJournalEntries, onStoreOracleMemory,
+  oracleJournalEntries, onStoreOracleMemory, syncStatus,
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -290,7 +292,7 @@ export function VoiceBipScreen({
     };
 
     setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
-    onSave?.();
+    onSave?.(note);
 
     setIsThinking(true);
     presence.endListening();
@@ -357,6 +359,8 @@ export function VoiceBipScreen({
           <Text style={[styles.avatarRole, { color: avatar.accent }]}>{avatar.role}</Text>
           <Text style={styles.avatarGreeting}>“{avatar.greeting}”</Text>
         </View>
+
+        <SyncBadge status={syncStatus ?? 'idle'} />
 
         {/* ── Interactive Room ── */}
         <View style={styles.roomWrap} pointerEvents="box-none">

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg } from '../constants/theme';
+import { glowForMood as glowFor } from '../constants/moodGlow';
 
 interface MoreScreenProps {
   t: Record<string, any>;
@@ -20,16 +21,6 @@ interface MoreScreenProps {
   mood?: string;
   selectedSekret?: string;
   onSideChanged?: () => void;
-}
-
-function glowFor(mood?: string): string {
-  const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))       return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
-  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))       return '#6d28d9';
-  if (m.includes('calm'))        return '#c4b5fd';
-  return '#c4b5fd';
 }
 
 export function MoreScreen({

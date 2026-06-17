@@ -1,0 +1,72 @@
+name: Verify Room Archives
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/images/**'
+      - 'scripts/verify-room-archives.js'
+      - 'scripts/repair-archive-stubs.js'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'assets/images/**'
+      - 'scripts/verify-room-archives.js'
+  workflow_dispatch:
+
+jobs:
+  verify-archives:
+    name: Archive Integrity Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (with LFS)
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 1
+
+      - name: Hydrate LFS assets
+        run: git lfs pull
+
+      - name: Confirm live files are real PNGs
+        run: |
+          echo "── Live bg-*.png sizes ──"
+          ls -lh assets/images/bg-*.png
+          STUBS=$(find assets/images -maxdepth 1 -name 'bg-*.png' -size -1k | wc -l)
+          if [ "$STUBS" -gt 0 ]; then
+            echo "❌ $STUBS live file(s) are under 1 KB — LFS pull may have failed."
+            exit 1
+          fi
+          echo "✅ All live files are real PNGs."
+
+      - name: Auto-repair archive stubs
+        run: |
+          echo "── Copying live files to archive/ ──"
+          cp -f assets/images/bg-*.png assets/images/archive/
+          echo "── Archive sizes after repair ──"
+          ls -lh assets/images/archive/bg-*.png
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run verify:room-archives --strict-match
+        run: node scripts/verify-room-archives.js --strict-match
+
+      - name: Commit repaired archives (if changed)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/images/archive/
+          if git diff --cached --quiet; then
+            echo "✅ Archive already up-to-date — nothing to commit."
+          else
+            git commit -m "fix: replace LFS stub archive copies with real PNG bytes [skip ci]"
+            git push
+          fi

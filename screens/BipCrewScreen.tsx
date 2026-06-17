@@ -22,22 +22,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
-import { syncCrewMember } from '../utils/sync';
+import { glowForMood as glowFor } from '../constants/moodGlow';
+import { syncCrewMember, deleteCrewMember, syncCrewCheckIn } from '../utils/sync';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { CrewMember, CrewCheckIn } from '../types/index';
 
 const MAX_CREW = 6;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function glowFor(mood?: string): string {
-  const m = (mood || '').toLowerCase();
-  if (m.includes('happy'))       return '#fbbf24';
-  if (m.includes('sad') || m.includes('anx'))    return '#7dd3fc';
-  if (m.includes('angry') || m.includes('over') || m.includes('stress')) return '#f472b6';
-  if (m.includes('tired'))       return '#6d28d9';
-  if (m.includes('calm'))        return '#c4b5fd';
-  return '#c4b5fd';
-}
-
 function timeOfDay(): TimeOfDay {
   const h = new Date().getHours();
   if (h >= 5  && h < 11) return 'morning';
@@ -73,6 +65,8 @@ interface Props {
   setCrewCheckIns: React.Dispatch<React.SetStateAction<CrewCheckIn[]>>;
   setScreen: (s: string) => void;
   BottomNav: React.ReactNode;
+  syncStatus?: SyncStatus;
+  withSyncWrap?: (fn: () => Promise<void>) => Promise<void>;
 }
 
 export function BipCrewScreen({
@@ -80,6 +74,7 @@ export function BipCrewScreen({
   crewMembers, setCrewMembers,
   crewCheckIns, setCrewCheckIns,
   setScreen, BottomNav,
+  syncStatus, withSyncWrap,
 }: Props) {
   const isRylane = selectedSekret === 'rylane';
   const tod = timeOfDay();
@@ -146,7 +141,9 @@ export function BipCrewScreen({
       addedAt: new Date().toISOString(),
     };
     setCrewMembers(prev => [...prev, member]);
-    void member;
+    const sync = () => syncCrewMember(member);
+    if (withSyncWrap) void withSyncWrap(async () => sync());
+    else sync();
     setNewName('');
     setNewCommit('');
     setShowInvite(false);
@@ -155,6 +152,9 @@ export function BipCrewScreen({
   const removeMember = (id: number) => {
     setCrewMembers(prev => prev.filter(m => m.id !== id));
     setCrewCheckIns(prev => prev.filter(c => c.memberId !== id));
+    const sync = () => deleteCrewMember(id);
+    if (withSyncWrap) void withSyncWrap(async () => sync());
+    else sync();
   };
 
   const logCheckIn = (memberId: number) => {
@@ -162,14 +162,18 @@ export function BipCrewScreen({
     if (!note) return;
     const now = new Date();
     const nextId = crewCheckIns.length ? Math.max(...crewCheckIns.map(c => c.id)) + 1 : 1;
-    setCrewCheckIns(prev => [{
+    const checkIn: CrewCheckIn = {
       id: nextId,
       memberId,
       note,
       mood,
       date: now.toLocaleDateString(),
       time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    }, ...prev].slice(0, 200));
+    };
+    setCrewCheckIns(prev => [checkIn, ...prev].slice(0, 200));
+    const sync = () => syncCrewCheckIn(checkIn);
+    if (withSyncWrap) void withSyncWrap(async () => sync());
+    else sync();
     setCheckInNote('');
     setCheckInFor(null);
   };
@@ -229,6 +233,7 @@ export function BipCrewScreen({
 
           <Text style={[styles.heroTitle, { textShadowColor: glow }]}>{heroTitle}</Text>
           <Text style={styles.heroSub}>{heroSub}</Text>
+          <SyncBadge status={syncStatus ?? 'idle'} />
         </Animated.View>
 
         {/* Crew list */}

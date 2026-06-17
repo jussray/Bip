@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -17,8 +18,10 @@ import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
+import { BipEmptyState } from '../components/BipEmptyState';
 
-type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
+type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' | 'night';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
 export type PagesTab = TeenTab | ParentTab;
 
@@ -35,6 +38,7 @@ interface TabDefinition {
 }
 
 export interface SavePageInput {
+  id?: number;
   text: string;
   source: PagesTab;
   moodTag?: string;
@@ -66,6 +70,7 @@ interface SharedPagesProps {
    * Receives the entry id and the reply string.
    */
   onSekretReply?: (entryId: number, reply: string) => void;
+  syncStatus?: SyncStatus;
 }
 
 export interface PagesScreenProps {
@@ -84,6 +89,7 @@ export interface PagesScreenProps {
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
   onSekretReply?: (entryId: number, reply: string) => void;
+  syncStatus?: SyncStatus;
 }
 
 const TEEN_TABS: TabDefinition[] = [
@@ -125,6 +131,18 @@ const TEEN_TABS: TabDefinition[] = [
     ],
     placeholder: 'Let it take shape slowly\u2026',
   },
+  {
+    id: 'night', label: 'Night', icon: '\u{1F319}', eyebrow: "Night Se\u2019kret",
+    title: "You don\u2019t have to say much. Just don\u2019t be alone in it.",
+    subtitle: 'Presence. Not conversation.', accent: '#7b8fcf',
+    prompts: [
+      "What\u2019s still in your head that you can\u2019t put down?",
+      'What almost broke you open today?',
+      "What do you wish you didn\u2019t have to carry alone?",
+      'You can just start with one word.',
+    ],
+    placeholder: 'The night hears you\u2026',
+  },
 ];
 
 const PARENT_TABS: TabDefinition[] = [
@@ -163,6 +181,7 @@ function tabToStickerCharacter(tab: PagesTab): MiniAvatarCharacter {
   if (tab === 'raylene') return 'raylene';
   if (tab === 'rylane') return 'rylane';
   if (tab === 'cloud') return 'cloud';
+  if (tab === 'night') return 'night';
   return null;
 }
 
@@ -170,7 +189,7 @@ function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
   if (
     source === 'parentSekret' || source === 'bridge' || source === 'oracle' ||
-    source === 'raylene' || source === 'rylane' || source === 'cloud'
+    source === 'raylene' || source === 'rylane' || source === 'cloud' || source === 'night'
   ) {
     return source;
   }
@@ -235,7 +254,7 @@ const replyStyles = StyleSheet.create({
 function PagesWorkspace({
   side, entries, draft, setDraft, onSave, setScreen, BottomNav,
   mood, oracleProfile, onCompleteOracleSession, selectedSekret,
-  parentRoomStyle, weatherMode, onSekretReply,
+  parentRoomStyle, weatherMode, onSekretReply, syncStatus,
 }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
@@ -312,11 +331,25 @@ function PagesWorkspace({
 
     const entryMoodTag = selectedTag || mood || '';
 
-    // 1. Persist the entry immediately (local-first, unchanged behavior).
+    // Snapshot before the save so we can tell this was the very first
+    // page ever written — a one-time "first win" beat for onboarding.
+    const isFirstEverEntry = entries.length === 0;
+
+    // 1. Generate a stable id shared with App.tsx — must happen BEFORE onSave
+    //    so saveJournalEntry receives the same id that patchJournalEntry will
+    //    search for when the Worker reply arrives.
+    const entryId = Date.now();
+
+    // 2. Persist the entry immediately (local-first, unchanged behavior).
     onSave({
+      id: entryId,
       text: text.trim(), source: activeTab, moodTag: entryMoodTag,
       entryMode: 'typed', locked, imageUri,
     });
+
+    if (isFirstEverEntry) {
+      Alert.alert('there it is. 💜', "that's your first page in here. come back whenever you need to put something down — it'll be waiting.");
+    }
 
     // Clear the draft right away so the user is unblocked.
     const savedText = text.trim();
@@ -325,28 +358,23 @@ function PagesWorkspace({
     setLocked(false);
     setImageUri(undefined);
 
-    // 2. Only Se'kret tabs get an AI reply. Me, Oracle, parentSekret, bridge: skip.
+    // 3. Only Se'kret tabs get an AI reply. Me, Oracle, parentSekret, bridge: skip.
     if (!tabToAvatarKey(activeTab)) return;
 
-    // Derive the entry id the parent will have assigned.
-    // Convention (matches App.tsx saveJournalEntry): id = Date.now() at save time.
-    // We snapshot it here so the async reply patches the right entry.
-    const entryId = Date.now();
-
-    // 3. Show typing indicator immediately.
+    // 4. Show typing indicator immediately.
     setReplyState(prev => ({ ...prev, [entryId]: { typing: true } }));
 
-    // 4. Call Worker (fetchPagesReply never throws).
+    // 5. Call Worker (fetchPagesReply never throws).
     const reply = await fetchPagesReply({
       tab: activeTab,
       text: savedText,
       mood: entryMoodTag,
     });
 
-    // 5. Store reply locally for immediate display.
+    // 6. Store reply locally for immediate display.
     setReplyState(prev => ({ ...prev, [entryId]: { typing: false, reply } }));
 
-    // 6. Persist reply to the entry via parent callback so it survives
+    // 7. Persist reply to the entry via parent callback so it survives
     //    navigation and app restarts via AsyncStorage.
     onSekretReplyRef.current?.(entryId, reply);
   };
@@ -564,6 +592,7 @@ function PagesWorkspace({
               <Text style={styles.savedTitle}>Saved \u00b7 {tab.label}</Text>
               <Text style={styles.savedCount}>{tabEntries.length}</Text>
             </View>
+            <SyncBadge status={syncStatus ?? 'idle'} />
 
             {tabEntries.length ? tabEntries.map(entry => {
               // Determine reply display:
@@ -596,9 +625,7 @@ function PagesWorkspace({
                 </View>
               );
             }) : (
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>Nothing saved here yet.</Text>
-              </View>
+              <BipEmptyState type="empty" message="Nothing saved here yet. Your words will live here." />
             )}
           </>
         )}
@@ -612,6 +639,7 @@ export function PagesScreen({
   journalText, setJournalText, journalEntries, saveJournalEntry,
   mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession,
   selectedSekret, moodHistory, voiceNotes, streakDays, onSekretReply,
+  syncStatus,
 }: PagesScreenProps) {
   return (
     <PagesWorkspace
@@ -630,6 +658,7 @@ export function PagesScreen({
       oracleProfile={oracleProfile}
       onCompleteOracleSession={onCompleteOracleSession}
       onSekretReply={onSekretReply}
+      syncStatus={syncStatus}
     />
   );
 }

@@ -20,7 +20,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
+import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import {
   Text, ScrollView, View, Image, StyleSheet,
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
@@ -30,14 +32,6 @@ const CLOUD_STORMY = IMAGES.cloudStormy;
 const RAINY_BG     = IMAGES.bgComfort;
 
 const { width: SCREEN_W } = Dimensions.get('window');
-
-// ── MOOD GLOW ──────────────────────────────────────────────────────────────
-const MOOD_GLOW: Record<string, string> = {
-  Happy: '#fbbf24', Neutral: '#c4b5fd', Sad: '#7dd3fc',
-  Angry: '#f472b6', Tired: '#6d28d9',
-  anxious: '#7dd3fc', overwhelmed: '#f472b6', sad: '#7dd3fc',
-  stressed: '#f472b6', tired: '#6d28d9', calm: '#c4b5fd',
-};
 
 // ── Comfort messages ───────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
@@ -70,11 +64,12 @@ interface ComfortScreenProps {
   companion?: {
     presenceMessage: string;
   };
+  syncStatus?: SyncStatus;
 }
 
 export function ComfortScreen({
   t, setScreen, onComplete, BottomNav,
-  selectedSekret = 'raylene', character, mood, companion,
+  selectedSekret = 'raylene', character, mood, companion, syncStatus,
 }: ComfortScreenProps) {
 
   const [checked, setChecked] = useState<number[]>([]);
@@ -230,6 +225,7 @@ export function ComfortScreen({
 
         <Text style={[styles.logo, { textShadowColor: moodGlow + '99' }]}>{heroCopy.title}</Text>
         <Text style={styles.subtitle}>{heroCopy.sub}</Text>
+        <SyncBadge status={syncStatus ?? 'idle'} />
 
         {/* Cloud stormy with breath/drift */}
         <Animated.View style={[styles.cloudWrap, cloudStyle]}>
