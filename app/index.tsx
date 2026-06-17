@@ -331,16 +331,16 @@ function AppContent() {
       const cloud = await pullAll();
       if (!cloud || cancelled) return;
 
-      if (__DEV__) console.log('[sync] cloud counts from pullAll', {
-        mood:          cloud.moodHistory.length,
-        journal:       cloud.journalEntries.length,
-        circle:        cloud.circlePosts.length,
-        parentCircle:  cloud.parentCirclePosts.length,
-        voice:         cloud.voiceNotes.length,
-        comfort:       cloud.comfortSessions.length,
-        crew:          cloud.crewMembers.length,
-        checkIns:      cloud.crewCheckIns.length,
-        roomMemory:    cloud.roomMemory ? 'present' : 'null (first install)',
+      if (__DEV__) console.log('[sync] pullAll hydrated', {
+        moodHistory:      cloud.moodHistory.length,
+        journalEntries:   cloud.journalEntries.length,
+        circlePosts:      cloud.circlePosts.length,
+        parentCirclePosts: cloud.parentCirclePosts.length,
+        voiceNotes:       cloud.voiceNotes.length,
+        comfortSessions:  cloud.comfortSessions.length,
+        crewMembers:      cloud.crewMembers.length,
+        crewCheckIns:     cloud.crewCheckIns.length,
+        roomMemory:       cloud.roomMemory ? 'present' : 'null (first install)',
       });
 
       // Merge helper: cloud rows take precedence on id collision;
