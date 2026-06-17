@@ -141,8 +141,6 @@ function PostMenu({
 }
 
 // ─── useFeed — shared live-data hook ─────────────────────────────────────────
-// Loads from Supabase on mount; falls back to the provided mock if offline.
-// Returns [posts, setPosts, loading].
 function useFeed<T>(
   tab: CircleTab,
   fallback: T[],
@@ -166,12 +164,10 @@ function useFeed<T>(
 }
 
 // ─── Public feed ─────────────────────────────────────────────────────────────
-// user_id is NEVER rendered. No comments. Reactions only.
 function PublicFeed() {
   const [posts, setPosts, loading] = useFeed<PublicCirclePost>('public', MOCK_PUBLIC);
 
   const handleReact = (postId: number, key: string) => {
-    // Optimistic update
     setPosts(prev =>
       prev.map(p =>
         p.id === postId
@@ -179,7 +175,6 @@ function PublicFeed() {
           : p
       )
     );
-    // Persist to Supabase (deduped by UNIQUE constraint)
     void syncCircleReaction(postId, 'public', key);
   };
 
@@ -222,7 +217,6 @@ function PublicFeed() {
             reactionSet={TEEN_REACTIONS}
             onReact={key => handleReact(item.id, key)}
           />
-          {/* No comment section — intentional */}
         </View>
       )}
     />
@@ -230,7 +224,6 @@ function PublicFeed() {
 }
 
 // ─── Friends feed ────────────────────────────────────────────────────────────
-// Shows nickname + avatar only. Comments allowed.
 function FriendsFeed({ myUserId }: { myUserId: string }) {
   const [posts, setPosts, loading] = useFeed<FriendsCirclePost>('friends', MOCK_FRIENDS);
   const [commentTarget, setCommentTarget] = useState<number | null>(null);
@@ -343,7 +336,6 @@ function FriendsFeed({ myUserId }: { myUserId: string }) {
 }
 
 // ─── Crew feed ───────────────────────────────────────────────────────────────
-// Full identity visible. Comments allowed.
 function CrewFeed({ myUserId }: { myUserId: string }) {
   const [posts, setPosts, loading] = useFeed<CrewCirclePost>('crew', MOCK_CREW);
   const [commentTarget, setCommentTarget] = useState<number | null>(null);
@@ -456,8 +448,6 @@ function CrewFeed({ myUserId }: { myUserId: string }) {
 }
 
 // ─── Parent feed ─────────────────────────────────────────────────────────────
-// Fully isolated. Anonymous by default. Comments allowed.
-// Teens never see this feed. Parents never see Public/Friends/Crew.
 function ParentFeed({ myUserId }: { myUserId: string }) {
   const [posts, setPosts, loading] = useFeed<ParentCirclePost>('parent', MOCK_PARENT);
   const [commentTarget, setCommentTarget] = useState<number | null>(null);
@@ -613,7 +603,6 @@ function Composer({
           </TouchableOpacity>
         </View>
 
-        {/* Destination picker */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destScroll} contentContainerStyle={styles.destRow}>
           {COMPOSER_DESTINATIONS.map(d => (
             <TouchableOpacity
@@ -626,13 +615,11 @@ function Composer({
           ))}
         </ScrollView>
 
-        {/* Identity line */}
         <View style={styles.identityRow}>
           <Text style={styles.identityLabel}>{dest.identityLabel}</Text>
           <Text style={styles.identityValue}>{resolvedIdentity}</Text>
         </View>
 
-        {/* Text input */}
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
           <TextInput
             style={styles.composerInput}
@@ -691,8 +678,6 @@ function AddToCircleModal({ onClose }: { onClose: () => void }) {
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function CircleScreen() {
-  // TODO: resolve myUserId + myNickname from Supabase auth + circle_profiles
-  // once full auth is wired in app/index.tsx.
   const myUserId   = 'current-user-id';
   const myNickname = 'MoonGirl_17';
 
@@ -701,15 +686,11 @@ export default function CircleScreen() {
   const [addCircleOpen, setAddCircleOpen] = useState(false);
 
   const handlePost = useCallback((tab: CircleTab, text: string) => {
-    // Persist to the correct per-tab Supabase table.
-    // Public → user_id stored but stripped by the RLS view that clients read.
-    // Falls back silently if Supabase isn't configured.
     void writeCirclePost(tab, text);
   }, []);
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Circle</Text>
         <View style={styles.headerActions}>
@@ -722,7 +703,6 @@ export default function CircleScreen() {
         </View>
       </View>
 
-      {/* Top tabs */}
       <View style={styles.tabBar}>
         {TABS.map(tab => (
           <TouchableOpacity
@@ -739,7 +719,6 @@ export default function CircleScreen() {
         ))}
       </View>
 
-      {/* Feed */}
       <View style={styles.feedWrap}>
         {activeTab === 'public'  && <PublicFeed />}
         {activeTab === 'friends' && <FriendsFeed myUserId={myUserId} />}
@@ -747,7 +726,6 @@ export default function CircleScreen() {
         {activeTab === 'parent'  && <ParentFeed  myUserId={myUserId} />}
       </View>
 
-      {/* Composer */}
       {composerOpen && (
         <Composer
           activeTab={activeTab}
@@ -757,7 +735,6 @@ export default function CircleScreen() {
         />
       )}
 
-      {/* Add To My Circle */}
       {addCircleOpen && <AddToCircleModal onClose={() => setAddCircleOpen(false)} />}
     </SafeAreaView>
   );

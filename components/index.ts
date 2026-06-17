@@ -5,7 +5,7 @@
  */
 export { AgeGate } from './AgeGate';
 export { Analytics } from './Analytics';
-export { BackgroundLayer } from './BackgroundLayer';
+export { default as BackgroundLayer } from './BackgroundLayer';
 export { BipEmptyState } from './BipEmptyState';
 export { BottomNav } from './BottomNav';
 export { ContentSafetyBlock } from './ContentSafetyBlock';
