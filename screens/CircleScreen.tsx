@@ -740,6 +740,10 @@ export default function CircleScreen() {
   );
 }
 
+// Named re-export so both `import CircleScreen from '...'` and
+// `import { CircleScreen } from '...'` work throughout the codebase.
+export { CircleScreen };
+
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const PURPLE = '#7C4DFF';
 const DARK   = '#1a1a2e';
