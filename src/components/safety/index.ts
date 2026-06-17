@@ -17,7 +17,7 @@ try {
 export { AgeGate };
 
 // SleepGate — KNOWN GOOD (used in AppContent directly, keep named export)
-export { SleepGate } from '../../components/SleepGate';
+export { SleepGate } from '../../../components/SleepGate';
 
 // ContentSafetyBlock
 let ContentSafetyBlock: React.ComponentType<any>;

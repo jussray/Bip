@@ -7,7 +7,6 @@ import { SleepGate }  from '../components/SleepGate';
 import { SplashScreen } from '../screens/SplashScreen';
 
 import { useAppState }        from './hooks/useAppState';
-import { useAppEffects }      from './hooks/useAppEffects';
 import { useAppActions }      from './hooks/useAppActions';
 import { useSekretCompanion } from '../hooks/useSekretCompanion';
 import { useSyncStatus }      from '../hooks/useSyncStatus';
@@ -32,8 +31,6 @@ export function AppContent() {
   const { syncStatus, withSyncWrap } = useSyncStatus();
   const { sleepActive, sleepWindow, setSleepWindow } = useSleepGuard();
   const actions = useAppActions(s, withSyncWrap);
-
-  useAppEffects(s, withSyncWrap);
 
   const vibeKey       = normalizeVibeKey(s.theme);
   const t             = THEME_PACKS[vibeKey];
@@ -70,25 +67,22 @@ export function AppContent() {
   return (
     <View style={styles.container}>
       <Analytics />
-      {sleepActive && !allowComfort
-        ? <SleepGate setScreen={s.setScreen} sleepWindow={sleepWindow} />
-        : (
-          <RouteRenderer
-            s={s}
-            t={t}
-            vibeKey={vibeKey}
-            currentSekret={currentSekret}
-            companion={companion}
-            syncStatus={syncStatus}
-            withSyncWrap={withSyncWrap}
-            sleepWindow={sleepWindow}
-            setSleepWindow={setSleepWindow}
-            actions={actions}
-            nav={nav}
-            getActiveCharacter={getActiveCharacter}
-          />
-        )
-      }
+      <SleepGate sleepActive={sleepActive && !allowComfort} onComfort={() => s.setScreen('comfort')}>
+        <RouteRenderer
+          s={s}
+          t={t}
+          vibeKey={vibeKey}
+          currentSekret={currentSekret}
+          companion={companion}
+          syncStatus={syncStatus}
+          withSyncWrap={withSyncWrap}
+          sleepWindow={sleepWindow}
+          setSleepWindow={setSleepWindow}
+          actions={actions}
+          nav={nav}
+          getActiveCharacter={getActiveCharacter}
+        />
+      </SleepGate>
     </View>
   );
 }

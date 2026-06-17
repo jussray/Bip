@@ -30,6 +30,7 @@ import { SettingsScreen }       from '../screens/SettingsScreen';
 import { PeriodCalendarScreen } from '../screens/PeriodCalendarScreen';
 import { VoiceBipScreen }       from '../screens/VoiceBipScreen';
 import { CloudThoughtsScreen }  from '../screens/CloudThoughtsScreen';
+import { syncVoiceNote }        from '../utils/sync';
 
 export function RouteRenderer({ s, t, vibeKey, currentSekret, companion, syncStatus, withSyncWrap, sleepWindow, setSleepWindow, actions, nav, getActiveCharacter }: any): React.ReactNode {
   const {
@@ -109,7 +110,7 @@ export function RouteRenderer({ s, t, vibeKey, currentSekret, companion, syncSta
       voiceNotes={userSide === 'parent' ? parentVoiceNotes : voiceNotes}
       setVoiceNotes={userSide === 'parent' ? setParentVoiceNotes : s.setVoiceNotes}
       onSave={(note: any) => {
-        if (userSide === 'teen') void withSyncWrap(async () => (await import('../utils/sync')).syncVoiceNote(note));
+        if (userSide === 'teen') void withSyncWrap(async () => syncVoiceNote(note));
         actions.trackActivity('voice');
       }}
       mood={mood} companion={userSide === 'parent' ? undefined : companion}
@@ -172,15 +173,7 @@ export function RouteRenderer({ s, t, vibeKey, currentSekret, companion, syncSta
         setScreen={setScreen} BottomNav={nav}
       />
     );
-    return (
-      <CircleScreen
-        t={t} circlePosts={circlePosts} circlePostText={circlePostText}
-        setCirclePostText={setCirclePostText}
-        saveCirclePost={actions.saveCirclePost} reactToPost={actions.reactToPost}
-        setScreen={setScreen} BottomNav={nav}
-        selectedSekret={selectedSekret} mood={mood} syncStatus={syncStatus}
-      />
-    );
+    return <CircleScreen />;
   }
 
   if (screen === 'bridge') return (
