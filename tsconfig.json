@@ -1,28 +1,25 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "types": ["react-native", "jest"],
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@components/*": ["components/*"],
-      "@screens/*": ["screens/*"],
-      "@utils/*": ["utils/*"],
-      "@hooks/*": ["hooks/*"],
-      "@constants/*": ["constants/*"],
-      "@types/*": ["types/*"]
-    },
-    "jsx": "react-jsx"
-  },
-  "include": ["app", "components", "screens", "utils", "hooks", "constants", "types"],
-  "exclude": ["node_modules", ".expo", "dist"]
+      // ── New canonical alias (points into src/) ──────────────────────
+      // Use @/* for ALL new code going forward.
+      // e.g. import { useAuthStore } from '@/store';
+      //      import { AgeGate }       from '@/components/safety';
+      "@/*": ["./src/*"],
+
+      // ── Legacy aliases (kept for backward compatibility) ────────────
+      // These still resolve so no existing import breaks.
+      // Migrate to @/* over time; remove these once screens/ is retired.
+      "@hooks/*":      ["./hooks/*"],
+      "@utils/*":      ["./utils/*"],
+      "@components/*": ["./components/*"],
+      "@constants/*":  ["./constants/*"],
+      "@screens/*":    ["./screens/*"],
+      "@types/*":      ["./types/*"]
+    }
+  }
 }
