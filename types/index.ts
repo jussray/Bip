@@ -1,15 +1,23 @@
+export type JournalSource = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' | 'night' | 'parentSekret' | 'bridge' | string;
+export type JournalEntryMode = 'typed' | 'voice' | 'oracle-memory';
+
 export interface JournalEntry {
   id: number;
   text: string;
   mood: string;
   date: string;
   time: string;
-  source?: string; // Legacy/current tab source; undefined is treated as 'me'.
+  source?: JournalSource; // Undefined legacy entries are treated as 'me'.
   activeTab?: string;
   moodTag?: string;
-  entryMode?: 'typed' | 'voice';
+  entryMode?: JournalEntryMode;
+  hidden?: boolean;
   locked?: boolean;
   imageUri?: string;
+  /** Se'kret reply text, stored after Worker responds. Undefined until reply arrives. */
+  sekretReply?: string;
+  /** Transient: true while the Worker call is in flight. Never persisted to AsyncStorage. */
+  sekretTyping?: boolean;
 }
 
 export interface CirclePost {
@@ -58,7 +66,10 @@ export interface VoiceNote {
   duration: string;
   /** Bip kind: 'voice' | 'video' | 'text' | 'cloud'. Optional for back-compat. */
   type?: string;
+  avatarKey?: 'raylene' | 'rylane' | 'cloud' | 'night';
+  transcriptId?: string;
 }
+
 
 export interface MoodEntry {
   id: number;

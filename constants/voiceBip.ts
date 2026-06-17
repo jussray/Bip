@@ -17,6 +17,24 @@ export const VOICE_BIP_VOICE_IDS = {
   sekretVoiceId: null as FutureVoiceId,
 } as const;
 
+export type AvatarVoiceProfileKey = VoiceBipAvatarKey | 'sekret';
+
+export interface AvatarVoiceProfile {
+  key: AvatarVoiceProfileKey;
+  voiceId: FutureVoiceId;
+  enabled: false;
+  provider: 'none';
+}
+
+/** Oracle is intentionally absent: it reasons privately and never speaks. */
+export const AVATAR_VOICE_PROFILES: Record<AvatarVoiceProfileKey, AvatarVoiceProfile> = {
+  raylene: { key: 'raylene', voiceId: VOICE_BIP_VOICE_IDS.rayleneVoiceId, enabled: false, provider: 'none' },
+  rylane: { key: 'rylane', voiceId: VOICE_BIP_VOICE_IDS.rylaneVoiceId, enabled: false, provider: 'none' },
+  cloud: { key: 'cloud', voiceId: VOICE_BIP_VOICE_IDS.cloudVoiceId, enabled: false, provider: 'none' },
+  night: { key: 'night', voiceId: VOICE_BIP_VOICE_IDS.nightVoiceId, enabled: false, provider: 'none' },
+  sekret: { key: 'sekret', voiceId: VOICE_BIP_VOICE_IDS.sekretVoiceId, enabled: false, provider: 'none' },
+};
+
 export interface VoiceBipPrompt {
   emoji: string;
   text: string;

@@ -5,10 +5,12 @@
 import React from 'react';
 import {
   Text, TouchableOpacity, ScrollView, ImageBackground,
-  View, Image, StyleSheet, Platform, Dimensions,
+  View, Image, StyleSheet, Platform, Dimensions, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IMAGES } from '../constants/theme';
+import type { SleepWindow } from '../hooks/useSleepGuard';
 
 const { width: W } = Dimensions.get('window');
 
@@ -94,6 +96,8 @@ interface SettingsScreenProps {
   setScreen:          (screen: string) => void;
   BottomNav:          React.ReactNode;
   mood?:              string;
+  sleepWindow?:       SleepWindow | null;
+  setSleepWindow?:    (w: SleepWindow | null) => void;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -105,7 +109,30 @@ export function SettingsScreen({
   userSide, setUserSide,
   parentRoomStyle, setParentRoomStyle,
   setScreen, BottomNav,
+  sleepWindow, setSleepWindow,
 }: SettingsScreenProps) {
+
+  const handleClearLocalData = () => {
+    Alert.alert(
+      'Clear everything saved on this device?',
+      "This wipes your journal, moods, voice bips, and Circle drafts that live only on this phone. If something was synced, it stays safe in your account — this just clears what's local.",
+      [
+        { text: 'Never mind', style: 'cancel' },
+        {
+          text: 'Clear it',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.clear();
+              Alert.alert('Done', "This device's local data is cleared. 💜");
+            } catch {
+              Alert.alert("Couldn't clear it", 'Something blocked the clear — try again in a bit.');
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const vibe   = VIBE_CONFIG[theme] || VIBE_CONFIG.raylene;
   const glow   = vibe.glow;
@@ -322,6 +349,62 @@ export function SettingsScreen({
           </>
         )}
 
+        {/* ── SLEEP HOURS ── */}
+        {setSleepWindow && (
+          <>
+            <Text style={styles.sectionLabel}>Sleep Hours</Text>
+            <View style={glass({ gap: 10 })}>
+              <Text style={styles.privacyText}>
+                During sleep hours, Comfort always stays open — everything else gently waits till morning.
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                {([
+                  ['Off', null],
+                  ['10pm – 7am', { start: '22:00', end: '07:00' } as SleepWindow],
+                  ['11pm – 8am', { start: '23:00', end: '08:00' } as SleepWindow],
+                ] as const).map(([label, w]) => {
+                  const active = w === null ? !sleepWindow : (sleepWindow?.start === w.start && sleepWindow?.end === w.end);
+                  return (
+                    <TouchableOpacity
+                      key={label}
+                      onPress={() => setSleepWindow(w)}
+                      style={[
+                        styles.modePill,
+                        {
+                          borderColor: active ? glow : 'rgba(150,110,210,0.3)',
+                          backgroundColor: active ? glow + '22' : 'rgba(20,10,40,0.5)',
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.modePillLabel, { color: active ? glow : '#c4b5fd' }]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          </>
+        )}
+
+        {/* ── DATA & PRIVACY ── */}
+        <Text style={styles.sectionLabel}>Data & Privacy</Text>
+        <View style={glass({ gap: 10 })}>
+          <Text style={styles.privacyText}>
+            🔒 <Text style={styles.privacyStrong}>Private to you</Text> — your journal, moods, and voice bips stay yours unless you choose to share them.
+          </Text>
+          <Text style={styles.privacyText}>
+            👀 <Text style={styles.privacyStrong}>Shareable</Text> — Circle posts and anything you mark "share with parent" can be seen by the people you pick. Nothing sends unless you choose.
+          </Text>
+          <Text style={styles.privacyText}>
+            ☁️ <Text style={styles.privacyStrong}>Syncs when possible</Text> — if you're signed in and online, your stuff backs up safely. If not, it just stays saved on this device.
+          </Text>
+          <TouchableOpacity
+            onPress={handleClearLocalData}
+            style={[styles.sideBtn, { borderColor: 'rgba(248,113,113,0.45)', backgroundColor: 'rgba(248,113,113,0.12)', marginTop: 4 }]}
+          >
+            <Text style={[styles.sideBtnLabel, { color: '#f87171' }]}>🗑️ Clear data on this device</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* ── DONE ── */}
         <TouchableOpacity
           style={[
@@ -373,6 +456,10 @@ const styles = StyleSheet.create({
 
   // Glass card
   glassCard:   { borderRadius: 20, borderWidth: 1, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 20 },
+
+  // Privacy copy
+  privacyText:   { fontSize: 13, color: '#c4b5fd', lineHeight: 19 },
+  privacyStrong: { fontWeight: '800', color: '#e2d8ff' },
 
   // Companion cards
   companionCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, borderWidth: 1.5, padding: 14, marginBottom: 12 },

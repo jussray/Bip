@@ -1,121 +1,207 @@
+/**
+ * useAppEffects
+ * -------------
+ * Houses every useEffect that previously lived in AppContent:
+ *   1. Load persisted state from AsyncStorage on mount
+ *   2. userSide change → splash transition
+ *   3. Supabase anon sign-in + cloud pull & merge
+ *   4. Save state to AsyncStorage on change
+ *   5. Streak tracking
+ *   6. Rotating home message
+ */
 import { useEffect } from 'react';
-import { saveState } from '../utils/storage';
-import { isSupabaseConfigured } from '../utils/supabase';
+import type { Dispatch, SetStateAction } from 'react';
+import type { AppState } from '../store/useAppStore';
+import { loadState, saveState } from '../../utils/storage';
+import { isSupabaseConfigured } from '../../utils/supabase';
+import { ensureAnonymousSession, pullAll } from '../../utils/sync';
+import { mergeById } from '../utils/mergeById';
+import { normalizeVibeKey } from '../../constants/theme';
 import {
-  ensureAnonymousSession, pullAll,
-} from '../utils/sync';
-import type { useAppState } from './useAppState';
+  normalizeOracleProfile,
+  normalizeOracleSessions,
+} from '../../services/oracleDiscovery';
+import { normalizeOracleJournalEntries } from '../../services/voiceBipIntelligence';
+import { HOME_MESSAGES } from '../constants/homeMessages';
 
-type AppStateSlice = ReturnType<typeof useAppState>;
+type SetState = Dispatch<SetStateAction<AppState>>;
 
-/** Merge helper: cloud rows win on id collision; local-only rows are appended. */
-function mergeById<T extends { id: number | string }>(local: T[], remote: T[]): T[] {
-  const remoteIds = new Set(remote.map(r => r.id));
-  return [...remote, ...local.filter(l => !remoteIds.has(l.id))];
-}
+export function useAppEffects(state: AppState, setState: SetState) {
+  const { isLoading, userSide, lastOpenDate } = state;
 
-export function useAppEffects(s: AppStateSlice, withSyncWrap: (fn: () => Promise<void>) => void) {
-  // ── userSide change → splash → home ──────────────────────────────────────
+  // 1. Load persisted state on mount
   useEffect(() => {
-    if (s.isLoading) return;
-    s.setScreen('splash');
-    const timer = setTimeout(() => s.setScreen('home'), 1200);
-    return () => clearTimeout(timer);
-  }, [s.userSide]);
+    (async () => {
+      try {
+        const s = await loadState();
+        setState(prev => ({
+          ...prev,
+          theme:           s.theme ? normalizeVibeKey(s.theme) : prev.theme,
+          mood:            s.mood            ?? prev.mood,
+          userSide:        s.userSide        ?? prev.userSide,
+          selectedSekret:  s.selectedSekret  ?? prev.selectedSekret,
+          sekretMode:      s.sekretMode      ?? prev.sekretMode,
+          journalText:     s.journalText     ?? prev.journalText,
+          journalEntries:  Array.isArray(s.entries)              ? s.entries              : prev.journalEntries,
+          parentPagesDraft:   s.parentPagesDraft   ?? prev.parentPagesDraft,
+          parentPagesEntries: Array.isArray(s.parentPagesEntries) ? s.parentPagesEntries : prev.parentPagesEntries,
+          oracleJournalEntries: s.oracleJournalEntries
+            ? normalizeOracleJournalEntries(s.oracleJournalEntries, 'teen')
+            : prev.oracleJournalEntries,
+          oracleProfile:         s.oracleProfile       ? normalizeOracleProfile(s.oracleProfile, 'teen')     : prev.oracleProfile,
+          parentOracleProfile:   s.parentOracleProfile ? normalizeOracleProfile(s.parentOracleProfile, 'parent') : prev.parentOracleProfile,
+          oracleSessions:        s.oracleSessions       ? normalizeOracleSessions(s.oracleSessions, 'teen')       : prev.oracleSessions,
+          parentOracleSessions:  s.parentOracleSessions ? normalizeOracleSessions(s.parentOracleSessions, 'parent') : prev.parentOracleSessions,
+          moodHistory:      Array.isArray(s.moodHistory)       ? s.moodHistory       : prev.moodHistory,
+          circlePosts:      Array.isArray(s.circlePosts)       ? s.circlePosts       : prev.circlePosts,
+          parentCirclePosts:Array.isArray(s.parentCirclePosts) ? s.parentCirclePosts : prev.parentCirclePosts,
+          voiceNotes:       Array.isArray(s.voiceNotes)        ? s.voiceNotes        : prev.voiceNotes,
+          parentVoiceNotes: Array.isArray(s.parentVoiceNotes)  ? s.parentVoiceNotes  : prev.parentVoiceNotes,
+          comfortSessions:  Array.isArray(s.comfortSessions)   ? s.comfortSessions   : prev.comfortSessions,
+          crewMembers:      Array.isArray(s.crewMembers)       ? s.crewMembers       : prev.crewMembers,
+          crewCheckIns:     Array.isArray(s.crewCheckIns)      ? s.crewCheckIns      : prev.crewCheckIns,
+          streakDays:   Number(s.streakDays) || 0,
+          lastOpenDate: s.lastOpenDate ?? prev.lastOpenDate,
+          roomMemory: s.roomMemory
+            ? (typeof s.roomMemory === 'string' ? JSON.parse(s.roomMemory) : s.roomMemory)
+            : prev.roomMemory,
+          parentRoomStyle:
+            s.parentRoomStyle === 'mom' || s.parentRoomStyle === 'dad'
+              ? s.parentRoomStyle
+              : prev.parentRoomStyle,
+          parentMood:     s.parentMood     ?? prev.parentMood,
+          parentMoodDate: s.parentMoodDate ?? prev.parentMoodDate,
+        }));
+      } catch {
+        // Storage read failure — continue with defaults
+      }
+      setState(prev => ({ ...prev, isLoading: false }));
+    })();
+  }, []);
 
-  // ── Supabase pull on load ─────────────────────────────────────────────────
+  // 2. userSide change → brief splash
   useEffect(() => {
-    if (!isSupabaseConfigured || s.isLoading) return;
+    if (isLoading) return;
+    setState(prev => ({ ...prev, screen: 'splash' }));
+    const t = setTimeout(
+      () => setState(prev => ({ ...prev, screen: 'home' })),
+      1200
+    );
+    return () => clearTimeout(t);
+  }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 3. Supabase: anon sign-in + cloud pull & merge
+  useEffect(() => {
+    if (!isSupabaseConfigured || isLoading) return;
     let cancelled = false;
     (async () => {
       const uid = await ensureAnonymousSession();
       if (!uid || cancelled) return;
       const cloud = await pullAll();
       if (!cloud || cancelled) return;
-
-      if (__DEV__) console.log('[sync] cloud counts', {
-        mood: cloud.moodHistory.length, journal: cloud.journalEntries.length,
-      });
-
-      s.setMoodHistory(prev       => mergeById(prev, cloud.moodHistory));
-      s.setJournalEntries(prev    => mergeById(prev, cloud.journalEntries));
-      s.setCirclePosts(prev       => mergeById(prev, cloud.circlePosts));
-      s.setParentCirclePosts(prev => mergeById(prev, cloud.parentCirclePosts));
-      s.setVoiceNotes(prev        => mergeById(prev, cloud.voiceNotes));
-      s.setComfortSessions(prev   => mergeById(prev, cloud.comfortSessions));
-      s.setCrewMembers(prev       => mergeById(prev, cloud.crewMembers));
-      s.setCrewCheckIns(prev      => mergeById(prev, cloud.crewCheckIns));
-      if (cloud.roomMemory) {
-        s.setRoomMemory(prev => ({ ...prev, ...cloud.roomMemory! }));
-      }
+      if (__DEV__)
+        console.log('[sync] cloud counts', {
+          mood:         cloud.moodHistory.length,
+          journal:      cloud.journalEntries.length,
+          circle:       cloud.circlePosts.length,
+          parentCircle: cloud.parentCirclePosts.length,
+          voice:        cloud.voiceNotes.length,
+          comfort:      cloud.comfortSessions.length,
+          crew:         cloud.crewMembers.length,
+          checkIns:     cloud.crewCheckIns.length,
+          roomMemory:   cloud.roomMemory ? 'present' : 'null',
+        });
+      setState(prev => ({
+        ...prev,
+        moodHistory:       mergeById(prev.moodHistory,       cloud.moodHistory),
+        journalEntries:    mergeById(prev.journalEntries,    cloud.journalEntries),
+        circlePosts:       mergeById(prev.circlePosts,       cloud.circlePosts),
+        parentCirclePosts: mergeById(prev.parentCirclePosts, cloud.parentCirclePosts),
+        voiceNotes:        mergeById(prev.voiceNotes,        cloud.voiceNotes),
+        comfortSessions:   mergeById(prev.comfortSessions,   cloud.comfortSessions),
+        crewMembers:       mergeById(prev.crewMembers,       cloud.crewMembers),
+        crewCheckIns:      mergeById(prev.crewCheckIns,      cloud.crewCheckIns),
+        roomMemory: cloud.roomMemory
+          ? { ...prev.roomMemory, ...cloud.roomMemory }
+          : prev.roomMemory,
+      }));
     })();
     return () => { cancelled = true; };
-  }, [s.isLoading]);
+  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Persist to AsyncStorage on any state change ───────────────────────────
+  // 4. Persist state on change
   useEffect(() => {
-    if (s.isLoading) return;
+    if (isLoading) return;
     saveState({
-      theme: s.theme, mood: s.mood, userSide: s.userSide,
-      selectedSekret: s.selectedSekret, sekretMode: s.sekretMode,
-      journalText: s.journalText,
-      entries: s.journalEntries,
-      oracleJournalEntries: s.oracleJournalEntries,
-      parentPagesDraft: s.parentPagesDraft,
-      parentPagesEntries: s.parentPagesEntries,
-      oracleProfile: s.oracleProfile,
-      parentOracleProfile: s.parentOracleProfile,
-      oracleSessions: s.oracleSessions,
-      parentOracleSessions: s.parentOracleSessions,
-      moodHistory: s.moodHistory,
-      circlePosts: s.circlePosts,
-      parentCirclePosts: s.parentCirclePosts,
-      voiceNotes: s.voiceNotes,
-      parentVoiceNotes: s.parentVoiceNotes,
-      comfortSessions: s.comfortSessions,
-      crewMembers: s.crewMembers,
-      crewCheckIns: s.crewCheckIns,
-      streakDays: String(s.streakDays),
-      lastOpenDate: s.lastOpenDate,
-      roomMemory: JSON.stringify(s.roomMemory),
-      parentRoomStyle: s.parentRoomStyle,
-      parentMood: s.parentMood,
-      parentMoodDate: s.parentMoodDate,
+      theme:              state.theme,
+      mood:               state.mood,
+      userSide:           state.userSide,
+      selectedSekret:     state.selectedSekret,
+      sekretMode:         state.sekretMode,
+      journalText:        state.journalText,
+      entries:            state.journalEntries,
+      oracleJournalEntries: state.oracleJournalEntries,
+      parentPagesDraft:   state.parentPagesDraft,
+      parentPagesEntries: state.parentPagesEntries,
+      oracleProfile:      state.oracleProfile,
+      parentOracleProfile: state.parentOracleProfile,
+      oracleSessions:     state.oracleSessions,
+      parentOracleSessions: state.parentOracleSessions,
+      moodHistory:        state.moodHistory,
+      circlePosts:        state.circlePosts,
+      parentCirclePosts:  state.parentCirclePosts,
+      voiceNotes:         state.voiceNotes,
+      parentVoiceNotes:   state.parentVoiceNotes,
+      comfortSessions:    state.comfortSessions,
+      crewMembers:        state.crewMembers,
+      crewCheckIns:       state.crewCheckIns,
+      streakDays:         String(state.streakDays),
+      lastOpenDate:       state.lastOpenDate,
+      roomMemory:         JSON.stringify(state.roomMemory),
+      parentRoomStyle:    state.parentRoomStyle,
+      parentMood:         state.parentMood,
+      parentMoodDate:     state.parentMoodDate,
     }).catch(() => {});
   }, [
-    s.theme, s.mood, s.userSide, s.selectedSekret, s.sekretMode,
-    s.journalText, s.journalEntries, s.oracleJournalEntries,
-    s.parentPagesDraft, s.parentPagesEntries, s.oracleProfile, s.parentOracleProfile,
-    s.oracleSessions, s.parentOracleSessions, s.moodHistory,
-    s.circlePosts, s.parentCirclePosts, s.voiceNotes, s.parentVoiceNotes,
-    s.comfortSessions, s.crewMembers, s.crewCheckIns, s.streakDays,
-    s.lastOpenDate, s.roomMemory, s.parentRoomStyle, s.parentMood, s.parentMoodDate,
-    s.isLoading,
+    state.theme, state.mood, state.userSide, state.selectedSekret, state.sekretMode,
+    state.journalText, state.journalEntries, state.oracleJournalEntries,
+    state.parentPagesDraft, state.parentPagesEntries,
+    state.oracleProfile, state.parentOracleProfile,
+    state.oracleSessions, state.parentOracleSessions,
+    state.moodHistory, state.circlePosts, state.parentCirclePosts,
+    state.voiceNotes, state.parentVoiceNotes, state.comfortSessions,
+    state.crewMembers, state.crewCheckIns,
+    state.streakDays, state.lastOpenDate,
+    state.roomMemory, state.parentRoomStyle,
+    state.parentMood, state.parentMoodDate, isLoading,
   ]);
 
-  // ── Streak tracking (daily open) ──────────────────────────────────────────
+  // 5. Streak tracking
   useEffect(() => {
-    if (s.isLoading) return;
+    if (isLoading) return;
     const today = new Date().toLocaleDateString();
-    if (s.lastOpenDate !== today) {
+    if (lastOpenDate !== today) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const wasYesterday = s.lastOpenDate === yesterday.toLocaleDateString();
-      s.setStreakDays(prev => {
-        if (wasYesterday) return prev + 1;
-        s.setStreakJustReset(prev > 1);
-        return 1;
+      const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
+      setState(prev => {
+        const nextDays = wasYesterday ? prev.streakDays + 1 : 1;
+        return {
+          ...prev,
+          streakDays:      nextDays,
+          streakJustReset: !wasYesterday && prev.streakDays > 1,
+          lastOpenDate:    today,
+        };
       });
-      s.setLastOpenDate(today);
     }
-  }, [s.isLoading, s.lastOpenDate]);
+  }, [isLoading, lastOpenDate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Rotating home message ─────────────────────────────────────────────────
+  // 6. Rotating home message
   useEffect(() => {
-    const interval = setInterval(
-      () => s.setHomeMessageIndex(p => (p + 1) % 7),
+    const id = setInterval(
+      () => setState(prev => ({ ...prev, homeMessageIndex: (prev.homeMessageIndex + 1) % HOME_MESSAGES.length })),
       5000
     );
-    return () => clearInterval(interval);
+    return () => clearInterval(id);
   }, []);
 }

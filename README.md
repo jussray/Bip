@@ -106,6 +106,17 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 - Expo Router
 - AsyncStorage + Supabase (scaffold)
 
+## Guides
+
+- [Codespaces setup](docs/CODESPACES.md) — running the app in GitHub Codespaces
+- [Dependency audit](docs/DEPENDENCY_AUDIT.md) — version pins and how they're enforced
+- [Room art guide](docs/ROOM_ART_GUIDE.md) — naming, format, and fallback rules for room backgrounds
+- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md) — the gate before Phase 2 touches room art
+- [Asset backup rules](docs/ASSET_BACKUP_RULES.md) — backup requirements for room background PNGs
+
+Run `npm run verify:prepush` before pushing — it runs the asset audit,
+type-check, lint, bundle export, and room-archive verification together.
+
 ## License
 
 Private project.

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -16,8 +17,11 @@ import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
+import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
+import { BipEmptyState } from '../components/BipEmptyState';
 
-type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud';
+type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' | 'night';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
 export type PagesTab = TeenTab | ParentTab;
 
@@ -34,6 +38,7 @@ interface TabDefinition {
 }
 
 export interface SavePageInput {
+  id?: number;
   text: string;
   source: PagesTab;
   moodTag?: string;
@@ -59,6 +64,13 @@ interface SharedPagesProps {
   weatherMode?: string;
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
+  /**
+   * Called by PagesWorkspace after the Worker reply arrives so the parent
+   * (App.tsx / state slice) can persist sekretReply to AsyncStorage.
+   * Receives the entry id and the reply string.
+   */
+  onSekretReply?: (entryId: number, reply: string) => void;
+  syncStatus?: SyncStatus;
 }
 
 export interface PagesScreenProps {
@@ -76,13 +88,15 @@ export interface PagesScreenProps {
   selectedSekret?: string;
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
+  onSekretReply?: (entryId: number, reply: string) => void;
+  syncStatus?: SyncStatus;
 }
 
 const TEEN_TABS: TabDefinition[] = [
-  { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#c4b5fd' },
-  { id: 'oracle', label: 'Se\u2019kret', icon: '◇', title: 'Se\u2019kret Discovery', accent: '#8b7bb8' },
+  { id: 'me', label: 'Me', icon: '\u25cc', title: '', accent: '#c4b5fd' },
+  { id: 'oracle', label: 'Se\u2019kret', icon: '\u25c7', title: 'Se\u2019kret Discovery', accent: '#8b7bb8' },
   {
-    id: 'raylene', label: 'Raylene', icon: '✦', eyebrow: 'Raylene pulled up',
+    id: 'raylene', label: 'Raylene', icon: '\u2726', eyebrow: 'Raylene pulled up',
     title: 'You been a little too quiet. What happened?',
     subtitle: 'Warm, curious, and already paying attention.', accent: '#e9a8d2',
     prompts: [
@@ -117,13 +131,25 @@ const TEEN_TABS: TabDefinition[] = [
     ],
     placeholder: 'Let it take shape slowly\u2026',
   },
+  {
+    id: 'night', label: 'Night', icon: '\u{1F319}', eyebrow: "Night Se\u2019kret",
+    title: "You don\u2019t have to say much. Just don\u2019t be alone in it.",
+    subtitle: 'Presence. Not conversation.', accent: '#7b8fcf',
+    prompts: [
+      "What\u2019s still in your head that you can\u2019t put down?",
+      'What almost broke you open today?',
+      "What do you wish you didn\u2019t have to carry alone?",
+      'You can just start with one word.',
+    ],
+    placeholder: 'The night hears you\u2026',
+  },
 ];
 
 const PARENT_TABS: TabDefinition[] = [
-  { id: 'me', label: 'Me', icon: '◌', title: '', accent: '#d8c9b8' },
-  { id: 'oracle', label: 'Se\u2019kret', icon: '◇', title: 'Se\u2019kret Discovery', accent: '#8d877f' },
+  { id: 'me', label: 'Me', icon: '\u25cc', title: '', accent: '#d8c9b8' },
+  { id: 'oracle', label: 'Se\u2019kret', icon: '\u25c7', title: 'Se\u2019kret Discovery', accent: '#8d877f' },
   {
-    id: 'parentSekret', label: 'Parent Se\u2019kret', icon: '✦', eyebrow: 'Parent Se\u2019kret',
+    id: 'parentSekret', label: 'Parent Se\u2019kret', icon: '\u2726', eyebrow: 'Parent Se\u2019kret',
     title: 'Let\u2019s get honest before this turns into a whole thing.',
     subtitle: 'Calm, street-smart co-parent energy. No sugarcoating.', accent: '#d7a66d',
     prompts: [
@@ -151,23 +177,11 @@ const PARENT_TABS: TabDefinition[] = [
 const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
 const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
-/**
- * Maps a PagesTab to the MiniAvatarCharacter that should appear
- * as the bottom-right sticker on the paper card.
- *
- * Rules:
- *   raylene tab  → raylene mini
- *   rylane  tab  → rylane  mini
- *   cloud   tab  → cloud   mini
- *   me / oracle / parentSekret / bridge → null (no sticker)
- *
- * Night context is handled inside MiniAvatarSticker itself.
- * Oracle is explicitly blocked — never rendered.
- */
 function tabToStickerCharacter(tab: PagesTab): MiniAvatarCharacter {
   if (tab === 'raylene') return 'raylene';
   if (tab === 'rylane') return 'rylane';
   if (tab === 'cloud') return 'cloud';
+  if (tab === 'night') return 'night';
   return null;
 }
 
@@ -175,7 +189,7 @@ function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
   if (
     source === 'parentSekret' || source === 'bridge' || source === 'oracle' ||
-    source === 'raylene' || source === 'rylane' || source === 'cloud'
+    source === 'raylene' || source === 'rylane' || source === 'cloud' || source === 'night'
   ) {
     return source;
   }
@@ -187,10 +201,60 @@ function formatEntryMeta(entry: JournalEntry) {
   return [entry.date, entry.time, entry.moodTag || entry.mood, mode].filter(Boolean).join(' \u00b7 ');
 }
 
+// ── Se'kret reply bubble ───────────────────────────────────────────────────
+interface SekretReplyBubbleProps {
+  tab: PagesTab;
+  reply?: string;
+  typing?: boolean;
+  accent: string;
+}
+
+function SekretReplyBubble({ tab, reply, typing, accent }: SekretReplyBubbleProps) {
+  const avatarKey = tabToAvatarKey(tab);
+  if (!avatarKey) return null;
+  if (!typing && !reply) return null;
+
+  const label = THINKING_LABELS[avatarKey] ?? `${avatarKey} is thinking\u2026`;
+
+  return (
+    <View style={[replyStyles.bubble, { borderColor: accent + '55' }]}>
+      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1)}</Text>
+      <Text style={replyStyles.text}>
+        {typing ? label : reply}
+      </Text>
+    </View>
+  );
+}
+
+const replyStyles = StyleSheet.create({
+  bubble: {
+    marginTop: 10,
+    marginBottom: 4,
+    backgroundColor: '#0e0b18',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  name: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  text: {
+    color: '#e8e0f0',
+    fontSize: 15,
+    lineHeight: 23,
+  },
+});
+
+// ── PagesWorkspace ─────────────────────────────────────────────────────────
 function PagesWorkspace({
   side, entries, draft, setDraft, onSave, setScreen, BottomNav,
   mood, oracleProfile, onCompleteOracleSession, selectedSekret,
-  parentRoomStyle, weatherMode,
+  parentRoomStyle, weatherMode, onSekretReply, syncStatus,
 }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const isRylane = selectedSekret === 'rylane';
@@ -210,6 +274,25 @@ function PagesWorkspace({
   const [promptIndex, setPromptIndex] = useState(0);
   const [noPressure, setNoPressure] = useState(false);
 
+  /**
+   * Transient Se'kret reply state keyed by entry id.
+   * Shape: { [entryId]: { typing: boolean; reply?: string } }
+   *
+   * `typing: true`  → Worker call in flight  → show "Raylene is thinking…"
+   * `typing: false` → reply received         → show reply text
+   *
+   * This state is local to the component. The persisted reply lives on the
+   * JournalEntry.sekretReply field via onSekretReply → parent state → AsyncStorage.
+   */
+  const [replyState, setReplyState] = useState<
+    Record<number, { typing: boolean; reply?: string }>
+  >({});
+
+  // Stable ref so the async callback after Worker returns always has the
+  // latest onSekretReply without needing it as a dependency.
+  const onSekretReplyRef = useRef(onSekretReply);
+  onSekretReplyRef.current = onSekretReply;
+
   const tab = tabs.find(item => item.id === activeTab) || tabs[0];
   const text = activeTab === 'me' ? draft : tabDrafts[activeTab] || '';
   const tabEntries = useMemo(
@@ -219,7 +302,6 @@ function PagesWorkspace({
   const visiblePrompt =
     Boolean(tab.prompts?.length) && promptVisible && !noPressure && activeTab !== 'oracle';
 
-  // Mini sticker character for the current tab (null = no sticker shown)
   const miniStickerCharacter = tabToStickerCharacter(activeTab);
 
   const changeTab = (next: PagesTab) => {
@@ -244,16 +326,57 @@ function PagesWorkspace({
     if (!result.canceled) setImageUri(result.assets[0]?.uri);
   };
 
-  const save = () => {
+  const save = async () => {
     if (!text.trim() && !imageUri) return;
+
+    const entryMoodTag = selectedTag || mood || '';
+
+    // Snapshot before the save so we can tell this was the very first
+    // page ever written — a one-time "first win" beat for onboarding.
+    const isFirstEverEntry = entries.length === 0;
+
+    // 1. Generate a stable id shared with App.tsx — must happen BEFORE onSave
+    //    so saveJournalEntry receives the same id that patchJournalEntry will
+    //    search for when the Worker reply arrives.
+    const entryId = Date.now();
+
+    // 2. Persist the entry immediately (local-first, unchanged behavior).
     onSave({
-      text: text.trim(), source: activeTab, moodTag: selectedTag || mood,
+      id: entryId,
+      text: text.trim(), source: activeTab, moodTag: entryMoodTag,
       entryMode: 'typed', locked, imageUri,
     });
+
+    if (isFirstEverEntry) {
+      Alert.alert('there it is. 💜', "that's your first page in here. come back whenever you need to put something down — it'll be waiting.");
+    }
+
+    // Clear the draft right away so the user is unblocked.
+    const savedText = text.trim();
     updateText('');
     setSelectedTag('');
     setLocked(false);
     setImageUri(undefined);
+
+    // 3. Only Se'kret tabs get an AI reply. Me, Oracle, parentSekret, bridge: skip.
+    if (!tabToAvatarKey(activeTab)) return;
+
+    // 4. Show typing indicator immediately.
+    setReplyState(prev => ({ ...prev, [entryId]: { typing: true } }));
+
+    // 5. Call Worker (fetchPagesReply never throws).
+    const reply = await fetchPagesReply({
+      tab: activeTab,
+      text: savedText,
+      mood: entryMoodTag,
+    });
+
+    // 6. Store reply locally for immediate display.
+    setReplyState(prev => ({ ...prev, [entryId]: { typing: false, reply } }));
+
+    // 7. Persist reply to the entry via parent callback so it survives
+    //    navigation and app restarts via AsyncStorage.
+    onSekretReplyRef.current?.(entryId, reply);
   };
 
   return (
@@ -362,8 +485,13 @@ function PagesWorkspace({
               </View>
             ) : null}
 
-            {/* Paper card — mini sticker sits bottom-right, pointer-events:none */}
             <View style={[styles.paper, { borderColor: tab.accent + '70' }]}>
+              <View pointerEvents="none" style={styles.paperMargin} />
+              <View pointerEvents="none" style={styles.paperLines}>
+                {Array.from({ length: 10 }, (_, index) => (
+                  <View key={index} style={styles.paperLine} />
+                ))}
+              </View>
               <TextInput
                 autoFocus={activeTab === 'me'}
                 multiline
@@ -377,8 +505,6 @@ function PagesWorkspace({
               {imageUri
                 ? <Image source={{ uri: imageUri }} style={styles.attachment as any} />
                 : null}
-
-              {/* Mini sticker — raylene/rylane/cloud only; oracle always null */}
               <MiniAvatarSticker
                 character={miniStickerCharacter}
                 screenContext="pages"
@@ -426,11 +552,11 @@ function PagesWorkspace({
 
             <View style={styles.toolRow}>
               <TouchableOpacity style={styles.tool} onPress={() => setScreen('voiceBip')}>
-                <Text style={styles.toolIcon}>◉</Text>
+                <Text style={styles.toolIcon}>\u25c9</Text>
                 <Text style={styles.toolText}>Voice</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.tool} onPress={chooseImage}>
-                <Text style={styles.toolIcon}>▧</Text>
+                <Text style={styles.toolIcon}>\u25a7</Text>
                 <Text style={styles.toolText}>Image</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -440,7 +566,7 @@ function PagesWorkspace({
                 ]}
                 onPress={() => setLocked(v => !v)}
               >
-                <Text style={styles.toolIcon}>{locked ? '▣' : '▢'}</Text>
+                <Text style={styles.toolIcon}>{locked ? '\u25a3' : '\u25a2'}</Text>
                 <Text style={styles.toolText}>Lock</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -466,21 +592,40 @@ function PagesWorkspace({
               <Text style={styles.savedTitle}>Saved \u00b7 {tab.label}</Text>
               <Text style={styles.savedCount}>{tabEntries.length}</Text>
             </View>
-            {tabEntries.length ? tabEntries.map(entry => (
-              <View key={String(entry.id)} style={styles.entryCard}>
-                <View style={styles.entryTop}>
-                  <Text style={styles.entryMeta}>{formatEntryMeta(entry)}</Text>
-                  {entry.locked ? <Text style={styles.locked}>extra private</Text> : null}
+            <SyncBadge status={syncStatus ?? 'idle'} />
+
+            {tabEntries.length ? tabEntries.map(entry => {
+              // Determine reply display:
+              // 1. Prefer persisted reply from entry (survived navigation / restart).
+              // 2. Fall back to transient replyState (typing or freshly arrived reply).
+              const transient = replyState[entry.id];
+              const persistedReply = entry.sekretReply;
+              const showTyping = !persistedReply && transient?.typing;
+              const displayReply = persistedReply || (!transient?.typing ? transient?.reply : undefined);
+
+              return (
+                <View key={String(entry.id)}>
+                  <View style={styles.entryCard}>
+                    <View style={styles.entryTop}>
+                      <Text style={styles.entryMeta}>{formatEntryMeta(entry)}</Text>
+                      {entry.locked ? <Text style={styles.locked}>extra private</Text> : null}
+                    </View>
+                    {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
+                    {entry.imageUri
+                      ? <Image source={{ uri: entry.imageUri }} style={styles.savedImage as any} />
+                      : null}
+                  </View>
+                  {/* Se'kret reply bubble — only shown for reply-eligible tabs */}
+                  <SekretReplyBubble
+                    tab={activeTab}
+                    reply={displayReply}
+                    typing={showTyping}
+                    accent={tab.accent}
+                  />
                 </View>
-                {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
-                {entry.imageUri
-                  ? <Image source={{ uri: entry.imageUri }} style={styles.savedImage as any} />
-                  : null}
-              </View>
-            )) : (
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>Nothing saved here yet.</Text>
-              </View>
+              );
+            }) : (
+              <BipEmptyState type="empty" message="Nothing saved here yet. Your words will live here." />
             )}
           </>
         )}
@@ -493,7 +638,8 @@ function PagesWorkspace({
 export function PagesScreen({
   journalText, setJournalText, journalEntries, saveJournalEntry,
   mood, setScreen, BottomNav, oracleProfile, onCompleteOracleSession,
-  selectedSekret, moodHistory, voiceNotes, streakDays,
+  selectedSekret, moodHistory, voiceNotes, streakDays, onSekretReply,
+  syncStatus,
 }: PagesScreenProps) {
   return (
     <PagesWorkspace
@@ -511,6 +657,8 @@ export function PagesScreen({
       streakDays={streakDays}
       oracleProfile={oracleProfile}
       onCompleteOracleSession={onCompleteOracleSession}
+      onSekretReply={onSekretReply}
+      syncStatus={syncStatus}
     />
   );
 }
@@ -536,12 +684,14 @@ const styles = StyleSheet.create({
   },
   privatePillText: { color: '#aaa2b5', fontSize: 10 },
   tabsWrap: { borderBottomWidth: 1, borderBottomColor: '#ffffff0d' },
-  tabs: { paddingHorizontal: 14, paddingVertical: 12, gap: 6 },
+  tabs: { paddingHorizontal: 14, paddingTop: 12, gap: 4, alignItems: 'flex-end' },
   tab: {
     minWidth: 68,
-    height: 52,
-    borderRadius: 13,
+    height: 46,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
     borderWidth: 1,
+    borderBottomWidth: 0,
     borderColor: '#ffffff14',
     alignItems: 'center',
     justifyContent: 'center',
@@ -573,18 +723,41 @@ const styles = StyleSheet.create({
   promptAction: { fontSize: 11, fontWeight: '800' },
   dismiss: { color: '#827b8d', fontSize: 11 },
   paper: {
-    minHeight: 240,
-    backgroundColor: '#f4efe7',
-    borderRadius: 18,
+    minHeight: 220,
+    backgroundColor: '#fbf6e9',
+    borderRadius: 8,
     borderWidth: 2,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+  },
+  paperMargin: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 38,
+    width: 1,
+    backgroundColor: 'rgba(219, 116, 129, 0.38)',
+  },
+  paperLines: { ...StyleSheet.absoluteFillObject, paddingTop: 26 },
+  paperLine: {
+    height: 29,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(92, 134, 160, 0.28)',
   },
   input: {
-    minHeight: 240,
+    minHeight: 220,
     color: '#27212c',
     fontSize: 17,
     lineHeight: 29,
-    padding: 18,
+    paddingTop: 20,
+    paddingRight: 18,
+    paddingBottom: 18,
+    paddingLeft: 50,
+    fontFamily: Platform.select({ ios: 'Bradley Hand', android: 'sans-serif', default: 'cursive' }),
   },
   attachment: { height: 160, margin: 12, marginTop: 0, borderRadius: 12 },
   modeRow: {

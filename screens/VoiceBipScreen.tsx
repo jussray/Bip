@@ -28,8 +28,11 @@ import {
   type VoiceBipAvatarKey,
 } from '../constants/voiceBip';
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
+import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { VoiceNote } from '../types/bridge';
 import { fetchSekretReply } from '../utils/api';
+import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
+import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
 import {
   Text, TouchableOpacity, ScrollView, View,
@@ -96,7 +99,7 @@ interface VoiceBipScreenProps {
   weatherMode?: string;
   voiceNotes:     VoiceNote[];
   setVoiceNotes:  (notes: VoiceNote[] | ((prev: VoiceNote[]) => VoiceNote[])) => void;
-  onSave?:        () => void;
+  onSave?:        (note: VoiceNote) => void;
   mood?:          string;
   companion?:     {
     presenceMessage: string;
@@ -104,11 +107,15 @@ interface VoiceBipScreenProps {
   BottomNav: React.ReactNode;
   privateProfile?: OracleProfile;
   profileSide?: OracleSide;
+  oracleJournalEntries?: readonly OracleJournalEntry[];
+  onStoreOracleMemory?: (entry: OracleJournalEntry) => void;
+  syncStatus?: SyncStatus;
 }
 
 // ── COMPONENT ──────────────────────────────────────────────────────────────
 export function VoiceBipScreen({
   theme, setScreen, selectedSekret, onSelectAvatar, weatherMode, voiceNotes, setVoiceNotes, onSave, mood, companion, BottomNav, privateProfile, profileSide = 'teen',
+  oracleJournalEntries, onStoreOracleMemory, syncStatus,
 }: VoiceBipScreenProps) {
 
   const [showBipMenu,      setShowBipMenu]      = useState(false);
@@ -150,7 +157,7 @@ export function VoiceBipScreen({
   const avatarKey = normalizeVoiceBipAvatar(selectedSekret);
   const avatar = VOICE_BIP_AVATARS[avatarKey];
   const presenceCharacter = toPresenceCharacter(avatarKey);
-  const presenceTime = getPresenceTime(hour, { isRaining: roomPhase === 'rain' });
+  const presenceTime = getPresenceTime(hour, { isRaining: weatherMode === 'rain' });
   const presence = usePresence({ character: presenceCharacter, time: presenceTime });
   const roomArt = getRoomScene(avatarKey, roomPhase);
   const heroArt = isNight ? avatar.heroArt.night : avatar.heroArt.day;
@@ -159,6 +166,14 @@ export function VoiceBipScreen({
     personality: avatar.personality,
     mood: mood || 'calm',
     voiceId: avatar.voiceId,
+  });
+  const { prepareIntelligence } = useVoiceBipIntelligence({
+    avatarKey,
+    side: profileSide,
+    mood,
+    privateProfile,
+    oracleJournalEntries,
+    onStoreOracleMemory,
   });
 
   const formatTime = (s: number) =>
@@ -262,17 +277,22 @@ export function VoiceBipScreen({
     glowAnim.setValue(0);
     waveAnims.forEach(a => a.setValue(0.3));
 
+    const noteId = Date.now();
+    // Real transcription is a Phase 4 provider boundary. Never fabricate it.
+    const intelligence = prepareIntelligence(noteId, null);
     const note: VoiceNote = {
-      id:       Date.now(),
-      title:    selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
-      date:     new Date().toLocaleDateString(),
-      time:     new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      id: noteId,
+      title: selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: formatTime(recordingTime),
-      type:     selectedBipType || 'voice',
+      type: selectedBipType || 'voice',
+      avatarKey,
+      transcriptId: intelligence.transcript.id,
     };
 
     setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
-    onSave?.();
+    onSave?.(note);
 
     setIsThinking(true);
     presence.endListening();
@@ -339,6 +359,8 @@ export function VoiceBipScreen({
           <Text style={[styles.avatarRole, { color: avatar.accent }]}>{avatar.role}</Text>
           <Text style={styles.avatarGreeting}>“{avatar.greeting}”</Text>
         </View>
+
+        <SyncBadge status={syncStatus ?? 'idle'} />
 
         {/* ── Interactive Room ── */}
         <View style={styles.roomWrap} pointerEvents="box-none">

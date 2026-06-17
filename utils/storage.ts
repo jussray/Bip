@@ -12,6 +12,7 @@ const STORAGE_KEYS = {
   parentPagesEntries: 'parentPagesEntries',
   parentPagesDraft: 'parentPagesDraft',
   oracleProfile: 'oracleProfile',
+  oracleJournalEntries: 'oracleJournalEntries',
   parentOracleProfile: 'parentOracleProfile',
   oracleSessions: 'oracleSessions',
   parentOracleSessions: 'parentOracleSessions',
@@ -34,9 +35,10 @@ const STORAGE_KEYS = {
 };
 
 const JSON_KEYS = new Set([
-  'entries', 'parentPagesEntries', 'moodHistory', 'circlePosts', 'parentCirclePosts', 'voiceNotes', 'parentVoiceNotes', 'comfortSessions',
-  'entries', 'parentPagesEntries', 'oracleProfile', 'parentOracleProfile', 'oracleSessions', 'parentOracleSessions', 'moodHistory', 'circlePosts', 'parentCirclePosts', 'voiceNotes', 'parentVoiceNotes', 'comfortSessions',
-  'crewMembers', 'crewCheckIns', 'roomMemory', 'periodDays',
+  'entries', 'parentPagesEntries', 'oracleJournalEntries',
+  'oracleProfile', 'parentOracleProfile', 'oracleSessions', 'parentOracleSessions',
+  'moodHistory', 'circlePosts', 'parentCirclePosts', 'voiceNotes', 'parentVoiceNotes',
+  'comfortSessions', 'crewMembers', 'crewCheckIns', 'roomMemory', 'periodDays',
 ]);
 
 export const loadState = async () => {

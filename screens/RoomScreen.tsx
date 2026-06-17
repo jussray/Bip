@@ -16,6 +16,7 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IMAGES, AVATARS as THEME_AVATARS, THEME_PACKS, getRoomPhase, getRoomScene, type Character, type RoomPhase, type VibeKey } from '../constants/theme';
 import type { CompanionState } from '../types/sekretCompanion';
+import { SafeAsset } from '../components/SafeAsset';
 
 const { width, height } = Dimensions.get('window');
 
@@ -720,12 +721,13 @@ export function RoomScreen({
 
       {/* ── Room background ─────────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
-        <Image
+        <SafeAsset
           source={roomImage}
           style={styles.bg}
           resizeMode="cover"
-          accessibilityIgnoresInvertColors
-          onError={() => undefined}
+          assetName={`room-${character}-${roomPhase}`}
+          fallbackColor="#1a0a2e"
+          fillContainer
         />
         <View style={[styles.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
         <View style={[styles.overlay, { backgroundColor: vibePack.background + '22' }]} />
