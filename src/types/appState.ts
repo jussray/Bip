@@ -3,9 +3,9 @@
  * Typed return shape for the useAppState hook.
  * Replaces the implicit `any` spread in RouteRenderer.
  *
- * All fields mirror the useState declarations that were previously
- * in app/index.tsx (now in src/hooks/useAppState.ts).
+ * All fields mirror the useState declarations in src/hooks/useAppState.ts.
  */
+import React from 'react';
 import type { RoomMemory } from './roomMemory';
 import type {
   JournalEntry,
@@ -19,6 +19,7 @@ import type {
 } from '../../types/index';
 import type { OracleProfile, OracleSessionSummary } from '../../services/oracleDiscovery';
 import type { ParentRoomStyle } from '../../screens/ParentRoomScreen';
+import type { OracleJournalEntry } from '../../types/voiceIntelligence';
 
 export interface AppStateReturn {
   // ── Navigation ────────────────────────────────────────────────
@@ -66,10 +67,10 @@ export interface AppStateReturn {
   setOracleSessions: React.Dispatch<React.SetStateAction<OracleSessionSummary[]>>;
   parentOracleSessions: OracleSessionSummary[];
   setParentOracleSessions: React.Dispatch<React.SetStateAction<OracleSessionSummary[]>>;
-  oracleJournalEntries: any[];
-  setOracleJournalEntries: React.Dispatch<React.SetStateAction<any[]>>;
+  oracleJournalEntries: OracleJournalEntry[];
+  setOracleJournalEntries: React.Dispatch<React.SetStateAction<OracleJournalEntry[]>>;
 
-  // ── Circle ───────────────────────────────────────────────────
+  // ── Circle ────────────────────────────────────────────────────
   circlePosts: CirclePost[];
   setCirclePosts: React.Dispatch<React.SetStateAction<CirclePost[]>>;
   circlePostText: string;
@@ -79,34 +80,28 @@ export interface AppStateReturn {
   parentCirclePostText: string;
   setParentCirclePostText: (t: string) => void;
 
-  // ── Voice ────────────────────────────────────────────────────
+  // ── Voice / Comfort / Crew ────────────────────────────────────
   voiceNotes: VoiceNote[];
   setVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
   parentVoiceNotes: VoiceNote[];
   setParentVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
-
-  // ── Comfort ──────────────────────────────────────────────────
   comfortSessions: ComfortSession[];
   setComfortSessions: React.Dispatch<React.SetStateAction<ComfortSession[]>>;
-
-  // ── Crew ─────────────────────────────────────────────────────
   crewMembers: CrewMember[];
   setCrewMembers: React.Dispatch<React.SetStateAction<CrewMember[]>>;
   crewCheckIns: CrewCheckIn[];
   setCrewCheckIns: React.Dispatch<React.SetStateAction<CrewCheckIn[]>>;
 
-  // ── Streaks ──────────────────────────────────────────────────
+  // ── Persistence / UI ─────────────────────────────────────────
   streakDays: number;
   setStreakDays: React.Dispatch<React.SetStateAction<number>>;
   lastOpenDate: string;
   setLastOpenDate: (d: string) => void;
   streakJustReset: boolean;
-
-  // ── Room Memory ──────────────────────────────────────────────
+  setStreakJustReset: React.Dispatch<React.SetStateAction<boolean>>;
   roomMemory: RoomMemory;
   setRoomMemory: React.Dispatch<React.SetStateAction<RoomMemory>>;
-
-  // ── UI ───────────────────────────────────────────────────────
   homeMessageIndex: number;
+  setHomeMessageIndex: React.Dispatch<React.SetStateAction<number>>;
   isLoading: boolean;
 }

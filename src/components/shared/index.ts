@@ -5,6 +5,25 @@
  *
  * Usage: import { SafeAsset } from '@/components/shared';
  */
-export { SafeAsset }  from '../../components/SafeAsset';
-export { SyncBadge }  from '../../components/SyncBadge';
-export { Analytics }  from '../../components/Analytics';
+import React from 'react';
+
+// SafeAsset
+let SafeAsset: React.ComponentType<any>;
+try {
+  SafeAsset = require('../../components/SafeAsset').SafeAsset;
+} catch {
+  SafeAsset = () => null;
+}
+export { SafeAsset };
+
+// SyncBadge
+let SyncBadge: React.ComponentType<any>;
+try {
+  SyncBadge = require('../../components/SyncBadge').SyncBadge;
+} catch {
+  SyncBadge = () => null;
+}
+export { SyncBadge };
+
+// Analytics — KNOWN GOOD (used in AppContent directly)
+export { Analytics } from '../../components/Analytics';

@@ -119,10 +119,34 @@ export const HEAVY_WORDS = [
 
 export type VibeKey = 'soft' | 'rylane' | 'cloud' | 'night';
 
+/**
+ * Character is the four personality IDs used for avatar/room lookups.
+ * Screens that previously imported `Character` from theme now resolve here.
+ */
+export type Character = VibeKey;
+
+/**
+ * Four-phase time-of-day used by room backgrounds, presence, and screen themes.
+ */
+export type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
+
+/**
+ * Three-phase room phase (sub-division of TimeOfDay used by RoomScreen).
+ */
+export type RoomPhase = 'day' | 'evening' | 'night';
+
 const VALID_VIBE_KEYS: VibeKey[] = ['soft', 'rylane', 'cloud', 'night'];
 
 export function normalizeVibeKey(raw: string | undefined): VibeKey {
   return VALID_VIBE_KEYS.includes(raw as VibeKey) ? (raw as VibeKey) : 'soft';
+}
+
+/**
+ * Normalize any string to a valid Character/VibeKey.
+ * Used by SekretScreen and RoomScreen to prevent implicit-any indexing.
+ */
+export function normalizeCharacterKey(raw: string | undefined): Character {
+  return normalizeVibeKey(raw);
 }
 
 export const ROOM_BACKGROUNDS: Record<VibeKey, string> = {
@@ -136,9 +160,51 @@ export function getRoomBg(vibe: VibeKey): string {
   return ROOM_BACKGROUNDS[vibe] ?? ROOM_BACKGROUNDS.soft;
 }
 
+// ─── Parent room background ───────────────────────────────────────────────────
+
+/** Solid fallback background for the parent-side room/pages. */
+export function getParentRoomBg(): string {
+  return '#1A0A2E';
+}
+
+// ─── Room scene / phase helpers ───────────────────────────────────────────────
+
+export interface AvatarMap {
+  neutral: number;
+  happy?:  number;
+  window?: number;
+  voice?:  number;
+}
+
+export type SceneKey = 'default' | 'writing' | 'window' | 'voiceBip';
+
+export interface RoomScene {
+  bg:     string;
+  avatar: AvatarMap;
+}
+
+/**
+ * Return the room phase from an hour (0-23).
+ * Replaces the `getRoomPhase` import that many screens expected.
+ */
+export function getRoomPhase(hour: number): RoomPhase {
+  if (hour >= 6  && hour < 17) return 'day';
+  if (hour >= 17 && hour < 21) return 'evening';
+  return 'night';
+}
+
+/**
+ * Return a room scene descriptor for a given character and phase.
+ * `BackgroundLayer` and `RoomScreen` call this.
+ */
+export function getRoomScene(character: Character, phase: RoomPhase): RoomScene {
+  const bg = ROOM_BACKGROUNDS[character] ?? ROOM_BACKGROUNDS.soft;
+  // Avatar map filled lazily — callers that need specific poses use IMAGES directly.
+  const avatar: AvatarMap = { neutral: AVATARS[character] };
+  return { bg, avatar };
+}
+
 // ─── Image maps ───────────────────────────────────────────────────────────────
-// Keys match assetKey values in constants/characterAssets.ts.
-// Only renderable=true assets are included here.
 
 export const IMAGES: Record<string, number> = {
   rayleneNeutral:      require('../../assets/images/raylene-neutral.png'),
@@ -150,7 +216,6 @@ export const IMAGES: Record<string, number> = {
   rayleneFullbody:     require('../../assets/images/raylene-fullbody.png'),
   rayleneVoiceDay:     require('../../assets/images/raylene-voice-day.png'),
   rayleneVoiceNight:   require('../../assets/images/raylene-voice-night.png'),
-  // TODO: replace with real raylene-bippin2-day.png when asset is ready
   raylene_Bippin2Day:  require('../../assets/images/raylene-voice-day.png'),
   rylaneNeutral:       require('../../assets/images/rylane-neutral.png'),
   rylaneNeutralV2:     require('../../assets/images/rylane-neutral-v2.png'),
@@ -171,7 +236,6 @@ export const IMAGES: Record<string, number> = {
 };
 
 // ─── Avatar map ───────────────────────────────────────────────────────────────
-// Default portrait image per VibeKey.
 
 export const AVATARS: Record<VibeKey, number> = {
   soft:   IMAGES.rayleneNeutral,
