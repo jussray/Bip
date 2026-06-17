@@ -13,8 +13,13 @@
       "@constants/*":  ["./constants/*",  "./src/constants/*"],
       "@screens/*":    ["./screens/*"],
       "@types/*":      ["./types/*",      "./src/types/*"],
-      "@store/*":      ["./src/store/*"],
-      "@handlers/*":   ["./src/handlers/*"]
+      "@/hooks/*":     ["./src/hooks/*"],
+      "@/utils/*":     ["./src/utils/*"],
+      "@/constants/*": ["./src/constants/*"],
+      "@/types/*":     ["./src/types/*"],
+      "@/services/*":  ["./src/services/*"],
+      "@/screens/*":   ["./screens/*"],
+      "@/context/*":   ["./context/*", "./src/context/*"]
     }
   }
 }

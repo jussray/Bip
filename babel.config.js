@@ -19,19 +19,22 @@ module.exports = function (api) {
         {
           root: ['./'],
           alias: {
-            // Root alias — covers @/screens/..., @/utils/..., etc.
-            '@':           './',
+            // ── Legacy aliases (unchanged — existing imports keep working) ──
+            '@constants':  './constants',
+            '@screens':    './screens',
+            '@utils':      './utils',
+            '@hooks':      './hooks',
+            '@types':      './types',
+            '@components': './components',
 
-            // Dedicated aliases — each maps to BOTH legacy root dir
-            // and new src/ subdir so imports work regardless of location.
-            '@constants':  ['./constants', './src/constants'],
-            '@screens':    ['./screens'],
-            '@utils':      ['./utils',     './src/utils'],
-            '@hooks':      ['./hooks',     './src/hooks'],
-            '@types':      ['./types',     './src/types'],
-            '@components': ['./components'],
-            '@store':      ['./src/store'],
-            '@handlers':   ['./src/handlers'],
+            // ── src/ aliases (new convention for refactored code) ──
+            '@/hooks':     './src/hooks',
+            '@/utils':     './src/utils',
+            '@/constants': './src/constants',
+            '@/types':     './src/types',
+            '@/services':  './src/services',
+            '@/screens':   './screens',
+            '@/context':   './context',
           },
         },
       ],
