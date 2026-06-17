@@ -25,7 +25,14 @@ const DEBUG_HOTSPOTS = false;
 
 // Character type imported from constants/theme (raylene | rylane | cloud | night)
 type TimeOfDay  = 'morning' | 'day' | 'evening' | 'night';
-type Pose       = 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody';
+type Pose =
+  // shared baseline
+  | 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody'
+  // Raylene extended
+  | 'confident' | 'playful' | 'sad' | 'mad' | 'surprised' | 'crouching'
+  // Night extended
+  | 'softsmile' | 'tired' | 'annoyed' | 'overwhelmed' | 'protective' | 'lonely'
+  | 'hopeful' | 'relaxed' | 'listening' | 'hurting' | 'inhishead' | 'inlove';
 type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
 
 // RoomTarget kept as internal type for hotspot definitions.
@@ -45,7 +52,7 @@ type Hotspot = {
 };
 
 type AssetMap  = Record<TimeOfDay, ImageSourcePropType>;
-type AvatarMap = Record<Pose, ImageSourcePropType>;
+type AvatarMap = Partial<Record<Pose, ImageSourcePropType>>;
 
 // ─── Room / Avatar assets ─────────────────────────────────────────────────────
 
@@ -358,11 +365,74 @@ const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
   return map[character][timeOfDay];
 };
 
-const getPose = (mood: Mood, timeOfDay: TimeOfDay, isFirstVisit: boolean, isSekretVisible: boolean): Pose => {
+const getPose = (
+  mood: Mood,
+  timeOfDay: TimeOfDay,
+  isFirstVisit: boolean,
+  isSekretVisible: boolean,
+  character: Character,
+): Pose => {
   if (isFirstVisit && isSekretVisible) return 'fullbody';
-  if (timeOfDay === 'night' || mood === 'Sad' || mood === 'Tired') return 'window';
-  if (mood === 'Happy') return 'happy';
-  if (mood === 'Angry') return 'thinking';
+
+  const m = String(mood).toLowerCase();
+
+  // ── Night: full 20-emotion palette ────────────────────────────────────────
+  if (character === 'night') {
+    if (m.includes('overwhelm') || m.includes('stress'))                       return 'overwhelmed';
+    if (m.includes('hurt') || m.includes('broken') || m.includes('pain'))     return 'hurting';
+    if (m.includes('sad') || m.includes('cry') || m.includes('griev'))        return 'sad';
+    if (m.includes('lonel') || m.includes('alone') || m.includes('isolat'))   return 'lonely';
+    if (m.includes('angry') || m.includes('mad') || m.includes('frustrat'))   return 'annoyed';
+    if (m.includes('annoy') || m.includes('irritat'))                          return 'annoyed';
+    if (m.includes('tired') || m.includes('exhaust') || m.includes('drain'))  return 'tired';
+    if (m.includes('protect') || m.includes('defensiv') || m.includes('guard')) return 'protective';
+    if (m.includes('hopeful') || m.includes('optimis') || m.includes('better')) return 'hopeful';
+    if (m.includes('happy') || m.includes('good') || m.includes('great'))     return 'softsmile';
+    if (m.includes('playful') || m.includes('fun') || m.includes('goofy'))    return 'playful';
+    if (m.includes('excit') || m.includes('hype'))                             return 'playful';
+    if (m.includes('love') || m.includes('crush') || m.includes('romantic') || m.includes('like')) return 'inlove';
+    if (m.includes('relax') || m.includes('calm') || m.includes('peace') || m.includes('chill'))   return 'relaxed';
+    if (m.includes('listen') || m.includes('music') || m.includes('headphone')) return 'listening';
+    if (m.includes('think') || m.includes('confus') || m.includes('wonder'))  return 'thinking';
+    if (m.includes('write') || m.includes('journal') || m.includes('note'))   return 'writing';
+    if (m.includes('withdraw') || m.includes('dissociat') || m.includes('numb') || m.includes('disconn')) return 'inhishead';
+    if (timeOfDay === 'night' || m.includes('late') || m.includes('window'))  return 'window';
+    return 'neutral';
+  }
+
+  // ── Raylene: expanded 10-emotion palette ──────────────────────────────────
+  if (character === 'raylene') {
+    if (m.includes('overwhelm') || m.includes('stress') || m.includes('anxious')) return 'crouching';
+    if (m.includes('sad') || m.includes('cry') || m.includes('hurt'))         return 'sad';
+    if (m.includes('angry') || m.includes('mad') || m.includes('frustrat'))   return 'mad';
+    if (m.includes('surpris') || m.includes('shock') || m.includes('wow'))    return 'surprised';
+    if (m.includes('happy') || m.includes('good') || m.includes('great') || m.includes('excit')) return 'happy';
+    if (m.includes('playful') || m.includes('fun') || m.includes('goofy'))    return 'playful';
+    if (m.includes('confident') || m.includes('proud') || m.includes('strong') || m.includes('boss')) return 'confident';
+    if (m.includes('tired') || m.includes('exhaust') || m.includes('drain'))  return 'crouching';
+    if (m.includes('think') || m.includes('confus') || m.includes('wonder'))  return 'thinking';
+    if (timeOfDay === 'night' || m.includes('late') || m.includes('quiet'))   return 'window';
+    return 'neutral';
+  }
+
+  // ── Rylane: baseline palette (art not yet expanded) ───────────────────────
+  if (character === 'rylane') {
+    if (m.includes('happy') || m.includes('good') || m.includes('great'))     return 'happy';
+    if (m.includes('think') || m.includes('confus') || m.includes('wonder') ||
+        m.includes('sad') || m.includes('angry') || m.includes('tired'))      return 'thinking';
+    if (timeOfDay === 'night')                                                  return 'window';
+    return 'neutral';
+  }
+
+  // ── Cloud: mascot palette ─────────────────────────────────────────────────
+  if (character === 'cloud') {
+    if (m.includes('happy') || m.includes('good') || m.includes('excit'))     return 'happy';
+    if (m.includes('think') || m.includes('focus') || m.includes('listen'))   return 'thinking';
+    if (m.includes('tired') || m.includes('sleepy') || m.includes('exhaust')) return 'window'; // cloudSleepy
+    if (m.includes('sad') || m.includes('storm') || m.includes('overwhelm'))  return 'writing'; // cloudStormy via writing key
+    return 'neutral';
+  }
+
   return 'neutral';
 };
 
@@ -510,7 +580,7 @@ export function RoomScreen({
     () => getGreeting(character, mood, timeOfDay, false)
   );
 
-  const pose = getPose(mood, timeOfDay, isFirstVisit, isSekretVisible);
+  const pose = getPose(mood, timeOfDay, isFirstVisit, isSekretVisible, character);
 
   const rememberedLine = useMemo(() => {
     if (!companion) return null;
