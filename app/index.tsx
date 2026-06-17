@@ -334,7 +334,26 @@ function AppContent() {
   );
 
   if (s.screen === 'more')     return <MoreScreen t={t} setScreen={setScreen} BottomNav={nav} userSide={s.userSide} setUserSide={(v) => setState(prev => ({ ...prev, userSide: v }))} />;
-  if (s.screen === 'settings') return <SettingsScreen t={t} setScreen={setScreen} BottomNav={nav} sleepWindow={sleepWindow} setSleepWindow={setSleepWindow} />;
+
+  if (s.screen === 'settings') return (
+    <SettingsScreen
+      t={t}
+      theme={s.theme}
+      setTheme={(v) => setState(prev => ({ ...prev, theme: v }))}
+      selectedSekret={s.selectedSekret}
+      setSelectedSekret={(v) => setState(prev => ({ ...prev, selectedSekret: v }))}
+      sekretMode={s.sekretMode}
+      setSekretMode={(v) => setState(prev => ({ ...prev, sekretMode: v }))}
+      userSide={s.userSide}
+      setUserSide={(v) => setState(prev => ({ ...prev, userSide: v }))}
+      parentRoomStyle={s.parentRoomStyle}
+      setParentRoomStyle={(v) => setState(prev => ({ ...prev, parentRoomStyle: v as ParentRoomStyle }))}
+      setScreen={setScreen}
+      BottomNav={nav}
+      sleepWindow={sleepWindow}
+      setSleepWindow={setSleepWindow}
+    />
+  );
 
   return null;
 }
