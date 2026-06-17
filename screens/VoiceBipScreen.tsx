@@ -286,7 +286,7 @@ export function VoiceBipScreen({
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: formatTime(recordingTime),
-      type: selectedBipType || 'voice',
+      type: (selectedBipType || 'voice') as VoiceNote['type'],
       avatarKey,
       transcriptId: intelligence.transcript.id,
     };

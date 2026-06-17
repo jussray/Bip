@@ -5,7 +5,7 @@ import {
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, ParentCirclePost, MoodEntry, ComfortSession } from '../types/index';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
-import type { SavePageInput } from '@screens/PagesScreen';
+import type { SavePageInput } from '../types/index';
 import type { RoomMemory } from '../types/roomMemory';
 
 type S = ReturnType<typeof useAppState>;
@@ -126,10 +126,15 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
-    type ReactionKey = keyof ParentCirclePost['reactions'];
     s.setParentCirclePosts(posts => posts.map(p =>
       String(p.id) === String(id)
-        ? { ...p, reactions: { ...p.reactions, [type as ReactionKey]: (p.reactions[type as ReactionKey] || 0) + 1 } }
+        ? {
+            ...p,
+            reactions: {
+              ...(p.reactions ?? {}),
+              [type]: (((p.reactions as Record<string, number> | undefined)?.[type]) ?? 0) + 1,
+            },
+          } as ParentCirclePost
         : p
     ));
   };

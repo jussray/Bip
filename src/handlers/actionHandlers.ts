@@ -19,7 +19,7 @@ import type {
   ComfortSession,
 } from '../../types/index';
 import type { OracleProfile, OracleSessionSummary } from '../../services/oracleDiscovery';
-import type { SavePageInput } from '../../screens/PagesScreen';
+import type { SavePageInput } from '../types/index';
 import {
   syncMood,
   syncJournal,
@@ -215,11 +215,10 @@ export function makeReactToParentPost(setState: SetState) {
           ? {
               ...p,
               reactions: {
-                ...p.reactions,
-                [type as keyof ParentCirclePost['reactions']]:
-                  (p.reactions[type as keyof ParentCirclePost['reactions']] || 0) + 1,
+                ...(p.reactions ?? {}),
+                [type]: (((p.reactions as Record<string, number> | undefined)?.[type]) ?? 0) + 1,
               },
-            }
+            } as ParentCirclePost
           : p
       ),
     }));

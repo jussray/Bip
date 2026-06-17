@@ -90,7 +90,7 @@ export function BipCrewScreen({
   const [newCommit, setNewCommit]         = useState('');
   const [newEmoji, setNewEmoji]           = useState(isRylane ? '\u{1F31F}' : '\u{1F49C}');
   const [newCadence, setNewCadence]       = useState<'daily' | 'weekly' | 'whenever'>('weekly');
-  const [checkInFor, setCheckInFor]       = useState<number | null>(null);
+  const [checkInFor, setCheckInFor]       = useState<string | number | null>(null);
   const [checkInNote, setCheckInNote]     = useState('');
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export function BipCrewScreen({
     const name = newName.trim();
     const commit = newCommit.trim();
     if (!name || crewMembers.length >= MAX_CREW) return;
-    const nextId = crewMembers.length ? Math.max(...crewMembers.map(m => m.id)) + 1 : 1;
+    const nextId = crewMembers.length ? Math.max(...crewMembers.map(m => Number(m.id))) + 1 : 1;
     const member: CrewMember = {
       id: nextId,
       name,
@@ -149,15 +149,15 @@ export function BipCrewScreen({
     setShowInvite(false);
   };
 
-  const removeMember = (id: number) => {
-    setCrewMembers(prev => prev.filter(m => m.id !== id));
-    setCrewCheckIns(prev => prev.filter(c => c.memberId !== id));
-    const sync = () => deleteCrewMember(id);
+  const removeMember = (id: string | number) => {
+    setCrewMembers(prev => prev.filter(m => String(m.id) !== String(id)));
+    setCrewCheckIns(prev => prev.filter(c => String(c.memberId) !== String(id)));
+    const sync = () => deleteCrewMember(Number(id));
     if (withSyncWrap) void withSyncWrap(async () => sync());
     else sync();
   };
 
-  const logCheckIn = (memberId: number) => {
+  const logCheckIn = (memberId: string | number) => {
     const note = checkInNote.trim();
     if (!note) return;
     const now = new Date();
@@ -180,7 +180,7 @@ export function BipCrewScreen({
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const lastCheckInFor = useMemo(() => {
-    const m: Record<number, CrewCheckIn | undefined> = {};
+    const m: Record<string | number, CrewCheckIn | undefined> = {};
     for (const c of crewCheckIns) {
       if (!m[c.memberId]) m[c.memberId] = c;
     }
@@ -190,7 +190,7 @@ export function BipCrewScreen({
   const isOverdue = (mem: CrewMember): boolean => {
     if (mem.cadence === 'whenever') return false;
     const last = lastCheckInFor[mem.id];
-    const since = last ? daysSince(`${last.date}`) : daysSince(mem.addedAt);
+    const since = last ? daysSince(`${last.date}`) : daysSince(mem.addedAt ?? '');
     return mem.cadence === 'daily' ? since >= 2 : since >= 8;
   };
 
