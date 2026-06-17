@@ -21,7 +21,7 @@ type DiscoverCard = {
   emoji: string;
   title: string;
   desc: string;
-  action: string | null;
+  action: '/(main)/calm' | '/(main)/pages' | '/(main)/circle' | null;
 };
 
 const DISCOVER_CARDS: DiscoverCard[] = [
@@ -42,7 +42,7 @@ export default function DiscoverScreen() {
         {/* Oracle entry card */}
         <TouchableOpacity
           style={styles.oracleCard}
-          onPress={() => router.push('/(main)/chat/oracle' as any)}
+          onPress={() => router.push('/(main)/chat/oracle')}
           activeOpacity={0.85}
         >
           <Text style={styles.oracleEmoji}>{oracle.emoji}</Text>
@@ -58,8 +58,6 @@ export default function DiscoverScreen() {
         <Text style={styles.sectionLabel}>Quick Access</Text>
         <View style={styles.grid}>
           {DISCOVER_CARDS.map((card) => {
-            // Cards without an action route are non-interactive (coming soon).
-            // Render as View instead of TouchableOpacity to prevent silent tap absorption.
             if (!card.action) {
               return (
                 <View key={card.title} style={[styles.gridCard, styles.gridCardInactive]}>
@@ -74,7 +72,7 @@ export default function DiscoverScreen() {
               <TouchableOpacity
                 key={card.title}
                 style={styles.gridCard}
-                onPress={() => router.push(card.action as any)}
+                onPress={() => router.push(card.action!)}
                 activeOpacity={0.8}
               >
                 <Text style={styles.gridEmoji}>{card.emoji}</Text>

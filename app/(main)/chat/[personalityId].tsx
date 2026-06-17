@@ -37,8 +37,7 @@ const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'orac
 
 // Tab bar height defined in app/(main)/_layout.tsx.
 // keyboardVerticalOffset must account for this so the input row stays
-// above the keyboard on iOS. Add 20 for the safe-area top inset used
-// by SafeAreaView — this keeps the offset consistent across devices.
+// above the keyboard on iOS.
 const TAB_BAR_HEIGHT = 68;
 const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
 
@@ -189,15 +188,8 @@ const styles = StyleSheet.create({
     borderRadius:      18,
     marginBottom:      4,
   },
-  userBubble:      {
-    alignSelf:       'flex-end',
-    backgroundColor: '#1E293B',
-  },
-  assistBubble:    {
-    alignSelf:       'flex-start',
-    backgroundColor: '#111827',
-    borderWidth:     1,
-  },
+  userBubble:      { alignSelf: 'flex-end', backgroundColor: '#1E293B' },
+  assistBubble:    { alignSelf: 'flex-start', backgroundColor: '#111827', borderWidth: 1 },
   bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22 },
   userBubbleText:  { color: '#fff' },
   inputRow:        {
@@ -208,7 +200,6 @@ const styles = StyleSheet.create({
     borderTopWidth:  1,
     borderTopColor:  '#ffffff10',
     backgroundColor: '#0d0d0d',
-    marginRight: 10,
   },
   input:           {
     flex:              1,
@@ -221,13 +212,7 @@ const styles = StyleSheet.create({
     maxHeight:         120,
     marginRight:       10,
   },
-  sendBtn:         {
-    width:          40,
-    height:         40,
-    borderRadius:   20,
-    alignItems:     'center',
-    justifyContent: 'center',
-  },
+  sendBtn:         { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
   sendBtnText:     { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });

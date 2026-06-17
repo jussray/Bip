@@ -7,10 +7,6 @@
  * Usage:
  *   import { navigateTo } from '@/utils/navigation';
  *   navigateTo('circle');   // router.push('/(main)/circle')
- *
- * Previously each tab file (home.tsx, pages.tsx, calm.tsx …) duplicated
- * its own SCREEN_MAP + setScreen shim. Those have been replaced with
- * imports from here.
  */
 import { router } from 'expo-router';
 import type { ScreenKey } from '@/types';
@@ -36,5 +32,8 @@ export const SCREEN_MAP: Record<ScreenKey | string, string> = {
  */
 export function navigateTo(screen: string): void {
   const path = SCREEN_MAP[screen] ?? '/(main)/home';
-  router.push(path as any);
+  // router.push accepts Href; the cast is intentional here because the
+  // SCREEN_MAP values are all valid static routes but TypeScript cannot
+  // narrow a runtime string to the Href union.
+  router.push(path as Parameters<typeof router.push>[0]);
 }
