@@ -1,4 +1,3 @@
-import React from 'react';
 import { Stack } from 'expo-router';
 import { Analytics } from '@/components/shared/Analytics';
 import { validateEnv } from '@/utils/env';
