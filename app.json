@@ -6,13 +6,24 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
-    "splash": { "backgroundColor": "#160028" },
-    "ios": { "supportsTablet": false, "bundleIdentifier": "com.sekretbip.app" },
+ "platforms": ["ios", "android", "web"],
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#160028"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sekretbip.app"
+    },
     "android": {
-      "adaptiveIcon": { "backgroundColor": "#160028" },
+      "adaptiveIcon": {
+        "backgroundColor": "#160028"
+      },
       "package": "com.sekretbip.app"
     },
-    "plugins": ["expo-router"],
-    "experiments": { "typedRoutes": true }
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router", "expo-secure-store"]
   }
 }

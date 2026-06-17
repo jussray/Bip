@@ -1,17 +1,9 @@
 // babel.config.js
 // Se'kret Bip — Babel configuration
 //
-// Must stay in sync with tsconfig.json paths.
-// After any change here: npx expo start --clear
-//
-// Alias map (Step 3):
-//   @        → ./src        (canonical — use for all new code)
-//   @hooks   → ./src/hooks  (legacy alias now points directly to src/)
-//   @utils   → ./src/utils
-//   @components → ./src/components
-//   @constants  → ./src/constants
-//   @types      → ./src/types
-//   @screens    → ./screens  (legacy — retire in Step 5)
+// babel-plugin-module-resolver is configured here to match the path aliases
+// declared in tsconfig.json. Both files must stay in sync.
+// After changing this file, restart Expo with: npx expo start --clear
 
 module.exports = function (api) {
   api.cache(true);
@@ -35,6 +27,11 @@ module.exports = function (api) {
 
             // Screens — retire in Step 5
             '@screens':     './screens',
+            '@constants': './constants',
+            '@screens':   './screens',
+            '@utils':     './utils',
+            '@hooks':     './hooks',
+            '@types':     './types',
           },
         },
       ],
