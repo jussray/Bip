@@ -17,6 +17,7 @@ import React, { useEffect, useRef } from "react";
 import {
   View,
   Image,
+  Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -25,7 +26,6 @@ import {
 import { StatusBar } from "expo-status-bar";
 
 const { width, height } = Dimensions.get("window");
-
 const teenSplashBg   = require("../assets/images/splash-bg.png");
 const parentSplashBg = require("../assets/images/parent-space-splash.png");
 
@@ -45,11 +45,12 @@ const P_CTA_RIGHT  = 0.95;
 
 interface SplashScreenProps {
   setScreen: (screen: string) => void;
-  userSide?: string;
+  userSide?: "teen" | "parent";
 }
 
-export function SplashScreen({ setScreen, userSide }: SplashScreenProps) {
+export function SplashScreen({ setScreen, userSide = "teen" }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const isParent = userSide === "parent";
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -58,8 +59,6 @@ export function SplashScreen({ setScreen, userSide }: SplashScreenProps) {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
-
-  const isParent = userSide === 'parent';
 
   return (
     <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
@@ -70,9 +69,17 @@ export function SplashScreen({ setScreen, userSide }: SplashScreenProps) {
         <Image
           source={isParent ? parentSplashBg : teenSplashBg}
           style={styles.bgImage}
-          resizeMode="cover"
+          resizeMode={isParent ? "contain" : "cover"}
         />
       </View>
+
+      {isParent ? (
+        <View style={styles.parentIntro} pointerEvents="none">
+          <Text style={styles.parentEyebrow}>PARENT SPACE</Text>
+          <Text style={styles.parentTitle}>A softer way to stay connected.</Text>
+          <Text style={styles.parentBody}>Your teen’s private space stays private. Bridge moments are shared on purpose.</Text>
+        </View>
+      ) : null}
 
       {/* CTA button — sole entry point for both sides */}
       <TouchableOpacity
@@ -90,7 +97,7 @@ export function SplashScreen({ setScreen, userSide }: SplashScreenProps) {
         onPress={() => setScreen("home")}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={isParent ? "Se'kret Bip — enter your parent space" : "Se'kret Bip — enter your safe space"}
+        accessibilityLabel={isParent ? "Se’kret Bip — enter your parent space" : "Se’kret Bip — enter your safe space"}
         accessibilityHint="Opens the app"
       />
     </Animated.View>
@@ -105,6 +112,31 @@ const styles = StyleSheet.create({
   bgImage: {
     width,
     height,
+  },
+  parentIntro: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    bottom: 138,
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: "rgba(18, 9, 31, 0.78)",
+    borderWidth: 1,
+    borderColor: "rgba(226, 194, 255, 0.34)",
+  },
+  parentEyebrow: { color: "#d7b8ef", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+  parentTitle: { color: "#fff", fontSize: 22, lineHeight: 27, fontWeight: "800", marginTop: 6 },
+  parentBody: { color: "#dfd5e7", fontSize: 13, lineHeight: 19, marginTop: 7 },
+  parentEnter: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    bottom: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "rgba(153, 104, 185, 0.24)",
+    borderWidth: 1,
+    borderColor: "rgba(240, 217, 255, 0.55)",
   },
   hitTarget: {
     position: "absolute",

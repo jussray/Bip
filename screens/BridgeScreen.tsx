@@ -18,8 +18,8 @@ import {
   Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
-import type { BridgePayload } from '../types/index';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -110,20 +110,18 @@ export function BridgeScreen({
     transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   });
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!shareType || !message.trim()) {
       Alert.alert('almost there', 'pick a share type and write your message first.');
       return;
     }
 
-    const payload: BridgePayload = {
-      shareTypeLabel: selectedType?.label,
-      preview:        message.trim().slice(0, 80),
-      sharedAt:       new Date().toISOString(),
-      softPrompt:     `${currentSekret?.name ?? 'Bip'} helped share this.`,
-    };
-
-    console.log('[BridgeScreen] Bridge payload:', payload);
+    try {
+      // Signal-only, like S2Tell: parent learns a share happened, never the content.
+      await AsyncStorage.setItem('parent_bridge_pending', 'true');
+    } catch {
+      // Local-only fallback — the teen still sees their note as sent.
+    }
 
     setSent(true);
     setMessage('');

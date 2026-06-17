@@ -1,142 +1,63 @@
-# Codespaces — running Se'kret Bip in the cloud
+# Codespaces Setup
 
-This is the fastest way to run the app without setting anything up on your laptop. Everything runs in a browser tab.
+This project runs in GitHub Codespaces with zero local setup required.
 
----
+## Quick Start
 
-## 1. Open the Codespace
+1. Click **Open in GitHub Codespaces** in the README (or open [https://codespaces.new/jussray/Bip?quickstart=1](https://codespaces.new/jussray/Bip?quickstart=1)).
+2. Wait ~1 minute — the devcontainer auto-installs dependencies and seeds `.env.local`.
+3. Start the dev server:
+   ```bash
+   npx expo start --web -c
+   ```
+4. Port 8081 opens automatically in the browser preview.
 
-1. Go to [github.com/jussray/Bip](https://github.com/jussray/Bip)
-2. Click the green **Code** button → **Codespaces** tab
-3. **Create codespace on main** (or reopen the existing one if you've used it before)
+## Git LFS in Codespaces
 
-The first boot takes ~2 minutes while it installs Node, npm, and the repo dependencies.
-
----
-
-## 2. Install dependencies
-
-In the Codespace terminal:
+All room background PNGs (`assets/images/bg-*.png`) and companion art are stored in **Git LFS**. The devcontainer pre-installs `git-lfs`, but you must explicitly pull the binary files after cloning:
 
 ```bash
-npm install --legacy-peer-deps
+git lfs pull
 ```
 
-The `--legacy-peer-deps` flag matters. Without it, Expo's peer dependency ranges fight with Supabase and the install fails. Always include it.
+**Always run `git lfs pull` before:**
+- Copying any `bg-*.png` to `assets/images/archive/`
+- Running `npm run verify:room-archives`
+- Starting Phase 2 room compositing work
 
----
-
-## 3. Add Supabase env vars (REQUIRED for cloud sync)
-
-Without these, the app still runs — it just stays offline-only (AsyncStorage), and `pullAll` short-circuits silently on boot.
+### Confirm LFS hydration
 
 ```bash
-cp .env.example .env.local
+ls -lh assets/images/bg-raylene-room-day.png
 ```
 
-Open `.env.local` (it's in `.gitignore` and will NEVER be committed) and fill in:
+- ✅ `2.7M` — LFS hydrated. Safe to proceed.
+- ❌ `134B` — LFS pointer only. Run `git lfs pull` and wait for it to finish.
 
-```
-EXPO_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
-```
+## Pre-push Checks
 
-Find both values in your Supabase dashboard → **Settings → API**.
-
----
-
-## 4. Run the schema (one-time per Supabase project)
-
-In the Supabase dashboard → **SQL Editor** → paste the entire contents of [`db/schema.sql`](../db/schema.sql) → **Run**.
-
-This creates every table (`moods`, `journal_entries`, `circle_posts`, `voice_notes`, `comfort_sessions`, `crew_members`, `crew_check_ins`, `room_memory`, `period_days`) with RLS policies so each anon user can only see their own rows.
-
-You only need to do this once per Supabase project. Skip this step if your project already has the schema.
-
----
-
-## 5. Start the app
+Run this before every push:
 
 ```bash
-npx expo start --web
+npm run verify:prepush
 ```
 
-Codespaces will pop up a "Open in Browser" toast for the forwarded port. Click it. The app opens in a new tab.
+This runs in order:
+1. `audit:runtime-assets` — confirms all image keys in `constants/theme.ts` resolve to real files
+2. `type-check` — TypeScript compile check (no emit)
+3. `lint` — ESLint across the codebase
+4. `verify:bundle` — Expo web export (confirms the app builds)
+5. `verify:room-archives` — confirms all 28 room archive backups are real MB-sized PNGs matching live SHAs
 
-If the toast disappeared, find the port in the **Ports** panel at the bottom of the Codespaces UI and click the globe icon.
+If any step fails, fix it before pushing.
 
----
+## Environment Variables
 
-## 6. Verify pullAll fires on boot
-
-With Supabase configured, open the browser DevTools console. On app launch you should see:
+The devcontainer seeds `.env.local` from `.env.example`. Fill in Supabase keys when wiring Phase 2:
 
 ```
-[sync] pullAll hydrated { moodHistory: N, journalEntries: N, circlePosts: N, voiceNotes: N, comfortSessions: N, crewMembers: N, crewCheckIns: N }
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
-If you see nothing, `isSupabaseConfigured` is likely false — double-check `.env.local`. The app will still work offline; cloud sync just won't happen.
-
----
-
-## 7. Smoke tests
-
-Quick checks that cloud sync is round-tripping correctly:
-
-- **Mood persistence**: drop a mood → hard-reload the page → mood should reappear (it came back from the cloud, not AsyncStorage)
-- **Crew persistence**: open Crew screen → add a member → hard-reload → member persists
-- **Database check**: Supabase dashboard → **Table Editor** → `moods`, `crew_members`, etc. should each have rows tagged with your anon `user_id`
-
-If a row is in AsyncStorage but not Supabase, sync helpers are fire-and-forget — check the console for `[sync] … failed` warnings.
-
----
-
-## 8. Bundle-verify before pushing changes
-
-Whenever you change `package.json`, `app/index.tsx`, or anything in `constants/theme.ts` / `types/`, run this before pushing:
-
-```bash
-npx expo export --platform web --clear
-```
-
-Success looks like `Exported: dist` at the end. This is exactly what the pre-standup cron checks every weekday at 8am EDT — if it bundles here, the cron stays silent.
-
----
-
-## 9. Stopping the Codespace
-
-Codespaces auto-suspend after 30 minutes of inactivity. To stop manually:
-
-- In the bottom-left of VS Code → **Codespaces: Stop Current Codespace**
-- Or close the tab — it'll suspend on its own
-
-You're not billed for stopped Codespaces (storage only).
-
----
-
-## Common gotchas
-
-| Symptom | Fix |
-|---|---|
-| `npm install` errors about peer deps | Always use `--legacy-peer-deps` |
-| App boots but no cloud sync | `.env.local` missing or `EXPO_PUBLIC_` prefix dropped |
-| `pullAll` returns null in console | RLS policies blocking — run `db/schema.sql` again |
-| Bundle fails with "Unable to resolve module X" | Missing peer dep, run `npm install X --legacy-peer-deps` |
-| Port forwarding link 404s | Codespace went to sleep — restart the `npx expo start --web` command |
-| AsyncStorage data lost on reload | Web AsyncStorage = localStorage; cleared with hard reload + clear-site-data |
-
----
-
-## What's wired vs deferred
-
-**Cloud-synced on every mutation:** moods, journal entries, circle posts, voice notes, comfort sessions, crew members, crew check-ins.
-
-**Cloud-restored on boot:** all of the above, via `pullAll` in [`app/index.tsx`](../app/index.tsx).
-
-**Not synced yet (deferred):**
-- `room_memory` table exists, helper not wired into `updateRoomMemory` yet
-- Realtime subscriptions for Crew (next pass: `supabase.channel('crew').on('postgres_changes')`)
-- Period tracker — `period_days` table exists, wiring pending
-- Email upgrade path from anonymous to email+OTP
-
-See [`SUPABASE.md`](./SUPABASE.md) for full backend architecture.
+Never commit `.env.local`. Never put a `service_role` key on the device.

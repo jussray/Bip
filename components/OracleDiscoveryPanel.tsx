@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { createSekretDiscoveryContext } from '../services/sekretDiscovery';
 import {
   analyzeOracleAnswer,
   completeOracleSession,
-  normalizeOracleProfile,
   selectOracleFollowUp,
   selectOracleOpening,
   shouldCompleteOracleSession,
@@ -21,9 +21,10 @@ interface OracleDiscoveryPanelProps {
 }
 
 export function OracleDiscoveryPanel({ side, profile: profileValue, accent, onComplete }: OracleDiscoveryPanelProps) {
-  const profile = useMemo(() => normalizeOracleProfile(profileValue, side), [profileValue, side]);
+  const discovery = useMemo(() => createSekretDiscoveryContext(profileValue, side), [profileValue, side]);
+  const profile = discovery.profile;
   const [startedAt, setStartedAt] = useState(() => new Date().toISOString());
-  const [opening, setOpening] = useState(() => selectOracleOpening(profile, side));
+  const [opening, setOpening] = useState(() => discovery.opening);
   const [currentQuestion, setCurrentQuestion] = useState(opening);
   const [answer, setAnswer] = useState('');
   const [turns, setTurns] = useState<{ question: string; answer: string }[]>([]);
@@ -76,7 +77,6 @@ export function OracleDiscoveryPanel({ side, profile: profileValue, accent, onCo
           {completion === 'saved'
             ? 'Se’kret saved an evolving understanding — not a label, and not a transcript.'
             : 'Se’kret did not force a conclusion. You can discover something else another time.'}
-            : 'Se’kret didn’t force a conclusion. You can discover something else another time.'}
         </Text>
         <TouchableOpacity onPress={reset} style={[styles.again, { borderColor: accent }]}>
           <Text style={[styles.againText, { color: accent }]}>start another discovery</Text>
