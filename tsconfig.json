@@ -15,8 +15,8 @@
       "@/constants/*": ["./src/constants/*"],
       "@/types/*":     ["./src/types/*"],
       "@/services/*":  ["./src/services/*"],
-      "@/screens/*":   ["./src/screens/*", "./screens/*"],
-      "@/context/*":   ["./src/context/*", "./context/*"]
+      "@/screens/*":   ["./screens/*"],
+      "@/context/*":   ["./context/*", "./src/context/*"]
     }
   }
 }
