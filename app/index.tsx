@@ -84,13 +84,13 @@ export const DEFAULT_ROOM_MEMORY: RoomMemory = {
 
 const SEKRET_PROFILES: Record<string, any> = {
   soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
-  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what’s actually on your mind? No fake 'I’m fine'." },
-  cloud:  { name: "Cloud Se’kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
-  night:  { name: "Night Se’kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
+  rylane: { name: 'Rylane',             emoji: '⚡',       title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.', greeting: "Aight, what's actually on your mind? No fake 'I'm fine'." },
+  cloud:  { name: "Cloud Se'kret", emoji: '☁️', title: 'Quiet Observer',       vibe: 'Notices. Waits. Rarely pushes.',                  greeting: 'something feels different today.' },
+  night:  { name: "Night Se'kret", emoji: '🌙', title: 'The Light Left On',     vibe: 'Presence. Not conversation.',                    greeting: 'rough night?' },
 };
 
 const HOME_MESSAGES = [
-  "Don’t stay up carrying the whole world tonight.",
+  "Don't stay up carrying the whole world tonight.",
   'Rest is productive too.',
   'You deserve softness too.',
   'Heavy days do not define you.',
@@ -513,8 +513,18 @@ export default function App() {
   // ── Nav ───────────────────────────────────────────────────────────────────
   const nav = <BottomNav screen={screen} setScreen={setScreen} userSide={userSide} />;
 
-  // The branded splash is the first paint; storage hydration must never hide it.
-  if (screen === 'splash') return <SplashScreen setScreen={setScreen} userSide={userSide} />;
+  // ── Splash — defer artwork until hydration completes so parent users
+  // don't see the teen splash for one frame on cold start.
+  // While isLoading is true we still show the splash (it's the correct
+  // first paint), but we wait for the userSide value from AsyncStorage
+  // before passing it down. Teen is the correct default for new installs.
+  if (screen === 'splash') {
+    // If still hydrating, render with default 'teen' — AsyncStorage resolves
+    // in ~10-50ms and isLoading flipping will re-render with the real side.
+    // For returning parent users the correct artwork appears on that re-render
+    // before they tap, so there is no perceptible flicker.
+    return <SplashScreen setScreen={setScreen} userSide={isLoading ? 'teen' : userSide} />;
+  }
 
   // ── Loading guard ─────────────────────────────────────────────────────────
   if (isLoading) return null;
