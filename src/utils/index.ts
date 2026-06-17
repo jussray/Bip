@@ -8,3 +8,4 @@ export * from './supabase';
 export * from './sync';
 export * from './moodEngine';
 export * from './voiceCompanion';
+export * from './sekretCompanionReply';
