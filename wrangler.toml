@@ -1,0 +1,25 @@
+# wrangler.toml
+# Replaces wrangler.jsonc — TOML avoids JSON comment-parsing failures in CF builds.
+#
+# Secrets (never commit values — use `wrangler secret put`):
+#   OPENAI_API_KEY
+#
+# Deploy:
+#   wrangler secret put OPENAI_API_KEY
+#   wrangler deploy
+
+name               = "bip"
+main               = "worker/sekret-reply.ts"
+compatibility_date = "2026-06-13"
+
+[observability]
+enabled = true
+
+compatibility_flags = ["nodejs_compat"]
+
+# routes block commented out for beta — using auto-assigned *.workers.dev URL.
+# Un-comment and set EXPO_PUBLIC_BACKEND_URL to your custom domain once live.
+#
+# [[routes]]
+# pattern   = "api.bipapp.com/api/sekret/reply"
+# zone_name = "bipapp.com"
