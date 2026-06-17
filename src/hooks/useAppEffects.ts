@@ -3,7 +3,7 @@
  * -------------
  * Houses every useEffect that previously lived in AppContent:
  *   1. Load persisted state from AsyncStorage on mount
- *   2. userSide change → splash transition
+ *   2. userSide change → splash gate (CTA-only advance — no auto-timer)
  *   3. Supabase anon sign-in + cloud pull & merge
  *   4. Save state to AsyncStorage on change
  *   5. Streak tracking
@@ -79,15 +79,13 @@ export function useAppEffects(state: AppState, setState: SetState) {
     })();
   }, []);
 
-  // 2. userSide change → brief splash
+  // 2. userSide change → show splash gate
+  // No auto-advance timer. The SplashScreen CTA (setScreen('home')) is the
+  // only way to enter either side. Both teen and parent splashes stay until
+  // the user taps.
   useEffect(() => {
     if (isLoading) return;
     setState(prev => ({ ...prev, screen: 'splash' }));
-    const t = setTimeout(
-      () => setState(prev => ({ ...prev, screen: 'home' })),
-      1200
-    );
-    return () => clearTimeout(t);
   }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 3. Supabase: anon sign-in + cloud pull & merge
