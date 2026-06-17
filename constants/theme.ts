@@ -9,17 +9,25 @@ import type { ImageSourcePropType } from "react-native";
 // never crashes. Replace the fallback with the real asset later — the variable
 // name stays the same so no screen code has to change.
 
-// ── Raylene (real assets) ──────────────────────────────────────────────────
-const rayleneNeutral = require("../assets/images/raylene-neutral.png");
-const rayleneHappy = require("../assets/images/raylene-happy.png");
-const rayleneWriting = require("../assets/images/raylene-writing.png");
-const rayleneWindow = require("../assets/images/raylene-window.png");
-const rayleneFullbody = require("../assets/images/raylene-fullbody.png");
-const rayleneHappyV3 = require("../assets/images/raylene-happy-v3.png");
-const rayleneNeutralV3 = rayleneNeutral;
+// ── Raylene (updated look — new portraits match Night/Rylane art style) ───
+const rayleneNeutral    = require("../assets/images/raylene-neutral-new.png");
+const rayleneHappy      = require("../assets/images/raylene-happy-new.png");
+const rayleneWriting    = require("../assets/images/raylene-writing.png");       // old style kept
+const rayleneWindow     = require("../assets/images/raylene-window-new.png");
+const rayleneFullbody   = require("../assets/images/raylene-confident-new.png"); // arms-crossed fullbody
+const rayleneHappyV3    = require("../assets/images/raylene-happy-v3.png");      // old style kept
+const rayleneNeutralV3  = rayleneNeutral;
+
+// ── Raylene (new emotions) ─────────────────────────────────────────────────
+const rayleneConfident  = require("../assets/images/raylene-confident-new.png");
+const raylenePlayful    = require("../assets/images/raylene-playful-new.png");
+const rayleeneSad       = require("../assets/images/raylene-sad-new.png");
+const rayleeneMad       = require("../assets/images/raylene-mad-new.png");
+const rayleeneSurprised = require("../assets/images/raylene-surprised-new.png");
+const rayleeneCrouching = require("../assets/images/raylene-crouching-new.png");
 
 // ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
-const rayleneThinking    = rayleneNeutral; // fallback → neutral
+const rayleneThinking    = require("../assets/images/raylene-thinking-new.png");
 const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
 const rayleneNightWindow = rayleneWindowRainy; // night window → rainy window (closer semantic)
 const rayleneNightDoodle = rayleneWriting; // fallback → writing
@@ -183,6 +191,12 @@ export const IMAGES = {
   rayleneHappyV2,
   rayleneHappyV3,
   rayleneThinking,
+  rayleneConfident,
+  raylenePlayful,
+  rayleeneSad,
+  rayleeneMad,
+  rayleeneSurprised,
+  rayleeneCrouching,
   rayleneWriting,
   rayleneWindow,
   rayleneWindowRainy,
@@ -329,12 +343,18 @@ export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';
 
 export const AVATARS: Record<string, Record<string, any>> = {
   raylene: {
-    neutral:  IMAGES.rayleneNeutral,
-    happy:    IMAGES.rayleneHappy,
-    thinking: IMAGES.rayleneThinking,
-    writing:  IMAGES.rayleneWriting,
-    window:   IMAGES.rayleneWindow,
-    fullbody: IMAGES.rayleneFullbody,
+    neutral:   IMAGES.rayleneNeutral,
+    happy:     IMAGES.rayleneHappy,
+    thinking:  IMAGES.rayleneThinking,
+    writing:   IMAGES.rayleneWriting,
+    window:    IMAGES.rayleneWindow,
+    fullbody:  IMAGES.rayleneFullbody,
+    confident: IMAGES.rayleneConfident,
+    playful:   IMAGES.raylenePlayful,
+    sad:       IMAGES.rayleeneSad,
+    mad:       IMAGES.rayleeneMad,
+    surprised: IMAGES.rayleeneSurprised,
+    crouching: IMAGES.rayleeneCrouching,
   },
   rylane: {
     neutral:  IMAGES.rylaneNeutral,
