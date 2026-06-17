@@ -284,12 +284,14 @@ export async function loadCircleFeed(
 // ── Circle V1: Reaction sync ─────────────────────────────────────────────────
 //
 // Upserts a reaction to post_reactions.
+// `tab` is accepted for routing/logging but reactions are stored in a single
+// cross-tab table keyed by post_id — the tab arg is currently used only for
+// debug logging. Pass it through from CircleScreen's handleReact calls.
 // UNIQUE constraint on (post_id, user_id, reaction) prevents double-tapping.
 // ignoreDuplicates:true means a second tap is a no-op on DB.
-// The optimistic update in CircleScreen is the user-visible change — this
-// call keeps the cloud count eventually consistent.
 export async function syncCircleReaction(
-  postId: string,
+  postId: string | number,
+  tab: CircleTab,
   reaction: string,
 ): Promise<void> {
   const sb = getSupabase();
@@ -300,11 +302,11 @@ export async function syncCircleReaction(
     await sb
       .from(TABLES.postReactions)
       .upsert(
-        { post_id: postId, user_id: uid, reaction },
+        { post_id: String(postId), user_id: uid, reaction },
         { onConflict: 'post_id,user_id,reaction', ignoreDuplicates: true },
       );
   } catch (e) {
-    if (__DEV__) console.warn('[sync] syncCircleReaction failed', e);
+    if (__DEV__) console.warn(`[sync] syncCircleReaction(${tab}) failed`, e);
   }
 }
 
