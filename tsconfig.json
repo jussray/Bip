@@ -11,7 +11,7 @@
       "@utils/*":      ["./src/utils/*"],
       "@components/*": ["./src/components/*"],
       "@constants/*":  ["./src/constants/*"],
-      "@screens/*":    ["./screens/*"],
+      "@screens/*":    ["./src/screens/*", "./screens/*"],
       "@types/*":      ["./src/types/*"]
     }
   }

@@ -18,7 +18,7 @@ import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants';
 
 export default function SettingsScreen() {
-  const { theme } = useAppContext() as any;
+  const { theme } = useAppContext();
   const [notifs, setNotifs] = React.useState(true);
 
   const currentTheme = THEME_PACKS[theme] ?? THEME_PACKS.neon;
