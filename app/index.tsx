@@ -260,21 +260,15 @@ function AppContent() {
       <ParentCircleScreen
         parentCirclePosts={s.parentCirclePosts}
         parentCirclePostText={s.parentCirclePostText}
-        setParentCirclePostText={(v) => setState(prev => ({ ...prev, parentCirclePostText: v }))}
+        setParentCirclePostText={(v: string) => setState(prev => ({ ...prev, parentCirclePostText: v }))}
         saveParentCirclePost={saveParentCirclePost}
         reactToParentPost={reactToParentPost}
         setScreen={setScreen} BottomNav={nav}
       />
     );
-    return (
-      <CircleScreen
-        t={t} circlePosts={s.circlePosts} circlePostText={s.circlePostText}
-        setCirclePostText={(v) => setState(prev => ({ ...prev, circlePostText: v }))}
-        saveCirclePost={saveCirclePost} reactToPost={reactToPost}
-        setScreen={setScreen} BottomNav={nav} selectedSekret={s.selectedSekret}
-        mood={s.mood} syncStatus={syncStatus}
-      />
-    );
+    // CircleScreen is self-contained (manages its own feed state internally).
+    // It does not accept props from the parent router.
+    return <CircleScreen />;
   }
 
   if (s.screen === 'bridge')       return <BridgeScreen t={t} currentSekret={currentSekret} setScreen={setScreen} BottomNav={nav} selectedSekret={s.selectedSekret} mood={s.mood} />;
@@ -333,8 +327,32 @@ function AppContent() {
     />
   );
 
-  if (s.screen === 'more')     return <MoreScreen t={t} setScreen={setScreen} BottomNav={nav} userSide={s.userSide} setUserSide={(v) => setState(prev => ({ ...prev, userSide: v }))} />;
-  if (s.screen === 'settings') return <SettingsScreen t={t} setScreen={setScreen} BottomNav={nav} sleepWindow={sleepWindow} setSleepWindow={setSleepWindow} />;
+  if (s.screen === 'more') return (
+    <MoreScreen
+      t={t} setScreen={setScreen} BottomNav={nav} userSide={s.userSide}
+      setUserSide={(v: 'teen' | 'parent') => setState(prev => ({ ...prev, userSide: v }))}
+    />
+  );
+
+  if (s.screen === 'settings') return (
+    <SettingsScreen
+      t={t}
+      theme={s.theme}
+      setTheme={(v) => setState(prev => ({ ...prev, theme: v }))}
+      selectedSekret={s.selectedSekret}
+      setSelectedSekret={(v) => setState(prev => ({ ...prev, selectedSekret: v }))}
+      sekretMode={s.sekretMode}
+      setSekretMode={(v) => setState(prev => ({ ...prev, sekretMode: v }))}
+      userSide={s.userSide}
+      setUserSide={(v: 'teen' | 'parent') => setState(prev => ({ ...prev, userSide: v }))}
+      parentRoomStyle={s.parentRoomStyle}
+      setParentRoomStyle={(v) => setState(prev => ({ ...prev, parentRoomStyle: v as ParentRoomStyle }))}
+      setScreen={setScreen}
+      BottomNav={nav}
+      sleepWindow={sleepWindow}
+      setSleepWindow={setSleepWindow}
+    />
+  );
 
   return null;
 }

@@ -1,13 +1,18 @@
 {
   "buildCommand": "expo export -p web",
   "outputDirectory": "dist",
-  "devCommand": "expo",
-  "cleanUrls": true,
   "framework": null,
-  "rewrites": [
+  "installCommand": "npm install --legacy-peer-deps",
+  "headers": [
     {
-      "source": "/:path*",
-      "destination": "/"
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" }
+      ]
     }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -1,50 +1,24 @@
-# Dependency Audit
+# Bip — Dependency Health Audit
 
-This document tracks the version pins for all major dependencies and explains how they are enforced.
+**Repo:** [jussray/Bip](https://github.com/jussray/Bip)  
+**Branches compared:** 5  
+**Generated:** 2026-06-08
 
-## Core Version Pins
+## 🚨 Top-level findings
 
-| Package | Pinned Version | Why pinned |
-|---|---|---|
-| `expo` | `~51.0.28` | Expo SDK 51 — stable release for React Native 0.74 |
-| `react-native` | `0.74.5` | Matches Expo SDK 51 compatibility matrix |
-| `react` | `18.2.0` | Required by RN 0.74 |
-| `expo-router` | `~3.5.23` | File-based routing — tied to SDK 51 |
-| `@supabase/supabase-js` | `2.74.0` | Phase 2 backend — pinned to avoid breaking API changes |
-| `typescript` | `~5.3.3` | Matched to `@types/react` 18.2.x |
-| `eslint` | `^8.57.1` | ESLint 8 — `eslint-config-expo` not yet compatible with ESLint 9 |
-| `wrangler` | `^4.100.0` | Cloudflare Workers deployment |
+1. **`main` has unresolved Git conflict markers in `package.json`** (`<<<<<<< Updated upstream` / `>>>>>>> Stashed changes`). The file is currently invalid JSON and `npm install` on main will fail. Both sides are listed below as `main (ours)` and `main (theirs)`.
+2. **5 MAJOR-version mismatches** across branches — these will all become merge conflicts and runtime breakage if merged as-is.
+3. **Expo SDK target disagreement:** `main (ours)` claims `expo ^56.0.8` while every other branch (and the rest of main's deps) align with **Expo SDK 51**. Expo SDK 56 does not exist on the stable channel — this is almost certainly a typo for `^51` that triggered the stash. The master `package.json` standardises on **Expo SDK 51.0.28**.
+4. The `restructure/organize-project` and `codespace` branches are slim subsets — they do not introduce conflicts on their own, but they will lose the supabase/router/secure-store deps unless re-merged from main.
 
-## Audit Commands
+## Severity summary
 
-```bash
-# Check for outdated packages
-npm outdated
+| Status | Count |
+|---|---|
+| 🔴 MAJOR-MISMATCH | 5 |
+| 🟠 minor-mismatch | 3 |
+| 🟡 patch/range-mismatch | 6 |
+| ⚪ only-in-one | 8 |
+| ✅ consistent | 7 |
 
-# Check for known vulnerabilities
-npm audit
-
-# Full pre-push verification (includes asset and type checks)
-npm run verify:prepush
-```
-
-## Update Policy
-
-- **Expo SDK upgrades** require a dedicated branch and full QA pass across iOS, Android, and web.
-- **React Native upgrades** must match the Expo SDK compatibility matrix exactly. Do not upgrade RN independently.
-- **Supabase JS upgrades** require testing all Phase 2 data paths (journal, bridge, circle) before merging.
-- **ESLint upgrades** to v9+ are blocked until `eslint-config-expo` publishes a compatible version.
-- **Patch-level upgrades** (`~` range) are low-risk and may be applied in bulk after `npm audit` confirms no vulnerabilities.
-
-## Adding New Dependencies
-
-Before adding any new package:
-
-1. Confirm it supports Expo SDK 51 / React Native 0.74.
-2. Check bundle size impact — run `npm run verify:bundle` after installing.
-3. If it requires native modules, confirm it works in Expo Go and in the bare workflow.
-4. Add it to this table with its pin reason.
-
-## Automated Enforcement
-
-`npm run verify:prepush` runs `type-check` and `lint` on every push, catching dependency-related type errors and import issues before they reach main.
+_See full matrix and recommended merge sequence in the original audit file._

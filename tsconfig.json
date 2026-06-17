@@ -2,8 +2,11 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    "module": "esnext",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
     "paths": {
+      "@/*":           ["./*"],
       "@hooks/*":      ["./hooks/*",      "./src/hooks/*"],
       "@utils/*":      ["./utils/*",      "./src/utils/*"],
       "@components/*": ["./components/*"],
