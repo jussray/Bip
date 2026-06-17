@@ -8,7 +8,6 @@
       "NODE_VERSION": "20"
     }
   },
-  "rewrites": [
   "installCommand": "npm install --legacy-peer-deps",
   "headers": [
     {
