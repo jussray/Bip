@@ -5,7 +5,6 @@
  * Houses the Oracle companion entry point + future content discovery.
  * Full Supabase-backed content feed in a later sprint.
  */
-import React from 'react';
 import {
   View,
   Text,
