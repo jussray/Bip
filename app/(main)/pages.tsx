@@ -3,34 +3,15 @@
  *
  * Pages / Journal tab.
  */
-import React from 'react';
-import { JournalScreen } from '@screens/JournalScreen';
+import { View } from 'react-native';
+import PagesScreen from '@/screens/PagesScreen';
 import { useAppContext } from '@/context/AppContext';
-import { navigateTo } from '@/utils/navigation';
 
 export default function PagesTab() {
-  const {
-    theme,
-    selectedSekret,
-    journalText,
-    setJournalText,
-    entries,
-    mood,
-    userSide,
-    saveEntry,
-  } = useAppContext();
-
+  const { entries, setEntries } = useAppContext();
   return (
-    <JournalScreen
-      theme={theme}
-      selectedSekret={selectedSekret}
-      journalText={journalText}
-      setJournalText={setJournalText}
-      entries={entries}
-      mood={mood}
-      setScreen={navigateTo}
-      userSide={userSide}
-      saveEntry={saveEntry}
-    />
+    <View style={{ flex: 1 }}>
+      <PagesScreen entries={entries} setEntries={setEntries} />
+    </View>
   );
 }

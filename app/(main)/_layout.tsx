@@ -18,7 +18,6 @@
  *    Registering only `name="chat"` (flat) caused a "route not found" error
  *    when pushing to /(main)/chat/raylene.
  */
-import React from 'react';
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 import { useAppContext } from '@/context/AppContext';
