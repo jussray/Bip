@@ -214,7 +214,8 @@ export async function loadCircleFeed(
 
 // ── Circle V1: Reaction sync ──────────────────────────────────────────────────
 export async function syncCircleReaction(
-  postId: string,
+  postId: string | number,
+  kind: string,
   reaction: string,
 ): Promise<void> {
   const sb = getSupabase();
@@ -225,7 +226,7 @@ export async function syncCircleReaction(
     await sb
       .from(TABLES.postReactions)
       .upsert(
-        { post_id: postId, user_id: uid, reaction },
+        { post_id: String(postId), user_id: uid, kind, reaction },
         { onConflict: 'post_id,user_id,reaction', ignoreDuplicates: true },
       );
   } catch (e) {
@@ -290,11 +291,11 @@ export function syncCrewMember(m: CrewMember): void {
   void safeUpsert(TABLES.crewMembers, {
     id: m.id, name: m.name, emoji: m.emoji,
     commitment: m.commitment, cadence: m.cadence,
-    invite_code: m.inviteCode, added_at: new Date(m.addedAt).toISOString(),
+    invite_code: m.inviteCode, added_at: m.addedAt ? new Date(m.addedAt).toISOString() : null,
   });
 }
 
-export function deleteCrewMember(id: number): void {
+export function deleteCrewMember(id: number | string): void {
   void safeDelete(TABLES.crewMembers, id);
 }
 
@@ -361,8 +362,8 @@ export async function pullAll(): Promise<{
       voiceNotes:      voice   as VoiceNote[],
       comfortSessions: comfort as ComfortSession[],
       crewMembers: (crew as any[]).map(r => ({
-        id: r.id, name: r.name, emoji: r.emoji, commitment: r.commitment,
-        cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
+        id: String(r.id), name: r.name, emoji: r.emoji, relation: r.relation ?? '',
+        commitment: r.commitment, cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
       })),
       crewCheckIns: (check as any[]).map(r => ({
         id: r.id, memberId: r.member_id, note: r.note,
@@ -370,10 +371,9 @@ export async function pullAll(): Promise<{
       })),
       parentCirclePosts: (parentCircle as any[]).map(r => ({
         id: r.id, text: r.text, date: r.date, time: r.time,
-        reactions: r.reactions ?? {
-          beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0,
-        },
+        reactions: r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
         circleTag: r.circle_tag ?? undefined,
+        mood: r.mood ?? undefined,
       })) as ParentCirclePost[],
       roomMemory: roomRow ? {
         character:   roomRow.character    ?? 'raylene',

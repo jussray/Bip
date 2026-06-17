@@ -42,13 +42,15 @@ export interface CirclePost {
 }
 
 export interface VoiceNote {
-  id:       number;
-  title:    string;
-  date:     string;
-  time:     string;
-  duration: string;
+  id:            number;
+  title:         string;
+  date:          string;
+  time:          string;
+  duration:      string;
   /** Media classification added by VoiceBipScreen. */
-  type?:    'voice' | 'video' | 'audio';
+  type?:         'voice' | 'video' | 'audio' | 'text' | 'cloud';
+  avatarKey?:    string;
+  transcriptId?: string | number;
 }
 
 export interface MoodEntry {
@@ -98,33 +100,39 @@ export type ScreenKey =
 // These were referenced by hooks, store, sync, and several screens.
 
 export interface ParentCirclePost {
-  id:       number;
-  text:     string;
-  date:     string;
-  time:     string;
-  mood?:    string;
-  reactions?: {
-    felt:    number;
-    comfort: number;
-    proud:   number;
-    stay:    number;
-    sameHere?: number;
+  id:         number;
+  text:       string;
+  date:       string;
+  time:       string;
+  mood?:      string;
+  circleTag?: string;
+  reactions: {
+    beenThere:  number;
+    solidarity: number;
+    reminder:   number;
+    needed:     number;
+    strength:   number;
   };
 }
 
 export interface ComfortSession {
-  id:           number;
-  date:         string;
-  time:         string;
-  durationSecs: number;
-  type:         string;
+  id:            number;
+  date:          string;
+  time:          string;
+  durationSecs?: number;
+  type:          string;
+  mood?:         string;
 }
 
 export interface CrewMember {
-  id:       string;
-  name:     string;
-  relation: string;
-  emoji?:   string;
+  id:          string;
+  name:        string;
+  relation:    string;
+  emoji?:      string;
+  commitment?: string;
+  cadence?:    string;
+  inviteCode?: string;
+  addedAt?:    string;
 }
 
 export interface CrewCheckIn {

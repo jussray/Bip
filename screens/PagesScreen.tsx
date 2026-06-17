@@ -79,7 +79,7 @@ export interface PagesScreenProps {
   journalEntries: JournalEntry[];
   saveJournalEntry: (override?: SavePageInput) => void;
   mood: string;
-  t: Record<string, unknown>;
+  t: Record<string, any>;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
   moodHistory?: MoodEntry[];

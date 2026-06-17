@@ -5,7 +5,7 @@ import {
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, ParentCirclePost, MoodEntry, ComfortSession } from '../types/index';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
-import type { SavePageInput } from '@screens/PagesScreen';
+import type { SavePageInput } from '../../screens/PagesScreen';
 import type { RoomMemory } from '../types/roomMemory';
 
 type S = ReturnType<typeof useAppState>;
@@ -118,7 +118,7 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
       id: Number(Date.now()), text: s.parentCirclePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 } as ParentCirclePost['reactions'],
     };
     s.setParentCirclePosts(p => [post, ...p]);
     s.setParentCirclePostText('');
@@ -126,10 +126,16 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
   };
 
   const reactToParentPost = (id: string | number, type: string) => {
-    type ReactionKey = keyof ParentCirclePost['reactions'];
     s.setParentCirclePosts(posts => posts.map(p =>
       String(p.id) === String(id)
-        ? { ...p, reactions: { ...p.reactions, [type as ReactionKey]: (p.reactions[type as ReactionKey] || 0) + 1 } }
+        ? ({
+            ...p,
+            reactions: {
+              ...p.reactions,
+              [type as keyof ParentCirclePost['reactions']]:
+                ((p.reactions as Record<string, number>)[type] || 0) + 1,
+            } as ParentCirclePost['reactions'],
+          } as ParentCirclePost)
         : p
     ));
   };

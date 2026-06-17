@@ -26,4 +26,4 @@ try {
 export { SyncBadge };
 
 // Analytics — KNOWN GOOD (used in AppContent directly)
-export { Analytics } from '../../components/Analytics';
+export { Analytics } from '../../../components/Analytics';

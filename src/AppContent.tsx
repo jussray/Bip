@@ -33,7 +33,7 @@ export function AppContent() {
   const { sleepActive, sleepWindow, setSleepWindow } = useSleepGuard();
   const actions = useAppActions(s, withSyncWrap);
 
-  useAppEffects(s, withSyncWrap);
+  useAppEffects(s, withSyncWrap as any);
 
   const vibeKey       = normalizeVibeKey(s.theme);
   const t             = THEME_PACKS[vibeKey];
@@ -71,7 +71,7 @@ export function AppContent() {
     <View style={styles.container}>
       <Analytics />
       {sleepActive && !allowComfort
-        ? <SleepGate setScreen={s.setScreen} sleepWindow={sleepWindow} />
+        ? <SleepGate sleepActive={true} onComfort={() => s.setScreen('comfort')} />
         : (
           <RouteRenderer
             s={s}
