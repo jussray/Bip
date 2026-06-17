@@ -1,40 +1,42 @@
 // babel.config.js
 // Se'kret Bip — Babel configuration
 //
-// babel-plugin-module-resolver must MIRROR tsconfig.json paths exactly.
-// After changing this file restart Expo: npx expo start --clear
+// `runtime: 'automatic'` on babel-preset-expo enables the React 17+
+// JSX transform so files do NOT need `import React` to use JSX.
+// This is required for the Vercel web export (`expo export -p web`) to
+// succeed after React imports were removed from screen files.
 //
-// Alias resolution order: Metro resolves first match.
-// Dual entries (e.g. ['./hooks', './src/hooks']) allow both
-// legacy root-level files and the new src/ structure to coexist
-// during the transition without breaking any existing import.
+// babel-plugin-module-resolver must stay in sync with tsconfig.json paths.
+// After changing this file, restart Expo with: npx expo start --clear
 
 module.exports = function (api) {
   api.cache(true);
   return {
-    presets: ['babel-preset-expo'],
+    presets: [
+      [
+        'babel-preset-expo',
+        {
+          jsxRuntime: 'automatic',
+        },
+      ],
+    ],
     plugins: [
       [
         'module-resolver',
         {
           root: ['./'],
           alias: {
-            // ── Legacy aliases (unchanged — existing imports keep working) ──
-            '@constants':  './constants',
-            '@screens':    './screens',
-            '@utils':      './utils',
-            '@hooks':      './hooks',
-            '@types':      './types',
-            '@components': './components',
+            // ── Canonical alias (all new code) ────────────────────────────
+            '@':            './src',
 
-            // ── src/ aliases (new convention for refactored code) ──
-            '@/hooks':     './src/hooks',
-            '@/utils':     './src/utils',
-            '@/constants': './src/constants',
-            '@/types':     './src/types',
-            '@/services':  './src/services',
-            '@/screens':   './screens',
-            '@/context':   './context',
+            // ── Legacy aliases → src/ direct (no shim hop) ───────────────
+            // Retire these in Step 5 once screens/ is gone.
+            '@hooks':       './src/hooks',
+            '@utils':       './src/utils',
+            '@components':  './src/components',
+            '@constants':   './src/constants',
+            '@types':       './src/types',
+            '@screens':     './screens',
           },
         },
       ],

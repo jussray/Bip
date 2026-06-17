@@ -2,24 +2,17 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-    "module": "esnext",
+    "jsx": "react-jsx",
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@/*":           ["./*"],
-      "@hooks/*":      ["./hooks/*",      "./src/hooks/*"],
-      "@utils/*":      ["./utils/*",      "./src/utils/*"],
-      "@components/*": ["./components/*"],
-      "@constants/*":  ["./constants/*",  "./src/constants/*"],
+      "@/*":           ["./src/*"],
+      "@hooks/*":      ["./src/hooks/*"],
+      "@utils/*":      ["./src/utils/*"],
+      "@components/*": ["./src/components/*"],
+      "@constants/*":  ["./src/constants/*"],
       "@screens/*":    ["./screens/*"],
-      "@types/*":      ["./types/*",      "./src/types/*"],
-      "@/hooks/*":     ["./src/hooks/*"],
-      "@/utils/*":     ["./src/utils/*"],
-      "@/constants/*": ["./src/constants/*"],
-      "@/types/*":     ["./src/types/*"],
-      "@/services/*":  ["./src/services/*"],
-      "@/screens/*":   ["./screens/*"],
-      "@/context/*":   ["./context/*", "./src/context/*"]
+      "@types/*":      ["./src/types/*"]
     }
   }
 }

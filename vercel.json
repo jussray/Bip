@@ -2,6 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "expo export -p web",
   "outputDirectory": "dist",
+  "framework": null,
+  "build": {
+    "env": {
+      "NODE_VERSION": "20"
+    }
+  },
+  "rewrites": [
   "installCommand": "npm install --legacy-peer-deps",
   "headers": [
     {
