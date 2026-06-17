@@ -116,7 +116,11 @@ export function CloudThoughtsScreen({
 }: CloudThoughtsScreenProps) {
 
   // Character-aware display name
-  const characterName = selectedSekret === 'rylane' ? 'Rylane' : "Se'kret";
+  const characterName =
+    selectedSekret === 'rylane' ? 'Rylane' :
+    selectedSekret === 'cloud'  ? 'Cloud'  :
+    selectedSekret === 'night'  ? 'Night'  :
+    'Raylene';
 
   const [input,      setInput]      = useState('');
   const [reply,      setReply]      = useState('');
@@ -130,7 +134,12 @@ export function CloudThoughtsScreen({
 
   // Mood glow + character-aware backdrop
   const glow     = glowFor(mood);
-  const charKey  = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const charKey = (
+    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'cloud'  ? 'cloud'  :
+    selectedSekret === 'night'  ? 'night'  :
+    'raylene'
+  ) as 'raylene' | 'rylane' | 'cloud' | 'night';
   const bgSource = getRoomBg(charKey, timeOfDay());
 
   // Breath loop on hero cloud

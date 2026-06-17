@@ -118,7 +118,12 @@ export function JournalScreen({
   const hour       = new Date().getHours();
   const timeOfDay  = getTimeOfDay(hour);
   const hero       = TIME_HERO[timeOfDay];
-  const character: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const character = (
+    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'cloud'  ? 'cloud'  :
+    selectedSekret === 'night'  ? 'night'  :
+    'raylene'
+  ) as 'raylene' | 'rylane' | 'cloud' | 'night';
   const roomArt    = getRoomBg(character, timeOfDay);
   const moodGlow   = MOOD_GLOW[mood] ?? MOOD_GLOW.Neutral;
   const tagGlow    = selectedTag ? '#a855f7' : moodGlow;

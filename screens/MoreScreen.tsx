@@ -31,7 +31,12 @@ export function MoreScreen({
   const glow = glowFor(mood);
   const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow + '88', shadowColor: glow }] as any;
   const btn  = () => [styles.button, { backgroundColor: glow, shadowColor: glow }] as any;
-  const character: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  const character = (
+    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'cloud'  ? 'cloud'  :
+    selectedSekret === 'night'  ? 'night'  :
+    'raylene'
+  ) as 'raylene' | 'rylane' | 'cloud' | 'night';
   const hour = new Date().getHours();
   const timeOfDay = hour >= 5 && hour < 11 ? 'morning' : hour >= 11 && hour < 17 ? 'day' : hour >= 17 && hour < 21 ? 'evening' : 'night';
   const roomBg = getRoomBg(character, timeOfDay as any);
@@ -52,8 +57,13 @@ export function MoreScreen({
           <TouchableOpacity
             style={btn()}
             onPress={() => {
-              setUserSide(userSide === 'parent' ? 'teen' : 'parent');
-              onSideChanged?.();
+              if (userSide === 'parent') {
+                setUserSide('teen');
+                setScreen('splash');
+              } else {
+                setUserSide('parent');
+                setScreen('splash');
+              }
             }}
           >
             <Text style={styles.buttonText}>

@@ -5,7 +5,7 @@
 // (was swapped). No screens removed, no new features.
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
+import { IMAGES, getRoomBg, TimeOfDay, Character } from '../constants/theme';
 import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import {
   Text, TouchableOpacity, ScrollView, View,
@@ -25,6 +25,12 @@ const ART: Record<string, Record<string, any>> = {
     neutral:  IMAGES.rylaneNeutral,
     window:   IMAGES.rylaneWindow,
     thinking: IMAGES.rylaneThinking,
+  },
+  night: {
+    hero:     IMAGES.nightFullbody,
+    neutral:  IMAGES.nightNeutral,
+    window:   IMAGES.nightWindow,
+    thinking: IMAGES.nightThinking,
   },
 };
 
@@ -140,19 +146,21 @@ export function Bippin2Screen({
   t, mood, selectedSekret, setScreen, onMilestone, BottomNav, streakDays = 0,
 }: Bippin2ScreenProps) {
 
-  const isRylane   = selectedSekret === 'rylane';
-  const charName   = isRylane ? 'Rylane' : 'Raylene';
-  const charEmoji  = isRylane ? '🪱' : '🫶';
-  const art        = ART[isRylane ? 'rylane' : 'raylene'];
-  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
+  const isRylane      = selectedSekret === 'rylane';
+  const isNight       = selectedSekret === 'night';
+  const isManhoodChar = isRylane || isNight;
+  const charName      = isRylane ? 'Rylane' : isNight ? 'Night' : 'Raylene';
+  const charEmoji     = isRylane ? '🪱' : isNight ? '🌙' : '🫶';
+  const artKey        = isNight ? 'night' : (isRylane ? 'rylane' : 'raylene');
+  const art           = ART[artKey];
+  const charKey: Character = isNight ? 'night' : (isRylane ? 'rylane' : 'raylene');
 
   const time = useMemo(() => getTimeOfDay(), []);
   const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
 
-  // Rylane: cool electric blue. Raylene: theme accent (warm purple).
-  // Both still mood-tinted via glow overlay.
-  const idAccent   = isRylane ? '#4DA3FF' : t.accent;
-  const idSoft     = isRylane ? '#B6DCFF' : t.soft;
+  // Manhood chars (Rylane/Night): cool electric blue. Raylene: warm purple.
+  const idAccent   = isManhoodChar ? '#4DA3FF' : t.accent;
+  const idSoft     = isManhoodChar ? '#B6DCFF' : t.soft;
   const glow       = useMemo(() => moodGlow(mood), [mood]);
 
   // ─── Animations ───────────────────────────────────────────────────────────
@@ -239,17 +247,17 @@ export function Bippin2Screen({
     extra,
   ] as any;
 
-  const greeting = greetingByTime(time, charName, isRylane);
+  const greeting = greetingByTime(time, charName, isManhoodChar);
 
-  const streakLabel = isRylane ? 'focus streak'     : 'connection streak';
-  const streakSub   = isRylane ? 'consistency builds confidence.' : "you're showing up for you.";
-  const streakNote  = isRylane ? 'respect, fr.' : 'proud of you 💜';
+  const streakLabel = isManhoodChar ? 'focus streak'     : 'connection streak';
+  const streakSub   = isManhoodChar ? 'consistency builds confidence.' : "you're showing up for you.";
+  const streakNote  = isManhoodChar ? 'respect, fr.' : 'proud of you 💜';
 
-  const chips       = isRylane ? M_CHIPS       : W_CHIPS;
-  const moodChips   = isRylane ? M_MOOD_CHIPS : W_MOOD_CHIPS;
-  const bipFlow     = isRylane ? M_BIP_FLOW   : W_BIP_FLOW;
+  const chips       = isManhoodChar ? M_CHIPS       : W_CHIPS;
+  const moodChips   = isManhoodChar ? M_MOOD_CHIPS : W_MOOD_CHIPS;
+  const bipFlow     = isManhoodChar ? M_BIP_FLOW   : W_BIP_FLOW;
 
-  const cloudSpeech = isRylane
+  const cloudSpeech = isManhoodChar
     ? "yo. i'm here. what's on ya mind rn?"
     : "hey. whatever you're feeling right now ✨ it's valid 💜";
 
@@ -277,19 +285,19 @@ export function Bippin2Screen({
           </View>
         </View>
         <Text style={[styles.screenTitle, { color: idAccent }]}>
-          {isRylane ? 'Bippin 2\nManhood 🪱' : 'Bippin 2\nWomanhood 🫶'}
+          {isManhoodChar ? 'Bippin 2\nManhood 🪱' : 'Bippin 2\nWomanhood 🫶'}
         </Text>
         <Text style={[styles.screenSub, { color: idSoft }]}>
-          {isRylane ? 'growing into yourself. ⚡' : 'growing at your own pace. 💜'}
+          {isManhoodChar ? 'growing into yourself. ⚡' : 'growing at your own pace. 💜'}
         </Text>
 
         {/* Phase 2: deep link to dedicated content layer */}
         <TouchableOpacity
           style={{ alignSelf: 'center', backgroundColor: idAccent, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, marginBottom: 16, shadowColor: idAccent, shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } }}
-          onPress={() => setScreen(isRylane ? 'manhood' : 'womanhood')}
+          onPress={() => setScreen(isManhoodChar ? 'manhood' : 'womanhood')}
         >
           <Text style={{ color: '#0a0420', fontWeight: '800', fontSize: 13 }}>
-            {isRylane ? 'open the manhood guide →' : 'open the womanhood guide →'}
+            {isManhoodChar ? 'open the manhood guide →' : 'open the womanhood guide →'}
           </Text>
         </TouchableOpacity>
 
@@ -304,7 +312,7 @@ export function Bippin2Screen({
               <Animated.View style={[styles.streakCard, { backgroundColor: 'rgba(20,12,40,0.78)', borderColor: glow + '88' }, { transform: [{ scale: breathScale }] }]}>
                 <Text style={[styles.streakLabel, { color: idAccent }]}>{streakLabel}</Text>
                 <View style={styles.streakRow}>
-                  <Text style={styles.streakFlame}>{isRylane ? '🪱' : '🫀'}</Text>
+                  <Text style={styles.streakFlame}>{isManhoodChar ? (isRylane ? '🪱' : '🌙') : '🫀'}</Text>
                   <Text style={[styles.streakDays, { color: '#fff' }]}>{streakDays} days</Text>
                 </View>
                 <Text style={styles.streakSub}>{streakSub}</Text>
@@ -344,9 +352,9 @@ export function Bippin2Screen({
           </ScrollView>
         </Animated.View>
 
-        {/* WOMANHOOD CARDS (Raylene = !isRylane). Polarity fixed. */}
+        {/* WOMANHOOD CARDS (Raylene only — no boy avatars here). */}
         <Animated.View style={cardStyle(card3)}>
-          {!isRylane && (
+          {!isManhoodChar && (
             <>
               <View style={scrapCard()}>
                 <Text style={[styles.cardLabel, { color: idAccent }]}>first period support 🩸</Text>
@@ -424,8 +432,8 @@ export function Bippin2Screen({
             </>
           )}
 
-          {/* MANHOOD CARDS (Rylane = isRylane). Polarity fixed. */}
-          {isRylane && (
+          {/* MANHOOD CARDS (Rylane or Night). */}
+          {isManhoodChar && (
             <>
               <View style={styles.threeColRow}>
                 <View style={[scrapCard(), styles.thirdCard]}>
@@ -522,7 +530,7 @@ export function Bippin2Screen({
         <Animated.View style={cardStyle(card4)}>
           <View style={scrapCard()}>
             <Text style={[styles.cardLabel, { color: idAccent }]}>
-              BIP FLOW {isRylane ? '🪱' : '🫶'}
+              BIP FLOW {isManhoodChar ? (isRylane ? '🪱' : '🌙') : '🫶'}
             </Text>
             <ScrollView
               horizontal
@@ -549,7 +557,7 @@ export function Bippin2Screen({
           <View style={[scrapCard(), styles.quoteCard]}>
             <Image source={art.neutral} style={styles.quoteArt} resizeMode="contain" />
             <Text style={[styles.quoteText, { color: idSoft }]}>
-              {isRylane
+              {isManhoodChar
                 ? `"you don't gotta have it all figured out. just keep going. that's enough."`
                 : `"you are allowed to be both a work in progress and a whole person right now."`}
             </Text>
@@ -558,7 +566,10 @@ export function Bippin2Screen({
 
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
-              {isRylane ? '“grow at your pace. no race. respect.”' : '“soft is strong. you’re growing right on time.”'}
+              {isManhoodChar
+                ? `”grow at your pace. no race. respect.”`
+                : `”soft is strong. you’re growing right on time.”`
+              }
             </Text>
           </View>
 
@@ -567,7 +578,7 @@ export function Bippin2Screen({
             onPress={() => { onMilestone?.(); setScreen('sekret'); }}
           >
             <Text style={styles.accentBtnText}>
-              {isRylane ? `talk to ${charName} 🪱` : `talk to ${charName} 🫶`}
+              {`talk to ${charName} ${charEmoji}`}
             </Text>
           </TouchableOpacity>
 
