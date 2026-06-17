@@ -12,7 +12,7 @@ import { normalizeOracleJournalEntries } from '../services/voiceBipIntelligence'
 import { DEFAULT_ROOM_MEMORY, type RoomMemory } from '../types/roomMemory';
 import type { JournalEntry, CirclePost, ParentCirclePost, VoiceNote, MoodEntry, ComfortSession, CrewMember, CrewCheckIn } from '../types/index';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
-import type { ParentRoomStyle } from '../screens/ParentRoomScreen';
+import type { ParentRoomStyle } from '@screens/ParentRoomScreen';
 
 export function useAppState() {
   const [screen, setScreen]                   = useState('splash');

@@ -29,6 +29,8 @@ module.exports = function (api) {
             '@/constants': './src/constants',
             '@/types':     './src/types',
             '@/services':  './src/services',
+            '@/screens':   './screens',
+            '@/context':   './context',
           },
         },
       ],

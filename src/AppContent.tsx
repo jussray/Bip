@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { validateEnv } from '../utils/env';
-void validateEnv();
 
 import { Analytics } from '../components/Analytics';
 import { SleepGate }  from '../components/SleepGate';
+import { SplashScreen } from '../screens/SplashScreen';
 
 import { useAppState }        from './hooks/useAppState';
 import { useAppEffects }      from './hooks/useAppEffects';
@@ -18,6 +18,9 @@ import { SEKRET_PROFILES } from './constants/profiles';
 import { getActiveCharacter } from './utils/characterUtils';
 import { BottomNav } from '../components/BottomNav';
 import { RouteRenderer } from './RouteRenderer';
+
+// Fire env validation after all imports
+void validateEnv();
 
 // Re-export for screens that previously imported from app/index.tsx
 export { IMAGES, AVATARS, getRoomBg } from '../constants/theme';
@@ -57,8 +60,6 @@ export function AppContent() {
   const companion = useSekretCompanion(companionInput);
 
   if (s.screen === 'splash') {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { SplashScreen } = require('../screens/SplashScreen');
     return <SplashScreen setScreen={s.setScreen} userSide={s.userSide} />;
   }
   if (s.isLoading) return null;

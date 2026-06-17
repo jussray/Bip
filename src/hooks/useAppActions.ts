@@ -5,7 +5,7 @@ import {
 } from '../utils/sync';
 import type { JournalEntry, CirclePost, ParentCirclePost, MoodEntry, ComfortSession } from '../types/index';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
-import type { SavePageInput } from '../screens/PagesScreen';
+import type { SavePageInput } from '@screens/PagesScreen';
 import type { RoomMemory } from '../types/roomMemory';
 
 type S = ReturnType<typeof useAppState>;
