@@ -2,9 +2,10 @@
  * src/constants/theme.ts
  *
  * Canonical location (moved from constants/theme.ts in Step 3).
- * All theme packs, personality profiles, mood data, and message arrays.
+ * All theme packs, personality profiles, mood data, message arrays,
+ * image maps, avatar maps, and room-background helpers.
  *
- * Import via: import { THEME_PACKS, MOODS } from '@/constants';
+ * Import via: import { THEME_PACKS, MOODS, IMAGES } from '@/constants';
  */
 import type { Theme, SekretProfile } from '@/types';
 
@@ -113,3 +114,67 @@ export const HEAVY_WORDS = [
   'alone', 'hurt',    'tired', 'done',    'empty',
   'cry',   'sad',     'scared','anxious', 'panic',
 ];
+
+// ─── Vibe / Room ──────────────────────────────────────────────────────────────
+
+export type VibeKey = 'soft' | 'rylane' | 'cloud' | 'night';
+
+const VALID_VIBE_KEYS: VibeKey[] = ['soft', 'rylane', 'cloud', 'night'];
+
+export function normalizeVibeKey(raw: string | undefined): VibeKey {
+  return VALID_VIBE_KEYS.includes(raw as VibeKey) ? (raw as VibeKey) : 'soft';
+}
+
+export const ROOM_BACKGROUNDS: Record<VibeKey, string> = {
+  soft:   '#4A1028',
+  rylane: '#243447',
+  cloud:  '#151A40',
+  night:  '#3A2503',
+};
+
+export function getRoomBg(vibe: VibeKey): string {
+  return ROOM_BACKGROUNDS[vibe] ?? ROOM_BACKGROUNDS.soft;
+}
+
+// ─── Image maps ───────────────────────────────────────────────────────────────
+// Keys match assetKey values in constants/characterAssets.ts.
+// Only renderable=true assets are included here.
+
+export const IMAGES: Record<string, number> = {
+  rayleneNeutral:      require('../../assets/images/raylene-neutral.png'),
+  rayleneHappy:        require('../../assets/images/raylene-happy.png'),
+  rayleneHappyV3:      require('../../assets/images/raylene-happy-v3.png'),
+  rayleneWriting:      require('../../assets/images/raylene-writing.png'),
+  rayleneWindow:       require('../../assets/images/raylene-window.png'),
+  rayleneWindowRainy:  require('../../assets/images/raylene-window-rainy.png'),
+  rayleneFullbody:     require('../../assets/images/raylene-fullbody.png'),
+  rayleneVoiceDay:     require('../../assets/images/raylene-voice-day.png'),
+  rayleneVoiceNight:   require('../../assets/images/raylene-voice-night.png'),
+  raylene_Bippin2Day:  require('../../assets/images/raylene-bippin2-day.png'),
+  rylaneNeutral:       require('../../assets/images/rylane-neutral.png'),
+  rylaneNeutralV2:     require('../../assets/images/rylane-neutral-v2.png'),
+  rylaneHappy:         require('../../assets/images/rylane-happy.png'),
+  rylaneThinking:      require('../../assets/images/rylane-thinking.png'),
+  rylaneWriting:       require('../../assets/images/rylane-writing.png'),
+  rylaneWindow:        require('../../assets/images/rylane-window.png'),
+  rylaneWindowDay:     require('../../assets/images/rylane-window-day.png'),
+  rylaneFullbody:      require('../../assets/images/rylane-fullbody.png'),
+  rylaneVoiceDay:      require('../../assets/images/rylane-voice-day.png'),
+  rylaneVoiceNight:    require('../../assets/images/rylane-voice-night.png'),
+  cloud:               require('../../assets/images/cloud.png'),
+  cloudHappy:          require('../../assets/images/cloud-happy.png'),
+  cloudHeadphones:     require('../../assets/images/cloud-headphones.png'),
+  cloudHeadphonesV2:   require('../../assets/images/cloud-headphones-v2.png'),
+  cloudSleepy:         require('../../assets/images/cloud-sleepy.png'),
+  cloudStormy:         require('../../assets/images/cloud-stormy.png'),
+};
+
+// ─── Avatar map ───────────────────────────────────────────────────────────────
+// Default portrait image per VibeKey.
+
+export const AVATARS: Record<VibeKey, number> = {
+  soft:   IMAGES.rayleneNeutral,
+  rylane: IMAGES.rylaneNeutral,
+  cloud:  IMAGES.cloud,
+  night:  IMAGES.rayleneVoiceNight,
+};

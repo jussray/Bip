@@ -13,4 +13,8 @@ export {
   COMFORT_MESSAGES,
   HOME_MESSAGES,
   HEAVY_WORDS,
+  IMAGES,
+  AVATARS,
+  getRoomBg,
+  normalizeVibeKey,
 } from '../src/constants/theme';
