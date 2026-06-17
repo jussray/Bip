@@ -3,7 +3,9 @@
   "compilerOptions": {
     "strict": true,
     "moduleResolution": "bundler",
+    "baseUrl": ".",
     "paths": {
+      "@/*":           ["./*"],
       "@hooks/*":      ["./hooks/*"],
       "@utils/*":      ["./utils/*"],
       "@components/*": ["./components/*"],
