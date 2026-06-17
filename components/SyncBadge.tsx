@@ -12,8 +12,6 @@
  * Usage:
  *   import { SyncBadge } from '../components/SyncBadge';
  *   <SyncBadge status={syncStatus} />
- *
- * Where syncStatus comes from the useSyncStatus hook.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -63,7 +61,6 @@ export function SyncBadge({ status, color }: Props) {
     setVisible(true);
     opacity.setValue(1);
 
-    // Auto-hide only when fully synced — other states stay visible.
     if (status === 'synced') {
       const timer = setTimeout(() => {
         Animated.timing(opacity, {
@@ -91,7 +88,7 @@ export function SyncBadge({ status, color }: Props) {
         },
       ]}
       accessibilityLabel={LABELS[status]}
-      accessibilityRole="status"
+      accessibilityRole="text"
     >
       <Text style={[styles.label, { color: textColor }]}>{LABELS[status]}</Text>
     </Animated.View>

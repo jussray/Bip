@@ -1,10 +1,6 @@
 /**
  * characterUtils
  * Helpers for resolving the active Se'kret character from a theme/sekret key.
- *
- * Previously inlined in app/index.tsx as getActiveCharacter().
- * AppContent.tsx imports this directly:
- *   import { getActiveCharacter } from './utils/characterUtils';
  */
 
 export type ActiveCharacter = 'raylene' | 'rylane' | 'cloud' | 'night' | null;
@@ -24,7 +20,9 @@ export function getActiveCharacter(themeKey: string): ActiveCharacter {
 /**
  * Returns true if the given key resolves to a known character.
  * Useful for guarding character-specific UI branches.
+ * Accepts `string | null` safely.
  */
-export function isKnownCharacter(key: string): key is ActiveCharacter {
+export function isKnownCharacter(key: string | null): key is ActiveCharacter {
+  if (key === null) return false;
   return getActiveCharacter(key) !== null;
 }
