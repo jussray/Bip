@@ -2,7 +2,7 @@
  * src/constants/index.ts
  *
  * Canonical constants barrel.
- * Import via: import { THEME_PACKS, MOODS, HOME_MESSAGES } from '@/constants';
+ * Import via: import { THEME_PACKS, MOODS, IMAGES } from '@/constants';
  */
 export {
   THEME_PACKS,
@@ -11,4 +11,11 @@ export {
   COMFORT_MESSAGES,
   HOME_MESSAGES,
   HEAVY_WORDS,
+  IMAGES,
+  AVATARS,
+  ROOM_BACKGROUNDS,
+  getRoomBg,
+  normalizeVibeKey,
 } from './theme';
+
+export type { VibeKey } from './theme';
