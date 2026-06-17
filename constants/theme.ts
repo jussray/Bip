@@ -90,13 +90,32 @@ const bgNightRoomDeepNight = require("../assets/images/bg-night-room-deep-night.
 const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
 
 // ── Night Avatar ───────────────────────────────────────────────────────────
-const nightFullbody = require("../assets/images/night-fullbody.png");
-// Portraits ship separately (night-neutral etc.) — using Raylene fallbacks until then
-const nightAvatarNeutral  = rayleneWindowRainy;
-const nightAvatarHappy    = rayleneNightWindow;
-const nightAvatarThinking = rayleneThinking;
-const nightAvatarWriting  = rayleneWriting;
-const nightAvatarWindow   = rayleneWindowRainy;
+const nightFullbody    = require("../assets/images/night-fullbody.png");
+const nightNeutral     = require("../assets/images/night-neutral.png");
+const nightSoftsmile   = require("../assets/images/night-softsmile.png");
+const nightHappy       = require("../assets/images/night-happy.png");
+const nightThinking    = require("../assets/images/night-thinking.png");
+const nightTired       = require("../assets/images/night-tired.png");
+const nightAnnoyed     = require("../assets/images/night-annoyed.png");
+const nightSad         = require("../assets/images/night-sad.png");
+const nightOverwhelmed = require("../assets/images/night-overwhelmed.png");
+const nightProtective  = require("../assets/images/night-protective.png");
+const nightLonely      = require("../assets/images/night-lonely.png");
+const nightHopeful     = require("../assets/images/night-hopeful.png");
+const nightRelaxed     = require("../assets/images/night-relaxed.png");
+const nightListening   = require("../assets/images/night-listening.png");
+const nightWriting     = require("../assets/images/night-writing.png");
+const nightWindow      = require("../assets/images/night-window.png");
+const nightPlayful     = require("../assets/images/night-playful.png");
+const nightHurting     = require("../assets/images/night-hurting.png");
+const nightInHisHead   = require("../assets/images/night-inhishead.png");
+const nightInLove      = require("../assets/images/night-in-love.png");
+
+const nightAvatarNeutral  = nightNeutral;
+const nightAvatarHappy    = nightSoftsmile;
+const nightAvatarThinking = nightThinking;
+const nightAvatarWriting  = nightWriting;
+const nightAvatarWindow   = nightWindow;
 const nightAvatarFullbody = nightFullbody;
 
 // ── Parent Room Backgrounds ────────────────────────────────────────────────
@@ -217,14 +236,35 @@ export const IMAGES = {
   cloudAvatarWindow,
   cloudAvatarFullbody,
 
-  // Night Avatars (fallbacks until real art ships)
+  // Night Portraits (real assets)
+  nightFullbody,
+  nightNeutral,
+  nightSoftsmile,
+  nightHappy,
+  nightThinking,
+  nightTired,
+  nightAnnoyed,
+  nightSad,
+  nightOverwhelmed,
+  nightProtective,
+  nightLonely,
+  nightHopeful,
+  nightRelaxed,
+  nightListening,
+  nightWriting,
+  nightWindow,
+  nightPlayful,
+  nightHurting,
+  nightInHisHead,
+  nightInLove,
+
+  // Night Avatars
   nightAvatarNeutral,
   nightAvatarHappy,
   nightAvatarThinking,
   nightAvatarWriting,
   nightAvatarWindow,
   nightAvatarFullbody,
-  nightFullbody,
 
   // Scene composites
   rayleneRoomDayScene,
@@ -313,12 +353,26 @@ export const AVATARS: Record<string, Record<string, any>> = {
     fullbody: IMAGES.cloudAvatarFullbody,
   },
   night: {
-    neutral:  IMAGES.nightAvatarNeutral,
-    happy:    IMAGES.nightAvatarHappy,
-    thinking: IMAGES.nightAvatarThinking,
-    writing:  IMAGES.nightAvatarWriting,
-    window:   IMAGES.nightAvatarWindow,
-    fullbody: IMAGES.nightAvatarFullbody,
+    neutral:   IMAGES.nightNeutral,
+    happy:     IMAGES.nightSoftsmile,
+    thinking:  IMAGES.nightThinking,
+    writing:   IMAGES.nightWriting,
+    window:    IMAGES.nightWindow,
+    fullbody:  IMAGES.nightFullbody,
+    softsmile: IMAGES.nightSoftsmile,
+    tired:     IMAGES.nightTired,
+    annoyed:   IMAGES.nightAnnoyed,
+    sad:       IMAGES.nightSad,
+    overwhelmed: IMAGES.nightOverwhelmed,
+    protective:  IMAGES.nightProtective,
+    lonely:    IMAGES.nightLonely,
+    hopeful:   IMAGES.nightHopeful,
+    relaxed:   IMAGES.nightRelaxed,
+    listening: IMAGES.nightListening,
+    playful:   IMAGES.nightPlayful,
+    hurting:   IMAGES.nightHurting,
+    inhishead: IMAGES.nightInHisHead,
+    inlove:    IMAGES.nightInLove,
   },
 };
 
