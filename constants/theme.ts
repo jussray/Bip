@@ -126,6 +126,10 @@ const nightAvatarWriting  = nightWriting;
 const nightAvatarWindow   = nightWindow;
 const nightAvatarFullbody = nightFullbody;
 
+// ── Night voice backgrounds (aliases — real assets TBD) ────────────────────
+const nightVoiceDay   = nightNeutral;   // placeholder until night-voice-day.png exists
+const nightVoiceNight = nightWindow;    // window/late-night scene fits night voice context
+
 // ── Parent Room Backgrounds ────────────────────────────────────────────────
 const bgMomRoomDay       = require("../assets/images/bg-mom-room-day.png");
 const bgMomRoomEvening   = require("../assets/images/bg-mom-room-evening.png");
@@ -279,6 +283,8 @@ export const IMAGES = {
   nightAvatarWriting,
   nightAvatarWindow,
   nightAvatarFullbody,
+  nightVoiceDay,
+  nightVoiceNight,
 
   // Scene composites
   rayleneRoomDayScene,
@@ -464,19 +470,13 @@ export function getRoomScene(
   character: Character,
   phase: RoomPhase | string,
 ): ImageSourcePropType {
-  const prefix = ROOM_PREFIX[character] ?? "bgRayleneRoom";
-  // deepNight → "DeepNight", midday → "Midday", afternoon → "Afternoon", etc.
-  const suffix = phase === "deepNight" ? "DeepNight"
-               : phase === "midday"    ? "Midday"
-               : phase === "afternoon" ? "Afternoon"
-               : phase.charAt(0).toUpperCase() + phase.slice(1);
-  const key = `${prefix}${suffix}` as keyof typeof IMAGES;
-  // If an asset is truly missing for this phase, fall back to the nearest phase.
-  if (!IMAGES[key]) {
-    if (phase === "midday")    return getRoomScene(character, "day");
-    if (phase === "afternoon") return getRoomScene(character, "evening");
+  const p = normalizeRoomPhase(phase as string);
+  const scene = ROOM_SCENES[character]?.[p];
+  if (!scene) {
+    if (p === 'midday')    return ROOM_SCENES[character]?.day ?? ROOM_SCENES.raylene.day;
+    if (p === 'afternoon') return ROOM_SCENES[character]?.evening ?? ROOM_SCENES.raylene.evening;
   }
-  return (IMAGES[key] ?? IMAGES.bgRayleneRoomDay) as ImageSourcePropType;
+  return scene ?? ROOM_SCENES.raylene.day;
 }
 
 export function getRoomBg(
