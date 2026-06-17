@@ -17,15 +17,7 @@ create table if not exists public.circle_profiles (
 alter table public.circle_profiles enable row level security;
 create policy "circle_profiles_self_rw" on public.circle_profiles
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
--- Allow reading nickname/avatar of accepted friends (not account_type, not user_id mapping)
-create policy "circle_profiles_friends_read" on public.circle_profiles
-  for select using (
-    user_id in (
-      select friend_id from public.circle_friendships where user_id = auth.uid() and status = 'accepted'
-      union
-      select user_id  from public.circle_friendships where friend_id = auth.uid() and status = 'accepted'
-    )
-  );
+-- NOTE: circle_profiles_friends_read is defined AFTER circle_friendships is created below.
 
 -- ── circle_friend_requests ───────────────────────────────────────────────────
 -- "Add To My Circle" requests between teen accounts only.
@@ -55,6 +47,17 @@ create table if not exists public.circle_friendships (
 alter table public.circle_friendships enable row level security;
 create policy "cf_self" on public.circle_friendships
   using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Allow reading nickname/avatar of accepted friends (not account_type, not user_id mapping)
+-- Defined here so circle_friendships exists when the policy is parsed.
+create policy "circle_profiles_friends_read" on public.circle_profiles
+  for select using (
+    user_id in (
+      select friend_id from public.circle_friendships where user_id = auth.uid() and status = 'accepted'
+      union
+      select user_id  from public.circle_friendships where friend_id = auth.uid() and status = 'accepted'
+    )
+  );
 
 -- ── crew_memberships ─────────────────────────────────────────────────────────
 -- Trusted Crew connections. Identity is always visible within this circle.
