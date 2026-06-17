@@ -150,7 +150,8 @@ export const IMAGES: Record<string, number> = {
   rayleneFullbody:     require('../../assets/images/raylene-fullbody.png'),
   rayleneVoiceDay:     require('../../assets/images/raylene-voice-day.png'),
   rayleneVoiceNight:   require('../../assets/images/raylene-voice-night.png'),
-  raylene_Bippin2Day:  require('../../assets/images/raylene-bippin2-day.png'),
+  // TODO: replace with real raylene-bippin2-day.png when asset is ready
+  raylene_Bippin2Day:  require('../../assets/images/raylene-voice-day.png'),
   rylaneNeutral:       require('../../assets/images/rylane-neutral.png'),
   rylaneNeutralV2:     require('../../assets/images/rylane-neutral-v2.png'),
   rylaneHappy:         require('../../assets/images/rylane-happy.png'),
