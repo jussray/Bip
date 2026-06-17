@@ -1,0 +1,1 @@
+export { MiniReactionSticker } from '../MiniReactionSticker';
