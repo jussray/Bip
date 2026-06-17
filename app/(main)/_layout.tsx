@@ -1,23 +1,81 @@
 /**
  * app/(main)/_layout.tsx
  *
- * Main app route group layout — Tab bar lives here.
+ * Main tab navigator — replaces the BottomNav component rendered
+ * at the bottom of every screen in the old string-router architecture.
  *
- * NOTE: This is a skeleton. The Tabs navigator is wired in Step 2b
- * when state.screen string routing is replaced with router.push().
- * Until then, all navigation is handled inside app/index.tsx.
- *
- * Tab structure matches your target architecture:
- *   / (home/room)  →  chat/index
- *   /discover      →  Oracle discovery
- *   /profile       →  Profile
- *   /settings      →  Settings
+ * Tab bar is intentionally minimal (dark, emoji icons).
+ * Swap tabBarIcon to vector icons (Lucide / Ionicons) in Step 3.
  */
-import { Stack } from 'expo-router';
+import React from 'react';
+import { Tabs } from 'expo-router';
+import { Text } from 'react-native';
+import { useAppContext } from '@/context/AppContext';
+
+function TabIcon({ emoji }: { emoji: string }) {
+  return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
+}
 
 export default function MainLayout() {
-  // Stack for now — swap to Tabs when router migration is complete (Step 2b).
+  const { userSide } = useAppContext();
+
   return (
-    <Stack screenOptions={{ headerShown: false }} />
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#111827',
+          borderTopWidth: 0,
+          height: 68,
+          paddingBottom: 10,
+        },
+        tabBarActiveTintColor: '#fff',
+        tabBarInactiveTintColor: '#94A3B8',
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+      }}
+    >
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Home',
+          tabBarIcon: () => <TabIcon emoji="🏠" />,
+        }}
+      />
+      <Tabs.Screen
+        name="pages"
+        options={{
+          title: 'Pages',
+          tabBarIcon: () => <TabIcon emoji="📖" />,
+        }}
+      />
+      <Tabs.Screen
+        name="calm"
+        options={{
+          title: 'Calm',
+          tabBarIcon: () => <TabIcon emoji="🌙" />,
+        }}
+      />
+      <Tabs.Screen
+        name="circle"
+        options={{
+          title: 'Circle',
+          tabBarIcon: () => <TabIcon emoji="🌐" />,
+        }}
+      />
+      <Tabs.Screen
+        name="sekret"
+        options={{
+          title: "Se'kret",
+          tabBarIcon: () => <TabIcon emoji="💜" />,
+        }}
+      />
+      {/* Hidden from tab bar — accessible via router.push() only */}
+      <Tabs.Screen name="discover" options={{ href: null }} />
+      <Tabs.Screen name="profile"  options={{ href: null }} />
+      <Tabs.Screen name="settings" options={{ href: null }} />
+      <Tabs.Screen name="bridge"   options={{ href: null }} />
+      {/* Chat dynamic route group */}
+      <Tabs.Screen name="chat"     options={{ href: null }} />
+    </Tabs>
   );
 }
