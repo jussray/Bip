@@ -3,39 +3,18 @@
  *
  * Home tab — renders the real HomeScreen component.
  * State is read from AppContext (no more prop drilling).
- * setScreen prop satisfied by a router.push() shim for backward compat
- * until screens/ physical files are moved in Step 3.
+ * setScreen prop satisfied by navigateTo() from utils/navigation.
  */
 import React from 'react';
-import { router } from 'expo-router';
 import { HomeScreen } from '@screens/HomeScreen';
 import { useAppContext } from '@/context/AppContext';
-
-// Mapping from legacy setScreen() string keys → Expo Router paths
-const SCREEN_MAP: Record<string, string> = {
-  home:         '/(main)/home',
-  pages:        '/(main)/pages',
-  calm:         '/(main)/calm',
-  circle:       '/(main)/circle',
-  sekret:       '/(main)/sekret',
-  voiceBip:     '/(main)/discover',
-  bridge:       '/(main)/bridge',
-  parentBridge: '/(main)/bridge',
-  cloudThoughts:'/(main)/discover',
-  settings:     '/(main)/settings',
-};
-
-function setScreen(screen: string) {
-  const path = SCREEN_MAP[screen] ?? '/(main)/home';
-  router.push(path as any);
-}
+import { navigateTo } from '@/utils/navigation';
 
 export default function HomeTab() {
   const {
     theme,
     mood,
-    setMood,
-    selectMood,
+    selectMood,   // selectMood = setMood + append to moodHistory (same signature as setMood)
     userSide,
     selectedSekret,
     homeMessageIndex,
@@ -47,7 +26,7 @@ export default function HomeTab() {
       theme={theme}
       mood={mood}
       setMood={selectMood}
-      setScreen={setScreen}
+      setScreen={navigateTo}
       userSide={userSide}
       selectedSekret={selectedSekret}
       homeMessageIndex={homeMessageIndex}

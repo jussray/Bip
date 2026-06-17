@@ -35,6 +35,13 @@ import { useAppContext } from '@/context/AppContext';
 
 const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
 
+// Tab bar height defined in app/(main)/_layout.tsx.
+// keyboardVerticalOffset must account for this so the input row stays
+// above the keyboard on iOS. Add 20 for the safe-area top inset used
+// by SafeAreaView — this keeps the offset consistent across devices.
+const TAB_BAR_HEIGHT = 68;
+const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
+
 export default function PersonalityChatScreen() {
   const { personalityId } = useLocalSearchParams<{ personalityId: string }>();
   const { mood } = useAppContext();
@@ -90,7 +97,7 @@ export default function PersonalityChatScreen() {
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={KB_OFFSET}
       >
         <ScrollView
           ref={scrollRef}
@@ -161,27 +168,26 @@ const styles = StyleSheet.create({
   safe:            { flex: 1 },
   flex:            { flex: 1 },
   header:          {
-    flexDirection:  'row',
-    alignItems:     'center',
-    gap:            12,
+    flexDirection:     'row',
+    alignItems:        'center',
     paddingHorizontal: 20,
     paddingVertical:   16,
     borderBottomWidth: 1,
     borderBottomColor: '#ffffff12',
   },
-  backBtn:         { marginRight: 4 },
+  backBtn:         { marginRight: 16 },
   backText:        { color: '#999', fontSize: 20 },
-  headerEmoji:     { fontSize: 28 },
+  headerEmoji:     { fontSize: 28, marginRight: 12 },
   headerName:      { fontSize: 17, fontWeight: '700' },
   headerTitle:     { color: '#888', fontSize: 12, marginTop: 2 },
   messages:        { flex: 1 },
-  messagesContent: { padding: 16, gap: 10, paddingBottom: 8 },
+  messagesContent: { padding: 16, paddingBottom: 8 },
   bubble:          {
-    maxWidth:      '80%',
+    maxWidth:          '80%',
     paddingVertical:   10,
     paddingHorizontal: 14,
-    borderRadius:  18,
-    marginBottom:  4,
+    borderRadius:      18,
+    marginBottom:      4,
   },
   userBubble:      {
     alignSelf:       'flex-end',
@@ -195,30 +201,31 @@ const styles = StyleSheet.create({
   bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22 },
   userBubbleText:  { color: '#fff' },
   inputRow:        {
-    flexDirection:    'row',
-    alignItems:       'flex-end',
-    gap:              10,
-    padding:          16,
-    paddingBottom:    Platform.OS === 'ios' ? 8 : 16,
-    borderTopWidth:   1,
-    borderTopColor:   '#ffffff10',
-    backgroundColor:  '#0d0d0d',
+    flexDirection:   'row',
+    alignItems:      'flex-end',
+    padding:         16,
+    paddingBottom:   Platform.OS === 'ios' ? 8 : 16,
+    borderTopWidth:  1,
+    borderTopColor:  '#ffffff10',
+    backgroundColor: '#0d0d0d',
+    marginRight: 10,
   },
   input:           {
-    flex:             1,
-    backgroundColor:  '#1E293B',
-    color:            '#fff',
-    borderRadius:     20,
+    flex:              1,
+    backgroundColor:   '#1E293B',
+    color:             '#fff',
+    borderRadius:      20,
     paddingHorizontal: 16,
     paddingVertical:   10,
-    fontSize:         15,
-    maxHeight:        120,
+    fontSize:          15,
+    maxHeight:         120,
+    marginRight:       10,
   },
   sendBtn:         {
-    width:         40,
-    height:        40,
-    borderRadius:  20,
-    alignItems:    'center',
+    width:          40,
+    height:         40,
+    borderRadius:   20,
+    alignItems:     'center',
     justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },

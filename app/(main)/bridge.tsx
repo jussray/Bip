@@ -4,7 +4,10 @@
  * Parent Bridge — safe channel between teen and parent.
  * Teen side: leave a note for your parent.
  * Parent side: view notes + respond with supportive prompts.
- * Full sync via Supabase in a later sprint; local state shell here.
+ *
+ * NOTE: `sent` is local component state — notes are only visible
+ * this session. Supabase sync (cross-device persistence) is wired
+ * in a later sprint.
  */
 import React, { useState } from 'react';
 import {
@@ -45,7 +48,7 @@ export default function BridgeScreen() {
       </Text>
       <Text style={styles.sub}>
         {userSide === 'parent'
-          ? 'Notes your teen has shared with you.'
+          ? 'Notes your teen has shared with you this session.'
           : 'Leave a note. They\'ll see it when they\'re ready.'}
       </Text>
 
@@ -97,8 +100,8 @@ export default function BridgeScreen() {
             <Text style={styles.emptyEmoji}>🌉</Text>
             <Text style={styles.emptyText}>
               {userSide === 'parent'
-                ? 'No notes yet from your teen.'
-                : 'Your notes to your parent will appear here.'}
+                ? 'No notes from your teen yet this session.'
+                : 'Notes you send will appear here.'}
             </Text>
           </View>
         )}
@@ -116,8 +119,8 @@ const styles = StyleSheet.create({
   safe:            { flex: 1, backgroundColor: '#0d0d0d', padding: 20, paddingTop: 56 },
   heading:         { color: '#fff', fontSize: 24, fontWeight: '800' },
   sub:             { color: '#666', fontSize: 13, marginBottom: 20, marginTop: 4 },
-  prompts:         { gap: 8, paddingBottom: 16 },
-  promptChip:      { backgroundColor: '#1E293B', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
+  prompts:         { paddingBottom: 16 },
+  promptChip:      { backgroundColor: '#1E293B', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8, marginRight: 8 },
   promptText:      { color: '#94A3B8', fontSize: 13 },
   compose:         { backgroundColor: '#111827', borderRadius: 16, padding: 14, marginBottom: 20 },
   input:           { color: '#fff', fontSize: 15, minHeight: 60, lineHeight: 22 },
@@ -125,8 +128,8 @@ const styles = StyleSheet.create({
   sendBtnDisabled: { opacity: 0.35 },
   sendBtnText:     { color: '#fff', fontWeight: '700', fontSize: 14 },
   feed:            { flex: 1 },
-  emptyState:      { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyEmoji:      { fontSize: 36 },
+  emptyState:      { alignItems: 'center', paddingTop: 60 },
+  emptyEmoji:      { fontSize: 36, marginBottom: 10 },
   emptyText:       { color: '#555', fontSize: 14 },
   noteCard:        { backgroundColor: '#111827', borderRadius: 14, padding: 14, marginBottom: 10 },
   noteText:        { color: '#E2E8F0', fontSize: 15, lineHeight: 22 },

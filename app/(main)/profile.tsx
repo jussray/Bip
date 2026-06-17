@@ -15,11 +15,55 @@ import {
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants';
 
+/**
+ * Calculate the current consecutive-day journaling streak.
+ * Walks backward from today through moodHistory dates,
+ * counting each day that has at least one entry.
+ * Returns 0 if no entries exist or the last entry was not today/yesterday.
+ */
+function calcStreak(entries: { date: string }[]): number {
+  if (entries.length === 0) return 0;
+
+  // Collect unique date strings, most-recent first
+  const uniqueDates = [
+    ...new Set(entries.map((e) => e.date)),
+  ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+  const today     = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  let streak    = 0;
+  let checkDate = new Date(today);
+
+  for (const dateStr of uniqueDates) {
+    const entryDate = new Date(dateStr);
+    entryDate.setHours(0, 0, 0, 0);
+
+    const diffDays =
+      Math.round((checkDate.getTime() - entryDate.getTime()) / 86_400_000);
+
+    if (diffDays === 0 || (streak > 0 && diffDays === 1)) {
+      streak += 1;
+      // Advance checkDate back one day for next iteration
+      checkDate = new Date(entryDate);
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      // Gap found — streak is broken
+      break;
+    }
+  }
+
+  return streak;
+}
+
 export default function ProfileScreen() {
   const { mood, moodHistory, entries, theme, selectedSekret } = useAppContext();
   const currentTheme = THEME_PACKS[theme] ?? THEME_PACKS.neon;
 
-  const streak = entries.length; // simplified — replace with date-based calc later
+  // Streak is based on consecutive days that have journal entries,
+  // not total entry count.
+  const streak       = calcStreak(entries);
+  const streakLabel  = streak > 0 ? `${streak}` : '—';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -27,54 +71,46 @@ export default function ProfileScreen() {
 
         {/* Avatar */}
         <View style={[styles.avatar, { backgroundColor: currentTheme.card }]}>
-          <Text style={styles.avatarEmoji}>{currentTheme.emoji}</Text>
+          <Text style={styles.avatarEmoji}>{selectedSekret || '🌙'}</Text>
         </View>
-        <Text style={styles.handle}>@you</Text>
-        <Text style={styles.vibe}>Current mood: {mood}</Text>
 
-        {/* Stats */}
+        {/* Stats row */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={[styles.statNum, { color: currentTheme.accent }]}>{entries.length}</Text>
-            <Text style={styles.statLabel}>Journal entries</Text>
+            <Text style={styles.statValue}>{entries.length}</Text>
+            <Text style={styles.statLabel}>Entries</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={[styles.statNum, { color: currentTheme.accent }]}>{moodHistory.length}</Text>
-            <Text style={styles.statLabel}>Mood check-ins</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={[styles.statNum, { color: currentTheme.accent }]}>{streak}</Text>
+            <Text style={styles.statValue}>{streakLabel}</Text>
             <Text style={styles.statLabel}>Day streak</Text>
           </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{moodHistory.length}</Text>
+            <Text style={styles.statLabel}>Mood logs</Text>
+          </View>
         </View>
+
+        {/* Current mood */}
+        {mood ? (
+          <View style={styles.moodCard}>
+            <Text style={styles.moodLabel}>Current mood</Text>
+            <Text style={styles.moodValue}>{mood}</Text>
+          </View>
+        ) : null}
 
         {/* Mood history */}
         {moodHistory.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>Recent Moods</Text>
-            {moodHistory.slice(0, 5).map((entry) => (
-              <View key={entry.id} style={styles.moodRow}>
-                <Text style={styles.moodEmoji}>
-                  {entry.mood === 'Happy' ? '😊'
-                    : entry.mood === 'Sad'   ? '😔'
-                    : entry.mood === 'Angry' ? '😡'
-                    : '😴'}
-                </Text>
-                <View>
-                  <Text style={styles.moodLabel}>{entry.mood}</Text>
-                  <Text style={styles.moodMeta}>{entry.date} · {entry.time}</Text>
-                </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Mood History</Text>
+            {moodHistory.slice(0, 10).map((entry) => (
+              <View key={entry.id} style={styles.historyRow}>
+                <Text style={styles.historyMood}>{entry.mood}</Text>
+                <Text style={styles.historyDate}>{entry.date} · {entry.time}</Text>
               </View>
             ))}
-          </>
-        )}
-
-        {moodHistory.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🌙</Text>
-            <Text style={styles.emptyText}>Check in with a mood to start your history.</Text>
           </View>
         )}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -82,21 +118,19 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safe:         { flex: 1, backgroundColor: '#0d0d0d' },
-  content:      { padding: 24, paddingTop: 56, alignItems: 'center', paddingBottom: 60 },
-  avatar:       { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  avatarEmoji:  { fontSize: 36 },
-  handle:       { color: '#fff', fontSize: 18, fontWeight: '700' },
-  vibe:         { color: '#888', fontSize: 13, marginTop: 4, marginBottom: 24 },
-  statsRow:     { flexDirection: 'row', gap: 12, marginBottom: 28, width: '100%' },
-  statCard:     { flex: 1, backgroundColor: '#111827', borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
-  statNum:      { fontSize: 22, fontWeight: '800' },
-  statLabel:    { color: '#666', fontSize: 11, textAlign: 'center' },
-  sectionLabel: { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12, alignSelf: 'flex-start', width: '100%' },
-  moodRow:      { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#111827', borderRadius: 14, padding: 14, marginBottom: 8, width: '100%' },
-  moodEmoji:    { fontSize: 24 },
-  moodLabel:    { color: '#fff', fontSize: 14, fontWeight: '600' },
-  moodMeta:     { color: '#555', fontSize: 11, marginTop: 2 },
-  emptyState:   { alignItems: 'center', paddingTop: 40, gap: 10 },
-  emptyEmoji:   { fontSize: 32 },
-  emptyText:    { color: '#555', fontSize: 13, textAlign: 'center', maxWidth: 240 },
+  content:      { padding: 24, paddingTop: 56, paddingBottom: 40, alignItems: 'center' },
+  avatar:       { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  avatarEmoji:  { fontSize: 40 },
+  statsRow:     { flexDirection: 'row', marginBottom: 20 },
+  statCard:     { alignItems: 'center', marginHorizontal: 16 },
+  statValue:    { color: '#fff', fontSize: 28, fontWeight: '800' },
+  statLabel:    { color: '#555', fontSize: 12, marginTop: 4 },
+  moodCard:     { backgroundColor: '#111827', borderRadius: 16, padding: 16, width: '100%', marginBottom: 20 },
+  moodLabel:    { color: '#555', fontSize: 12, marginBottom: 4 },
+  moodValue:    { color: '#E2E8F0', fontSize: 18, fontWeight: '700' },
+  section:      { width: '100%' },
+  sectionTitle: { color: '#555', fontSize: 12, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 },
+  historyRow:   { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#1E293B' },
+  historyMood:  { color: '#E2E8F0', fontSize: 15 },
+  historyDate:  { color: '#555', fontSize: 12 },
 });

@@ -39,6 +39,14 @@ interface MoodHistoryEntry {
   time: string;
 }
 
+export interface CirclePost {
+  id: number;
+  text: string;
+  date: string;
+  time: string;
+  reactions: { felt: number; comfort: number; proud: number; stay: number };
+}
+
 interface AppContextValue {
   // Theme + identity
   theme: string;
@@ -56,6 +64,10 @@ interface AppContextValue {
   setJournalText: (text: string) => void;
   entries: JournalEntry[];
   saveEntry: () => void;
+
+  // Circle
+  circlePosts: CirclePost[];
+  setCirclePosts: React.Dispatch<React.SetStateAction<CirclePost[]>>;
 
   // UI state
   homeMessageIndex: number;
@@ -81,6 +93,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Journal local state
   const [journalText, setJournalText] = useState('');
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
+
+  // Circle posts — local state until Supabase sync is wired in a later sprint
+  const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
 
   // breatheAnim lives here so it persists across tab navigation
   const breatheAnim = useRef(new Animated.Value(1)).current;
@@ -157,6 +172,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setJournalText,
     entries,
     saveEntry,
+    circlePosts,
+    setCirclePosts,
     homeMessageIndex,
     breatheAnim,
     isLoading,

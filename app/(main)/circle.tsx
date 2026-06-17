@@ -16,7 +16,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useAppContext } from '@/context/AppContext';
-import type { CirclePost } from '@/types';
+import type { CirclePost } from '@/context/AppContext';
 
 const REACTION_LABELS: { key: keyof CirclePost['reactions']; emoji: string }[] = [
   { key: 'felt',    emoji: '🫖 felt it' },
@@ -26,7 +26,8 @@ const REACTION_LABELS: { key: keyof CirclePost['reactions']; emoji: string }[] =
 ];
 
 export default function CircleScreen() {
-  const { circlePosts, setCirclePosts } = useAppContext() as any;
+  // circlePosts + setCirclePosts are now properly typed on AppContextValue
+  const { circlePosts, setCirclePosts } = useAppContext();
   const [draft, setDraft] = useState('');
 
   function submitPost() {
@@ -39,12 +40,12 @@ export default function CircleScreen() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
     };
-    setCirclePosts([post, ...(circlePosts ?? [])]);
+    setCirclePosts((prev) => [post, ...prev]);
     setDraft('');
   }
 
   function react(postId: number, key: keyof CirclePost['reactions']) {
-    setCirclePosts((posts: CirclePost[]) =>
+    setCirclePosts((posts) =>
       posts.map((p) =>
         p.id === postId
           ? { ...p, reactions: { ...p.reactions, [key]: p.reactions[key] + 1 } }
@@ -80,13 +81,13 @@ export default function CircleScreen() {
 
       {/* Feed */}
       <ScrollView showsVerticalScrollIndicator={false} style={styles.feed}>
-        {(!circlePosts || circlePosts.length === 0) && (
+        {circlePosts.length === 0 && (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🌙</Text>
             <Text style={styles.emptyText}>Be the first to share something.</Text>
           </View>
         )}
-        {(circlePosts ?? []).map((post: CirclePost) => (
+        {circlePosts.map((post) => (
           <View key={post.id} style={styles.card}>
             <Text style={styles.cardText}>{post.text}</Text>
             <Text style={styles.cardMeta}>{post.date} · {post.time}</Text>
@@ -98,7 +99,7 @@ export default function CircleScreen() {
                   onPress={() => react(post.id, key)}
                 >
                   <Text style={styles.reactionText}>
-                    {emoji} {post.reactions[key] > 0 ? post.reactions[key] : ''}
+                    {emoji}{post.reactions[key] > 0 ? ` ${post.reactions[key]}` : ''}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -120,13 +121,13 @@ const styles = StyleSheet.create({
   postBtnDisabled: { opacity: 0.35 },
   postBtnText:     { color: '#fff', fontWeight: '700', fontSize: 14 },
   feed:            { flex: 1 },
-  emptyState:      { alignItems: 'center', paddingTop: 60, gap: 10 },
-  emptyEmoji:      { fontSize: 36 },
+  emptyState:      { alignItems: 'center', paddingTop: 60 },
+  emptyEmoji:      { fontSize: 36, marginBottom: 10 },
   emptyText:       { color: '#555', fontSize: 14 },
   card:            { backgroundColor: '#111827', borderRadius: 16, padding: 16, marginBottom: 12 },
   cardText:        { color: '#E2E8F0', fontSize: 15, lineHeight: 22, marginBottom: 8 },
   cardMeta:        { color: '#555', fontSize: 11, marginBottom: 10 },
-  reactions:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  reactionBtn:     { backgroundColor: '#1E293B', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  reactions:       { flexDirection: 'row', flexWrap: 'wrap', marginTop: 0 },
+  reactionBtn:     { backgroundColor: '#1E293B', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, marginBottom: 8 },
   reactionText:    { color: '#94A3B8', fontSize: 12 },
 });
