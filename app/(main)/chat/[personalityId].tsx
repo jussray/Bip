@@ -3,13 +3,17 @@
  *
  * Full personality chat screen.
  * Routes:
- *   /chat/raylene  →  Raylene (Soft Big Sis)
- *   /chat/rylane   →  Rylane  (Loyal Bro)
- *   /chat/cloud    →  Cloud   (Quiet Comfort)
- *   /chat/night    →  Night   (Late-Night Listener)
- *   /chat/oracle   →  Oracle  (Wisdom Voice)
+ *   /chat/raylene  \u2192  Raylene (Soft Big Sis)
+ *   /chat/rylane   \u2192  Rylane  (Loyal Bro)
+ *   /chat/cloud    \u2192  Cloud   (Quiet Comfort)
+ *   /chat/night    \u2192  Night   (Late-Night Listener)
+ *   /chat/oracle   \u2192  Oracle  (Wisdom Voice)
+ *
+ * Changes:
+ * - Full message history passed to sendMessage so the AI has context.
+ * - Oracle sessions synced to Supabase via syncOracleSession on unmount/back.
  */
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -32,18 +36,16 @@ import {
 import type { ChatMessage } from '@/services/ai';
 import type { PersonalityId } from '@/types';
 import { useAppContext } from '@/context/AppContext';
+import { syncOracleSession } from '@/utils/sync';
 
 const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
 
-// Tab bar height defined in app/(main)/_layout.tsx.
-// keyboardVerticalOffset must account for this so the input row stays
-// above the keyboard on iOS.
 const TAB_BAR_HEIGHT = 68;
 const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
 
 export default function PersonalityChatScreen() {
   const { personalityId } = useLocalSearchParams<{ personalityId: string }>();
-  const { mood } = useAppContext();
+  const { mood, oracleSessionCount, setOracleSessionCount } = useAppContext();
 
   const id = VALID_IDS.includes(personalityId as PersonalityId)
     ? (personalityId as PersonalityId)
@@ -57,31 +59,53 @@ export default function PersonalityChatScreen() {
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef             = useRef<ScrollView>(null);
+  // Track whether this session had any user messages (worth syncing)
+  const hadActivity = useRef(false);
+
+  // Sync Oracle session to cloud on unmount
+  useEffect(() => {
+    return () => {
+      if (id === 'oracle' && hadActivity.current) {
+        const memory = {
+          lastMessages: messages.slice(-10).map(m => ({ role: m.role, text: m.text })),
+          lastMood:     mood,
+          lastSession:  new Date().toISOString(),
+        };
+        const newCount = (oracleSessionCount ?? 0) + 1;
+        setOracleSessionCount?.(newCount);
+        void syncOracleSession('teen', memory, newCount);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || loading) return;
 
+    hadActivity.current = true;
     const userMsg = makeUserMessage(text);
-    setMessages((m) => [...m, userMsg]);
+    const nextMessages = [...messages, userMsg];
+    setMessages(nextMessages);
     setInput('');
     setLoading(true);
     scrollRef.current?.scrollToEnd({ animated: true });
 
-    const reply     = await sendMessage(id, text, 'chat', mood);
+    // Pass full history so AI has conversation context
+    const reply     = await sendMessage(id, text, 'chat', mood, nextMessages);
     const assistMsg = makeAssistantMessage(reply);
 
-    setMessages((m) => [...m, assistMsg]);
+    setMessages(m => [...m, assistMsg]);
     setLoading(false);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [id, input, loading, mood]);
+  }, [id, input, loading, mood, messages]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: config.cardColor }]}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
+          <Text style={styles.backText}>\u2190</Text>
         </TouchableOpacity>
         <Text style={styles.headerEmoji}>{config.emoji}</Text>
         <View>
@@ -155,7 +179,7 @@ export default function PersonalityChatScreen() {
             onPress={handleSend}
             disabled={!input.trim() || loading}
           >
-            <Text style={styles.sendBtnText}>↑</Text>
+            <Text style={styles.sendBtnText}>\u2191</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
