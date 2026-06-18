@@ -29,9 +29,9 @@ export default function Index() {
     );
   }
 
-  // Returning user — go straight to their space
-  if (userSide === 'teen')   return <Redirect href="/(main)/home" />;
-  if (userSide === 'parent') return <Redirect href="/(main)/parent-room" />;
+  // Returning user — go straight to their side-specific entry
+  if (userSide === 'teen')   return <Redirect href="/teen/room" />;
+  if (userSide === 'parent') return <Redirect href="/parent/room" />;
 
   // After chooser: show the branded splash with CTA
   if (pendingSide) {
@@ -43,8 +43,8 @@ export default function Index() {
           setUserSide(pendingSide);
           router.replace(
             pendingSide === 'parent'
-              ? '/(main)/parent-room'
-              : '/(main)/home',
+              ? '/parent/room'
+              : '/teen/room',
           );
         }}
       />
