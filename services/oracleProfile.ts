@@ -226,11 +226,11 @@ export async function loadOracleRecord(mode: OracleMode): Promise<OracleRecord> 
 }
 
 /**
- * P7: saveOracleRecord
+ * saveOracleRecord
  * 1. Always writes to AsyncStorage (authoritative local cache, instant).
- * 2. Best-effort syncs the full record snapshot to Supabase `oracle_records`
- *    (upsert keyed on user_id + mode). Errors are swallowed — local state
- *    is always the source of truth for the UI.
+ * 2. Best-effort upserts the full record snapshot to Supabase `oracle_records`
+ *    (keyed on user_id + mode). Errors are swallowed — local state is always
+ *    the source of truth for the UI.
  */
 export async function saveOracleRecord(record: OracleRecord): Promise<void> {
   // 1. Local write — always succeeds even offline.
@@ -267,11 +267,14 @@ export async function saveOracleRecord(record: OracleRecord): Promise<void> {
 }
 
 /**
- * P7: markSessionComplete
- * Called at the end of each oracle session to write an immutable session row
- * to `oracle_sessions`. AsyncStorage record is already up to date via
- * saveOracleRecord; this adds a permanent per-session audit trail for
- * analytics and cross-device restore.
+ * markSessionComplete
+ * Called at the end of each oracle session to write an immutable row to
+ * `oracle_session_log`. AsyncStorage is already up to date via saveOracleRecord;
+ * this adds a permanent per-session audit trail for analytics and cross-device
+ * restore.
+ *
+ * NOTE: table is oracle_session_log (not oracle_sessions) to avoid conflict
+ * with the companion-memory upsert table created in 0003_oracle_parentlinks.
  */
 export async function markSessionComplete(
   record: OracleRecord,
@@ -286,7 +289,7 @@ export async function markSessionComplete(
       dimensionSummary[dim] = entry.signals.length;
     }
 
-    await supabase.from('oracle_sessions').insert({
+    await supabase.from('oracle_session_log').insert({
       user_id:           user.id,
       mode:              record.mode,
       session_index:     record.sessionCount,

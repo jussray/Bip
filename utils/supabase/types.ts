@@ -94,12 +94,23 @@ export type BridgeSignal = {
   created_at: string;
 };
 
-// ─── P8: Oracle session row ───────────────────────────────────────────────────
-// Stores a snapshot of one completed oracle session (question IDs + aggregated
-// dimension signals). Full OracleRecord JSON lives in the 'profile_snapshot'
-// column for recovery/cross-device sync; individual fields are indexed for
-// analytics queries.
-export type OracleSession = {
+// ─── P8: Oracle row types ────────────────────────────────────────────────────
+
+// oracle_records: upsert snapshot keyed on (user_id, mode).
+export type OracleRecord_Row = {
+  user_id: string;
+  mode: 'teen' | 'parent';
+  session_count: number;
+  total_turns: number;
+  last_session: string | null;
+  dimension_summary: Record<string, number>;
+  profile_snapshot: string;      // JSON.stringify(OracleRecord)
+  updated_at: string;
+};
+
+// oracle_session_log: append-only per-session audit rows.
+// Named oracle_session_log to avoid conflict with oracle_sessions (0003).
+export type OracleSessionLog = {
   id: number;
   user_id: string;
   mode: 'teen' | 'parent';
