@@ -8,7 +8,7 @@
  * PHASE 5 SAFETY:
  *   Se'kret companion interaction is NOT removed.
  *   It lives under the "Se'kret Replies" section of PagesScreen.
- *   router.push('/(main)/chat/[id]') fires when a companion is tapped.
+ *   router.push('/(main)/chat/[personalityId]') fires when a companion is tapped.
  *
  * S2TELL → BRIDGE:
  *   S2Tell is the compose action for Bridge (teen → parent channel).
@@ -56,9 +56,12 @@ export default function PagesTab() {
   /**
    * Navigation helpers threaded into PagesScreen so sub-sections can
    * push to the correct route without importing router directly.
+   *
+   * PHASE 5 SAFETY: onOpenCompanion MUST remain wired.
+   * Removing it makes Se'kret Replies unreachable → Phase 5 fails.
    */
   function handleOpenCompanion(personalityId: PersonalityId) {
-    router.push(`/(main)/chat/${personalityId}`);
+    router.push(`/(main)/chat/${personalityId}` as any);
   }
 
   function handleOpenVoiceBip() {
