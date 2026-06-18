@@ -2,8 +2,13 @@ import type { useAppState } from './useAppState';
 import {
   syncMood, syncJournal, syncCirclePost,
   syncParentCirclePost, syncComfortSession,
+  syncVoiceNote, syncCrewMember, deleteCrewMember, syncCrewCheckIn,
+  syncOracleSession, syncPeriodDay, deletePeriodDay,
 } from '../utils/sync';
-import type { JournalEntry, CirclePost, ParentCirclePost, MoodEntry, ComfortSession } from '../types/index';
+import type {
+  JournalEntry, CirclePost, ParentCirclePost, MoodEntry,
+  ComfortSession, VoiceNote, CrewMember, CrewCheckIn,
+} from '../types/index';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 import type { SavePageInput } from '../types/index';
 import type { RoomMemory } from '../types/roomMemory';
@@ -12,12 +17,12 @@ type S = ReturnType<typeof useAppState>;
 type SyncWrap = (fn: () => Promise<void>) => void;
 
 export function useAppActions(s: S, withSyncWrap: SyncWrap) {
-  // ── Room Memory ────────────────────────────────────────────────────────────
+  // ── Room Memory ──────────────────────────────────────────────────────
   const updateRoomMemory = (patch: Partial<RoomMemory>) => {
     s.setRoomMemory(prev => ({ ...prev, ...patch, visitCount: prev.visitCount + 1 }));
   };
 
-  // ── Activity tracker ──────────────────────────────────────────────────────
+  // ── Activity tracker ────────────────────────────────────────────────
   const trackActivity = (type: 'calm' | 'comfort' | 'voice' | 'journal' | 'growth' | 'mood') => {
     updateRoomMemory({ lastVisit: new Date().toISOString() });
     const now = new Date();
@@ -30,7 +35,7 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     void withSyncWrap(async () => syncComfortSession(session));
   };
 
-  // ── Mood ──────────────────────────────────────────────────────────────────
+  // ── Mood ────────────────────────────────────────────────────────────
   const selectMood = (m: string) => {
     s.setMood(m);
     const entry: MoodEntry = {
@@ -43,7 +48,7 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     trackActivity('mood');
   };
 
-  // ── Journal ────────────────────────────────────────────────────────────────
+  // ── Journal ──────────────────────────────────────────────────────────
   const saveJournalEntry = (override?: SavePageInput & { id?: number }) => {
     const textToSave = override?.text ?? s.journalText;
     if (!textToSave.trim() && !override?.imageUri) return;
@@ -88,7 +93,7 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     s.setParentPagesEntries(current => [entry, ...current]);
   };
 
-  // ── Circle (Teen) ─────────────────────────────────────────────────────────
+  // ── Circle (Teen) ──────────────────────────────────────────────────
   const saveCirclePost = (extra?: Partial<CirclePost>) => {
     const textToSave = extra?.text ?? s.circlePostText;
     if (!textToSave.trim()) return;
@@ -139,15 +144,64 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     ));
   };
 
-  // ── Oracle ────────────────────────────────────────────────────────────────
+  // ── Voice Notes ─────────────────────────────────────────────────────
+  const saveVoiceNote = (note: VoiceNote) => {
+    s.setVoiceNotes(prev => [note, ...prev]);
+    void withSyncWrap(async () => syncVoiceNote(note));
+    trackActivity('voice');
+  };
+
+  // ── Crew ─────────────────────────────────────────────────────────────
+  const addCrewMember = (member: CrewMember) => {
+    s.setCrewMembers(prev => [...prev, member]);
+    void withSyncWrap(async () => syncCrewMember(member));
+  };
+
+  const removeCrewMember = (id: string | number) => {
+    s.setCrewMembers(prev => prev.filter(m => String(m.id) !== String(id)));
+    void withSyncWrap(async () => deleteCrewMember(id));
+  };
+
+  const addCrewCheckIn = (checkIn: CrewCheckIn) => {
+    s.setCrewCheckIns(prev => [checkIn, ...prev]);
+    void withSyncWrap(async () => syncCrewCheckIn(checkIn));
+  };
+
+  // ── Period Calendar ─────────────────────────────────────────────────
+  const togglePeriodDay = (day: string) => {
+    s.setPeriodDays(prev => {
+      const isMarked = prev.includes(day);
+      if (isMarked) {
+        void withSyncWrap(async () => deletePeriodDay(day));
+        return prev.filter(d => d !== day);
+      } else {
+        void withSyncWrap(async () => syncPeriodDay(day));
+        return [...prev, day].sort();
+      }
+    });
+  };
+
+  // ── Oracle ────────────────────────────────────────────────────────────
   const completeTeenOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
     s.setOracleProfile(profile);
-    s.setOracleSessions(prev => [session, ...prev]);
+    s.setOracleSessions(prev => {
+      const updated = [session, ...prev];
+      void withSyncWrap(async () =>
+        syncOracleSession('teen', profile as unknown as Record<string, unknown>, updated.length)
+      );
+      return updated;
+    });
   };
 
   const completeParentOracleSession = (profile: OracleProfile, session: OracleSessionSummary) => {
     s.setParentOracleProfile(profile);
-    s.setParentOracleSessions(prev => [session, ...prev]);
+    s.setParentOracleSessions(prev => {
+      const updated = [session, ...prev];
+      void withSyncWrap(async () =>
+        syncOracleSession('parent', profile as unknown as Record<string, unknown>, updated.length)
+      );
+      return updated;
+    });
   };
 
   return {
@@ -155,6 +209,9 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     saveJournalEntry, patchJournalEntry, saveParentPageEntry,
     saveCirclePost, reactToPost,
     saveParentCirclePost, reactToParentPost,
+    saveVoiceNote,
+    addCrewMember, removeCrewMember, addCrewCheckIn,
+    togglePeriodDay,
     completeTeenOracleSession, completeParentOracleSession,
   };
 }

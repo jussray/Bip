@@ -2,30 +2,30 @@
 // Se'kret Bip — Cloud sync layer (Phase 2 + Phase 3 backend)
 //
 // All cloud writes go through here. Every helper is a SAFE NO-OP when
-// Supabase isn't configured — the app keeps working off AsyncStorage, no
+// Supabase isn’t configured — the app keeps working off AsyncStorage, no
 // errors thrown. This lets us ship the UI now and add credentials later.
 //
-// Auth model: each row is scoped to auth.uid() via RLS. If there's no
+// Auth model: each row is scoped to auth.uid() via RLS. If there’s no
 // signed-in user yet, writes are silently skipped (kept locally only).
 // ensureAnonymousSession() is called from useAppEffects on mount.
 //
-// IMPORTANT: never throw. The user's local experience must never break
+// IMPORTANT: never throw. The user’s local experience must never break
 // because the cloud is down. Errors are logged and swallowed.
 
 import { getSupabase, TABLES } from './supabase';
 import type {
   JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
-} from '../../types/index';
+} from '../types/index';
 import type {
   CircleTab,
   PublicCirclePost,
   FriendsCirclePost,
   CrewCirclePost,
   ParentCirclePost as CircleParentPost,
-} from '../../types/circle';
+} from '../types/circle';
 
-// ── Internal helpers ────────────────────────────────────────────────────────
+// ── Internal helpers ──────────────────────────────────────────────
 async function currentUserId(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -63,7 +63,7 @@ async function safeDelete(table: string, id: number | string): Promise<void> {
   }
 }
 
-// ── Anonymous sign-in ────────────────────────────────────────────────────────
+// ── Anonymous sign-in ────────────────────────────────────────────
 export async function ensureAnonymousSession(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -82,7 +82,7 @@ export async function ensureAnonymousSession(): Promise<string | null> {
   }
 }
 
-// ── Mood ────────────────────────────────────────────────────────────────────
+// ── Mood ───────────────────────────────────────────────────────────
 export function syncMood(entry: MoodEntry): void {
   void safeUpsert(TABLES.moodHistory, {
     id:   entry.id,
@@ -92,7 +92,7 @@ export function syncMood(entry: MoodEntry): void {
   });
 }
 
-// ── Journal ────────────────────────────────────────────────────────────────
+// ── Journal ─────────────────────────────────────────────────────────
 export function syncJournal(entry: JournalEntry): void {
   void safeUpsert(TABLES.journalEntries, {
     id:           entry.id,
@@ -104,7 +104,7 @@ export function syncJournal(entry: JournalEntry): void {
   });
 }
 
-// ── Circle (legacy drain path) ──────────────────────────────────────────────
+// ── Circle (legacy drain path) ───────────────────────────────────────
 export function syncCirclePost(post: CirclePost): void {
   void safeUpsert(TABLES.circlePosts, {
     id:         post.id,
@@ -129,16 +129,7 @@ export function syncParentCirclePost(post: ParentCirclePost): void {
   });
 }
 
-// ── Parent Circle: cloud read ─────────────────────────────────────────────────
-/**
- * loadParentCircleFeed
- * Reads the user's own parent_circle_posts from Supabase, most-recent first.
- * Returns an empty array if Supabase is unconfigured, the user is not
- * authenticated, or the network call fails — never throws.
- *
- * Merge strategy in the caller: use the returned array to fill any posts that
- * are missing from local state (additive, never destructive).
- */
+// ── Parent Circle: cloud read ───────────────────────────────────────────
 export async function loadParentCircleFeed(
   limit = 50,
 ): Promise<ParentCirclePost[]> {
@@ -168,7 +159,7 @@ export async function loadParentCircleFeed(
   }
 }
 
-// ── Circle V1: resolve circle_id ─────────────────────────────────────────────
+// ── Circle V1: resolve circle_id ─────────────────────────────────────────
 async function resolveOwnCircleId(
   uid: string,
   kind: 'public' | 'friends' | 'crew',
@@ -190,7 +181,7 @@ async function resolveOwnCircleId(
   }
 }
 
-// ── Circle V1: Live feed reads ────────────────────────────────────────────────
+// ── Circle V1: Live feed reads ───────────────────────────────────────────
 export async function loadCircleFeed(
   tab: CircleTab,
   limit = 30,
@@ -250,7 +241,7 @@ export async function loadCircleFeed(
   }
 }
 
-// ── Circle V1: Reaction sync ──────────────────────────────────────────────────
+// ── Circle V1: Reaction sync ────────────────────────────────────────────
 export async function syncCircleReaction(
   postId: string | number,
   tabOrReaction: string,
@@ -273,7 +264,7 @@ export async function syncCircleReaction(
   }
 }
 
-// ── Circle V1: Post write ─────────────────────────────────────────────────────
+// ── Circle V1: Post write ───────────────────────────────────────────────
 export async function writeCirclePost(
   tab: CircleTab,
   text: string,
@@ -309,7 +300,7 @@ export async function writeCirclePost(
   }
 }
 
-// ── Voice ─────────────────────────────────────────────────────────────────────
+// ── Voice ─────────────────────────────────────────────────────────────
 export function syncVoiceNote(note: VoiceNote): void {
   void safeUpsert(TABLES.voiceNotes, {
     id: note.id, title: note.title, date: note.date,
@@ -317,7 +308,7 @@ export function syncVoiceNote(note: VoiceNote): void {
   });
 }
 
-// ── Comfort sessions ──────────────────────────────────────────────────────────
+// ── Comfort sessions ─────────────────────────────────────────────────────
 export function syncComfortSession(session: ComfortSession): void {
   void safeUpsert(TABLES.comfortSessions, {
     id: session.id, type: session.type,
@@ -325,7 +316,7 @@ export function syncComfortSession(session: ComfortSession): void {
   });
 }
 
-// ── Crew ──────────────────────────────────────────────────────────────────────
+// ── Crew ─────────────────────────────────────────────────────────────
 export function syncCrewMember(m: CrewMember): void {
   void safeUpsert(TABLES.crewMembers, {
     id: m.id, name: m.name, emoji: m.emoji,
@@ -345,7 +336,7 @@ export function syncCrewCheckIn(c: CrewCheckIn): void {
   });
 }
 
-// ── Points snapshot ──────────────────────────────────────────────────────────
+// ── Points snapshot ─────────────────────────────────────────────────────
 export async function snapshotPoints(total: number): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -360,9 +351,9 @@ export async function snapshotPoints(total: number): Promise<void> {
   }
 }
 
-// ── Period calendar ───────────────────────────────────────────────────────────
+// ── Period calendar ──────────────────────────────────────────────────────
 
-/** Upsert a single period day (ISO date string, e.g. '2026-06-17'). */
+/** Upsert a single period day (ISO date string, e.g. ‘2026-06-17’). */
 export async function syncPeriodDay(day: string, note?: string): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -411,11 +402,11 @@ export async function loadPeriodDays(): Promise<string[]> {
   }
 }
 
-// ── Oracle / companion memory ─────────────────────────────────────────────────
+// ── Oracle / companion memory ───────────────────────────────────────────────
 
 /**
  * Upsert the full oracle memory snapshot for a personality.
- * personality_id: 'teen' | 'parent'
+ * personality_id: ‘teen’ | ‘parent’
  */
 export async function syncOracleSession(
   personalityId: string,
@@ -427,7 +418,7 @@ export async function syncOracleSession(
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from('oracle_sessions').upsert(
+    await sb.from(TABLES.oracleSessions).upsert(
       {
         user_id:        uid,
         personality_id: personalityId,
@@ -455,7 +446,7 @@ export async function loadOracleSession(
   if (!uid) return null;
   try {
     const { data, error } = await sb
-      .from('oracle_sessions')
+      .from(TABLES.oracleSessions)
       .select('memory, session_count')
       .eq('user_id', uid)
       .eq('personality_id', personalityId)
@@ -472,7 +463,7 @@ export async function loadOracleSession(
   }
 }
 
-// ── Bulk pull ─────────────────────────────────────────────────────────────────
+// ── Bulk pull ──────────────────────────────────────────────────────────────
 export async function pullAll(): Promise<{
   moodHistory:       MoodEntry[];
   journalEntries:    JournalEntry[];
