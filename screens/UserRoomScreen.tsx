@@ -21,12 +21,11 @@ import {
   IMAGES,
   THEME_PACKS,
   getRoomPhase,
-  getRoomScene,
   type Character,
   type RoomPhase,
   type VibeKey,
 } from '../constants/theme';
-import { SafeAsset } from '../components/SafeAsset';
+import { BareRoomRenderer } from '../components/rooms/BareRoomRenderer';
 
 const { width, height } = Dimensions.get('window');
 
@@ -443,10 +442,6 @@ export function UserRoomScreen({
     return userRoom.lightingMode as RoomPhase;
   }, [userRoom.lightingMode, now, vibe]);
 
-  const roomImage = useMemo(
-    () => getRoomScene(userRoom.baseRoomId, roomPhase),
-    [userRoom.baseRoomId, roomPhase]
-  );
   const vibePack = THEME_PACKS[vibe] ?? THEME_PACKS.raylene;
 
   // ─── Companion ─────────────────────────────────────────────────────────
@@ -532,16 +527,13 @@ export function UserRoomScreen({
     <View style={s.root}>
       <StatusBar style="light" />
 
-      {/* ── LAYER 0+1: Room background + phase/vibe overlays ──────────── */}
+      {/* ── LAYER 0: Bare room shell (walls, floor, window, atmosphere) ── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
-        <SafeAsset
-          source={roomImage}
-          style={s.bg}
-          resizeMode="cover"
-          assetName={`user-room-${userRoom.baseRoomId}-${roomPhase}`}
-          fallbackColor="#1a0a2e"
-          fillContainer
+        <BareRoomRenderer
+          character={userRoom.baseRoomId}
+          lightingMode={roomPhase}
         />
+        {/* LAYER 1: Time-of-day tint + vibe/character overlays */}
         <View style={[s.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
         <View style={[s.overlay, { backgroundColor: vibePack.background + '22' }]} />
         {CHARACTER_OVERLAYS[userRoom.baseRoomId] !== 'transparent' && (
