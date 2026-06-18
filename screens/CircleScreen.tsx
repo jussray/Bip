@@ -22,6 +22,7 @@ import {
   Platform,
   SafeAreaView,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import type {
   CircleTab,
@@ -144,12 +145,12 @@ function PostMenu({
 function useFeed<T>(
   tab: CircleTab,
   fallback: T[],
-): [T[], React.Dispatch<React.SetStateAction<T[]>>, boolean] {
-  const [posts, setPosts]   = useState<T[]>(fallback);
+): [T[], React.Dispatch<React.SetStateAction<T[]>>, boolean, () => void] {
+  const [posts, setPosts]     = useState<T[]>(fallback);
   const [loading, setLoading] = useState(false);
   const active = useRef(true);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     active.current = true;
     setLoading(true);
     loadCircleFeed(tab).then(rows => {
@@ -157,15 +158,44 @@ function useFeed<T>(
       if (rows && rows.length > 0) setPosts(rows as T[]);
       setLoading(false);
     });
-    return () => { active.current = false; };
   }, [tab]);
 
-  return [posts, setPosts, loading];
+  useEffect(() => {
+    load();
+    return () => { active.current = false; };
+  }, [load]);
+
+  return [posts, setPosts, loading, load];
 }
 
 // ─── Public feed ─────────────────────────────────────────────────────────────
-function PublicFeed() {
-  const [posts, setPosts, loading] = useFeed<PublicCirclePost>('public', MOCK_PUBLIC);
+function PublicFeed({ onOptimisticInsert }: {
+  onOptimisticInsert?: (fn: (text: string) => void) => void;
+}) {
+  const [posts, setPosts, loading, refresh] = useFeed<PublicCirclePost>('public', MOCK_PUBLIC);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const optimisticInsert = useCallback((text: string) => {
+    const optimistic: PublicCirclePost = {
+      id: Date.now(),
+      text,
+      post_mood: null,
+      media_kind: null,
+      reactions: {},
+      created_at: new Date().toISOString(),
+    };
+    setPosts(prev => [optimistic, ...prev]);
+  }, [setPosts]);
+
+  useEffect(() => {
+    onOptimisticInsert?.(optimisticInsert);
+  }, [onOptimisticInsert, optimisticInsert]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    refresh();
+    setRefreshing(false);
+  }, [refresh]);
 
   const handleReact = (postId: number, key: string) => {
     setPosts(prev =>
@@ -191,6 +221,14 @@ function PublicFeed() {
       data={posts}
       keyExtractor={item => String(item.id)}
       contentContainerStyle={styles.feedList}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={PURPLE}
+          colors={[PURPLE]}
+        />
+      }
       ListHeaderComponent={
         <View style={styles.anonBadge}>
           <Text style={styles.anonBadgeText}>🌎 Anonymous only · Reactions only · No profiles</Text>
@@ -685,7 +723,10 @@ export default function CircleScreen(_props: Record<string, unknown> = {}) {
   const [composerOpen,  setComposerOpen]  = useState(false);
   const [addCircleOpen, setAddCircleOpen] = useState(false);
 
+  const publicInsertRef = useRef<((text: string) => void) | null>(null);
+
   const handlePost = useCallback((tab: CircleTab, text: string) => {
+    if (tab === 'public') publicInsertRef.current?.(text);
     void writeCirclePost(tab, text);
   }, []);
 
@@ -720,7 +761,7 @@ export default function CircleScreen(_props: Record<string, unknown> = {}) {
       </View>
 
       <View style={styles.feedWrap}>
-        {activeTab === 'public'  && <PublicFeed />}
+        {activeTab === 'public'  && <PublicFeed onOptimisticInsert={fn => { publicInsertRef.current = fn; }} />}
         {activeTab === 'friends' && <FriendsFeed myUserId={myUserId} />}
         {activeTab === 'crew'    && <CrewFeed    myUserId={myUserId} />}
         {activeTab === 'parent'  && <ParentFeed  myUserId={myUserId} />}

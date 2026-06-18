@@ -7,6 +7,7 @@ import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { VoiceBipScreen } from '@screens/VoiceBipScreen';
 import type { VoiceNote } from '@/types';
+import { syncVoiceNote } from '@/utils/sync';
 
 export default function VoiceBipRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
@@ -21,6 +22,10 @@ export default function VoiceBipRoute() {
       setVoiceNotes={setVoiceNotes}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
       BottomNav={null}
+      onSave={(note: VoiceNote) => {
+        setVoiceNotes(prev => [note, ...prev]);
+        syncVoiceNote(note);
+      }}
     />
   );
 }

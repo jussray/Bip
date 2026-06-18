@@ -19,6 +19,7 @@ import {
   Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncPeriodDay, deletePeriodDay, loadPeriodDays } from '../utils/sync';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
 
@@ -81,6 +82,7 @@ export function PeriodCalendarScreen({
   const breath = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Load local data first (instant)
     AsyncStorage.getItem('periodDays').then(v => {
       try {
         if (v) setMarkedDays(JSON.parse(v));
@@ -91,6 +93,18 @@ export function PeriodCalendarScreen({
     AsyncStorage.getItem('lastPeriodStart').then(v => {
       if (v) setLastPeriodStart(v);
     });
+    // Merge cloud days (additive — non-destructive)
+    loadPeriodDays().then(cloudDays => {
+      if (!cloudDays.length) return;
+      setMarkedDays(prev => {
+        const merged = { ...prev };
+        cloudDays.forEach(isoDay => {
+          const [y, m, d] = isoDay.split('-').map(Number);
+          merged[`${y}-${m}-${d}`] = 'period';
+        });
+        return merged;
+      });
+    }).catch(() => {/* offline — local data is fine */});
   }, []);
 
   useEffect(() => {
@@ -135,13 +149,16 @@ export function PeriodCalendarScreen({
   });
 
   const toggleDay = (day: number) => {
-    const key  = `${currentYear}-${currentMonth + 1}-${day}`;
-    const next = { ...markedDays };
+    const key    = `${currentYear}-${currentMonth + 1}-${day}`;
+    const isoDay = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const next   = { ...markedDays };
 
     if (next[key]) {
       delete next[key];
+      void deletePeriodDay(isoDay);   // cloud remove
     } else {
       next[key] = 'period';
+      void syncPeriodDay(isoDay);     // cloud upsert
       if (!lastPeriodStart) {
         setLastPeriodStart(key);
         save(next, key);
@@ -330,7 +347,7 @@ export function PeriodCalendarScreen({
         <Animated.View style={cardStyle(card4)}>
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
-              “your body isn’t a problem to solve. it’s yours. you know it best.” — raylene
+              "your body isn't a problem to solve. it's yours. you know it best." — raylene
             </Text>
           </View>
 
@@ -350,42 +367,37 @@ export function PeriodCalendarScreen({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0e0820' },
-  container:      { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40 },
-  logo:           { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 6, letterSpacing: 0.3 },
-  subtitle:       { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 14, fontStyle: 'italic' },
-  energyBadge:    { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 },
+  root:           { flex: 1 },
+  container:      { padding: 20, paddingTop: Platform.OS === 'ios' ? 56 : 32, paddingBottom: 40 },
+  backBtn:        { marginBottom: 8 },
+  backText:       { color: '#c4b5fd', fontSize: 15 },
+  logo:           { fontSize: 26, fontWeight: '800', color: '#e9defc', textAlign: 'center', marginBottom: 4 },
+  subtitle:       { color: '#a78bfa', fontSize: 14, textAlign: 'center', marginBottom: 12 },
+  energyBadge:    { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 12 },
   energyText:     { fontSize: 13, fontWeight: '600' },
-
-  cloudWrap: { alignItems: 'center', marginBottom: 12 },
-  cloudArt: { width: 60, height: 60, marginBottom: 6 },
-
-  card:           { padding: 18, borderRadius: 20, marginBottom: 14, borderWidth: 1, shadowOpacity: 0.35, shadowRadius: 14 },
-  backBtn:        { marginBottom: 12 },
-  backText:       { color: '#cbb6f7', fontSize: 14 },
-  monthNav:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  navArrow:       { fontSize: 26, fontWeight: 'bold' },
-  monthName:      { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  dayHeaders:     { flexDirection: 'row', marginBottom: 8 },
-  dayHeader:      { flex: 1, textAlign: 'center', color: '#cbb6f7', fontSize: 12, fontWeight: 'bold' },
+  cloudWrap:      { alignItems: 'center', marginBottom: 4 },
+  cloudArt:       { width: 60, height: 40, marginBottom: -10 },
+  artworkMedium:  { width: 110, height: 110 },
+  card:           { borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 14, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 4 },
+  monthNav:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  navArrow:       { fontSize: 28, fontWeight: '300', paddingHorizontal: 8 },
+  monthName:      { color: '#e9defc', fontSize: 17, fontWeight: '700' },
+  dayHeaders:     { flexDirection: 'row', marginBottom: 4 },
+  dayHeader:      { flex: 1, color: '#a78bfa', fontSize: 12, textAlign: 'center', fontWeight: '600' },
   grid:           { flexDirection: 'row', flexWrap: 'wrap' },
-  cell:           { width: '14.28%', aspectRatio: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  dayCircle:      { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  cell:           { width: '14.28%', alignItems: 'center', paddingVertical: 4 },
+  dayCircle:      { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   dayText:        { fontSize: 14 },
-
-  legendRow:      { flexDirection: 'row', justifyContent: 'center', gap: 18, marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
+  legendRow:      { flexDirection: 'row', gap: 16, marginTop: 10, justifyContent: 'center' },
   legendItem:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot:      { width: 12, height: 12, borderRadius: 6 },
-  legendText:     { color: '#cbb6f7', fontSize: 11 },
-
-  softLabel:      { fontSize: 13, marginBottom: 4 },
-  predictionDate: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
-  predictionSub:  { color: '#cbb6f7', fontSize: 12, marginTop: 4 },
-  tipsTitle:      { color: '#fff', fontWeight: 'bold', fontSize: 16, marginBottom: 10 },
-  tip:            { color: '#e9defc', fontSize: 14, marginBottom: 6, lineHeight: 21 },
-  privacyNote:    { fontSize: 13, fontStyle: 'italic', textAlign: 'center', color: '#cbb6f7', lineHeight: 19 },
-  artworkMedium:  { width: 180, height: 180, marginBottom: 12, borderRadius: 16 },
-
-  stickyNote: { backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 12, marginBottom: 14, transform: [{ rotate: '-2deg' }] },
-  stickyText: { color: '#3a2461', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 19 },
+  legendText:     { color: '#a78bfa', fontSize: 12 },
+  softLabel:      { fontSize: 13, fontWeight: '600', marginBottom: 4 },
+  predictionDate: { color: '#e9defc', fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  predictionSub:  { color: '#9ca3af', fontSize: 12 },
+  tipsTitle:      { color: '#e9defc', fontSize: 15, fontWeight: '700', marginBottom: 10 },
+  tip:            { color: '#c4b5fd', fontSize: 14, marginBottom: 6, lineHeight: 20 },
+  stickyNote:     { backgroundColor: 'rgba(167,139,250,0.12)', borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: 'rgba(167,139,250,0.25)' },
+  stickyText:     { color: '#d8b4fe', fontSize: 14, lineHeight: 22, fontStyle: 'italic', textAlign: 'center' },
+  privacyNote:    { color: '#6b7280', fontSize: 13, textAlign: 'center', lineHeight: 20 },
 });
