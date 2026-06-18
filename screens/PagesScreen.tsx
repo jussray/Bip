@@ -46,13 +46,9 @@ import type { PersonalityId } from '../types';
 
 type HomeSection =
   | 'write'
-  | 'voiceBips'
-  | 'sekretReplies'
   | 'memories'
   | 'cloudThoughts'
   | 's2tell'
-  | 'periodCalendar'
-  | 'history'
   | 'repair'
   | 'voiceReflect';
 
@@ -64,24 +60,18 @@ interface SectionDef {
 }
 
 const TEEN_PAGES_SECTIONS: SectionDef[] = [
-  { id: 'write',          label: 'Write',           icon: '✏️',  accent: '#c4b5fd' },
-  { id: 'voiceBips',      label: 'Voice Bips',      icon: '🎙️',  accent: '#9bd8e5' },
-  { id: 'sekretReplies',  label: "Se'kret Replies", icon: '💜',  accent: '#e9a8d2' },
-  { id: 'memories',       label: 'Memories',        icon: '🌸',  accent: '#f9c9a3' },
-  { id: 'cloudThoughts',  label: 'Cloud Thoughts',  icon: '☁️',  accent: '#79aaf2' },
-  { id: 's2tell',         label: 'S2Tell',          icon: '🤫',  accent: '#a3d9a5' },
-  { id: 'periodCalendar', label: 'Period Calendar', icon: '🌙',  accent: '#f7a8b8' },
-  { id: 'history',        label: 'History',         icon: '📜',  accent: '#d4a8f0' },
+  { id: 'write',         label: 'Write',         icon: '✏️',  accent: '#c4b5fd' },
+  { id: 'memories',      label: 'Memories',      icon: '🌸',  accent: '#f9c9a3' },
+  { id: 'cloudThoughts', label: 'Cloud Thoughts',icon: '☁️',  accent: '#79aaf2' },
+  { id: 's2tell',        label: 'S2Tell',        icon: '🤫',  accent: '#a3d9a5' },
 ];
 
 const PARENT_PAGES_SECTIONS: SectionDef[] = [
-  { id: 'write',          label: 'Write',          icon: '✏️',  accent: '#d8c9b8' },
-  { id: 'sekretReplies',  label: "Se'kret",        icon: '💜',  accent: '#e9a8d2' },
-  { id: 's2tell',         label: 'S2Tell Inbox',   icon: '🤫',  accent: '#a3d9a5' },
-  { id: 'voiceReflect',   label: 'Reflect',        icon: '🎙️',  accent: '#7dd3fc' },
-  { id: 'repair',         label: 'Connection',     icon: '🤝',  accent: '#86efac' },
-  { id: 'memories',       label: 'Memories',       icon: '🌸',  accent: '#f9c9a3' },
-  { id: 'periodCalendar', label: 'Cycle Support',  icon: '🌿',  accent: '#5ebd8a' },
+  { id: 'write',        label: 'Write',        icon: '✏️',  accent: '#d8c9b8' },
+  { id: 's2tell',       label: 'S2Tell Inbox', icon: '🤫',  accent: '#a3d9a5' },
+  { id: 'voiceReflect', label: 'Reflect',      icon: '🎙️',  accent: '#7dd3fc' },
+  { id: 'repair',       label: 'Connection',   icon: '🤝',  accent: '#86efac' },
+  { id: 'memories',     label: 'Memories',     icon: '🌸',  accent: '#f9c9a3' },
 ];
 
 // ── Legacy write-tab definitions (unchanged) ───────────────────────────────
@@ -896,34 +886,10 @@ function PagesWorkspace({
           </>
         );
 
-      case 'sekretReplies':
-        return (
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <SekretRepliesPanel
-              entries={entries}
-              onOpenCompanion={onOpenCompanion}
-            />
-          </ScrollView>
-        );
-
       case 'memories':
         return (
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <MemoriesPanel entries={entries} />
-          </ScrollView>
-        );
-
-      case 'voiceBips':
-        return (
-          <ScrollView contentContainerStyle={styles.content}>
-            <NavPill
-              emoji="🎙️"
-              label="Voice Bips"
-              accent="#9bd8e5"
-              description="Record your thoughts as voice notes. Tap to open."
-              onPress={() => onOpenVoiceBip?.() || setScreen('voiceBip')}
-            />
-            <BipEmptyState type="empty" message="Voice bips will appear here after you record them." />
           </ScrollView>
         );
 
@@ -950,36 +916,6 @@ function PagesWorkspace({
               accent="#a3d9a5"
               description="A private space to say the thing you can't say out loud."
               onPress={() => onOpenS2Tell?.() || setScreen('s2tell')}
-            />
-          </ScrollView>
-        );
-
-      case 'periodCalendar':
-        return (
-          <ScrollView contentContainerStyle={styles.content}>
-            <NavPill
-              emoji={side === 'parent' ? '🌿' : '🌙'}
-              label={side === 'parent' ? 'Cycle Support' : 'Period Calendar'}
-              accent={side === 'parent' ? '#5ebd8a' : '#f7a8b8'}
-              description={
-                side === 'parent'
-                  ? 'Supply checklists, comfort tips, and your own optional cycle tracker.'
-                  : 'Track your cycle privately. Tap to open your calendar.'
-              }
-              onPress={() => onOpenPeriodCalendar?.() || setScreen('periodCalendar')}
-            />
-          </ScrollView>
-        );
-
-      case 'history':
-        return (
-          <ScrollView contentContainerStyle={styles.content}>
-            <NavPill
-              emoji="📜"
-              label="History"
-              accent="#d4a8f0"
-              description="All your past pages, entries, and bips in one place."
-              onPress={() => onOpenHistory?.() || setScreen('history')}
             />
           </ScrollView>
         );

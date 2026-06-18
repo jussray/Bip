@@ -153,6 +153,8 @@ function getGreeting(style: ParentRoomStyle, slot: string) {
   return style === 'mom' ? "good morning, mama." : "good morning, dad.";
 }
 
+const DEBUG_HOTSPOTS = false;
+
 // ─── Room Hotspot ─────────────────────────────────────────────────────────────
 interface HotspotProps {
   icon: string; label: string; route: string;
@@ -167,6 +169,7 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
   useEffect(() => {
     if (!visible) return;
     Animated.timing(appear, { toValue: 1, duration: 450, delay, useNativeDriver: true }).start();
+    if (!DEBUG_HOTSPOTS) return;
     const timer = setTimeout(() => {
       Animated.loop(Animated.sequence([
         Animated.timing(glow, { toValue: 1, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -180,15 +183,17 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
   const opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.60, 1.0] });
 
   return (
-    <Animated.View style={[s.hotspot, { left: W * xf - 22, top: H * yf - 22, opacity: appear }]}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        <Animated.View style={[
-          s.hotspotRing,
-          { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
-        ]}>
-          <Text style={s.hotspotIcon}>{icon}</Text>
-        </Animated.View>
-        <Text style={s.hotspotLabel}>{label}</Text>
+    <Animated.View style={[s.hotspot, { left: W * xf - 30, top: H * yf - 30, opacity: appear }]}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={s.hotspotHit}>
+        {DEBUG_HOTSPOTS && (
+          <Animated.View style={[
+            s.hotspotRing,
+            { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
+          ]}>
+            <Text style={s.hotspotIcon}>{icon}</Text>
+          </Animated.View>
+        )}
+        {DEBUG_HOTSPOTS && <Text style={s.hotspotLabel}>{label}</Text>}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -438,7 +443,8 @@ const s = StyleSheet.create({
   },
 
   // Hotspots
-  hotspot:     { position: 'absolute', alignItems: 'center' },
+  hotspot:    { position: 'absolute', alignItems: 'center' },
+  hotspotHit: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
   hotspotRing: {
     width: 44,
     height: 44,

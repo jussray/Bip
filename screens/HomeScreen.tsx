@@ -28,6 +28,8 @@ const TOP   = Platform.OS === 'ios' ? 56 : 36;
 type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
 type MoodCat = 'heavy' | 'steady' | 'winning' | 'fun';
 
+const DEBUG_HOTSPOTS = false;
+
 // ─── Room hotspots — placed over where the objects live in the artwork ────────
 // xf/yf are fractions of screen W×H — tune these to match the actual room art.
 const TEEN_HOTSPOTS = [
@@ -223,6 +225,7 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
   useEffect(() => {
     if (!visible) return;
     Animated.timing(appear, { toValue: 1, duration: 420, delay, useNativeDriver: true }).start();
+    if (!DEBUG_HOTSPOTS) return;
     const timer = setTimeout(() => {
       Animated.loop(Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 2600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -236,15 +239,17 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
   const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1.0] });
 
   return (
-    <Animated.View style={[s.hotspot, { left: W * xf - 22, top: H * yf - 22, opacity: appear }]}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        <Animated.View style={[
-          s.hotspotRing,
-          { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
-        ]}>
-          <Text style={s.hotspotIcon}>{icon}</Text>
-        </Animated.View>
-        <Text style={s.hotspotLabel}>{label}</Text>
+    <Animated.View style={[s.hotspot, { left: W * xf - 30, top: H * yf - 30, opacity: appear }]}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={s.hotspotHit}>
+        {DEBUG_HOTSPOTS && (
+          <Animated.View style={[
+            s.hotspotRing,
+            { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
+          ]}>
+            <Text style={s.hotspotIcon}>{icon}</Text>
+          </Animated.View>
+        )}
+        {DEBUG_HOTSPOTS && <Text style={s.hotspotLabel}>{label}</Text>}
       </TouchableOpacity>
     </Animated.View>
   );
@@ -560,7 +565,8 @@ const s = StyleSheet.create({
   },
 
   // Hotspots
-  hotspot:     { position: 'absolute', alignItems: 'center' },
+  hotspot:    { position: 'absolute', alignItems: 'center' },
+  hotspotHit: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
   hotspotRing: {
     width: 44, height: 44, borderRadius: 22,
     borderWidth: 1.5,
