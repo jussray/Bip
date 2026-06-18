@@ -1,24 +1,21 @@
 /**
- * app/index.tsx — splash / side-selection gate
+ * app/index.tsx — app entry gate
  *
- * PHASE 3 RESTORE:
- *  - Returning teen   → /(teen)/room
- *  - Returning parent → /(parent)/room
- *  - First visit      → side chooser (branded, no auto-skip)
- *  - After side chosen, SplashScreen shows with the artwork CTA
- *  - SplashScreen CTA → routes to the correct home
+ * Every open shows the side-appropriate splash.
+ * Tap the painted "Se'kret Bip ♡" button → enters the room.
+ *
+ *  - Known teen   → teen splash  → /teen/room
+ *  - Known parent → parent splash → /parent/room
+ *  - First visit  → side chooser → splash → room + commit side
  */
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Redirect, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { SplashScreen } from '@screens/SplashScreen';
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
-
-  // After first-time chooser, hold the selected side locally so SplashScreen
-  // renders with the right artwork before the context write propagates.
   const [pendingSide, setPendingSide] = useState<'teen' | 'parent' | null>(null);
 
   if (isLoading) {
@@ -29,23 +26,17 @@ export default function Index() {
     );
   }
 
-  // Returning user — go straight to their space
-  if (userSide === 'teen')   return <Redirect href="/(teen)/room" />;
-  if (userSide === 'parent') return <Redirect href="/(parent)/room" />;
+  // Which side are we opening for? Known returning user OR just chose for first time.
+  const activeSide = userSide ?? pendingSide;
 
-  // After chooser: show the branded splash with CTA
-  if (pendingSide) {
+  if (activeSide) {
     return (
       <SplashScreen
-        userSide={pendingSide}
+        userSide={activeSide}
         setScreen={() => {
-          // CTA tapped — commit the side and navigate
-          setUserSide(pendingSide);
-          router.replace(
-            pendingSide === 'parent'
-              ? '/(parent)/room'
-              : '/(teen)/room',
-          );
+          // First-time visit: commit the choice now
+          if (!userSide) setUserSide(activeSide);
+          router.replace(activeSide === 'parent' ? '/parent/room' : '/teen/room');
         }}
       />
     );
@@ -85,3 +76,4 @@ const styles = StyleSheet.create({
   btnParent: { backgroundColor: '#1e3a2f' },
   btnText:   { color: '#fff', fontSize: 17, fontWeight: '700' },
 });
+

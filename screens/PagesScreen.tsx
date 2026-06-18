@@ -16,9 +16,11 @@
  *   Se'kret is NOT removed. It is relocated here.
  *   If onOpenCompanion is not wired, companion interaction breaks → Phase 5 fails.
  */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
+  Easing,
   Image,
   Platform,
   ScrollView,
@@ -30,6 +32,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
+import { IMAGES } from '../constants/theme';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
@@ -46,13 +49,11 @@ import type { PersonalityId } from '../types';
 
 type HomeSection =
   | 'write'
-  | 'voiceBips'
-  | 'sekretReplies'
   | 'memories'
   | 'cloudThoughts'
   | 's2tell'
-  | 'periodCalendar'
-  | 'history';
+  | 'repair'
+  | 'voiceReflect';
 
 interface SectionDef {
   id: HomeSection;
@@ -62,21 +63,18 @@ interface SectionDef {
 }
 
 const TEEN_PAGES_SECTIONS: SectionDef[] = [
-  { id: 'write',          label: 'Write',           icon: '✏️',  accent: '#c4b5fd' },
-  { id: 'voiceBips',      label: 'Voice Bips',      icon: '🎙️',  accent: '#9bd8e5' },
-  { id: 'sekretReplies',  label: "Se'kret Replies", icon: '💜',  accent: '#e9a8d2' },
-  { id: 'memories',       label: 'Memories',        icon: '🌸',  accent: '#f9c9a3' },
-  { id: 'cloudThoughts',  label: 'Cloud Thoughts',  icon: '☁️',  accent: '#79aaf2' },
-  { id: 's2tell',         label: 'S2Tell',          icon: '🤫',  accent: '#a3d9a5' },
-  { id: 'periodCalendar', label: 'Period Calendar', icon: '🌙',  accent: '#f7a8b8' },
-  { id: 'history',        label: 'History',         icon: '📜',  accent: '#d4a8f0' },
+  { id: 'write',         label: 'Write',         icon: '✏️',  accent: '#c4b5fd' },
+  { id: 'memories',      label: 'Memories',      icon: '🌸',  accent: '#f9c9a3' },
+  { id: 'cloudThoughts', label: 'Cloud Thoughts',icon: '☁️',  accent: '#79aaf2' },
+  { id: 's2tell',        label: 'S2Tell',        icon: '🤫',  accent: '#a3d9a5' },
 ];
 
 const PARENT_PAGES_SECTIONS: SectionDef[] = [
-  { id: 'write',         label: 'Write',     icon: '✏️',  accent: '#d8c9b8' },
-  { id: 'sekretReplies', label: "Se'kret",   icon: '💜',  accent: '#e9a8d2' },
-  { id: 's2tell',        label: 'S2Tell',    icon: '🤫',  accent: '#a3d9a5' },
-  { id: 'memories',      label: 'Memories',  icon: '🌸',  accent: '#f9c9a3' },
+  { id: 'write',        label: 'Write',        icon: '✏️',  accent: '#d8c9b8' },
+  { id: 's2tell',       label: 'S2Tell Inbox', icon: '🤫',  accent: '#a3d9a5' },
+  { id: 'voiceReflect', label: 'Reflect',      icon: '🎙️',  accent: '#7dd3fc' },
+  { id: 'repair',       label: 'Connection',   icon: '🤝',  accent: '#86efac' },
+  { id: 'memories',     label: 'Memories',     icon: '🌸',  accent: '#f9c9a3' },
 ];
 
 // ── Legacy write-tab definitions (unchanged) ───────────────────────────────
@@ -564,6 +562,25 @@ function PagesWorkspace({
   const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
 
+  // Floating companion — breath loop
+  const companionBreath = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(companionBreath, { toValue: 1.06, duration: 3400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(companionBreath, { toValue: 1,    duration: 3400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const COMPANION_IMAGES: Partial<Record<PagesTab, any>> = {
+    raylene: IMAGES.rayleneNeutral,
+    rylane:  IMAGES.rylaneNeutral,
+    cloud:   IMAGES.cloudAvatarNeutral,
+    night:   IMAGES.nightNeutral,
+    parentSekret: IMAGES.rayleneNeutral,
+  };
+
   // Phase 5: top-level home section navigation (teen only)
   const [activeSection, setActiveSection] = useState<HomeSection>('write');
 
@@ -891,34 +908,10 @@ function PagesWorkspace({
           </>
         );
 
-      case 'sekretReplies':
-        return (
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-            <SekretRepliesPanel
-              entries={entries}
-              onOpenCompanion={onOpenCompanion}
-            />
-          </ScrollView>
-        );
-
       case 'memories':
         return (
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <MemoriesPanel entries={entries} />
-          </ScrollView>
-        );
-
-      case 'voiceBips':
-        return (
-          <ScrollView contentContainerStyle={styles.content}>
-            <NavPill
-              emoji="🎙️"
-              label="Voice Bips"
-              accent="#9bd8e5"
-              description="Record your thoughts as voice notes. Tap to open."
-              onPress={() => onOpenVoiceBip?.() || setScreen('voiceBip')}
-            />
-            <BipEmptyState type="empty" message="Voice bips will appear here after you record them." />
           </ScrollView>
         );
 
@@ -949,28 +942,28 @@ function PagesWorkspace({
           </ScrollView>
         );
 
-      case 'periodCalendar':
+      case 'repair':
         return (
           <ScrollView contentContainerStyle={styles.content}>
             <NavPill
-              emoji="🌙"
-              label="Period Calendar"
-              accent="#f7a8b8"
-              description="Track your cycle privately. Tap to open your calendar."
-              onPress={() => onOpenPeriodCalendar?.() || setScreen('periodCalendar')}
+              emoji="🤝"
+              label="Connection + Repair"
+              accent="#86efac"
+              description="Log connection moments, set weekly goals, and rebuild after hard days."
+              onPress={() => setScreen('repair')}
             />
           </ScrollView>
         );
 
-      case 'history':
+      case 'voiceReflect':
         return (
           <ScrollView contentContainerStyle={styles.content}>
             <NavPill
-              emoji="📜"
-              label="History"
-              accent="#d4a8f0"
-              description="All your past pages, entries, and bips in one place."
-              onPress={() => onOpenHistory?.() || setScreen('history')}
+              emoji="🎙️"
+              label="Voice Reflection"
+              accent="#7dd3fc"
+              description="A private space to process your day as a parent. No one reads this."
+              onPress={() => setScreen('voiceReflect')}
             />
           </ScrollView>
         );
@@ -982,8 +975,20 @@ function PagesWorkspace({
 
   const activeSectionDef = sections.find(s => s.id === activeSection) ?? sections[0];
 
+  const activeCompanionImg = activeSection === 'write' ? COMPANION_IMAGES[activeTab] : undefined;
+
   return (
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
+      {/* Floating companion — breathes behind the writing area */}
+      {activeCompanionImg && (
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.companionPresence, { transform: [{ scale: companionBreath }] }]}
+        >
+          <Image source={activeCompanionImg} style={{ width: 82, height: 120 }} resizeMode="contain" />
+        </Animated.View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -1071,6 +1076,15 @@ export { PagesWorkspace };
 
 const styles = StyleSheet.create({
   root: { flex: 1, paddingTop: Platform.OS === 'ios' ? 54 : 28 },
+  companionPresence: {
+    position: 'absolute',
+    right: 8,
+    top: 120,
+    width: 82,
+    height: 120,
+    opacity: 0.22,
+    zIndex: 0,
+  } as any,
   header: {
     paddingHorizontal: 20,
     flexDirection: 'row',
