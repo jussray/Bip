@@ -1,1 +1,1 @@
-export * from '@/constants/guardrails';
+export * from '../../../constants/guardrails';
