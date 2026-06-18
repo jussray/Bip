@@ -30,7 +30,8 @@ import {
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { VoiceNote } from '../types/bridge';
-import { fetchSekretReply } from '../utils/api';
+import { Audio } from 'expo-av';
+import { fetchSekretReply, fetchSekretVoice } from '../utils/api';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
@@ -124,6 +125,8 @@ export function VoiceBipScreen({
   const [isRecording,      setIsRecording]       = useState(false);
   const [recorded,         setRecorded]          = useState(false);
   const [sekretReply,      setSekretReply]       = useState('');
+  const [replyAudioUri,    setReplyAudioUri]     = useState('');
+  const [isVoiceLoading,   setIsVoiceLoading]    = useState(false);
   const [isThinking,       setIsThinking]        = useState(false);
   const [recordingTime,    setRecordingTime]     = useState(0);
   const [selectedBipType,  setSelectedBipType]   = useState<string | null>(null);
@@ -218,6 +221,7 @@ export function VoiceBipScreen({
     setIsRecording(true);
     setRecorded(false);
     setSekretReply('');
+    setReplyAudioUri('');
     setRecordingTime(0);
     setShowBipMenu(false);
     prepareVoiceSession('voice');
@@ -298,7 +302,7 @@ export function VoiceBipScreen({
     presence.endListening();
     const reply = await fetchSekretReply(
       'I just recorded a voice bip. I had some feelings I needed to get out.',
-      'journal',
+      'voiceBip',
       mood,
       avatarKey,
       undefined,
@@ -306,6 +310,10 @@ export function VoiceBipScreen({
       profileSide,
     );
     setSekretReply(reply);
+    setIsVoiceLoading(true);
+    const audio = await fetchSekretVoice({ reply, characterId: avatarKey });
+    if (audio) setReplyAudioUri(`data:${audio.contentType};base64,${audio.audioBase64}`);
+    setIsVoiceLoading(false);
     setIsThinking(false);
     presence.markResponseReady();
     setSelectedBipType(null);
@@ -319,6 +327,13 @@ export function VoiceBipScreen({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+
+  const playReplyAudio = async () => {
+    if (!replyAudioUri) return;
+    const { sound } = await Audio.Sound.createAsync({ uri: replyAudioUri });
+    await sound.playAsync();
+  };
 
   const prompts = avatar.prompts;
   const prompt = prompts[voicePromptIdx % prompts.length];
@@ -547,6 +562,13 @@ export function VoiceBipScreen({
           <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
             <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.responseLabel}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
+            {isVoiceLoading ? (
+              <Text style={[styles.voiceStatus, { color: theme.soft }]}>preparing voice…</Text>
+            ) : replyAudioUri ? (
+              <TouchableOpacity style={styles.voiceBtn} onPress={playReplyAudio}>
+                <Text style={styles.voiceBtnText}>▶ hear this reply</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         )}
 
@@ -744,6 +766,9 @@ const styles = StyleSheet.create({
   thinkingText:       { fontSize: 13, fontStyle: 'italic' },
   replyLabel:         { fontSize: 10, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 },
   replyText:          { fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
+  voiceStatus:        { marginTop: 10, fontSize: 12, fontStyle: 'italic', opacity: 0.75 },
+  voiceBtn:           { marginTop: 12, alignSelf: 'flex-start', backgroundColor: 'rgba(124,58,237,0.34)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)' },
+  voiceBtnText:       { color: '#f5f0ff', fontSize: 12, fontWeight: '800' },
   cardTitle:          { fontSize: 13, fontWeight: '600', marginBottom: 10 },
   tip:                { fontSize: 13, marginBottom: 8, lineHeight: 20 },
 

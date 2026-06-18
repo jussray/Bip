@@ -2,8 +2,8 @@
  * app/index.tsx — splash / side-selection gate
  *
  * PHASE 3 RESTORE:
- *  - Returning teen   → /(main)/home
- *  - Returning parent → /(main)/parent-room
+ *  - Returning teen   → /(teen)/room
+ *  - Returning parent → /(parent)/room
  *  - First visit      → side chooser (branded, no auto-skip)
  *  - After side chosen, SplashScreen shows with the artwork CTA
  *  - SplashScreen CTA → routes to the correct home
@@ -30,8 +30,8 @@ export default function Index() {
   }
 
   // Returning user — go straight to their space
-  if (userSide === 'teen')   return <Redirect href="/(main)/home" />;
-  if (userSide === 'parent') return <Redirect href="/(main)/parent-room" />;
+  if (userSide === 'teen')   return <Redirect href="/(teen)/room" />;
+  if (userSide === 'parent') return <Redirect href="/(parent)/room" />;
 
   // After chooser: show the branded splash with CTA
   if (pendingSide) {
@@ -43,8 +43,8 @@ export default function Index() {
           setUserSide(pendingSide);
           router.replace(
             pendingSide === 'parent'
-              ? '/(main)/parent-room'
-              : '/(main)/home',
+              ? '/(parent)/room'
+              : '/(teen)/room',
           );
         }}
       />

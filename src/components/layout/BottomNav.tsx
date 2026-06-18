@@ -11,17 +11,21 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 
 const SCREEN_MAP: Record<string, string> = {
-  home:          '/(main)/home',
-  pages:         '/(main)/pages',
-  calm:          '/(main)/calm',
-  circle:        '/(main)/circle',
-  sekret:        '/(main)/sekret',
-  voiceBip:      '/(main)/discover',
-  bridge:        '/(main)/bridge',
-  parentBridge:  '/(main)/bridge',
-  cloudThoughts: '/(main)/discover',
-  settings:      '/(main)/settings',
-  more:          '/(main)/settings',
+  home:          '/(teen)/room',
+  pages:         '/(teen)/pages',
+  calm:          '/(teen)/calm',
+  circle:        '/(teen)/circle',
+  sekret:        '/(teen)/room',
+  voiceBip:      '/(teen)/voicebip',
+  bridge:        '/(teen)/bridge',
+  parentBridge:  '/(parent)/bridge',
+  cloudThoughts: '/(teen)/cloud',
+  settings:      '/(teen)/settings',
+  more:          '/(teen)/settings',
+  parentHome:    '/(parent)/room',
+  parentPages:   '/(parent)/pages',
+  parentCircle:  '/(parent)/circle',
+  parentMore:    '/(parent)/more',
 };
 
 interface BottomNavProps {
@@ -39,10 +43,10 @@ export function BottomNav({ userSide }: BottomNavProps) {
   const items: [string, string, string][] =
     userSide === 'parent'
       ? [
-          ['home',   '🏠', 'Home'],
-          ['sekret', '💜', "Se'kret"],
-          ['pages',  '📖', 'Pages'],
-          ['more',   '☰',  'More'],
+          ['parentHome', '🌿', 'Room'],
+          ['parentPages', '📝', 'Pages'],
+          ['parentCircle', '🤝', 'Circle'],
+          ['parentMore', '☰',  'More'],
         ]
       : [
           ['home',   '🏠', 'Home'],
