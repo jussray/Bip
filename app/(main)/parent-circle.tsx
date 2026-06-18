@@ -2,15 +2,21 @@
  * app/(main)/parent-circle.tsx
  *
  * Parent Circle — wires ParentCircleScreen to AppContext + cloud sync.
- * - pull-to-refresh reloads parent circle posts from Supabase
- * - saveParentCirclePost syncs to cloud before updating local state
- * - navigateTo() replaces raw router.push template
+ *
+ * Mount flow:
+ *   1. Screen renders immediately with local state (AsyncStorage, instant).
+ *   2. loadParentCircleFeed() runs in the background.
+ *   3. Cloud posts are merged additively: any id not already in local state
+ *      is prepended so nothing the user wrote offline is lost.
+ *
+ * Pull-to-refresh repeats the same merge.
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
-import { syncParentCirclePost } from '@/utils/sync';
+import { syncParentCirclePost, loadParentCircleFeed } from '@/utils/sync';
 import { ParentCircleScreen } from '@screens/ParentCircleScreen';
+import type { ParentCirclePost } from '../../types/index';
 
 export default function ParentCircleRoute() {
   const {
@@ -25,9 +31,24 @@ export default function ParentCircleRoute() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  // Sync any locally-saved posts that haven't been pushed yet on mount.
-  // Full cloud read for parent circle is deferred to a later sprint when
-  // the parent feed table is queryable via loadCircleFeed.
+  /**
+   * mergeCloudPosts
+   * Pulls parent_circle_posts from Supabase and prepends any rows whose id
+   * is not already present in local state. Additive only — never removes
+   * local posts that haven't synced yet.
+   */
+  const mergeCloudPosts = useCallback(async () => {
+    const cloud = await loadParentCircleFeed();
+    if (!cloud.length) return;
+    setParentCirclePosts((local: ParentCirclePost[]) => {
+      const localIds = new Set(local.map((p: ParentCirclePost) => String(p.id)));
+      const newFromCloud = cloud.filter(p => !localIds.has(String(p.id)));
+      if (!newFromCloud.length) return local;
+      return [...newFromCloud, ...local];
+    });
+  }, [setParentCirclePosts]);
+
+  // On mount: push any unsaved local posts, then pull cloud posts.
   useEffect(() => {
     parentCirclePosts.forEach(post => {
       void syncParentCirclePost({
@@ -38,30 +59,21 @@ export default function ParentCircleRoute() {
         reactions: post.reactions as any,
       });
     });
+    void mergeCloudPosts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Re-sync all local posts; cloud read wired in a later sprint.
-    parentCirclePosts.forEach(post => {
-      void syncParentCirclePost({
-        id: post.id,
-        text: post.text,
-        date: post.date,
-        time: post.time,
-        reactions: post.reactions as any,
-      });
-    });
+    await mergeCloudPosts();
     setRefreshing(false);
-  }, [parentCirclePosts]);
+  }, [mergeCloudPosts]);
 
   function handleSave() {
     if (!parentCirclePostText.trim()) return;
-    // Snapshot before saveParentCirclePost clears the draft
     const text = parentCirclePostText.trim();
     const now = new Date();
     saveParentCirclePost();
-    // Cloud write — fire-and-forget, never throws
     void syncParentCirclePost({
       id: Date.now(),
       text,

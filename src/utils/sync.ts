@@ -129,6 +129,45 @@ export function syncParentCirclePost(post: ParentCirclePost): void {
   });
 }
 
+// ── Parent Circle: cloud read ─────────────────────────────────────────────────
+/**
+ * loadParentCircleFeed
+ * Reads the user's own parent_circle_posts from Supabase, most-recent first.
+ * Returns an empty array if Supabase is unconfigured, the user is not
+ * authenticated, or the network call fails — never throws.
+ *
+ * Merge strategy in the caller: use the returned array to fill any posts that
+ * are missing from local state (additive, never destructive).
+ */
+export async function loadParentCircleFeed(
+  limit = 50,
+): Promise<ParentCirclePost[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.parentCirclePosts)
+      .select('id, text, date, time, reactions, circle_tag')
+      .eq('user_id', uid)
+      .order('id', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id:        r.id,
+      text:      r.text,
+      date:      r.date,
+      time:      r.time,
+      reactions: r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+      circleTag: r.circle_tag ?? undefined,
+    })) as ParentCirclePost[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadParentCircleFeed failed', e);
+    return [];
+  }
+}
+
 // ── Circle V1: resolve circle_id ─────────────────────────────────────────────
 async function resolveOwnCircleId(
   uid: string,
