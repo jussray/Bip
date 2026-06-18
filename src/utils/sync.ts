@@ -23,7 +23,7 @@ import type {
   FriendsCirclePost,
   CrewCirclePost,
   ParentCirclePost as CircleParentPost,
-} from '../types/circle';
+} from '../../types/circle';
 
 // ── Internal helpers ──────────────────────────────────────────────
 async function currentUserId(): Promise<string | null> {

@@ -26,6 +26,7 @@ import type {
   VoiceNote,
   ParentCirclePost,
 } from '@/types';
+import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
 
 export type { CirclePost } from '@/types';
 
@@ -85,16 +86,16 @@ interface AppContextValue {
   setParentCirclePostText: (text: string) => void;
   parentVoiceNotes: VoiceNote[];
   setParentVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
-  parentOracleProfile: unknown;
-  setParentOracleProfile: (profile: unknown) => void;
-  parentOracleSessions: unknown[];
-  setParentOracleSessions: React.Dispatch<React.SetStateAction<unknown[]>>;
+  parentOracleProfile: OracleProfile | null;
+  setParentOracleProfile: (profile: OracleProfile | null) => void;
+  parentOracleSessions: OracleSessionSummary[];
+  setParentOracleSessions: React.Dispatch<React.SetStateAction<OracleSessionSummary[]>>;
 
   // Parent actions
   saveParentPageEntry: () => void;
   saveParentCirclePost: () => void;
   reactToParentPost: (postId: number, reaction: string) => void;
-  completeParentOracleSession: (session: unknown) => void;
+  completeParentOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -187,9 +188,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  function completeParentOracleSession(session: unknown) {
-    s.setParentOracleSessions((sessions: unknown[]) => [session, ...sessions].slice(0, 50));
-    s.setParentOracleProfile((session as { profileSnapshot?: unknown })?.profileSnapshot ?? null);
+  function completeParentOracleSession(profile: OracleProfile, session: OracleSessionSummary) {
+    s.setParentOracleSessions((sessions: OracleSessionSummary[]) => [session, ...sessions].slice(0, 50));
+    s.setParentOracleProfile(profile);
   }
 
   const value: AppContextValue = {
