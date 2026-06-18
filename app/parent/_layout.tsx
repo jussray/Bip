@@ -27,8 +27,9 @@ export default function ParentLayout() {
       <Tabs.Screen name="more"   options={{ title: 'More',   tabBarIcon: () => <TabIcon emoji="✨" /> }} />
 
       {/* Hidden — reachable via navigation, not tab bar */}
-      <Tabs.Screen name="bridge"   options={{ href: null }} />
-      <Tabs.Screen name="voicebip" options={{ href: null }} />
+      <Tabs.Screen name="bridge"           options={{ href: null }} />
+      <Tabs.Screen name="voicebip"         options={{ href: null }} />
+      <Tabs.Screen name="period-calendar"  options={{ href: null }} />
     </Tabs>
   );
 }

@@ -71,10 +71,11 @@ const TEEN_PAGES_SECTIONS: SectionDef[] = [
 ];
 
 const PARENT_PAGES_SECTIONS: SectionDef[] = [
-  { id: 'write',         label: 'Write',     icon: '✏️',  accent: '#d8c9b8' },
-  { id: 'sekretReplies', label: "Se'kret",   icon: '💜',  accent: '#e9a8d2' },
-  { id: 's2tell',        label: 'S2Tell',    icon: '🤫',  accent: '#a3d9a5' },
-  { id: 'memories',      label: 'Memories',  icon: '🌸',  accent: '#f9c9a3' },
+  { id: 'write',          label: 'Write',          icon: '✏️',  accent: '#d8c9b8' },
+  { id: 'sekretReplies',  label: "Se'kret",        icon: '💜',  accent: '#e9a8d2' },
+  { id: 's2tell',         label: 'S2Tell',         icon: '🤫',  accent: '#a3d9a5' },
+  { id: 'memories',       label: 'Memories',       icon: '🌸',  accent: '#f9c9a3' },
+  { id: 'periodCalendar', label: 'Cycle Support',  icon: '🌿',  accent: '#5ebd8a' },
 ];
 
 // ── Legacy write-tab definitions (unchanged) ───────────────────────────────
@@ -912,10 +913,14 @@ function PagesWorkspace({
         return (
           <ScrollView contentContainerStyle={styles.content}>
             <NavPill
-              emoji="🌙"
-              label="Period Calendar"
-              accent="#f7a8b8"
-              description="Track your cycle privately. Tap to open your calendar."
+              emoji={side === 'parent' ? '🌿' : '🌙'}
+              label={side === 'parent' ? 'Cycle Support' : 'Period Calendar'}
+              accent={side === 'parent' ? '#5ebd8a' : '#f7a8b8'}
+              description={
+                side === 'parent'
+                  ? 'Supply checklists, comfort tips, and your own optional cycle tracker.'
+                  : 'Track your cycle privately. Tap to open your calendar.'
+              }
               onPress={() => onOpenPeriodCalendar?.() || setScreen('periodCalendar')}
             />
           </ScrollView>

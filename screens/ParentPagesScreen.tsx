@@ -15,6 +15,7 @@ interface ParentPagesScreenProps {
   weatherMode?: string;
   oracleProfile?: OracleProfile;
   onCompleteOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
+  onOpenPeriodCalendar?: () => void;
 }
 
 export function ParentPagesScreen(props: ParentPagesScreenProps) {

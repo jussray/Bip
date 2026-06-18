@@ -48,6 +48,7 @@ export default function ParentPagesRoute() {
         oracleProfile={parentOracleProfile ?? undefined}
         onCompleteOracleSession={completeParentOracleSession}
         setScreen={parentNavigateTo}
+        onOpenPeriodCalendar={() => router.push('/parent/period-calendar' as any)}
         BottomNav={null}
       />
     );
