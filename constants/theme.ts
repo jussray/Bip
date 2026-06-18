@@ -171,9 +171,16 @@ const cloudAvatarWindow   = cloudSleepy;
 const cloudAvatarFullbody = cloudHappy;
 
 // ── UI / Splash ────────────────────────────────────────────────────────────
-// The native splash is color-only in app.json. The branded splash experience is
-// composed in SplashScreen from text, controls, mascots, and valid scene artwork.
-const sekretSplash = bgRayleneRoomNight;
+// Role-based splash screens — shown when the user enters Se'kret Bip.
+// Teen:   two teens back-to-back, neon pink/purple, headphone cloud mascot.
+// Parent: couple by candlelight, warm purple neon, lanterns.
+//
+// sekretSplash is kept as a backward-compat alias → resolves to teen splash.
+// Any code still referencing IMAGES.sekretSplash gets the teen artwork
+// until it migrates to the role-aware SekretSplashScreen component.
+const sekretSplashTeen   = require("../assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png");
+const sekretSplashParent = require("../assets/images/088975D0-598A-4B68-8857-67410DA25BA0.jpeg");
+const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
 // ── Scene composites (character + room background merged) ──────────────────
 const rayleneRoomDayScene   = require("../assets/images/raylene-room-day-scene.png");
@@ -341,8 +348,12 @@ export const IMAGES = {
   cloudSleepy,
   cloudStormy,
 
-  // UI / Splash
+  // UI / Splash — role-based
+  // Use sekretSplashTeen / sekretSplashParent in new code.
+  // sekretSplash is kept for backward compat (resolves to teen).
   sekretSplash,
+  sekretSplashTeen,
+  sekretSplashParent,
 } as const;
 
 export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';
@@ -503,6 +514,17 @@ export function getParentRoomBg(
   const prefix = style === "mom" ? "bgMomRoom" : "bgDadRoom";
   const suffix = phase === "deepNight" ? "DeepNight" : phase.charAt(0).toUpperCase() + phase.slice(1);
   return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
+}
+
+// ── Role-aware splash helper ───────────────────────────────────────────────
+// Returns the correct Se'kret splash asset for the given user side.
+// Use this anywhere you need the splash image without importing SekretSplashScreen.
+export function getSekretSplash(
+  userSide: 'teen' | 'parent' | null | undefined,
+): ImageSourcePropType {
+  return userSide === 'parent'
+    ? IMAGES.sekretSplashParent
+    : IMAGES.sekretSplashTeen;
 }
 
 export type VibeKey = "raylene" | "rylane" | "cloud" | "night" | "rain" | "sunset";
