@@ -30,7 +30,6 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
-import { getParentRoomBg } from '../constants/theme';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
@@ -60,7 +59,7 @@ interface SectionDef {
   accent: string;
 }
 
-const PAGES_HOME_SECTIONS: SectionDef[] = [
+const TEEN_PAGES_SECTIONS: SectionDef[] = [
   { id: 'write',          label: 'Write',           icon: '✏️',  accent: '#c4b5fd' },
   { id: 'voiceBips',      label: 'Voice Bips',      icon: '🎙️',  accent: '#9bd8e5' },
   { id: 'sekretReplies',  label: "Se'kret Replies", icon: '💜',  accent: '#e9a8d2' },
@@ -69,6 +68,13 @@ const PAGES_HOME_SECTIONS: SectionDef[] = [
   { id: 's2tell',         label: 'S2Tell',          icon: '🤫',  accent: '#a3d9a5' },
   { id: 'periodCalendar', label: 'Period Calendar', icon: '🌙',  accent: '#f7a8b8' },
   { id: 'history',        label: 'History',         icon: '📜',  accent: '#d4a8f0' },
+];
+
+const PARENT_PAGES_SECTIONS: SectionDef[] = [
+  { id: 'write',         label: 'Write',     icon: '✏️',  accent: '#d8c9b8' },
+  { id: 'sekretReplies', label: "Se'kret",   icon: '💜',  accent: '#e9a8d2' },
+  { id: 's2tell',        label: 'S2Tell',    icon: '🤫',  accent: '#a3d9a5' },
+  { id: 'memories',      label: 'Memories',  icon: '🌸',  accent: '#f9c9a3' },
 ];
 
 // ── Legacy write-tab definitions (unchanged) ───────────────────────────────
@@ -511,12 +517,10 @@ function PagesWorkspace({
   onOpenS2Tell, onOpenPeriodCalendar, onOpenHistory,
 }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
+  const sections = side === 'teen' ? TEEN_PAGES_SECTIONS : PARENT_PAGES_SECTIONS;
   const isRylane = selectedSekret === 'rylane';
   const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
   const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
-  const parentRoomImage = side === 'parent'
-    ? getParentRoomBg(parentRoomStyle ?? 'mom', weatherMode)
-    : undefined;
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
 
   // Phase 5: top-level home section navigation (teen only)
@@ -935,17 +939,10 @@ function PagesWorkspace({
     }
   };
 
-  const activeSectionDef = PAGES_HOME_SECTIONS.find(s => s.id === activeSection) ?? PAGES_HOME_SECTIONS[0];
+  const activeSectionDef = sections.find(s => s.id === activeSection) ?? sections[0];
 
   return (
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
-      {parentRoomImage ? (
-        <>
-          <Image source={parentRoomImage} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-          <View style={[StyleSheet.absoluteFillObject, styles.parentRoomOverlay]} />
-        </>
-      ) : null}
-
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -966,7 +963,7 @@ function PagesWorkspace({
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.tabs}
         >
-          {PAGES_HOME_SECTIONS.map(section => {
+          {sections.map(section => {
             const active = section.id === activeSection;
             return (
               <TouchableOpacity

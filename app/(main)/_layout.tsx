@@ -107,11 +107,7 @@ export default function MainLayout() {
       />
       <Tabs.Screen
         name="parent-bridge"
-        options={{
-          title: 'Bridge',
-          tabBarIcon: () => <TabIcon emoji="🌉" />,
-          href: isTeen ? null : undefined,
-        }}
+        options={{ href: null }}
       />
 
       {/* ── More: visible on BOTH sides ── */}
