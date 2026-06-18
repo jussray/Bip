@@ -1,16 +1,12 @@
 /**
- * app/index.tsx — splash / parent-entry gate
+ * app/index.tsx — splash / side-selection gate
  *
- * Expo Router boots here.  We do NOT immediately redirect to /(main)/home
- * so the parent-entry experience is preserved.
- *
- * Flow:
- *   • While useSekretState is loading, show a minimal splash.
- *   • If userSide is already confirmed (returning user), go straight to home.
- *   • Otherwise, show the SplashScreen so the user can choose Teen / Parent
- *     with an intentional tap before anything else loads.
- *
- * Parent entry MUST be a deliberate action — no auto-forward.
+ * PHASE 1 FIX:
+ *  - Teen button: setUserSide('teen') + router.replace('/(main)/home')
+ *  - Parent button: setUserSide('parent') + router.replace('/(main)/parent-room')
+ *  - Returning teen  → /(main)/home
+ *  - Returning parent → /(main)/parent-room
+ *  - First visit → show chooser (no auto-skip)
  */
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
@@ -18,9 +14,8 @@ import { Redirect, router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 
 export default function Index() {
-  const { userSide, isLoading } = useAppContext();
+  const { userSide, setUserSide, isLoading } = useAppContext();
 
-  // While persisted state is being rehydrated, show a neutral splash.
   if (isLoading) {
     return (
       <View style={styles.root}>
@@ -29,13 +24,11 @@ export default function Index() {
     );
   }
 
-  // Returning user — go directly to the main experience.
-  if (userSide) {
-    return <Redirect href="/(main)/home" />;
-  }
+  // Returning user — go directly to their side
+  if (userSide === 'teen') return <Redirect href="/(main)/home" />;
+  if (userSide === 'parent') return <Redirect href="/(main)/parent-room" />;
 
-  // First visit or cleared storage — show the parent / teen entry gate.
-  // Each button navigates explicitly; nothing auto-fires.
+  // First visit — deliberate side choice required
   return (
     <View style={styles.root}>
       <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
@@ -43,7 +36,10 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnTeen]}
-        onPress={() => router.replace('/(main)/home')}
+        onPress={() => {
+          setUserSide('teen');
+          router.replace('/(main)/home');
+        }}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the teen 💜</Text>
@@ -51,7 +47,10 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnParent]}
-        onPress={() => router.replace('/(main)/home')}
+        onPress={() => {
+          setUserSide('parent');
+          router.replace('/(main)/parent-room');
+        }}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the parent 🌿</Text>

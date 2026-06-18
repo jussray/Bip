@@ -1,14 +1,8 @@
 /**
  * src/context/AppContext.tsx
  *
- * Global app context — replaces prop drilling of theme, mood,
- * userSide, breatheAnim, journal state, and mood history that
- * previously threaded through app/index.tsx → every screen.
- *
- * Usage:
- *   const { theme, mood, selectMood } = useAppContext();
- *
- * Provider is mounted in app/_layout.tsx so all routes have access.
+ * PHASE 5 FIX: Added all parent state + actions.
+ * setUserSide exposed so splash can persist side choice.
  */
 import React, {
   createContext,
@@ -19,10 +13,8 @@ import React, {
   ReactNode,
 } from 'react';
 import { Animated } from 'react-native';
-import { useSekretState } from '@hooks/useSekretState';
+import { useSekretState } from '@/hooks/useSekretState';
 import { HOME_MESSAGES } from '@constants/theme';
-
-// ── Types ──────────────────────────────────────────────────────────────────────────
 
 interface JournalEntry {
   id: number;
@@ -48,15 +40,16 @@ export interface CirclePost {
 }
 
 interface AppContextValue {
-  // Theme + identity
+  // Identity
   theme: string;
-  userSide: 'teen' | 'parent';
+  userSide: 'teen' | 'parent' | null;
+  setUserSide: (side: 'teen' | 'parent') => void;
   selectedSekret: string;
 
-  // Mood
+  // Teen mood
   mood: string;
   setMood: (mood: string) => void;
-  selectMood: (mood: string) => void;   // setMood + append to moodHistory
+  selectMood: (mood: string) => void;
   moodHistory: MoodHistoryEntry[];
 
   // Journal
@@ -66,19 +59,43 @@ interface AppContextValue {
   setEntries: React.Dispatch<React.SetStateAction<JournalEntry[]>>;
   saveEntry: () => void;
 
-  // Circle
+  // Teen circle
   circlePosts: CirclePost[];
   setCirclePosts: React.Dispatch<React.SetStateAction<CirclePost[]>>;
 
-  // UI state
+  // UI
   homeMessageIndex: number;
   breatheAnim: Animated.Value;
-
-  // Misc
   isLoading: boolean;
-}
 
-// ── Context ────────────────────────────────────────────────────────────────────────
+  // ── Parent state ──────────────────────────────────────────────
+  parentMood: string;
+  setParentMood: (mood: string) => void;
+  parentMoodDate: string;
+  setParentMoodDate: (date: string) => void;
+  parentRoomStyle: string;
+  setParentRoomStyle: (style: string) => void;
+  parentPagesDraft: string;
+  setParentPagesDraft: (text: string) => void;
+  parentPagesEntries: any[];
+  setParentPagesEntries: React.Dispatch<React.SetStateAction<any[]>>;
+  parentCirclePosts: any[];
+  setParentCirclePosts: React.Dispatch<React.SetStateAction<any[]>>;
+  parentCirclePostText: string;
+  setParentCirclePostText: (text: string) => void;
+  parentVoiceNotes: any[];
+  setParentVoiceNotes: React.Dispatch<React.SetStateAction<any[]>>;
+  parentOracleProfile: any;
+  setParentOracleProfile: (profile: any) => void;
+  parentOracleSessions: any[];
+  setParentOracleSessions: React.Dispatch<React.SetStateAction<any[]>>;
+
+  // Parent actions
+  saveParentPageEntry: () => void;
+  saveParentCirclePost: () => void;
+  reactToParentPost: (postId: number, reaction: string) => void;
+  completeParentOracleSession: (session: any) => void;
+}
 
 const AppContext = createContext<AppContextValue | null>(null);
 
@@ -88,33 +105,14 @@ export function useAppContext(): AppContextValue {
   return ctx;
 }
 
-// ── Provider ──────────────────────────────────────────────────────────────────────
-
 export function AppProvider({ children }: { children: ReactNode }) {
-  // Journal local state
   const [journalText, setJournalText] = useState('');
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
-
-  // Circle posts — local state until Supabase sync is wired in a later sprint
   const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
-
-  // breatheAnim lives here so it persists across tab navigation
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
-  const {
-    theme,
-    mood,
-    setMood,
-    userSide,
-    selectedSekret,
-    entries,
-    setEntries,
-    moodHistory,
-    setMoodHistory,
-    isLoading,
-  } = useSekretState();
+  const s = useSekretState();
 
-  // Breathe animation — runs once for the entire app lifetime
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -124,7 +122,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ).start();
   }, []);
 
-  // Rotate home messages every 5 s
   useEffect(() => {
     const id = setInterval(
       () => setHomeMessageIndex((p) => (p + 1) % HOME_MESSAGES.length),
@@ -134,51 +131,99 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   function selectMood(m: string) {
-    setMood(m);
-    setMoodHistory((h: MoodHistoryEntry[]) => [
-      {
-        id: Date.now(),
-        mood: m,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-      },
+    s.setMood(m);
+    s.setMoodHistory((h: MoodHistoryEntry[]) => [
+      { id: Date.now(), mood: m, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
       ...h,
     ]);
   }
 
   function saveEntry() {
     if (!journalText.trim()) return;
-    setEntries((e: JournalEntry[]) => [
-      {
-        id: Date.now(),
-        text: journalText,
-        mood,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-      },
+    s.setEntries((e: JournalEntry[]) => [
+      { id: Date.now(), text: journalText, mood: s.mood, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
       ...e,
     ]);
     setJournalText('');
   }
 
+  // ── Parent actions ─────────────────────────────────────────────
+  function saveParentPageEntry() {
+    if (!s.parentPagesDraft.trim()) return;
+    s.setParentPagesEntries((e: any[]) => [
+      { id: Date.now(), text: s.parentPagesDraft, mood: s.parentMood, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
+      ...e,
+    ]);
+    s.setParentPagesDraft('');
+  }
+
+  function saveParentCirclePost() {
+    if (!s.parentCirclePostText.trim()) return;
+    s.setParentCirclePosts((posts: any[]) => [
+      { id: Date.now(), text: s.parentCirclePostText, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), reactions: { felt: 0, support: 0, relate: 0 } },
+      ...posts,
+    ]);
+    s.setParentCirclePostText('');
+  }
+
+  function reactToParentPost(postId: number, reaction: string) {
+    s.setParentCirclePosts((posts: any[]) =>
+      posts.map(p => p.id === postId
+        ? { ...p, reactions: { ...p.reactions, [reaction]: (p.reactions[reaction] ?? 0) + 1 } }
+        : p
+      )
+    );
+  }
+
+  function completeParentOracleSession(session: any) {
+    s.setParentOracleSessions((sessions: any[]) => [session, ...sessions].slice(0, 50));
+    s.setParentOracleProfile(session.profileSnapshot ?? null);
+  }
+
   const value: AppContextValue = {
-    theme,
-    userSide,
-    selectedSekret,
-    mood,
-    setMood,
+    theme: s.theme,
+    userSide: s.userSide,
+    setUserSide: s.setUserSide,
+    selectedSekret: s.selectedSekret,
+    mood: s.mood,
+    setMood: s.setMood,
     selectMood,
-    moodHistory,
+    moodHistory: s.moodHistory,
     journalText,
     setJournalText,
-    entries,
-    setEntries,
+    entries: s.entries,
+    setEntries: s.setEntries,
     saveEntry,
     circlePosts,
     setCirclePosts,
     homeMessageIndex,
     breatheAnim,
-    isLoading,
+    isLoading: s.isLoading,
+    // parent
+    parentMood: s.parentMood,
+    setParentMood: s.setParentMood,
+    parentMoodDate: s.parentMoodDate,
+    setParentMoodDate: s.setParentMoodDate,
+    parentRoomStyle: s.parentRoomStyle,
+    setParentRoomStyle: s.setParentRoomStyle,
+    parentPagesDraft: s.parentPagesDraft,
+    setParentPagesDraft: s.setParentPagesDraft,
+    parentPagesEntries: s.parentPagesEntries,
+    setParentPagesEntries: s.setParentPagesEntries,
+    parentCirclePosts: s.parentCirclePosts,
+    setParentCirclePosts: s.setParentCirclePosts,
+    parentCirclePostText: s.parentCirclePostText,
+    setParentCirclePostText: s.setParentCirclePostText,
+    parentVoiceNotes: s.parentVoiceNotes,
+    setParentVoiceNotes: s.setParentVoiceNotes,
+    parentOracleProfile: s.parentOracleProfile,
+    setParentOracleProfile: s.setParentOracleProfile,
+    parentOracleSessions: s.parentOracleSessions,
+    setParentOracleSessions: s.setParentOracleSessions,
+    saveParentPageEntry,
+    saveParentCirclePost,
+    reactToParentPost,
+    completeParentOracleSession,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
