@@ -25,6 +25,8 @@ import {
   type RoomPhase,
   type VibeKey,
 } from '../constants/theme';
+import { STICKER_REGISTRY, type StickerCharacter } from '../constants/characterStickers';
+import STICKER_IMAGES from '../constants/stickerImages';
 import { BareRoomRenderer } from '../components/rooms/BareRoomRenderer';
 
 const { width, height } = Dimensions.get('window');
@@ -35,19 +37,38 @@ const STORAGE_KEY = 'sekretbip_user_room_v1';
 
 export type LightingMode = RoomPhase | 'auto';
 
+export interface PlacedItem {
+  uid:       string;     // unique instance id
+  stickerId: string;     // CharacterSticker.id from STICKER_REGISTRY
+  x:         number;     // % from left (0–100)
+  y:         number;     // % from top  (0–100)
+  scale:     number;     // default 1.0
+}
+
 export interface UserRoomConfig {
-  baseRoomId: Character;
+  baseRoomId:   Character;
   lightingMode: LightingMode;
-  companionId: Character;
-  roomName: string;
+  companionId:  Character;
+  roomName:     string;
+  placedItems:  PlacedItem[];
 }
 
 const DEFAULT_USER_ROOM: UserRoomConfig = {
-  baseRoomId: 'raylene',
+  baseRoomId:   'raylene',
   lightingMode: 'auto',
-  companionId: 'raylene',
-  roomName: '',
+  companionId:  'raylene',
+  roomName:     '',
+  placedItems:  [],
 };
+
+// Spread-out default drop positions (right side / bottom to avoid companion on left)
+const PLACE_SLOTS: { x: number; y: number }[] = [
+  { x: 64, y: 26 }, { x: 76, y: 18 }, { x: 72, y: 46 },
+  { x: 80, y: 60 }, { x: 56, y: 66 }, { x: 66, y: 38 },
+  { x: 78, y: 32 }, { x: 60, y: 74 },
+];
+
+const MAX_PLACED = 8;
 
 type Mood     = string;
 type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
@@ -246,7 +267,8 @@ const safe = (src: ImageSourcePropType | undefined, fallback: ImageSourcePropTyp
 
 // ─── VibeLab2Sheet ────────────────────────────────────────────────────────────
 
-type VLTab = 'room' | 'lighting' | 'companion';
+type VLTab = 'room' | 'lighting' | 'companion' | 'decor';
+type DecorFilter = 'all' | StickerCharacter;
 const CHARACTERS: Character[] = ['raylene', 'rylane', 'cloud', 'night'];
 
 interface VibeLab2SheetProps {
@@ -257,21 +279,43 @@ interface VibeLab2SheetProps {
 }
 
 function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps) {
-  const [draft, setDraft] = useState<UserRoomConfig>(current);
-  const [tab,   setTab]   = useState<VLTab>('room');
+  const [draft,       setDraft]       = useState<UserRoomConfig>(current);
+  const [tab,         setTab]         = useState<VLTab>('room');
+  const [decorFilter, setDecorFilter] = useState<DecorFilter>('all');
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       setDraft(current);
       setTab('room');
+      setDecorFilter('all');
       Animated.spring(slideAnim, { toValue: 1, tension: 68, friction: 11, useNativeDriver: true }).start();
     } else {
       Animated.timing(slideAnim, { toValue: 0, duration: 210, easing: Easing.in(Easing.quad), useNativeDriver: true }).start();
     }
   }, [visible, current]);
 
-  const sheetY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [500, 0] });
+  const sheetY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] });
+
+  const filteredStickers = useMemo(() =>
+    decorFilter === 'all'
+      ? STICKER_REGISTRY
+      : STICKER_REGISTRY.filter(s => s.character === decorFilter),
+    [decorFilter],
+  );
+
+  const addSticker = useCallback((stickerId: string) => {
+    setDraft(d => {
+      if (d.placedItems.length >= MAX_PLACED) return d;
+      const slot = PLACE_SLOTS[d.placedItems.length % PLACE_SLOTS.length];
+      const uid  = `${stickerId}-${Date.now()}`;
+      return { ...d, placedItems: [...d.placedItems, { uid, stickerId, ...slot, scale: 1 }] };
+    });
+  }, []);
+
+  const removeSticker = useCallback((uid: string) => {
+    setDraft(d => ({ ...d, placedItems: d.placedItems.filter(i => i.uid !== uid) }));
+  }, []);
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -282,14 +326,16 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
 
         {/* Tabs */}
         <View style={vl.tabRow}>
-          {(['room', 'lighting', 'companion'] as VLTab[]).map(t => (
+          {(['room', 'lighting', 'companion', 'decor'] as VLTab[]).map(t => (
             <TouchableOpacity
               key={t}
               style={[vl.tab, tab === t && vl.tabActive]}
               onPress={() => setTab(t)}
             >
               <Text style={[vl.tabText, tab === t && vl.tabTextActive]}>
-                {t === 'room' ? '🏠 room' : t === 'lighting' ? '✨ light' : '💫 companion'}
+                {t === 'room'      ? '🏠'    :
+                 t === 'lighting'  ? '✨'    :
+                 t === 'companion' ? '💫'    : '🖼️'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -364,6 +410,75 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
               );
             })}
           </ScrollView>
+        )}
+
+        {/* Decor / furnishing picker */}
+        {tab === 'decor' && (
+          <View style={{ flex: 1 }}>
+            {/* Character filter chips */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.filterRow} contentContainerStyle={vl.filterContent}>
+              {(['all', 'raylene', 'rylane', 'cloud'] as DecorFilter[]).map(f => (
+                <TouchableOpacity
+                  key={f}
+                  style={[vl.filterChip, decorFilter === f && vl.filterChipActive]}
+                  onPress={() => setDecorFilter(f)}
+                >
+                  <Text style={[vl.filterChipText, decorFilter === f && vl.filterChipTextActive]}>
+                    {f === 'all' ? '✦ all' : f === 'raylene' ? '💜 raylene' : f === 'rylane' ? '⚡ rylane' : '☁️ cloud'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Sticker grid */}
+            <ScrollView style={vl.decorScroll} contentContainerStyle={vl.decorGrid} showsVerticalScrollIndicator={false}>
+              {filteredStickers.map(sticker => {
+                const src = STICKER_IMAGES[sticker.id];
+                const placed = draft.placedItems.filter(i => i.stickerId === sticker.id).length;
+                const atCap  = draft.placedItems.length >= MAX_PLACED;
+                return (
+                  <TouchableOpacity
+                    key={sticker.id}
+                    style={[vl.decorCell, atCap && !placed && vl.decorCellDim]}
+                    onPress={() => !atCap && addSticker(sticker.id)}
+                    activeOpacity={0.75}
+                    disabled={atCap && !placed}
+                  >
+                    {src
+                      ? <Image source={src} style={vl.decorThumb} resizeMode="contain" />
+                      : <View style={vl.decorPlaceholder} />
+                    }
+                    {placed > 0 && (
+                      <View style={vl.decorBadge}>
+                        <Text style={vl.decorBadgeText}>{placed}</Text>
+                      </View>
+                    )}
+                    <Text style={vl.decorLabel} numberOfLines={1}>{sticker.emotion}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* In your room — placed items strip */}
+            {draft.placedItems.length > 0 && (
+              <View style={vl.placedSection}>
+                <Text style={vl.placedTitle}>in your room ({draft.placedItems.length}/{MAX_PLACED})</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={vl.placedRow}>
+                  {draft.placedItems.map(item => {
+                    const src = STICKER_IMAGES[item.stickerId];
+                    return (
+                      <View key={item.uid} style={vl.placedChip}>
+                        {src && <Image source={src} style={vl.placedThumb} resizeMode="contain" />}
+                        <TouchableOpacity style={vl.placedRemove} onPress={() => removeSticker(item.uid)}>
+                          <Text style={vl.placedRemoveText}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </View>
         )}
 
         <TouchableOpacity style={vl.saveBtn} onPress={() => { onSave(draft); onClose(); }}>
@@ -594,6 +709,29 @@ export function UserRoomScreen({
           );
         })}
       </Animated.View>
+
+      {/* ── LAYER 3: Placed decor / furnishing items ─────────────────── */}
+      {userRoom.placedItems.map(item => {
+        const src = STICKER_IMAGES[item.stickerId];
+        if (!src) return null;
+        const sz = width * 0.2 * item.scale;
+        return (
+          <Image
+            key={item.uid}
+            source={src}
+            style={{
+              position: 'absolute',
+              left:     `${item.x}%` as any,
+              top:      `${item.y}%` as any,
+              width:    sz,
+              height:   sz,
+              zIndex:   6,
+            }}
+            resizeMode="contain"
+            accessible={false}
+          />
+        );
+      })}
 
       {/* ── LAYER 5: Companion — always visible, tappable ─────────────── */}
       <Animated.View
@@ -882,8 +1020,66 @@ const vl = StyleSheet.create({
   },
   companionAvatar: { width: 100, height: 120 },
 
+  // ── Decor tab ────────────────────────────────────────────────────────────────
+
+  filterRow:    { maxHeight: 36, marginBottom: 10 },
+  filterContent:{ paddingRight: 8, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  filterChip:   {
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(147,51,234,0.18)',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(124,58,237,0.28)',
+    borderColor: 'rgba(196,181,253,0.55)',
+  },
+  filterChipText:      { color: 'rgba(196,181,253,0.55)', fontSize: 11, fontWeight: '600' },
+  filterChipTextActive:{ color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+
+  decorScroll: { maxHeight: 200 },
+  decorGrid: {
+    flexDirection: 'row', flexWrap: 'wrap',
+    gap: 10, paddingBottom: 8, paddingTop: 2,
+  },
+  decorCell: {
+    width: (width - 80) / 4,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: 'rgba(147,51,234,0.14)',
+  },
+  decorCellDim: { opacity: 0.35 },
+  decorThumb:   { width: 46, height: 46 },
+  decorPlaceholder: { width: 46, height: 46, backgroundColor: 'rgba(147,51,234,0.12)', borderRadius: 8 },
+  decorLabel:   { color: 'rgba(196,181,253,0.6)', fontSize: 8, marginTop: 4, textAlign: 'center', paddingHorizontal: 2 },
+  decorBadge: {
+    position: 'absolute', top: 4, right: 4,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center',
+  },
+  decorBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+
+  placedSection: { paddingTop: 10, borderTopWidth: 1, borderColor: 'rgba(147,51,234,0.18)', marginTop: 6 },
+  placedTitle:   { color: 'rgba(196,181,253,0.6)', fontSize: 10, fontWeight: '600', marginBottom: 8 },
+  placedRow:     { flexDirection: 'row', gap: 8, paddingBottom: 4 },
+  placedChip:    {
+    width: 52, height: 52, borderRadius: 12,
+    backgroundColor: 'rgba(124,58,237,0.15)',
+    borderWidth: 1, borderColor: 'rgba(196,181,253,0.28)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  placedThumb:       { width: 38, height: 38 },
+  placedRemove: {
+    position: 'absolute', top: -6, right: -6,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: 'rgba(220,38,38,0.85)', alignItems: 'center', justifyContent: 'center',
+  },
+  placedRemoveText: { color: '#fff', fontSize: 9, fontWeight: '700' },
+
+  // ── Save button ───────────────────────────────────────────────────────────────
+
   saveBtn: {
-    marginTop: 18, paddingVertical: 14, borderRadius: 18,
+    marginTop: 14, paddingVertical: 14, borderRadius: 18,
     backgroundColor: '#7c3aed', alignItems: 'center',
     shadowColor: '#7c3aed', shadowOpacity: 0.5, shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 }, elevation: 8,
