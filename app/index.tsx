@@ -1,20 +1,25 @@
 /**
  * app/index.tsx — splash / side-selection gate
  *
- * PHASE 1 FIX:
- *  - Teen button: setUserSide('teen') + router.replace('/(main)/home')
- *  - Parent button: setUserSide('parent') + router.replace('/(main)/parent-room')
- *  - Returning teen  → /(main)/home
+ * PHASE 3 RESTORE:
+ *  - Returning teen   → /(main)/home
  *  - Returning parent → /(main)/parent-room
- *  - First visit → show chooser (no auto-skip)
+ *  - First visit      → side chooser (branded, no auto-skip)
+ *  - After side chosen, SplashScreen shows with the artwork CTA
+ *  - SplashScreen CTA → routes to the correct home
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import { SplashScreen } from '@/screens/SplashScreen';
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
+
+  // After first-time chooser, hold the selected side locally so SplashScreen
+  // renders with the right artwork before the context write propagates.
+  const [pendingSide, setPendingSide] = useState<'teen' | 'parent' | null>(null);
 
   if (isLoading) {
     return (
@@ -24,11 +29,29 @@ export default function Index() {
     );
   }
 
-  // Returning user — go directly to their side
-  if (userSide === 'teen') return <Redirect href="/(main)/home" />;
+  // Returning user — go straight to their space
+  if (userSide === 'teen')   return <Redirect href="/(main)/home" />;
   if (userSide === 'parent') return <Redirect href="/(main)/parent-room" />;
 
-  // First visit — deliberate side choice required
+  // After chooser: show the branded splash with CTA
+  if (pendingSide) {
+    return (
+      <SplashScreen
+        userSide={pendingSide}
+        setScreen={() => {
+          // CTA tapped — commit the side and navigate
+          setUserSide(pendingSide);
+          router.replace(
+            pendingSide === 'parent'
+              ? '/(main)/parent-room'
+              : '/(main)/home',
+          );
+        }}
+      />
+    );
+  }
+
+  // First visit — side chooser
   return (
     <View style={styles.root}>
       <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
@@ -36,10 +59,7 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnTeen]}
-        onPress={() => {
-          setUserSide('teen');
-          router.replace('/(main)/home');
-        }}
+        onPress={() => setPendingSide('teen')}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the teen 💜</Text>
@@ -47,10 +67,7 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnParent]}
-        onPress={() => {
-          setUserSide('parent');
-          router.replace('/(main)/parent-room');
-        }}
+        onPress={() => setPendingSide('parent')}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the parent 🌿</Text>
