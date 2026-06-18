@@ -55,6 +55,7 @@ export const TABLES = {
   moods:                'moods',
   parentMoodSummaries:  'parent_mood_summaries',
   safetyAlerts:         'safety_alerts',
+  oracleSessions:       'oracle_sessions',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
