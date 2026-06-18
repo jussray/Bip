@@ -14,7 +14,12 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { AppState } from '../store/useAppStore';
 import { loadState, saveState } from '../../utils/storage';
 import { isSupabaseConfigured } from '../../utils/supabase';
-import { ensureAnonymousSession, pullAll } from '../../utils/sync';
+import {
+  ensureAnonymousSession,
+  pullAll,
+  loadPeriodDays,
+  loadOracleSession,
+} from '../../utils/sync';
 import { mergeById } from '../utils/mergeById';
 import { normalizeVibeKey } from '../../constants/theme';
 import {
@@ -60,6 +65,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
           comfortSessions:  Array.isArray(s.comfortSessions)   ? s.comfortSessions   : prev.comfortSessions,
           crewMembers:      Array.isArray(s.crewMembers)       ? s.crewMembers       : prev.crewMembers,
           crewCheckIns:     Array.isArray(s.crewCheckIns)      ? s.crewCheckIns      : prev.crewCheckIns,
+          periodDays:       Array.isArray(s.periodDays)        ? s.periodDays        : prev.periodDays,
           streakDays:   Number(s.streakDays) || 0,
           lastOpenDate: s.lastOpenDate ?? prev.lastOpenDate,
           roomMemory: s.roomMemory
@@ -95,6 +101,8 @@ export function useAppEffects(state: AppState, setState: SetState) {
     (async () => {
       const uid = await ensureAnonymousSession();
       if (!uid || cancelled) return;
+
+      // Bulk pull (mood, journal, circle, voice, comfort, crew, room)
       const cloud = await pullAll();
       if (!cloud || cancelled) return;
       if (__DEV__)
@@ -123,6 +131,32 @@ export function useAppEffects(state: AppState, setState: SetState) {
           ? { ...prev.roomMemory, ...cloud.roomMemory }
           : prev.roomMemory,
       }));
+
+      // Period days — additive merge (union of local + cloud sets)
+      if (!cancelled) {
+        const cloudDays = await loadPeriodDays();
+        if (cloudDays.length > 0) {
+          setState(prev => ({
+            ...prev,
+            periodDays: Array.from(new Set([...prev.periodDays, ...cloudDays])).sort(),
+          }));
+        }
+      }
+
+      // Oracle sessions — cloud wins for the memory snapshot (richer context)
+      if (!cancelled) {
+        const [teenOracle, parentOracle] = await Promise.all([
+          loadOracleSession('teen'),
+          loadOracleSession('parent'),
+        ]);
+        if (teenOracle || parentOracle) {
+          setState(prev => ({
+            ...prev,
+            ...(teenOracle   ? { oracleProfile:       { ...prev.oracleProfile,       ...teenOracle.memory   } } : {}),
+            ...(parentOracle ? { parentOracleProfile: { ...prev.parentOracleProfile, ...parentOracle.memory } } : {}),
+          }));
+        }
+      }
     })();
     return () => { cancelled = true; };
   }, [isLoading]); // intentional: only re-run when loading state changes
@@ -153,6 +187,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
       comfortSessions:    state.comfortSessions,
       crewMembers:        state.crewMembers,
       crewCheckIns:       state.crewCheckIns,
+      periodDays:         state.periodDays,
       streakDays:         String(state.streakDays),
       lastOpenDate:       state.lastOpenDate,
       roomMemory:         JSON.stringify(state.roomMemory),
@@ -169,6 +204,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
     state.moodHistory, state.circlePosts, state.parentCirclePosts,
     state.voiceNotes, state.parentVoiceNotes, state.comfortSessions,
     state.crewMembers, state.crewCheckIns,
+    state.periodDays,
     state.streakDays, state.lastOpenDate,
     state.roomMemory, state.parentRoomStyle,
     state.parentMood, state.parentMoodDate, isLoading,
