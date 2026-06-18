@@ -21,6 +21,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import {
   VOICE_BIP_AVATARS,
   VOICE_BIP_AVATAR_KEYS,
@@ -346,6 +347,7 @@ export function VoiceBipScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
+      <AmbientWeatherOverlay />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Avatar Voice Bip — each companion keeps an independent identity. */}

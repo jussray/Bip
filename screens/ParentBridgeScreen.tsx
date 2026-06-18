@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import {
   PARENT_TOPICS,
   getParentSekretResponse,
@@ -138,6 +139,7 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
 
   return (
     <View style={styles.root}>
+      <AmbientWeatherOverlay />
       <LinearGradient colors={[P.bg1, P.bg2, P.bg3]} style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: P.accent + '08' }]} />
 

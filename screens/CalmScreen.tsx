@@ -19,6 +19,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MOOD_GLOW } from '../constants/moodGlow';
 import {
   Text,
@@ -301,6 +302,7 @@ export function CalmScreen({
   // ── Main calm screen ───────────────────────────────────────────────────
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
+      <AmbientWeatherOverlay />
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.scroll}

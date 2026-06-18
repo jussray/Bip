@@ -22,6 +22,7 @@ import {
   Alert,
   Easing,
 } from 'react-native';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
@@ -200,6 +201,7 @@ export function BridgeScreen({
 
   return (
     <View style={styles.root}>
+      <AmbientWeatherOverlay />
       <ImageBackground source={bg} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <LinearGradient
         colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}

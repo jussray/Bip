@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
@@ -28,8 +29,20 @@ import {
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
 } from 'react-native';
 
-const CLOUD_STORMY = IMAGES.cloudStormy;
-const RAINY_BG     = IMAGES.bgComfort;
+const RAINY_BG = IMAGES.bgComfort;
+
+const CLOUD_ROTATION = [
+  IMAGES.cloudStormy,
+  IMAGES.cloudHappy,
+  IMAGES.cloudHeadphones,
+  IMAGES.cloudSleepy,
+  IMAGES.cloud,
+  IMAGES.cloudHeadphonesV2,
+];
+
+// Each cloud pose maps to a matching ambient weather phase.
+// stormy→rain, happy→sun, headphones→golden afternoon, sleepy→night, neutral→day, headphonesV2→evening
+const CLOUD_PHASES = ['rain', 'day', 'afternoon', 'night', 'midday', 'evening'] as const;
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -74,6 +87,8 @@ export function ComfortScreen({
 
   const [checked, setChecked] = useState<number[]>([]);
   const [msgIdx, setMsgIdx] = useState(0);
+  const [cloudIdx, setCloudIdx] = useState(0);
+  const cloudFadeAnim = useRef(new Animated.Value(1)).current;
 
   // Character / mood ────────────────────────────────────────────────────────
   const isRylane = selectedSekret === 'rylane';
@@ -164,6 +179,17 @@ export function ComfortScreen({
     });
   }, []);
 
+  // Cloud image rotation with cross-fade
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(cloudFadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
+        setCloudIdx(i => (i + 1) % CLOUD_ROTATION.length);
+        Animated.timing(cloudFadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      });
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
   const toggleStep = (id: number, action?: string) => {
     setChecked(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
@@ -178,6 +204,7 @@ export function ComfortScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
+      <AmbientWeatherOverlay phase={CLOUD_PHASES[cloudIdx]} />
 
       {/* ── Ambient rainy room backdrop (fixed, behind scroll) ── */}
       <View style={styles.bgWrap} pointerEvents="none">
@@ -227,9 +254,13 @@ export function ComfortScreen({
         <Text style={styles.subtitle}>{heroCopy.sub}</Text>
         <SyncBadge status={syncStatus ?? 'idle'} />
 
-        {/* Cloud stormy with breath/drift */}
+        {/* Cloud — rotates through all poses with cross-fade */}
         <Animated.View style={[styles.cloudWrap, cloudStyle]}>
-          <Image source={CLOUD_STORMY} style={styles.artworkMedium} resizeMode="contain" />
+          <Animated.Image
+            source={CLOUD_ROTATION[cloudIdx]}
+            style={[styles.artworkMedium, { opacity: cloudFadeAnim }]}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* You are not alone card */}
