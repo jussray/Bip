@@ -170,14 +170,16 @@ const cloudAvatarWriting  = cloudHeadphonesV2;
 const cloudAvatarWindow   = cloudSleepy;
 const cloudAvatarFullbody = cloudHappy;
 
-// ── UI / Splash ────────────────────────────────────────────────────────────
-// Role-based splash screens — shown when the user enters Se'kret Bip.
-// Teen:   two teens back-to-back, neon pink/purple, headphone cloud mascot.
-// Parent: couple by candlelight, warm purple neon, lanterns.
+// ── App Entry Splash Screens ───────────────────────────────────────────────
+// These are the first full-screen images the user sees when opening the app
+// after completing onboarding — one per side. Teen side and parent side are
+// completely separate app experiences. These images are entry doors, not
+// companion UI or in-app features.
 //
-// sekretSplash is kept as a backward-compat alias → resolves to teen splash.
-// Any code still referencing IMAGES.sekretSplash gets the teen artwork
-// until it migrates to the role-aware SekretSplashScreen component.
+//   sekretSplashTeen   → teen side entry: two teens back-to-back, neon pink/purple
+//   sekretSplashParent → parent side entry: couple by candlelight, warm purple neon
+//
+// sekretSplash is a backward-compat alias → resolves to teen splash.
 const sekretSplashTeen   = require("../assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png");
 const sekretSplashParent = require("../assets/images/088975D0-598A-4B68-8857-67410DA25BA0.jpeg");
 const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
@@ -348,10 +350,8 @@ export const IMAGES = {
   cloudSleepy,
   cloudStormy,
 
-  // UI / Splash — role-based
-  // Use sekretSplashTeen / sekretSplashParent in new code.
-  // sekretSplash is kept for backward compat (resolves to teen).
-  sekretSplash,
+  // App entry splash — one per side, shown after onboarding
+  sekretSplash,        // backward-compat alias → teen
   sekretSplashTeen,
   sekretSplashParent,
 } as const;
@@ -514,17 +514,6 @@ export function getParentRoomBg(
   const prefix = style === "mom" ? "bgMomRoom" : "bgDadRoom";
   const suffix = phase === "deepNight" ? "DeepNight" : phase.charAt(0).toUpperCase() + phase.slice(1);
   return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
-}
-
-// ── Role-aware splash helper ───────────────────────────────────────────────
-// Returns the correct Se'kret splash asset for the given user side.
-// Use this anywhere you need the splash image without importing SekretSplashScreen.
-export function getSekretSplash(
-  userSide: 'teen' | 'parent' | null | undefined,
-): ImageSourcePropType {
-  return userSide === 'parent'
-    ? IMAGES.sekretSplashParent
-    : IMAGES.sekretSplashTeen;
 }
 
 export type VibeKey = "raylene" | "rylane" | "cloud" | "night" | "rain" | "sunset";
