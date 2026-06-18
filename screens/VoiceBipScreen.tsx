@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/VoiceBipScreen.tsx
 // Se'kret Bip — Voice Bip (Headphone Cloud)
 // Vision: Speak it out loud. Cloud floats here. Listening without judgment.

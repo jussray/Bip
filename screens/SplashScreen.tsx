@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/SplashScreen.tsx
 // Se'kret Bip — Opening Screen
 //

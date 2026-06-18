@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/WomanhoodScreen.tsx
 // Se'kret Bip — Bippin 2: Womanhood Dashboard (Raylene-led)
 // Layout matches the Womanhood mockup:

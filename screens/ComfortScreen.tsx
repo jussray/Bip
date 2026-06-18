@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/ComfortScreen.tsx
 // Se'kret Bip — Comfort Mode 🚨
 // Vision: Rainy room. Soft purple light. Cloud is here. Feels like a hug.

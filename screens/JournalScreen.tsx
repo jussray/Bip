@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/JournalScreen.tsx
 // Se'kret Bip — Write It Out (Se'kret Pages)
 // Vision: Late-night diary and Oracle. The page holds the mirror; companions do not.

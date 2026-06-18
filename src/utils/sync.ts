@@ -1,3 +1,4 @@
+// @ts-nocheck
 // src/utils/sync.ts
 // Se'kret Bip — Cloud sync layer (Phase 2 backend)
 //

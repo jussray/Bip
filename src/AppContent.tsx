@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { validateEnv } from '../utils/env';

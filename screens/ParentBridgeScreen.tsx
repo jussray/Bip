@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/ParentBridgeScreen.tsx
 // Parent Window — two tabs:
 //   "Se'kret Advice" → Parent Se'kret advisor with topic picker

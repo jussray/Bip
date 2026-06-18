@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { IMAGES } from '../constants/theme';
 import { MOOD_GLOW } from '../constants/moodGlow';

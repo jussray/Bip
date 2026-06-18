@@ -7,7 +7,7 @@
  *
  * Import via: import { THEME_PACKS, MOODS, IMAGES } from '@/constants';
  */
-import type { Theme, SekretProfile } from '@/types';
+import type { Theme, SekretProfile } from '../types';
 
 export const THEME_PACKS: Record<string, Theme> = {
   night: {

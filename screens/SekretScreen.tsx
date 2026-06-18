@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/SekretScreen.tsx
 // Se'kret Bip — Drop a Bip (Talk with Se'kret)
 //

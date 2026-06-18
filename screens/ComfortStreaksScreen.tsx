@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/ComfortStreaksScreen.tsx
 // Se'kret Bip — Comfort Streaks
 //

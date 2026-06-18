@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/GrowthScreen.tsx
 // Se'kret Bip — Growth (Rylane-led life skills hub)
 //

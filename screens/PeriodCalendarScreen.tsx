@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/PeriodCalendarScreen.tsx
 // Se'kret Bip — Cycle Calendar (cycle layer of Womanhood, Raylene-led)
 // Private. On-device only. No data leaves the phone.

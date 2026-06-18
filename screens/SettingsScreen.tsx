@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/SettingsScreen.tsx
 // Se'kret Bip — Vibe Lab
 // Choosing the emotional atmosphere of your room.

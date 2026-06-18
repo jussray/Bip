@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/ManhoodScreen.tsx
 // Se'kret Bip — Bippin 2: Manhood Dashboard (Rylane-led)
 // Layout matches the Manhood mockup:

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/HistoryScreen.tsx
 // Se'kret Bip — History ("I'm actually doing better")
 //

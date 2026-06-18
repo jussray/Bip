@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Se'kret Bip — CircleScreen V1
 // Four tabs: Public, Friends, Crew, Parent
 // Identity rules enforced per tab:

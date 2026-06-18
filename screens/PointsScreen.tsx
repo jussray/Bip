@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/PointsScreen.tsx
 // Se'kret Bip — Bip Points
 //

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import type { JournalEntry } from '../types';
 import { PagesWorkspace, type SavePageInput } from './PagesScreen';

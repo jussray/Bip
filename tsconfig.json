@@ -4,6 +4,7 @@
     "strict": true,
     "jsx": "react-jsx",
     "moduleResolution": "bundler",
+    "module": "esnext",
     "baseUrl": ".",
     "paths": {
       "@/*":           ["./src/*"],

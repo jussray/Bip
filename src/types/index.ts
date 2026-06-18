@@ -59,6 +59,7 @@ export interface MoodEntry {
 }
 
 export interface Theme {
+  [key: string]: unknown;
   name:       string;
   emoji:      string;
   background: string;
@@ -98,33 +99,44 @@ export type ScreenKey =
 // These were referenced by hooks, store, sync, and several screens.
 
 export interface ParentCirclePost {
-  id:       number;
-  text:     string;
-  date:     string;
-  time:     string;
-  mood?:    string;
-  reactions?: {
-    felt:    number;
-    comfort: number;
-    proud:   number;
-    stay:    number;
+  id:        number;
+  text:      string;
+  date:      string;
+  time:      string;
+  mood?:     string;
+  circleTag?: string;
+  reactions: {
+    felt?: number;
+    comfort?: number;
+    proud?: number;
+    stay?: number;
     sameHere?: number;
+    beenThere?: number;
+    solidarity?: number;
+    reminder?: number;
+    needed?: number;
+    strength?: number;
   };
 }
 
 export interface ComfortSession {
-  id:           number;
-  date:         string;
-  time:         string;
-  durationSecs: number;
-  type:         string;
+  id:            number;
+  date:          string;
+  time:          string;
+  durationSecs?: number;
+  type:          string;
+  mood?:         string;
 }
 
 export interface CrewMember {
-  id:       string;
-  name:     string;
-  relation: string;
-  emoji?:   string;
+  id:          string;
+  name:        string;
+  relation?:   string;
+  emoji?:      string;
+  commitment?: string;
+  cadence?:    string;
+  inviteCode?: string;
+  addedAt?:    string;
 }
 
 export interface CrewCheckIn {

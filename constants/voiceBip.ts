@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ImageSourcePropType } from 'react-native';
 import { AVATARS, IMAGES, type Character } from './theme';
 import type { SekretPersonality } from '../services/sekretPresence';

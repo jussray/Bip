@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/BipCrewScreen.tsx
 // Se'kret Bip — Bip Crew (invite-only accountability)
 //

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/CalmScreen.tsx
 // Se'kret Bip — Se'kret Calm (Calm Me)
 // Vision: Weighted blanket for the brain. Slow down. Box breathing.

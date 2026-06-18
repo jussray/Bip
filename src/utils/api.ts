@@ -15,12 +15,13 @@ export async function fetchSekretReply(
   text: string,
   context = 'journal',
   mood?: string,
+  ...metadata: unknown[]
 ): Promise<string> {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ text, context, mood }),
+      body:    JSON.stringify({ text, context, mood, metadata }),
     });
     if (!res.ok) throw new Error(`api error ${res.status}`);
     const data = await res.json();

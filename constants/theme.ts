@@ -16,5 +16,10 @@ export {
   IMAGES,
   AVATARS,
   getRoomBg,
+  getParentRoomBg,
+  getRoomPhase,
+  getRoomScene,
   normalizeVibeKey,
+  normalizeCharacterKey,
 } from '../src/constants/theme';
+export type { TimeOfDay, Character, VibeKey, RoomPhase, RoomScene, AvatarMap } from '../src/constants/theme';

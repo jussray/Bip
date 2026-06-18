@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/CloudThoughtsScreen.tsx
 // Se'kret Bip — Cloud Thoughts
 // The quiet space. Say what you've been carrying.

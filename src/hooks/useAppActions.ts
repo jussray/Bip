@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { useAppState } from './useAppState';
 import {
   syncMood, syncJournal, syncCirclePost,

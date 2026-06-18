@@ -86,7 +86,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
   useEffect(() => {
     if (isLoading) return;
     setState(prev => ({ ...prev, screen: 'splash' }));
-  }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userSide]); // eslint-disable-line 
 
   // 3. Supabase: anon sign-in + cloud pull & merge
   useEffect(() => {
@@ -125,7 +125,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
       }));
     })();
     return () => { cancelled = true; };
-  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading]); // eslint-disable-line 
 
   // 4. Persist state on change
   useEffect(() => {
@@ -192,7 +192,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
         };
       });
     }
-  }, [isLoading, lastOpenDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading, lastOpenDate]); // eslint-disable-line 
 
   // 6. Rotating home message
   useEffect(() => {

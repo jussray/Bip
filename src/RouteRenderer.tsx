@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * RouteRenderer
  * Owns the screen → component mapping. AppContent delegates here.

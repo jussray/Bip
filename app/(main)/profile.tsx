@@ -22,7 +22,7 @@ function calcStreak(entries: { date: string }[]): number {
   const unique = [...new Set(entries.map((e) => e.date))].sort().reverse();
   const today  = new Date().toISOString().slice(0, 10);
   let streak   = 0;
-  let cursor   = new Date(today);
+  const cursor = new Date(today);
   for (const d of unique) {
     const expected = cursor.toISOString().slice(0, 10);
     if (d !== expected) break;

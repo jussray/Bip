@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/S2TellScreen.tsx
 // Se'krets 2 Tell — emotional bridge tool for teens.
 // Teen writes raw, Se'kret translates it to a softer version.

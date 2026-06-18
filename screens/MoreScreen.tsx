@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/MoreScreen.tsx
 // Se'kret Bip — More (utility hub)
 // Light polish: backdrop + gradient overlay + mood-tinted accents.

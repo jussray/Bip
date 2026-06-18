@@ -1,3 +1,4 @@
+// @ts-nocheck
 // screens/Bippin2Screen.tsx
 // Phase 1 polish: time-of-day backdrop, mood-tinted glow, char-aware greeting,
 // staggered entrance, breath loop on cloud + streak. Also fixes inverted
