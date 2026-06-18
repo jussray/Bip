@@ -10,7 +10,6 @@ import {
   Platform,
   Easing,
   ImageSourcePropType,
-  ViewStyle,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -41,15 +40,19 @@ type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
 type RoomTarget =
   | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
   | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge' | 's2tell'
-  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard' | 'companionPicker';
+  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard'
+  | 'companionPicker' | 'write' | 'goals' | 'memories' | 'music' | 'rewards' | 'vibeLab';
 
-type Hotspot = {
-  id: string;
+// Point-based invisible hotspot — position is the CENTER of the touch target.
+// x/y are 0–1 fractions of screen width/height.
+// Rendered BEHIND the bg image; bg uses pointerEvents="none" so taps fall through.
+type RoomHotspot = {
+  id:    string;
+  x:     number;
+  y:     number;
+  route: RoomTarget;
   label: string;
-  target: RoomTarget;
-  style: ViewStyle;
-  hint?: string;
-  pulse?: boolean;
+  size?: number;   // touch target diameter, default 80
 };
 
 type AssetMap  = Record<TimeOfDay, ImageSourcePropType>;
@@ -87,235 +90,52 @@ const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
 };
 
 // ─── Hotspot maps ─────────────────────────────────────────────────────────────
-// Fixed: cloudThoughts hotspots now target 'cloudThoughts' (was incorrectly 'calm')
-// Fixed: Se'kret apostrophe in hint strings — use escaped version
+// x/y = center of the touch target as a fraction of screen width/height (0–1).
+// Hotspots render BEHIND the bg image; the image uses pointerEvents="none".
+// No pulse rings, no hint labels — pure invisible CTAs.
 
-const RAYLENE_HOTSPOTS: Hotspot[] = [
-  {
-    id: 'pages',
-    label: 'Journal 📖',
-    target: 'pages',
-    hint: 'tap the journal',
-    pulse: true,
-    style: { bottom: '10%', left: '14%', width: '36%', height: '18%' },
-  },
-  {
-    id: 'voiceBip',
-    label: 'Headphones 🎙️',
-    target: 'voiceBip',
-    hint: 'tap headphones',
-    style: { bottom: '14%', left: '2%', width: '18%', height: '12%' },
-  },
-  {
-    id: 'cloudThoughts',
-    label: 'Cloud Lamp ☁️',
-    target: 'cloudThoughts',
-    hint: 'tap the cloud',
-    pulse: true,
-    style: { top: '38%', left: '26%', width: '14%', height: '12%' },
-  },
-  {
-    id: 'comfort',
-    label: 'Bed 🌙',
-    target: 'comfort',
-    hint: 'tap the bed',
-    style: { top: '38%', right: '6%', width: '34%', height: '34%' },
-  },
-  {
-    id: 'bippin2',
-    label: 'Growth Board ⭐',
-    target: 'bippin2',
-    hint: 'tap the board',
-    style: { top: '4%', left: '22%', width: '24%', height: '26%' },
-  },
-  {
-    id: 'circle',
-    label: 'Photo Wall 🌐',
-    target: 'circle',
-    hint: 'tap the wall',
-    style: { top: '4%', right: '0%', width: '18%', height: '55%' },
-  },
-  {
-    id: 'moodCheckIn',
-    label: 'Mood Check-In 🌤️',
-    target: 'dashboard',
-    hint: 'tap the window',
-    pulse: true,
-    style: { top: '4%', left: '0%', width: '18%', height: '50%' },
-  },
-  {
-    id: 'bridge',
-    label: 'Bridge 🌉',
-    target: 'bridge',
-    hint: 'tap the bridge object',
-    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
-  },
-  {
-    id: 'summon',
-    label: "Se’kret 💜",
-    target: 'sekret',
-    hint: "call Se’kret",
-    style: { top: '38%', left: '4%', width: '20%', height: '30%' },
-  },
+const RAYLENE_HOTSPOTS: RoomHotspot[] = [
+  { id: 'journal',     x: 0.52, y: 0.87, route: 'pages',        label: 'Journal'       },
+  { id: 'bed',         x: 0.72, y: 0.58, route: 'comfort',       label: 'Bed'           },
+  { id: 'cloudPillow', x: 0.60, y: 0.55, route: 'cloudThoughts', label: 'Cloud Pillow'  },
+  { id: 'desk',        x: 0.24, y: 0.42, route: 'write',         label: 'Desk'          },
+  { id: 'headphones',  x: 0.21, y: 0.84, route: 'voiceBip',      label: 'Headphones'    },
+  { id: 'photos',      x: 0.82, y: 0.32, route: 'memories',      label: 'Photo Wall'    },
+  { id: 'bookshelf',   x: 0.66, y: 0.42, route: 'rewards',       label: 'Bookshelf'     },
+  { id: 'window',      x: 0.15, y: 0.18, route: 'vibeLab',       label: 'Window'        },
 ];
 
-const RYLANE_HOTSPOTS: Hotspot[] = [
-  {
-    id: 'pages',
-    label: 'Journal 📖',
-    target: 'pages',
-    hint: 'tap the journal',
-    pulse: true,
-    style: { bottom: '8%', left: '18%', width: '38%', height: '20%' },
-  },
-  {
-    id: 'voiceBip',
-    label: 'Headphones 🎙️',
-    target: 'voiceBip',
-    hint: 'tap headphones',
-    style: { top: '40%', left: '28%', width: '14%', height: '10%' },
-  },
-  {
-    id: 'cloudThoughts',
-    label: 'Cloud Neon ☁️',
-    target: 'cloudThoughts',
-    hint: 'tap the cloud',
-    pulse: true,
-    style: { top: '26%', left: '36%', width: '14%', height: '12%' },
-  },
-  {
-    id: 'comfort',
-    label: 'Bed 🌙',
-    target: 'comfort',
-    hint: 'tap the bed',
-    style: { top: '36%', right: '6%', width: '36%', height: '36%' },
-  },
-  {
-    id: 'bippin2',
-    label: 'Growth Board ⭐',
-    target: 'bippin2',
-    hint: 'tap the board',
-    style: { top: '2%', left: '26%', width: '24%', height: '28%' },
-  },
-  {
-    id: 'circle',
-    label: 'Photo Wall 🌐',
-    target: 'circle',
-    hint: 'tap the wall',
-    style: { top: '2%', right: '0%', width: '20%', height: '50%' },
-  },
-  {
-    id: 'moodCheckIn',
-    label: 'Mood Check-In 🌤️',
-    target: 'dashboard',
-    hint: 'tap the window',
-    pulse: true,
-    style: { top: '2%', left: '0%', width: '20%', height: '55%' },
-  },
-  {
-    id: 'bridge',
-    label: 'Bridge 🌉',
-    target: 'bridge',
-    hint: 'tap the bridge object',
-    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
-  },
-  {
-    id: 'summon',
-    label: "Se’kret ⚡",
-    target: 'sekret',
-    hint: "call Se’kret",
-    style: { top: '30%', left: '2%', width: '24%', height: '36%' },
-  },
+const RYLANE_HOTSPOTS: RoomHotspot[] = [
+  { id: 'journal',    x: 0.52, y: 0.87, route: 'pages',        label: 'Journal'        },
+  { id: 'bed',        x: 0.78, y: 0.52, route: 'comfort',       label: 'Bed'            },
+  { id: 'headphones', x: 0.83, y: 0.70, route: 'voiceBip',      label: 'Headphones'     },
+  { id: 'desk',       x: 0.26, y: 0.44, route: 'write',         label: 'Desk'           },
+  { id: 'basketball', x: 0.60, y: 0.72, route: 'goals',         label: 'Basketball'     },
+  { id: 'photos',     x: 0.70, y: 0.34, route: 'memories',      label: 'Photos'         },
+  { id: 'cloudLamp',  x: 0.52, y: 0.28, route: 'cloudThoughts', label: 'Cloud Lamp'     },
+  { id: 'jersey',     x: 0.76, y: 0.25, route: 'circle',        label: "SE'KRET Jersey" },
 ];
 
-// Cloud Room: floating thought-space — no walls, cloud islands, headphones, journal drifting
-const CLOUD_HOTSPOTS: Hotspot[] = [
-  {
-    id: 'headphones',
-    label: 'Headphones 🎧',
-    target: 'calm',
-    hint: 'tap headphones',
-    pulse: true,
-    style: { top: '28%', left: '8%', width: '24%', height: '18%' },
-  },
-  {
-    id: 'pages',
-    label: 'Floating Journal 📖',
-    target: 'pages',
-    hint: 'tap the journal',
-    pulse: true,
-    style: { top: '44%', left: '32%', width: '36%', height: '20%' },
-  },
-  {
-    id: 'voiceBip',
-    label: 'Cloud Mic 🎤',
-    target: 'voiceBip',
-    hint: 'tap the mic',
-    style: { top: '22%', right: '10%', width: '20%', height: '16%' },
-  },
-  {
-    id: 'cloudThoughts',
-    label: 'Big Cloud ☁️',
-    target: 'cloudThoughts',
-    hint: 'float up here',
-    pulse: true,
-    style: { top: '8%', left: '22%', width: '56%', height: '20%' },
-  },
-  {
-    id: 'summon',
-    label: "Cloud Se'kret ☁️",
-    target: 'sekret',
-    hint: 'tap to float',
-    style: { top: '62%', left: '18%', width: '64%', height: '22%' },
-  },
+const CLOUD_HOTSPOTS: RoomHotspot[] = [
+  { id: 'journal',      x: 0.52, y: 0.86, route: 'pages',        label: 'Journal'       },
+  { id: 'cloudBed',     x: 0.60, y: 0.50, route: 'cloudThoughts', label: 'Bean Bag'     },
+  { id: 'neonCloud',    x: 0.58, y: 0.25, route: 'comfort',       label: 'Neon Cloud'   },
+  { id: 'desk',         x: 0.23, y: 0.48, route: 'write',         label: 'Desk'         },
+  { id: 'recordPlayer', x: 0.92, y: 0.74, route: 'music',         label: 'Record Player' },
+  { id: 'backpack',     x: 0.05, y: 0.82, route: 'memories',      label: 'Backpack'     },
+  { id: 'bookshelf',    x: 0.94, y: 0.46, route: 'rewards',       label: 'Bookshelf'    },
+  { id: 'cloudPhotos',  x: 0.78, y: 0.24, route: 'circle',        label: 'Photo Wall'   },
 ];
 
-// Night Room: crescent moon chair, "Voice Bip Corner" sign, city window, desk with clock
-const NIGHT_HOTSPOTS: Hotspot[] = [
-  {
-    id: 'window',
-    label: 'Window 🪟',
-    target: 'cloudThoughts',
-    hint: 'look out',
-    pulse: true,
-    style: { top: '4%', left: '4%', width: '44%', height: '44%' },
-  },
-  {
-    id: 'pages',
-    label: 'Journal 📖',
-    target: 'pages',
-    hint: 'tap the journal',
-    pulse: true,
-    style: { bottom: '16%', left: '6%', width: '50%', height: '20%' },
-  },
-  {
-    id: 'voiceBip',
-    label: 'Voice Bip Corner 🎙️',
-    target: 'voiceBip',
-    hint: 'voice bip corner',
-    style: { top: '20%', right: '2%', width: '26%', height: '28%' },
-  },
-  {
-    id: 'comfort',
-    label: 'Moon Chair 🌙',
-    target: 'comfort',
-    hint: 'sit in the chair',
-    style: { top: '26%', left: '34%', width: '36%', height: '40%' },
-  },
-  {
-    id: 'bridge',
-    label: 'Reach Out 🌉',
-    target: 'bridge',
-    hint: 'reach out',
-    style: { bottom: '30%', right: '6%', width: '22%', height: '16%' },
-  },
-  {
-    id: 'summon',
-    label: "Night Se'kret 🌙",
-    target: 'sekret',
-    hint: 'tap to wake',
-    style: { bottom: '36%', left: '2%', width: '32%', height: '32%' },
-  },
+const NIGHT_HOTSPOTS: RoomHotspot[] = [
+  { id: 'journal',      x: 0.50, y: 0.87, route: 'pages',        label: 'Journal'       },
+  { id: 'moonChair',    x: 0.53, y: 0.43, route: 'cloudThoughts', label: 'Moon Chair'   },
+  { id: 'microphone',   x: 0.88, y: 0.40, route: 'voiceBip',      label: 'Voice Bip'   },
+  { id: 'recordPlayer', x: 0.92, y: 0.76, route: 'music',         label: 'Record Player' },
+  { id: 'desk',         x: 0.25, y: 0.45, route: 'write',         label: 'Desk'         },
+  { id: 'backpack',     x: 0.06, y: 0.84, route: 'memories',      label: 'Backpack'     },
+  { id: 'candle',       x: 0.77, y: 0.90, route: 'comfort',       label: 'Candle'       },
+  { id: 'bookshelf',    x: 0.94, y: 0.18, route: 'rewards',       label: 'Bookshelf'    },
 ];
 
 // ─── Pure helpers (defined outside component — no recreation per render) ──────
@@ -575,8 +395,6 @@ export function RoomScreen({
   // ─── State ──────────────────────────────────────────────────────────────
   const [isSekretVisible, setIsSekretVisible] = useState(false);
   const [isFirstVisit, setIsFirstVisit]       = useState(true);  // persisted below
-  const [showGuide, setShowGuide]             = useState(false);
-  const [hintSpot, setHintSpot]               = useState<string | null>(null);
   const [greeting, setGreeting]               = useState(
     () => getGreeting(character, mood, timeOfDay, false)
   );
@@ -622,16 +440,10 @@ export function RoomScreen({
   const avatarSlide = useRef(new Animated.Value(14)).current;
   const avatarScale = useRef(new Animated.Value(0.96)).current;
   const glowAnim    = useRef(new Animated.Value(0.2)).current;
-  const guideAnim   = useRef(new Animated.Value(0)).current;
-  const hintAnim    = useRef(new Animated.Value(0)).current;
-  const pulseAnim   = useRef(new Animated.Value(0)).current;
-  // Slow ambient breath used by the presence pill at the bottom of the room.
-  // Subtle, infinite loop driven by the existing breath effect in the screen.
   const breathAnim  = useRef(new Animated.Value(0)).current;
 
   // Loop refs for cleanup
-  const glowLoopRef  = useRef<Animated.CompositeAnimation | null>(null);
-  const pulseLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const glowLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // Mount animations + loops
   useEffect(() => {
@@ -647,22 +459,6 @@ export function RoomScreen({
     );
     glowLoopRef.current.start();
 
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathAnim, { toValue: 1.04, duration: 2200, useNativeDriver: true }),
-        Animated.timing(breathAnim, { toValue: 1,    duration: 2200, useNativeDriver: true }),
-      ])
-    ).start();
-
-    pulseLoopRef.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
-      ])
-    );
-    pulseLoopRef.current.start();
-
-    // Slow ambient breath for the presence pill
     const breathLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(breathAnim, { toValue: 1, duration: 2400, useNativeDriver: true }),
@@ -671,46 +467,16 @@ export function RoomScreen({
     );
     breathLoop.start();
 
-    // Auto hint on first load
-    const guideTimer = setTimeout(() => {
-      setHintSpot('pages');
-      setTimeout(() => setHintSpot(null), 1800);
-    }, 700);
-
     return () => {
-      clearTimeout(guideTimer);
       glowLoopRef.current?.stop();
-      pulseLoopRef.current?.stop();
       breathLoop.stop();
     };
   }, []);
-
-  // ─── hintAnim drives hint opacity — now actually wired ──────────────────
-  // FIXED: hintAnim was never started; hint was permanently invisible
-  useEffect(() => {
-    if (hintSpot) {
-      Animated.timing(hintAnim, { toValue: 1, duration: 150, useNativeDriver: true }).start();
-    } else {
-      Animated.timing(hintAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start();
-    }
-  }, [hintSpot]);
 
   // Greeting updates on mood/character/time change
   useEffect(() => {
     setGreeting(getGreeting(character, mood, timeOfDay, isSekretVisible));
   }, [character, mood, timeOfDay, isSekretVisible]);
-
-  // Guide overlay fade
-  useEffect(() => {
-    if (showGuide) {
-      Animated.timing(guideAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-      const timer = setTimeout(() => {
-        setShowGuide(false);
-        Animated.timing(guideAnim, { toValue: 0, duration: 240, useNativeDriver: true }).start();
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [showGuide]);
 
   // Avatar entrance / exit
   useEffect(() => {
@@ -735,21 +501,6 @@ export function RoomScreen({
   // ─── Handlers ────────────────────────────────────────────────────────────
 
   const handleHotspot = (target: RoomTarget) => {
-    if (target === 'sekret') {
-      setIsSekretVisible(v => {
-        const next = !v;
-        // First time summoning — mark first visit done
-        if (next && isFirstVisit) {
-          setIsFirstVisit(false);
-          AsyncStorage.setItem('sekretbip_first_visit_done', 'true');
-        }
-        updateRoomMemory?.({ lastSummon: new Date().toISOString(), character });
-        return next;
-      });
-      setHintSpot('summon');
-      setTimeout(() => setHintSpot(null), 1200);
-      return;
-    }
     updateRoomMemory?.({ lastHotspot: target, lastVisit: new Date().toISOString() });
     setScreen(target);
   };
@@ -761,8 +512,6 @@ export function RoomScreen({
   const handleCharacterSwitch = (char: Character) => {
     setSelectedSekret(sekretKey(char));
     setIsSekretVisible(false);
-    setHintSpot('summon');
-    setTimeout(() => setHintSpot(null), 1500);
     updateRoomMemory?.({ character: char });
   };
 
@@ -789,8 +538,33 @@ export function RoomScreen({
     <View style={styles.root}>
       <StatusBar style="light" />
 
-      {/* ── Room background ─────────────────────────────────────────────── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+      {/* ── Hotspot layer — invisible CTAs behind the bg image ─────────── */}
+      {/* Rendered first so it sits below the bg in z-order.              */}
+      {/* The bg uses pointerEvents="none", letting taps fall through.    */}
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+        {hotspots.map((spot) => (
+          <TouchableOpacity
+            key={spot.id}
+            style={[
+              {
+                position: 'absolute',
+                left: width * spot.x - (spot.size ?? 40),
+                top: height * spot.y - (spot.size ?? 40),
+                width: spot.size ?? 80,
+                height: spot.size ?? 80,
+              },
+              DEBUG_HOTSPOTS && { backgroundColor: 'rgba(255,100,100,0.4)', borderWidth: 1, borderColor: 'red' },
+            ]}
+            onPress={() => handleHotspot(spot.route)}
+            activeOpacity={0}
+            accessibilityRole="button"
+            accessibilityLabel={spot.label}
+          />
+        ))}
+      </View>
+
+      {/* ── Room background — visual only; taps pass through to hotspot layer ── */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]} pointerEvents="none">
         <SafeAsset
           source={roomImage}
           style={styles.bg}
@@ -801,7 +575,6 @@ export function RoomScreen({
         />
         <View style={[styles.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
         <View style={[styles.overlay, { backgroundColor: vibePack.background + '22' }]} />
-        {/* Character-specific atmosphere tint */}
         {CHARACTER_OVERLAYS[character] !== 'transparent' && (
           <View style={[styles.overlay, { backgroundColor: CHARACTER_OVERLAYS[character] }]} />
         )}
@@ -825,60 +598,6 @@ export function RoomScreen({
           <Text style={styles.nightStars}>✦ ✧ ✦</Text>
         </View>
       )}
-
-      {/* ── Hotspots ────────────────────────────────────────────────────── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
-        {hotspots.map((spot) => {
-          const isHinted    = hintSpot === spot.id;
-          const showTapHint = isHinted || (spot.pulse && showGuide);
-
-          return (
-            <TouchableOpacity
-              key={spot.id}
-              style={[
-                styles.hotspot,
-                spot.style,
-                DEBUG_HOTSPOTS && styles.hotspotDebug,
-                showTapHint && styles.hotspotGlow,
-              ]}
-              onPress={() => handleHotspot(spot.target)}
-              activeOpacity={0.72}
-              accessibilityRole="button"
-              accessibilityLabel={spot.label}
-            >
-              {/* Pulse ring for pulse hotspots */}
-              {spot.pulse && (
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.pulseRing,
-                    {
-                      opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }),
-                      transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) }],
-                      borderColor: t.accent,
-                    },
-                  ]}
-                />
-              )}
-
-              {/* Tap hint label — FIXED: now actually visible via hintAnim useEffect */}
-              {showTapHint && !DEBUG_HOTSPOTS && (
-                <Animated.View
-                  style={[
-                    styles.tapHintWrap,
-                    {
-                      opacity: hintAnim,
-                      transform: [{ translateY: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }],
-                    },
-                  ]}
-                >
-                  <Text style={styles.tapHint}>{spot.hint ?? 'Tap'}</Text>
-                </Animated.View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </Animated.View>
 
       {/* ── Avatar ──────────────────────────────────────────────────────── */}
       <Animated.View
@@ -990,9 +709,15 @@ export function RoomScreen({
         <TouchableOpacity
           style={styles.greetingBubble}
           onPress={() => {
-            setIsSekretVisible(v => !v);
-            setHintSpot('summon');
-            setTimeout(() => setHintSpot(null), 1200);
+            setIsSekretVisible(v => {
+              const next = !v;
+              if (next && isFirstVisit) {
+                setIsFirstVisit(false);
+                AsyncStorage.setItem('sekretbip_first_visit_done', 'true');
+              }
+              updateRoomMemory?.({ lastSummon: new Date().toISOString(), character });
+              return next;
+            });
           }}
           activeOpacity={0.85}
           accessibilityRole="button"
@@ -1001,8 +726,8 @@ export function RoomScreen({
           <Text style={styles.greetingChar}>
             {character === 'raylene' ? '💜 Raylene' :
              character === 'rylane'  ? '⚡ Rylane'  :
-             character === 'cloud'   ? "☁️ Cloud Se’kret" :
-                                       "🌙 Night Se’kret"}
+             character === 'cloud'   ? "☁️ Cloud Se'kret" :
+                                       "🌙 Night Se'kret"}
           </Text>
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
           {!!rememberedLine && (
@@ -1021,7 +746,7 @@ export function RoomScreen({
               onPress={() => setScreen('companionPicker')}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel="Open Se’kret companion picker"
+              accessibilityLabel="Open Se'kret companion picker"
             >
               <Text style={styles.roomCompanionButtonText}>talk to a companion →</Text>
             </TouchableOpacity>

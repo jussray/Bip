@@ -51,6 +51,13 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     discover: TEEN_ROUTES.discover,
     profile: TEEN_ROUTES.profile,
     userRoom: TEEN_ROUTES.userRoom,
+    // Avatar Room hotspot targets
+    write:    TEEN_ROUTES.pages,
+    goals:    TEEN_ROUTES.points,
+    memories: TEEN_ROUTES.circle,
+    music:    TEEN_ROUTES.calm,
+    rewards:  TEEN_ROUTES.points,
+    vibeLab:  TEEN_ROUTES.userRoom,
   };
   return teenMap[key] ?? TEEN_ROUTES.room;
 }
