@@ -5,18 +5,24 @@
 import React from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { HistoryScreen } from '@/screens/HistoryScreen';
+import { THEME_PACKS } from '@constants/theme';
+import { HistoryScreen } from '@screens/HistoryScreen';
 
 export default function HistoryRoute() {
-  const { theme, mood, moodHistory, entries } = useAppContext();
+  const { theme, mood, selectedSekret, moodHistory, entries, circlePosts } = useAppContext();
+  const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
   return (
     <HistoryScreen
-      theme={theme}
+      t={t}
       mood={mood}
+      selectedSekret={selectedSekret}
       moodHistory={moodHistory}
-      entries={entries}
+      journalEntries={entries}
+      voiceNotes={[]}
+      circlePosts={circlePosts}
+      streakDays={0}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
-      backTarget="home"
+      BottomNav={null}
     />
   );
 }

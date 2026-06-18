@@ -1,33 +1,25 @@
 /**
  * app/(main)/parent-pages.tsx
- * Route wrapper for ParentPagesScreen.
  */
 import React from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { ParentPagesScreen } from '@/screens/ParentPagesScreen';
+import { ParentPagesScreen } from '@screens/ParentPagesScreen';
 
 export default function ParentPagesRoute() {
-  const {
-    theme,
-    parentMood,
-    parentPagesDraft,
-    setParentPagesDraft,
-    parentPagesEntries,
-    saveParentPageEntry,
-    selectedSekret,
-  } = useAppContext();
+  const { parentMood, parentRoomStyle, parentPagesDraft, setParentPagesDraft, parentPagesEntries, parentOracleProfile, completeParentOracleSession } = useAppContext();
   return (
     <ParentPagesScreen
-      theme={theme}
       mood={parentMood}
+      parentRoomStyle={(parentRoomStyle === 'dad' ? 'dad' : 'mom')}
       draft={parentPagesDraft}
       setDraft={setParentPagesDraft}
       entries={parentPagesEntries}
-      saveEntry={saveParentPageEntry}
-      selectedSekret={selectedSekret}
+      onSave={() => {}}
+      oracleProfile={parentOracleProfile ?? undefined}
+      onCompleteOracleSession={completeParentOracleSession}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
-      backTarget="parent-room"
+      BottomNav={null}
     />
   );
 }

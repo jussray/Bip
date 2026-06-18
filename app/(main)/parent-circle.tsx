@@ -1,35 +1,22 @@
 /**
  * app/(main)/parent-circle.tsx
- * Route wrapper for ParentCircleScreen.
  */
 import React from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { ParentCircleScreen } from '@/screens/ParentCircleScreen';
+import { ParentCircleScreen } from '@screens/ParentCircleScreen';
 
 export default function ParentCircleRoute() {
-  const {
-    theme,
-    parentMood,
-    parentCirclePosts,
-    parentCirclePostText,
-    setParentCirclePostText,
-    saveParentCirclePost,
-    reactToParentPost,
-    selectedSekret,
-  } = useAppContext();
+  const { parentCirclePosts, parentCirclePostText, setParentCirclePostText, saveParentCirclePost, reactToParentPost } = useAppContext();
   return (
     <ParentCircleScreen
-      theme={theme}
-      mood={parentMood}
-      posts={parentCirclePosts}
-      postText={parentCirclePostText}
-      setPostText={setParentCirclePostText}
-      savePost={saveParentCirclePost}
-      reactToPost={reactToParentPost}
-      selectedSekret={selectedSekret}
+      parentCirclePosts={parentCirclePosts}
+      parentCirclePostText={parentCirclePostText}
+      setParentCirclePostText={setParentCirclePostText}
+      saveParentCirclePost={saveParentCirclePost}
+      reactToParentPost={(id: string | number, type: string) => reactToParentPost(Number(id), type)}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
-      backTarget="parent-room"
+      BottomNav={null}
     />
   );
 }

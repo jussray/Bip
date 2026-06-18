@@ -5,16 +5,21 @@
 import React from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { MoreScreen } from '@/screens/MoreScreen';
+import { THEME_PACKS } from '@constants/theme';
+import { MoreScreen } from '@screens/MoreScreen';
 
 export default function MoreRoute() {
-  const { theme, mood, selectedSekret } = useAppContext();
+  const { theme, mood, selectedSekret, userSide, setUserSide } = useAppContext();
+  const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
   return (
     <MoreScreen
-      theme={theme}
+      t={t}
       mood={mood}
       selectedSekret={selectedSekret}
+      userSide={userSide ?? 'teen'}
+      setUserSide={(side: string) => setUserSide(side === 'parent' ? 'parent' : 'teen')}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      BottomNav={null}
     />
   );
 }

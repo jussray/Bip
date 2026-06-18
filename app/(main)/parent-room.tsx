@@ -1,31 +1,21 @@
 /**
  * app/(main)/parent-room.tsx
- * Route wrapper for ParentRoomScreen.
- * Entry point for the parent side after splash.
  */
 import React from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { ParentRoomScreen } from '@/screens/ParentRoomScreen';
+import { ParentRoomScreen } from '@screens/ParentRoomScreen';
 
 export default function ParentRoomRoute() {
-  const {
-    theme,
-    parentMood,
-    setParentMood,
-    parentRoomStyle,
-    setParentRoomStyle,
-    selectedSekret,
-  } = useAppContext();
+  const { parentMood, parentMoodDate, setParentMood, parentRoomStyle } = useAppContext();
   return (
     <ParentRoomScreen
-      theme={theme}
-      mood={parentMood}
-      setMood={setParentMood}
-      roomStyle={parentRoomStyle}
-      setRoomStyle={setParentRoomStyle}
-      selectedSekret={selectedSekret}
+      parentRoomStyle={(parentRoomStyle === 'dad' ? 'dad' : 'mom')}
+      parentMood={parentMood}
+      previousMood={parentMoodDate || undefined}
+      setParentMood={setParentMood}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      BottomNav={null}
     />
   );
 }
