@@ -16,6 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IMAGES, AVATARS as THEME_AVATARS, THEME_PACKS, getRoomPhase, getRoomScene, type Character, type RoomPhase, type VibeKey } from '../constants/theme';
 import type { CompanionState } from '../types/sekretCompanion';
 import { SafeAsset } from '../components/SafeAsset';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 
 const { width, height } = Dimensions.get('window');
 
@@ -562,6 +563,9 @@ export function RoomScreen({
           />
         ))}
       </View>
+
+      {/* ── Ambient weather — above hotspot layer, below bg ─────────────── */}
+      <AmbientWeatherOverlay phase={roomPhase} />
 
       {/* ── Room background — visual only; taps pass through to hotspot layer ── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]} pointerEvents="none">

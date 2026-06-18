@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { IMAGES, getRoomBg } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { glowForMood as glowFor } from '../constants/moodGlow';
 import { fetchSekretReply } from '../utils/api';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
@@ -183,6 +184,7 @@ export function CloudThoughtsScreen({
 
   return (
     <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <AmbientWeatherOverlay />
       <LinearGradient
         colors={['rgba(13,9,20,0.72)', 'rgba(30,18,55,0.82)', 'rgba(13,9,20,0.95)']}
         style={StyleSheet.absoluteFill}

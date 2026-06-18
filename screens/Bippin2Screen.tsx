@@ -6,6 +6,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { IMAGES, getRoomBg, TimeOfDay, Character } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import {
   Text, TouchableOpacity, ScrollView, View,
@@ -263,6 +264,7 @@ export function Bippin2Screen({
 
   return (
     <View style={styles.root}>
+      <AmbientWeatherOverlay />
       <ImageBackground source={bg} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <LinearGradient
         colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.9)']}

@@ -169,7 +169,6 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
   useEffect(() => {
     if (!visible) return;
     Animated.timing(appear, { toValue: 1, duration: 450, delay, useNativeDriver: true }).start();
-    if (!DEBUG_HOTSPOTS) return;
     const timer = setTimeout(() => {
       Animated.loop(Animated.sequence([
         Animated.timing(glow, { toValue: 1, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -179,21 +178,19 @@ function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: H
     return () => clearTimeout(timer);
   }, [visible]);
 
-  const scale   = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.15] });
-  const opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.60, 1.0] });
+  const scale   = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
+  const opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.0] });
 
   return (
     <Animated.View style={[s.hotspot, { left: W * xf - 30, top: H * yf - 30, opacity: appear }]}>
       <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={s.hotspotHit}>
-        {DEBUG_HOTSPOTS && (
-          <Animated.View style={[
-            s.hotspotRing,
-            { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
-          ]}>
-            <Text style={s.hotspotIcon}>{icon}</Text>
-          </Animated.View>
-        )}
-        {DEBUG_HOTSPOTS && <Text style={s.hotspotLabel}>{label}</Text>}
+        <Animated.View style={[
+          s.hotspotRing,
+          { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
+        ]}>
+          <Text style={s.hotspotIcon}>{icon}</Text>
+        </Animated.View>
+        <Text style={s.hotspotLabel}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
   );

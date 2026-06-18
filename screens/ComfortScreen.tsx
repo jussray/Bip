@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
@@ -38,6 +39,10 @@ const CLOUD_ROTATION = [
   IMAGES.cloud,
   IMAGES.cloudHeadphonesV2,
 ];
+
+// Each cloud pose maps to a matching ambient weather phase.
+// stormy→rain, happy→sun, headphones→golden afternoon, sleepy→night, neutral→day, headphonesV2→evening
+const CLOUD_PHASES = ['rain', 'day', 'afternoon', 'night', 'midday', 'evening'] as const;
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -199,6 +204,7 @@ export function ComfortScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
+      <AmbientWeatherOverlay phase={CLOUD_PHASES[cloudIdx]} />
 
       {/* ── Ambient rainy room backdrop (fixed, behind scroll) ── */}
       <View style={styles.bgWrap} pointerEvents="none">

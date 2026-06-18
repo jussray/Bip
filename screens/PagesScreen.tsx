@@ -30,6 +30,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { IMAGES } from '../constants/theme';
@@ -979,6 +980,7 @@ function PagesWorkspace({
 
   return (
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
+      <AmbientWeatherOverlay />
       {/* Floating companion — breathes behind the writing area */}
       {activeCompanionImg && (
         <Animated.View

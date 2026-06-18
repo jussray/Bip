@@ -29,6 +29,7 @@ import {
 import { STICKER_REGISTRY, type StickerCharacter } from '../constants/characterStickers';
 import STICKER_IMAGES from '../constants/stickerImages';
 import { BareRoomRenderer } from '../components/rooms/BareRoomRenderer';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 
 const { width, height } = Dimensions.get('window');
 
@@ -642,6 +643,9 @@ export function UserRoomScreen({
   return (
     <View style={s.root}>
       <StatusBar style="light" />
+
+      {/* ── Ambient weather overlay ──────────────────────────────────────── */}
+      <AmbientWeatherOverlay phase={roomPhase} />
 
       {/* ── LAYER 0: Bare room shell (walls, floor, window, atmosphere) ── */}
       <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>

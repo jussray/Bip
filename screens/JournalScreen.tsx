@@ -21,6 +21,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker } from '../components/MiniReactionSticker';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types/bridge';
@@ -170,6 +171,7 @@ export function JournalScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
+      <AmbientWeatherOverlay />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* ── Room with hotspots ─────────────────────────────────────── */}

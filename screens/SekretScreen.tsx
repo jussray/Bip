@@ -19,6 +19,7 @@ import {
   TextInput, View, StyleSheet, Platform,
   ImageBackground, Animated, Easing,
 } from 'react-native';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AVATARS, getRoomBg, normalizeCharacterKey } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
@@ -219,6 +220,7 @@ export function SekretScreen({
   // ── Teen side ────────────────────────────────────────────────────────────
   return (
     <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
+      <AmbientWeatherOverlay />
       <LinearGradient
         colors={['rgba(20,10,40,0.55)', 'rgba(40,20,70,0.72)', 'rgba(15,8,30,0.92)']}
         style={StyleSheet.absoluteFill}
