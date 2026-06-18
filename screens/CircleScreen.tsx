@@ -1,12 +1,7 @@
-// @ts-nocheck
 // Se'kret Bip — CircleScreen V1
-// Four tabs: Public, Friends, Crew, Parent
-// Identity rules enforced per tab:
-//   Public  → anonymous only, reactions only, no comments, no profile view
-//   Friends → nickname/avatar only, comments allowed
-//   Crew    → trusted identity visible, comments allowed
-//   Parent  → anonymous by default, identity inside parent connections only, comments allowed
-// Teen and Parent data are fully separated — no cross-visibility.
+// Four tabs: Open Bip (Public), My Circle (Friends), Crew Bip, Parent Bridge
+// Identity rules enforced per tab — see circle-v1-spec.md
+// Content safety via guardrails.ts (SOFT_CONTENT_FLAGS + CRISIS_NUDGE)
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
@@ -39,17 +34,19 @@ import {
   syncCircleReaction,
   writeCirclePost,
 } from '../utils/sync';
+import { SOFT_CONTENT_FLAGS, CRISIS_NUDGE, TONE } from '../constants/guardrails';
 
 // ─── Reaction sets ──────────────────────────────────────────────────────────
 const TEEN_REACTIONS    = ['💜 felt', '🫂 comfort', '💪 proud', '🌙 stay'];
-const PARENT_REACTIONS  = ['🫶 beenThere', '🤝 solidarity', '⏰ reminder', '💛 needed', '🌿 strength'];
+// Parent Bridge reactions aligned with ParentCircleScreen
+const PARENT_REACTIONS  = ['☕ beenThere', '🤝 solidarity', '🌱 reminder', '💜 needed', '🕯️ strength'];
 
-// ─── Tab config ─────────────────────────────────────────────────────────────
+// ─── Tab config — Se'kret Bip language layer (circle-v1-spec.md §4) ─────────
 const TABS: { key: CircleTab; label: string; emoji: string }[] = [
-  { key: 'public',  label: 'Public',  emoji: '🌎' },
-  { key: 'friends', label: 'Friends', emoji: '💜' },
-  { key: 'crew',    label: 'Crew',    emoji: '🤝' },
-  { key: 'parent',  label: 'Parent',  emoji: '🌿' },
+  { key: 'public',  label: 'Open Bip',      emoji: '🌎' },
+  { key: 'friends', label: 'My Circle',     emoji: '💜' },
+  { key: 'crew',    label: 'Crew Bip',      emoji: '🤝' },
+  { key: 'parent',  label: 'Parent Bridge', emoji: '🌿' },
 ];
 
 // ─── Fallback mock data (shown when Supabase is unconfigured / offline) ──────
@@ -232,13 +229,13 @@ function PublicFeed({ onOptimisticInsert }: {
       }
       ListHeaderComponent={
         <View style={styles.anonBadge}>
-          <Text style={styles.anonBadgeText}>🌎 Anonymous only · Reactions only · No profiles</Text>
+          <Text style={styles.anonBadgeText}>🌎 Open Bip · Anonymous · Reactions only · No profiles</Text>
         </View>
       }
       ListEmptyComponent={
         loading
           ? <ActivityIndicator color={PURPLE} style={{ marginTop: 40 }} />
-          : <Text style={styles.emptyText}>No bips yet. Be the first. 🌙</Text>
+          : <Text style={styles.emptyText}>{TONE.emptyCircle}</Text>
       }
       renderItem={({ item }) => (
         <View style={styles.postCard}>
@@ -313,7 +310,7 @@ function FriendsFeed({ myUserId }: { myUserId: string }) {
       ListEmptyComponent={
         loading
           ? <ActivityIndicator color={PURPLE} style={{ marginTop: 40 }} />
-          : <Text style={styles.emptyText}>No friends bips yet. Add some friends. 💜</Text>
+          : <Text style={styles.emptyText}>{TONE.emptyCircle}</Text>
       }
       renderItem={({ item }) => (
         <View style={styles.postCard}>
@@ -420,7 +417,7 @@ function CrewFeed({ myUserId }: { myUserId: string }) {
       ListEmptyComponent={
         loading
           ? <ActivityIndicator color={PURPLE} style={{ marginTop: 40 }} />
-          : <Text style={styles.emptyText}>No crew bips yet. Start one. 🤝</Text>
+          : <Text style={styles.emptyText}>{TONE.emptyCrew}</Text>
       }
       renderItem={({ item }) => (
         <View style={styles.postCard}>
@@ -526,13 +523,13 @@ function ParentFeed({ myUserId }: { myUserId: string }) {
       contentContainerStyle={styles.feedList}
       ListHeaderComponent={
         <View style={styles.anonBadge}>
-          <Text style={styles.anonBadgeText}>🌿 Anonymous by default · Parent space · Be kind</Text>
+          <Text style={styles.anonBadgeText}>🌿 Parent Bridge · Anonymous · Quiet space · Be kind</Text>
         </View>
       }
       ListEmptyComponent={
         loading
           ? <ActivityIndicator color={PURPLE} style={{ marginTop: 40 }} />
-          : <Text style={styles.emptyText}>No parent bips yet. This space is yours. 🌿</Text>
+          : <Text style={styles.emptyText}>{TONE.emptyCircle}</Text>
       }
       renderItem={({ item }) => (
         <View style={styles.postCard}>
@@ -602,20 +599,35 @@ function Composer({
 }) {
   const [text, setText] = useState('');
   const [selectedTab, setSelectedTab] = useState<CircleTab>(activeTab);
+  const [crisisFlag, setCrisisFlag] = useState(false);
+  const [confirmedPost, setConfirmedPost] = useState(false);
 
   const destinations = COMPOSER_DESTINATIONS.filter(d =>
     d.key !== 'parent' || activeTab === 'parent'
   );
 
+  const handleTextChange = (val: string) => {
+    setText(val);
+    const lower = val.toLowerCase();
+    const flagged = SOFT_CONTENT_FLAGS.some(f => lower.includes(f));
+    setCrisisFlag(flagged);
+    if (!flagged) setConfirmedPost(false);
+  };
+
   const handlePost = () => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    if (crisisFlag && !confirmedPost) {
+      setConfirmedPost(true);
+      return;
+    }
     onPost(selectedTab, trimmed);
     onClose();
   };
 
   const remaining = MAX_CHARS - text.length;
   const overLimit = remaining < 0;
+  const canPost   = !overLimit && !!text.trim();
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
@@ -659,22 +671,33 @@ function Composer({
             placeholderTextColor="#555"
             multiline
             value={text}
-            onChangeText={setText}
+            onChangeText={handleTextChange}
             maxLength={MAX_CHARS + 10}
             autoFocus
           />
+
+          {crisisFlag && (
+            <View style={styles.crisisNudge}>
+              <Text style={styles.crisisNudgeText}>{CRISIS_NUDGE}</Text>
+              {confirmedPost && (
+                <Text style={styles.crisisNudgeSub}>tap "Bip it" again if you still want to post.</Text>
+              )}
+            </View>
+          )}
 
           <View style={styles.composerFooter}>
             <Text style={[styles.charCount, overLimit && styles.charCountOver]}>
               {remaining}
             </Text>
             <TouchableOpacity
-              style={[styles.composerPostBtn, (overLimit || !text.trim()) && styles.composerPostBtnDisabled]}
+              style={[styles.composerPostBtn, !canPost && styles.composerPostBtnDisabled]}
               onPress={handlePost}
-              disabled={overLimit || !text.trim()}
+              disabled={!canPost}
               accessibilityLabel="Post bip"
             >
-              <Text style={styles.composerPostBtnText}>Bip it 💜</Text>
+              <Text style={styles.composerPostBtnText}>
+                {crisisFlag && !confirmedPost ? 'continue?' : 'Bip it 💜'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -746,10 +769,10 @@ export default function CircleScreen(_props: Record<string, unknown> = {}) {
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Circle</Text>
+        <Text style={styles.headerTitle}>Circle 🌐</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => setAddCircleOpen(true)} style={styles.headerBtn} accessibilityLabel={CIRCLE_TERMS.friendRequest}>
-            <Text style={styles.headerBtnText}>+ {CIRCLE_TERMS.friendRequest}</Text>
+            <Text style={styles.headerBtnText}>{CIRCLE_TERMS.friendRequest}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setComposerOpen(true)} style={styles.headerBtnPrimary} accessibilityLabel="New Bip">
             <Text style={styles.headerBtnPrimaryText}>+ Bip</Text>
@@ -859,4 +882,7 @@ const styles = StyleSheet.create({
   composerPostBtn: { backgroundColor: '#7c3aed', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 10 },
   composerPostBtnDisabled: { opacity: 0.4 },
   composerPostBtnText:     { color: '#fff', fontWeight: '700', fontSize: 14 },
+  crisisNudge:    { backgroundColor: '#1a0a2e', borderRadius: 12, padding: 12, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: PURPLE },
+  crisisNudgeText:{ color: '#c4b5fd', fontSize: 13, lineHeight: 19 },
+  crisisNudgeSub: { color: '#888', fontSize: 11, marginTop: 4 },
 });

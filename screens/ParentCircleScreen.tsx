@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { SOFT_CONTENT_FLAGS, CRISIS_NUDGE, TONE } from '../constants/guardrails';
 
 type ParentCirclePost = {
   id: string | number;
@@ -153,6 +154,7 @@ export function ParentCircleScreen({
   const [selectedTag, setSelectedTag]   = useState('');
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [crisisFlag, setCrisisFlag]       = useState(false);
   const [activeReplyPostId, setActiveReplyPostId] = useState<string | null>(null);
   const [selectedQuietReply, setSelectedQuietReply] = useState('');
 
@@ -188,6 +190,12 @@ export function ParentCircleScreen({
     try { await Haptics.impactAsync(style); } catch { void 0; }
   };
 
+  const handleTextChange = (val: string) => {
+    setParentCirclePostText(val);
+    const lower = val.toLowerCase();
+    setCrisisFlag(SOFT_CONTENT_FLAGS.some(f => lower.includes(f)));
+  };
+
   const handleSavePost = async () => {
     if (!parentCirclePostText.trim()) return;
     setIsSubmitting(true);
@@ -197,6 +205,7 @@ export function ParentCircleScreen({
     });
     setParentCirclePostText('');
     setSelectedTag('');
+    setCrisisFlag(false);
     setIsSubmitting(false);
     await triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
   };
@@ -307,8 +316,14 @@ export function ParentCircleScreen({
               placeholderTextColor="#6b7a5e"
               multiline
               value={parentCirclePostText}
-              onChangeText={setParentCirclePostText}
+              onChangeText={handleTextChange}
             />
+
+            {crisisFlag && (
+              <View style={styles.crisisNudge}>
+                <Text style={styles.crisisNudgeText}>{CRISIS_NUDGE}</Text>
+              </View>
+            )}
 
             <TouchableOpacity
               style={styles.postBtn}
@@ -336,9 +351,7 @@ export function ParentCircleScreen({
             <Text style={styles.sectionTitle}>what parents are carrying</Text>
 
             {parentCirclePosts.length === 0 && (
-              <Text style={styles.emptyText}>
-                circle is quiet. be the first to pull up a chair.
-              </Text>
+              <Text style={styles.emptyText}>{TONE.emptyCircle}</Text>
             )}
 
             <View style={styles.circlePromise}>
@@ -502,6 +515,8 @@ const styles = StyleSheet.create({
   postBtn:    { padding: 14, borderRadius: 18, marginBottom: 8, alignItems: 'center', backgroundColor: WARM },
   postBtnText:{ color: '#fff', fontSize: 15, fontWeight: 'bold' },
   safeText:   { color: '#6b7a5e', fontSize: 11, textAlign: 'center', marginTop: 4 },
+  crisisNudge:    { backgroundColor: 'rgba(5,150,105,0.12)', borderRadius: 12, padding: 12, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: SAGE },
+  crisisNudgeText:{ color: SAGE_SOFT, fontSize: 13, lineHeight: 19 },
 
   journalNote:    { borderWidth: 1, borderColor: '#3a4a35', borderStyle: 'dashed', borderRadius: 12, padding: 10, marginBottom: 12, backgroundColor: '#f5f0e808', transform: [{ rotate: '1deg' }] },
   journalNoteText:{ color: '#8fa885', fontSize: 13, fontStyle: 'italic', textAlign: 'center' },
