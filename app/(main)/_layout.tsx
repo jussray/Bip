@@ -1,9 +1,11 @@
 /**
  * app/(main)/_layout.tsx
  *
- * PHASE 2 FIX: All teen + parent routes registered.
- * Visible tabs: home, pages, calm, circle, sekret (teen) / parent-room (parent).
- * All other routes hidden with href:null but fully navigable.
+ * EXPERIENCE RESTORATION:
+ * Teen visible tabs:   home · pages · calm · circle · more
+ * Parent visible tabs: parent-room · parent-pages · parent-circle · parent-bridge · more
+ * sekret: registered but hidden (href: null) — reachable via Pages navigation
+ * All other utility routes hidden but fully navigable.
  */
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
@@ -15,6 +17,8 @@ function TabIcon({ emoji }: { emoji: string }) {
 
 export default function MainLayout() {
   const { userSide } = useAppContext();
+  const isParent = userSide === 'parent';
+  const isTeen   = !isParent;
 
   return (
     <Tabs
@@ -35,9 +39,9 @@ export default function MainLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Home',
+          title: 'Room',
           tabBarIcon: () => <TabIcon emoji="🏠" />,
-          href: userSide === 'parent' ? null : undefined,
+          href: isParent ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -45,7 +49,7 @@ export default function MainLayout() {
         options={{
           title: 'Pages',
           tabBarIcon: () => <TabIcon emoji="📖" />,
-          href: userSide === 'parent' ? null : undefined,
+          href: isParent ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -53,7 +57,7 @@ export default function MainLayout() {
         options={{
           title: 'Calm',
           tabBarIcon: () => <TabIcon emoji="🌙" />,
-          href: userSide === 'parent' ? null : undefined,
+          href: isParent ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -61,15 +65,7 @@ export default function MainLayout() {
         options={{
           title: 'Circle',
           tabBarIcon: () => <TabIcon emoji="🌐" />,
-          href: userSide === 'parent' ? null : undefined,
-        }}
-      />
-      <Tabs.Screen
-        name="sekret"
-        options={{
-          title: "Se'kret",
-          tabBarIcon: () => <TabIcon emoji="💜" />,
-          href: userSide === 'parent' ? null : undefined,
+          href: isParent ? null : undefined,
         }}
       />
 
@@ -79,7 +75,7 @@ export default function MainLayout() {
         options={{
           title: 'Room',
           tabBarIcon: () => <TabIcon emoji="🌿" />,
-          href: userSide === 'teen' ? null : undefined,
+          href: isTeen ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -87,7 +83,7 @@ export default function MainLayout() {
         options={{
           title: 'Pages',
           tabBarIcon: () => <TabIcon emoji="📝" />,
-          href: userSide === 'teen' ? null : undefined,
+          href: isTeen ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -95,7 +91,7 @@ export default function MainLayout() {
         options={{
           title: 'Circle',
           tabBarIcon: () => <TabIcon emoji="🤝" />,
-          href: userSide === 'teen' ? null : undefined,
+          href: isTeen ? null : undefined,
         }}
       />
       <Tabs.Screen
@@ -103,28 +99,39 @@ export default function MainLayout() {
         options={{
           title: 'Bridge',
           tabBarIcon: () => <TabIcon emoji="🌉" />,
-          href: userSide === 'teen' ? null : undefined,
+          href: isTeen ? null : undefined,
         }}
       />
 
-      {/* ── Hidden teen routes ── */}
-      <Tabs.Screen name="voicebip"       options={{ href: null }} />
-      <Tabs.Screen name="cloud"          options={{ href: null }} />
-      <Tabs.Screen name="comfort"        options={{ href: null }} />
-      <Tabs.Screen name="crew"           options={{ href: null }} />
-      <Tabs.Screen name="more"           options={{ href: null }} />
-      <Tabs.Screen name="settings"       options={{ href: null }} />
-      <Tabs.Screen name="points"         options={{ href: null }} />
-      <Tabs.Screen name="history"        options={{ href: null }} />
-      <Tabs.Screen name="bridge"         options={{ href: null }} />
-      <Tabs.Screen name="s2tell"         options={{ href: null }} />
+      {/* ── More: visible on BOTH sides ── */}
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
+          tabBarIcon: () => <TabIcon emoji="✨" />,
+        }}
+      />
+
+      {/* ── sekret: hidden — entered from Pages ── */}
+      <Tabs.Screen name="sekret"          options={{ href: null }} />
+
+      {/* ── Hidden utility routes ── */}
+      <Tabs.Screen name="voicebip"        options={{ href: null }} />
+      <Tabs.Screen name="cloud"           options={{ href: null }} />
+      <Tabs.Screen name="comfort"         options={{ href: null }} />
+      <Tabs.Screen name="crew"            options={{ href: null }} />
+      <Tabs.Screen name="settings"        options={{ href: null }} />
+      <Tabs.Screen name="points"          options={{ href: null }} />
+      <Tabs.Screen name="history"         options={{ href: null }} />
+      <Tabs.Screen name="bridge"          options={{ href: null }} />
+      <Tabs.Screen name="s2tell"          options={{ href: null }} />
       <Tabs.Screen name="period-calendar" options={{ href: null }} />
-      <Tabs.Screen name="discover"       options={{ href: null }} />
-      <Tabs.Screen name="profile"        options={{ href: null }} />
+      <Tabs.Screen name="discover"        options={{ href: null }} />
+      <Tabs.Screen name="profile"         options={{ href: null }} />
 
       {/* ── Chat nested routes ── */}
-      <Tabs.Screen name="chat/index"           options={{ href: null }} />
-      <Tabs.Screen name="chat/[personalityId]" options={{ href: null }} />
+      <Tabs.Screen name="chat/index"            options={{ href: null }} />
+      <Tabs.Screen name="chat/[personalityId]"  options={{ href: null }} />
     </Tabs>
   );
 }
