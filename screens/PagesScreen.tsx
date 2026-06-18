@@ -29,12 +29,14 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
+import { fetchSekretVoice } from '../utils/api';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import { BipEmptyState } from '../components/BipEmptyState';
 import { PERSONALITY_CONFIG } from '@/services/ai';
@@ -285,17 +287,41 @@ interface SekretReplyBubbleProps {
 
 function SekretReplyBubble({ tab, reply, typing, accent }: SekretReplyBubbleProps) {
   const avatarKey = tabToAvatarKey(tab);
-  if (!avatarKey) return null;
+  const voiceCharacter = avatarKey || (tab === 'bridge' ? 'rylane' : tab === 'parentSekret' ? 'raylene' : null);
+  const [audioUri, setAudioUri] = useState('');
+  const [loadingVoice, setLoadingVoice] = useState(false);
+  if (!voiceCharacter) return null;
   if (!typing && !reply) return null;
 
-  const label = THINKING_LABELS[avatarKey] ?? `${avatarKey} is thinking\u2026`;
+  const label = avatarKey ? (THINKING_LABELS[avatarKey] ?? `${avatarKey} is thinking\u2026`) : 'Se\u2019kret is thinking…';
+  const prepareVoice = async () => {
+    if (!reply) return;
+    if (!audioUri) {
+      setLoadingVoice(true);
+      const audio = await fetchSekretVoice({ reply, characterId: voiceCharacter });
+      setLoadingVoice(false);
+      if (!audio) return;
+      const uri = `data:${audio.contentType};base64,${audio.audioBase64}`;
+      setAudioUri(uri);
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      await sound.playAsync();
+      return;
+    }
+    const { sound } = await Audio.Sound.createAsync({ uri: audioUri });
+    await sound.playAsync();
+  };
 
   return (
     <View style={[replyStyles.bubble, { borderColor: accent + '55' }]}>
-      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1)}</Text>
+      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey ? avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1) : 'Parent Se’kret'}</Text>
       <Text style={replyStyles.text}>
         {typing ? label : reply}
       </Text>
+      {!typing && reply ? (
+        <TouchableOpacity style={replyStyles.voiceButton} onPress={prepareVoice} disabled={loadingVoice}>
+          <Text style={replyStyles.voiceButtonText}>{loadingVoice ? 'preparing voice…' : '▶ hear reply'}</Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -321,6 +347,21 @@ const replyStyles = StyleSheet.create({
     color: '#e8e0f0',
     fontSize: 15,
     lineHeight: 23,
+  },
+  voiceButton: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.35)',
+    backgroundColor: 'rgba(124,58,237,0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  voiceButtonText: {
+    color: '#f5f0ff',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });
 

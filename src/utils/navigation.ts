@@ -1,42 +1,30 @@
 /**
  * src/utils/navigation.ts
  *
- * Centralised navigation helper — single source of truth for all
- * legacy setScreen() → Expo Router path mappings.
- *
- * Usage:
- *   import { navigateTo } from '@/utils/navigation';
- *   navigateTo('circle');   // router.push('/(main)/circle')
+ * Shared legacy setScreen() bridge. New architecture routes through side
+ * domains: /(teen) and /(parent). Defaults to teen for older callers that do
+ * not pass a side yet.
  */
 import { router } from 'expo-router';
-import type { ScreenKey } from '@/types';
+import { routeForSide } from '@/shared/routes';
 
-export const SCREEN_MAP: Record<ScreenKey | string, string> = {
-  home:          '/(main)/home',
-  pages:         '/(main)/pages',
-  calm:          '/(main)/calm',
-  circle:        '/(main)/circle',
-  sekret:        '/(main)/sekret',
-  // Both casings accepted — PagesScreen calls 'voiceBip', other callers may
-  // use lowercase 'voicebip' which matches the actual route filename.
-  voiceBip:      '/(main)/voicebip',
-  voicebip:      '/(main)/voicebip',
-  bridge:        '/(main)/bridge',
-  parentBridge:  '/(main)/bridge',
-  cloudThoughts: '/(main)/discover',
-  discover:      '/(main)/discover',
-  settings:      '/(main)/settings',
-  profile:       '/(main)/profile',
-};
-
-/**
- * Navigate to a screen by its legacy string key.
- * Falls back to home if the key is not in the map.
- */
-export function navigateTo(screen: string): void {
-  const path = SCREEN_MAP[screen] ?? '/(main)/home';
-  // router.push accepts Href; the cast is intentional here because the
-  // SCREEN_MAP values are all valid static routes but TypeScript cannot
-  // narrow a runtime string to the Href union.
-  router.push(path as Parameters<typeof router.push>[0]);
+export function navigateTo(screen: string, side: 'teen' | 'parent' = 'teen'): void {
+  router.push(routeForSide(side, screen) as Parameters<typeof router.push>[0]);
 }
+
+export const SCREEN_MAP: Record<string, string> = {
+  home: routeForSide('teen', 'home'),
+  room: routeForSide('teen', 'room'),
+  pages: routeForSide('teen', 'pages'),
+  calm: routeForSide('teen', 'calm'),
+  circle: routeForSide('teen', 'circle'),
+  sekret: routeForSide('teen', 'sekret'),
+  voiceBip: routeForSide('teen', 'voiceBip'),
+  voicebip: routeForSide('teen', 'voicebip'),
+  bridge: routeForSide('teen', 'bridge'),
+  parentBridge: routeForSide('parent', 'parentBridge'),
+  cloudThoughts: routeForSide('teen', 'cloudThoughts'),
+  discover: routeForSide('teen', 'discover'),
+  settings: routeForSide('teen', 'settings'),
+  profile: routeForSide('teen', 'profile'),
+};

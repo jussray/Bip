@@ -9,3 +9,4 @@ export const BRIDGE_RULES = {
   parentCannotPullTeenData: true,
   teenCanRevokeShare: true,
 } as const;
+export * from './routes';
