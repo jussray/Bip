@@ -1,9 +1,9 @@
 // screens/SplashScreen.tsx
 //
 // Full-screen splash artwork for teen and parent entry.
-// The painted "Se'kret Bip ♡" button in each image is the ONLY tap target —
-// an invisible TouchableOpacity is clipped exactly over the neon pill in the artwork.
-// Nothing else is rendered on top of the artwork.
+// The painted "Se'kret Bip ♡" button in each image is the main tap target.
+// Parent uses a slightly larger invisible clip because its artwork has shifted
+// across recent asset swaps and should never auto-skip or trap the user.
 //
 // Hit-target fractions are relative to rendered image height/width (cover fill).
 // Tune T_BTN_* and P_BTN_* if the button lands slightly off on a particular device.
@@ -28,8 +28,9 @@ const PARENT_BG = require("../assets/images/parent-space-splash.png");
 // Pill sits below the cloud artwork, above the shortcut row.
 const T_BTN = { top: 0.800, bottom: 0.875, left: 0.08, right: 0.08 };
 
-// ── Parent splash: same button, slightly higher in the composition ────────────
-const P_BTN = { top: 0.780, bottom: 0.860, left: 0.08, right: 0.08 };
+// ── Parent splash: broader hit zone so the parent door is actually usable ────
+// The visual button shifted between parent splash assets. Keep this generous.
+const P_BTN = { top: 0.700, bottom: 0.900, left: 0.05, right: 0.05 };
 
 interface SplashScreenProps {
   userSide?: "teen" | "parent";
@@ -46,7 +47,7 @@ export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps
   }, [fade]);
 
   return (
-    <Animated.View style={[s.root, { opacity: fade }]}>
+    <Animated.View style={[s.root, { opacity: fade }]}> 
       <StatusBar style="light" />
 
       {/* Full-screen artwork — pointer events disabled so only the hit clip fires */}
