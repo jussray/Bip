@@ -3,9 +3,18 @@
  *
  * PHASE 5 FIX: Added all parent state fields + persistence.
  * setUserSide is now exposed so app/index.tsx can call it on splash.
+ *
+ * TYPE PASS: Replaced all any[] arrays with proper imported types.
  */
 import { useState, useEffect } from 'react';
 import { loadState, saveState } from '@/utils';
+import type {
+  JournalEntry,
+  MoodEntry,
+  CirclePost,
+  VoiceNote,
+  ParentCirclePost,
+} from '@/types';
 
 export function useSekretState() {
   const [theme, setTheme]                   = useState('neon');
@@ -13,9 +22,9 @@ export function useSekretState() {
   const [userSide, setUserSide]             = useState<'teen' | 'parent' | null>(null);
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [growthPath, setGrowthPath]         = useState('preferNotToSay');
-  const [entries, setEntries]               = useState<any[]>([]);
-  const [moodHistory, setMoodHistory]       = useState<any[]>([]);
-  const [circlePosts, setCirclePosts]       = useState<any[]>([]);
+  const [entries, setEntries]               = useState<JournalEntry[]>([]);
+  const [moodHistory, setMoodHistory]       = useState<MoodEntry[]>([]);
+  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
   const [isLoading, setIsLoading]           = useState(true);
 
   // ── Parent state ──────────────────────────────────────────────
@@ -23,12 +32,12 @@ export function useSekretState() {
   const [parentMoodDate, setParentMoodDate]             = useState('');
   const [parentRoomStyle, setParentRoomStyle]           = useState('forest');
   const [parentPagesDraft, setParentPagesDraft]         = useState('');
-  const [parentPagesEntries, setParentPagesEntries]     = useState<any[]>([]);
-  const [parentCirclePosts, setParentCirclePosts]       = useState<any[]>([]);
+  const [parentPagesEntries, setParentPagesEntries]     = useState<JournalEntry[]>([]);
+  const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
   const [parentCirclePostText, setParentCirclePostText] = useState('');
-  const [parentVoiceNotes, setParentVoiceNotes]         = useState<any[]>([]);
-  const [parentOracleProfile, setParentOracleProfile]   = useState<any>(null);
-  const [parentOracleSessions, setParentOracleSessions] = useState<any[]>([]);
+  const [parentVoiceNotes, setParentVoiceNotes]         = useState<VoiceNote[]>([]);
+  const [parentOracleProfile, setParentOracleProfile]   = useState<unknown>(null);
+  const [parentOracleSessions, setParentOracleSessions] = useState<unknown[]>([]);
 
   // Load persisted state on mount
   useEffect(() => {

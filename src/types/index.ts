@@ -3,6 +3,8 @@
  *
  * Canonical types (moved from types/index.ts in Step 3).
  * Import via: import type { JournalEntry } from '@/types';
+ *
+ * TYPE PASS: Added VibeLabEntry for Oracle mood signal pipeline.
  */
 
 export interface JournalEntry {
@@ -117,6 +119,8 @@ export interface ParentCirclePost {
     reminder?:   number;
     needed?:     number;
     strength?:   number;
+    /** Generic fallback so reactToParentPost can index by string key safely. */
+    [key: string]: number | undefined;
   };
 }
 
@@ -163,4 +167,33 @@ export interface SavePageInput {
 export interface BridgePayload {
   type:    string;
   payload: unknown;
+}
+
+// ─── Vibe Lab ─────────────────────────────────────────────────────────────────
+/**
+ * Represents a single Vibe Lab selection event.
+ * Written to Supabase user_vibe_log by the Vibe Lab screen.
+ * Oracle aggregates these to build the user's mood pattern signal.
+ */
+export type VibeKey =
+  | 'midnight'
+  | 'rainyDay'
+  | 'musicMode'
+  | 'studyCorner'
+  | 'freshStart'
+  | 'dreamer'
+  | 'grounded'
+  | 'energy'
+  | 'flow'
+  | 'softDay';
+
+export interface VibeLabEntry {
+  id:          number;
+  vibeKey:     VibeKey;
+  emoji:       string;
+  label:       string;
+  /** ISO timestamp of when the vibe was selected. */
+  selectedAt:  string;
+  /** Oracle mood signal derived from this vibe — written by the Worker. */
+  oracleSignal?: string;
 }

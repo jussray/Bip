@@ -4,6 +4,9 @@
  * PHASE 5 FIX: Added all parent state + actions.
  * setUserSide exposed so splash can persist side choice.
  * patchJournalEntry added so onSekretReply can persist Worker replies.
+ *
+ * TYPE PASS: Removed duplicate JournalEntry + CirclePost declarations.
+ * Now imports canonical types from @/types to avoid drift.
  */
 import React, {
   createContext,
@@ -16,30 +19,13 @@ import React, {
 import { Animated } from 'react-native';
 import { useSekretState } from '@/hooks/useSekretState';
 import { HOME_MESSAGES } from '@constants/theme';
-
-interface JournalEntry {
-  id: number;
-  text: string;
-  mood: string;
-  date: string;
-  time: string;
-  sekretReply?: string;
-}
-
-interface MoodHistoryEntry {
-  id: number;
-  mood: string;
-  date: string;
-  time: string;
-}
-
-export interface CirclePost {
-  id: number;
-  text: string;
-  date: string;
-  time: string;
-  reactions: { felt: number; comfort: number; proud: number; stay: number };
-}
+import type {
+  JournalEntry,
+  CirclePost,
+  MoodEntry,
+  VoiceNote,
+  ParentCirclePost,
+} from '@/types';
 
 interface AppContextValue {
   // Identity
@@ -52,7 +38,7 @@ interface AppContextValue {
   mood: string;
   setMood: (mood: string) => void;
   selectMood: (mood: string) => void;
-  moodHistory: MoodHistoryEntry[];
+  moodHistory: MoodEntry[];
 
   // Journal
   journalText: string;
@@ -64,8 +50,8 @@ interface AppContextValue {
   patchJournalEntry: (id: number, patch: Partial<JournalEntry>) => void;
 
   // Teen voice notes
-  voiceNotes: any[];
-  setVoiceNotes: React.Dispatch<React.SetStateAction<any[]>>;
+  voiceNotes: VoiceNote[];
+  setVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
 
   // Teen circle
   circlePosts: CirclePost[];
@@ -77,7 +63,7 @@ interface AppContextValue {
   isLoading: boolean;
 
   // ── Parent state ──────────────────────────────────────────────
-parentMood: string;
+  parentMood: string;
   setParentMood: (mood: string) => void;
   parentMoodDate: string;
   setParentMoodDate: (date: string) => void;
@@ -85,24 +71,24 @@ parentMood: string;
   setParentRoomStyle: (style: string) => void;
   parentPagesDraft: string;
   setParentPagesDraft: (text: string) => void;
-  parentPagesEntries: any[];
-  setParentPagesEntries: React.Dispatch<React.SetStateAction<any[]>>;
-  parentCirclePosts: any[];
-  setParentCirclePosts: React.Dispatch<React.SetStateAction<any[]>>;
+  parentPagesEntries: JournalEntry[];
+  setParentPagesEntries: React.Dispatch<React.SetStateAction<JournalEntry[]>>;
+  parentCirclePosts: ParentCirclePost[];
+  setParentCirclePosts: React.Dispatch<React.SetStateAction<ParentCirclePost[]>>;
   parentCirclePostText: string;
   setParentCirclePostText: (text: string) => void;
-  parentVoiceNotes: any[];
-  setParentVoiceNotes: React.Dispatch<React.SetStateAction<any[]>>;
-  parentOracleProfile: any;
-  setParentOracleProfile: (profile: any) => void;
-  parentOracleSessions: any[];
-  setParentOracleSessions: React.Dispatch<React.SetStateAction<any[]>>;
+  parentVoiceNotes: VoiceNote[];
+  setParentVoiceNotes: React.Dispatch<React.SetStateAction<VoiceNote[]>>;
+  parentOracleProfile: unknown;
+  setParentOracleProfile: (profile: unknown) => void;
+  parentOracleSessions: unknown[];
+  setParentOracleSessions: React.Dispatch<React.SetStateAction<unknown[]>>;
 
   // Parent actions
   saveParentPageEntry: () => void;
   saveParentCirclePost: () => void;
   reactToParentPost: (postId: number, reaction: string) => void;
-  completeParentOracleSession: (session: any) => void;
+  completeParentOracleSession: (session: unknown) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -117,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [journalText, setJournalText] = useState('');
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
   const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
-  const [voiceNotes, setVoiceNotes] = useState<any[]>([]);
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
@@ -141,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   function selectMood(m: string) {
     s.setMood(m);
-    s.setMoodHistory((h: MoodHistoryEntry[]) => [
+    s.setMoodHistory((h: MoodEntry[]) => [
       { id: Date.now(), mood: m, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
       ...h,
     ]);
@@ -169,7 +155,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ── Parent actions ───────────────────────────────────────────────
   function saveParentPageEntry() {
     if (!s.parentPagesDraft.trim()) return;
-    s.setParentPagesEntries((e: any[]) => [
+    s.setParentPagesEntries((e: JournalEntry[]) => [
       { id: Date.now(), text: s.parentPagesDraft, mood: s.parentMood, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
       ...e,
     ]);
@@ -178,7 +164,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   function saveParentCirclePost() {
     if (!s.parentCirclePostText.trim()) return;
-    s.setParentCirclePosts((posts: any[]) => [
+    s.setParentCirclePosts((posts: ParentCirclePost[]) => [
       { id: Date.now(), text: s.parentCirclePostText, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString(), reactions: { felt: 0, support: 0, relate: 0 } },
       ...posts,
     ]);
@@ -186,17 +172,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   function reactToParentPost(postId: number, reaction: string) {
-    s.setParentCirclePosts((posts: any[]) =>
+    s.setParentCirclePosts((posts: ParentCirclePost[]) =>
       posts.map(p => p.id === postId
-        ? { ...p, reactions: { ...p.reactions, [reaction]: (p.reactions[reaction] ?? 0) + 1 } }
+        ? { ...p, reactions: { ...p.reactions, [reaction]: ((p.reactions as Record<string, number>)[reaction] ?? 0) + 1 } }
         : p
       )
     );
   }
 
-  function completeParentOracleSession(session: any) {
-    s.setParentOracleSessions((sessions: any[]) => [session, ...sessions].slice(0, 50));
-    s.setParentOracleProfile(session.profileSnapshot ?? null);
+  function completeParentOracleSession(session: unknown) {
+    s.setParentOracleSessions((sessions: unknown[]) => [session, ...sessions].slice(0, 50));
+    s.setParentOracleProfile((session as { profileSnapshot?: unknown })?.profileSnapshot ?? null);
   }
 
   const value: AppContextValue = {
