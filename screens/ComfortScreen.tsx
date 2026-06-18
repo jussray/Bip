@@ -28,8 +28,16 @@ import {
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
 } from 'react-native';
 
-const CLOUD_STORMY = IMAGES.cloudStormy;
-const RAINY_BG     = IMAGES.bgComfort;
+const RAINY_BG = IMAGES.bgComfort;
+
+const CLOUD_ROTATION = [
+  IMAGES.cloudStormy,
+  IMAGES.cloudHappy,
+  IMAGES.cloudHeadphones,
+  IMAGES.cloudSleepy,
+  IMAGES.cloud,
+  IMAGES.cloudHeadphonesV2,
+];
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -74,6 +82,8 @@ export function ComfortScreen({
 
   const [checked, setChecked] = useState<number[]>([]);
   const [msgIdx, setMsgIdx] = useState(0);
+  const [cloudIdx, setCloudIdx] = useState(0);
+  const cloudFadeAnim = useRef(new Animated.Value(1)).current;
 
   // Character / mood ────────────────────────────────────────────────────────
   const isRylane = selectedSekret === 'rylane';
@@ -164,6 +174,17 @@ export function ComfortScreen({
     });
   }, []);
 
+  // Cloud image rotation with cross-fade
+  useEffect(() => {
+    const interval = setInterval(() => {
+      Animated.timing(cloudFadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
+        setCloudIdx(i => (i + 1) % CLOUD_ROTATION.length);
+        Animated.timing(cloudFadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+      });
+    }, 3500);
+    return () => clearInterval(interval);
+  }, []);
+
   const toggleStep = (id: number, action?: string) => {
     setChecked(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
@@ -227,9 +248,13 @@ export function ComfortScreen({
         <Text style={styles.subtitle}>{heroCopy.sub}</Text>
         <SyncBadge status={syncStatus ?? 'idle'} />
 
-        {/* Cloud stormy with breath/drift */}
+        {/* Cloud — rotates through all poses with cross-fade */}
         <Animated.View style={[styles.cloudWrap, cloudStyle]}>
-          <Image source={CLOUD_STORMY} style={styles.artworkMedium} resizeMode="contain" />
+          <Animated.Image
+            source={CLOUD_ROTATION[cloudIdx]}
+            style={[styles.artworkMedium, { opacity: cloudFadeAnim }]}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* You are not alone card */}

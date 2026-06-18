@@ -32,10 +32,10 @@
  */
 
 import React from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, DimensionValue, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { Character } from '../../constants/theme';
-import type { LightingMode } from '../UserRoomScreen';
+import type { LightingMode } from '../../screens/UserRoomScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -130,7 +130,7 @@ const ATMOSPHERE: Record<string, LightAtmosphere> = {
 // ─── City skyline silhouette ──────────────────────────────────────────────────
 // A row of simplified building shapes rendered as absolute Views within the window.
 
-const SKYLINE: { l: string; w: string; h: string }[] = [
+const SKYLINE: { l: DimensionValue; w: DimensionValue; h: DimensionValue }[] = [
   { l: '0%',   w: '12%', h: '38%' },
   { l: '10%',  w: '8%',  h: '55%' },
   { l: '16%',  w: '14%', h: '40%' },
@@ -362,7 +362,7 @@ const PLANKS = [14, 28, 42, 57, 71, 85];
 
 // ─── Night city light dots ────────────────────────────────────────────────────
 
-const CITY_LIGHTS = [
+const CITY_LIGHTS: { x: DimensionValue; y: DimensionValue; o: number }[] = [
   { x: '12%', y: '42%', o: 0.9 }, { x: '18%', y: '38%', o: 0.7 },
   { x: '28%', y: '30%', o: 0.8 }, { x: '33%', y: '35%', o: 0.6 },
   { x: '45%', y: '50%', o: 0.9 }, { x: '52%', y: '44%', o: 0.7 },

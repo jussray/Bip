@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  DimensionValue,
   Dimensions,
   Easing,
   Image,
@@ -127,7 +128,7 @@ const CHARACTER_OVERLAYS: Record<Character, string> = {
 // ─── Companion placement ──────────────────────────────────────────────────────
 // Positions chosen so the companion sits naturally in each room's left/open area
 
-const COMPANION_POSITIONS: Record<Character, { bottom: string; left: string; w: number; h: number }> = {
+const COMPANION_POSITIONS: Record<Character, { bottom: DimensionValue; left: DimensionValue; w: number; h: number }> = {
   raylene: { bottom: '21%', left: '2%',  w: width * 0.54, h: height * 0.46 },
   rylane:  { bottom: '21%', left: '0%',  w: width * 0.50, h: height * 0.44 },
   cloud:   { bottom: '30%', left: '28%', w: width * 0.44, h: height * 0.34 },
