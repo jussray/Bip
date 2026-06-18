@@ -129,7 +129,7 @@ export function syncParentCirclePost(post: ParentCirclePost): void {
   });
 }
 
-// ── Parent Circle: cloud read ───────────────────────────────────────────
+// ── Parent Circle: personal post history ────────────────────────────────────
 export async function loadParentCircleFeed(
   limit = 50,
 ): Promise<ParentCirclePost[]> {
@@ -159,80 +159,73 @@ export async function loadParentCircleFeed(
   }
 }
 
-// ── Circle V1: resolve circle_id ─────────────────────────────────────────
-async function resolveOwnCircleId(
-  uid: string,
-  kind: 'public' | 'friends' | 'crew',
-): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  try {
-    const { data, error } = await sb
-      .from(TABLES.circles)
-      .select('id')
-      .eq('owner_user_id', uid)
-      .eq('kind', kind)
-      .maybeSingle();
-    if (error) throw error;
-    return data?.id ?? null;
-  } catch (e) {
-    if (__DEV__) console.warn(`[sync] resolveOwnCircleId(${kind}) failed`, e);
-    return null;
-  }
-}
-
-// ── Circle V1: Live feed reads ───────────────────────────────────────────
+// ── Circle V1: Live feed reads ────────────────────────────────────────────────
 export async function loadCircleFeed(
   tab: CircleTab,
   limit = 30,
 ): Promise<PublicCirclePost[] | FriendsCirclePost[] | CrewCirclePost[] | CircleParentPost[] | null> {
   const sb = getSupabase();
   if (!sb) return null;
-  if (tab === 'parent') return [];
   try {
     if (tab === 'public') {
       const { data, error } = await sb
-        .from(TABLES.posts)
-        .select(`id, body, mood_tag, is_identity_revealed, created_at, circles!inner ( kind )`)
-        .eq('circles.kind', 'public')
-        .eq('is_deleted', false)
+        .from(TABLES.publicCirclePosts)
+        .select('id, text, post_mood, media_kind, reactions, created_at')
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []).map(r => ({
-        id: r.id, text: r.body, post_mood: r.mood_tag ?? null,
-        media_kind: null, reactions: {}, created_at: r.created_at,
+      return (data ?? []).map((r: any) => ({
+        id: r.id, text: r.text, post_mood: r.post_mood ?? null,
+        media_kind: r.media_kind ?? null, reactions: r.reactions ?? {},
+        created_at: r.created_at,
       })) as PublicCirclePost[];
     }
-    if (tab === 'friends') {
-      const { data, error } = await sb
-        .from(TABLES.posts)
-        .select(`id, author_user_id, body, mood_tag, created_at, circles!inner ( kind )`)
-        .eq('circles.kind', 'friends')
-        .eq('is_deleted', false)
+    if (tab === 'friends' || tab === 'crew') {
+      const table = tab === 'friends' ? TABLES.friendsCirclePosts : TABLES.crewCirclePosts;
+      const { data: posts, error } = await sb
+        .from(table)
+        .select('id, user_id, text, post_mood, media_kind, reactions, created_at')
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []).map(r => ({
-        id: r.id, user_id: r.author_user_id, nickname: '', avatar_emoji: '',
-        text: r.body, post_mood: r.mood_tag ?? null, media_kind: null,
-        reactions: {}, created_at: r.created_at,
-      })) as FriendsCirclePost[];
+      const rows = posts ?? [];
+      // Fetch display names for each author (two-step; no FK from post→circle_profiles)
+      let profileMap: Record<string, { nickname: string; avatar_emoji: string }> = {};
+      const userIds = [...new Set(rows.map((r: any) => r.user_id as string))];
+      if (userIds.length > 0) {
+        const { data: profiles } = await sb
+          .from(TABLES.circleProfiles)
+          .select('user_id, nickname, avatar_emoji')
+          .in('user_id', userIds);
+        profileMap = Object.fromEntries(
+          (profiles ?? []).map((p: any) => [p.user_id, { nickname: p.nickname, avatar_emoji: p.avatar_emoji }]),
+        );
+      }
+      return rows.map((r: any) => ({
+        id: r.id, user_id: r.user_id,
+        nickname:     profileMap[r.user_id]?.nickname     ?? 'Anonymous',
+        avatar_emoji: profileMap[r.user_id]?.avatar_emoji ?? '🌙',
+        text: r.text, post_mood: r.post_mood ?? null,
+        media_kind: r.media_kind ?? null, reactions: r.reactions ?? {},
+        created_at: r.created_at,
+      })) as FriendsCirclePost[] | CrewCirclePost[];
     }
-    if (tab === 'crew') {
+    if (tab === 'parent') {
       const { data, error } = await sb
-        .from(TABLES.posts)
-        .select(`id, author_user_id, body, mood_tag, created_at, circles!inner ( kind )`)
-        .eq('circles.kind', 'crew')
-        .eq('is_deleted', false)
+        .from(TABLES.parentCirclePosts)
+        .select('id, text, reactions, circle_tag, created_at')
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []).map(r => ({
-        id: r.id, user_id: r.author_user_id, nickname: '', avatar_emoji: '',
-        text: r.body, post_mood: r.mood_tag ?? null, media_kind: null,
-        reactions: {}, created_at: r.created_at,
-      })) as CrewCirclePost[];
+      return (data ?? []).map((r: any) => ({
+        id:               r.id,
+        user_id:          '',
+        text:             r.text,
+        reactions:        r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+        circle_tag:       r.circle_tag ?? null,
+        created_at:       r.created_at,
+        identity_revealed: false,
+      })) as CircleParentPost[];
     }
     return null;
   } catch (e) {
@@ -241,23 +234,26 @@ export async function loadCircleFeed(
   }
 }
 
-// ── Circle V1: Reaction sync ────────────────────────────────────────────
+// ── Circle V1: Reaction sync ──────────────────────────────────────────────────
+// Call signature: syncCircleReaction(postId, postType, emoji)
+// Back-compat 2-arg form: syncCircleReaction(postId, emoji) — defaults postType to 'public'.
 export async function syncCircleReaction(
   postId: string | number,
   tabOrReaction: string,
   reaction?: string,
 ): Promise<void> {
-  const actualReaction = reaction ?? tabOrReaction;
+  const postType = reaction != null ? tabOrReaction : 'public';
+  const emoji    = reaction ?? tabOrReaction;
   const sb = getSupabase();
   if (!sb) return;
   const uid = await currentUserId();
   if (!uid) return;
   try {
     await sb
-      .from(TABLES.postReactions)
+      .from(TABLES.circleReactions)
       .upsert(
-        { post_id: postId, user_id: uid, reaction: actualReaction },
-        { onConflict: 'post_id,user_id,reaction', ignoreDuplicates: true },
+        { post_id: postId, post_type: postType, user_id: uid, emoji },
+        { onConflict: 'post_id,post_type,user_id', ignoreDuplicates: true },
       );
   } catch (e) {
     if (__DEV__) console.warn('[sync] syncCircleReaction failed', e);
@@ -274,26 +270,25 @@ export async function writeCirclePost(
   if (!sb) return;
   const uid = await currentUserId();
   if (!uid) return;
-  if (tab === 'parent') {
-    if (__DEV__) console.warn('[sync] writeCirclePost: parent tab is not a post destination');
-    return;
-  }
-  const kind = tab as 'public' | 'friends' | 'crew';
-  const circleId = await resolveOwnCircleId(uid, kind);
-  if (!circleId) {
-    if (__DEV__) console.warn(`[sync] writeCirclePost: no circle found for kind=${kind}`);
-    return;
-  }
+  const tableMap: Record<CircleTab, string> = {
+    public:  TABLES.publicCirclePosts,
+    friends: TABLES.friendsCirclePosts,
+    crew:    TABLES.crewCirclePosts,
+    parent:  TABLES.parentCirclePosts,
+  };
+  const tableName = tableMap[tab];
+  const defaultReactions = tab === 'parent'
+    ? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 }
+    : { felt: 0, comfort: 0, proud: 0, stay: 0 };
   try {
-    await sb.from(TABLES.posts).insert({
-      author_user_id:       uid,
-      circle_id:            circleId,
-      body:                 text,
-      mood_tag:             opts.postMood  ?? null,
-      content_warning:      opts.circleTag ?? null,
-      is_identity_revealed: kind === 'public' ? (opts.revealIdentity ?? false) : true,
-      is_deleted:           false,
-      created_at:           new Date().toISOString(),
+    await sb.from(tableName).insert({
+      user_id:    uid,
+      text,
+      post_mood:  opts.postMood  ?? null,
+      media_kind: opts.mediaKind ?? null,
+      circle_tag: opts.circleTag ?? null,
+      reactions:  defaultReactions,
+      created_at: new Date().toISOString(),
     });
   } catch (e) {
     if (__DEV__) console.warn(`[sync] writeCirclePost(${tab}) failed`, e);
@@ -336,7 +331,34 @@ export function syncCrewCheckIn(c: CrewCheckIn): void {
   });
 }
 
-// ── Points snapshot ─────────────────────────────────────────────────────
+// ── Room memory ───────────────────────────────────────────────────────────────
+export async function syncRoomMemory(rm: {
+  character: string; lastVisit: string; lastHotspot: string;
+  lastSummon: string; visitCount: number;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.roomMemory).upsert(
+      {
+        user_id:      uid,
+        character:    rm.character,
+        last_visit:   rm.lastVisit    || null,
+        last_hotspot: rm.lastHotspot  || null,
+        last_summon:  rm.lastSummon   || null,
+        visit_count:  rm.visitCount,
+        updated_at:   new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncRoomMemory failed', e);
+  }
+}
+
+// ── Points snapshot ───────────────────────────────────────────────────────────
 export async function snapshotPoints(total: number): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;

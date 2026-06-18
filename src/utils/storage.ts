@@ -9,20 +9,35 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEYS = {
-  theme:           'theme',
-  mood:            'mood',
-  userSide:        'userSide',
-  selectedSekret:  'selectedSekret',
-  sekretMode:      'sekretMode',
-  growthPath:      'growthPath',
-  journalText:     'journalText',
-  entries:         'entries',
-  moodHistory:     'moodHistory',
-  circlePosts:     'circlePosts',
-  voiceNotes:      'voiceNotes',
-  periodDays:      'periodDays',
-  lastPeriodStart: 'lastPeriodStart',
+  // ── Plain strings ──────────────────────────────────────────────────────────
+  theme: 'theme', mood: 'mood', userSide: 'userSide',
+  selectedSekret: 'selectedSekret', sekretMode: 'sekretMode',
+  growthPath: 'growthPath', journalText: 'journalText',
+  parentPagesDraft: 'parentPagesDraft', lastOpenDate: 'lastOpenDate',
+  parentMood: 'parentMood', parentMoodDate: 'parentMoodDate',
+  parentRoomStyle: 'parentRoomStyle', streakDays: 'streakDays',
+  periodDays: 'periodDays', lastPeriodStart: 'lastPeriodStart',
+  // ── JSON-serialised objects / arrays ──────────────────────────────────────
+  entries: 'entries', moodHistory: 'moodHistory',
+  circlePosts: 'circlePosts', parentCirclePosts: 'parentCirclePosts',
+  voiceNotes: 'voiceNotes', parentVoiceNotes: 'parentVoiceNotes',
+  parentPagesEntries: 'parentPagesEntries',
+  oracleJournalEntries: 'oracleJournalEntries',
+  oracleProfile: 'oracleProfile', parentOracleProfile: 'parentOracleProfile',
+  oracleSessions: 'oracleSessions', parentOracleSessions: 'parentOracleSessions',
+  comfortSessions: 'comfortSessions',
+  crewMembers: 'crewMembers', crewCheckIns: 'crewCheckIns',
+  roomMemory: 'roomMemory',
 };
+
+const JSON_KEYS = new Set([
+  'entries', 'moodHistory', 'circlePosts', 'parentCirclePosts',
+  'voiceNotes', 'parentVoiceNotes', 'parentPagesEntries',
+  'oracleJournalEntries', 'oracleProfile', 'parentOracleProfile',
+  'oracleSessions', 'parentOracleSessions',
+  'comfortSessions', 'crewMembers', 'crewCheckIns',
+  'roomMemory', 'periodDays',
+]);
 
 export const loadState = async (): Promise<Record<string, any>> => {
   try {
@@ -31,9 +46,11 @@ export const loadState = async (): Promise<Record<string, any>> => {
     const state: Record<string, any> = {};
     vals.forEach(([k, v]) => {
       if (v) {
-        state[k] = ['entries', 'moodHistory', 'circlePosts', 'voiceNotes', 'periodDays'].includes(k)
-          ? JSON.parse(v)
-          : v;
+        try {
+          state[k] = JSON_KEYS.has(k) ? JSON.parse(v) : v;
+        } catch {
+          state[k] = v;
+        }
       }
     });
     return state;

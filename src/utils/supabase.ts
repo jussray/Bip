@@ -32,6 +32,7 @@ export function getSupabase(): SupabaseClient | null {
 }
 
 export const TABLES = {
+  // ── Private per-user tables (0001_init.sql) ─────────────────────────────
   journalEntries:     'journal_entries',
   moodHistory:        'mood_history',
   voiceNotes:         'voice_notes',
@@ -44,18 +45,28 @@ export const TABLES = {
   bipPoints:          'bip_points',
   circlePosts:        'circle_posts',
   parentCirclePosts:  'parent_circle_posts',
-  circles:              'circles',
-  posts:                'posts',
-  circleMembers:        'circle_members',
-  crews:                'crews',
-  friendships:          'friendships',
-  parentLinks:          'parent_links',
-  postReactions:        'post_reactions',
-  postComments:         'post_comments',
-  moods:                'moods',
-  parentMoodSummaries:  'parent_mood_summaries',
-  safetyAlerts:         'safety_alerts',
-  oracleSessions:       'oracle_sessions',
+  // ── Shared Circle V1 tables (0002_circle_v1.sql) ────────────────────────
+  publicCirclePosts:   'public_circle_posts',
+  friendsCirclePosts:  'friends_circle_posts',
+  crewCirclePosts:     'crew_circle_posts',
+  circleReactions:     'circle_reactions',
+  circleProfiles:      'circle_profiles',
+  circleFriendships:   'circle_friendships',
+  crewMemberships:     'crew_memberships',
+  // ── Supplemental tables (0003_supplemental_tables.sql) ──────────────────
+  circles:             'circles',
+  posts:               'posts',
+  circleMembers:       'circle_members',
+  parentLinks:         'parent_links',
+  postReactions:       'post_reactions',
+  postComments:        'post_comments',
+  moods:               'moods',
+  parentMoodSummaries: 'parent_mood_summaries',
+  safetyAlerts:        'safety_alerts',
+  crews:               'crews',
+  friendships:         'friendships',
+  // ── Oracle tables (0003_oracle_parentlinks_period_safety.sql) ───────────
+  oracleSessions:      'oracle_sessions',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

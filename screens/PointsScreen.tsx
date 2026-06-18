@@ -18,6 +18,7 @@
 //   • whole night sky      (750+)
 
 import React, { useEffect, useMemo, useRef } from 'react';
+import { snapshotPoints } from '../utils/sync';
 import {
   Text, TouchableOpacity, ScrollView, View,
   ImageBackground, Animated, Easing, StyleSheet, Platform,
@@ -122,6 +123,11 @@ export function PointsScreen({
       ],
     };
   }, [moodHistory, journalEntries, voiceNotes, circlePosts, comfortSessions, crewCheckIns, streakDays]);
+
+  // Snapshot current points total to Supabase for cross-device history
+  useEffect(() => {
+    if (breakdown.total > 0) void snapshotPoints(breakdown.total);
+  }, [breakdown.total]);
 
   const tier = tierFor(breakdown.total);
   const tierIdx = TIERS.findIndex(t2 => t2.key === tier.key);

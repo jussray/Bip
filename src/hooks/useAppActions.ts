@@ -1,7 +1,7 @@
 import type { useAppState } from './useAppState';
 import {
   syncMood, syncJournal, syncCirclePost,
-  syncParentCirclePost, syncComfortSession,
+  syncParentCirclePost, syncComfortSession, syncRoomMemory,
   syncVoiceNote, syncCrewMember, deleteCrewMember, syncCrewCheckIn,
   syncOracleSession, syncPeriodDay, deletePeriodDay,
 } from '../utils/sync';
@@ -19,7 +19,11 @@ type SyncWrap = (fn: () => Promise<void>) => void;
 export function useAppActions(s: S, withSyncWrap: SyncWrap) {
   // ── Room Memory ──────────────────────────────────────────────────────
   const updateRoomMemory = (patch: Partial<RoomMemory>) => {
-    s.setRoomMemory(prev => ({ ...prev, ...patch, visitCount: prev.visitCount + 1 }));
+    s.setRoomMemory(prev => {
+      const next = { ...prev, ...patch, visitCount: prev.visitCount + 1 };
+      void withSyncWrap(async () => syncRoomMemory(next));
+      return next;
+    });
   };
 
   // ── Activity tracker ────────────────────────────────────────────────
