@@ -15,6 +15,7 @@ import type {
   VoiceNote,
   ParentCirclePost,
 } from '@/types';
+import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
 
 export function useSekretState() {
   const [theme, setTheme]                   = useState('neon');
@@ -36,8 +37,8 @@ export function useSekretState() {
   const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
   const [parentCirclePostText, setParentCirclePostText] = useState('');
   const [parentVoiceNotes, setParentVoiceNotes]         = useState<VoiceNote[]>([]);
-  const [parentOracleProfile, setParentOracleProfile]   = useState<unknown>(null);
-  const [parentOracleSessions, setParentOracleSessions] = useState<unknown[]>([]);
+  const [parentOracleProfile, setParentOracleProfile]   = useState<OracleProfile | null>(null);
+  const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
   // Load persisted state on mount
   useEffect(() => {

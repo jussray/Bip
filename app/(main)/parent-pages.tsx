@@ -4,14 +4,14 @@
  * Se'kret Bip — Parent entry screen.
  *
  * Layout:
- *   1. Full-screen splash image (sekret-splash-parent.jpg)
+ *   1. Full-screen splash image (parent-space-splash.png)
  *   2. "Press Se'kret Bip" label + glowing CTA button
  *   3. Bottom shortcut bar: Parent Pages · Parent Voice · Bridge · Parent Circle
  *
  * Pressing the CTA button transitions into the full ParentPagesScreen.
  *
  * The splash image lives at:
- *   assets/images/sekret-splash-parent.jpg
+ *   assets/images/parent-space-splash.png
  */
 import React, { useState, useRef } from 'react';
 import {
@@ -30,7 +30,7 @@ import { navigateTo } from '@/utils/navigation';
 import { ParentPagesScreen } from '@screens/ParentPagesScreen';
 
 // ── Asset path ────────────────────────────────────────────────────────────
-const PARENT_SPLASH = require('@/assets/images/sekret-splash-parent.jpg');
+const PARENT_SPLASH = require('../../assets/images/parent-space-splash.png');
 
 // Bottom shortcut bar items for the parent splash
 const PARENT_SHORTCUTS = [
@@ -94,18 +94,6 @@ export default function ParentPagesRoute() {
   }
 
   return (
-    <ParentPagesScreen
-      mood={parentMood}
-      parentRoomStyle={parentRoomStyle === 'dad' ? 'dad' : 'mom'}
-      draft={parentPagesDraft}
-      setDraft={setParentPagesDraft}
-      entries={parentPagesEntries}
-      onSave={saveParentPageEntry}
-      oracleProfile={(parentOracleProfile ?? undefined) as any}
-      onCompleteOracleSession={completeParentOracleSession}
-      setScreen={navigateTo}
-      BottomNav={null}
-    />
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 

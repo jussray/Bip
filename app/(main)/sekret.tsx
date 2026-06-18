@@ -38,8 +38,7 @@ import type { PersonalityId } from '@/types';
 const { height: SCREEN_H } = Dimensions.get('window');
 
 // ─── Asset path ────────────────────────────────────────────────────────────
-// Drop `sekret-splash-teen.jpg` into assets/images/ and this require resolves.
-const TEEN_SPLASH = require('@/assets/images/sekret-splash-teen.jpg');
+const TEEN_SPLASH = require('../../assets/images/splash-bg.png');
 
 const PERSONALITY_ORDER: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
 

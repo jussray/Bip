@@ -28,7 +28,7 @@ import type {
   CrewCheckIn,
 } from '../types/index';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
-import type { ParentRoomStyle } from '../screens/ParentRoomScreen';
+import type { ParentRoomStyle } from '@screens/ParentRoomScreen';
 
 export interface AppState {
   // Navigation
