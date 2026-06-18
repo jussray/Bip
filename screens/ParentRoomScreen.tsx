@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getParentRoomBg } from '../constants/theme';
+import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 
 const { width: W, height: H } = Dimensions.get('window');
 const NAV_H = Platform.OS === 'ios' ? 84 : 64;
@@ -288,6 +289,7 @@ export function ParentRoomScreen({
 
   return (
     <View style={s.root}>
+      <AmbientWeatherOverlay />
 
       {/* ── ROOM ART ─────────────────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: roomFade }]}>
