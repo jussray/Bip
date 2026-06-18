@@ -16,7 +16,7 @@
  * CalmScreenProps.  That caused a prop-type mismatch that crashed the tab.
  */
 import React from 'react';
-import { CalmScreen } from '@/screens/CalmScreen';
+import { CalmScreen } from '@screens/CalmScreen';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
 import { THEME_PACKS } from '@/constants/theme';

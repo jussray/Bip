@@ -1,22 +1,22 @@
 /**
  * app/(main)/_layout.tsx
  *
- * Main tab navigator — replaces the BottomNav component rendered
- * at the bottom of every screen in the old string-router architecture.
+ * PHASE 5 — Se'kret → Pages migration
  *
- * Tab bar is intentionally minimal (dark, emoji icons).
- * Swap tabBarIcon to vector icons (Lucide / Ionicons) in Step 3.
+ * Teen visible tabs:   home · pages · calm · circle · more
+ * Parent visible tabs: parent-room · parent-pages · parent-circle · parent-bridge · more
  *
- * Route registration notes:
- *  - The five visible tabs are flat files (home, pages, calm, circle, sekret).
- *  - All other routes (discover, profile, settings, bridge) are hidden
- *    from the tab bar with `href: null` but remain navigable via router.push().
- *  - The chat/ subdirectory is a nested route group. Each segment must be
- *    registered explicitly so Expo Router resolves them correctly:
- *      • chat/index      → personality picker hub
- *      • chat/[personalityId]  → full chat screen
- *    Registering only `name="chat"` (flat) caused a "route not found" error
- *    when pushing to /(main)/chat/raylene.
+ * sekret: registered but hidden (href: null).
+ *   ↳ Fully reachable via  Pages → Se'kret Replies → tap companion → chat
+ *   ↳ Direct push:  router.push('/(main)/sekret')  still works
+ *
+ * SAFETY RULE (Phase 5):
+ *   Do NOT simply hide this tab and leave Se'kret unreachable.
+ *   Se'kret's companion-picker UI is embedded inside PagesScreen
+ *   under the "Se'kret Replies" section so companion interaction
+ *   is always one tap from Pages.
+ *
+ * All other utility routes: hidden but navigable.
  */
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
@@ -28,6 +28,8 @@ function TabIcon({ emoji }: { emoji: string }) {
 
 export default function MainLayout() {
   const { userSide } = useAppContext();
+  const isParent = userSide === 'parent';
+  const isTeen   = !isParent;
 
   return (
     <Tabs
@@ -44,36 +46,101 @@ export default function MainLayout() {
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >
-      {/* ── Visible tabs ── */}
+      {/* ── Teen visible tabs ── */}
       <Tabs.Screen
         name="home"
-        options={{ title: 'Home', tabBarIcon: () => <TabIcon emoji="🏠" /> }}
+        options={{
+          title: 'Room',
+          tabBarIcon: () => <TabIcon emoji="🏠" />,
+          href: isParent ? null : undefined,
+        }}
       />
       <Tabs.Screen
         name="pages"
-        options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📖" /> }}
+        options={{
+          title: 'Pages',
+          tabBarIcon: () => <TabIcon emoji="📖" />,
+          href: isParent ? null : undefined,
+        }}
       />
       <Tabs.Screen
         name="calm"
-        options={{ title: 'Calm', tabBarIcon: () => <TabIcon emoji="🌙" /> }}
+        options={{
+          title: 'Calm',
+          tabBarIcon: () => <TabIcon emoji="🌙" />,
+          href: isParent ? null : undefined,
+        }}
       />
       <Tabs.Screen
         name="circle"
-        options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🌐" /> }}
+        options={{
+          title: 'Circle',
+          tabBarIcon: () => <TabIcon emoji="🌐" />,
+          href: isParent ? null : undefined,
+        }}
+      />
+
+      {/* ── Parent visible tabs ── */}
+      <Tabs.Screen
+        name="parent-room"
+        options={{
+          title: 'Room',
+          tabBarIcon: () => <TabIcon emoji="🌿" />,
+          href: isTeen ? null : undefined,
+        }}
       />
       <Tabs.Screen
-        name="sekret"
-        options={{ title: "Se'kret", tabBarIcon: () => <TabIcon emoji="💜" /> }}
+        name="parent-pages"
+        options={{
+          title: 'Pages',
+          tabBarIcon: () => <TabIcon emoji="📝" />,
+          href: isTeen ? null : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="parent-circle"
+        options={{
+          title: 'Circle',
+          tabBarIcon: () => <TabIcon emoji="🤝" />,
+          href: isTeen ? null : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="parent-bridge"
+        options={{
+          title: 'Bridge',
+          tabBarIcon: () => <TabIcon emoji="🌉" />,
+          href: isTeen ? null : undefined,
+        }}
       />
 
-      {/* ── Hidden routes (no tab bar entry, reachable via router.push) ── */}
-      <Tabs.Screen name="discover" options={{ href: null }} />
-      <Tabs.Screen name="profile"  options={{ href: null }} />
-      <Tabs.Screen name="settings" options={{ href: null }} />
-      <Tabs.Screen name="bridge"   options={{ href: null }} />
+      {/* ── More: visible on BOTH sides ── */}
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: 'More',
+          tabBarIcon: () => <TabIcon emoji="✨" />,
+        }}
+      />
 
-      {/* ── Chat nested routes — must register each segment explicitly ── */}
-      {/* Registering "chat" (flat) does NOT cover chat/[personalityId]. */}
+      {/* ── sekret: hidden from nav — soul lives inside Pages > Se'kret Replies ── */}
+      <Tabs.Screen name="sekret"          options={{ href: null }} />
+
+      {/* ── Hidden utility routes — all reachable via Pages navigation ── */}
+      <Tabs.Screen name="voicebip"        options={{ href: null }} />
+      <Tabs.Screen name="cloud"           options={{ href: null }} />
+      <Tabs.Screen name="comfort"         options={{ href: null }} />
+      <Tabs.Screen name="crew"            options={{ href: null }} />
+      <Tabs.Screen name="settings"        options={{ href: null }} />
+      <Tabs.Screen name="points"          options={{ href: null }} />
+      <Tabs.Screen name="history"         options={{ href: null }} />
+      <Tabs.Screen name="bridge"          options={{ href: null }} />
+      <Tabs.Screen name="s2tell"          options={{ href: null }} />
+      <Tabs.Screen name="period-calendar" options={{ href: null }} />
+      <Tabs.Screen name="discover"        options={{ href: null }} />
+      <Tabs.Screen name="profile"         options={{ href: null }} />
+
+      {/* ── Chat nested routes ── */}
       <Tabs.Screen name="chat/index"            options={{ href: null }} />
       <Tabs.Screen name="chat/[personalityId]"  options={{ href: null }} />
     </Tabs>

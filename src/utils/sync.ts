@@ -1,23 +1,22 @@
 // src/utils/sync.ts
-// Se'kret Bip — Cloud sync layer (Phase 2 backend)
+// Se'kret Bip — Cloud sync layer (Phase 2 + Phase 3 backend)
 //
 // All cloud writes go through here. Every helper is a SAFE NO-OP when
-// Supabase isn't configured — the app keeps working off AsyncStorage, no
+// Supabase isn’t configured — the app keeps working off AsyncStorage, no
 // errors thrown. This lets us ship the UI now and add credentials later.
 //
-// Auth model: each row is scoped to auth.uid() via RLS. If there's no
-// signed-in user yet, writes are silently skipped (kept locally only). We'll
-// add anonymous sign-in (supabase.auth.signInAnonymously) once we're ready
-// to flip the switch in app/index.tsx.
+// Auth model: each row is scoped to auth.uid() via RLS. If there’s no
+// signed-in user yet, writes are silently skipped (kept locally only).
+// ensureAnonymousSession() is called from useAppEffects on mount.
 //
-// IMPORTANT: never throw. The user's local experience must never break
+// IMPORTANT: never throw. The user’s local experience must never break
 // because the cloud is down. Errors are logged and swallowed.
 
 import { getSupabase, TABLES } from './supabase';
 import type {
   JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
-} from '../../types/index';
+} from '../types/index';
 import type {
   CircleTab,
   PublicCirclePost,
@@ -26,7 +25,7 @@ import type {
   ParentCirclePost as CircleParentPost,
 } from '../../types/circle';
 
-// ── Internal helpers ────────────────────────────────────────────────────────
+// ── Internal helpers ──────────────────────────────────────────────
 async function currentUserId(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -64,7 +63,7 @@ async function safeDelete(table: string, id: number | string): Promise<void> {
   }
 }
 
-// ── Anonymous sign-in ────────────────────────────────────────────────────────
+// ── Anonymous sign-in ────────────────────────────────────────────
 export async function ensureAnonymousSession(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -83,7 +82,7 @@ export async function ensureAnonymousSession(): Promise<string | null> {
   }
 }
 
-// ── Mood ────────────────────────────────────────────────────────────────────
+// ── Mood ───────────────────────────────────────────────────────────
 export function syncMood(entry: MoodEntry): void {
   void safeUpsert(TABLES.moodHistory, {
     id:   entry.id,
@@ -93,7 +92,7 @@ export function syncMood(entry: MoodEntry): void {
   });
 }
 
-// ── Journal ────────────────────────────────────────────────────────────────
+// ── Journal ─────────────────────────────────────────────────────────
 export function syncJournal(entry: JournalEntry): void {
   void safeUpsert(TABLES.journalEntries, {
     id:           entry.id,
@@ -105,7 +104,7 @@ export function syncJournal(entry: JournalEntry): void {
   });
 }
 
-// ── Circle (legacy drain path) ──────────────────────────────────────────────
+// ── Circle (legacy drain path) ───────────────────────────────────────
 export function syncCirclePost(post: CirclePost): void {
   void safeUpsert(TABLES.circlePosts, {
     id:         post.id,
@@ -128,6 +127,36 @@ export function syncParentCirclePost(post: ParentCirclePost): void {
     reactions:  post.reactions,
     circle_tag: post.circleTag ?? null,
   });
+}
+
+// ── Parent Circle: personal post history ────────────────────────────────────
+export async function loadParentCircleFeed(
+  limit = 50,
+): Promise<ParentCirclePost[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.parentCirclePosts)
+      .select('id, text, date, time, reactions, circle_tag')
+      .eq('user_id', uid)
+      .order('id', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id:        r.id,
+      text:      r.text,
+      date:      r.date,
+      time:      r.time,
+      reactions: r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+      circleTag: r.circle_tag ?? undefined,
+    })) as ParentCirclePost[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadParentCircleFeed failed', e);
+    return [];
+  }
 }
 
 // ── Circle V1: Live feed reads ────────────────────────────────────────────────
@@ -231,7 +260,7 @@ export async function syncCircleReaction(
   }
 }
 
-// ── Circle V1: Post write ─────────────────────────────────────────────────────
+// ── Circle V1: Post write ───────────────────────────────────────────────
 export async function writeCirclePost(
   tab: CircleTab,
   text: string,
@@ -266,7 +295,7 @@ export async function writeCirclePost(
   }
 }
 
-// ── Voice ─────────────────────────────────────────────────────────────────────
+// ── Voice ─────────────────────────────────────────────────────────────
 export function syncVoiceNote(note: VoiceNote): void {
   void safeUpsert(TABLES.voiceNotes, {
     id: note.id, title: note.title, date: note.date,
@@ -274,7 +303,7 @@ export function syncVoiceNote(note: VoiceNote): void {
   });
 }
 
-// ── Comfort sessions ──────────────────────────────────────────────────────────
+// ── Comfort sessions ─────────────────────────────────────────────────────
 export function syncComfortSession(session: ComfortSession): void {
   void safeUpsert(TABLES.comfortSessions, {
     id: session.id, type: session.type,
@@ -282,7 +311,7 @@ export function syncComfortSession(session: ComfortSession): void {
   });
 }
 
-// ── Crew ──────────────────────────────────────────────────────────────────────
+// ── Crew ─────────────────────────────────────────────────────────────
 export function syncCrewMember(m: CrewMember): void {
   void safeUpsert(TABLES.crewMembers, {
     id: m.id, name: m.name, emoji: m.emoji,
@@ -329,7 +358,7 @@ export async function syncRoomMemory(rm: {
   }
 }
 
-// ── Points snapshot ──────────────────────────────────────────────────────────
+// ── Points snapshot ───────────────────────────────────────────────────────────
 export async function snapshotPoints(total: number): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -344,7 +373,119 @@ export async function snapshotPoints(total: number): Promise<void> {
   }
 }
 
-// ── Bulk pull ─────────────────────────────────────────────────────────────────
+// ── Period calendar ──────────────────────────────────────────────────────
+
+/** Upsert a single period day (ISO date string, e.g. ‘2026-06-17’). */
+export async function syncPeriodDay(day: string, note?: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.periodDays).upsert(
+      { user_id: uid, day, note: note ?? null },
+      { onConflict: 'user_id,day' },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncPeriodDay failed', e);
+  }
+}
+
+/** Remove a period day (un-mark). */
+export async function deletePeriodDay(day: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.periodDays).delete().match({ user_id: uid, day });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] deletePeriodDay failed', e);
+  }
+}
+
+/** Pull all period days from cloud. Returns array of ISO date strings. */
+export async function loadPeriodDays(): Promise<string[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.periodDays)
+      .select('day')
+      .eq('user_id', uid)
+      .order('day', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((r: any) => r.day as string);
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadPeriodDays failed', e);
+    return [];
+  }
+}
+
+// ── Oracle / companion memory ───────────────────────────────────────────────
+
+/**
+ * Upsert the full oracle memory snapshot for a personality.
+ * personality_id: ‘teen’ | ‘parent’
+ */
+export async function syncOracleSession(
+  personalityId: string,
+  memory: Record<string, unknown>,
+  sessionCount: number,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.oracleSessions).upsert(
+      {
+        user_id:        uid,
+        personality_id: personalityId,
+        memory,
+        session_count:  sessionCount,
+        last_synced:    new Date().toISOString(),
+      },
+      { onConflict: 'user_id,personality_id' },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncOracleSession failed', e);
+  }
+}
+
+/**
+ * Load the latest oracle memory snapshot for a personality.
+ * Returns null if not found or Supabase not configured.
+ */
+export async function loadOracleSession(
+  personalityId: string,
+): Promise<{ memory: Record<string, unknown>; sessionCount: number } | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data, error } = await sb
+      .from(TABLES.oracleSessions)
+      .select('memory, session_count')
+      .eq('user_id', uid)
+      .eq('personality_id', personalityId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      memory:       (data.memory as Record<string, unknown>) ?? {},
+      sessionCount: (data.session_count as number) ?? 0,
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadOracleSession failed', e);
+    return null;
+  }
+}
+
+// ── Bulk pull ──────────────────────────────────────────────────────────────
 export async function pullAll(): Promise<{
   moodHistory:       MoodEntry[];
   journalEntries:    JournalEntry[];

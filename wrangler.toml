@@ -11,11 +11,10 @@
 name               = "bip"
 main               = "worker/sekret-reply.ts"
 compatibility_date = "2026-06-13"
+compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
-
-compatibility_flags = ["nodejs_compat"]
 
 # routes block commented out for beta — using auto-assigned *.workers.dev URL.
 # Un-comment and set EXPO_PUBLIC_BACKEND_URL to your custom domain once live.

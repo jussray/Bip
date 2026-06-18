@@ -17,7 +17,10 @@ export const SCREEN_MAP: Record<ScreenKey | string, string> = {
   calm:          '/(main)/calm',
   circle:        '/(main)/circle',
   sekret:        '/(main)/sekret',
-  voiceBip:      '/(main)/discover',
+  // Both casings accepted — PagesScreen calls 'voiceBip', other callers may
+  // use lowercase 'voicebip' which matches the actual route filename.
+  voiceBip:      '/(main)/voicebip',
+  voicebip:      '/(main)/voicebip',
   bridge:        '/(main)/bridge',
   parentBridge:  '/(main)/bridge',
   cloudThoughts: '/(main)/discover',

@@ -1,36 +1,28 @@
 /**
  * app/(main)/pages.tsx
  *
- * Pages / Journal tab route — bridges Expo Router to PagesScreen.
+ * Pages tab — the notebook/scrapbook home for:
+ *   Write · Voice Bips · Se'kret Replies · Memories
+ *   Cloud Thoughts · S2Tell · Period Calendar · History
  *
- * PagesScreen (PagesScreenProps) requires:
- *   journalText          — current draft string
- *   setJournalText       — draft setter
- *   journalEntries       — saved JournalEntry[]
- *   saveJournalEntry     — commit the current draft
- *   mood                 — current mood string
- *   t                    — full theme object
- *   setScreen            — legacy navigation shim
- *   BottomNav            — null (Expo Router owns tab bar)
- *   moodHistory?         — optional mood history array
- *   voiceNotes?          — optional voice notes array
- *   streakDays?          — optional streak count
- *   selectedSekret?      — optional personality key
- *   onCompleteOracleSession — required callback
- *   onSekretReply?       — optional sekret reply callback
- *   syncStatus?          — optional sync badge status
+ * PHASE 5 SAFETY:
+ *   Se'kret companion interaction is NOT removed.
+ *   It lives under the "Se'kret Replies" section of PagesScreen.
+ *   router.push('/(main)/chat/[personalityId]') fires when a companion is tapped.
  *
- * Previously this route passed only entries/setEntries which are from
- * the old SharedPagesProps interface, not PagesScreenProps — the mismatch
- * caused a runtime crash on the Pages tab.
+ * S2TELL → BRIDGE:
+ *   S2Tell is the compose action for Bridge (teen → parent channel).
+ *   Tapping S2Tell in Pages opens Bridge in compose mode (?compose=true)
+ *   so the two feel like one continuous gesture.
  */
 import React from 'react';
 import { View } from 'react-native';
-import PagesScreen from '@/screens/PagesScreen';
+import { router } from 'expo-router';
+import { PagesScreen } from '@screens/PagesScreen';
 import { useAppContext } from '@/context/AppContext';
-import { navigateTo } from '@/utils/navigation';
 import { THEME_PACKS } from '@/constants/theme';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
+import type { PersonalityId } from '@/types';
 
 export default function PagesTab() {
   const {
@@ -42,15 +34,75 @@ export default function PagesTab() {
     saveEntry,
     moodHistory,
     selectedSekret,
+    patchJournalEntry,
   } = useAppContext();
 
   const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
 
-  // Stub — Oracle session persistence will be wired in a later sprint.
+  // Stub — Oracle session persistence wired in a later sprint.
   function handleCompleteOracleSession(
     _profile: OracleProfile,
     _session: OracleSessionSummary,
   ) {}
+
+  /**
+   * Called by PagesWorkspace after the Worker reply arrives.
+   * Patches the persisted JournalEntry so the reply survives app restarts.
+   */
+  function handleSekretReply(entryId: number, reply: string) {
+    patchJournalEntry?.(entryId, { sekretReply: reply });
+  }
+
+  /**
+   * Navigation helpers threaded into PagesScreen so sub-sections can
+   * push to the correct route without importing router directly.
+   *
+   * PHASE 5 SAFETY: onOpenCompanion MUST remain wired.
+   * Removing it makes Se'kret Replies unreachable → Phase 5 fails.
+   */
+  function handleOpenCompanion(personalityId: PersonalityId) {
+    router.push(`/(main)/chat/${personalityId}` as any);
+  }
+
+  function handleOpenVoiceBip() {
+    router.push('/(main)/voicebip');
+  }
+
+  function handleOpenCloudThoughts() {
+    router.push('/(main)/cloud');
+  }
+
+  /**
+   * S2Tell = the act of sending something to a parent via Bridge.
+   * Opens Bridge in compose mode so the teen lands directly at
+   * the write area — S2Tell and Bridge are one continuous gesture.
+   */
+  function handleOpenS2Tell() {
+    router.push('/(main)/bridge?compose=true' as any);
+  }
+
+  function handleOpenPeriodCalendar() {
+    router.push('/(main)/period-calendar');
+  }
+
+  function handleOpenHistory() {
+    router.push('/(main)/history');
+  }
+
+  function handleSetScreen(screen: string) {
+    // Legacy setScreen bridge — map old screen names to router paths.
+    const routeMap: Record<string, string> = {
+      voiceBip:       '/(main)/voicebip',
+      cloud:          '/(main)/cloud',
+      // s2tell → bridge compose mode (S2Tell IS the bridge compose action)
+      s2tell:         '/(main)/bridge?compose=true',
+      periodCalendar: '/(main)/period-calendar',
+      history:        '/(main)/history',
+      sekret:         '/(main)/sekret',
+    };
+    const target = routeMap[screen];
+    if (target) router.push(target as any);
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -61,11 +113,18 @@ export default function PagesTab() {
         saveJournalEntry={saveEntry}
         mood={mood}
         t={t}
-        setScreen={navigateTo}
+        setScreen={handleSetScreen}
         BottomNav={null}
         moodHistory={moodHistory}
         selectedSekret={selectedSekret}
         onCompleteOracleSession={handleCompleteOracleSession}
+        onSekretReply={handleSekretReply}
+        onOpenCompanion={handleOpenCompanion}
+        onOpenVoiceBip={handleOpenVoiceBip}
+        onOpenCloudThoughts={handleOpenCloudThoughts}
+        onOpenS2Tell={handleOpenS2Tell}
+        onOpenPeriodCalendar={handleOpenPeriodCalendar}
+        onOpenHistory={handleOpenHistory}
       />
     </View>
   );

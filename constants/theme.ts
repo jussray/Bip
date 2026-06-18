@@ -170,10 +170,19 @@ const cloudAvatarWriting  = cloudHeadphonesV2;
 const cloudAvatarWindow   = cloudSleepy;
 const cloudAvatarFullbody = cloudHappy;
 
-// ── UI / Splash ────────────────────────────────────────────────────────────
-// The native splash is color-only in app.json. The branded splash experience is
-// composed in SplashScreen from text, controls, mascots, and valid scene artwork.
-const sekretSplash = bgRayleneRoomNight;
+// ── App Entry Splash Screens ───────────────────────────────────────────────
+// These are the first full-screen images the user sees when opening the app
+// after completing onboarding — one per side. Teen side and parent side are
+// completely separate app experiences. These images are entry doors, not
+// companion UI or in-app features.
+//
+//   sekretSplashTeen   → teen side entry: two teens back-to-back, neon pink/purple
+//   sekretSplashParent → parent side entry: couple by candlelight, warm purple neon
+//
+// sekretSplash is a backward-compat alias → resolves to teen splash.
+const sekretSplashTeen   = require("../assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png");
+const sekretSplashParent = require("../assets/images/80B326EB-C67B-4369-A3EE-CFE0348E0701.jpeg");
+const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
 // ── Scene composites (character + room background merged) ──────────────────
 const rayleneRoomDayScene   = require("../assets/images/raylene-room-day-scene.png");
@@ -341,8 +350,10 @@ export const IMAGES = {
   cloudSleepy,
   cloudStormy,
 
-  // UI / Splash
-  sekretSplash,
+  // App entry splash — one per side, shown after onboarding
+  sekretSplash,        // backward-compat alias → teen
+  sekretSplashTeen,
+  sekretSplashParent,
 } as const;
 
 export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';

@@ -16,7 +16,7 @@ import {
   createOracleProfile,
   type OracleProfile,
   type OracleSessionSummary,
-} from '../../services/oracleDiscovery';
+} from '../services/oracleDiscovery';
 import type {
   JournalEntry,
   CirclePost,
@@ -26,9 +26,9 @@ import type {
   ComfortSession,
   CrewMember,
   CrewCheckIn,
-} from '../../types/index';
-import type { OracleJournalEntry } from '../../types/voiceIntelligence';
-import type { ParentRoomStyle } from '../../screens/ParentRoomScreen';
+} from '../types/index';
+import type { OracleJournalEntry } from '../types/voiceIntelligence';
+import type { ParentRoomStyle } from '@screens/ParentRoomScreen';
 
 export interface AppState {
   // Navigation
@@ -75,6 +75,9 @@ export interface AppState {
   crewMembers: CrewMember[];
   crewCheckIns: CrewCheckIn[];
 
+  // Period calendar — ISO date strings e.g. '2026-06-17'
+  periodDays: string[];
+
   // Streaks
   streakDays: number;
   lastOpenDate: string;
@@ -118,6 +121,7 @@ export function makeInitialState(): AppState {
     comfortSessions: [],
     crewMembers: [],
     crewCheckIns: [],
+    periodDays: [],
     streakDays: 0,
     lastOpenDate: '',
     streakJustReset: false,

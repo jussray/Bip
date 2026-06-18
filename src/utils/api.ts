@@ -9,7 +9,7 @@
  * NOTE: In Step 3+ this grows into src/services/ai/ per-personality.
  * For now it stays here as a single fetch helper.
  */
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
+const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '';
 
 export async function fetchSekretReply(
   text: string,

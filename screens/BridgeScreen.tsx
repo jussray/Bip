@@ -2,6 +2,11 @@
 // Se'kret Bip — Bridge Screen (Teen Side)
 // Phase 1 polish: time-of-day backdrop, char-aware tone, mood glow,
 // staggered entrance, breath badge, sticky note, send confirmation glow.
+//
+// P6: handleSend now writes a signal row to `bridge_signals` in Supabase.
+// MESSAGE CONTENT IS NEVER STORED — only share_type, conv_mode, char_key,
+// and a timestamp leave the device. AsyncStorage flag kept as instant
+// parent-side nudge even when offline.
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
@@ -20,6 +25,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
+import { supabase } from '../utils/supabase';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -70,6 +76,7 @@ export function BridgeScreen({
   const [convMode, setConvMode]     = useState<ConvModeId | null>(null);
   const [message, setMessage]       = useState('');
   const [sent, setSent]             = useState(false);
+  const [sending, setSending]       = useState(false);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
   const isRylane = selectedSekret === 'rylane';
@@ -110,22 +117,42 @@ export function BridgeScreen({
     transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   });
 
+  // ─── P6: send signal ─────────────────────────────────────────────────────────
   const handleSend = async () => {
     if (!shareType || !message.trim()) {
       Alert.alert('almost there', 'pick a share type and write your message first.');
       return;
     }
 
+    setSending(true);
     try {
-      // Signal-only, like S2Tell: parent learns a share happened, never the content.
+      // 1. Instant local flag so the parent UI reacts even when offline.
       await AsyncStorage.setItem('parent_bridge_pending', 'true');
+
+      // 2. Cloud signal — NO message content, only metadata.
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('bridge_signals').insert({
+          teen_user_id: user.id,
+          char_key:    charKey,
+          share_type:  shareType,
+          conv_mode:   convMode ?? null,
+          sent_at:     new Date().toISOString(),
+        });
+        // Errors are intentionally swallowed — the teen's send still succeeds
+        // locally. Cloud sync is best-effort.
+      }
     } catch {
-      // Local-only fallback — the teen still sees their note as sent.
+      // Network failure: local flag already set, nothing else to do.
+    } finally {
+      setSending(false);
     }
 
     setSent(true);
     setMessage('');
     setShareType(null);
+    setConvMode(null);
   };
 
   const heroCopy = isRylane
@@ -279,8 +306,8 @@ export function BridgeScreen({
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
               {isRylane
-                ? '“share what you can. they don’t need the whole story.”'
-                : '“soft is brave. you don’t have to explain everything.”'}
+                ? '"share what you can. they don\'t need the whole story."'
+                : '"soft is brave. you don\'t have to explain everything."'}
             </Text>
           </View>
 
@@ -288,14 +315,16 @@ export function BridgeScreen({
             style={[
               styles.button,
               {
-                backgroundColor: shareType && message.trim() ? glow : 'rgba(50,35,80,0.6)',
-                opacity:          shareType && message.trim() ? 1 : 0.6,
+                backgroundColor: shareType && message.trim() && !sending ? glow : 'rgba(50,35,80,0.6)',
+                opacity:          shareType && message.trim() && !sending ? 1 : 0.6,
               },
             ]}
             onPress={handleSend}
-            disabled={!shareType || !message.trim()}
+            disabled={!shareType || !message.trim() || sending}
           >
-            <Text style={styles.buttonText}>🌉 send to bridge</Text>
+            <Text style={styles.buttonText}>
+              {sending ? 'sending…' : '🌉 send to bridge'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity

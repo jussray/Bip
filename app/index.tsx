@@ -1,26 +1,26 @@
 /**
- * app/index.tsx — splash / parent-entry gate
+ * app/index.tsx — splash / side-selection gate
  *
- * Expo Router boots here.  We do NOT immediately redirect to /(main)/home
- * so the parent-entry experience is preserved.
- *
- * Flow:
- *   • While useSekretState is loading, show a minimal splash.
- *   • If userSide is already confirmed (returning user), go straight to home.
- *   • Otherwise, show the SplashScreen so the user can choose Teen / Parent
- *     with an intentional tap before anything else loads.
- *
- * Parent entry MUST be a deliberate action — no auto-forward.
+ * PHASE 3 RESTORE:
+ *  - Returning teen   → /(main)/home
+ *  - Returning parent → /(main)/parent-room
+ *  - First visit      → side chooser (branded, no auto-skip)
+ *  - After side chosen, SplashScreen shows with the artwork CTA
+ *  - SplashScreen CTA → routes to the correct home
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import { SplashScreen } from '@screens/SplashScreen';
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
 
-  // While persisted state is being rehydrated, show a neutral splash.
+  // After first-time chooser, hold the selected side locally so SplashScreen
+  // renders with the right artwork before the context write propagates.
+  const [pendingSide, setPendingSide] = useState<'teen' | 'parent' | null>(null);
+
   if (isLoading) {
     return (
       <View style={styles.root}>
@@ -29,13 +29,29 @@ export default function Index() {
     );
   }
 
-  // Returning user — go directly to the main experience.
-  if (userSide) {
-    return <Redirect href="/(main)/home" />;
+  // Returning user — go straight to their space
+  if (userSide === 'teen')   return <Redirect href="/(main)/home" />;
+  if (userSide === 'parent') return <Redirect href="/(main)/parent-room" />;
+
+  // After chooser: show the branded splash with CTA
+  if (pendingSide) {
+    return (
+      <SplashScreen
+        userSide={pendingSide}
+        setScreen={() => {
+          // CTA tapped — commit the side and navigate
+          setUserSide(pendingSide);
+          router.replace(
+            pendingSide === 'parent'
+              ? '/(main)/parent-room'
+              : '/(main)/home',
+          );
+        }}
+      />
+    );
   }
 
-  // First visit or cleared storage — show the parent / teen entry gate.
-  // Each button navigates explicitly; nothing auto-fires.
+  // First visit — side chooser
   return (
     <View style={styles.root}>
       <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
@@ -43,7 +59,7 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnTeen]}
-        onPress={() => { setUserSide('teen'); router.replace('/(main)/home'); }}
+        onPress={() => setPendingSide('teen')}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the teen 💜</Text>
@@ -51,7 +67,7 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnParent]}
-        onPress={() => { setUserSide('parent'); router.replace('/(main)/home'); }}
+        onPress={() => setPendingSide('parent')}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the parent 🌿</Text>

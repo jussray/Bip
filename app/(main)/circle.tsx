@@ -3,60 +3,103 @@
  *
  * Community Circle — anonymous peer support feed.
  * Posts use reactions (felt it, comfort, proud, stay).
- * Full implementation in a later sprint; real UI shell here.
+ *
+ * Cloud sync: writeCirclePost writes to Supabase; loadCircleFeed reads back.
+ * Optimistic: post appears instantly in local state, cloud write fires async.
+ * Pull-to-refresh: re-fetches the public feed from the cloud.
  */
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
 import { useAppContext } from '@/context/AppContext';
+import { navigateTo } from '@/utils/navigation';
+import { writeCirclePost, loadCircleFeed, syncCircleReaction } from '@/utils/sync';
 import type { CirclePost } from '@/context/AppContext';
 
 const REACTION_LABELS: { key: keyof CirclePost['reactions']; emoji: string }[] = [
-  { key: 'felt',    emoji: '🫖 felt it' },
-  { key: 'comfort', emoji: '💙 comfort' },
-  { key: 'proud',   emoji: '✨ proud' },
-  { key: 'stay',    emoji: '🌙 stay' },
+  { key: 'felt',    emoji: '\uD83E\uDED6 felt it' },
+  { key: 'comfort', emoji: '\uD83D\uDC99 comfort' },
+  { key: 'proud',   emoji: '\u2728 proud' },
+  { key: 'stay',    emoji: '\uD83C\uDF19 stay' },
 ];
 
 export default function CircleScreen() {
-  // circlePosts + setCirclePosts are now properly typed on AppContextValue
   const { circlePosts, setCirclePosts } = useAppContext();
   const [draft, setDraft] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [posting, setPosting] = useState(false);
 
-  function submitPost() {
+  // Load feed from cloud on mount
+  useEffect(() => { void fetchFeed(); }, []);
+
+  async function fetchFeed() {
+    const cloudPosts = await loadCircleFeed('public', 40);
+    if (!cloudPosts) return; // no Supabase config — keep local state
+    // Merge cloud posts with any optimistic-only local posts (id not in cloud yet)
+    setCirclePosts(prev => {
+      const cloudIds = new Set((cloudPosts as any[]).map((p: any) => String(p.id)));
+      const localOnly = prev.filter(p => !cloudIds.has(String(p.id)));
+      const mapped: CirclePost[] = (cloudPosts as any[]).map((p: any) => ({
+        id:        p.id,
+        text:      p.text ?? p.body ?? '',
+        date:      p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
+        time:      p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        reactions: p.reactions ?? { felt: 0, comfort: 0, proud: 0, stay: 0 },
+      }));
+      return [...localOnly, ...mapped];
+    });
+  }
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchFeed();
+    setRefreshing(false);
+  }, []);
+
+  async function submitPost() {
     const text = draft.trim();
-    if (!text) return;
-    const post: CirclePost = {
+    if (!text || posting) return;
+    setPosting(true);
+
+    // Optimistic insert
+    const optimisticPost: CirclePost = {
       id:   Date.now(),
       text,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
     };
-    setCirclePosts((prev) => [post, ...prev]);
+    setCirclePosts(prev => [optimisticPost, ...prev]);
     setDraft('');
+
+    // Cloud write (fire-and-forget — never throws)
+    await writeCirclePost('public', text);
+    setPosting(false);
   }
 
   function react(postId: number, key: keyof CirclePost['reactions']) {
-    setCirclePosts((posts) =>
-      posts.map((p) =>
+    setCirclePosts(posts =>
+      posts.map(p =>
         p.id === postId
-          ? { ...p, reactions: { ...p.reactions, [key]: p.reactions[key] + 1 } }
+          ? { ...p, reactions: { ...p.reactions, [key]: (p.reactions[key] ?? 0) + 1 } }
           : p
       )
     );
+    // Best-effort cloud reaction sync
+    void syncCircleReaction(postId, key);
   }
 
   return (
     <SafeAreaView style={styles.safe}>
-      <Text style={styles.heading}>Circle 🌐</Text>
+      <Text style={styles.heading}>Circle \uD83C\uDF10</Text>
       <Text style={styles.sub}>Anonymous. Kind. Yours.</Text>
 
       {/* Compose */}
@@ -71,26 +114,37 @@ export default function CircleScreen() {
           maxLength={280}
         />
         <TouchableOpacity
-          style={[styles.postBtn, !draft.trim() && styles.postBtnDisabled]}
+          style={[styles.postBtn, (!draft.trim() || posting) && styles.postBtnDisabled]}
           onPress={submitPost}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || posting}
         >
-          <Text style={styles.postBtnText}>Share</Text>
+          <Text style={styles.postBtnText}>{posting ? 'Sharing\u2026' : 'Share'}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Feed */}
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.feed}>
-        {circlePosts.length === 0 && (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.feed}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#D946EF"
+            colors={['#D946EF']}
+          />
+        }
+      >
+        {circlePosts.length === 0 && !refreshing && (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🌙</Text>
+            <Text style={styles.emptyEmoji}>\uD83C\uDF19</Text>
             <Text style={styles.emptyText}>Be the first to share something.</Text>
           </View>
         )}
-        {circlePosts.map((post) => (
+        {circlePosts.map(post => (
           <View key={post.id} style={styles.card}>
             <Text style={styles.cardText}>{post.text}</Text>
-            <Text style={styles.cardMeta}>{post.date} · {post.time}</Text>
+            <Text style={styles.cardMeta}>{post.date} \u00b7 {post.time}</Text>
             <View style={styles.reactions}>
               {REACTION_LABELS.map(({ key, emoji }) => (
                 <TouchableOpacity
@@ -99,7 +153,7 @@ export default function CircleScreen() {
                   onPress={() => react(post.id, key)}
                 >
                   <Text style={styles.reactionText}>
-                    {emoji}{post.reactions[key] > 0 ? ` ${post.reactions[key]}` : ''}
+                    {emoji}{(post.reactions[key] ?? 0) > 0 ? ` ${post.reactions[key] ?? 0}` : ''}
                   </Text>
                 </TouchableOpacity>
               ))}

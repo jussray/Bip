@@ -373,11 +373,14 @@ export function HomeScreen({
   const memoryMessage = companion?.presenceMessage
     || "You've been showing up for yourself. I'm noticing it.";
 
+  // ─── Companion action handler ─────────────────────────────────────────────
+  // Phase 5: all companion paths route through Pages — Se'kret lives in Pages,
+  // not as a standalone tab. 'checkIn' previously routed to 'sekret' directly.
   const handleCompanionAction = (action: 'write' | 'voice' | 'comfort' | 'checkIn') => {
-    if (action === 'write') setScreen('pages');
-    else if (action === 'voice') setScreen('voiceBip');
+    if (action === 'write')   setScreen('pages');
+    else if (action === 'voice')   setScreen('voiceBip');
     else if (action === 'comfort') setScreen('comfort');
-    else setScreen('sekret');
+    else setScreen('pages');  // checkIn → Pages (Se'kret Replies section)
   };
 
   return (
@@ -570,9 +573,10 @@ export function HomeScreen({
               {getMoodResponse(mood, selectedSekret)}
             </Text>
             <View style={styles.actionRow}>
+              {/* Phase 5: routes to Pages where Se'kret Replies section lives */}
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: moodGlow, shadowColor: moodGlow }]}
-                onPress={() => setScreen('sekret')}
+                onPress={() => setScreen('pages')}
                 accessibilityRole="button"
                 accessibilityLabel="Talk more"
               >

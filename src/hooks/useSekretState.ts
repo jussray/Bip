@@ -1,37 +1,68 @@
 /**
  * src/hooks/useSekretState.ts
  *
- * Canonical location (moved from hooks/useSekretState.ts in Step 3).
- * Manages all persisted app state via AsyncStorage.
+ * PHASE 5 FIX: Added all parent state fields + persistence.
+ * setUserSide is now exposed so app/index.tsx can call it on splash.
  *
- * Import via: import { useSekretState } from '@/hooks';
+ * TYPE PASS: Replaced all any[] arrays with proper imported types.
  */
 import { useState, useEffect } from 'react';
 import { loadState, saveState } from '@/utils';
+import type {
+  JournalEntry,
+  MoodEntry,
+  CirclePost,
+  VoiceNote,
+  ParentCirclePost,
+} from '@/types';
+import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
 
 export function useSekretState() {
   const [theme, setTheme]                   = useState('neon');
   const [mood, setMood]                     = useState('Happy');
-  const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
+  const [userSide, setUserSide]             = useState<'teen' | 'parent' | null>(null);
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [growthPath, setGrowthPath]         = useState('preferNotToSay');
-  const [entries, setEntries]               = useState<any[]>([]);
-  const [moodHistory, setMoodHistory]       = useState<any[]>([]);
-  const [circlePosts, setCirclePosts]       = useState<any[]>([]);
+  const [entries, setEntries]               = useState<JournalEntry[]>([]);
+  const [moodHistory, setMoodHistory]       = useState<MoodEntry[]>([]);
+  const [circlePosts, setCirclePosts]       = useState<CirclePost[]>([]);
   const [isLoading, setIsLoading]           = useState(true);
+
+  // ── Parent state ──────────────────────────────────────────────
+  const [parentMood, setParentMood]                     = useState('Calm');
+  const [parentMoodDate, setParentMoodDate]             = useState('');
+  const [parentRoomStyle, setParentRoomStyle]           = useState('forest');
+  const [parentPagesDraft, setParentPagesDraft]         = useState('');
+  const [parentPagesEntries, setParentPagesEntries]     = useState<JournalEntry[]>([]);
+  const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
+  const [parentCirclePostText, setParentCirclePostText] = useState('');
+  const [parentVoiceNotes, setParentVoiceNotes]         = useState<VoiceNote[]>([]);
+  const [parentOracleProfile, setParentOracleProfile]   = useState<OracleProfile | null>(null);
+  const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
   // Load persisted state on mount
   useEffect(() => {
     (async () => {
       const state = await loadState();
-      if (state.theme)          setTheme(state.theme);
-      if (state.mood)           setMood(state.mood);
-      if (state.userSide)       setUserSide(state.userSide);
-      if (state.selectedSekret) setSelectedSekret(state.selectedSekret);
-      if (state.growthPath)     setGrowthPath(state.growthPath);
-      if (state.entries)        setEntries(state.entries);
-      if (state.moodHistory)    setMoodHistory(state.moodHistory);
-      if (state.circlePosts)    setCirclePosts(state.circlePosts);
+      if (state.theme)                setTheme(state.theme);
+      if (state.mood)                 setMood(state.mood);
+      if (state.userSide)             setUserSide(state.userSide);
+      if (state.selectedSekret)       setSelectedSekret(state.selectedSekret);
+      if (state.growthPath)           setGrowthPath(state.growthPath);
+      if (state.entries)              setEntries(state.entries);
+      if (state.moodHistory)          setMoodHistory(state.moodHistory);
+      if (state.circlePosts)          setCirclePosts(state.circlePosts);
+      // parent
+      if (state.parentMood)             setParentMood(state.parentMood);
+      if (state.parentMoodDate)         setParentMoodDate(state.parentMoodDate);
+      if (state.parentRoomStyle)        setParentRoomStyle(state.parentRoomStyle);
+      if (state.parentPagesDraft)       setParentPagesDraft(state.parentPagesDraft);
+      if (state.parentPagesEntries)     setParentPagesEntries(state.parentPagesEntries);
+      if (state.parentCirclePosts)      setParentCirclePosts(state.parentCirclePosts);
+      if (state.parentCirclePostText)   setParentCirclePostText(state.parentCirclePostText);
+      if (state.parentVoiceNotes)       setParentVoiceNotes(state.parentVoiceNotes);
+      if (state.parentOracleProfile)    setParentOracleProfile(state.parentOracleProfile);
+      if (state.parentOracleSessions)   setParentOracleSessions(state.parentOracleSessions);
       setIsLoading(false);
     })();
   }, []);
@@ -42,9 +73,21 @@ export function useSekretState() {
       saveState({
         theme, mood, userSide, selectedSekret,
         growthPath, entries, moodHistory, circlePosts,
+        parentMood, parentMoodDate, parentRoomStyle,
+        parentPagesDraft, parentPagesEntries,
+        parentCirclePosts, parentCirclePostText,
+        parentVoiceNotes, parentOracleProfile, parentOracleSessions,
       });
     }
-  }, [theme, mood, userSide, selectedSekret, growthPath, entries, moodHistory, circlePosts, isLoading]);
+  }, [
+    theme, mood, userSide, selectedSekret,
+    growthPath, entries, moodHistory, circlePosts,
+    parentMood, parentMoodDate, parentRoomStyle,
+    parentPagesDraft, parentPagesEntries,
+    parentCirclePosts, parentCirclePostText,
+    parentVoiceNotes, parentOracleProfile, parentOracleSessions,
+    isLoading,
+  ]);
 
   return {
     theme, setTheme,
@@ -55,6 +98,17 @@ export function useSekretState() {
     entries, setEntries,
     moodHistory, setMoodHistory,
     circlePosts, setCirclePosts,
+    // parent
+    parentMood, setParentMood,
+    parentMoodDate, setParentMoodDate,
+    parentRoomStyle, setParentRoomStyle,
+    parentPagesDraft, setParentPagesDraft,
+    parentPagesEntries, setParentPagesEntries,
+    parentCirclePosts, setParentCirclePosts,
+    parentCirclePostText, setParentCirclePostText,
+    parentVoiceNotes, setParentVoiceNotes,
+    parentOracleProfile, setParentOracleProfile,
+    parentOracleSessions, setParentOracleSessions,
     isLoading,
   };
 }

@@ -65,6 +65,11 @@ export const TABLES = {
   safetyAlerts:        'safety_alerts',
   crews:               'crews',
   friendships:         'friendships',
+  // ── Oracle tables (0003_oracle_parentlinks_period_safety.sql) ───────────
+  oracleSessions:      'oracle_sessions',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
+
+// Legacy nullable singleton export for older screens. Prefer getSupabase() in new code.
+export const supabase = getSupabase();

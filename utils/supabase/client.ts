@@ -17,8 +17,8 @@ import { Platform } from 'react-native';
 // ── env vars ──────────────────────────────────────────────────────────────────
 // Expo uses EXPO_PUBLIC_* prefix (not NEXT_PUBLIC_*).
 // These must exist in .env.local — never hardcode real values here.
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_SUPABASE_URL!;
+const supabaseKey = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error(
