@@ -50,7 +50,9 @@ type HomeSection =
   | 'cloudThoughts'
   | 's2tell'
   | 'periodCalendar'
-  | 'history';
+  | 'history'
+  | 'repair'
+  | 'voiceReflect';
 
 interface SectionDef {
   id: HomeSection;
@@ -73,7 +75,9 @@ const TEEN_PAGES_SECTIONS: SectionDef[] = [
 const PARENT_PAGES_SECTIONS: SectionDef[] = [
   { id: 'write',          label: 'Write',          icon: '✏️',  accent: '#d8c9b8' },
   { id: 'sekretReplies',  label: "Se'kret",        icon: '💜',  accent: '#e9a8d2' },
-  { id: 's2tell',         label: 'S2Tell',         icon: '🤫',  accent: '#a3d9a5' },
+  { id: 's2tell',         label: 'S2Tell Inbox',   icon: '🤫',  accent: '#a3d9a5' },
+  { id: 'voiceReflect',   label: 'Reflect',        icon: '🎙️',  accent: '#7dd3fc' },
+  { id: 'repair',         label: 'Connection',     icon: '🤝',  accent: '#86efac' },
   { id: 'memories',       label: 'Memories',       icon: '🌸',  accent: '#f9c9a3' },
   { id: 'periodCalendar', label: 'Cycle Support',  icon: '🌿',  accent: '#5ebd8a' },
 ];
@@ -935,6 +939,32 @@ function PagesWorkspace({
               accent="#d4a8f0"
               description="All your past pages, entries, and bips in one place."
               onPress={() => onOpenHistory?.() || setScreen('history')}
+            />
+          </ScrollView>
+        );
+
+      case 'repair':
+        return (
+          <ScrollView contentContainerStyle={styles.content}>
+            <NavPill
+              emoji="🤝"
+              label="Connection + Repair"
+              accent="#86efac"
+              description="Log connection moments, set weekly goals, and rebuild after hard days."
+              onPress={() => setScreen('repair')}
+            />
+          </ScrollView>
+        );
+
+      case 'voiceReflect':
+        return (
+          <ScrollView contentContainerStyle={styles.content}>
+            <NavPill
+              emoji="🎙️"
+              label="Voice Reflection"
+              accent="#7dd3fc"
+              description="A private space to process your day as a parent. No one reads this."
+              onPress={() => setScreen('voiceReflect')}
             />
           </ScrollView>
         );

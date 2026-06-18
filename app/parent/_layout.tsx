@@ -32,6 +32,9 @@ export default function ParentLayout() {
       <Tabs.Screen name="period-calendar"  options={{ href: null }} />
       <Tabs.Screen name="calm"             options={{ href: null }} />
       <Tabs.Screen name="sekret"           options={{ href: null }} />
+      <Tabs.Screen name="repair"           options={{ href: null }} />
+      <Tabs.Screen name="s2tell"           options={{ href: null }} />
+      <Tabs.Screen name="voicereflect"     options={{ href: null }} />
     </Tabs>
   );
 }
