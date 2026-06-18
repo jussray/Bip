@@ -9,6 +9,11 @@
  *   Se'kret companion interaction is NOT removed.
  *   It lives under the "Se'kret Replies" section of PagesScreen.
  *   router.push('/(main)/chat/[id]') fires when a companion is tapped.
+ *
+ * S2TELL → BRIDGE:
+ *   S2Tell is the compose action for Bridge (teen → parent channel).
+ *   Tapping S2Tell in Pages opens Bridge in compose mode (?compose=true)
+ *   so the two feel like one continuous gesture.
  */
 import React from 'react';
 import { View } from 'react-native';
@@ -64,8 +69,13 @@ export default function PagesTab() {
     router.push('/(main)/cloud');
   }
 
+  /**
+   * S2Tell = the act of sending something to a parent via Bridge.
+   * Opens Bridge in compose mode so the teen lands directly at
+   * the write area — S2Tell and Bridge are one continuous gesture.
+   */
   function handleOpenS2Tell() {
-    router.push('/(main)/s2tell');
+    router.push('/(main)/bridge?compose=true' as any);
   }
 
   function handleOpenPeriodCalendar() {
@@ -79,12 +89,13 @@ export default function PagesTab() {
   function handleSetScreen(screen: string) {
     // Legacy setScreen bridge — map old screen names to router paths.
     const routeMap: Record<string, string> = {
-      voiceBip: '/(main)/voicebip',
-      cloud: '/(main)/cloud',
-      s2tell: '/(main)/s2tell',
+      voiceBip:       '/(main)/voicebip',
+      cloud:          '/(main)/cloud',
+      // s2tell → bridge compose mode (S2Tell IS the bridge compose action)
+      s2tell:         '/(main)/bridge?compose=true',
       periodCalendar: '/(main)/period-calendar',
-      history: '/(main)/history',
-      sekret: '/(main)/sekret',
+      history:        '/(main)/history',
+      sekret:         '/(main)/sekret',
     };
     const target = routeMap[screen];
     if (target) router.push(target as any);
