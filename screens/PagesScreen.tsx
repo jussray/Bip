@@ -16,9 +16,11 @@
  *   Se'kret is NOT removed. It is relocated here.
  *   If onOpenCompanion is not wired, companion interaction breaks → Phase 5 fails.
  */
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
+  Easing,
   Image,
   Platform,
   ScrollView,
@@ -30,6 +32,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
+import { IMAGES } from '../constants/theme';
 import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
@@ -559,6 +562,25 @@ function PagesWorkspace({
   const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
 
+  // Floating companion — breath loop
+  const companionBreath = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(companionBreath, { toValue: 1.06, duration: 3400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(companionBreath, { toValue: 1,    duration: 3400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const COMPANION_IMAGES: Partial<Record<PagesTab, any>> = {
+    raylene: IMAGES.rayleneNeutral,
+    rylane:  IMAGES.rylaneNeutral,
+    cloud:   IMAGES.cloudAvatarNeutral,
+    night:   IMAGES.nightNeutral,
+    parentSekret: IMAGES.rayleneNeutral,
+  };
+
   // Phase 5: top-level home section navigation (teen only)
   const [activeSection, setActiveSection] = useState<HomeSection>('write');
 
@@ -953,8 +975,20 @@ function PagesWorkspace({
 
   const activeSectionDef = sections.find(s => s.id === activeSection) ?? sections[0];
 
+  const activeCompanionImg = activeSection === 'write' ? COMPANION_IMAGES[activeTab] : undefined;
+
   return (
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
+      {/* Floating companion — breathes behind the writing area */}
+      {activeCompanionImg && (
+        <Animated.Image
+          source={activeCompanionImg}
+          style={[styles.companionPresence, { transform: [{ scale: companionBreath }] }]}
+          resizeMode="contain"
+          pointerEvents="none"
+        />
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View>
@@ -1042,6 +1076,15 @@ export { PagesWorkspace };
 
 const styles = StyleSheet.create({
   root: { flex: 1, paddingTop: Platform.OS === 'ios' ? 54 : 28 },
+  companionPresence: {
+    position: 'absolute',
+    right: 8,
+    top: 120,
+    width: 82,
+    height: 120,
+    opacity: 0.22,
+    zIndex: 0,
+  } as any,
   header: {
     paddingHorizontal: 20,
     flexDirection: 'row',
