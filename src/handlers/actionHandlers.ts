@@ -218,7 +218,7 @@ export function makeReactToParentPost(setState: SetState) {
                 ...(p.reactions ?? {}),
                 [type]: (((p.reactions as Record<string, number> | undefined)?.[type]) ?? 0) + 1,
               },
-            } as ParentCirclePost
+            } as ParentCirclePost)
           : p
       ),
     }));
