@@ -215,9 +215,10 @@ export async function loadCircleFeed(
 // ── Circle V1: Reaction sync ──────────────────────────────────────────────────
 export async function syncCircleReaction(
   postId: string | number,
-  kind: string,
-  reaction: string,
+  tabOrReaction: string,
+  reaction?: string,
 ): Promise<void> {
+  const actualReaction = reaction ?? tabOrReaction;
   const sb = getSupabase();
   if (!sb) return;
   const uid = await currentUserId();
@@ -226,7 +227,7 @@ export async function syncCircleReaction(
     await sb
       .from(TABLES.postReactions)
       .upsert(
-        { post_id: String(postId), user_id: uid, kind, reaction },
+        { post_id: postId, user_id: uid, reaction: actualReaction },
         { onConflict: 'post_id,user_id,reaction', ignoreDuplicates: true },
       );
   } catch (e) {

@@ -86,7 +86,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
   useEffect(() => {
     if (isLoading) return;
     setState(prev => ({ ...prev, screen: 'splash' }));
-  }, [userSide]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userSide]); // intentional: only re-run when side changes
 
   // 3. Supabase: anon sign-in + cloud pull & merge
   useEffect(() => {
@@ -125,7 +125,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
       }));
     })();
     return () => { cancelled = true; };
-  }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading]); // intentional: only re-run when loading state changes
 
   // 4. Persist state on change
   useEffect(() => {
@@ -192,7 +192,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
         };
       });
     }
-  }, [isLoading, lastOpenDate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoading, lastOpenDate]); // intentional: streak depends only on these two values
 
   // 6. Rotating home message
   useEffect(() => {

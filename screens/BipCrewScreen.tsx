@@ -90,7 +90,7 @@ export function BipCrewScreen({
   const [newCommit, setNewCommit]         = useState('');
   const [newEmoji, setNewEmoji]           = useState(isRylane ? '\u{1F31F}' : '\u{1F49C}');
   const [newCadence, setNewCadence]       = useState<'daily' | 'weekly' | 'whenever'>('weekly');
-  const [checkInFor, setCheckInFor]       = useState<string | null>(null);
+  const [checkInFor, setCheckInFor]       = useState<string | number | null>(null);
   const [checkInNote, setCheckInNote]     = useState('');
 
   // ── Animations ─────────────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export function BipCrewScreen({
     const name = newName.trim();
     const commit = newCommit.trim();
     if (!name || crewMembers.length >= MAX_CREW) return;
-    const nextId = String(Date.now());
+    const nextId = crewMembers.length ? Math.max(...crewMembers.map(m => Number(m.id))) + 1 : 1;
     const member: CrewMember = {
       id: nextId,
       name,
@@ -150,15 +150,15 @@ export function BipCrewScreen({
     setShowInvite(false);
   };
 
-  const removeMember = (id: string) => {
-    setCrewMembers(prev => prev.filter(m => m.id !== id));
-    setCrewCheckIns(prev => prev.filter(c => c.memberId !== id));
-    const sync = () => deleteCrewMember(id);
+  const removeMember = (id: string | number) => {
+    setCrewMembers(prev => prev.filter(m => String(m.id) !== String(id)));
+    setCrewCheckIns(prev => prev.filter(c => String(c.memberId) !== String(id)));
+    const sync = () => deleteCrewMember(Number(id));
     if (withSyncWrap) void withSyncWrap(async () => sync());
     else sync();
   };
 
-  const logCheckIn = (memberId: string) => {
+  const logCheckIn = (memberId: string | number) => {
     const note = checkInNote.trim();
     if (!note) return;
     const now = new Date();
@@ -181,7 +181,7 @@ export function BipCrewScreen({
 
   // ── Derived ────────────────────────────────────────────────────────────────
   const lastCheckInFor = useMemo(() => {
-    const m: Record<string, CrewCheckIn | undefined> = {};
+    const m: Record<string | number, CrewCheckIn | undefined> = {};
     for (const c of crewCheckIns) {
       if (!m[c.memberId]) m[c.memberId] = c;
     }

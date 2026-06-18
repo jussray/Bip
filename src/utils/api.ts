@@ -15,11 +15,11 @@ export async function fetchSekretReply(
   text: string,
   context = 'journal',
   mood?: string,
-  avatarKey?: string,
-  _p4?: unknown,
-  privateProfile?: unknown,
-  profileSide?: string,
-  _p7?: unknown,
+  _avatarKey?: string,
+  _extra1?: unknown,
+  _privateProfile?: unknown,
+  _profileSide?: string,
+  _history?: unknown[],
 ): Promise<string> {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
