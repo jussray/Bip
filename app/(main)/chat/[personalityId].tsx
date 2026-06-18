@@ -3,15 +3,17 @@
  *
  * Full personality chat screen.
  * Routes:
- *   /chat/raylene  \u2192  Raylene (Soft Big Sis)
- *   /chat/rylane   \u2192  Rylane  (Loyal Bro)
- *   /chat/cloud    \u2192  Cloud   (Quiet Comfort)
- *   /chat/night    \u2192  Night   (Late-Night Listener)
- *   /chat/oracle   \u2192  Oracle  (Wisdom Voice)
+ *   /chat/raylene  →  Raylene (Soft Big Sis)
+ *   /chat/rylane   →  Rylane  (Loyal Bro)
+ *   /chat/cloud    →  Cloud   (Quiet Comfort)
+ *   /chat/night    →  Night   (Late-Night Listener)
+ *   /chat/oracle   →  Oracle  (Wisdom Voice)
  *
- * Changes:
- * - Full message history passed to sendMessage so the AI has context.
- * - Oracle sessions synced to Supabase via syncOracleSession on unmount/back.
+ * Sync behaviour:
+ * - On mount: loadOracleSession(id) pulls the last 10 messages from cloud
+ *   and injects them as system context so the AI remembers prior sessions.
+ * - On unmount (if user sent ≥1 message): syncOracleSession(id, memory, count)
+ *   persists the session snapshot for ALL personalities, not just Oracle.
  */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
@@ -36,7 +38,7 @@ import {
 import type { ChatMessage } from '@/services/ai';
 import type { PersonalityId } from '@/types';
 import { useAppContext } from '@/context/AppContext';
-import { syncOracleSession } from '@/utils/sync';
+import { syncOracleSession, loadOracleSession } from '@/utils/sync';
 
 const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
 
@@ -45,7 +47,7 @@ const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
 
 export default function PersonalityChatScreen() {
   const { personalityId } = useLocalSearchParams<{ personalityId: string }>();
-  const { mood, oracleSessionCount, setOracleSessionCount } = useAppContext();
+  const { mood } = useAppContext();
 
   const id = VALID_IDS.includes(personalityId as PersonalityId)
     ? (personalityId as PersonalityId)
@@ -59,22 +61,48 @@ export default function PersonalityChatScreen() {
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef             = useRef<ScrollView>(null);
-  // Track whether this session had any user messages (worth syncing)
-  const hadActivity = useRef(false);
 
-  // Sync Oracle session to cloud on unmount
+  // Track whether this session had any user messages (worth syncing)
+  const hadActivity   = useRef(false);
+  // Local session count — incremented each time this screen unmounts with activity
+  const sessionCount  = useRef(0);
+
+  // ── Load cloud memory on mount ───────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      const saved = await loadOracleSession(id);
+      if (!saved) return;
+      sessionCount.current = saved.sessionCount;
+      // Restore the last messages snapshot as extra context in the chat.
+      // We prepend them so the AI sees prior conversation without cluttering
+      // the visible UI (they appear before the greeting bubble).
+      const prior = (saved.memory?.lastMessages as Array<{ role: string; text: string }> | undefined) ?? [];
+      if (prior.length > 0) {
+        const restored: ChatMessage[] = prior.map((m, i) =>
+          m.role === 'user'
+            ? makeUserMessage(m.text)
+            : makeAssistantMessage(m.text),
+        );
+        // Insert prior messages before the greeting so they act as context
+        setMessages(current => [...restored, ...current]);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  // ── Sync session to cloud on unmount ────────────────────────────────────
   useEffect(() => {
     return () => {
-      if (id === 'oracle' && hadActivity.current) {
-        const memory = {
-          lastMessages: messages.slice(-10).map(m => ({ role: m.role, text: m.text })),
-          lastMood:     mood,
-          lastSession:  new Date().toISOString(),
-        };
-        const newCount = (oracleSessionCount ?? 0) + 1;
-        setOracleSessionCount?.(newCount);
-        void syncOracleSession('teen', memory, newCount);
-      }
+      if (!hadActivity.current) return;
+      const memory = {
+        lastMessages: messages.slice(-10).map(m => ({ role: m.role, text: m.text })),
+        lastMood:     mood,
+        lastSession:  new Date().toISOString(),
+      };
+      const newCount = sessionCount.current + 1;
+      sessionCount.current = newCount;
+      // Sync ALL personalities — not just oracle
+      void syncOracleSession(id, memory, newCount);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
@@ -105,7 +133,7 @@ export default function PersonalityChatScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backText}>\u2190</Text>
+          <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerEmoji}>{config.emoji}</Text>
         <View>
@@ -179,7 +207,7 @@ export default function PersonalityChatScreen() {
             onPress={handleSend}
             disabled={!input.trim() || loading}
           >
-            <Text style={styles.sendBtnText}>\u2191</Text>
+            <Text style={styles.sendBtnText}>↑</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
