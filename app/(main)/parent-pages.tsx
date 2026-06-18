@@ -94,6 +94,18 @@ export default function ParentPagesRoute() {
   }
 
   return (
+    <ParentPagesScreen
+      mood={parentMood}
+      parentRoomStyle={parentRoomStyle === 'dad' ? 'dad' : 'mom'}
+      draft={parentPagesDraft}
+      setDraft={setParentPagesDraft}
+      entries={parentPagesEntries}
+      onSave={saveParentPageEntry}
+      oracleProfile={(parentOracleProfile ?? undefined) as any}
+      onCompleteOracleSession={completeParentOracleSession}
+      setScreen={navigateTo}
+      BottomNav={null}
+    />
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
 

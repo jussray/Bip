@@ -27,9 +27,12 @@ import type {
   ParentCirclePost,
 } from '@/types';
 
+export type { CirclePost } from '@/types';
+
 interface AppContextValue {
   // Identity
   theme: string;
+  setTheme: (theme: string) => void;
   userSide: 'teen' | 'parent' | null;
   setUserSide: (side: 'teen' | 'parent') => void;
   selectedSekret: string;
@@ -61,6 +64,9 @@ interface AppContextValue {
   homeMessageIndex: number;
   breatheAnim: Animated.Value;
   isLoading: boolean;
+  syncStatus: 'idle' | 'syncing' | 'synced' | 'failed' | 'local';
+  notificationsEnabled: boolean;
+  setNotificationsEnabled: (enabled: boolean) => void;
 
   // ── Parent state ──────────────────────────────────────────────
   parentMood: string;
@@ -104,6 +110,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
   const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
@@ -187,6 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value: AppContextValue = {
     theme: s.theme,
+    setTheme: s.setTheme,
     userSide: s.userSide,
     setUserSide: s.setUserSide,
     selectedSekret: s.selectedSekret,
@@ -207,6 +215,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     homeMessageIndex,
     breatheAnim,
     isLoading: s.isLoading,
+    syncStatus: 'idle',
+    notificationsEnabled,
+    setNotificationsEnabled,
     // parent
     parentMood: s.parentMood,
     setParentMood: s.setParentMood,

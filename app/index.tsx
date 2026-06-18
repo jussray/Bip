@@ -12,7 +12,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Redirect, router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { SplashScreen } from '@/screens/SplashScreen';
+import { SplashScreen } from '@screens/SplashScreen';
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();

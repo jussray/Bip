@@ -45,9 +45,6 @@ export default function PeriodCalendarRoute() {
       setScreen={navigateTo}
       BottomNav={null}
       backTarget="sekret"
-      markedDays={markedDays}
-      onMarkDay={handleMarkDay}
-      onUnmarkDay={handleUnmarkDay}
     />
   );
 }

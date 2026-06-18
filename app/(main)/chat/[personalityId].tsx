@@ -87,7 +87,6 @@ export default function PersonalityChatScreen() {
         setMessages(current => [...restored, ...current]);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // ── Sync session to cloud on unmount ────────────────────────────────────
@@ -104,7 +103,6 @@ export default function PersonalityChatScreen() {
       // Sync ALL personalities — not just oracle
       void syncOracleSession(id, memory, newCount);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages]);
 
   const handleSend = useCallback(async () => {

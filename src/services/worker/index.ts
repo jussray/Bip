@@ -7,7 +7,7 @@
  * All AI calls go through src/services/ai/chat.ts instead.
  * This file handles non-AI Worker routes (health, moderation, etc.).
  */
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
+const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '';
 
 /** Check that the Cloudflare Worker is reachable */
 export async function checkWorkerHealth(): Promise<boolean> {

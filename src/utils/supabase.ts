@@ -59,3 +59,6 @@ export const TABLES = {
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
+
+// Legacy nullable singleton export for older screens. Prefer getSupabase() in new code.
+export const supabase = getSupabase();

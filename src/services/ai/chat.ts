@@ -17,7 +17,7 @@ export interface ChatMessage {
   timestamp:   number;
 }
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL ?? '';
+const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '';
 
 /**
  * Send a user message for a given personality and get a reply.
@@ -32,6 +32,7 @@ export async function sendMessage(
   text:          string,
   context:       string = 'chat',
   mood?:         string,
+  history?:      ChatMessage[],
 ): Promise<string> {
   const config = PERSONALITY_CONFIG[personalityId];
 
@@ -45,6 +46,7 @@ export async function sendMessage(
         mood,
         personality:  personalityId,
         systemPrompt: config.systemPrompt,
+        history,
       }),
     });
 

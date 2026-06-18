@@ -5,7 +5,7 @@
  * State is read from AppContext; theme object + sekret profile are derived
  * here so HomeScreen receives the exact props its interface expects.
  */
-import HomeScreen from '@/screens/HomeScreen';
+import { HomeScreen } from '@screens/HomeScreen';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
 import { THEME_PACKS, SEKRET_PROFILES } from '@/constants/theme';

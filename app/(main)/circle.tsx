@@ -89,7 +89,7 @@ export default function CircleScreen() {
     setCirclePosts(posts =>
       posts.map(p =>
         p.id === postId
-          ? { ...p, reactions: { ...p.reactions, [key]: p.reactions[key] + 1 } }
+          ? { ...p, reactions: { ...p.reactions, [key]: (p.reactions[key] ?? 0) + 1 } }
           : p
       )
     );
@@ -153,7 +153,7 @@ export default function CircleScreen() {
                   onPress={() => react(post.id, key)}
                 >
                   <Text style={styles.reactionText}>
-                    {emoji}{post.reactions[key] > 0 ? ` ${post.reactions[key]}` : ''}
+                    {emoji}{(post.reactions[key] ?? 0) > 0 ? ` ${post.reactions[key] ?? 0}` : ''}
                   </Text>
                 </TouchableOpacity>
               ))}

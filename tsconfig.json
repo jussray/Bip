@@ -15,5 +15,6 @@
       "@screens/*":    ["./screens/*"],
       "@types/*":      ["./src/types/*"]
     }
-  }
+  },
+  "exclude": ["supabase/functions/**"]
 }
