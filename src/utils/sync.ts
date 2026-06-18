@@ -1,14 +1,13 @@
 // src/utils/sync.ts
-// Se'kret Bip — Cloud sync layer (Phase 2 backend)
+// Se'kret Bip — Cloud sync layer (Phase 2 + Phase 3 backend)
 //
 // All cloud writes go through here. Every helper is a SAFE NO-OP when
 // Supabase isn't configured — the app keeps working off AsyncStorage, no
 // errors thrown. This lets us ship the UI now and add credentials later.
 //
 // Auth model: each row is scoped to auth.uid() via RLS. If there's no
-// signed-in user yet, writes are silently skipped (kept locally only). We'll
-// add anonymous sign-in (supabase.auth.signInAnonymously) once we're ready
-// to flip the switch in app/index.tsx.
+// signed-in user yet, writes are silently skipped (kept locally only).
+// ensureAnonymousSession() is called from useAppEffects on mount.
 //
 // IMPORTANT: never throw. The user's local experience must never break
 // because the cloud is down. Errors are logged and swallowed.
@@ -319,6 +318,118 @@ export async function snapshotPoints(total: number): Promise<void> {
     });
   } catch (e) {
     if (__DEV__) console.warn('[sync] snapshotPoints failed', e);
+  }
+}
+
+// ── Period calendar ───────────────────────────────────────────────────────────
+
+/** Upsert a single period day (ISO date string, e.g. '2026-06-17'). */
+export async function syncPeriodDay(day: string, note?: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.periodDays).upsert(
+      { user_id: uid, day, note: note ?? null },
+      { onConflict: 'user_id,day' },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncPeriodDay failed', e);
+  }
+}
+
+/** Remove a period day (un-mark). */
+export async function deletePeriodDay(day: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.periodDays).delete().match({ user_id: uid, day });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] deletePeriodDay failed', e);
+  }
+}
+
+/** Pull all period days from cloud. Returns array of ISO date strings. */
+export async function loadPeriodDays(): Promise<string[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.periodDays)
+      .select('day')
+      .eq('user_id', uid)
+      .order('day', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((r: any) => r.day as string);
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadPeriodDays failed', e);
+    return [];
+  }
+}
+
+// ── Oracle / companion memory ─────────────────────────────────────────────────
+
+/**
+ * Upsert the full oracle memory snapshot for a personality.
+ * personality_id: 'teen' | 'parent'
+ */
+export async function syncOracleSession(
+  personalityId: string,
+  memory: Record<string, unknown>,
+  sessionCount: number,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from('oracle_sessions').upsert(
+      {
+        user_id:        uid,
+        personality_id: personalityId,
+        memory,
+        session_count:  sessionCount,
+        last_synced:    new Date().toISOString(),
+      },
+      { onConflict: 'user_id,personality_id' },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncOracleSession failed', e);
+  }
+}
+
+/**
+ * Load the latest oracle memory snapshot for a personality.
+ * Returns null if not found or Supabase not configured.
+ */
+export async function loadOracleSession(
+  personalityId: string,
+): Promise<{ memory: Record<string, unknown>; sessionCount: number } | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data, error } = await sb
+      .from('oracle_sessions')
+      .select('memory, session_count')
+      .eq('user_id', uid)
+      .eq('personality_id', personalityId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      memory:       (data.memory as Record<string, unknown>) ?? {},
+      sessionCount: (data.session_count as number) ?? 0,
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadOracleSession failed', e);
+    return null;
   }
 }
 
