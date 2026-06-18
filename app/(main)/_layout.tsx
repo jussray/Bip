@@ -1,11 +1,22 @@
 /**
  * app/(main)/_layout.tsx
  *
- * EXPERIENCE RESTORATION:
+ * PHASE 5 — Se'kret → Pages migration
+ *
  * Teen visible tabs:   home · pages · calm · circle · more
  * Parent visible tabs: parent-room · parent-pages · parent-circle · parent-bridge · more
- * sekret: registered but hidden (href: null) — reachable via Pages navigation
- * All other utility routes hidden but fully navigable.
+ *
+ * sekret: registered but hidden (href: null).
+ *   ↳ Fully reachable via  Pages → Se'kret Replies → tap companion → chat
+ *   ↳ Direct push:  router.push('/(main)/sekret')  still works
+ *
+ * SAFETY RULE (Phase 5):
+ *   Do NOT simply hide this tab and leave Se'kret unreachable.
+ *   Se'kret's companion-picker UI is embedded inside PagesScreen
+ *   under the "Se'kret Replies" section so companion interaction
+ *   is always one tap from Pages.
+ *
+ * All other utility routes: hidden but navigable.
  */
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
@@ -112,10 +123,10 @@ export default function MainLayout() {
         }}
       />
 
-      {/* ── sekret: hidden — entered from Pages ── */}
+      {/* ── sekret: hidden from nav — soul lives inside Pages > Se'kret Replies ── */}
       <Tabs.Screen name="sekret"          options={{ href: null }} />
 
-      {/* ── Hidden utility routes ── */}
+      {/* ── Hidden utility routes — all reachable via Pages navigation ── */}
       <Tabs.Screen name="voicebip"        options={{ href: null }} />
       <Tabs.Screen name="cloud"           options={{ href: null }} />
       <Tabs.Screen name="comfort"         options={{ href: null }} />

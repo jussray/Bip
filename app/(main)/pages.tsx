@@ -1,15 +1,23 @@
 /**
  * app/(main)/pages.tsx
  *
- * Pages / Journal tab route — bridges Expo Router to PagesScreen.
+ * Pages tab — the notebook/scrapbook home for:
+ *   Write · Voice Bips · Se'kret Replies · Memories
+ *   Cloud Thoughts · S2Tell · Period Calendar · History
+ *
+ * PHASE 5 SAFETY:
+ *   Se'kret companion interaction is NOT removed.
+ *   It lives under the "Se'kret Replies" section of PagesScreen.
+ *   router.push('/(main)/chat/[id]') fires when a companion is tapped.
  */
 import React from 'react';
 import { View } from 'react-native';
+import { router } from 'expo-router';
 import PagesScreen from '@/screens/PagesScreen';
 import { useAppContext } from '@/context/AppContext';
-import { navigateTo } from '@/utils/navigation';
 import { THEME_PACKS } from '@/constants/theme';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
+import type { PersonalityId } from '@/types';
 
 export default function PagesTab() {
   const {
@@ -26,7 +34,7 @@ export default function PagesTab() {
 
   const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
 
-  // Stub — Oracle session persistence will be wired in a later sprint.
+  // Stub — Oracle session persistence wired in a later sprint.
   function handleCompleteOracleSession(
     _profile: OracleProfile,
     _session: OracleSessionSummary,
@@ -40,6 +48,48 @@ export default function PagesTab() {
     patchJournalEntry?.(entryId, { sekretReply: reply });
   }
 
+  /**
+   * Navigation helpers threaded into PagesScreen so sub-sections can
+   * push to the correct route without importing router directly.
+   */
+  function handleOpenCompanion(personalityId: PersonalityId) {
+    router.push(`/(main)/chat/${personalityId}`);
+  }
+
+  function handleOpenVoiceBip() {
+    router.push('/(main)/voicebip');
+  }
+
+  function handleOpenCloudThoughts() {
+    router.push('/(main)/cloud');
+  }
+
+  function handleOpenS2Tell() {
+    router.push('/(main)/s2tell');
+  }
+
+  function handleOpenPeriodCalendar() {
+    router.push('/(main)/period-calendar');
+  }
+
+  function handleOpenHistory() {
+    router.push('/(main)/history');
+  }
+
+  function handleSetScreen(screen: string) {
+    // Legacy setScreen bridge — map old screen names to router paths.
+    const routeMap: Record<string, string> = {
+      voiceBip: '/(main)/voicebip',
+      cloud: '/(main)/cloud',
+      s2tell: '/(main)/s2tell',
+      periodCalendar: '/(main)/period-calendar',
+      history: '/(main)/history',
+      sekret: '/(main)/sekret',
+    };
+    const target = routeMap[screen];
+    if (target) router.push(target as any);
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <PagesScreen
@@ -49,12 +99,18 @@ export default function PagesTab() {
         saveJournalEntry={saveEntry}
         mood={mood}
         t={t}
-        setScreen={navigateTo}
+        setScreen={handleSetScreen}
         BottomNav={null}
         moodHistory={moodHistory}
         selectedSekret={selectedSekret}
         onCompleteOracleSession={handleCompleteOracleSession}
         onSekretReply={handleSekretReply}
+        onOpenCompanion={handleOpenCompanion}
+        onOpenVoiceBip={handleOpenVoiceBip}
+        onOpenCloudThoughts={handleOpenCloudThoughts}
+        onOpenS2Tell={handleOpenS2Tell}
+        onOpenPeriodCalendar={handleOpenPeriodCalendar}
+        onOpenHistory={handleOpenHistory}
       />
     </View>
   );
