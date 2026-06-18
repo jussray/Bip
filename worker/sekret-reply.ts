@@ -25,6 +25,8 @@ interface RequestBody {
   previous_mood?: unknown;
   personality?: unknown;
   voiceInstruction?: unknown;
+  systemPrompt?: unknown;
+  history?: unknown;
 }
 
 // ── Startup guard ────────────────────────────────────────────────────────────
@@ -87,8 +89,17 @@ function isCleanReply(text: string): boolean {
 
 // ── Build system prompt ──────────────────────────────────────────────────────
 function buildSystemPrompt(body: RequestBody): string {
-  if (typeof body.voiceInstruction === 'string' && body.voiceInstruction.trim().length > 40) {
-    return body.voiceInstruction.trim();
+  const customPrompt = typeof body.systemPrompt === 'string'
+    ? body.systemPrompt
+    : typeof body.voiceInstruction === 'string'
+      ? body.voiceInstruction
+      : '';
+  if (customPrompt.trim().length > 40) {
+    return [
+      customPrompt.trim(),
+      "You are still inside Se'kret Bip: teen-safe, private-feeling, concise, and never clinical.",
+      "Never mention logs, tracking, analysis, or profiles.",
+    ].join(' ');
   }
 
   const voice = normalizePersonality(body.personality);
@@ -112,6 +123,29 @@ function buildSystemPrompt(body: RequestBody): string {
     "Never mention logs, tracking, analysis, or profiles.",
     "Reply must feel like a text from a real person.",
   ].filter(Boolean).join(' ');
+}
+
+
+interface OpenAIMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+function buildMessages(systemPrompt: string, body: RequestBody, text: string): OpenAIMessage[] {
+  const messages: OpenAIMessage[] = [{ role: 'system', content: systemPrompt }];
+  const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
+  for (const item of history) {
+    if (!item || typeof item !== 'object') continue;
+    const role = (item as { role?: unknown }).role;
+    const content = (item as { text?: unknown; content?: unknown }).text ?? (item as { content?: unknown }).content;
+    if ((role === 'user' || role === 'assistant') && typeof content === 'string' && content.trim()) {
+      messages.push({ role, content: content.trim().slice(0, 800) });
+    }
+  }
+  if (messages[messages.length - 1]?.role !== 'user' || messages[messages.length - 1]?.content !== text) {
+    messages.push({ role: 'user', content: text });
+  }
+  return messages;
 }
 
 // ── Main handler ─────────────────────────────────────────────────────────────
@@ -174,10 +208,7 @@ export default {
           model:      'gpt-4o-mini',
           max_tokens: MAX_TOKENS[voice],
           temperature: 0.85,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user',   content: text },
-          ],
+          messages: buildMessages(systemPrompt, body, text),
         }),
       });
 

@@ -61,6 +61,16 @@ export default function PersonalityChatScreen() {
   const [input, setInput]     = useState('');
   const [loading, setLoading] = useState(false);
   const scrollRef             = useRef<ScrollView>(null);
+  const messagesRef           = useRef<ChatMessage[]>(messages);
+  const moodRef               = useRef(mood);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    moodRef.current = mood;
+  }, [mood]);
 
   // Track whether this session had any user messages (worth syncing)
   const hadActivity   = useRef(false);
@@ -78,7 +88,7 @@ export default function PersonalityChatScreen() {
       // the visible UI (they appear before the greeting bubble).
       const prior = (saved.memory?.lastMessages as Array<{ role: string; text: string }> | undefined) ?? [];
       if (prior.length > 0) {
-        const restored: ChatMessage[] = prior.map((m, i) =>
+        const restored: ChatMessage[] = prior.map((m) =>
           m.role === 'user'
             ? makeUserMessage(m.text)
             : makeAssistantMessage(m.text),
@@ -94,8 +104,8 @@ export default function PersonalityChatScreen() {
     return () => {
       if (!hadActivity.current) return;
       const memory = {
-        lastMessages: messages.slice(-10).map(m => ({ role: m.role, text: m.text })),
-        lastMood:     mood,
+        lastMessages: messagesRef.current.slice(-10).map(m => ({ role: m.role, text: m.text })),
+        lastMood:     moodRef.current,
         lastSession:  new Date().toISOString(),
       };
       const newCount = sessionCount.current + 1;
@@ -103,7 +113,7 @@ export default function PersonalityChatScreen() {
       // Sync ALL personalities — not just oracle
       void syncOracleSession(id, memory, newCount);
     };
-  }, [messages]);
+  }, [id]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
