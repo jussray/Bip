@@ -48,6 +48,9 @@ export function useAppState() {
   const [crewMembers, setCrewMembers]           = useState<CrewMember[]>([]);
   const [crewCheckIns, setCrewCheckIns]         = useState<CrewCheckIn[]>([]);
 
+  // Period calendar — array of ISO date strings e.g. ['2026-06-01', '2026-06-02']
+  const [periodDays, setPeriodDays] = useState<string[]>([]);
+
   const [streakDays, setStreakDays]               = useState(0);
   const [lastOpenDate, setLastOpenDate]           = useState('');
   const [streakJustReset, setStreakJustReset]     = useState(false);
@@ -55,7 +58,7 @@ export function useAppState() {
   const [homeMessageIndex, setHomeMessageIndex]   = useState(0);
   const [isLoading, setIsLoading]                 = useState(true);
 
-  // ── Load persisted state on mount ──────────────────────────────────────────
+  // ── Load persisted state on mount ──────────────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
@@ -82,6 +85,7 @@ export function useAppState() {
         if (state.comfortSessions)      setComfortSessions(Array.isArray(state.comfortSessions) ? state.comfortSessions : []);
         if (state.crewMembers)          setCrewMembers(Array.isArray(state.crewMembers) ? state.crewMembers : []);
         if (state.crewCheckIns)         setCrewCheckIns(Array.isArray(state.crewCheckIns) ? state.crewCheckIns : []);
+        if (state.periodDays)           setPeriodDays(Array.isArray(state.periodDays) ? state.periodDays : []);
         if (state.streakDays)           setStreakDays(Number(state.streakDays) || 0);
         if (state.lastOpenDate)         setLastOpenDate(state.lastOpenDate);
         if (state.roomMemory) {
@@ -127,6 +131,7 @@ export function useAppState() {
     comfortSessions, setComfortSessions,
     crewMembers, setCrewMembers,
     crewCheckIns, setCrewCheckIns,
+    periodDays, setPeriodDays,
     streakDays, setStreakDays,
     lastOpenDate, setLastOpenDate,
     streakJustReset, setStreakJustReset,
