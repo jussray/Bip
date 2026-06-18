@@ -80,3 +80,29 @@ export type BipPoints = {
   total: number;
   captured_at: string;
 };
+
+// ─── P6: Bridge ───────────────────────────────────────────────────────────────
+// Signal-only row — message content NEVER leaves the teen device.
+// The parent app reads this to know "a share happened" and which shape it was.
+export type BridgeSignal = {
+  id: number;
+  teen_user_id: string;
+  char_key: 'raylene' | 'rylane';
+  share_type: 'mood' | 'thought' | 'need' | 'win';
+  conv_mode: 'soft' | 'honest' | 'boundary' | 'safety';
+  read_by_parent: boolean;
+  created_at: string;
+};
+
+// ─── P7: Oracle ───────────────────────────────────────────────────────────────
+// One row per completed oracle session; the full OracleRecord JSON is stored in
+// `snapshot` so cloud restore is possible without a normalised schema.
+export type OracleSession = {
+  id: number;
+  user_id: string;
+  mode: 'teen' | 'parent';
+  session_index: number;   // record.sessionCount at the time of save
+  turns_in_session: number;
+  snapshot: string;        // JSON.stringify(OracleRecord) — full profile at end of session
+  created_at: string;
+};
