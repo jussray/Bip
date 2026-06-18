@@ -43,18 +43,34 @@ const MOOD_COLORS: Record<string, string> = {
 
 const PURPLE = '#a855f7';
 
+function defaultReactions(): CirclePost['reactions'] {
+  return { felt: 0, comfort: 0, proud: 0, stay: 0 };
+}
+
+function normalizeReactions(raw: unknown): CirclePost['reactions'] {
+  const r = (raw ?? {}) as Partial<Record<keyof CirclePost['reactions'], number>>;
+  return {
+    felt:    Number(r.felt ?? 0),
+    comfort: Number(r.comfort ?? 0),
+    proud:   Number(r.proud ?? 0),
+    stay:    Number(r.stay ?? 0),
+  };
+}
+
 export default function CircleScreen() {
   const { circlePosts, setCirclePosts } = useAppContext();
-  const [draft, setDraft]           = useState('');
+  const [draft, setDraft]             = useState('');
   const [composeMood, setComposeMood] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-  const [posting, setPosting]       = useState(false);
+  const [refreshing, setRefreshing]   = useState(false);
+  const [posting, setPosting]         = useState(false);
 
   useEffect(() => { void fetchFeed(); }, []);
 
   async function fetchFeed() {
     const cloudPosts = await loadCircleFeed('public', 40);
-    if (!cloudPosts) return;
+    // Supabase may be absent or blocked during early builds. Keep local Circle usable.
+    if (!cloudPosts?.length) return;
+
     setCirclePosts(prev => {
       const cloudIds = new Set((cloudPosts as any[]).map((p: any) => String(p.id)));
       const localOnly = prev.filter(p => !cloudIds.has(String(p.id)));
@@ -63,7 +79,7 @@ export default function CircleScreen() {
         text:      p.text ?? p.body ?? '',
         date:      p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
         time:      p.created_at ? new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-        reactions: p.reactions ?? { felt: 0, comfort: 0, proud: 0, stay: 0 },
+        reactions: normalizeReactions(p.reactions),
       }));
       return [...localOnly, ...mapped];
     });
@@ -84,25 +100,28 @@ export default function CircleScreen() {
     const fullText   = moodPrefix + text;
 
     const optimisticPost: CirclePost = {
-      id:   Date.now(),
-      text:  fullText,
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      reactions: { felt: 0, comfort: 0, proud: 0, stay: 0 },
+      id:        Date.now(),
+      text:      fullText,
+      date:      new Date().toLocaleDateString(),
+      time:      new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      reactions: defaultReactions(),
     };
     setCirclePosts(prev => [optimisticPost, ...prev]);
     setDraft('');
     setComposeMood('');
 
-    await writeCirclePost('public', fullText);
-    setPosting(false);
+    try {
+      await writeCirclePost('public', fullText);
+    } finally {
+      setPosting(false);
+    }
   }
 
-  function react(postId: number, key: keyof CirclePost['reactions']) {
+  function react(postId: CirclePost['id'], key: keyof CirclePost['reactions']) {
     setCirclePosts(posts =>
       posts.map(p =>
-        p.id === postId
-          ? { ...p, reactions: { ...p.reactions, [key]: (p.reactions[key] ?? 0) + 1 } }
+        String(p.id) === String(postId)
+          ? { ...p, reactions: { ...normalizeReactions(p.reactions), [key]: (normalizeReactions(p.reactions)[key] ?? 0) + 1 } }
           : p
       )
     );
@@ -198,8 +217,9 @@ export default function CircleScreen() {
         {circlePosts.map(post => {
           const postMood = getPostMood(post.text);
           const displayText = postMood ? post.text.slice(post.text.indexOf(' ') + 1) : post.text;
+          const reactions = normalizeReactions(post.reactions);
           return (
-            <View key={post.id} style={[s.card, postMood && { borderLeftColor: postMood.color, borderLeftWidth: 3 }]}>
+            <View key={String(post.id)} style={[s.card, postMood && { borderLeftColor: postMood.color, borderLeftWidth: 3 }]}>
               {/* Card header */}
               <View style={s.cardHeader}>
                 <View style={s.anonBadge}>
@@ -218,7 +238,7 @@ export default function CircleScreen() {
               {/* Reactions */}
               <View style={s.reactions}>
                 {REACTION_LABELS.map(({ key, emoji, label }) => {
-                  const count = post.reactions[key] ?? 0;
+                  const count = reactions[key] ?? 0;
                   return (
                     <TouchableOpacity
                       key={key}
