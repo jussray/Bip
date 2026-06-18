@@ -81,28 +81,33 @@ export type BipPoints = {
   captured_at: string;
 };
 
-// ─── P6: Bridge ───────────────────────────────────────────────────────────────
-// Signal-only row — message content NEVER leaves the teen device.
-// The parent app reads this to know "a share happened" and which shape it was.
+// ─── P8: Bridge signal row ────────────────────────────────────────────────────
+// MESSAGE CONTENT IS NEVER STORED. Only metadata (share type, conversation
+// mode, char key) is synced so the parent-side can surface a gentle nudge.
 export type BridgeSignal = {
   id: number;
-  teen_user_id: string;
+  teen_user_id: string;          // RLS: only the teen can insert their own row
   char_key: 'raylene' | 'rylane';
-  share_type: 'mood' | 'thought' | 'need' | 'win';
-  conv_mode: 'soft' | 'honest' | 'boundary' | 'safety';
-  read_by_parent: boolean;
+  share_type: string;            // 'mood' | 'thought' | 'need' | 'win'
+  conv_mode: string | null;      // 'soft' | 'honest' | 'boundary' | 'safety'
+  sent_at: string;               // ISO timestamp
   created_at: string;
 };
 
-// ─── P7: Oracle ───────────────────────────────────────────────────────────────
-// One row per completed oracle session; the full OracleRecord JSON is stored in
-// `snapshot` so cloud restore is possible without a normalised schema.
+// ─── P8: Oracle session row ───────────────────────────────────────────────────
+// Stores a snapshot of one completed oracle session (question IDs + aggregated
+// dimension signals). Full OracleRecord JSON lives in the 'profile_snapshot'
+// column for recovery/cross-device sync; individual fields are indexed for
+// analytics queries.
 export type OracleSession = {
   id: number;
   user_id: string;
   mode: 'teen' | 'parent';
-  session_index: number;   // record.sessionCount at the time of save
-  turns_in_session: number;
-  snapshot: string;        // JSON.stringify(OracleRecord) — full profile at end of session
+  session_index: number;         // record.sessionCount at time of save
+  total_turns: number;           // record.totalTurns
+  question_ids: string[];        // array of question IDs answered this session
+  dimension_summary: Record<string, number>; // dimension -> signal count
+  profile_snapshot: string;      // JSON.stringify(OracleRecord) for full recovery
+  completed_at: string;          // ISO timestamp
   created_at: string;
 };

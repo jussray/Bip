@@ -2,7 +2,11 @@
 // Se'kret Bip — Bridge Screen (Teen Side)
 // Phase 1 polish: time-of-day backdrop, char-aware tone, mood glow,
 // staggered entrance, breath badge, sticky note, send confirmation glow.
-// P6: handleSend syncs a signal-only row to Supabase (no message content).
+//
+// P6: handleSend now writes a signal row to `bridge_signals` in Supabase.
+// MESSAGE CONTENT IS NEVER STORED — only share_type, conv_mode, char_key,
+// and a timestamp leave the device. AsyncStorage flag kept as instant
+// parent-side nudge even when offline.
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
@@ -20,8 +24,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../utils/supabase/client';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
+import { supabase } from '../utils/supabase';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -33,20 +37,19 @@ interface BridgeScreenProps {
 }
 
 const SHARE_TYPES = [
-  { id: 'mood',    emoji: '\uD83D\uDC9C', label: 'My Mood',     placeholder: "tell them how you're feeling\u2026" },
-  { id: 'thought', emoji: '\uD83D\uDCAD', label: 'A Thought',    placeholder: 'something on your mind\u2026' },
-  { id: 'need',    emoji: '\uD83C\uDF3F', label: 'Something I Need', placeholder: 'what would help right now\u2026' },
-  { id: 'win',     emoji: '\u26A1', label: 'A Win',         placeholder: 'something good that happened\u2026' },
+  { id: 'mood',    emoji: '💜', label: 'My Mood',     placeholder: "tell them how you're feeling…" },
+  { id: 'thought', emoji: '💭', label: 'A Thought',    placeholder: 'something on your mind…' },
+  { id: 'need',    emoji: '🌿', label: 'Something I Need', placeholder: 'what would help right now…' },
+  { id: 'win',     emoji: '⚡', label: 'A Win',         placeholder: 'something good that happened…' },
 ];
 
 const CONV_MODES = [
-  { id: 'soft',     emoji: '\uD83C\uDF38', label: 'Soft Start',     hint: 'Ease in gently \u2014 no pressure to say it all.',          tone: 'soft' },
-  { id: 'honest',   emoji: '\uD83D\uDC9C', label: 'Honest Version',  hint: 'Say the full truth. No editing, no softening.',        tone: 'direct' },
-  { id: 'boundary', emoji: '\uD83D\uDEE1\uFE0F', label: 'Calm Boundary',   hint: 'Set a limit with kindness \u2014 you stay in control.',     tone: 'firm' },
-  { id: 'safety',   emoji: '\uD83E\uDEF6', label: 'Safety Check',    hint: 'Check that your message lands the way you mean it.',   tone: 'check' },
+  { id: 'soft',     emoji: '🌸', label: 'Soft Start',     hint: 'Ease in gently — no pressure to say it all.',          tone: 'soft' },
+  { id: 'honest',   emoji: '💜', label: 'Honest Version',  hint: 'Say the full truth. No editing, no softening.',        tone: 'direct' },
+  { id: 'boundary', emoji: '🛡️', label: 'Calm Boundary',   hint: 'Set a limit with kindness — you stay in control.',     tone: 'firm' },
+  { id: 'safety',   emoji: '🫶', label: 'Safety Check',    hint: 'Check that your message lands the way you mean it.',   tone: 'check' },
 ] as const;
 type ConvModeId = (typeof CONV_MODES)[number]['id'];
-type ShareTypeId = 'mood' | 'thought' | 'need' | 'win';
 
 const getTimeOfDay = (): TimeOfDay => {
   const h = new Date().getHours();
@@ -69,14 +72,14 @@ const moodGlow = (mood?: string): string => {
 export function BridgeScreen({
   t, currentSekret, setScreen, BottomNav, selectedSekret, mood,
 }: BridgeScreenProps) {
-  const [shareType, setShareType]   = useState<ShareTypeId | null>(null);
+  const [shareType, setShareType]   = useState<string | null>(null);
   const [convMode, setConvMode]     = useState<ConvModeId | null>(null);
   const [message, setMessage]       = useState('');
   const [sent, setSent]             = useState(false);
   const [sending, setSending]       = useState(false);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
-  const isRylane  = selectedSekret === 'rylane';
+  const isRylane = selectedSekret === 'rylane';
   const charLabel = isRylane ? 'rylane' : 'raylene';
   const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
 
@@ -84,9 +87,9 @@ export function BridgeScreen({
   const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
   const glow = useMemo(() => moodGlow(mood), [mood]);
 
-  const fade1  = useRef(new Animated.Value(0)).current;
-  const fade2  = useRef(new Animated.Value(0)).current;
-  const fade3  = useRef(new Animated.Value(0)).current;
+  const fade1 = useRef(new Animated.Value(0)).current;
+  const fade2 = useRef(new Animated.Value(0)).current;
+  const fade3 = useRef(new Animated.Value(0)).current;
   const breath = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -107,43 +110,40 @@ export function BridgeScreen({
     return () => loop.stop();
   }, [fade1, fade2, fade3, breath]);
 
-  const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
+  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
   const cardStyle = (val: Animated.Value) => ({
     opacity: val,
     transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   });
 
-  // ─── P6: send ───────────────────────────────────────────────────────────────
-  // Message content NEVER leaves this device. We write only a shape-signal:
-  //   char_key + share_type + conv_mode + teen_user_id
-  // The parent app reads that row to know "a bridge share happened".
+  // ─── P6: send signal ─────────────────────────────────────────────────────────
   const handleSend = async () => {
-    if (!shareType || !convMode || !message.trim()) {
-      Alert.alert('almost there', 'pick a share type, a mode, and write your message first.');
+    if (!shareType || !message.trim()) {
+      Alert.alert('almost there', 'pick a share type and write your message first.');
       return;
     }
+
     setSending(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // 1. Instant local flag so the parent UI reacts even when offline.
+      await AsyncStorage.setItem('parent_bridge_pending', 'true');
 
+      // 2. Cloud signal — NO message content, only metadata.
+      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Insert signal row (no message text)
         await supabase.from('bridge_signals').insert({
-          teen_user_id:   user.id,
-          char_key:       charKey,
-          share_type:     shareType,
-          conv_mode:      convMode,
-          read_by_parent: false,
+          teen_user_id: user.id,
+          char_key:    charKey,
+          share_type:  shareType,
+          conv_mode:   convMode ?? null,
+          sent_at:     new Date().toISOString(),
         });
-      } else {
-        // Not signed in — fall back to local flag so parent still gets notified
-        // on next launch if they share the device.
-        await AsyncStorage.setItem('parent_bridge_pending', 'true');
+        // Errors are intentionally swallowed — the teen's send still succeeds
+        // locally. Cloud sync is best-effort.
       }
     } catch {
-      // Network failure: fall back silently. The teen still sees the sent state.
-      try { await AsyncStorage.setItem('parent_bridge_pending', 'true'); } catch {}
+      // Network failure: local flag already set, nothing else to do.
     } finally {
       setSending(false);
     }
@@ -156,7 +156,7 @@ export function BridgeScreen({
 
   const heroCopy = isRylane
     ? "share something with your person. no pressure. no big speech."
-    : "share something with your person \u2014 softly. no full explanation needed.";
+    : "share something with your person — softly. no full explanation needed.";
 
   if (sent) {
     return (
@@ -170,12 +170,12 @@ export function BridgeScreen({
 
         <ScrollView contentContainerStyle={styles.container}>
           <Animated.View style={cardStyle(fade1)}>
-            <Text style={styles.logo}>\uD83C\uDF09 bridge</Text>
+            <Text style={styles.logo}>🌉 bridge</Text>
             <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow, shadowColor: glow, alignItems: 'center', paddingVertical: 32 }]}>
-              <Animated.Text style={[styles.sentEmoji, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}>\uD83D\uDC8C</Animated.Text>
+              <Animated.Text style={[styles.sentEmoji, { transform: [{ scale: breathScale }], opacity: breathOpacity }]}>💌</Animated.Text>
               <Text style={styles.sentTitle}>sent to your person.</Text>
               <Text style={styles.sentSub}>
-                they'll see it as a gentle note. you did something brave \uD83D\uDC9C
+                they'll see it as a gentle note. you did something brave 💜
               </Text>
               <TouchableOpacity
                 style={[styles.button, { backgroundColor: glow, marginTop: 18 }]}
@@ -208,7 +208,7 @@ export function BridgeScreen({
 
       <ScrollView contentContainerStyle={styles.container}>
         <Animated.View style={cardStyle(fade1)}>
-          <Text style={styles.logo}>\uD83C\uDF09 bridge</Text>
+          <Text style={styles.logo}>🌉 bridge</Text>
           <Text style={styles.subtitle}>{heroCopy}</Text>
 
           <Animated.View
@@ -219,7 +219,7 @@ export function BridgeScreen({
             ]}
           >
             <Text style={[styles.energyText, { color: glow }]}>
-              {charLabel} helps you bridge it \u00b7 you stay in control
+              {charLabel} helps you bridge it · you stay in control
             </Text>
           </Animated.View>
         </Animated.View>
@@ -237,7 +237,7 @@ export function BridgeScreen({
                     borderColor:     shareType === type.id ? glow : glow + '55',
                   },
                 ]}
-                onPress={() => setShareType(type.id as ShareTypeId)}
+                onPress={() => setShareType(type.id)}
               >
                 <Text style={styles.typeEmoji}>{type.emoji}</Text>
                 <Text style={[styles.typeLabel, { color: shareType === type.id ? '#fff' : '#e9defc' }]}>
@@ -251,21 +251,21 @@ export function BridgeScreen({
             <>
               <Text style={[styles.sectionLabel, { color: '#cbb6f7', marginTop: 4 }]}>how do you want to say it?</Text>
               <View style={[styles.typeRow, { marginBottom: 14 }]}>
-                {CONV_MODES.map(cm => (
+                {CONV_MODES.map(mode => (
                   <TouchableOpacity
-                    key={cm.id}
+                    key={mode.id}
                     style={[
                       styles.typeChip,
                       {
-                        backgroundColor: convMode === cm.id ? glow : 'rgba(20,12,40,0.75)',
-                        borderColor:     convMode === cm.id ? glow : glow + '55',
+                        backgroundColor: convMode === mode.id ? glow : 'rgba(20,12,40,0.75)',
+                        borderColor:     convMode === mode.id ? glow : glow + '55',
                       },
                     ]}
-                    onPress={() => setConvMode(cm.id)}
+                    onPress={() => setConvMode(mode.id)}
                   >
-                    <Text style={styles.typeEmoji}>{cm.emoji}</Text>
-                    <Text style={[styles.typeLabel, { color: convMode === cm.id ? '#fff' : '#e9defc', fontSize: 12 }]}>
-                      {cm.label}
+                    <Text style={styles.typeEmoji}>{mode.emoji}</Text>
+                    <Text style={[styles.typeLabel, { color: convMode === mode.id ? '#fff' : '#e9defc', fontSize: 12 }]}>
+                      {mode.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -305,8 +305,8 @@ export function BridgeScreen({
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
               {isRylane
-                ? '"share what you can. they don\u2019t need the whole story."'
-                : '"soft is brave. you don\u2019t have to explain everything."'}
+                ? '"share what you can. they don\'t need the whole story."'
+                : '"soft is brave. you don\'t have to explain everything."'}
             </Text>
           </View>
 
@@ -314,15 +314,15 @@ export function BridgeScreen({
             style={[
               styles.button,
               {
-                backgroundColor: shareType && convMode && message.trim() ? glow : 'rgba(50,35,80,0.6)',
-                opacity:          shareType && convMode && message.trim() ? (sending ? 0.7 : 1) : 0.6,
+                backgroundColor: shareType && message.trim() && !sending ? glow : 'rgba(50,35,80,0.6)',
+                opacity:          shareType && message.trim() && !sending ? 1 : 0.6,
               },
             ]}
             onPress={handleSend}
-            disabled={!shareType || !convMode || !message.trim() || sending}
+            disabled={!shareType || !message.trim() || sending}
           >
             <Text style={styles.buttonText}>
-              {sending ? 'sending\u2026' : '\uD83C\uDF09 send to bridge'}
+              {sending ? 'sending…' : '🌉 send to bridge'}
             </Text>
           </TouchableOpacity>
 
@@ -347,23 +347,29 @@ const styles = StyleSheet.create({
   subtitle:        { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 14, fontStyle: 'italic', lineHeight: 20 },
   energyBadge:     { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 16 },
   energyText:      { fontSize: 12, fontWeight: '600' },
+
   sectionLabel:    { fontSize: 14, fontWeight: '600', marginBottom: 12 },
   typeRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   typeChip:        { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderWidth: 1 },
   typeEmoji:       { fontSize: 18 },
   typeLabel:       { fontSize: 14, fontWeight: '600' },
+
   card:            { padding: 18, borderRadius: 20, marginBottom: 16, borderWidth: 1, shadowOpacity: 0.4, shadowRadius: 14 },
   cardLabel:       { fontSize: 14, fontWeight: '700', marginBottom: 10 },
   input:           { borderWidth: 1, borderRadius: 14, padding: 14, fontSize: 15, minHeight: 110, textAlignVertical: 'top', marginBottom: 8, backgroundColor: 'rgba(0,0,0,0.35)' },
   charCount:       { fontSize: 12, textAlign: 'right' },
+
   convModeHint:    { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 12 },
   convModeHintText: { fontSize: 13, fontStyle: 'italic', lineHeight: 19 },
+
   stickyNote:      { backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 12, marginBottom: 14, transform: [{ rotate: '-2deg' }] },
   stickyText:      { color: '#3a2461', fontSize: 13, fontStyle: 'italic', textAlign: 'center', lineHeight: 19 },
+
   button:          { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center' },
   buttonText:      { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   ghostButton:     { padding: 14, borderRadius: 18, marginBottom: 12, alignItems: 'center', borderWidth: 1 },
   ghostButtonText: { fontSize: 14, fontWeight: '600' },
+
   sentEmoji:       { fontSize: 56, textAlign: 'center', marginBottom: 12 },
   sentTitle:       { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   sentSub:         { fontSize: 14, color: '#e9defc', textAlign: 'center', lineHeight: 21 },
