@@ -17,7 +17,7 @@ export default function NotFound() {
         <Text style={styles.emoji}>🌙</Text>
         <Text style={styles.title}>Lost in the Bip</Text>
         <Text style={styles.body}>This page doesn't exist — but your space does.</Text>
-        <Link href="/(main)/home" asChild>
+        <Link href="/(teen)/room" asChild>
           <Pressable style={styles.button}>
             <Text style={styles.buttonText}>Go home</Text>
           </Pressable>

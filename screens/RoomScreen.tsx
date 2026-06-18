@@ -41,7 +41,7 @@ type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
 type RoomTarget =
   | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
   | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge' | 's2tell'
-  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard';
+  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard' | 'companionPicker';
 
 type Hotspot = {
   id: string;
@@ -1007,6 +1007,17 @@ export function RoomScreen({
           <Text style={[styles.greetingTap, { color: t.soft }]}>
             {isSekretVisible ? 'tap to dismiss' : "tap to call Se\u2019kret"}
           </Text>
+          {isSekretVisible ? (
+            <TouchableOpacity
+              style={[styles.roomCompanionButton, { borderColor: t.accent }]}
+              onPress={() => setScreen('companionPicker')}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Open Se’kret companion picker"
+            >
+              <Text style={styles.roomCompanionButtonText}>talk to a companion →</Text>
+            </TouchableOpacity>
+          ) : null}
         </TouchableOpacity>
 
         {BottomNav}
@@ -1170,6 +1181,8 @@ const styles = StyleSheet.create({
   memoryTagText:         { color: '#f4eaff', fontSize: 12, lineHeight: 17, fontWeight: '600' },
   roomCopy:              { color: '#f5f0ff', fontSize: 12, fontWeight: '700', opacity: 0.9, marginBottom: 6 },
   greetingText:          { color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 22, fontStyle: 'italic', marginBottom: 6 },
+  roomCompanionButton: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: 'rgba(17,24,39,0.72)' },
+  roomCompanionButtonText: { color: '#f5f0ff', fontSize: 12, fontWeight: '800' },
   greetingTap:           { fontSize: 10, fontStyle: 'italic' },
 
   mainBtn:               {

@@ -1,9 +1,2 @@
-/**
- * utils/api.ts
- *
- * LEGACY SHIM — do not edit logic here.
- * Physical implementation is now in src/utils/api.ts.
- *
- * TODO Step 5: delete after all @utils/api imports are migrated.
- */
-export { fetchSekretReply } from '../src/utils/api';
+export { fetchSekretReply, fetchSekretBrainReply, fetchSekretVoice } from '../src/utils/api';
+export type { SekretBrainResponse, SekretCharacterId, SekretSurface, SekretVoiceResponse } from '../src/utils/api';

@@ -1,0 +1,55 @@
+import { TEEN_ROUTES } from '@/teen/routes';
+import { PARENT_ROUTES } from '@/parent/routes';
+
+export const SIDE_ROOTS = {
+  teen: TEEN_ROUTES.room,
+  parent: PARENT_ROUTES.room,
+} as const;
+
+export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: string): string {
+  if (side === 'parent') {
+    const parentMap: Record<string, string> = {
+      home: PARENT_ROUTES.room,
+      room: PARENT_ROUTES.room,
+      pages: PARENT_ROUTES.pages,
+      parentPages: PARENT_ROUTES.pages,
+      circle: PARENT_ROUTES.circle,
+      parentCircle: PARENT_ROUTES.circle,
+      bridge: PARENT_ROUTES.bridge,
+      parentBridge: PARENT_ROUTES.bridge,
+      voiceBip: PARENT_ROUTES.voiceBip,
+      voicebip: PARENT_ROUTES.voiceBip,
+      settings: PARENT_ROUTES.settings,
+      more: PARENT_ROUTES.more,
+      sekret: PARENT_ROUTES.room,
+    };
+    return parentMap[key] ?? PARENT_ROUTES.room;
+  }
+
+  const teenMap: Record<string, string> = {
+    home: TEEN_ROUTES.room,
+    room: TEEN_ROUTES.room,
+    pages: TEEN_ROUTES.pages,
+    calm: TEEN_ROUTES.calm,
+    circle: TEEN_ROUTES.circle,
+    sekret: TEEN_ROUTES.room,
+    companionPicker: TEEN_ROUTES.companionPicker,
+    voiceBip: TEEN_ROUTES.voiceBip,
+    voicebip: TEEN_ROUTES.voiceBip,
+    cloudThoughts: TEEN_ROUTES.cloud,
+    cloud: TEEN_ROUTES.cloud,
+    comfort: TEEN_ROUTES.comfort,
+    crew: TEEN_ROUTES.crew,
+    settings: TEEN_ROUTES.settings,
+    more: TEEN_ROUTES.more,
+    points: TEEN_ROUTES.points,
+    history: TEEN_ROUTES.history,
+    bridge: TEEN_ROUTES.bridge,
+    parentBridge: TEEN_ROUTES.bridge,
+    s2tell: TEEN_ROUTES.s2tell,
+    periodCalendar: TEEN_ROUTES.periodCalendar,
+    discover: TEEN_ROUTES.discover,
+    profile: TEEN_ROUTES.profile,
+  };
+  return teenMap[key] ?? TEEN_ROUTES.room;
+}
