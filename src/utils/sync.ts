@@ -302,6 +302,33 @@ export function syncCrewCheckIn(c: CrewCheckIn): void {
   });
 }
 
+// ── Room memory ───────────────────────────────────────────────────────────────
+export async function syncRoomMemory(rm: {
+  character: string; lastVisit: string; lastHotspot: string;
+  lastSummon: string; visitCount: number;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.roomMemory).upsert(
+      {
+        user_id:      uid,
+        character:    rm.character,
+        last_visit:   rm.lastVisit    || null,
+        last_hotspot: rm.lastHotspot  || null,
+        last_summon:  rm.lastSummon   || null,
+        visit_count:  rm.visitCount,
+        updated_at:   new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    );
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncRoomMemory failed', e);
+  }
+}
+
 // ── Points snapshot ──────────────────────────────────────────────────────────
 export async function snapshotPoints(total: number): Promise<void> {
   const sb = getSupabase();

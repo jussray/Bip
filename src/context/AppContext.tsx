@@ -51,6 +51,7 @@ interface AppContextValue {
   // Theme + identity
   theme: string;
   userSide: 'teen' | 'parent';
+  setUserSide: (side: 'teen' | 'parent') => void;
   selectedSekret: string;
 
   // Mood
@@ -106,6 +107,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     mood,
     setMood,
     userSide,
+    setUserSide,
     selectedSekret,
     entries,
     setEntries,
@@ -164,6 +166,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppContextValue = {
     theme,
     userSide,
+    setUserSide,
     selectedSekret,
     mood,
     setMood,

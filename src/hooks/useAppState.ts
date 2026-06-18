@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { loadState } from '../utils/storage';
+import { loadState, saveState } from '../utils/storage';
 import { normalizeVibeKey } from '../constants/theme';
 import {
   createOracleProfile,
@@ -97,6 +97,32 @@ export function useAppState() {
       setIsLoading(false);
     })();
   }, []);
+
+  // ── Persist all state to AsyncStorage after initial hydration ────────────
+  useEffect(() => {
+    if (isLoading) return;
+    void saveState({
+      theme, mood, userSide, selectedSekret, sekretMode,
+      journalText,
+      entries: journalEntries,
+      parentPagesDraft, parentPagesEntries,
+      oracleJournalEntries, oracleProfile, parentOracleProfile,
+      oracleSessions, parentOracleSessions,
+      moodHistory, circlePosts, parentCirclePosts,
+      voiceNotes, parentVoiceNotes,
+      comfortSessions, crewMembers, crewCheckIns,
+      streakDays, lastOpenDate, roomMemory,
+      parentRoomStyle, parentMood, parentMoodDate,
+    });
+  }, [
+    isLoading, theme, mood, userSide, selectedSekret, sekretMode,
+    journalText, journalEntries, parentPagesDraft, parentPagesEntries,
+    oracleJournalEntries, oracleProfile, parentOracleProfile,
+    oracleSessions, parentOracleSessions,
+    moodHistory, circlePosts, parentCirclePosts,
+    voiceNotes, parentVoiceNotes, comfortSessions, crewMembers, crewCheckIns,
+    streakDays, lastOpenDate, roomMemory, parentRoomStyle, parentMood, parentMoodDate,
+  ]);
 
   return {
     screen, setScreen,

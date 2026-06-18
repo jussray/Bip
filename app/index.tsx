@@ -18,7 +18,7 @@ import { Redirect, router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 
 export default function Index() {
-  const { userSide, isLoading } = useAppContext();
+  const { userSide, setUserSide, isLoading } = useAppContext();
 
   // While persisted state is being rehydrated, show a neutral splash.
   if (isLoading) {
@@ -43,7 +43,7 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnTeen]}
-        onPress={() => router.replace('/(main)/home')}
+        onPress={() => { setUserSide('teen'); router.replace('/(main)/home'); }}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the teen 💜</Text>
@@ -51,7 +51,7 @@ export default function Index() {
 
       <TouchableOpacity
         style={[styles.btn, styles.btnParent]}
-        onPress={() => router.replace('/(main)/home')}
+        onPress={() => { setUserSide('parent'); router.replace('/(main)/home'); }}
         activeOpacity={0.82}
       >
         <Text style={styles.btnText}>I&#39;m the parent 🌿</Text>
