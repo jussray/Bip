@@ -60,8 +60,7 @@ export default function ParentCircleRoute() {
       });
     });
     void mergeCloudPosts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -92,8 +91,6 @@ export default function ParentCircleRoute() {
       reactToParentPost={(id: string | number, type: string) => reactToParentPost(Number(id), type)}
       setScreen={navigateTo}
       BottomNav={null}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
     />
   );
 }

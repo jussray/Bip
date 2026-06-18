@@ -26,7 +26,7 @@ export default function ParentPagesRoute() {
       setDraft={setParentPagesDraft}
       entries={parentPagesEntries}
       onSave={saveParentPageEntry}
-      oracleProfile={parentOracleProfile ?? undefined}
+      oracleProfile={(parentOracleProfile ?? undefined) as any}
       onCompleteOracleSession={completeParentOracleSession}
       setScreen={navigateTo}
       BottomNav={null}

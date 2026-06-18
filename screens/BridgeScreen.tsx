@@ -130,6 +130,7 @@ export function BridgeScreen({
       await AsyncStorage.setItem('parent_bridge_pending', 'true');
 
       // 2. Cloud signal — NO message content, only metadata.
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase.from('bridge_signals').insert({

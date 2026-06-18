@@ -18,7 +18,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import PagesScreen from '@/screens/PagesScreen';
+import { PagesScreen } from '@screens/PagesScreen';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';

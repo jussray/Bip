@@ -181,7 +181,7 @@ const cloudAvatarFullbody = cloudHappy;
 //
 // sekretSplash is a backward-compat alias → resolves to teen splash.
 const sekretSplashTeen   = require("../assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png");
-const sekretSplashParent = require("../assets/images/088975D0-598A-4B68-8857-67410DA25BA0.jpeg");
+const sekretSplashParent = require("../assets/images/80B326EB-C67B-4369-A3EE-CFE0348E0701.jpeg");
 const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
 // ── Scene composites (character + room background merged) ──────────────────

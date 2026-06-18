@@ -38,7 +38,7 @@ import type { OracleProfile, OracleSessionSummary } from '../services/oracleDisc
 import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import { BipEmptyState } from '../components/BipEmptyState';
-import { PERSONALITY_CONFIG } from '../services/ai';
+import { PERSONALITY_CONFIG } from '@/services/ai';
 import type { PersonalityId } from '../types';
 
 // ── Section definitions ────────────────────────────────────────────────────
