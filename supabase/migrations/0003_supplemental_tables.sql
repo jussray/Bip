@@ -4,7 +4,7 @@
 -- Covers:
 --   1. Fix parent_circle_posts reactions default (beenThere/solidarity/... not felt/comfort/...)
 --   2. Add shared-read RLS to parent_circle_posts so the Parent Circle feed works
---   3. parent_links — connects a teen account to a parent account
+--   3. parent_links compatibility indexes/policies
 --   4. circle_members — tracks circle membership (supplement to circle_friendships)
 --   5. circles — generic named circle containers (V2 model, forward-compat)
 --   6. posts — generic post rows keyed to a circle (V2 model, forward-compat)
@@ -12,7 +12,13 @@
 --   8. post_comments — threaded comments on posts (forward-compat)
 --   9. moods — reference table for mood taxonomy
 --  10. parent_mood_summaries — weekly mood digest visible to linked parent
---  11. safety_alerts — high-priority safety escalations
+--
+-- IMPORTANT DEPLOY FIX:
+-- `safety_alerts` is owned by 0003_oracle_parentlinks_period_safety.sql and
+-- hardened by 20260619_safety_scan.sql. This migration must NOT create a
+-- competing `safety_alerts(teen_user_id, context_snippet, status...)` shape,
+-- because fresh Supabase deploys will already have `safety_alerts.user_id` from
+-- the canonical migration and policies referencing `teen_user_id` will fail.
 
 -- ── 1. Fix parent_circle_posts reactions default ─────────────────────────────
 alter table public.parent_circle_posts
@@ -26,29 +32,34 @@ create policy "parent_circle_posts_owner_select" on public.parent_circle_posts
   for select using (auth.uid() is not null);
 -- Keep the owner-only insert/update/delete policies from 0001.
 
--- ── 3. parent_links ──────────────────────────────────────────────────────────
--- Connects a teen's auth.users row to a parent's auth.users row.
--- Requires mutual acceptance (status: pending → accepted).
--- status: 'pending' | 'accepted' | 'revoked'
+-- ── 3. parent_links compatibility ────────────────────────────────────────────
+-- Canonical parent_links is created by 0003_oracle_parentlinks_period_safety.sql.
+-- Keep this section as compatibility-only so it works whether this migration is
+-- applied to a fresh database or an older database that did not have the table.
 create table if not exists public.parent_links (
-  id             bigserial     primary key,
-  teen_user_id   uuid          not null references auth.users(id) on delete cascade,
-  parent_user_id uuid          not null references auth.users(id) on delete cascade,
-  status         text          not null default 'pending' check (status in ('pending','accepted','revoked')),
-  invite_code    text,
-  created_at     timestamptz   not null default now(),
-  updated_at     timestamptz   not null default now(),
-  unique (teen_user_id, parent_user_id)
+  id              uuid        primary key default gen_random_uuid(),
+  parent_user_id  uuid        references auth.users(id) on delete set null,
+  teen_user_id    uuid        not null references auth.users(id) on delete cascade,
+  invite_code     text        not null unique,
+  status          text        not null default 'pending',
+  linked_at       timestamptz,
+  expires_at      timestamptz not null default (now() + interval '48 hours'),
+  created_at      timestamptz not null default now()
 );
 alter table public.parent_links enable row level security;
--- Either party can read their own link.
+
+drop policy if exists "parent_links_self" on public.parent_links;
 create policy "parent_links_self" on public.parent_links
   for select using (auth.uid() = teen_user_id or auth.uid() = parent_user_id);
--- Teen initiates link; parent accepts.
+
+drop policy if exists "parent_links_insert" on public.parent_links;
 create policy "parent_links_insert" on public.parent_links
   for insert with check (auth.uid() = teen_user_id);
+
+drop policy if exists "parent_links_update" on public.parent_links;
 create policy "parent_links_update" on public.parent_links
   for update using (auth.uid() = teen_user_id or auth.uid() = parent_user_id);
+
 create index if not exists idx_parent_links_teen   on public.parent_links (teen_user_id);
 create index if not exists idx_parent_links_parent on public.parent_links (parent_user_id);
 
@@ -64,10 +75,13 @@ create table if not exists public.circle_members (
   unique (circle_id, user_id)
 );
 alter table public.circle_members enable row level security;
+drop policy if exists "circle_members_self" on public.circle_members;
 create policy "circle_members_self" on public.circle_members
   for select using (auth.uid() = user_id);
+drop policy if exists "circle_members_insert" on public.circle_members;
 create policy "circle_members_insert" on public.circle_members
   for insert with check (auth.uid() = user_id);
+drop policy if exists "circle_members_delete" on public.circle_members;
 create policy "circle_members_delete" on public.circle_members
   for delete using (auth.uid() = user_id);
 create index if not exists idx_circle_members_circle on public.circle_members (circle_id);
@@ -85,8 +99,10 @@ create table if not exists public.circles (
   unique (owner_user_id, kind)
 );
 alter table public.circles enable row level security;
+drop policy if exists "circles_owner_rw" on public.circles;
 create policy "circles_owner_rw" on public.circles
   using (auth.uid() = owner_user_id) with check (auth.uid() = owner_user_id);
+drop policy if exists "circles_members_read" on public.circles;
 create policy "circles_members_read" on public.circles
   for select using (
     id in (select circle_id from public.circle_members where user_id = auth.uid())
@@ -108,10 +124,10 @@ create table if not exists public.posts (
   created_at           timestamptz   not null default now()
 );
 alter table public.posts enable row level security;
--- Authors can always read/write their own posts.
+drop policy if exists "posts_author_rw" on public.posts;
 create policy "posts_author_rw" on public.posts
   using (auth.uid() = author_user_id) with check (auth.uid() = author_user_id);
--- Circle members can read non-deleted posts.
+drop policy if exists "posts_members_read" on public.posts;
 create policy "posts_members_read" on public.posts
   for select using (
     is_deleted = false
@@ -130,8 +146,10 @@ create table if not exists public.post_reactions (
   unique (post_id, user_id, reaction)
 );
 alter table public.post_reactions enable row level security;
+drop policy if exists "post_reactions_self" on public.post_reactions;
 create policy "post_reactions_self" on public.post_reactions
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "post_reactions_read" on public.post_reactions;
 create policy "post_reactions_read" on public.post_reactions
   for select using (auth.uid() is not null);
 create index if not exists idx_post_reactions_post on public.post_reactions (post_id);
@@ -145,8 +163,10 @@ create table if not exists public.post_comments (
   created_at timestamptz   not null default now()
 );
 alter table public.post_comments enable row level security;
+drop policy if exists "post_comments_self_write" on public.post_comments;
 create policy "post_comments_self_write" on public.post_comments
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "post_comments_read" on public.post_comments;
 create policy "post_comments_read" on public.post_comments
   for select using (auth.uid() is not null);
 create index if not exists idx_post_comments_post on public.post_comments (post_id, created_at desc);
@@ -162,7 +182,7 @@ create table if not exists public.moods (
   sort_order  integer       not null default 0
 );
 alter table public.moods enable row level security;
--- Everyone authenticated can read moods (it's a reference table).
+drop policy if exists "moods_read" on public.moods;
 create policy "moods_read" on public.moods
   for select using (auth.uid() is not null);
 
@@ -179,40 +199,17 @@ create table if not exists public.parent_mood_summaries (
   unique (teen_user_id, parent_user_id, week_start)
 );
 alter table public.parent_mood_summaries enable row level security;
--- Teen can write; parent can read their linked teen's summaries.
+drop policy if exists "pms_teen_write" on public.parent_mood_summaries;
 create policy "pms_teen_write" on public.parent_mood_summaries
   for insert with check (auth.uid() = teen_user_id);
+drop policy if exists "pms_teen_update" on public.parent_mood_summaries;
 create policy "pms_teen_update" on public.parent_mood_summaries
   for update using (auth.uid() = teen_user_id);
+drop policy if exists "pms_read" on public.parent_mood_summaries;
 create policy "pms_read" on public.parent_mood_summaries
   for select using (auth.uid() = teen_user_id or auth.uid() = parent_user_id);
 create index if not exists idx_pms_teen_week on public.parent_mood_summaries (teen_user_id, week_start desc);
 
 -- ── 11. safety_alerts ────────────────────────────────────────────────────────
--- High-priority safety escalations. Written by the teen side when crisis
--- keywords are detected; readable by linked parents.
--- severity: 'low' | 'medium' | 'high'
--- status:   'active' | 'acknowledged' | 'resolved'
-create table if not exists public.safety_alerts (
-  id              bigserial     primary key,
-  teen_user_id    uuid          not null references auth.users(id) on delete cascade,
-  severity        text          not null default 'medium' check (severity in ('low','medium','high')),
-  context_snippet text,
-  status          text          not null default 'active' check (status in ('active','acknowledged','resolved')),
-  created_at      timestamptz   not null default now(),
-  updated_at      timestamptz   not null default now()
-);
-alter table public.safety_alerts enable row level security;
-create policy "safety_alerts_teen_write" on public.safety_alerts
-  for insert with check (auth.uid() = teen_user_id);
-create policy "safety_alerts_teen_read" on public.safety_alerts
-  for select using (auth.uid() = teen_user_id);
--- Parents linked to this teen can also read alerts.
-create policy "safety_alerts_parent_read" on public.safety_alerts
-  for select using (
-    teen_user_id in (
-      select teen_user_id from public.parent_links
-      where parent_user_id = auth.uid() and status = 'accepted'
-    )
-  );
-create index if not exists idx_safety_alerts_teen on public.safety_alerts (teen_user_id, created_at desc);
+-- Canonical safety_alerts is created in 0003_oracle_parentlinks_period_safety.sql
+-- and adjusted in 20260619_safety_scan.sql. Do not redefine it here.
