@@ -15,6 +15,7 @@ export default function ParentPagesRoute() {
     parentPagesEntries,
     parentOracleProfile,
     completeParentOracleSession,
+    saveParentPageEntry,
   } = useAppContext();
 
   return (
@@ -24,7 +25,7 @@ export default function ParentPagesRoute() {
       draft={parentPagesDraft}
       setDraft={setParentPagesDraft}
       entries={parentPagesEntries}
-      onSave={() => {}}
+      onSave={saveParentPageEntry}
       oracleProfile={parentOracleProfile ?? undefined}
       onCompleteOracleSession={completeParentOracleSession}
       setScreen={navigateTo}

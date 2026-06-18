@@ -3,6 +3,7 @@
  *
  * PHASE 5 FIX: Added all parent state + actions.
  * setUserSide exposed so splash can persist side choice.
+ * patchJournalEntry added so onSekretReply can persist Worker replies.
  */
 import React, {
   createContext,
@@ -22,6 +23,7 @@ interface JournalEntry {
   mood: string;
   date: string;
   time: string;
+  sekretReply?: string;
 }
 
 interface MoodHistoryEntry {
@@ -58,6 +60,12 @@ interface AppContextValue {
   entries: JournalEntry[];
   setEntries: React.Dispatch<React.SetStateAction<JournalEntry[]>>;
   saveEntry: () => void;
+  /** Merge a partial update into an existing JournalEntry by id. */
+  patchJournalEntry: (id: number, patch: Partial<JournalEntry>) => void;
+
+  // Teen voice notes
+  voiceNotes: any[];
+  setVoiceNotes: React.Dispatch<React.SetStateAction<any[]>>;
 
   // Teen circle
   circlePosts: CirclePost[];
@@ -69,7 +77,7 @@ interface AppContextValue {
   isLoading: boolean;
 
   // ── Parent state ──────────────────────────────────────────────
-  parentMood: string;
+parentMood: string;
   setParentMood: (mood: string) => void;
   parentMoodDate: string;
   setParentMoodDate: (date: string) => void;
@@ -109,6 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [journalText, setJournalText] = useState('');
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
   const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
+  const [voiceNotes, setVoiceNotes] = useState<any[]>([]);
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
@@ -147,7 +156,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setJournalText('');
   }
 
-  // ── Parent actions ─────────────────────────────────────────────
+  /**
+   * Merge a partial update into an existing JournalEntry by id.
+   * Used by onSekretReply to persist Worker replies without replacing the entry.
+   */
+  function patchJournalEntry(id: number, patch: Partial<JournalEntry>) {
+    s.setEntries((prev: JournalEntry[]) =>
+      prev.map(entry => entry.id === id ? { ...entry, ...patch } : entry)
+    );
+  }
+
+  // ── Parent actions ───────────────────────────────────────────────
   function saveParentPageEntry() {
     if (!s.parentPagesDraft.trim()) return;
     s.setParentPagesEntries((e: any[]) => [
@@ -194,6 +213,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     entries: s.entries,
     setEntries: s.setEntries,
     saveEntry,
+    patchJournalEntry,
+    voiceNotes,
+    setVoiceNotes,
     circlePosts,
     setCirclePosts,
     homeMessageIndex,

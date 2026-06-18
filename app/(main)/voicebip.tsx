@@ -1,29 +1,47 @@
 /**
  * app/(main)/voicebip.tsx
+ *
+ * Voice Bip route. Voice notes are lifted into AppContext so they survive
+ * navigation — teen side uses voiceNotes/setVoiceNotes, parent side uses
+ * parentVoiceNotes/setParentVoiceNotes.
  */
-import React, { useState } from 'react';
-import { router } from 'expo-router';
+import React from 'react';
 import { useAppContext } from '@/context/AppContext';
+import { navigateTo } from '@/utils/navigation';
 import { THEME_PACKS } from '@constants/theme';
 import { VoiceBipScreen } from '@screens/VoiceBipScreen';
 import type { VoiceNote } from '@/types';
 import { syncVoiceNote } from '@/utils/sync';
 
 export default function VoiceBipRoute() {
-  const { theme, mood, selectedSekret } = useAppContext();
+  const {
+    theme,
+    mood,
+    selectedSekret,
+    userSide,
+    voiceNotes,
+    setVoiceNotes,
+    parentVoiceNotes,
+    setParentVoiceNotes,
+  } = useAppContext();
+
+  const isParent = userSide === 'parent';
+  const notes = isParent ? parentVoiceNotes : voiceNotes;
+  const setNotes = isParent ? setParentVoiceNotes : setVoiceNotes;
+
   const currentTheme = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
-  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
+
   return (
     <VoiceBipScreen
       theme={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
-      voiceNotes={voiceNotes}
-      setVoiceNotes={setVoiceNotes}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      voiceNotes={notes}
+      setVoiceNotes={setNotes}
+      setScreen={navigateTo}
       BottomNav={null}
       onSave={(note: VoiceNote) => {
-        setVoiceNotes(prev => [note, ...prev]);
+        setNotes(prev => [note, ...prev]);
         syncVoiceNote(note);
       }}
     />
