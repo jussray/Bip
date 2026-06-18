@@ -18,6 +18,8 @@ jobs:
   verify-archives:
     name: Archive Integrity Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout (with LFS)
@@ -25,6 +27,7 @@ jobs:
         with:
           lfs: true
           fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Hydrate LFS assets
         run: git lfs pull
