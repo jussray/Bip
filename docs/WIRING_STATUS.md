@@ -1,6 +1,6 @@
 # Se'kret Bip — Backend Wiring Status
 
-> Last updated: 2026-06-17  
+> Last updated: 2026-06-18  
 > Tracks all 12 wiring items from the Phase 2/3 audit.
 
 ---
@@ -35,14 +35,14 @@
 ---
 
 ## 3. Teen Circle Live Feed
-**Status: ✅ DONE (sync layer) / 🔜 Screen hookup**
+**Status: ✅ DONE**
 
 - `loadCircleFeed(tab)` — reads public / friends / crew tabs → `src/utils/sync.ts`
 - `writeCirclePost(tab, text, opts)` — inserts to `posts` table via `circle_id`
 - `syncCircleReaction(postId, reaction)` — upserts `post_reactions`
-- **TODO in screen:** `screens/CircleScreen.tsx` — call `loadCircleFeed` on mount
-  and on pull-to-refresh; wire post composer to `writeCirclePost`; wire reaction
-  buttons to `syncCircleReaction`
+- All three are called in `screens/CircleScreen.tsx` via `useFeed` hook (mount +
+  pull-to-refresh), post composer `handlePost`, and reaction bar `handleReact`.
+- Mock fallback data shown when Supabase is unconfigured / offline.
 
 ---
 
@@ -92,20 +92,23 @@
 ---
 
 ## 8. Oracle / Companion Memory Cloud Sync
-**Status: 🔜 IN PROGRESS — table + helpers added this commit**
+**Status: ✅ DONE**
 
-- Migration `0003_oracle_parentlinks_period_safety.sql` creates `oracle_sessions`
-  with `(user_id, personality_id)` unique key and `memory JSONB` column
-- `syncOracleSession(personalityId, memory, sessionCount)` → `src/utils/sync.ts`
-- `loadOracleSession(personalityId)` → `src/utils/sync.ts`
-- **TODO:** Call `syncOracleSession` at end of each Oracle session in
-  `services/oracleProfile.ts`; call `loadOracleSession` on first mount to
-  restore memory into state
+- `services/oracleProfile.ts` owns the full cloud sync path:
+  - `saveOracleRecord(record)` — upserts full profile snapshot to
+    `oracle_records (user_id, mode)` on every answer processed
+  - `markSessionComplete(record, questionIds)` — inserts immutable row to
+    `oracle_session_log` at session end (analytics + cross-device restore)
+  - Both calls use `supabase.auth.getUser()` directly; errors swallowed so
+    local AsyncStorage always wins as source of truth
+- `syncOracleSession` / `loadOracleSession` in `src/utils/sync.ts` exist as
+  a lighter companion-memory path (`oracle_sessions` table) but are superseded
+  by the richer `oracleProfile.ts` implementation above.
 
 ---
 
 ## 9. Parent / Teen Link System
-**Status: 🔜 IN PROGRESS — table added this commit**
+**Status: 🔜 IN PROGRESS — table added**
 
 - Migration `0003_*` creates `parent_links` table with invite flow columns
 - RLS: teen creates invite, parent redeems by code, both can read their link
@@ -119,7 +122,7 @@
 ---
 
 ## 10. Safety System
-**Status: 🔜 IN PROGRESS — table added this commit**
+**Status: 🔜 IN PROGRESS — table added**
 
 - Migration `0003_*` creates `safety_alerts` with severity, source tracking,
   `reviewed_by_parent` flag, and parent-link-scoped RLS
@@ -134,15 +137,16 @@
 ---
 
 ## 11. Period Calendar Sync
-**Status: 🔜 IN PROGRESS — table + helpers added this commit**
+**Status: ✅ DONE**
 
 - Migration `0003_*` creates `period_days (user_id, day DATE)` with unique key
 - `syncPeriodDay(day, note?)` — upserts on toggle-on → `src/utils/sync.ts`
 - `deletePeriodDay(day)` — deletes on toggle-off → `src/utils/sync.ts`
 - `loadPeriodDays()` — pulls all days on mount → `src/utils/sync.ts`
-- **TODO in screen:** `screens/PeriodCalendarScreen.tsx` — call `syncPeriodDay`
-  / `deletePeriodDay` on day tap; call `loadPeriodDays()` on mount and merge
-  with local `AsyncStorage` keys
+- All three wired in `screens/PeriodCalendarScreen.tsx`:
+  - Mount effect: loads AsyncStorage first (instant), then `loadPeriodDays()`
+    and merges cloud days additively (non-destructive)
+  - `toggleDay()`: calls `syncPeriodDay` on mark, `deletePeriodDay` on unmark
 
 ---
 
@@ -156,14 +160,22 @@
 
 ---
 
-## Quick Reference: Files to Touch Next
+## Quick Reference: Remaining Open Items
 
 | Item | Primary File | Action |
 |------|-------------|--------|
-| Oracle sync | `services/oracleProfile.ts` | Call `syncOracleSession` on session end, `loadOracleSession` on mount |
-| Period sync | `screens/PeriodCalendarScreen.tsx` | Call `syncPeriodDay` / `deletePeriodDay` / `loadPeriodDays` |
-| Teen Circle hookup | `screens/CircleScreen.tsx` | Call `loadCircleFeed`, `writeCirclePost`, `syncCircleReaction` |
-| Parent link | `screens/SettingsScreen.tsx` | Invite code generator + redemption form |
-| Safety scan | new `supabase/functions/safety-scan/` | Edge Function on insert trigger |
-| Voice pipeline | `worker/` + `services/sekretVoice.ts` | Transcribe → chat → TTS chain |
-| Points drain | `screens/PointsScreen.tsx` | Drain timer + `snapshotPoints` call |
+| 4 — Parent Circle cloud load | `screens/ParentCircleScreen.tsx` | Add `loadParentCircleFeed()` on mount; merge with local |
+| 6 — Points drain | `screens/PointsScreen.tsx` | Drain timer + `snapshotPoints` call on change |
+| 7 — Voice pipeline | `worker/` + `services/sekretVoice.ts` | Transcribe → chat → TTS chain |
+| 9 — Parent link | `screens/SettingsScreen.tsx` | Invite code generator + redemption form |
+| 10 — Safety scan | new `supabase/functions/safety-scan/` | Edge Function on insert trigger |
+
+---
+
+## Phase 5 Constraint — Se'kret Into Pages
+
+See `docs/PHASE5_SEKRET_INTO_PAGES.md` for the full specification.
+
+**One-line rule:** Hiding the Se'kret tab is only valid if Se'kret's full
+functionality is relocated inside Pages. If companion interaction is unreachable
+after the tab is hidden, Phase 5 fails.
