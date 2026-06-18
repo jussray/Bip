@@ -39,7 +39,7 @@ interface Props {
   /** Called when the teen taps "Go to Comfort" from the sleep gate. */
   onComfort?: () => void;
   /** The screen content to render when not gated. */
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function SleepGate({ sleepActive, allowComfort = false, onComfort, children }: Props) {

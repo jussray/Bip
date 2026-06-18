@@ -296,7 +296,7 @@ export function syncCrewMember(m: CrewMember): void {
   });
 }
 
-export function deleteCrewMember(id: number): void {
+export function deleteCrewMember(id: number | string): void {
   void safeDelete(TABLES.crewMembers, id);
 }
 
@@ -363,8 +363,8 @@ export async function pullAll(): Promise<{
       voiceNotes:      voice   as VoiceNote[],
       comfortSessions: comfort as ComfortSession[],
       crewMembers: (crew as any[]).map(r => ({
-        id: r.id, name: r.name, emoji: r.emoji, commitment: r.commitment,
-        cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
+        id: String(r.id), name: r.name, emoji: r.emoji, relation: r.relation ?? '',
+        commitment: r.commitment, cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
       })),
       crewCheckIns: (check as any[]).map(r => ({
         id: r.id, memberId: r.member_id, note: r.note,
@@ -372,10 +372,9 @@ export async function pullAll(): Promise<{
       })),
       parentCirclePosts: (parentCircle as any[]).map(r => ({
         id: r.id, text: r.text, date: r.date, time: r.time,
-        reactions: r.reactions ?? {
-          beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0,
-        },
+        reactions: r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
         circleTag: r.circle_tag ?? undefined,
+        mood: r.mood ?? undefined,
       })) as ParentCirclePost[],
       roomMemory: roomRow ? {
         character:   roomRow.character    ?? 'raylene',

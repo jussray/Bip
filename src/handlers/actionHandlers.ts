@@ -198,7 +198,7 @@ export function makeSaveParentCirclePost(setState: SetState, withSyncWrap: SyncW
         text,
         date:      new Date().toLocaleDateString(),
         time:      new Date().toLocaleTimeString(),
-        reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+        reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 } as ParentCirclePost['reactions'],
       };
       void withSyncWrap(async () => syncParentCirclePost(post));
       return { ...prev, parentCirclePosts: [post, ...prev.parentCirclePosts], parentCirclePostText: '' };
@@ -212,7 +212,7 @@ export function makeReactToParentPost(setState: SetState) {
       ...prev,
       parentCirclePosts: prev.parentCirclePosts.map(p =>
         String(p.id) === String(id)
-          ? {
+          ? ({
               ...p,
               reactions: {
                 ...(p.reactions ?? {}),

@@ -134,8 +134,9 @@ export function BipCrewScreen({
     const member: CrewMember = {
       id: nextId,
       name,
-      emoji: newEmoji || '\u{1F49C}',
-      commitment: commit || (isRylane ? 'we lock in for each other' : 'we’re here for each other'),
+      relation: "",
+      emoji: newEmoji || "\u{1F49C}",
+      commitment: commit || (isRylane ? "we lock in for each other" : "we’re here for each other"),
       cadence: newCadence,
       inviteCode: makeInviteCode(),
       addedAt: new Date().toISOString(),

@@ -677,7 +677,7 @@ function AddToCircleModal({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Main screen ─────────────────────────────────────────────────────────────
-export default function CircleScreen() {
+export default function CircleScreen(_props: Record<string, unknown> = {}) {
   const myUserId   = 'current-user-id';
   const myNickname = 'MoonGirl_17';
 

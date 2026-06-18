@@ -118,7 +118,7 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
       id: Number(Date.now()), text: s.parentCirclePostText,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString(),
-      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
+      reactions: { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 } as ParentCirclePost['reactions'],
     };
     s.setParentCirclePosts(p => [post, ...p]);
     s.setParentCirclePostText('');

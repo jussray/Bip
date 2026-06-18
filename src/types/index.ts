@@ -42,11 +42,11 @@ export interface CirclePost {
 }
 
 export interface VoiceNote {
-  id:       number;
-  title:    string;
-  date:     string;
-  time:     string;
-  duration: string;
+  id:            number;
+  title:         string;
+  date:          string;
+  time:          string;
+  duration:      string;
   /** Media classification added by VoiceBipScreen. */
   type?:    'voice' | 'video' | 'audio' | 'text' | 'cloud';
   [key: string]: unknown;
