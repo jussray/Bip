@@ -2,27 +2,6 @@
  * app/(main)/pages.tsx
  *
  * Pages / Journal tab route — bridges Expo Router to PagesScreen.
- *
- * PagesScreen (PagesScreenProps) requires:
- *   journalText          — current draft string
- *   setJournalText       — draft setter
- *   journalEntries       — saved JournalEntry[]
- *   saveJournalEntry     — commit the current draft
- *   mood                 — current mood string
- *   t                    — full theme object
- *   setScreen            — legacy navigation shim
- *   BottomNav            — null (Expo Router owns tab bar)
- *   moodHistory?         — optional mood history array
- *   voiceNotes?          — optional voice notes array
- *   streakDays?          — optional streak count
- *   selectedSekret?      — optional personality key
- *   onCompleteOracleSession — required callback
- *   onSekretReply?       — optional sekret reply callback
- *   syncStatus?          — optional sync badge status
- *
- * Previously this route passed only entries/setEntries which are from
- * the old SharedPagesProps interface, not PagesScreenProps — the mismatch
- * caused a runtime crash on the Pages tab.
  */
 import React from 'react';
 import { View } from 'react-native';
@@ -42,6 +21,7 @@ export default function PagesTab() {
     saveEntry,
     moodHistory,
     selectedSekret,
+    patchJournalEntry,
   } = useAppContext();
 
   const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
@@ -51,6 +31,14 @@ export default function PagesTab() {
     _profile: OracleProfile,
     _session: OracleSessionSummary,
   ) {}
+
+  /**
+   * Called by PagesWorkspace after the Worker reply arrives.
+   * Patches the persisted JournalEntry so the reply survives app restarts.
+   */
+  function handleSekretReply(entryId: number, reply: string) {
+    patchJournalEntry?.(entryId, { sekretReply: reply });
+  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -66,6 +54,7 @@ export default function PagesTab() {
         moodHistory={moodHistory}
         selectedSekret={selectedSekret}
         onCompleteOracleSession={handleCompleteOracleSession}
+        onSekretReply={handleSekretReply}
       />
     </View>
   );
