@@ -1,23 +1,17 @@
 // screens/SplashScreen.tsx
-// Se'kret Bip — Opening Screen
 //
-// Teen splash (splash-bg.png): Raylene + Rylane back-to-back, cloud with headphones,
-//   neon title, "Press Se'kret Bip to enter your safe space".
-// Parent splash (parent-space-splash.png): Parent Space artwork.
+// Full-screen splash artwork for teen and parent entry.
+// The painted "Se'kret Bip ♡" button in each image is the ONLY tap target —
+// an invisible TouchableOpacity is clipped exactly over the neon pill in the artwork.
+// Nothing else is rendered on top of the artwork.
 //
-// Both splashes: ONLY the CTA button is a hit target.
-// No shortcut hit targets on either side — the CTA is the gate.
-// Shortcuts visible in the artwork are decorative; the app routes to 'home'
-// which renders RoomScreen (teen) or ParentRoomScreen (parent) based on userSide.
-//
-// Hit targets are positioned as fractions of the rendered image so they scale
-// with any screen size.
+// Hit-target fractions are relative to rendered image height/width (cover fill).
+// Tune T_BTN_* and P_BTN_* if the button lands slightly off on a particular device.
 
 import React, { useEffect, useRef } from "react";
 import {
   View,
   Image,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -25,120 +19,71 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
-const { width, height } = Dimensions.get("window");
-const teenSplashBg   = require("../assets/images/splash-bg.png");
-const parentSplashBg = require("../assets/images/parent-space-splash.png");
+const { width: W, height: H } = Dimensions.get("window");
 
-// ── Teen CTA hit target (fractions of 1024×1536 source artwork) ──────────────
-// "Se'kret Bip" button: roughly 63%–71% vertically, 11%–89% horizontally.
-const T_CTA_TOP    = 0.63;
-const T_CTA_BOTTOM = 0.71;
-const T_CTA_LEFT   = 0.11;
-const T_CTA_RIGHT  = 0.89;
+const TEEN_BG   = require("../assets/images/splash-bg.png");
+const PARENT_BG = require("../assets/images/parent-space-splash.png");
 
-// ── Parent CTA hit target (fractions of parent-space-splash.png) ─────────────
-// "Se'kret Bip ♡" button: roughly 72%–82% vertically, 5%–95% horizontally.
-const P_CTA_TOP    = 0.72;
-const P_CTA_BOTTOM = 0.82;
-const P_CTA_LEFT   = 0.05;
-const P_CTA_RIGHT  = 0.95;
+// ── Teen splash: "Se'kret Bip ♡" pill button position (fractions of screen) ──
+// Pill sits below the cloud artwork, above the shortcut row.
+const T_BTN = { top: 0.800, bottom: 0.875, left: 0.08, right: 0.08 };
+
+// ── Parent splash: same button, slightly higher in the composition ────────────
+const P_BTN = { top: 0.780, bottom: 0.860, left: 0.08, right: 0.08 };
 
 interface SplashScreenProps {
-  setScreen: (screen: string) => void;
   userSide?: "teen" | "parent";
+  setScreen: () => void;
 }
 
-export function SplashScreen({ setScreen, userSide = "teen" }: SplashScreenProps) {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps) {
+  const fade = useRef(new Animated.Value(0)).current;
   const isParent = userSide === "parent";
+  const btn = isParent ? P_BTN : T_BTN;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 900,
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
+    Animated.timing(fade, { toValue: 1, duration: 800, useNativeDriver: true }).start();
+  }, [fade]);
 
   return (
-    <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
+    <Animated.View style={[s.root, { opacity: fade }]}>
       <StatusBar style="light" />
 
-      {/* Full-screen artwork — display only, no tap-to-enter */}
+      {/* Full-screen artwork — pointer events disabled so only the hit clip fires */}
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <Image
-          source={isParent ? parentSplashBg : teenSplashBg}
-          style={styles.bgImage}
-          resizeMode={isParent ? "contain" : "cover"}
+          source={isParent ? PARENT_BG : TEEN_BG}
+          style={s.art}
+          resizeMode="cover"
         />
       </View>
 
-      {isParent ? (
-        <View style={styles.parentIntro} pointerEvents="none">
-          <Text style={styles.parentEyebrow}>PARENT SPACE</Text>
-          <Text style={styles.parentTitle}>A softer way to stay connected.</Text>
-          <Text style={styles.parentBody}>Your teen’s private space stays private. Bridge moments are shared on purpose.</Text>
-        </View>
-      ) : null}
-
-      {/* CTA button — sole entry point for both sides */}
+      {/* Invisible clip over the painted "Se'kret Bip ♡" button */}
       <TouchableOpacity
-        style={[styles.hitTarget, isParent ? {
-          top:    height * P_CTA_TOP,
-          height: height * (P_CTA_BOTTOM - P_CTA_TOP),
-          left:   width  * P_CTA_LEFT,
-          right:  width  * (1 - P_CTA_RIGHT),
-        } : {
-          top:    height * T_CTA_TOP,
-          height: height * (T_CTA_BOTTOM - T_CTA_TOP),
-          left:   width  * T_CTA_LEFT,
-          right:  width  * (1 - T_CTA_RIGHT),
-        }]}
-        onPress={() => setScreen("home")}
-        activeOpacity={0.7}
+        style={[
+          s.clip,
+          {
+            top:    H * btn.top,
+            height: H * (btn.bottom - btn.top),
+            left:   W * btn.left,
+            right:  W * btn.right,
+          },
+        ]}
+        onPress={setScreen}
+        activeOpacity={0.6}
         accessibilityRole="button"
-        accessibilityLabel={isParent ? "Se’kret Bip — enter your parent space" : "Se’kret Bip — enter your safe space"}
-        accessibilityHint="Opens the app"
+        accessibilityLabel={
+          isParent
+            ? "Se'kret Bip — enter your parent space"
+            : "Se'kret Bip — enter your safe space"
+        }
       />
     </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#090011",
-  },
-  bgImage: {
-    width,
-    height,
-  },
-  parentIntro: {
-    position: "absolute",
-    left: 28,
-    right: 28,
-    bottom: 138,
-    borderRadius: 22,
-    padding: 18,
-    backgroundColor: "rgba(18, 9, 31, 0.78)",
-    borderWidth: 1,
-    borderColor: "rgba(226, 194, 255, 0.34)",
-  },
-  parentEyebrow: { color: "#d7b8ef", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
-  parentTitle: { color: "#fff", fontSize: 22, lineHeight: 27, fontWeight: "800", marginTop: 6 },
-  parentBody: { color: "#dfd5e7", fontSize: 13, lineHeight: 19, marginTop: 7 },
-  parentEnter: {
-    position: "absolute",
-    left: 28,
-    right: 28,
-    bottom: 58,
-    height: 58,
-    borderRadius: 18,
-    backgroundColor: "rgba(153, 104, 185, 0.24)",
-    borderWidth: 1,
-    borderColor: "rgba(240, 217, 255, 0.55)",
-  },
-  hitTarget: {
-    position: "absolute",
-  },
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#090011" },
+  art:  { width: W, height: H },
+  clip: { position: "absolute" },
 });
