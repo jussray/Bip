@@ -34,9 +34,8 @@ const PARENT_SPLASH = require('../../assets/images/parent-space-splash.png');
 
 // Bottom shortcut bar items for the parent splash
 const PARENT_SHORTCUTS = [
-  { label: 'Parent Pages', emoji: '📖', route: null },           // opens ParentPagesScreen inline
+  { label: 'Parent Pages', emoji: '📖', route: null },
   { label: 'Parent Voice', emoji: '🎙️', route: '/(main)/voicebip' },
-  { label: 'Bridge',       emoji: '🌉', route: '/(main)/bridge' },
   { label: 'Parent Circle',emoji: '👨‍👩‍👧', route: '/(main)/parent-circle' },
 ] as const;
 
