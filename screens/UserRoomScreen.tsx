@@ -1,0 +1,900 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  ImageSourcePropType,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ViewStyle,
+} from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  AVATARS as THEME_AVATARS,
+  IMAGES,
+  THEME_PACKS,
+  getRoomPhase,
+  getRoomScene,
+  type Character,
+  type RoomPhase,
+  type VibeKey,
+} from '../constants/theme';
+import { SafeAsset } from '../components/SafeAsset';
+
+const { width, height } = Dimensions.get('window');
+
+const STORAGE_KEY = 'sekretbip_user_room_v1';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type LightingMode = RoomPhase | 'auto';
+
+export interface UserRoomConfig {
+  baseRoomId: Character;
+  lightingMode: LightingMode;
+  companionId: Character;
+  roomName: string;
+}
+
+const DEFAULT_USER_ROOM: UserRoomConfig = {
+  baseRoomId: 'raylene',
+  lightingMode: 'auto',
+  companionId: 'raylene',
+  roomName: '',
+};
+
+type Mood     = string;
+type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
+type Pose =
+  | 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody'
+  | 'confident' | 'playful' | 'sad' | 'mad' | 'surprised' | 'crouching'
+  | 'softsmile' | 'tired' | 'annoyed' | 'overwhelmed' | 'protective' | 'lonely'
+  | 'hopeful' | 'relaxed' | 'listening' | 'hurting' | 'inhishead' | 'inlove';
+type RoomTarget =
+  | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
+  | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge'
+  | 's2tell' | 'settings' | 'more' | 'mindReset' | 'bodyReset'
+  | 'periodCalendar' | 'dashboard' | 'companionPicker';
+
+type Hotspot = {
+  id: string;
+  label: string;
+  target: RoomTarget;
+  style: ViewStyle;
+  hint?: string;
+  pulse?: boolean;
+};
+
+type AvatarMap = Partial<Record<Pose, ImageSourcePropType>>;
+
+// ─── Asset maps ───────────────────────────────────────────────────────────────
+
+const AVATARS: Record<Character, AvatarMap> = THEME_AVATARS as Record<Character, AvatarMap>;
+
+const FALLBACK_AVATAR: Record<Character, ImageSourcePropType> = {
+  raylene: IMAGES.rayleneNeutral,
+  rylane:  IMAGES.rylaneNeutral,
+  cloud:   IMAGES.cloudAvatarNeutral,
+  night:   IMAGES.nightAvatarNeutral,
+};
+
+// ─── Visual overlays ──────────────────────────────────────────────────────────
+
+const ROOM_PHASE_OVERLAYS: Record<RoomPhase, string> = {
+  day:       'rgba(255,225,180,0.08)',
+  midday:    'rgba(255,210,140,0.10)',
+  afternoon: 'rgba(200,130,60,0.12)',
+  evening:   'rgba(91,45,120,0.18)',
+  rain:      'rgba(35,85,125,0.30)',
+  night:     'rgba(20,10,55,0.28)',
+  deepNight: 'rgba(5,3,24,0.48)',
+};
+
+const CHARACTER_OVERLAYS: Record<Character, string> = {
+  raylene: 'transparent',
+  rylane:  'transparent',
+  cloud:   'transparent',
+  night:   'rgba(6,2,22,0.25)',
+};
+
+// ─── Companion placement ──────────────────────────────────────────────────────
+// Positions chosen so the companion sits naturally in each room's left/open area
+
+const COMPANION_POSITIONS: Record<Character, { bottom: string; left: string; w: number; h: number }> = {
+  raylene: { bottom: '21%', left: '2%',  w: width * 0.54, h: height * 0.46 },
+  rylane:  { bottom: '21%', left: '0%',  w: width * 0.50, h: height * 0.44 },
+  cloud:   { bottom: '30%', left: '28%', w: width * 0.44, h: height * 0.34 },
+  night:   { bottom: '21%', left: '2%',  w: width * 0.52, h: height * 0.45 },
+};
+
+// ─── Hotspot maps ─────────────────────────────────────────────────────────────
+// Summon hotspot removed — companion image is the tap target now
+
+const RAYLENE_HOTSPOTS: Hotspot[] = [
+  { id: 'pages',         label: 'Journal 📖',       target: 'pages',         pulse: true,  hint: 'tap the journal', style: { bottom: '10%', left: '14%',  width: '36%', height: '18%' } },
+  { id: 'voiceBip',      label: 'Headphones 🎙️',    target: 'voiceBip',                   hint: 'tap headphones',  style: { bottom: '14%', left: '2%',   width: '18%', height: '12%' } },
+  { id: 'cloudThoughts', label: 'Cloud Lamp ☁️',    target: 'cloudThoughts', pulse: true,  hint: 'tap the cloud',   style: { top: '38%',   left: '26%',  width: '14%', height: '12%' } },
+  { id: 'comfort',       label: 'Bed 🌙',            target: 'comfort',                    hint: 'tap the bed',     style: { top: '38%',   right: '6%',  width: '34%', height: '34%' } },
+  { id: 'bippin2',       label: 'Growth Board ⭐',  target: 'bippin2',                    hint: 'tap the board',   style: { top: '4%',    left: '22%',  width: '24%', height: '26%' } },
+  { id: 'circle',        label: 'Photo Wall 🌐',     target: 'circle',                     hint: 'tap the wall',    style: { top: '4%',    right: '0%',  width: '18%', height: '55%' } },
+  { id: 'moodCheckIn',   label: 'Mood Check-In 🌤️', target: 'dashboard',     pulse: true,  hint: 'tap the window',  style: { top: '4%',    left: '0%',   width: '18%', height: '50%' } },
+  { id: 'bridge',        label: 'Bridge 🌉',         target: 'bridge',                     hint: 'tap the bridge',  style: { bottom: '24%', right: '36%', width: '16%', height: '12%' } },
+];
+
+const RYLANE_HOTSPOTS: Hotspot[] = [
+  { id: 'pages',         label: 'Journal 📖',       target: 'pages',         pulse: true,  hint: 'tap the journal', style: { bottom: '8%',  left: '18%', width: '38%', height: '20%' } },
+  { id: 'voiceBip',      label: 'Headphones 🎙️',    target: 'voiceBip',                   hint: 'tap headphones',  style: { top: '40%',   left: '28%', width: '14%', height: '10%' } },
+  { id: 'cloudThoughts', label: 'Cloud Neon ☁️',    target: 'cloudThoughts', pulse: true,  hint: 'tap the cloud',   style: { top: '26%',   left: '36%', width: '14%', height: '12%' } },
+  { id: 'comfort',       label: 'Bed 🌙',            target: 'comfort',                    hint: 'tap the bed',     style: { top: '36%',   right: '6%', width: '36%', height: '36%' } },
+  { id: 'bippin2',       label: 'Growth Board ⭐',  target: 'bippin2',                    hint: 'tap the board',   style: { top: '2%',    left: '26%', width: '24%', height: '28%' } },
+  { id: 'circle',        label: 'Photo Wall 🌐',     target: 'circle',                     hint: 'tap the wall',    style: { top: '2%',    right: '0%', width: '20%', height: '50%' } },
+  { id: 'moodCheckIn',   label: 'Mood Check-In 🌤️', target: 'dashboard',     pulse: true,  hint: 'tap the window',  style: { top: '2%',    left: '0%',  width: '20%', height: '55%' } },
+  { id: 'bridge',        label: 'Bridge 🌉',         target: 'bridge',                     hint: 'tap the bridge',  style: { bottom: '24%', right: '36%', width: '16%', height: '12%' } },
+];
+
+const CLOUD_HOTSPOTS: Hotspot[] = [
+  { id: 'headphones',    label: 'Headphones 🎧',     target: 'calm',          pulse: true,  hint: 'tap headphones',  style: { top: '28%', left: '8%',   width: '24%', height: '18%' } },
+  { id: 'pages',         label: 'Floating Journal 📖', target: 'pages',        pulse: true,  hint: 'tap the journal', style: { top: '44%', left: '32%',  width: '36%', height: '20%' } },
+  { id: 'voiceBip',      label: 'Cloud Mic 🎤',      target: 'voiceBip',                    hint: 'tap the mic',     style: { top: '22%', right: '10%', width: '20%', height: '16%' } },
+  { id: 'cloudThoughts', label: 'Big Cloud ☁️',      target: 'cloudThoughts', pulse: true,  hint: 'float up here',   style: { top: '8%',  left: '22%',  width: '56%', height: '20%' } },
+];
+
+const NIGHT_HOTSPOTS: Hotspot[] = [
+  { id: 'window',        label: 'Window 🪟',          target: 'cloudThoughts', pulse: true,  hint: 'look out',        style: { top: '4%',     left: '4%',  width: '44%', height: '44%' } },
+  { id: 'pages',         label: 'Journal 📖',         target: 'pages',         pulse: true,  hint: 'tap the journal', style: { bottom: '16%', left: '6%',  width: '50%', height: '20%' } },
+  { id: 'voiceBip',      label: 'Voice Bip Corner 🎙️', target: 'voiceBip',                  hint: 'voice bip corner',style: { top: '20%',   right: '2%', width: '26%', height: '28%' } },
+  { id: 'comfort',       label: 'Moon Chair 🌙',      target: 'comfort',                     hint: 'sit in the chair',style: { top: '26%',   left: '34%', width: '36%', height: '40%' } },
+  { id: 'bridge',        label: 'Reach Out 🌉',       target: 'bridge',                      hint: 'reach out',       style: { bottom: '30%', right: '6%', width: '22%', height: '16%' } },
+];
+
+const ROOM_HOTSPOTS: Record<Character, Hotspot[]> = {
+  raylene: RAYLENE_HOTSPOTS,
+  rylane:  RYLANE_HOTSPOTS,
+  cloud:   CLOUD_HOTSPOTS,
+  night:   NIGHT_HOTSPOTS,
+};
+
+// ─── VibeLab data ─────────────────────────────────────────────────────────────
+
+const LIGHTING_PRESETS: { key: LightingMode; label: string; emoji: string; hint: string }[] = [
+  { key: 'auto',      label: 'Follow the Sun',  emoji: '☀️',  hint: 'changes with your local time' },
+  { key: 'day',       label: 'Morning Light',   emoji: '🌤️',  hint: 'soft golden morning' },
+  { key: 'midday',    label: 'Bright Noon',     emoji: '🌞',  hint: 'clear and open' },
+  { key: 'afternoon', label: 'Golden Hour',     emoji: '🌇',  hint: 'warm amber afternoon' },
+  { key: 'evening',   label: 'Sunset Glow',     emoji: '🌆',  hint: 'purple-pink evening' },
+  { key: 'rain',      label: 'Rainy Day',       emoji: '🌧️',  hint: 'cozy blue-grey rain' },
+  { key: 'night',     label: 'Night Mode',      emoji: '🌙',  hint: 'deep violet night' },
+  { key: 'deepNight', label: 'Deep Night',      emoji: '✦',   hint: '2AM energy, stars only' },
+];
+
+const ROOM_META: Record<Character, { name: string; emoji: string; vibe: string }> = {
+  raylene: { name: "Raylene's Room", emoji: '💜', vibe: 'scrapbook soft' },
+  rylane:  { name: "Rylane's Room",  emoji: '⚡', vibe: 'city night'      },
+  cloud:   { name: 'Cloud Room',     emoji: '☁️', vibe: 'brain dump space' },
+  night:   { name: "Night's Room",   emoji: '🌙', vibe: '2AM energy'      },
+};
+
+const ROOM_PREVIEWS: Record<Character, ImageSourcePropType> = {
+  raylene: IMAGES.bgRayleneRoomEvening,
+  rylane:  IMAGES.bgRylaneRoomEvening,
+  cloud:   IMAGES.bgCloudRoomEvening,
+  night:   IMAGES.bgNightRoomEvening,
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const getTimeOfDay = (): TimeOfDay => {
+  const h = new Date().getHours();
+  if (h >= 6  && h < 12) return 'morning';
+  if (h >= 12 && h < 18) return 'day';
+  if (h >= 18 && h < 22) return 'evening';
+  return 'night';
+};
+
+const getPresenceLine = (companion: Character, tod: TimeOfDay): string => {
+  if (companion === 'cloud') return 'Cloud is drifting nearby.';
+  if (companion === 'night') return tod === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
+  if (companion === 'raylene') return 'Raylene is nearby.';
+  return 'Rylane is posted up.';
+};
+
+const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
+  const m = mood.toLowerCase();
+  if (character === 'night') {
+    if (m.includes('overwhelm') || m.includes('stress'))                    return 'overwhelmed';
+    if (m.includes('hurt') || m.includes('broken'))                         return 'hurting';
+    if (m.includes('sad')  || m.includes('cry'))                            return 'sad';
+    if (m.includes('lonel') || m.includes('alone'))                         return 'lonely';
+    if (m.includes('angry') || m.includes('mad'))                           return 'annoyed';
+    if (m.includes('tired') || m.includes('exhaust'))                       return 'tired';
+    if (m.includes('happy') || m.includes('good'))                          return 'softsmile';
+    if (m.includes('relax') || m.includes('calm') || m.includes('chill'))  return 'relaxed';
+    if (tod === 'night') return 'window';
+    return 'neutral';
+  }
+  if (character === 'raylene') {
+    if (m.includes('overwhelm') || m.includes('anxious'))   return 'crouching';
+    if (m.includes('sad')  || m.includes('hurt'))           return 'sad';
+    if (m.includes('angry') || m.includes('mad'))           return 'mad';
+    if (m.includes('happy') || m.includes('good'))          return 'happy';
+    if (m.includes('playful') || m.includes('fun'))         return 'playful';
+    if (m.includes('confident') || m.includes('proud'))     return 'confident';
+    if (tod === 'night') return 'window';
+    return 'neutral';
+  }
+  if (character === 'rylane') {
+    if (m.includes('happy') || m.includes('good'))          return 'happy';
+    if (m.includes('think') || m.includes('sad') || m.includes('angry')) return 'thinking';
+    if (tod === 'night') return 'window';
+    return 'neutral';
+  }
+  // cloud
+  if (m.includes('happy') || m.includes('good'))   return 'happy';
+  if (m.includes('think') || m.includes('listen')) return 'thinking';
+  if (m.includes('tired') || m.includes('sleepy')) return 'window';
+  return 'neutral';
+};
+
+const safe = (src: ImageSourcePropType | undefined, fallback: ImageSourcePropType): ImageSourcePropType =>
+  src ?? fallback;
+
+// ─── VibeLab2Sheet ────────────────────────────────────────────────────────────
+
+type VLTab = 'room' | 'lighting' | 'companion';
+const CHARACTERS: Character[] = ['raylene', 'rylane', 'cloud', 'night'];
+
+interface VibeLab2SheetProps {
+  visible: boolean;
+  current: UserRoomConfig;
+  onSave: (cfg: UserRoomConfig) => void;
+  onClose: () => void;
+}
+
+function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps) {
+  const [draft, setDraft] = useState<UserRoomConfig>(current);
+  const [tab,   setTab]   = useState<VLTab>('room');
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      setDraft(current);
+      setTab('room');
+      Animated.spring(slideAnim, { toValue: 1, tension: 68, friction: 11, useNativeDriver: true }).start();
+    } else {
+      Animated.timing(slideAnim, { toValue: 0, duration: 210, easing: Easing.in(Easing.quad), useNativeDriver: true }).start();
+    }
+  }, [visible, current]);
+
+  const sheetY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [500, 0] });
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      <TouchableOpacity style={vl.backdrop} onPress={onClose} activeOpacity={1} />
+      <Animated.View style={[vl.sheet, { transform: [{ translateY: sheetY }] }]}>
+        <View style={vl.handle} />
+        <Text style={vl.title}>your room ✦</Text>
+
+        {/* Tabs */}
+        <View style={vl.tabRow}>
+          {(['room', 'lighting', 'companion'] as VLTab[]).map(t => (
+            <TouchableOpacity
+              key={t}
+              style={[vl.tab, tab === t && vl.tabActive]}
+              onPress={() => setTab(t)}
+            >
+              <Text style={[vl.tabText, tab === t && vl.tabTextActive]}>
+                {t === 'room' ? '🏠 room' : t === 'lighting' ? '✨ light' : '💫 companion'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Room picker */}
+        {tab === 'room' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.scroll} contentContainerStyle={vl.hContent}>
+            {CHARACTERS.map(id => {
+              const meta = ROOM_META[id];
+              const selected = draft.baseRoomId === id;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[vl.roomCard, selected && vl.cardSelected]}
+                  onPress={() => setDraft(d => ({ ...d, baseRoomId: id }))}
+                  activeOpacity={0.82}
+                >
+                  <Image source={ROOM_PREVIEWS[id]} style={vl.roomThumb} resizeMode="cover" />
+                  {selected && <View style={vl.selectedOverlay} />}
+                  <Text style={vl.cardEmoji}>{meta.emoji}</Text>
+                  <Text style={vl.cardName}>{meta.name}</Text>
+                  <Text style={vl.cardSub}>{meta.vibe}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* Lighting picker */}
+        {tab === 'lighting' && (
+          <ScrollView style={vl.scroll} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
+            {LIGHTING_PRESETS.map(preset => {
+              const selected = draft.lightingMode === preset.key;
+              return (
+                <TouchableOpacity
+                  key={preset.key}
+                  style={[vl.lightRow, selected && vl.lightRowSelected]}
+                  onPress={() => setDraft(d => ({ ...d, lightingMode: preset.key }))}
+                  activeOpacity={0.82}
+                >
+                  <Text style={vl.lightEmoji}>{preset.emoji}</Text>
+                  <View style={vl.lightTextBlock}>
+                    <Text style={vl.lightLabel}>{preset.label}</Text>
+                    <Text style={vl.lightHint}>{preset.hint}</Text>
+                  </View>
+                  {selected && <Text style={vl.check}>✓</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* Companion picker */}
+        {tab === 'companion' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.scroll} contentContainerStyle={vl.hContent}>
+            {CHARACTERS.map(id => {
+              const meta = ROOM_META[id];
+              const selected = draft.companionId === id;
+              const avatarSrc = safe(AVATARS[id]?.neutral, FALLBACK_AVATAR[id]);
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[vl.companionCard, selected && vl.cardSelected]}
+                  onPress={() => setDraft(d => ({ ...d, companionId: id }))}
+                  activeOpacity={0.82}
+                >
+                  <Image source={avatarSrc} style={vl.companionAvatar} resizeMode="contain" />
+                  <Text style={vl.cardEmoji}>{meta.emoji}</Text>
+                  <Text style={vl.cardName}>{id}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        <TouchableOpacity style={vl.saveBtn} onPress={() => { onSave(draft); onClose(); }}>
+          <Text style={vl.saveBtnText}>save my room</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface UserRoomScreenProps {
+  mood: Mood;
+  selectedSekret: string;
+  setSelectedSekret: (v: string) => void;
+  setScreen: (screen: string) => void;
+  t: Record<string, any>;
+  vibe: VibeKey;
+  BottomNav: React.ReactNode;
+  sekretMode?: string;
+  updateRoomMemory?: (patch: Record<string, any>) => void;
+  companion?: any;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function UserRoomScreen({
+  mood,
+  selectedSekret,
+  setScreen,
+  t,
+  vibe,
+  BottomNav,
+  updateRoomMemory,
+}: UserRoomScreenProps) {
+
+  // Derive initial companion from selectedSekret so first load feels right
+  const initialCompanion: Character =
+    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'cloud'  ? 'cloud'  :
+    selectedSekret === 'night'  ? 'night'  : 'raylene';
+
+  const [userRoom, setUserRoom] = useState<UserRoomConfig>({
+    ...DEFAULT_USER_ROOM,
+    baseRoomId:  initialCompanion,
+    companionId: initialCompanion,
+  });
+  const [vibeLabOpen, setVibeLabOpen] = useState(false);
+
+  // Load persisted config on mount
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw) as Partial<UserRoomConfig>;
+        setUserRoom(prev => ({ ...prev, ...saved }));
+      } catch {}
+    });
+  }, []);
+
+  const saveUserRoom = useCallback((cfg: UserRoomConfig) => {
+    setUserRoom(cfg);
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)).catch(() => {});
+    updateRoomMemory?.({ character: cfg.companionId });
+  }, [updateRoomMemory]);
+
+  // ─── Time / phase ──────────────────────────────────────────────────────
+  const now      = useMemo(() => new Date(), []);
+  const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
+
+  const roomPhase = useMemo<RoomPhase>(() => {
+    if (userRoom.lightingMode === 'auto') {
+      return getRoomPhase(now, vibe === 'rain' ? 'rain' : undefined);
+    }
+    return userRoom.lightingMode as RoomPhase;
+  }, [userRoom.lightingMode, now, vibe]);
+
+  const roomImage = useMemo(
+    () => getRoomScene(userRoom.baseRoomId, roomPhase),
+    [userRoom.baseRoomId, roomPhase]
+  );
+  const vibePack = THEME_PACKS[vibe] ?? THEME_PACKS.raylene;
+
+  // ─── Companion ─────────────────────────────────────────────────────────
+  const cId   = userRoom.companionId;
+  const pose  = useMemo(() => getPose(mood, timeOfDay, cId), [mood, timeOfDay, cId]);
+  const cPos  = COMPANION_POSITIONS[cId];
+  const cSrc  = safe(AVATARS[cId]?.[pose], FALLBACK_AVATAR[cId]);
+  const hotspots = useMemo(() => ROOM_HOTSPOTS[userRoom.baseRoomId], [userRoom.baseRoomId]);
+  const roomLabel = userRoom.roomName || ROOM_META[userRoom.baseRoomId].name;
+
+  // ─── Animations ────────────────────────────────────────────────────────
+  const fadeAnim       = useRef(new Animated.Value(0)).current;
+  const glowAnim       = useRef(new Animated.Value(0.2)).current;
+  const pulseAnim      = useRef(new Animated.Value(0)).current;
+  const breathAnim     = useRef(new Animated.Value(0)).current;
+  const companionAnim  = useRef(new Animated.Value(0)).current;
+  const companionScale = useRef(new Animated.Value(0.94)).current;
+  const hintAnim       = useRef(new Animated.Value(0)).current;
+  const [hintSpot, setHintSpot] = useState<string | null>(null);
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, { toValue: 1, duration: 900, useNativeDriver: true }).start();
+    Animated.timing(companionAnim, {
+      toValue: 1, duration: 680, delay: 280,
+      easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start();
+    Animated.spring(companionScale, { toValue: 1, delay: 280, tension: 55, friction: 8, useNativeDriver: true }).start();
+
+    const glowLoop = Animated.loop(Animated.sequence([
+      Animated.timing(glowAnim, { toValue: 1,   duration: 1600, useNativeDriver: true }),
+      Animated.timing(glowAnim, { toValue: 0.2, duration: 1600, useNativeDriver: true }),
+    ]));
+    glowLoop.start();
+
+    const pulseLoop = Animated.loop(Animated.sequence([
+      Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
+    ]));
+    pulseLoop.start();
+
+    const breathLoop = Animated.loop(Animated.sequence([
+      Animated.timing(breathAnim, { toValue: 1, duration: 2400, useNativeDriver: true }),
+      Animated.timing(breathAnim, { toValue: 0, duration: 2400, useNativeDriver: true }),
+    ]));
+    breathLoop.start();
+
+    const guide = setTimeout(() => {
+      setHintSpot('pages');
+      setTimeout(() => setHintSpot(null), 1800);
+    }, 700);
+
+    return () => {
+      clearTimeout(guide);
+      glowLoop.stop();
+      pulseLoop.stop();
+      breathLoop.stop();
+    };
+  }, []);
+
+  useEffect(() => {
+    Animated.timing(hintAnim, {
+      toValue: hintSpot ? 1 : 0,
+      duration: hintSpot ? 150 : 220,
+      useNativeDriver: true,
+    }).start();
+  }, [hintSpot]);
+
+  // ─── Handlers ──────────────────────────────────────────────────────────
+
+  const handleHotspot = useCallback((target: RoomTarget) => {
+    updateRoomMemory?.({ lastHotspot: target, lastVisit: new Date().toISOString() });
+    setScreen(target);
+  }, [setScreen, updateRoomMemory]);
+
+  const handleCompanionTap = useCallback(() => {
+    updateRoomMemory?.({ lastSummon: new Date().toISOString(), character: cId });
+    setScreen('sekret');
+  }, [setScreen, cId, updateRoomMemory]);
+
+  // ─── Render ────────────────────────────────────────────────────────────
+
+  return (
+    <View style={s.root}>
+      <StatusBar style="light" />
+
+      {/* ── LAYER 0+1: Room background + phase/vibe overlays ──────────── */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+        <SafeAsset
+          source={roomImage}
+          style={s.bg}
+          resizeMode="cover"
+          assetName={`user-room-${userRoom.baseRoomId}-${roomPhase}`}
+          fallbackColor="#1a0a2e"
+          fillContainer
+        />
+        <View style={[s.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
+        <View style={[s.overlay, { backgroundColor: vibePack.background + '22' }]} />
+        {CHARACTER_OVERLAYS[userRoom.baseRoomId] !== 'transparent' && (
+          <View style={[s.overlay, { backgroundColor: CHARACTER_OVERLAYS[userRoom.baseRoomId] }]} />
+        )}
+      </Animated.View>
+
+      {/* Night room atmosphere clock */}
+      {userRoom.baseRoomId === 'night' && (
+        <View style={s.nightTimeWrap} pointerEvents="none">
+          <Text style={s.nightTimeText}>
+            {(() => {
+              const h = new Date().getHours();
+              const m = new Date().getMinutes();
+              const h12 = h % 12 || 12;
+              return `${h12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+            })()}
+          </Text>
+          <Text style={s.nightStars}>✦ ✧ ✦</Text>
+        </View>
+      )}
+
+      {/* ── LAYER 2: Hotspots ─────────────────────────────────────────── */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+        {hotspots.map(spot => {
+          const isHinted = hintSpot === spot.id;
+          return (
+            <TouchableOpacity
+              key={spot.id}
+              style={[s.hotspot, spot.style, isHinted && s.hotspotGlow]}
+              onPress={() => handleHotspot(spot.target)}
+              activeOpacity={0.72}
+              accessibilityRole="button"
+              accessibilityLabel={spot.label}
+            >
+              {spot.pulse && (
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    s.pulseRing,
+                    {
+                      opacity:   pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }),
+                      transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) }],
+                      borderColor: t.accent ?? '#d946ef',
+                    },
+                  ]}
+                />
+              )}
+              {isHinted && (
+                <Animated.View style={[s.tapHintWrap, {
+                  opacity: hintAnim,
+                  transform: [{ translateY: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }],
+                }]}>
+                  <Text style={s.tapHint}>{spot.hint ?? 'Tap'}</Text>
+                </Animated.View>
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </Animated.View>
+
+      {/* ── LAYER 5: Companion — always visible, tappable ─────────────── */}
+      <Animated.View
+        style={[
+          s.companionWrap,
+          {
+            bottom: cPos.bottom,
+            left:   cPos.left,
+            width:  cPos.w,
+            height: cPos.h,
+            opacity: companionAnim,
+            transform: [
+              { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
+              { scale: companionScale },
+            ],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFillObject}
+          onPress={handleCompanionTap}
+          activeOpacity={0.88}
+          accessibilityRole="button"
+          accessibilityLabel={`${cId} is here. Tap to talk.`}
+        >
+          <Image
+            source={cSrc}
+            style={s.companionImage}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+            accessible={false}
+          />
+          {/* Ambient breath glow to signal tappability */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              s.companionGlow,
+              { opacity: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.18] }) },
+            ]}
+          />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Cloud mascot shortcut when companion is not Cloud */}
+      {cId !== 'cloud' && (
+        <TouchableOpacity
+          style={[s.cloudPresence, { borderColor: (t.accent ?? '#d946ef') + '88' }]}
+          onPress={() => setScreen('cloudThoughts')}
+          accessibilityRole="button"
+          accessibilityLabel="Cloud is here. Open Cloud Thoughts"
+        >
+          <Image source={IMAGES.cloudHappy} style={s.cloudPresenceImage} resizeMode="contain" />
+          <Text style={s.cloudPresenceText}>Cloud's here</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* ── Top bar: room name label ───────────────────────────────────── */}
+      <Animated.View style={[s.topBar, { opacity: fadeAnim }]}>
+        <View style={s.roomBadge}>
+          <Text style={s.roomBadgeText}>
+            {ROOM_META[userRoom.baseRoomId].emoji} {roomLabel}
+          </Text>
+        </View>
+      </Animated.View>
+
+      {/* ── Presence pill ─────────────────────────────────────────────── */}
+      <Animated.View
+        style={[
+          s.presencePill,
+          {
+            opacity: Animated.multiply(
+              fadeAnim,
+              breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] })
+            ),
+            transform: [{ scale: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }],
+          },
+        ]}
+      >
+        <Animated.View
+          style={[
+            s.presenceDot,
+            {
+              opacity: glowAnim,
+              transform: [{ scale: glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.1] }) }],
+            },
+          ]}
+        />
+        <Text style={s.presenceText}>{getPresenceLine(cId, timeOfDay)}</Text>
+      </Animated.View>
+
+      {/* ── VibeLab edit button ───────────────────────────────────────── */}
+      <Animated.View style={[s.vibeLabBtnWrap, { opacity: fadeAnim }]}>
+        <TouchableOpacity
+          style={s.vibeLabBtn}
+          onPress={() => setVibeLabOpen(true)}
+          activeOpacity={0.82}
+          accessibilityRole="button"
+          accessibilityLabel="Customize your room in VibeLab"
+        >
+          <Text style={s.vibeLabBtnText}>✦ room</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* ── Bottom nav ────────────────────────────────────────────────── */}
+      <View style={s.bottomSlot}>{BottomNav}</View>
+
+      {/* ── VibeLab V2 sheet ──────────────────────────────────────────── */}
+      <VibeLab2Sheet
+        visible={vibeLabOpen}
+        current={userRoom}
+        onSave={saveUserRoom}
+        onClose={() => setVibeLabOpen(false)}
+      />
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  root:              { flex: 1, backgroundColor: '#0d0014' },
+  bg:                { width, height },
+  overlay:           { ...StyleSheet.absoluteFillObject },
+
+  companionWrap:     { position: 'absolute', zIndex: 10 },
+  companionImage:    { width: '100%', height: '100%' },
+  companionGlow:     {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 120,
+    backgroundColor: '#c084fc',
+  },
+
+  cloudPresence: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 116 : 94,
+    right: 18,
+    width: 76, height: 76,
+    borderRadius: 24, borderWidth: 1,
+    backgroundColor: 'rgba(22,12,42,0.58)',
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 8,
+  },
+  cloudPresenceImage: { width: 47, height: 40 },
+  cloudPresenceText:  { color: '#f3edff', fontSize: 9, fontWeight: '700', marginTop: -2 },
+
+  hotspot:       { position: 'absolute' },
+  hotspotGlow:   {
+    borderRadius: 16,
+    backgroundColor: 'rgba(244,114,182,0.08)',
+    shadowColor: '#f472b6', shadowOpacity: 0.45, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  pulseRing: {
+    position: 'absolute', width: '100%', height: '100%',
+    borderRadius: 16, borderWidth: 1.5,
+  },
+  tapHintWrap: {
+    position: 'absolute', top: -26, left: -2,
+    backgroundColor: 'rgba(253,247,236,0.94)',
+    borderColor: 'rgba(124,58,237,0.45)',
+    borderWidth: 1, borderStyle: 'dashed',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 8, transform: [{ rotate: '-2deg' }],
+    shadowColor: '#7c3aed', shadowOpacity: 0.18, shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 }, elevation: 3,
+  },
+  tapHint: { color: '#3b0764', fontSize: 10, fontWeight: '600', fontStyle: 'italic', letterSpacing: 0.2 },
+
+  topBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 52 : 32,
+    left: 16,
+    zIndex: 20,
+  },
+  roomBadge:     { backgroundColor: 'rgba(13,0,20,0.68)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5 },
+  roomBadgeText: { color: '#c4b5fd', fontSize: 12, fontWeight: '600' },
+
+  presencePill: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 96 : 74,
+    left: 16,
+    backgroundColor: 'rgba(13,0,20,0.70)',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 7, zIndex: 12,
+  },
+  presenceDot:  { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d946ef' },
+  presenceText: { color: '#e9d5ff', fontSize: 11, fontWeight: '500' },
+
+  nightTimeWrap: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 116 : 94,
+    left: 18, alignItems: 'flex-start', zIndex: 5,
+  },
+  nightTimeText: { color: 'rgba(187,183,239,0.75)', fontSize: 13, fontWeight: '300', letterSpacing: 1.5 },
+  nightStars:    { color: 'rgba(187,183,239,0.45)', fontSize: 10, marginTop: 2, letterSpacing: 4 },
+
+  vibeLabBtnWrap: { position: 'absolute', bottom: 100, right: 18, zIndex: 20 },
+  vibeLabBtn: {
+    backgroundColor: 'rgba(13,0,20,0.80)',
+    borderWidth: 1, borderColor: 'rgba(167,114,192,0.45)',
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    shadowColor: '#c084fc', shadowOpacity: 0.22, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 }, elevation: 4,
+  },
+  vibeLabBtnText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+
+  bottomSlot: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+});
+
+// ─── VibeLab styles ───────────────────────────────────────────────────────────
+
+const vl = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.54)',
+  },
+  sheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#150830',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    borderTopWidth: 1, borderColor: 'rgba(147,51,234,0.28)',
+    paddingTop: 12, paddingHorizontal: 20, paddingBottom: 36,
+    shadowColor: '#7c3aed', shadowOpacity: 0.3, shadowRadius: 24,
+    shadowOffset: { width: 0, height: -6 }, elevation: 20,
+    minHeight: 400,
+  },
+  handle: {
+    alignSelf: 'center', width: 40, height: 4,
+    borderRadius: 2, backgroundColor: 'rgba(196,181,253,0.35)',
+    marginBottom: 14,
+  },
+  title: {
+    color: '#e9d5ff', fontSize: 18, fontWeight: '700',
+    letterSpacing: 0.3, marginBottom: 14,
+  },
+
+  tabRow:       { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  tab:          { flex: 1, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
+  tabActive:    { backgroundColor: 'rgba(147,51,234,0.28)', borderWidth: 1, borderColor: 'rgba(196,181,253,0.4)' },
+  tabText:      { color: 'rgba(196,181,253,0.55)', fontSize: 11, fontWeight: '600' },
+  tabTextActive:{ color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+
+  scroll:   { maxHeight: 220 },
+  hContent: { paddingRight: 16, gap: 12, flexDirection: 'row' },
+
+  roomCard: {
+    width: 130, borderRadius: 16, overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1.5, borderColor: 'rgba(147,51,234,0.18)',
+  },
+  roomThumb: { width: 130, height: 90 },
+  cardSelected: {
+    borderColor: '#c084fc', borderWidth: 2,
+    shadowColor: '#c084fc', shadowOpacity: 0.45, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 }, elevation: 6,
+  },
+  selectedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(192,132,252,0.15)',
+  },
+  cardEmoji: { color: '#e9d5ff', fontSize: 18, textAlign: 'center', marginTop: 8 },
+  cardName:  { color: '#e9d5ff', fontSize: 11, fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 },
+  cardSub:   { color: 'rgba(196,181,253,0.6)', fontSize: 9, textAlign: 'center', paddingHorizontal: 8, marginBottom: 8 },
+
+  lightRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 11, paddingHorizontal: 12,
+    borderRadius: 12, marginBottom: 6,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  lightRowSelected: {
+    backgroundColor: 'rgba(147,51,234,0.18)',
+    borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)',
+  },
+  lightEmoji:     { fontSize: 20, width: 28, textAlign: 'center' },
+  lightTextBlock: { flex: 1 },
+  lightLabel:     { color: '#e9d5ff', fontSize: 13, fontWeight: '600' },
+  lightHint:      { color: 'rgba(196,181,253,0.55)', fontSize: 10, marginTop: 1 },
+  check:          { color: '#c084fc', fontSize: 16, fontWeight: '700' },
+
+  companionCard: {
+    width: 120, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1.5, borderColor: 'rgba(147,51,234,0.18)',
+    alignItems: 'center', paddingBottom: 10,
+  },
+  companionAvatar: { width: 100, height: 120 },
+
+  saveBtn: {
+    marginTop: 18, paddingVertical: 14, borderRadius: 18,
+    backgroundColor: '#7c3aed', alignItems: 'center',
+    shadowColor: '#7c3aed', shadowOpacity: 0.5, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 8,
+  },
+  saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
+});

@@ -926,6 +926,14 @@ export function RoomScreen({
               </Text>
             </View>
           )}
+          <TouchableOpacity
+            style={styles.myRoomBtn}
+            onPress={() => setScreen('userRoom')}
+            accessibilityRole="button"
+            accessibilityLabel="Go to My Room"
+          >
+            <Text style={styles.myRoomBtnText}>✦ my room</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.characterToggle}>
@@ -1117,6 +1125,16 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   modeBadgeText:         { fontSize: 11, fontWeight: '700' },
+  myRoomBtn:             {
+    backgroundColor: 'rgba(13,0,20,0.62)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(192,132,252,0.38)',
+    alignSelf: 'flex-start',
+  },
+  myRoomBtnText:         { color: '#c4b5fd', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
 
   characterToggle:       { flexDirection: 'row', gap: 8 },
   toggleBtn:             {

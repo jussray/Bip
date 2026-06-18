@@ -17,6 +17,7 @@ export const TEEN_ROUTES = {
   discover: '/(teen)/discover',
   profile: '/(teen)/profile',
   companionPicker: '/(teen)/chat',
+  userRoom: '/(teen)/user-room',
 } as const;
 
 export type TeenRouteKey = keyof typeof TEEN_ROUTES;

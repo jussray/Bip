@@ -50,6 +50,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     periodCalendar: TEEN_ROUTES.periodCalendar,
     discover: TEEN_ROUTES.discover,
     profile: TEEN_ROUTES.profile,
+    userRoom: TEEN_ROUTES.userRoom,
   };
   return teenMap[key] ?? TEEN_ROUTES.room;
 }
