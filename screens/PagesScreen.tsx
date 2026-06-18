@@ -981,12 +981,12 @@ function PagesWorkspace({
     <View style={[styles.root, { backgroundColor: charRootBg }]}>
       {/* Floating companion — breathes behind the writing area */}
       {activeCompanionImg && (
-        <Animated.Image
-          source={activeCompanionImg}
-          style={[styles.companionPresence, { transform: [{ scale: companionBreath }] }]}
-          resizeMode="contain"
+        <Animated.View
           pointerEvents="none"
-        />
+          style={[styles.companionPresence, { transform: [{ scale: companionBreath }] }]}
+        >
+          <Image source={activeCompanionImg} style={{ width: 82, height: 120 }} resizeMode="contain" />
+        </Animated.View>
       )}
 
       {/* Header */}
