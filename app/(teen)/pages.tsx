@@ -283,7 +283,7 @@ export default function TeenPagesRoute() {
               onPress={saveAndReply}
               style={[styles.save, { backgroundColor: avatar.accent }, (!journalText.trim() || saving) && styles.disabled]}
             >
-              <Text style={styles.saveText}>{saving ? 'thinking…' : 'Bip it'}</Text>
+              <Text style={styles.saveText}>{saving ? 'thinking…' : 'Bip 💜'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   hearText: { color: '#d8cfdf', fontSize: 9, fontWeight: '800' },
   journalFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   privacyNote: { flex: 1, color: '#827889', fontSize: 9, lineHeight: 13 },
-  save: { minWidth: 92, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  save: { minWidth: 98, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   saveText: { color: '#171018', fontSize: 12, fontWeight: '900' },
   disabled: { opacity: 0.35 },
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 26, marginBottom: 10 },
