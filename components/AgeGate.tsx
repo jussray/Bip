@@ -1,19 +1,9 @@
 /**
  * components/AgeGate.tsx
  *
- * Guardrail 6 — Age boundary guardrail.
- *
- * The branded splash (children) always renders first and stays visible —
- * the age question rides on top of it as a sheet rather than replacing it,
- * so a brand-new user's first impression is "entering a space" (per
- * docs/VISION.md's Opening Screen brief) rather than a bare form. Only
- * the 'blocked' (under-13) outcome takes over the full screen, since that
- * one has to be a hard stop rather than an ambient overlay.
- *
- * Confirms the person opening the app is in an allowed age range before
- * letting them continue — under-13 visitors are guided toward a parent/
- * guardian instead of being onboarded as a teen, and nothing beyond the
- * single answer itself is collected or stored.
+ * Confirms the person opening the app is in the supported teen range before
+ * onboarding. Se'kret Bip supports teens ages 13–19; the separate age-out
+ * experience begins at 20.
  */
 
 import React, { useEffect, useState } from 'react';
@@ -34,18 +24,38 @@ export function AgeGate({ children, onResolved }: Props) {
   useEffect(() => {
     let mounted = true;
     AsyncStorage.getItem(AGE_GATE_KEY)
-      .then(val => { if (mounted) setStatus((val as AgeGateStatus) || 'unset'); })
-      .catch(() => { if (mounted) setStatus('unset'); });
-    return () => { mounted = false; };
+      .then(value => {
+        if (!mounted) return;
+        setStatus((value as AgeGateStatus) || 'unset');
+      })
+      .catch(() => {
+        if (mounted) setStatus('unset');
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const choose = async (next: AgeGateStatus) => {
-    try { await AsyncStorage.setItem(AGE_GATE_KEY, next); } catch {}
+    try {
+      await AsyncStorage.setItem(AGE_GATE_KEY, next);
+    } catch {}
     setStatus(next);
     onResolved?.(next);
   };
 
-  if (status === 'loading' || status === 'teen' || status === 'guardian') {
+  if (status === 'loading') {
+    return (
+      <View style={styles.unsetRoot}>
+        {children}
+        <View style={styles.loadingCover} pointerEvents="auto">
+          <Text style={styles.loadingMark}>SE’KRET BIP</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (status === 'teen' || status === 'guardian') {
     return <>{children}</>;
   }
 
@@ -53,22 +63,18 @@ export function AgeGate({ children, onResolved }: Props) {
     return (
       <View style={styles.root}>
         <Text style={styles.emoji}>💜</Text>
-        <Text style={styles.title}>This space is for teens 13–17.</Text>
+        <Text style={styles.title}>This space is for teens 13–19.</Text>
         <Text style={styles.body}>
           If you're under 13, Se'kret Bip isn't the right fit yet — ask a parent
-          or guardian to come in with you, or have them set up the parent side
-          themselves.
+          or guardian to come in with you, or have them set up the parent side.
         </Text>
         <TouchableOpacity style={styles.linkBtn} onPress={() => choose('teen')}>
-          <Text style={styles.linkText}>Actually, I'm 13 or older</Text>
+          <Text style={styles.linkText}>Actually, I'm between 13 and 19</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // status === 'unset' — first launch ever. Keep the branded splash
-  // visible underneath; the question rides on top of it as a sheet so
-  // the very first thing a new user sees is the room, not a form.
   return (
     <View style={styles.unsetRoot}>
       {children}
@@ -77,12 +83,11 @@ export function AgeGate({ children, onResolved }: Props) {
           <Text style={styles.emoji}>👋</Text>
           <Text style={styles.title}>Quick check before you come in</Text>
           <Text style={styles.body}>
-            How old are you? This just helps us show you the right space —
-            nothing else is collected.
+            How old are you? This only helps us show you the right side of the app.
           </Text>
 
           <TouchableOpacity style={styles.optionBtn} onPress={() => choose('teen')}>
-            <Text style={styles.optionText}>I'm 13–17</Text>
+            <Text style={styles.optionText}>I'm 13–19</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.optionBtn} onPress={() => choose('guardian')}>
             <Text style={styles.optionText}>I'm a parent or guardian (18+)</Text>
@@ -97,11 +102,31 @@ export function AgeGate({ children, onResolved }: Props) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0d0820', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  root: {
+    flex: 1,
+    backgroundColor: '#0d0820',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
   unsetRoot: { flex: 1 },
+  loadingCover: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 3000,
+    backgroundColor: '#0d0820',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingMark: {
+    color: '#e9d5ff',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 2.5,
+  },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8,4,18,0.55)',
+    zIndex: 3000,
+    backgroundColor: 'rgba(8,4,18,0.68)',
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -120,9 +145,14 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 10 },
   body: { fontSize: 14, color: '#c4b5fd', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   optionBtn: {
-    width: '100%', paddingVertical: 16, borderRadius: 18, borderWidth: 1.5,
-    borderColor: 'rgba(200,120,255,0.5)', backgroundColor: 'rgba(200,120,255,0.12)',
-    alignItems: 'center', marginBottom: 12,
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: 'rgba(200,120,255,0.5)',
+    backgroundColor: 'rgba(200,120,255,0.12)',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   optionText: { color: '#e2d8ff', fontSize: 15, fontWeight: '700' },
   optionBtnSubtle: { paddingVertical: 10 },
