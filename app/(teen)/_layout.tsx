@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
 import { GlobalMoodButton } from '@/components/GlobalMoodButton';
+import { SideSafeBackButton } from '@/components/SideSafeBackButton';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
@@ -22,7 +23,7 @@ export default function TeenLayout() {
         <Tabs.Screen name="pages" options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📖" /> }} />
         <Tabs.Screen name="calm" options={{ title: 'Calm', tabBarIcon: () => <TabIcon emoji="🌙" /> }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🌐" /> }} />
-        <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="✨" /> }} />
+        <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
         <Tabs.Screen name="user-room" options={{ href: null }} />
         <Tabs.Screen name="sekret" options={{ href: null }} />
         <Tabs.Screen name="voicebip" options={{ href: null }} />
@@ -41,6 +42,7 @@ export default function TeenLayout() {
         <Tabs.Screen name="chat/index" options={{ href: null }} />
         <Tabs.Screen name="chat/[personalityId]" options={{ href: null }} />
       </Tabs>
+      <SideSafeBackButton side="teen" />
       <GlobalMoodButton />
     </View>
   );
