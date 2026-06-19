@@ -81,7 +81,7 @@ export function GlobalMoodButton() {
 }
 
 const styles = StyleSheet.create({
-  floatingButton: { position: 'absolute', top: 54, right: 14, zIndex: 1000, elevation: 20, minHeight: 38, maxWidth: 118, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', backgroundColor: 'rgba(18,11,29,0.92)' },
+  floatingButton: { position: 'absolute', bottom: 80, right: 14, zIndex: 1000, elevation: 20, minHeight: 38, maxWidth: 118, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 11, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', backgroundColor: 'rgba(18,11,29,0.92)' },
   floatingEmoji: { fontSize: 15 },
   floatingText: { color: '#f2ebf5', fontSize: 10, fontWeight: '900', textTransform: 'capitalize' },
   modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(4,2,8,0.62)' },
