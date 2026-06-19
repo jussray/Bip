@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { SplashScreen } from '@screens/SplashScreen';
@@ -18,13 +19,23 @@ export default function Index() {
 
   const activeSide = userSide ?? pendingSide;
 
+  async function enterSide(side: 'teen' | 'parent') {
+    if (!userSide) setUserSide(side);
+    const profileKey = side === 'parent' ? 'parent_profile_done' : 'teen_profile_done';
+    const done = await AsyncStorage.getItem(profileKey);
+    if (done === 'true') {
+      router.replace(side === 'parent' ? '/(parent)/room' : '/(teen)/room');
+      return;
+    }
+    router.replace(side === 'parent' ? '/(parent)/profile' : '/(teen)/profile');
+  }
+
   if (activeSide) {
     return (
       <SplashScreen
         userSide={activeSide}
         setScreen={() => {
-          if (!userSide) setUserSide(activeSide);
-          router.replace(activeSide === 'parent' ? '/(parent)/room' : '/(teen)/room');
+          void enterSide(activeSide);
         }}
       />
     );
