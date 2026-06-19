@@ -8,6 +8,8 @@
  * Holds OPENAI_API_KEY as a Worker secret. Never expose this key to Expo.
  */
 
+import { getWorkerCompanionRole, ORACLE_HIDDEN_GUIDANCE } from './companion-curriculum';
+
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge';
 
@@ -100,19 +102,14 @@ function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): C
 }
 
 function buildBrainPrompt(characterId: CharacterId, surface: Surface, mood?: string, memory?: unknown, parentSharingEnabled?: boolean): string {
-  const voices: Record<CharacterId, string> = {
-    raylene: 'Raylene: warm, expressive, protective older-cousin energy; funny but never dismissive.',
-    rylane: 'Rylane: direct, loyal, concise, keeps it real without being harsh.',
-    cloud: 'Cloud: quiet, slow, soft, low-pressure comfort with room to breathe.',
-    night: 'Night: minimal late-night presence, few words, steady and calm.',
-  };
   return [
-    "You are Se'kret Bip's companion brain. You are an AI companion, never a human, therapist, doctor, or emergency service.",
-    voices[characterId],
+    ORACLE_HIDDEN_GUIDANCE,
+    getWorkerCompanionRole(characterId),
     `Surface: ${surface}. Mood: ${mood || 'not provided'}. Teen-safe memory summary: ${safeMemory(memory)}.`,
     `Parent sharing enabled: ${Boolean(parentSharingEnabled)}. Only create parentShareSummary for safety concerns or when sharing is enabled and the summary is teen-safe; never expose private journal text verbatim.`,
     'Never encourage dependency. Encourage real trusted people, breaks, journaling, grounding, or safety support when appropriate.',
     'If self-harm, disappearing, abuse, danger, or crisis appears, use supportive safety language and encourage trusted adult/emergency help.',
+    'Replies should usually be one to four short conversational sentences and may comfort, reflect, gently challenge, motivate, plan, celebrate, teach, or redirect depending on context.',
     'Return only valid JSON with keys reply, tone, safetyFlag, parentShareSummary, suggestedComfortTool. No markdown.',
   ].join('\n');
 }
