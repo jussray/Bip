@@ -9,10 +9,12 @@ const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLI
 
 export type SekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge';
+export type SekretAvatarState = 'neutral' | 'listening' | 'thinking' | 'comforting' | 'happy' | 'concerned' | 'responding';
 
 export interface SekretBrainResponse {
   reply: string;
   tone: string;
+  avatarState: SekretAvatarState;
   safetyFlag: boolean;
   parentShareSummary: string | null;
   suggestedComfortTool: string | null;
@@ -29,12 +31,21 @@ function normalizeCharacter(value?: string): SekretCharacterId {
   return 'raylene';
 }
 
+function normalizeAvatarState(value?: unknown): SekretAvatarState {
+  if (
+    value === 'listening' || value === 'thinking' || value === 'comforting' ||
+    value === 'happy' || value === 'concerned' || value === 'responding'
+  ) return value;
+  return 'neutral';
+}
+
 function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrainResponse {
   const crisis = /\b(kill myself|end my life|want to die|suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
   if (crisis) {
     return {
       reply: "I'm an AI companion, not emergency help. If you're in danger or might hurt yourself, tell a trusted adult now, call 911, call/text 988, or text HOME to 741741.",
       tone: 'supportive-safety',
+      avatarState: 'concerned',
       safetyFlag: true,
       parentShareSummary: null,
       suggestedComfortTool: 'safety-plan',
@@ -46,7 +57,14 @@ function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrai
     cloud: "No rush. I'm an AI companion, and we can make this smaller for one breath.",
     night: "Stay close. I'm an AI companion, not a person; if it gets too heavy, pull in someone safe.",
   };
-  return { reply: replies[characterId], tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: 'journal' };
+  return {
+    reply: replies[characterId],
+    tone: characterId,
+    avatarState: characterId === 'cloud' || characterId === 'night' ? 'comforting' : 'responding',
+    safetyFlag: false,
+    parentShareSummary: null,
+    suggestedComfortTool: 'journal',
+  };
 }
 
 export async function fetchSekretBrainReply(input: {
@@ -66,9 +84,11 @@ export async function fetchSekretBrainReply(input: {
     });
     if (!res.ok) throw new Error(`api error ${res.status}`);
     const data = await res.json() as Partial<SekretBrainResponse>;
+    const fallback = fallbackReply(input.characterId, input.userText);
     return {
-      reply: data.reply || fallbackReply(input.characterId, input.userText).reply,
+      reply: data.reply || fallback.reply,
       tone: data.tone || input.characterId,
+      avatarState: normalizeAvatarState(data.avatarState),
       safetyFlag: Boolean(data.safetyFlag),
       parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
       suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
