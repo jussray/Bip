@@ -1,13 +1,19 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
 import { GlobalMoodButton } from '@/components/GlobalMoodButton';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
+import { useAppContext } from '@/context/AppContext';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
 }
 
 export default function TeenLayout() {
+  const { userSide, isLoading } = useAppContext();
+  if (isLoading) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
+  if (userSide === 'parent') return <Redirect href="/(parent)/room" />;
+  if (userSide !== 'teen') return <Redirect href="/" />;
+
   return (
     <View style={{ flex: 1 }}>
       <Tabs
