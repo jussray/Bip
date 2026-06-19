@@ -3,88 +3,93 @@
  *
  * Canonical types (moved from types/index.ts in Step 3).
  * Import via: import type { JournalEntry } from '@/types';
- *
- * TYPE PASS: Added VibeLabEntry for Oracle mood signal pipeline.
  */
 
 export interface JournalEntry {
-  id:           number;
-  text:         string;
-  mood:         string;
-  date:         string;
-  time:         string;
-  // Extended fields used by PagesScreen, sync, and action handlers
-  source?:      string;
-  entryMode?:   string;
-  moodTag?:     string;
-  imageUri?:    string;
+  id: number;
+  text: string;
+  mood: string;
+  date: string;
+  time: string;
+  source?: string;
+  entryMode?: string;
+  moodTag?: string;
+  imageUri?: string;
   sekretReply?: string;
-  locked?:      boolean;
-  activeTab?:   string;
+  locked?: boolean;
+  activeTab?: string;
 }
 
 export interface CirclePost {
-  id:   number;
+  id: number;
   text: string;
   date: string;
   time: string;
   reactions: {
-    felt:    number;
+    felt: number;
     comfort: number;
-    proud:   number;
-    stay:    number;
-    /** Reaction added by newer screens; optional to keep backward compat. */
+    proud: number;
+    stay: number;
     sameHere?: number;
   };
-  // Extended fields used by action handlers and sync
-  bipType?:   string;
+  bipType?: string;
   mediaKind?: string;
   circleTag?: string;
-  postMood?:  string;
+  postMood?: string;
 }
 
 export interface VoiceNote {
-  id:            number;
-  title:         string;
-  date:          string;
-  time:          string;
-  duration:      string;
-  /** Media classification added by VoiceBipScreen. */
-  type?:    'voice' | 'video' | 'audio' | 'text' | 'cloud';
+  id: number;
+  title: string;
+  date: string;
+  time: string;
+  duration: string;
+  type?: 'voice' | 'video' | 'audio' | 'text' | 'cloud';
   [key: string]: unknown;
 }
 
 export interface MoodEntry {
-  id:   number;
+  id: number;
   mood: string;
   date: string;
   time: string;
 }
 
 export interface Theme {
-  name:       string;
-  emoji:      string;
+  name: string;
+  emoji: string;
   background: string;
-  card:       string;
-  accent:     string;
-  soft:       string;
-  /** Optional feeling descriptor added by RoomScreen. */
-  feeling?:   string;
+  card: string;
+  accent: string;
+  soft: string;
+  feeling?: string;
   [key: string]: unknown;
 }
 
 export interface SekretProfile {
-  name:     string;
-  emoji:    string;
-  title:    string;
-  vibe:     string;
+  name: string;
+  emoji: string;
+  title: string;
+  vibe: string;
   greeting: string;
 }
 
-// Personality IDs — single source of truth
+export interface TeenProfile {
+  displayName: string;
+  ageRange: '13-15' | '16-17' | '18-19' | '';
+  preferredSekret: 'raylene' | 'rylane' | 'cloud' | 'night' | '';
+  setupComplete: boolean;
+}
+
+export interface ParentProfile {
+  displayName: string;
+  role: 'mom' | 'dad' | 'guardian' | 'caregiver' | 'other' | '';
+  teenNickname: string;
+  setupComplete: boolean;
+}
+
 export type PersonalityId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'oracle';
 
-// App screen route keys (legacy string router — kept for type safety during migration)
 export type ScreenKey =
   | 'home'
   | 'pages'
@@ -98,83 +103,71 @@ export type ScreenKey =
   | 'settings'
   | 'discover';
 
-// ─── Types previously missing from this file ─────────────────────────────────
-// These were referenced by hooks, store, sync, and several screens.
-
 export interface ParentCirclePost {
-  id:        number;
-  text:      string;
-  date:      string;
-  time:      string;
-  mood?:     string;
+  id: number;
+  text: string;
+  date: string;
+  time: string;
+  mood?: string;
   circleTag?: string;
   reactions?: {
-    felt?:       number;
-    comfort?:    number;
-    proud?:      number;
-    stay?:       number;
-    sameHere?:   number;
-    beenThere?:  number;
+    felt?: number;
+    comfort?: number;
+    proud?: number;
+    stay?: number;
+    sameHere?: number;
+    beenThere?: number;
     solidarity?: number;
-    reminder?:   number;
-    needed?:     number;
-    strength?:   number;
-    /** Generic fallback so reactToParentPost can index by string key safely. */
+    reminder?: number;
+    needed?: number;
+    strength?: number;
     [key: string]: number | undefined;
   };
 }
 
 export interface ComfortSession {
-  id:            number;
-  date:          string;
-  time:          string;
+  id: number;
+  date: string;
+  time: string;
   durationSecs?: number;
-  type:          string;
-  mood?:         string;
+  type: string;
+  mood?: string;
 }
 
 export interface CrewMember {
-  id:          string | number;
-  name:        string;
-  relation?:   string;
-  emoji?:      string;
+  id: string | number;
+  name: string;
+  relation?: string;
+  emoji?: string;
   commitment?: string;
-  cadence?:    'daily' | 'weekly' | 'whenever' | string;
+  cadence?: 'daily' | 'weekly' | 'whenever' | string;
   inviteCode?: string;
-  addedAt?:    string;
+  addedAt?: string;
 }
 
 export interface CrewCheckIn {
-  id:         number;
-  memberId:   string | number;
-  date:       string;
-  time:       string;
-  mood:       string;
-  note?:      string;
+  id: number;
+  memberId: string | number;
+  date: string;
+  time: string;
+  mood: string;
+  note?: string;
 }
 
-// ─── Page / Journal save input ────────────────────────────────────────────────
 export interface SavePageInput {
-  text:        string;
-  source:      string;
-  moodTag?:    string;
-  entryMode?:  string;
-  locked?:     boolean;
-  imageUri?:   string;
+  text: string;
+  source: string;
+  moodTag?: string;
+  entryMode?: string;
+  locked?: boolean;
+  imageUri?: string;
 }
 
-// ─── Bridge payload (re-exported for types/bridge.ts shim) ───────────────────
 export interface BridgePayload {
-  type:    string;
+  type: string;
   payload: unknown;
 }
 
-// ─── Vibe Lab ─────────────────────────────────────────────────────────────────
-/**
- * Represents a single Vibe Lab selection event.
- * Written to Supabase user_vibe_log by the Vibe Lab screen.
- * Oracle aggregates these to build the user's mood pattern signal.
- */
 export type VibeKey =
   | 'midnight'
   | 'rainyDay'
@@ -188,12 +181,10 @@ export type VibeKey =
   | 'softDay';
 
 export interface VibeLabEntry {
-  id:          number;
-  vibeKey:     VibeKey;
-  emoji:       string;
-  label:       string;
-  /** ISO timestamp of when the vibe was selected. */
-  selectedAt:  string;
-  /** Oracle mood signal derived from this vibe — written by the Worker. */
+  id: number;
+  vibeKey: VibeKey;
+  emoji: string;
+  label: string;
+  selectedAt: string;
   oracleSignal?: string;
 }
