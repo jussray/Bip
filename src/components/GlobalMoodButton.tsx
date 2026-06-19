@@ -2,64 +2,72 @@ import React, { useMemo, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAppContext } from '@/context/AppContext';
 
-const MOODS = [
-  { id: 'sad', emoji: '😔', label: 'sad', group: 'heavy' },
-  { id: 'anxious', emoji: '😰', label: 'anxious', group: 'heavy' },
-  { id: 'frustrated', emoji: '😤', label: 'frustrated', group: 'heavy' },
-  { id: 'angry', emoji: '😡', label: 'angry', group: 'heavy' },
-  { id: 'lonely', emoji: '🥺', label: 'lonely', group: 'heavy' },
-  { id: 'overwhelmed', emoji: '🌪️', label: 'overwhelmed', group: 'heavy' },
-  { id: 'hurt', emoji: '💔', label: 'hurt', group: 'heavy' },
-  { id: 'disappointed', emoji: '😞', label: 'disappointed', group: 'heavy' },
-  { id: 'numb', emoji: '😶', label: 'numb', group: 'heavy' },
-  { id: 'alone', emoji: '🫥', label: 'alone', group: 'heavy' },
-
-  { id: 'calm', emoji: '😌', label: 'calm', group: 'steady' },
-  { id: 'reflective', emoji: '☁️', label: 'reflective', group: 'steady' },
-  { id: 'tired', emoji: '😴', label: 'tired', group: 'steady' },
-  { id: 'okay', emoji: '🙂', label: 'okay', group: 'steady' },
-  { id: 'content', emoji: '🌱', label: 'content', group: 'steady' },
-  { id: 'thoughtful', emoji: '💭', label: 'thoughtful', group: 'steady' },
-  { id: 'hopeful', emoji: '🌈', label: 'hopeful', group: 'steady' },
-  { id: 'grateful', emoji: '🙏', label: 'grateful', group: 'steady' },
-  { id: 'confused', emoji: '😵‍💫', label: 'confused', group: 'steady' },
-
-  { id: 'proud', emoji: '🌟', label: 'proud', group: 'winning' },
-  { id: 'motivated', emoji: '🔥', label: 'motivated', group: 'winning' },
-  { id: 'confident', emoji: '😎', label: 'confident', group: 'winning' },
-  { id: 'excited', emoji: '🥳', label: 'excited', group: 'winning' },
-  { id: 'accomplished', emoji: '✨', label: 'accomplished', group: 'winning' },
-  { id: 'loved', emoji: '💜', label: 'loved', group: 'winning' },
-  { id: 'connected', emoji: '🤝', label: 'connected', group: 'winning' },
-  { id: 'celebrating', emoji: '🎉', label: 'celebrating', group: 'winning' },
-  { id: 'good', emoji: '😊', label: 'good', group: 'winning' },
-
-  { id: 'crushing', emoji: '😭', label: 'crushing', group: 'fun' },
-  { id: 'unbothered', emoji: '💅', label: 'unbothered', group: 'fun' },
-  { id: 'curious', emoji: '👀', label: 'curious', group: 'fun' },
-  { id: 'relieved', emoji: '😮‍💨', label: 'relieved', group: 'fun' },
-  { id: 'feeling-seen', emoji: '🫶', label: 'feeling seen', group: 'fun' },
-  { id: 'glow-up', emoji: '📈', label: 'glow up', group: 'fun' },
-  { id: 'playful', emoji: '😜', label: 'playful', group: 'fun' },
-  { id: 'bored', emoji: '🥱', label: 'bored', group: 'fun' },
+const EMOJI_LIBRARY = [
+  { id: 'happy', emoji: '😊', label: 'happy' },
+  { id: 'really-happy', emoji: '😄', label: 'really happy' },
+  { id: 'excited', emoji: '🤩', label: 'excited' },
+  { id: 'celebrating', emoji: '🥳', label: 'celebrating' },
+  { id: 'proud', emoji: '🥹', label: 'proud' },
+  { id: 'loved', emoji: '🥰', label: 'loved' },
+  { id: 'crushing', emoji: '😍', label: 'crushing' },
+  { id: 'playful', emoji: '😜', label: 'playful' },
+  { id: 'silly', emoji: '🤪', label: 'silly' },
+  { id: 'unbothered', emoji: '💅', label: 'unbothered' },
+  { id: 'confident', emoji: '😎', label: 'confident' },
+  { id: 'motivated', emoji: '🔥', label: 'motivated' },
+  { id: 'good', emoji: '✨', label: 'good' },
+  { id: 'hopeful', emoji: '🌈', label: 'hopeful' },
+  { id: 'grateful', emoji: '🙏', label: 'grateful' },
+  { id: 'connected', emoji: '🫶', label: 'connected' },
+  { id: 'calm', emoji: '😌', label: 'calm' },
+  { id: 'relieved', emoji: '😮‍💨', label: 'relieved' },
+  { id: 'okay', emoji: '🙂', label: 'okay' },
+  { id: 'neutral', emoji: '😐', label: 'neutral' },
+  { id: 'thoughtful', emoji: '🤔', label: 'thoughtful' },
+  { id: 'curious', emoji: '👀', label: 'curious' },
+  { id: 'confused', emoji: '😵‍💫', label: 'confused' },
+  { id: 'awkward', emoji: '🫠', label: 'awkward' },
+  { id: 'numb', emoji: '😶', label: 'numb' },
+  { id: 'bored', emoji: '🥱', label: 'bored' },
+  { id: 'tired', emoji: '😴', label: 'tired' },
+  { id: 'drained', emoji: '😩', label: 'drained' },
+  { id: 'overwhelmed', emoji: '🤯', label: 'overwhelmed' },
+  { id: 'anxious', emoji: '😰', label: 'anxious' },
+  { id: 'worried', emoji: '😟', label: 'worried' },
+  { id: 'sad', emoji: '😔', label: 'sad' },
+  { id: 'crying', emoji: '😭', label: 'crying' },
+  { id: 'hurt', emoji: '💔', label: 'hurt' },
+  { id: 'lonely', emoji: '🥺', label: 'lonely' },
+  { id: 'alone', emoji: '🫥', label: 'alone' },
+  { id: 'disappointed', emoji: '😞', label: 'disappointed' },
+  { id: 'frustrated', emoji: '😤', label: 'frustrated' },
+  { id: 'mad', emoji: '😡', label: 'mad' },
+  { id: 'annoyed', emoji: '🙄', label: 'annoyed' },
+  { id: 'grossed-out', emoji: '🤢', label: 'grossed out' },
+  { id: 'shocked', emoji: '😳', label: 'shocked' },
+  { id: 'scared', emoji: '😨', label: 'scared' },
+  { id: 'suspicious', emoji: '🤨', label: 'suspicious' },
+  { id: 'secretive', emoji: '🤫', label: 'secretive' },
+  { id: 'sleepy', emoji: '🌙', label: 'sleepy' },
+  { id: 'heavy', emoji: '🌧️', label: 'heavy' },
+  { id: 'peaceful', emoji: '☁️', label: 'peaceful' },
+  { id: 'glowing', emoji: '🌟', label: 'glowing' },
+  { id: 'healing', emoji: '🌱', label: 'healing' },
+  { id: 'winning', emoji: '🏆', label: 'winning' },
+  { id: 'locked-in', emoji: '🎯', label: 'locked in' },
+  { id: 'music', emoji: '🎧', label: 'in my music' },
+  { id: 'writing', emoji: '✍️', label: 'writing it out' },
+  { id: 'quiet', emoji: '🕯️', label: 'quiet' },
+  { id: 'chaotic', emoji: '🌪️', label: 'chaotic' },
 ] as const;
-
-const GROUPS = ['heavy', 'steady', 'winning', 'fun'] as const;
-
-const GROUP_LABELS: Record<(typeof GROUPS)[number], string> = {
-  heavy: 'heavy',
-  steady: 'steady',
-  winning: 'winning',
-  fun: 'fun + real life',
-};
 
 export function GlobalMoodButton() {
   const { mood, selectMood } = useAppContext();
   const [open, setOpen] = useState(false);
-  const selected = useMemo(() => MOODS.find(item => item.id === mood), [mood]);
+  const selected = useMemo(() => EMOJI_LIBRARY.find(item => item.id === mood), [mood]);
 
-  function choose(nextMood: string) {
-    selectMood(nextMood);
+  function choose(id: string) {
+    selectMood(id);
     setOpen(false);
   }
 
@@ -67,13 +75,13 @@ export function GlobalMoodButton() {
     <>
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel="Choose mood"
+        accessibilityLabel="Open emoji mood library"
         onPress={() => setOpen(true)}
         style={styles.floatingButton}
         activeOpacity={0.9}
       >
         <Text style={styles.floatingEmoji}>{selected?.emoji ?? '💭'}</Text>
-        <Text style={styles.floatingText}>{selected?.label ?? 'Mood'}</Text>
+        <Text style={styles.floatingText}>Mood</Text>
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -83,37 +91,32 @@ export function GlobalMoodButton() {
             <View style={styles.sheetHeader}>
               <View>
                 <Text style={styles.kicker}>MOOD</Text>
-                <Text style={styles.title}>How you bippin?</Text>
+                <Text style={styles.title}>Pick your emoji</Text>
               </View>
               <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeButton}>
                 <Text style={styles.closeText}>×</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.sub}>Tap the emotion that feels closest. You can change it anytime.</Text>
+            <Text style={styles.sub}>No explaining. Just tap the emoji that feels right.</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.moodContent}>
-              {GROUPS.map(group => (
-                <View key={group} style={styles.group}>
-                  <Text style={styles.groupLabel}>{GROUP_LABELS[group]}</Text>
-                  <View style={styles.grid}>
-                    {MOODS.filter(item => item.group === group).map(item => {
-                      const active = mood === item.id;
-                      return (
-                        <TouchableOpacity
-                          key={item.id}
-                          onPress={() => choose(item.id)}
-                          style={[styles.moodCard, active && styles.moodCardActive]}
-                          activeOpacity={0.85}
-                        >
-                          <Text style={styles.moodEmoji}>{item.emoji}</Text>
-                          <Text style={[styles.moodLabel, active && styles.moodLabelActive]}>{item.label}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.emojiGrid}>
+              {EMOJI_LIBRARY.map(item => {
+                const active = mood === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.label}
+                    accessibilityState={{ selected: active }}
+                    onPress={() => choose(item.id)}
+                    style={[styles.emojiButton, active && styles.emojiButtonActive]}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.emoji}>{item.emoji}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
@@ -130,7 +133,6 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 20,
     minHeight: 40,
-    maxWidth: 132,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 7,
@@ -140,8 +142,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.20)',
     backgroundColor: 'rgba(18,11,29,0.94)',
   },
-  floatingEmoji: { fontSize: 17 },
-  floatingText: { color: '#f2ebf5', fontSize: 10, fontWeight: '900', textTransform: 'capitalize' },
+  floatingEmoji: { fontSize: 18 },
+  floatingText: { color: '#f2ebf5', fontSize: 10, fontWeight: '900' },
   modalRoot: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(4,2,8,0.66)' },
   sheet: {
     maxHeight: '86%',
@@ -151,22 +153,31 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
     backgroundColor: '#130d1d',
     paddingTop: 20,
-    paddingHorizontal: 18,
-    paddingBottom: 28,
+    paddingHorizontal: 16,
+    paddingBottom: 26,
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   kicker: { color: '#c4b5fd', fontSize: 9, fontWeight: '900', letterSpacing: 1.8 },
-  title: { color: '#fff', fontSize: 23, fontWeight: '900', marginTop: 4 },
+  title: { color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 4 },
   closeButton: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
   closeText: { color: '#d8cfde', fontSize: 23 },
-  sub: { color: '#978d9e', fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 16 },
-  moodContent: { paddingBottom: 8 },
-  group: { marginBottom: 20 },
-  groupLabel: { color: '#8f8398', fontSize: 9, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 9 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  moodCard: { width: '31%', minHeight: 80, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center', padding: 8 },
-  moodCardActive: { borderColor: '#c4b5fd', backgroundColor: 'rgba(196,181,253,0.16)' },
-  moodEmoji: { fontSize: 26, marginBottom: 5 },
-  moodLabel: { color: '#aaa0b1', fontSize: 10, fontWeight: '800', textTransform: 'capitalize', textAlign: 'center' },
-  moodLabelActive: { color: '#fff' },
+  sub: { color: '#978d9e', fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 14 },
+  emojiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 10 },
+  emojiButton: {
+    width: '14.8%',
+    aspectRatio: 1,
+    minHeight: 52,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiButtonActive: {
+    borderColor: '#c4b5fd',
+    backgroundColor: 'rgba(196,181,253,0.18)',
+    transform: [{ scale: 1.06 }],
+  },
+  emoji: { fontSize: 28 },
 });
