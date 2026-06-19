@@ -1,13 +1,3 @@
-/**
- * app/index.tsx — app entry gate
- *
- * Every open shows the side-appropriate splash.
- * Tap the painted "Se'kret Bip ♡" button → enters the room.
- *
- *  - Known teen   → teen splash  → /teen/room
- *  - Known parent → parent splash → /parent/room
- *  - First visit  → side chooser → splash → room + commit side
- */
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
@@ -26,7 +16,6 @@ export default function Index() {
     );
   }
 
-  // Which side are we opening for? Known returning user OR just chose for first time.
   const activeSide = userSide ?? pendingSide;
 
   if (activeSide) {
@@ -34,15 +23,13 @@ export default function Index() {
       <SplashScreen
         userSide={activeSide}
         setScreen={() => {
-          // First-time visit: commit the choice now
           if (!userSide) setUserSide(activeSide);
-          router.replace(activeSide === 'parent' ? '/parent/room' : '/teen/room');
+          router.replace(activeSide === 'parent' ? '/(parent)/room' : '/(teen)/room');
         }}
       />
     );
   }
 
-  // First visit — side chooser
   return (
     <View style={styles.root}>
       <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
@@ -68,12 +55,11 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  root:      { flex: 1, backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  logo:      { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 8 },
-  tagline:   { color: '#94A3B8', fontSize: 15, marginBottom: 48 },
-  btn:       { width: '100%', borderRadius: 20, paddingVertical: 18, alignItems: 'center', marginBottom: 14 },
-  btnTeen:   { backgroundColor: '#6d28d9' },
+  root: { flex: 1, backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  logo: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 8 },
+  tagline: { color: '#94A3B8', fontSize: 15, marginBottom: 48 },
+  btn: { width: '100%', borderRadius: 20, paddingVertical: 18, alignItems: 'center', marginBottom: 14 },
+  btnTeen: { backgroundColor: '#6d28d9' },
   btnParent: { backgroundColor: '#1e3a2f' },
-  btnText:   { color: '#fff', fontSize: 17, fontWeight: '700' },
+  btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
 });
-
