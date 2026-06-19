@@ -9,7 +9,7 @@
 #   wrangler deploy
 
 name               = "bip"
-main               = "worker/sekret-reply.ts"
+main               = "worker/index.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
 
