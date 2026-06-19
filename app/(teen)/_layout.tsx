@@ -23,6 +23,7 @@ export default function TeenLayout() {
         <Tabs.Screen name="calm" options={{ title: 'Calm', tabBarIcon: () => <TabIcon emoji="🌙" /> }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🌐" /> }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="✨" /> }} />
+        <Tabs.Screen name="user-room" options={{ href: null }} />
         <Tabs.Screen name="sekret" options={{ href: null }} />
         <Tabs.Screen name="voicebip" options={{ href: null }} />
         <Tabs.Screen name="cloud" options={{ href: null }} />
