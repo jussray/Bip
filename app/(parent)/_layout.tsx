@@ -24,6 +24,7 @@ export default function ParentLayout() {
         <Tabs.Screen name="bridge" options={{ href: null }} />
         <Tabs.Screen name="voicebip" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
+        <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
       </Tabs>
       <SideSafeBackButton side="parent" />
