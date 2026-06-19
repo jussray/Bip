@@ -9,6 +9,7 @@ import {
 } from '../services/sekretMemory';
 import { extractOracleSignals, loadOracleRecord } from '../services/oracleProfile';
 import { buildSekretPresence, normalizeSekretPersonality } from '../services/sekretPresence';
+import { COMPANION_CURRICULUM, type CompanionId } from '../src/config/companionCurriculum';
 import type { CompanionActivityInput, CompanionLevel, CompanionState, MemorySummary } from '../types/sekretCompanion';
 
 const PERSONALITY_LABELS = {
@@ -34,7 +35,7 @@ const EMPTY_LEVEL: CompanionLevel = {
 const DEFAULT_STATE: CompanionState = {
   memorySummary: EMPTY_SUMMARY,
   companionLevel: EMPTY_LEVEL,
-  greeting: 'Hey love, I’m here.',
+  greeting: COMPANION_CURRICULUM.raylene.greeting,
   presenceMessage: 'You do not have to act fine with me.',
   checkIn: null,
   lastUpdated: '',
@@ -57,13 +58,14 @@ function buildLevel(summary: MemorySummary): CompanionLevel {
   };
 }
 
-function buildGreeting(personality: string, summary: MemorySummary): string {
-  const voice = normalizeSekretPersonality(personality);
+function buildGreeting(voice: CompanionId, summary: MemorySummary): string {
   const familiar = summary.conversations >= 3;
-  if (voice === 'rylane') return familiar ? 'Aight, you back. Talk to me—what’s really up?' : 'Aight, I’m here. Keep it real with me.';
-  if (voice === 'cloud') return familiar ? 'Welcome back. We can take this moment slowly.' : 'Come rest here a minute. No pressure.';
-  if (voice === 'night') return familiar ? 'You found me again. What followed you into tonight?' : 'Still awake? I’m right here.';
-  return familiar ? 'Hey love, you’re back. Tell me what’s on your heart.' : 'Hey love, I’m here. You can be real with me.';
+  if (!familiar) return COMPANION_CURRICULUM[voice].greeting;
+
+  if (voice === 'rylane') return 'Aight, you back. Run it back for me—what’s really up?';
+  if (voice === 'cloud') return 'You’re back. We can keep it small and gentle again.';
+  if (voice === 'night') return 'You found me again. Are we reflecting, planning, creating, or resetting tonight?';
+  return 'Girl, you’re back. Tell me the part you keep trying to make sound smaller.';
 }
 
 function snapshot(
@@ -72,13 +74,19 @@ function snapshot(
   oracleSignals?: { personalityNote?: string; growthEdge?: string },
 ): CompanionState {
   const memorySummary = summarizeSekretMemory(memory);
-  const voice = normalizeSekretPersonality(input.selectedSekret || memory.selectedPersonality);
+  const voice = normalizeSekretPersonality(input.selectedSekret || memory.selectedPersonality) as CompanionId;
   const personality = PERSONALITY_LABELS[voice];
+  const curriculum = COMPANION_CURRICULUM[voice];
+  const curriculumSignal = {
+    personalityNote: [oracleSignals?.personalityNote, curriculum.coreIdentity].filter(Boolean).join(' '),
+    growthEdge: [oracleSignals?.growthEdge, curriculum.hiddenTeachingGoals.slice(0, 3).join(', ')].filter(Boolean).join(' | '),
+  };
+
   return {
     memorySummary,
     companionLevel: buildLevel(memorySummary),
-    greeting: buildGreeting(personality, memorySummary),
-    presenceMessage: buildSekretPresence(memorySummary, personality, input.screen, oracleSignals),
+    greeting: buildGreeting(voice, memorySummary),
+    presenceMessage: buildSekretPresence(memorySummary, personality, input.screen, curriculumSignal),
     checkIn: buildSekretCheckIn(memorySummary, personality, input.mood, input.isLateNight, input, memory),
     lastUpdated: memory.lastUpdated,
     personality,
