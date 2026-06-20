@@ -1,1 +1,1 @@
-export { default } from '../../parent/calm';
+export { default } from '../parent/calm';

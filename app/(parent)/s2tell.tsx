@@ -1,1 +1,1 @@
-export { default } from '../../parent/s2tell';
+export { default } from '../parent/s2tell';

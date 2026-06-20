@@ -18,6 +18,10 @@ export const TEEN_ROUTES = {
   profile: '/(teen)/profile',
   companionPicker: '/(teen)/chat',
   userRoom: '/(teen)/user-room',
+  bippin2: '/(teen)/bippin2',
+  growth: '/(teen)/growth',
+  mindReset: '/(teen)/mind-body-reset?mode=mindReset',
+  bodyReset: '/(teen)/mind-body-reset?mode=bodyReset',
 } as const;
 
 export type TeenRouteKey = keyof typeof TEEN_ROUTES;

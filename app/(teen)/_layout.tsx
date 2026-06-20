@@ -47,6 +47,9 @@ export default function TeenLayout() {
         <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="chat/index" options={{ href: null }} />
         <Tabs.Screen name="chat/[personalityId]" options={{ href: null }} />
+        <Tabs.Screen name="bippin2" options={{ href: null }} />
+        <Tabs.Screen name="growth" options={{ href: null }} />
+        <Tabs.Screen name="mind-body-reset" options={{ href: null }} />
       </Tabs>
       <SideSafeBackButton side="teen" />
       <GlobalMoodButton />
