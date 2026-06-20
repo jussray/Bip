@@ -1,1 +1,1 @@
-export { default } from '../../parent/period-calendar';
+export { default } from '../parent/period-calendar';

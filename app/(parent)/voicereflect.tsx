@@ -1,1 +1,1 @@
-export { default } from '../../parent/voicereflect';
+export { default } from '../parent/voicereflect';

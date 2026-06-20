@@ -28,7 +28,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
       voicereflect:   PARENT_ROUTES.voiceReflect,
       periodCalendar: PARENT_ROUTES.periodCalendar,
       coach:          PARENT_ROUTES.room,
-      sekret:         PARENT_ROUTES.room,
+      sekret:         PARENT_ROUTES.sekret,
     };
     return parentMap[key] ?? PARENT_ROUTES.room;
   }
@@ -64,7 +64,11 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     memories: TEEN_ROUTES.circle,
     music:    TEEN_ROUTES.calm,
     rewards:  TEEN_ROUTES.points,
-    vibeLab:  TEEN_ROUTES.userRoom,
+    vibeLab:   TEEN_ROUTES.userRoom,
+    bippin2:   TEEN_ROUTES.bippin2,
+    growth:    TEEN_ROUTES.growth,
+    mindReset: TEEN_ROUTES.mindReset,
+    bodyReset: TEEN_ROUTES.bodyReset,
   };
   return teenMap[key] ?? TEEN_ROUTES.room;
 }

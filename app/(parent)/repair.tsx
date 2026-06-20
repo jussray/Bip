@@ -1,1 +1,1 @@
-export { default } from '../../parent/repair';
+export { default } from '../parent/repair';
