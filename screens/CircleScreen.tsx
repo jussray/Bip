@@ -286,6 +286,7 @@ function FriendsFeed({ myUserId }: { myUserId: string }) {
     const newComment: CircleComment = {
       id: Date.now(),
       post_id: postId,
+      post_type: 'friends',
       user_id: myUserId,
       nickname: 'Me',
       avatar_emoji: '💜',
@@ -393,6 +394,7 @@ function CrewFeed({ myUserId }: { myUserId: string }) {
     const newComment: CircleComment = {
       id: Date.now(),
       post_id: postId,
+      post_type: 'crew',
       user_id: myUserId,
       nickname: 'Me',
       avatar_emoji: '💜',
@@ -500,6 +502,7 @@ function ParentFeed({ myUserId }: { myUserId: string }) {
     const newComment: CircleComment = {
       id: Date.now(),
       post_id: postId,
+      post_type: 'parent',
       user_id: myUserId,
       nickname: 'Parent',
       avatar_emoji: '🌿',
@@ -606,7 +609,7 @@ function Composer({
   const [confirmedPost, setConfirmedPost] = useState(false);
 
   const destinations = COMPOSER_DESTINATIONS.filter(d =>
-    d.key !== 'parent' || activeTab === 'parent'
+    d.tab !== 'parent' || activeTab === 'parent'
   );
 
   const handleTextChange = (val: string) => {
@@ -649,12 +652,12 @@ function Composer({
           <View style={styles.composerTabs}>
             {destinations.map(d => (
               <TouchableOpacity
-                key={d.key}
-                style={[styles.composerTab, selectedTab === d.key && styles.composerTabActive]}
-                onPress={() => setSelectedTab(d.key as CircleTab)}
+                key={d.tab}
+                style={[styles.composerTab, selectedTab === d.tab && styles.composerTabActive]}
+                onPress={() => setSelectedTab(d.tab)}
               >
-                <Text style={[styles.composerTabText, selectedTab === d.key && styles.composerTabTextActive]}>
-                  {d.emoji} {d.label}
+                <Text style={[styles.composerTabText, selectedTab === d.tab && styles.composerTabTextActive]}>
+                  {d.label}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -731,7 +734,7 @@ function AddToCircleModal({ onClose }: { onClose: () => void }) {
             </TouchableOpacity>
           </View>
           {sent ? (
-            <Text style={[styles.emptyText, { marginTop: 24 }]}>✅ {CIRCLE_TERMS.requestSent}</Text>
+            <Text style={[styles.emptyText, { marginTop: 24 }]}>✅ {CIRCLE_TERMS.friendRequest} sent 💜</Text>
           ) : (
             <>
               <TextInput
