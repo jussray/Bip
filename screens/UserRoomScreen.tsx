@@ -27,8 +27,8 @@ import {
   type RoomPhase,
   type VibeKey,
 } from '../constants/theme';
-import { STICKER_REGISTRY, type StickerCharacter } from '../constants/characterStickers';
 import STICKER_IMAGES from '../constants/stickerImages';
+import { FURNISH_CATALOG, type FurnishCategory } from '../constants/furnishingCatalog';
 import { BareRoomRenderer } from '../components/rooms/BareRoomRenderer';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 
@@ -305,10 +305,29 @@ const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
 const safe = (src: ImageSourcePropType | undefined, fallback: ImageSourcePropType): ImageSourcePropType =>
   src ?? fallback;
 
+// Resolve image for any placed item — checks furnish catalog first, falls back to sticker images
+function resolveItemSource(id: string): ImageSourcePropType | null {
+  const fi = FURNISH_CATALOG.find(i => i.id === id);
+  if (fi) return fi.source;
+  const si = STICKER_IMAGES[id];
+  return si ?? null;
+}
+
+// Category filter metadata for decor tab
+const CATEGORY_META: Record<FurnishCategory | 'all', { label: string; emoji: string }> = {
+  all:         { label: 'all',         emoji: '✦'  },
+  furniture:   { label: 'furniture',   emoji: '🛏️'  },
+  lighting:    { label: 'lighting',    emoji: '✨'  },
+  decor:       { label: 'decor',       emoji: '🖼️'  },
+  accessories: { label: 'accessories', emoji: '🎧'  },
+  plants:      { label: 'plants',      emoji: '🌿'  },
+  characters:  { label: 'characters',  emoji: '💜'  },
+};
+
 // ─── VibeLab2Sheet ────────────────────────────────────────────────────────────
 
 type VLTab = 'room' | 'lighting' | 'companion' | 'decor' | 'vibe';
-type DecorFilter = 'all' | StickerCharacter;
+type DecorFilter = 'all' | FurnishCategory;
 const CHARACTERS: Character[] = ['raylene', 'rylane', 'cloud', 'night'];
 
 interface VibeLab2SheetProps {
@@ -337,19 +356,29 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
 
   const sheetY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] });
 
-  const filteredStickers = useMemo(() =>
-    decorFilter === 'all'
-      ? STICKER_REGISTRY
-      : STICKER_REGISTRY.filter(s => s.character === decorFilter),
-    [decorFilter],
-  );
+  // Items scoped to this room's origin (+ shared) then filtered by category
+  const filteredItems = useMemo(() => {
+    const byOrigin = FURNISH_CATALOG.filter(
+      fi => fi.origin === draft.baseRoomId || fi.origin === 'shared',
+    );
+    return decorFilter === 'all' ? byOrigin : byOrigin.filter(fi => fi.category === decorFilter);
+  }, [decorFilter, draft.baseRoomId]);
 
   const addSticker = useCallback((stickerId: string) => {
     setDraft(d => {
-      if (d.placedItems.length >= MAX_PLACED) return d;
-      const slot = PLACE_SLOTS[d.placedItems.length % PLACE_SLOTS.length];
+      const newFi      = FURNISH_CATALOG.find(fi => fi.id === stickerId);
+      const newCat     = newFi?.category;
+      // Non-character categories replace any existing item of the same category
+      const base = (newCat && newCat !== 'characters')
+        ? d.placedItems.filter(p => {
+            const pFi = FURNISH_CATALOG.find(fi => fi.id === p.stickerId);
+            return pFi?.category !== newCat;
+          })
+        : d.placedItems;
+      if (base.length >= MAX_PLACED) return d;
+      const slot = PLACE_SLOTS[base.length % PLACE_SLOTS.length];
       const uid  = `${stickerId}-${Date.now()}`;
-      return { ...d, placedItems: [...d.placedItems, { uid, stickerId, ...slot, scale: 1 }] };
+      return { ...d, placedItems: [...base, { uid, stickerId, ...slot, scale: 1 }] };
     });
   }, []);
 
@@ -462,48 +491,55 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
           </ScrollView>
         )}
 
-        {/* Decor / furnishing picker */}
+        {/* Decor / furnishing picker — items sourced from this room's style catalog */}
         {tab === 'decor' && (
           <View style={{ flex: 1 }}>
-            {/* Character filter chips */}
+            {/* Category filter chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.filterRow} contentContainerStyle={vl.filterContent}>
-              {(['all', 'raylene', 'rylane', 'cloud'] as DecorFilter[]).map(f => (
-                <TouchableOpacity
-                  key={f}
-                  style={[vl.filterChip, decorFilter === f && vl.filterChipActive]}
-                  onPress={() => setDecorFilter(f)}
-                >
-                  <Text style={[vl.filterChipText, decorFilter === f && vl.filterChipTextActive]}>
-                    {f === 'all' ? '✦ all' : f === 'raylene' ? '💜 raylene' : f === 'rylane' ? '⚡ rylane' : '☁️ cloud'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {(['all', 'furniture', 'lighting', 'decor', 'accessories', 'plants', 'characters'] as DecorFilter[]).map(f => {
+                const meta = CATEGORY_META[f];
+                return (
+                  <TouchableOpacity
+                    key={f}
+                    style={[vl.filterChip, decorFilter === f && vl.filterChipActive]}
+                    onPress={() => setDecorFilter(f)}
+                  >
+                    <Text style={[vl.filterChipText, decorFilter === f && vl.filterChipTextActive]}>
+                      {meta.emoji} {meta.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
 
-            {/* Sticker grid */}
+            {/* Catalog grid — room-native items + shared */}
             <ScrollView style={vl.decorScroll} contentContainerStyle={vl.decorGrid} showsVerticalScrollIndicator={false}>
-              {filteredStickers.map(sticker => {
-                const src = STICKER_IMAGES[sticker.id];
-                const placed = draft.placedItems.filter(i => i.stickerId === sticker.id).length;
+              {filteredItems.map(fi => {
+                const src    = fi.source;
+                const placed = draft.placedItems.filter(p => p.stickerId === fi.id).length;
                 const atCap  = draft.placedItems.length >= MAX_PLACED;
                 return (
                   <TouchableOpacity
-                    key={sticker.id}
+                    key={fi.id}
                     style={[vl.decorCell, atCap && !placed && vl.decorCellDim]}
-                    onPress={() => !atCap && addSticker(sticker.id)}
+                    onPress={() => !atCap && addSticker(fi.id)}
                     activeOpacity={0.75}
                     disabled={atCap && !placed}
                   >
                     {src
                       ? <Image source={src} style={vl.decorThumb} resizeMode="contain" />
-                      : <View style={vl.decorPlaceholder} />
+                      : (
+                        <View style={vl.decorPlaceholder}>
+                          <Text style={vl.decorPlaceholderEmoji}>{fi.emoji}</Text>
+                        </View>
+                      )
                     }
                     {placed > 0 && (
                       <View style={vl.decorBadge}>
                         <Text style={vl.decorBadgeText}>{placed}</Text>
                       </View>
                     )}
-                    <Text style={vl.decorLabel} numberOfLines={1}>{sticker.emotion}</Text>
+                    <Text style={vl.decorLabel} numberOfLines={1}>{fi.label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -515,10 +551,14 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
                 <Text style={vl.placedTitle}>in your room ({draft.placedItems.length}/{MAX_PLACED})</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={vl.placedRow}>
                   {draft.placedItems.map(pi => {
-                    const src = STICKER_IMAGES[pi.stickerId];
+                    const src = resolveItemSource(pi.stickerId);
+                    const fi  = FURNISH_CATALOG.find(f => f.id === pi.stickerId);
                     return (
                       <View key={pi.uid} style={vl.placedChip}>
-                        {src && <Image source={src} style={vl.placedThumb} resizeMode="contain" />}
+                        {src
+                          ? <Image source={src} style={vl.placedThumb} resizeMode="contain" />
+                          : <Text style={vl.decorPlaceholderEmoji}>{fi?.emoji ?? '✦'}</Text>
+                        }
                         <View style={vl.scaleBtnRow}>
                           <TouchableOpacity style={vl.scaleBtn} onPress={() => scaleItem(pi.uid, -0.25)}>
                             <Text style={vl.scaleBtnText}>−</Text>
@@ -846,7 +886,7 @@ export function UserRoomScreen({
 
       {/* ── LAYER 3: Placed decor / furnishing items ─────────────────── */}
       {userRoom.placedItems.map(item => {
-        const src = STICKER_IMAGES[item.stickerId];
+        const src = resolveItemSource(item.stickerId);
         if (!src) return null;
         const sz = width * 0.2 * item.scale;
         return (
@@ -1206,7 +1246,8 @@ const vl = StyleSheet.create({
   },
   decorCellDim: { opacity: 0.35 },
   decorThumb:   { width: 46, height: 46 },
-  decorPlaceholder: { width: 46, height: 46, backgroundColor: 'rgba(147,51,234,0.12)', borderRadius: 8 },
+  decorPlaceholder: { width: 46, height: 46, backgroundColor: 'rgba(147,51,234,0.12)', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  decorPlaceholderEmoji: { fontSize: 20 },
   decorLabel:   { color: 'rgba(196,181,253,0.6)', fontSize: 8, marginTop: 4, textAlign: 'center', paddingHorizontal: 2 },
   decorBadge: {
     position: 'absolute', top: 4, right: 4,
