@@ -233,6 +233,24 @@ export const IMAGES: Record<string, number> = {
   cloudHeadphonesV2:   require('../../assets/images/cloud-headphones-v2.png'),
   cloudSleepy:         require('../../assets/images/cloud-sleepy.png'),
   cloudStormy:         require('../../assets/images/cloud-stormy.png'),
+  // Se'kret Replies avatar moods consumed by app/(teen)/pages.tsx.
+  // Missing here previously caused blank journal avatars for raylene moods,
+  // cloud, and night companions (keys resolved to undefined).
+  rayleneThinking:     require('../../assets/images/raylene-thinking-new.png'),
+  rayleneConfident:    require('../../assets/images/raylene-confident-new.png'),
+  rayleeneSad:         require('../../assets/images/raylene-sad-new.png'),
+  cloudAvatarNeutral:  require('../../assets/images/cloud.png'),
+  cloudAvatarHappy:    require('../../assets/images/cloud-happy.png'),
+  cloudAvatarThinking: require('../../assets/images/cloud-headphones.png'),
+  cloudAvatarWriting:  require('../../assets/images/cloud-headphones-v2.png'),
+  cloudAvatarWindow:   require('../../assets/images/cloud-sleepy.png'),
+  nightNeutral:        require('../../assets/images/night-neutral.png'),
+  nightHappy:          require('../../assets/images/night-happy.png'),
+  nightListening:      require('../../assets/images/night-listening.png'),
+  nightProtective:     require('../../assets/images/night-protective.png'),
+  nightRelaxed:        require('../../assets/images/night-relaxed.png'),
+  nightSoftsmile:      require('../../assets/images/night-softsmile.png'),
+  nightThinking:       require('../../assets/images/night-thinking.png'),
 };
 
 // ─── Avatar map ───────────────────────────────────────────────────────────────
