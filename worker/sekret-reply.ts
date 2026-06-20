@@ -15,6 +15,7 @@ type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge';
 type AudioFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
 type OpenAIVoice = string | { id: string };
+type ConversationRole = 'user' | 'assistant';
 
 interface Env {
   OPENAI_API_KEY: string;
@@ -31,7 +32,6 @@ interface ReplyRequestBody {
   userText?: unknown;
   memory?: unknown;
   parentSharingEnabled?: unknown;
-  // legacy client fields
   text?: unknown;
   context?: unknown;
   personality?: unknown;
@@ -46,12 +46,18 @@ interface VoiceRequestBody {
   format?: unknown;
 }
 
+interface ConversationTurn {
+  role: ConversationRole;
+  content: string;
+}
+
 interface CompanionReply {
   reply: string;
   tone: string;
   safetyFlag: boolean;
   parentShareSummary: string | null;
   suggestedComfortTool: string | null;
+  replySource: 'openai' | 'fallback';
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -60,11 +66,39 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const CHARACTER_FALLBACKS: Record<CharacterId, string> = {
-  raylene: "I'm glad you put words to it. I'm an AI companion, not a person, but I can help you slow it down: what part feels loudest right now?",
-  rylane: "Good you said it. I'm an AI companion, not a human, so don't make me your only place with this — what's the real part?",
-  cloud: "No rush. I'm an AI companion, and we can make this smaller for one breath.",
-  night: "Stay close. I'm an AI companion, not a person; if this is too heavy, get a real safe person near you.",
+const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
+  raylene: [
+    'Okay, I hear you. Which part of that is sitting heaviest on you right now?',
+    'You do not have to make it sound neat for me. Say the messy version.',
+    'Whew, yeah—that would get under my skin too. Do you need comfort, honesty, or a game plan?',
+    'Let’s slow it down, love. What do you wish somebody understood about this?',
+    'That sounds like a lot to carry at once. Start with the part you keep replaying.',
+    'I caught that. Is this more hurt, anger, embarrassment, or all of it mixed together?',
+  ],
+  rylane: [
+    'Yeah, that is real. What is the part you have not said out loud yet?',
+    'Good, you said it. Do you want to vent or figure out your next move?',
+    'You do not have to act unbothered in here. Give me the honest version.',
+    'Hold up—before you blame yourself, what did the other person actually do?',
+    'Let’s keep it simple. What is the one thing you need most right now?',
+    'That would throw anybody off. What part can you actually control tonight?',
+  ],
+  cloud: [
+    'We can make this smaller. Take one breath, then tell me the gentlest place to begin.',
+    'No rush. You do not have to solve the whole feeling right now.',
+    'We do not have to fix it. We can just name what hurts first.',
+    'You can pause here. What would make the next five minutes feel a little safer?',
+    'I am listening. You can say it slowly, badly, or not all at once.',
+    'You are allowed to need softness right now. What kind would actually help?',
+  ],
+  night: [
+    'Yeah… nights make everything talk louder. What thought keeps circling back?',
+    'You do not have to pretend you are fine in here. Tell me the version you hide during the day.',
+    'Let’s not rush past it. What did this make you believe about yourself?',
+    'I hear the weight in that. Do you want truth, quiet, or a next step?',
+    'Some things hit different when it gets quiet. What are you afraid this means?',
+    'You can sit in the real feeling without becoming it. Name the sharpest part.',
+  ],
 };
 
 const BUILT_IN_VOICES: Record<CharacterId, string> = {
@@ -87,12 +121,13 @@ function json(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), { status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
 }
 
-function normalizeCharacter(value: unknown): CharacterId {
-  const raw = typeof value === 'string' ? value.toLowerCase() : '';
-  if (raw.includes('rylane')) return 'rylane';
-  if (raw.includes('cloud')) return 'cloud';
-  if (raw.includes('night')) return 'night';
-  return 'raylene';
+function normalizeCharacter(value: unknown): CharacterId | null {
+  const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (raw === 'raylene' || raw.includes('raylene')) return 'raylene';
+  if (raw === 'rylane' || raw.includes('rylane')) return 'rylane';
+  if (raw === 'cloud' || raw.includes('cloud')) return 'cloud';
+  if (raw === 'night' || raw.includes('night')) return 'night';
+  return null;
 }
 
 function normalizeSurface(value: unknown): Surface {
@@ -105,6 +140,49 @@ function normalizeSurface(value: unknown): Surface {
 function safeMemory(value: unknown): string {
   if (!value || typeof value !== 'object') return 'none';
   return JSON.stringify(value).slice(0, 1200);
+}
+
+function normalizeHistory(value: unknown): ConversationTurn[] {
+  if (!Array.isArray(value)) return [];
+  const turns: ConversationTurn[] = [];
+  for (const item of value.slice(-12)) {
+    if (!item || typeof item !== 'object') continue;
+    const record = item as Record<string, unknown>;
+    const role: ConversationRole | null = record.role === 'assistant' || record.role === 'sekret'
+      ? 'assistant'
+      : record.role === 'user' || record.role === 'teen'
+        ? 'user'
+        : null;
+    const rawContent = typeof record.content === 'string'
+      ? record.content
+      : typeof record.text === 'string'
+        ? record.text
+        : typeof record.reply === 'string'
+          ? record.reply
+          : '';
+    const content = rawContent.trim().slice(0, 1200);
+    if (role && content) turns.push({ role, content });
+  }
+  return turns.slice(-10);
+}
+
+function stableHash(value: string): number {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+  return Math.abs(hash);
+}
+
+function getFallbackReply(characterId: CharacterId, userText: string, history: ConversationTurn[]): string {
+  const options = CHARACTER_FALLBACKS[characterId];
+  const recentReplies = new Set(
+    history.filter((turn) => turn.role === 'assistant').slice(-4).map((turn) => turn.content.trim().toLowerCase()),
+  );
+  const start = stableHash(`${characterId}:${userText.toLowerCase()}`) % options.length;
+  for (let offset = 0; offset < options.length; offset += 1) {
+    const candidate = options[(start + offset) % options.length];
+    if (!recentReplies.has(candidate.toLowerCase())) return candidate;
+  }
+  return options[start];
 }
 
 function getCustomVoiceId(characterId: CharacterId, env: Env): string | undefined {
@@ -131,52 +209,73 @@ function normalizeAudioFormat(value: unknown): AudioFormat {
 
 function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): CompanionReply {
   const lead = characterId === 'rylane'
-    ? "Real talk: your safety comes first."
+    ? 'Real talk: your safety comes first.'
     : characterId === 'cloud'
-      ? "Pause with me for one breath. Your safety matters first."
+      ? 'Pause with me for one breath. Your safety matters first.'
       : characterId === 'night'
-        ? "Stay here for this moment. Get a real person close."
-        : "Love, this is bigger than holding it alone right now.";
+        ? 'Stay here for this moment. Get a real person close.'
+        : 'Love, this is bigger than holding it alone right now.';
   return {
     reply: `${lead} I'm an AI companion, not a human or emergency service. If you might hurt yourself, someone is hurting you, or you are in danger, tell a trusted adult now and call 911 if it is immediate. In the U.S. you can call or text 988, or text HOME to 741741.`,
     tone: 'supportive-safety',
     safetyFlag: true,
     parentShareSummary: parentSharingEnabled ? 'Safety concern: teen may need trusted adult or emergency support.' : null,
     suggestedComfortTool: 'safety-plan',
+    replySource: 'fallback',
   };
 }
 
-function buildBrainPrompt(characterId: CharacterId, surface: Surface, mood?: string, memory?: unknown, parentSharingEnabled?: boolean): string {
+function buildBrainPrompt(characterId: CharacterId, surface: Surface, mood: string | undefined, memory: unknown, parentSharingEnabled: boolean, history: ConversationTurn[]): string {
+  const recentReplies = history
+    .filter((turn) => turn.role === 'assistant')
+    .slice(-5)
+    .map((turn) => `- ${turn.content}`)
+    .join('\n') || '- none';
   return [
     ORACLE_HIDDEN_GUIDANCE,
     getWorkerCompanionRole(characterId),
     `Surface: ${surface}. Mood: ${mood || 'not provided'}. Teen-safe memory summary: ${safeMemory(memory)}.`,
-    `Parent sharing enabled: ${Boolean(parentSharingEnabled)}. Only create parentShareSummary for safety concerns or when sharing is enabled and the summary is teen-safe; never expose private journal text verbatim.`,
+    `Parent sharing enabled: ${parentSharingEnabled}. Only create parentShareSummary for safety concerns or when sharing is enabled and the summary is teen-safe; never expose private journal text verbatim.`,
     'Never encourage dependency. Encourage real trusted people, breaks, journaling, grounding, or safety support when appropriate.',
-    'If self-harm, disappearing, abuse, danger, or crisis appears, use supportive safety language and encourage trusted adult/emergency help.',
-    'Replies should usually be one to four short conversational sentences and may comfort, reflect, gently challenge, motivate, plan, celebrate, teach, or redirect depending on context.',
+    'Reply directly to the teen’s newest words and carry forward useful details from recent conversation.',
+    'Do not reuse an opening, sentence, question, catchphrase, or response structure from recent assistant replies.',
+    'Vary naturally between comfort, reflection, light humor, gentle challenge, planning, celebration, teaching, and quiet presence.',
+    'Do not always end with a question. Avoid generic therapy filler. Do not repeat that you are an AI unless safety or dependency boundaries require it.',
+    `Recent assistant replies to avoid repeating:\n${recentReplies}`,
+    'Replies should usually be one to four short conversational sentences.',
     'Return only valid JSON with keys reply, tone, safetyFlag, parentShareSummary, suggestedComfortTool. No markdown.',
   ].join('\n');
 }
 
 async function handleReply(request: Request, env: Env): Promise<Response> {
-  if (!env.OPENAI_API_KEY) return json({ ...crisisReply('raylene', false), safetyFlag: false, reply: CHARACTER_FALLBACKS.raylene });
   let body: ReplyRequestBody;
   try { body = await request.json() as ReplyRequestBody; } catch { return json({ error: 'Invalid JSON' }, 400); }
   const userText = (typeof body.userText === 'string' ? body.userText : typeof body.text === 'string' ? body.text : '').trim();
   if (!userText) return json({ error: 'userText is required' }, 400);
   const characterId = normalizeCharacter(body.characterId ?? body.personality);
+  if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, or night' }, 400);
   const surface = normalizeSurface(body.surface ?? body.context);
   const parentSharingEnabled = body.parentSharingEnabled === true;
+  const history = normalizeHistory(body.history);
   if (CRISIS_RE.test(userText)) return json(crisisReply(characterId, parentSharingEnabled));
+
+  const fallbackReply = getFallbackReply(characterId, userText, history);
+  if (!env.OPENAI_API_KEY) {
+    return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: 'journal', replySource: 'fallback' });
+  }
 
   try {
     const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini', temperature: 0.7, max_tokens: 260, response_format: { type: 'json_object' },
+        model: 'gpt-4o-mini',
+        temperature: 0.9,
+        max_tokens: 300,
+        response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: buildBrainPrompt(characterId, surface, typeof body.mood === 'string' ? body.mood : undefined, body.memory, parentSharingEnabled) },
+          { role: 'system', content: buildBrainPrompt(characterId, surface, typeof body.mood === 'string' ? body.mood : undefined, body.memory, parentSharingEnabled, history) },
+          ...history,
           { role: 'user', content: userText.slice(0, 4000) },
         ],
       }),
@@ -184,16 +283,19 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
     if (!res.ok) throw new Error(`OpenAI ${res.status}`);
     const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
     const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}') as Partial<CompanionReply>;
+    const openAIReply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
+    if (!openAIReply) throw new Error('OpenAI returned an empty reply');
     return json({
-      reply: String(parsed.reply || CHARACTER_FALLBACKS[characterId]),
+      reply: openAIReply,
       tone: String(parsed.tone || characterId),
       safetyFlag: Boolean(parsed.safetyFlag),
       parentShareSummary: typeof parsed.parentShareSummary === 'string' ? parsed.parentShareSummary : null,
       suggestedComfortTool: typeof parsed.suggestedComfortTool === 'string' ? parsed.suggestedComfortTool : null,
+      replySource: 'openai',
     });
-  } catch (err) {
-    console.error('[sekret/reply]', err);
-    return json({ reply: CHARACTER_FALLBACKS[characterId], tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: 'journal' });
+  } catch (error) {
+    console.error('[sekret/reply]', error);
+    return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: 'journal', replySource: 'fallback' });
   }
 }
 
@@ -205,6 +307,7 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
   if (!text) return json({ error: 'reply is required' }, 400);
 
   const characterId = normalizeCharacter(body.characterId);
+  if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, or night' }, 400);
   const format = normalizeAudioFormat(body.format);
   const selectedVoice = getVoice(characterId, env);
   const res = await fetch('https://api.openai.com/v1/audio/speech', {
