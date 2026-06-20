@@ -34,7 +34,8 @@ import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 
 const { width, height } = Dimensions.get('window');
 
-const STORAGE_KEY = 'sekretbip_user_room_v1';
+const STORAGE_KEY    = 'sekretbip_user_room_v2';
+const STORAGE_KEY_V1 = 'sekretbip_user_room_v1';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -680,15 +681,31 @@ export function UserRoomScreen({
   });
   const [vibeLabOpen, setVibeLabOpen] = useState(false);
 
-  // Load persisted config on mount
+  // Load persisted config on mount — migrates v1 saves to v2, clearing old sticker placements
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then(raw => {
-      if (!raw) return;
-      try {
-        const saved = JSON.parse(raw) as Partial<UserRoomConfig>;
-        setUserRoom(prev => ({ ...prev, ...saved }));
-      } catch {}
-    });
+    (async () => {
+      const raw2 = await AsyncStorage.getItem(STORAGE_KEY);
+      if (raw2) {
+        try { setUserRoom(prev => ({ ...prev, ...(JSON.parse(raw2) as Partial<UserRoomConfig>) })); } catch {}
+        return;
+      }
+      // v1 → v2 migration: carry room/lighting/companion settings, drop old sticker placements
+      const raw1 = await AsyncStorage.getItem(STORAGE_KEY_V1);
+      if (raw1) {
+        try {
+          const old = JSON.parse(raw1) as Partial<UserRoomConfig>;
+          const migrated: Partial<UserRoomConfig> = {
+            baseRoomId:   old.baseRoomId,
+            lightingMode: old.lightingMode,
+            companionId:  old.companionId,
+            roomName:     old.roomName ?? '',
+            placedItems:  [], // old sticker IDs don't match new catalog — start fresh
+          };
+          setUserRoom(prev => ({ ...prev, ...migrated }));
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_USER_ROOM, ...migrated })).catch(() => {});
+        } catch {}
+      }
+    })();
   }, []);
 
   const saveUserRoom = useCallback((cfg: UserRoomConfig) => {
