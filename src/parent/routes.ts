@@ -1,11 +1,16 @@
 export const PARENT_ROUTES = {
-  room: '/(parent)/room',
-  pages: '/(parent)/pages',
-  circle: '/(parent)/circle',
-  bridge: '/(parent)/bridge',
-  voiceBip: '/(parent)/voicebip',
-  more: '/(parent)/more',
-  settings: '/(parent)/settings',
+  room:           '/(parent)/room',
+  pages:          '/(parent)/pages',
+  circle:         '/(parent)/circle',
+  bridge:         '/(parent)/bridge',
+  voiceBip:       '/(parent)/voicebip',
+  more:           '/(parent)/more',
+  settings:       '/(parent)/settings',
+  calm:           '/(parent)/calm',
+  s2tell:         '/(parent)/s2tell',
+  repair:         '/(parent)/repair',
+  voiceReflect:   '/(parent)/voicereflect',
+  periodCalendar: '/(parent)/period-calendar',
 } as const;
 
 export type ParentRouteKey = keyof typeof PARENT_ROUTES;
