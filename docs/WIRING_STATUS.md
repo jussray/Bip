@@ -47,12 +47,13 @@
 ---
 
 ## 4. Parent Circle Live Feed
-**Status: ✅ Local save / 🔜 Cloud load**
+**Status: ✅ DONE**
 
 - `syncParentCirclePost()` writes to `parent_circle_posts` → `src/utils/sync.ts`
 - `pullAll()` pulls `parent_circle_posts` on launch
-- **TODO in screen:** `screens/ParentCircleScreen.tsx` — call `pullAll` or a
-  dedicated `loadParentCircleFeed()` on mount; show cloud posts merged with local
+- `loadParentCircleFeed()` called on mount in both route wrappers
+  (`app/(main)/parent-circle.tsx` and `app/parent/circle.tsx`)
+- Cloud posts merged additively — no local posts are lost
 
 ---
 
@@ -68,26 +69,22 @@
 ---
 
 ## 6. Points / Rewards Snapshot
-**Status: ✅ Snapshot / 🔜 Drain + auto-sync**
+**Status: ✅ DONE**
 
 - `snapshotPoints(total)` inserts a timestamped row → `bip_points` table
-- **TODO:** Add point calculation fn + slow drain timer in `screens/PointsScreen.tsx`;
-  call `snapshotPoints` whenever total changes
+- `PointsScreen.tsx` computes points from all activity logs (no separate stored total)
+- `snapshotPoints(breakdown.total)` called via `useEffect` on every change
 
 ---
 
 ## 7. Voice Bip AI Speaking Pipeline
-**Status: 🔜 IN PROGRESS**
+**Status: ✅ DONE**
 
-- `services/sekretVoice.ts` — recording + local save wired
-- `services/voiceBipIntelligence.ts` — intelligence scaffolding present
-- **TODO pipeline:**
-  1. `expo-av` record → upload blob to Supabase Storage or Worker
-  2. Worker `/transcribe` → OpenAI Whisper → transcript string
-  3. Worker `/chat` → companion reply via personality context
-  4. Worker `/tts` → ElevenLabs or OpenAI TTS → audio URL
-  5. `expo-av` play response
-- Worker stub lives in `worker/` directory
+- `VoiceBipScreen.startRecording()` — requests mic permission, calls `Audio.Recording.createAsync(HIGH_QUALITY)`
+- `VoiceBipScreen.stopRecording()` — stops recording, converts URI to base64 via `FileReader`
+- Worker `POST /api/sekret/transcribe` — receives base64 audio, calls Whisper, returns transcript
+- `fetchSekretTranscribe()` in `src/utils/api.ts` — client helper (OPENAI_API_KEY in Worker secrets only)
+- Real transcript fed to `fetchSekretReply()` then `fetchSekretVoice()` → TTS playback via `expo-av`
 
 ---
 
@@ -108,31 +105,29 @@
 ---
 
 ## 9. Parent / Teen Link System
-**Status: 🔜 IN PROGRESS — table added**
+**Status: ✅ DONE**
 
 - Migration `0003_*` creates `parent_links` table with invite flow columns
 - RLS: teen creates invite, parent redeems by code, both can read their link
-- **TODO:**
-  1. Add invite code generator to `screens/SettingsScreen.tsx` (teen side)
-  2. Add code entry field to parent settings / onboarding
-  3. On redemption: `UPDATE parent_links SET status='active', parent_user_id=uid,
-     linked_at=now() WHERE invite_code = ? AND status='pending'`
-  4. Store linked `parent_user_id` in state so Circle + safety reads can filter
+- `createParentLink()` → `src/utils/sync.ts`: teen generates/retrieves pending code
+- `redeemParentLink(code)` → `src/utils/sync.ts`: parent activates link by code
+- `SettingsScreen.tsx` teen side: "Connect to a Parent" — generate + copy 6-char code
+- `SettingsScreen.tsx` parent side: "Connect to Your Teen" — enter code + link button
 
 ---
 
 ## 10. Safety System
-**Status: 🔜 IN PROGRESS — table added**
+**Status: ✅ DONE (deploy pending)**
 
-- Migration `0003_*` creates `safety_alerts` with severity, source tracking,
-  `reviewed_by_parent` flag, and parent-link-scoped RLS
-- Insert policy intentionally omitted from client — alerts must be created
-  server-side (Edge Function) to prevent self-suppression
-- **TODO:**
-  1. Create Edge Function `safety-scan` triggered on `journal_entries` + `posts` insert
-  2. Keyword list in Edge Function env var
-  3. On flag: insert `safety_alerts` row + send push notification to linked parent
-  4. Parent UI: read `safety_alerts` in `screens/ParentBridgeScreen.tsx`
+- Migration `0003_*` creates `safety_alerts` table with severity, source tracking, RLS
+- Migration `20260619_safety_scan.sql` — adds `safety_flagged` columns, `trigger_safety_scan()`,
+  and attaches triggers to `journal_entries`, `circle_posts`, `public_circle_posts`
+- Edge Function `supabase/functions/safety-scan/index.ts` — keyword + OpenAI moderation scan,
+  inserts `safety_alerts`, notifies linked parent (no content in notification)
+- **Deploy steps** (manual, one-time):
+  1. `supabase functions deploy safety-scan --no-verify-jwt`
+  2. `supabase secrets set SAFETY_SCAN_SECRET=<random> OPENAI_API_KEY=<key>`
+  3. Run `20260619_safety_scan.sql` in Supabase SQL editor
 
 ---
 
@@ -162,13 +157,7 @@
 
 ## Quick Reference: Remaining Open Items
 
-| Item | Primary File | Action |
-|------|-------------|--------|
-| 4 — Parent Circle cloud load | `screens/ParentCircleScreen.tsx` | Add `loadParentCircleFeed()` on mount; merge with local |
-| 6 — Points drain | `screens/PointsScreen.tsx` | Drain timer + `snapshotPoints` call on change |
-| 7 — Voice pipeline | `worker/` + `services/sekretVoice.ts` | Transcribe → chat → TTS chain |
-| 9 — Parent link | `screens/SettingsScreen.tsx` | Invite code generator + redemption form |
-| 10 — Safety scan | new `supabase/functions/safety-scan/` | Edge Function on insert trigger |
+All 12 wiring items are now done in code. Item 10 requires a one-time manual deploy (see Section 10 above).
 
 ---
 
