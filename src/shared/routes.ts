@@ -9,19 +9,26 @@ export const SIDE_ROOTS = {
 export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: string): string {
   if (side === 'parent') {
     const parentMap: Record<string, string> = {
-      home: PARENT_ROUTES.room,
-      room: PARENT_ROUTES.room,
-      pages: PARENT_ROUTES.pages,
-      parentPages: PARENT_ROUTES.pages,
-      circle: PARENT_ROUTES.circle,
-      parentCircle: PARENT_ROUTES.circle,
-      bridge: PARENT_ROUTES.bridge,
-      parentBridge: PARENT_ROUTES.bridge,
-      voiceBip: PARENT_ROUTES.voiceBip,
-      voicebip: PARENT_ROUTES.voiceBip,
-      settings: PARENT_ROUTES.settings,
-      more: PARENT_ROUTES.more,
-      sekret: PARENT_ROUTES.room,
+      home:           PARENT_ROUTES.room,
+      room:           PARENT_ROUTES.room,
+      pages:          PARENT_ROUTES.pages,
+      parentPages:    PARENT_ROUTES.pages,
+      circle:         PARENT_ROUTES.circle,
+      parentCircle:   PARENT_ROUTES.circle,
+      bridge:         PARENT_ROUTES.bridge,
+      parentBridge:   PARENT_ROUTES.bridge,
+      voiceBip:       PARENT_ROUTES.voiceBip,
+      voicebip:       PARENT_ROUTES.voiceBip,
+      settings:       PARENT_ROUTES.settings,
+      more:           PARENT_ROUTES.more,
+      calm:           PARENT_ROUTES.calm,
+      s2tell:         PARENT_ROUTES.s2tell,
+      repair:         PARENT_ROUTES.repair,
+      voiceReflect:   PARENT_ROUTES.voiceReflect,
+      voicereflect:   PARENT_ROUTES.voiceReflect,
+      periodCalendar: PARENT_ROUTES.periodCalendar,
+      coach:          PARENT_ROUTES.room,
+      sekret:         PARENT_ROUTES.sekret,
     };
     return parentMap[key] ?? PARENT_ROUTES.room;
   }
@@ -57,7 +64,11 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     memories: TEEN_ROUTES.circle,
     music:    TEEN_ROUTES.calm,
     rewards:  TEEN_ROUTES.points,
-    vibeLab:  TEEN_ROUTES.userRoom,
+    vibeLab:   TEEN_ROUTES.userRoom,
+    bippin2:   TEEN_ROUTES.bippin2,
+    growth:    TEEN_ROUTES.growth,
+    mindReset: TEEN_ROUTES.mindReset,
+    bodyReset: TEEN_ROUTES.bodyReset,
   };
   return teenMap[key] ?? TEEN_ROUTES.room;
 }

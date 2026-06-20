@@ -552,3 +552,56 @@ export async function pullAll(): Promise<{
     return null;
   }
 }
+
+// ── Parent ↔ Teen Link ────────────────────────────────────────────────────────
+
+function generateInviteCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+export async function createParentLink(): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data: existing } = await sb
+      .from('parent_links')
+      .select('invite_code')
+      .eq('teen_user_id', uid)
+      .eq('status', 'pending')
+      .maybeSingle();
+    if (existing?.invite_code) return existing.invite_code as string;
+    const code = generateInviteCode();
+    const { error } = await sb.from('parent_links').insert({ teen_user_id: uid, invite_code: code });
+    if (error) throw error;
+    return code;
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] createParentLink failed', e);
+    return null;
+  }
+}
+
+export async function redeemParentLink(
+  code: string,
+): Promise<'ok' | 'not_found' | 'error'> {
+  const sb = getSupabase();
+  if (!sb) return 'error';
+  const uid = await currentUserId();
+  if (!uid) return 'error';
+  try {
+    const { data, error } = await sb
+      .from('parent_links')
+      .update({ parent_user_id: uid, status: 'active', linked_at: new Date().toISOString() })
+      .eq('invite_code', code.toUpperCase().trim())
+      .eq('status', 'pending')
+      .select('id')
+      .single();
+    if (error || !data) return 'not_found';
+    return 'ok';
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] redeemParentLink failed', e);
+    return 'error';
+  }
+}

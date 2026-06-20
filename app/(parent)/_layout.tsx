@@ -25,6 +25,12 @@ export default function ParentLayout() {
         <Tabs.Screen name="voicebip" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="profile" options={{ href: null }} />
+        <Tabs.Screen name="calm" options={{ href: null }} />
+        <Tabs.Screen name="s2tell" options={{ href: null }} />
+        <Tabs.Screen name="repair" options={{ href: null }} />
+        <Tabs.Screen name="voicereflect" options={{ href: null }} />
+        <Tabs.Screen name="period-calendar" options={{ href: null }} />
+        <Tabs.Screen name="sekret" options={{ href: null }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
       </Tabs>
       <SideSafeBackButton side="parent" />

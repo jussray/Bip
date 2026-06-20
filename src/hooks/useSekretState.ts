@@ -14,6 +14,8 @@ import type {
   CirclePost,
   VoiceNote,
   ParentCirclePost,
+  CrewMember,
+  CrewCheckIn,
 } from '@/types';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
 
@@ -40,6 +42,12 @@ export function useSekretState() {
   const [parentOracleProfile, setParentOracleProfile]   = useState<OracleProfile | null>(null);
   const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
+  // ── Crew state (teen + parent, separate lists) ────────────────────────────
+  const [crewMembers, setCrewMembers]               = useState<CrewMember[]>([]);
+  const [crewCheckIns, setCrewCheckIns]             = useState<CrewCheckIn[]>([]);
+  const [parentCrewMembers, setParentCrewMembers]   = useState<CrewMember[]>([]);
+  const [parentCrewCheckIns, setParentCrewCheckIns] = useState<CrewCheckIn[]>([]);
+
   // Load persisted state on mount
   useEffect(() => {
     (async () => {
@@ -63,6 +71,10 @@ export function useSekretState() {
       if (state.parentVoiceNotes)       setParentVoiceNotes(state.parentVoiceNotes);
       if (state.parentOracleProfile)    setParentOracleProfile(state.parentOracleProfile);
       if (state.parentOracleSessions)   setParentOracleSessions(state.parentOracleSessions);
+      if (Array.isArray(state.crewMembers))        setCrewMembers(state.crewMembers);
+      if (Array.isArray(state.crewCheckIns))       setCrewCheckIns(state.crewCheckIns);
+      if (Array.isArray(state.parentCrewMembers))  setParentCrewMembers(state.parentCrewMembers);
+      if (Array.isArray(state.parentCrewCheckIns)) setParentCrewCheckIns(state.parentCrewCheckIns);
       setIsLoading(false);
     })();
   }, []);
@@ -77,6 +89,8 @@ export function useSekretState() {
         parentPagesDraft, parentPagesEntries,
         parentCirclePosts, parentCirclePostText,
         parentVoiceNotes, parentOracleProfile, parentOracleSessions,
+        crewMembers, crewCheckIns,
+        parentCrewMembers, parentCrewCheckIns,
       });
     }
   }, [
@@ -86,6 +100,8 @@ export function useSekretState() {
     parentPagesDraft, parentPagesEntries,
     parentCirclePosts, parentCirclePostText,
     parentVoiceNotes, parentOracleProfile, parentOracleSessions,
+    crewMembers, crewCheckIns,
+    parentCrewMembers, parentCrewCheckIns,
     isLoading,
   ]);
 
@@ -109,6 +125,10 @@ export function useSekretState() {
     parentVoiceNotes, setParentVoiceNotes,
     parentOracleProfile, setParentOracleProfile,
     parentOracleSessions, setParentOracleSessions,
+    crewMembers, setCrewMembers,
+    crewCheckIns, setCrewCheckIns,
+    parentCrewMembers, setParentCrewMembers,
+    parentCrewCheckIns, setParentCrewCheckIns,
     isLoading,
   };
 }

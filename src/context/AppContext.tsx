@@ -18,6 +18,7 @@ import React, {
 } from 'react';
 import { Animated } from 'react-native';
 import { useSekretState } from '@/hooks/useSekretState';
+import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { HOME_MESSAGES } from '@constants/theme';
 import type {
   JournalEntry,
@@ -25,6 +26,8 @@ import type {
   MoodEntry,
   VoiceNote,
   ParentCirclePost,
+  CrewMember,
+  CrewCheckIn,
 } from '@/types';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
 
@@ -67,6 +70,7 @@ interface AppContextValue {
   breatheAnim: Animated.Value;
   isLoading: boolean;
   syncStatus: 'idle' | 'syncing' | 'synced' | 'failed' | 'local';
+  withSyncWrap: (fn: () => Promise<void>) => Promise<void>;
   notificationsEnabled: boolean;
   setNotificationsEnabled: (enabled: boolean) => void;
 
@@ -92,6 +96,18 @@ interface AppContextValue {
   parentOracleSessions: OracleSessionSummary[];
   setParentOracleSessions: React.Dispatch<React.SetStateAction<OracleSessionSummary[]>>;
 
+  // Crew (teen)
+  crewMembers: CrewMember[];
+  setCrewMembers: React.Dispatch<React.SetStateAction<CrewMember[]>>;
+  crewCheckIns: CrewCheckIn[];
+  setCrewCheckIns: React.Dispatch<React.SetStateAction<CrewCheckIn[]>>;
+
+  // Crew (parent)
+  parentCrewMembers: CrewMember[];
+  setParentCrewMembers: React.Dispatch<React.SetStateAction<CrewMember[]>>;
+  parentCrewCheckIns: CrewCheckIn[];
+  setParentCrewCheckIns: React.Dispatch<React.SetStateAction<CrewCheckIn[]>>;
+
   // Parent actions
   saveParentPageEntry: () => void;
   saveParentCirclePost: () => void;
@@ -116,6 +132,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
+  const { syncStatus, withSyncWrap } = useSyncStatus();
 
   useEffect(() => {
     Animated.loop(
@@ -218,7 +235,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     homeMessageIndex,
     breatheAnim,
     isLoading: s.isLoading,
-    syncStatus: 'idle',
+    syncStatus,
+    withSyncWrap,
     notificationsEnabled,
     setNotificationsEnabled,
     // parent
@@ -242,6 +260,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setParentOracleProfile: s.setParentOracleProfile,
     parentOracleSessions: s.parentOracleSessions,
     setParentOracleSessions: s.setParentOracleSessions,
+    crewMembers: s.crewMembers,
+    setCrewMembers: s.setCrewMembers,
+    crewCheckIns: s.crewCheckIns,
+    setCrewCheckIns: s.setCrewCheckIns,
+    parentCrewMembers: s.parentCrewMembers,
+    setParentCrewMembers: s.setParentCrewMembers,
+    parentCrewCheckIns: s.parentCrewCheckIns,
+    setParentCrewCheckIns: s.setParentCrewCheckIns,
     saveParentPageEntry,
     saveParentCirclePost,
     reactToParentPost,
