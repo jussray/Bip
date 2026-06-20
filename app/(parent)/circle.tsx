@@ -1,39 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { BipCrewScreen } from '@screens/BipCrewScreen';
 import { THEME_PACKS } from '@/constants/theme';
-import { loadState, saveState } from '@/utils';
 import { routeForSide } from '@/shared/routes';
 import ParentCircle from '../(main)/parent-circle';
-import type { CrewMember, CrewCheckIn } from '@/types';
 
 type Tab = 'circle' | 'crew';
 
 export default function ParentCircleRoute() {
-  const { theme, parentMood, parentRoomStyle } = useAppContext();
+  const {
+    theme, parentMood, parentRoomStyle,
+    parentCrewMembers, setParentCrewMembers,
+    parentCrewCheckIns, setParentCrewCheckIns,
+  } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
   const [tab, setTab] = useState<Tab>('circle');
-  const [crewMembers, setCrewMembers] = useState<CrewMember[]>([]);
-  const [crewCheckIns, setCrewCheckIns] = useState<CrewCheckIn[]>([]);
-  const [loaded, setLoaded] = useState(false);
 
-  // Parents use rylane voice for dad-style, raylene for everything else
+  // Map parent room style to the companion voice used by BipCrewScreen
   const companion = parentRoomStyle === 'dad' ? 'rylane' : 'raylene';
-
-  useEffect(() => {
-    void loadState().then(s => {
-      if (Array.isArray(s.parentCrewMembers))  setCrewMembers(s.parentCrewMembers);
-      if (Array.isArray(s.parentCrewCheckIns)) setCrewCheckIns(s.parentCrewCheckIns);
-      setLoaded(true);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-    void saveState({ parentCrewMembers: crewMembers, parentCrewCheckIns: crewCheckIns });
-  }, [crewMembers, crewCheckIns, loaded]);
 
   return (
     <View style={s.root}>
@@ -60,10 +46,10 @@ export default function ParentCircleRoute() {
             t={t}
             mood={parentMood}
             selectedSekret={companion}
-            crewMembers={crewMembers}
-            setCrewMembers={setCrewMembers}
-            crewCheckIns={crewCheckIns}
-            setCrewCheckIns={setCrewCheckIns}
+            crewMembers={parentCrewMembers}
+            setCrewMembers={setParentCrewMembers}
+            crewCheckIns={parentCrewCheckIns}
+            setCrewCheckIns={setParentCrewCheckIns}
             setScreen={(screen: string) => router.push(routeForSide('parent', screen) as any)}
             BottomNav={null}
           />
