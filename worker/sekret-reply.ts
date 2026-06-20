@@ -5,15 +5,24 @@
  *   POST /api/sekret/reply  -> companion brain JSON
  *   POST /api/sekret/voice  -> OpenAI TTS audio for an existing reply
  *
- * Holds OPENAI_API_KEY as a Worker secret. Never expose this key to Expo.
+ * Holds OPENAI_API_KEY and optional custom voice IDs as Worker secrets.
+ * Never expose these values to Expo.
  */
 
 import { getWorkerCompanionRole, ORACLE_HIDDEN_GUIDANCE } from './companion-curriculum';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge';
+type AudioFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
+type OpenAIVoice = string | { id: string };
 
-interface Env { OPENAI_API_KEY: string }
+interface Env {
+  OPENAI_API_KEY: string;
+  RAYLENE_VOICE_ID?: string;
+  RYLANE_VOICE_ID?: string;
+  CLOUD_VOICE_ID?: string;
+  NIGHT_VOICE_ID?: string;
+}
 
 interface ReplyRequestBody {
   characterId?: unknown;
@@ -58,6 +67,20 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string> = {
   night: "Stay close. I'm an AI companion, not a person; if this is too heavy, get a real safe person near you.",
 };
 
+const BUILT_IN_VOICES: Record<CharacterId, string> = {
+  raylene: 'nova',
+  rylane: 'ash',
+  cloud: 'shimmer',
+  night: 'onyx',
+};
+
+const VOICE_INSTRUCTIONS: Record<CharacterId, string> = {
+  raylene: 'Speak like a warm, expressive 15-to-16-year-old girl. Keep the delivery youthful, natural, quick, emotionally present, and conversational. Do not sound childlike, overly polished, clinical, or like an adult narrator. Preserve natural slang and light profanity exactly when it appears in the input.',
+  rylane: 'Speak like an approachable 16-to-17-year-old boy. Sound relaxed, smooth, grounded, and conversational with natural pacing. Do not sound like a radio host, therapist, or much older adult. Preserve natural slang and light profanity exactly when it appears in the input.',
+  cloud: 'Speak softly and youthfully with a light, calm, airy quality. Keep the flow smooth and comforting without sounding babyish, sleepy, whispery, or overly slow. Preserve the wording exactly.',
+  night: 'Speak with a slightly deeper youthful voice and confident late-night energy. Keep the pace natural and a little quicker, grounded and inviting rather than sad, sleepy, ominous, or theatrical. Preserve natural slang and light profanity exactly when it appears in the input.',
+};
+
 const CRISIS_RE = /\b(kill myself|end my life|want to die|suicid(?:e|al)|self[- ]?harm|hurt myself|cut myself|disappear forever|run away|abuse|abused|assault|unsafe|not safe|danger|emergency)\b/i;
 
 function json(data: unknown, status = 200): Response {
@@ -82,6 +105,28 @@ function normalizeSurface(value: unknown): Surface {
 function safeMemory(value: unknown): string {
   if (!value || typeof value !== 'object') return 'none';
   return JSON.stringify(value).slice(0, 1200);
+}
+
+function getCustomVoiceId(characterId: CharacterId, env: Env): string | undefined {
+  const value = characterId === 'raylene'
+    ? env.RAYLENE_VOICE_ID
+    : characterId === 'rylane'
+      ? env.RYLANE_VOICE_ID
+      : characterId === 'cloud'
+        ? env.CLOUD_VOICE_ID
+        : env.NIGHT_VOICE_ID;
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed || undefined;
+}
+
+function getVoice(characterId: CharacterId, env: Env): { voice: OpenAIVoice; source: 'custom' | 'built-in' } {
+  const customVoiceId = getCustomVoiceId(characterId, env);
+  if (customVoiceId) return { voice: { id: customVoiceId }, source: 'custom' };
+  return { voice: BUILT_IN_VOICES[characterId], source: 'built-in' };
+}
+
+function normalizeAudioFormat(value: unknown): AudioFormat {
+  return value === 'opus' || value === 'aac' || value === 'flac' || value === 'wav' ? value : 'mp3';
 }
 
 function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): CompanionReply {
@@ -158,17 +203,39 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
   try { body = await request.json() as VoiceRequestBody; } catch { return json({ error: 'Invalid JSON' }, 400); }
   const text = (typeof body.reply === 'string' ? body.reply : typeof body.text === 'string' ? body.text : '').trim();
   if (!text) return json({ error: 'reply is required' }, 400);
+
   const characterId = normalizeCharacter(body.characterId);
-  const voiceMap: Record<CharacterId, string> = { raylene: 'nova', rylane: 'onyx', cloud: 'shimmer', night: 'alloy' };
-  const format = body.format === 'opus' || body.format === 'aac' || body.format === 'flac' || body.format === 'wav' ? body.format : 'mp3';
+  const format = normalizeAudioFormat(body.format);
+  const selectedVoice = getVoice(characterId, env);
   const res = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
-    body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice: voiceMap[characterId], input: text.slice(0, 4000), response_format: format }),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini-tts',
+      voice: selectedVoice.voice,
+      input: text.slice(0, 4000),
+      instructions: VOICE_INSTRUCTIONS[characterId],
+      response_format: format,
+    }),
   });
-  if (!res.ok) return json({ error: 'tts failed' }, 502);
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    console.error('[sekret/voice]', res.status, detail.slice(0, 500));
+    return json({ error: 'tts failed' }, 502);
+  }
+
   const bytes = new Uint8Array(await res.arrayBuffer());
-  let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);
-  return json({ audioBase64: btoa(binary), contentType: `audio/${format === 'mp3' ? 'mpeg' : format}`, characterId });
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+
+  return json({
+    audioBase64: btoa(binary),
+    contentType: `audio/${format === 'mp3' ? 'mpeg' : format}`,
+    characterId,
+    voiceSource: selectedVoice.source,
+    aiGenerated: true,
+  });
 }
 
 export default {
