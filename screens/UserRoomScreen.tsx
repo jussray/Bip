@@ -43,7 +43,7 @@ export type LightingMode = RoomPhase | 'auto';
 
 export interface PlacedItem {
   uid:       string;     // unique instance id
-  stickerId: string;     // CharacterSticker.id from STICKER_REGISTRY
+  stickerId: string;     // FurnishItem.id from FURNISH_CATALOG
   x:         number;     // % from left (0–100)
   y:         number;     // % from top  (0–100)
   scale:     number;     // default 1.0
@@ -322,7 +322,6 @@ const CATEGORY_META: Record<FurnishCategory | 'all', { label: string; emoji: str
   decor:       { label: 'decor',       emoji: '🖼️'  },
   accessories: { label: 'accessories', emoji: '🎧'  },
   plants:      { label: 'plants',      emoji: '🌿'  },
-  characters:  { label: 'characters',  emoji: '💜'  },
 };
 
 // ─── VibeLab2Sheet ────────────────────────────────────────────────────────────
@@ -369,8 +368,8 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
     setDraft(d => {
       const newFi      = FURNISH_CATALOG.find(fi => fi.id === stickerId);
       const newCat     = newFi?.category;
-      // Non-character categories replace any existing item of the same category
-      const base = (newCat && newCat !== 'characters')
+      // Each category allows only one item at a time — placing a new one replaces the old
+      const base = newCat
         ? d.placedItems.filter(p => {
             const pFi = FURNISH_CATALOG.find(fi => fi.id === p.stickerId);
             return pFi?.category !== newCat;
@@ -497,7 +496,7 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
           <View style={{ flex: 1 }}>
             {/* Category filter chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.filterRow} contentContainerStyle={vl.filterContent}>
-              {(['all', 'furniture', 'lighting', 'decor', 'accessories', 'plants', 'characters'] as DecorFilter[]).map(f => {
+              {(['all', 'furniture', 'lighting', 'decor', 'accessories', 'plants'] as DecorFilter[]).map(f => {
                 const meta = CATEGORY_META[f];
                 return (
                   <TouchableOpacity
