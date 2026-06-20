@@ -124,6 +124,7 @@ export function VoiceBipScreen({
   const [showArchive,      setShowArchive]       = useState(false);
   const [voicePromptIdx,   setVoicePromptIdx]    = useState(0);
   const [isRecording,      setIsRecording]       = useState(false);
+  const [isRecordingStarting, setIsRecordingStarting] = useState(false);
   const [recorded,         setRecorded]          = useState(false);
   const [sekretReply,      setSekretReply]       = useState('');
   const [replyAudioUri,    setReplyAudioUri]     = useState('');
@@ -224,6 +225,7 @@ export function VoiceBipScreen({
     const { granted } = await Audio.requestPermissionsAsync();
     if (!granted) return;
 
+    setIsRecordingStarting(true);
     setIsRecording(true);
     setRecorded(false);
     setSekretReply('');
@@ -276,6 +278,7 @@ export function VoiceBipScreen({
     await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
     const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
     recordingRef.current = recording;
+    setIsRecordingStarting(false);
   };
 
   const stopRecording = async () => {
@@ -296,7 +299,11 @@ export function VoiceBipScreen({
     const recording = recordingRef.current;
     recordingRef.current = null;
     if (recording) {
-      await recording.stopAndUnloadAsync();
+      try {
+        await recording.stopAndUnloadAsync();
+      } catch {
+        // Android E_AUDIO_NODATA: Stop tapped before any audio data was captured
+      }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       const uri = recording.getURI();
       if (uri) {
@@ -500,8 +507,8 @@ export function VoiceBipScreen({
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => {
-              if (isRecording) stopRecording();
-              else setShowBipMenu(true);
+              if (isRecording && !isRecordingStarting) stopRecording();
+              else if (!isRecording) setShowBipMenu(true);
             }}
           >
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.microphone.label}</Text>}
@@ -574,7 +581,7 @@ export function VoiceBipScreen({
                 />
               ))}
             </View>
-            <TouchableOpacity style={styles.stopBtn} onPress={stopRecording}>
+            <TouchableOpacity style={[styles.stopBtn, isRecordingStarting && { opacity: 0.4 }]} onPress={stopRecording} disabled={isRecordingStarting}>
               <Text style={styles.stopBtnText}>⏹ Stop</Text>
             </TouchableOpacity>
           </View>
