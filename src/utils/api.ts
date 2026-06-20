@@ -176,26 +176,6 @@ export async function fetchSekretVoice(input: {
   }
 }
 
-export async function fetchSekretTranscribe(input: {
-  audioBase64: string;
-  contentType: string;
-}): Promise<string | null> {
-  if (!BASE_URL || !input.audioBase64) return null;
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/transcribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { transcript?: string };
-    const transcript = typeof data.transcript === 'string' ? data.transcript.trim() : '';
-    return transcript || null;
-  } catch {
-    return null;
-  }
-}
-
 export async function fetchSekretReply(
   text: string,
   context: SekretSurface | string = 'journal',

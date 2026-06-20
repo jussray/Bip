@@ -46,11 +46,6 @@ interface VoiceRequestBody {
   format?: unknown;
 }
 
-interface TranscribeRequestBody {
-  audioBase64?: unknown;
-  contentType?: unknown;
-}
-
 interface ConversationTurn {
   role: ConversationRole;
   content: string;
@@ -346,52 +341,11 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
   });
 }
 
-async function handleTranscribe(request: Request, env: Env): Promise<Response> {
-  if (!env.OPENAI_API_KEY) return json({ error: 'transcription unavailable' }, 503);
-  let body: TranscribeRequestBody;
-  try { body = await request.json() as TranscribeRequestBody; } catch { return json({ error: 'Invalid JSON' }, 400); }
-  const audioBase64 = typeof body.audioBase64 === 'string' ? body.audioBase64.trim() : '';
-  if (!audioBase64) return json({ error: 'audioBase64 is required' }, 400);
-  const contentType = typeof body.contentType === 'string' && body.contentType ? body.contentType : 'audio/m4a';
-  const ext = contentType.includes('webm') ? 'webm'
-    : contentType.includes('ogg') ? 'ogg'
-    : contentType.includes('wav') ? 'wav'
-    : contentType.includes('mp3') || contentType.includes('mpeg') ? 'mp3'
-    : 'm4a';
-
-  try {
-    const binaryString = atob(audioBase64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-    const formData = new FormData();
-    formData.append('file', new Blob([bytes], { type: contentType }), `audio.${ext}`);
-    formData.append('model', 'whisper-1');
-    formData.append('language', 'en');
-    const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
-      body: formData,
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => '');
-      console.error('[sekret/transcribe]', res.status, detail.slice(0, 500));
-      return json({ error: 'transcription failed' }, 502);
-    }
-    const data = await res.json() as { text?: string };
-    const transcript = typeof data.text === 'string' ? data.text.trim() : '';
-    return json({ transcript });
-  } catch (error) {
-    console.error('[sekret/transcribe]', error);
-    return json({ error: 'transcription error' }, 500);
-  }
-}
-
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
     const path = new URL(request.url).pathname;
-    if (path.endsWith('/api/sekret/transcribe')) return handleTranscribe(request, env);
     if (path.endsWith('/api/sekret/voice')) return handleVoice(request, env);
     if (path.endsWith('/api/sekret/reply')) return handleReply(request, env);
     return json({ error: 'Not found' }, 404);

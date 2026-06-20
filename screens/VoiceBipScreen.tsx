@@ -32,7 +32,7 @@ import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { VoiceNote } from '../types/bridge';
 import { Audio } from 'expo-av';
-import { fetchSekretReply, fetchSekretVoice, fetchSekretTranscribe } from '../utils/api';
+import { fetchSekretReply, fetchSekretVoice } from '../utils/api';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
@@ -132,8 +132,6 @@ export function VoiceBipScreen({
   const [recordingTime,    setRecordingTime]     = useState(0);
   const [selectedBipType,  setSelectedBipType]   = useState<string | null>(null);
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
-
   // Animations
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim  = useRef(new Animated.Value(0)).current;
@@ -220,10 +218,7 @@ export function VoiceBipScreen({
     transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
   };
 
-  const startRecording = async () => {
-    const { granted } = await Audio.requestPermissionsAsync();
-    if (!granted) return;
-
+  const startRecording = () => {
     setIsRecording(true);
     setRecorded(false);
     setSekretReply('');
@@ -272,10 +267,6 @@ export function VoiceBipScreen({
     timerRef.current = setInterval(() => {
       setRecordingTime(t => t + 1);
     }, 1000);
-
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-    const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-    recordingRef.current = recording;
   };
 
   const stopRecording = async () => {
@@ -291,36 +282,9 @@ export function VoiceBipScreen({
     glowAnim.setValue(0);
     waveAnims.forEach(a => a.setValue(0.3));
 
-    // Stop the real recording and transcribe
-    let transcript: string | null = null;
-    const recording = recordingRef.current;
-    recordingRef.current = null;
-    if (recording) {
-      await recording.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = recording.getURI();
-      if (uri) {
-        try {
-          const fetchRes = await fetch(uri);
-          const blob = await fetchRes.blob();
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const dataUrl = reader.result as string;
-              resolve(dataUrl.split(',')[1] ?? '');
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          transcript = await fetchSekretTranscribe({ audioBase64: base64, contentType: blob.type || 'audio/m4a' });
-        } catch {
-          // transcription failed; companion will respond to a generic prompt
-        }
-      }
-    }
-
     const noteId = Date.now();
-    const intelligence = prepareIntelligence(noteId, transcript);
+    // Real transcription is a Phase 4 provider boundary. Never fabricate it.
+    const intelligence = prepareIntelligence(noteId, null);
     const note: VoiceNote = {
       id: noteId,
       title: selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
@@ -337,9 +301,8 @@ export function VoiceBipScreen({
 
     setIsThinking(true);
     presence.endListening();
-    const replyText = transcript ?? 'I needed to get some feelings out.';
     const reply = await fetchSekretReply(
-      replyText,
+      'I just recorded a voice bip. I had some feelings I needed to get out.',
       'voiceBip',
       mood,
       avatarKey,
@@ -363,7 +326,6 @@ export function VoiceBipScreen({
       glowLoop.current?.stop();
       waveLoop.current?.stop();
       if (timerRef.current) clearInterval(timerRef.current);
-      recordingRef.current?.stopAndUnloadAsync().catch(() => null);
     };
   }, []);
 
