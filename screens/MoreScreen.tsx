@@ -96,9 +96,6 @@ export function MoreScreen({
         <TouchableOpacity style={btn()} onPress={() => setScreen('points')}>
           <Text style={styles.buttonText}>⭐ Bip Points</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={btn()} onPress={() => setScreen('crew')}>
-          <Text style={styles.buttonText}>🤝 Bip Crew</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('profile')}>
           <Text style={styles.buttonText}>👤 Profile</Text>
         </TouchableOpacity>

@@ -27,6 +27,7 @@ const STORAGE_KEYS = {
   oracleSessions: 'oracleSessions', parentOracleSessions: 'parentOracleSessions',
   comfortSessions: 'comfortSessions',
   crewMembers: 'crewMembers', crewCheckIns: 'crewCheckIns',
+  parentCrewMembers: 'parentCrewMembers', parentCrewCheckIns: 'parentCrewCheckIns',
   roomMemory: 'roomMemory',
 };
 
@@ -36,6 +37,7 @@ const JSON_KEYS = new Set([
   'oracleJournalEntries', 'oracleProfile', 'parentOracleProfile',
   'oracleSessions', 'parentOracleSessions',
   'comfortSessions', 'crewMembers', 'crewCheckIns',
+  'parentCrewMembers', 'parentCrewCheckIns',
   'roomMemory', 'periodDays',
 ]);
 
