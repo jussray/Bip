@@ -90,6 +90,9 @@ export function MoreScreen({
         ) : null}
 
         {/* ── Feature links ── */}
+        <TouchableOpacity style={btn()} onPress={() => setScreen('memories')}>
+          <Text style={styles.buttonText}>📖 Memories</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('settings')}>
           <Text style={styles.buttonText}>⚙️ Vibe Lab</Text>
         </TouchableOpacity>

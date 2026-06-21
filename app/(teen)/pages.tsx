@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio, Video, ResizeMode } from 'expo-av';
+import { updateSekretMemory } from '../../services/sekretMemory';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { AmbientWeatherOverlay } from '../../components/AmbientWeatherOverlay';
@@ -187,6 +188,11 @@ export default function TeenPagesRoute() {
     setAudioUri('');
     setMediaUri(undefined);
     setMediaType(undefined);
+    updateSekretMemory({
+      selectedSekret: activeAvatar,
+      mood,
+      journalEntries: [{ id: String(id), text, mood, date: new Date().toISOString() }],
+    }).catch(() => null);
     setSaving(true);
     setAvatarState('thinking');
 
