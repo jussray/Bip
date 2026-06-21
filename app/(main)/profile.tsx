@@ -10,7 +10,7 @@
  *   inferring mood from journal entries, which missed moods set without writing.
  * - Settings nav uses navigateTo() instead of raw router.push.
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Text,
   ScrollView,
@@ -18,9 +18,12 @@ import {
   SafeAreaView,
   TouchableOpacity,
   View,
+  Alert,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
+import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 
 /**
  * Returns the number of consecutive days ending today that have a journal entry.
@@ -54,6 +57,38 @@ const MOOD_LABELS: Record<string, string> = {
 export default function ProfileScreen() {
   const { entries, moodHistory } = useAppContext();
   const streak = calcStreak(entries);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [isAnon, setIsAnon] = useState(false);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    sb.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      if (!user) return;
+      if (user.is_anonymous) {
+        setIsAnon(true);
+      } else {
+        setAccountEmail(user.email ?? null);
+      }
+    });
+  }, []);
+
+  async function handleSignOut() {
+    Alert.alert('Sign out?', 'You\'ll need to sign back in to access your account.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          const sb = getSupabase();
+          if (sb) await sb.auth.signOut();
+          router.replace('/(auth)/login');
+        },
+      },
+    ]);
+  }
 
   // Mood counts from dedicated mood log (includes moods set without writing)
   const moodCounts = (moodHistory ?? []).reduce<Record<string, number>>((acc, e) => {
@@ -120,6 +155,31 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* Account section \u2014 only shown when Supabase is configured */}
+        {isSupabaseConfigured && (
+          <>
+            <Text style={[styles.sectionLabel, { marginTop: 28 }]}>Account</Text>
+            {accountEmail ? (
+              <View style={styles.accountCard}>
+                <Text style={styles.accountEmail}>{accountEmail}</Text>
+                <TouchableOpacity onPress={handleSignOut} style={styles.signOutBtn}>
+                  <Text style={styles.signOutText}>Sign Out</Text>
+                </TouchableOpacity>
+              </View>
+            ) : isAnon ? (
+              <View style={styles.accountCard}>
+                <Text style={styles.anonNote}>Using without an account</Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/(auth)/signup')}
+                  style={styles.createAccountBtn}
+                >
+                  <Text style={styles.createAccountText}>Create Account</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </>
+        )}
+
         <TouchableOpacity
           style={styles.settingsBtn}
           onPress={() => navigateTo('settings')}
@@ -159,6 +219,13 @@ const styles = StyleSheet.create({
   moodEmoji:       { fontSize: 18, marginRight: 10 },
   moodLabel:       { color: '#D1D5DB', fontSize: 14, flex: 1 },
   moodDate:        { color: '#555', fontSize: 11 },
-  settingsBtn:     { marginTop: 32, alignItems: 'center', padding: 14 },
-  settingsBtnText: { color: '#555', fontSize: 14 },
+  settingsBtn:      { marginTop: 32, alignItems: 'center', padding: 14 },
+  settingsBtnText:  { color: '#555', fontSize: 14 },
+  accountCard:      { backgroundColor: '#111827', borderRadius: 14, padding: 16, marginBottom: 10 },
+  accountEmail:     { color: '#D1D5DB', fontSize: 14, marginBottom: 12 },
+  signOutBtn:       { backgroundColor: 'rgba(248,113,113,0.15)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(248,113,113,0.4)' },
+  signOutText:      { color: '#f87171', fontSize: 14, fontWeight: '700' },
+  anonNote:         { color: '#666', fontSize: 13, marginBottom: 12 },
+  createAccountBtn: { backgroundColor: 'rgba(109,40,217,0.2)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(109,40,217,0.5)' },
+  createAccountText:{ color: '#c4b5fd', fontSize: 14, fontWeight: '700' },
 });
