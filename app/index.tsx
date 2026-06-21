@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { SplashScreen } from '@screens/SplashScreen';
+import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
   const [pendingSide, setPendingSide] = useState<'teen' | 'parent' | null>(null);
+  // Skip auth gate when Supabase isn't configured (offline/dev mode stays unchanged).
+  const [authChecked, setAuthChecked] = useState(!isSupabaseConfigured);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const sb = getSupabase();
+    if (!sb) { setAuthChecked(true); return; }
+    sb.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.replace('/(auth)/login');
+      } else {
+        setAuthChecked(true);
+      }
+    });
+  }, []);
+
+  if (isLoading || !authChecked) {
     return (
       <View style={styles.root}>
         <ActivityIndicator color="#c4b5fd" />
@@ -66,11 +82,11 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center', padding: 32 },
-  logo: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 8 },
-  tagline: { color: '#94A3B8', fontSize: 15, marginBottom: 48 },
-  btn: { width: '100%', borderRadius: 20, paddingVertical: 18, alignItems: 'center', marginBottom: 14 },
-  btnTeen: { backgroundColor: '#6d28d9' },
+  root:      { flex: 1, backgroundColor: '#0d0d0d', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  logo:      { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 8 },
+  tagline:   { color: '#94A3B8', fontSize: 15, marginBottom: 48 },
+  btn:       { width: '100%', borderRadius: 20, paddingVertical: 18, alignItems: 'center', marginBottom: 14 },
+  btnTeen:   { backgroundColor: '#6d28d9' },
   btnParent: { backgroundColor: '#1e3a2f' },
-  btnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  btnText:   { color: '#fff', fontSize: 17, fontWeight: '700' },
 });

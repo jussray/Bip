@@ -3,7 +3,6 @@ import { Stack, router, useSegments } from 'expo-router';
 import { Analytics } from '@/components/shared/Analytics';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { validateEnv } from '@/utils/env';
-import { ensureAnonymousSession } from '@/utils/sync';
 
 void validateEnv();
 
@@ -26,10 +25,6 @@ function RouteBoundary() {
 }
 
 export default function RootLayout() {
-  useEffect(() => {
-    void ensureAnonymousSession();
-  }, []);
-
   return (
     <AppProvider>
       <RouteBoundary />
