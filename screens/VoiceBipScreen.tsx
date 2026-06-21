@@ -340,8 +340,7 @@ export function VoiceBipScreen({
       transcriptId: intelligence.transcript.id,
     };
 
-    setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
-    onSave?.(note);
+    (onSave ?? ((n: VoiceNote) => setVoiceNotes(prev => [n, ...prev])))(note);
 
     setIsThinking(true);
     presence.endListening();
@@ -393,8 +392,7 @@ export function VoiceBipScreen({
       avatarKey,
       videoUri: asset.uri,
     };
-    setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
-    onSave?.(note);
+    (onSave ?? ((n: VoiceNote) => setVoiceNotes(prev => [n, ...prev])))(note);
     setRecorded(true);
     setSelectedBipType(null);
   };

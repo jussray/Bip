@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Audio } from 'expo-av';
+import { Audio, Video, ResizeMode } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { AmbientWeatherOverlay } from '../../components/AmbientWeatherOverlay';
@@ -178,6 +178,7 @@ export default function TeenPagesRoute() {
       entryMode: 'typed',
       locked: false,
       imageUri: mediaUri,
+      mediaType,
     };
 
     setEntries(previous => [entry, ...previous]);
@@ -328,7 +329,17 @@ export default function TeenPagesRoute() {
 
           {mediaUri ? (
             <TouchableOpacity onPress={() => { setMediaUri(undefined); setMediaType(undefined); }} style={styles.mediaPreviewWrap}>
-              <Image source={{ uri: mediaUri }} style={styles.mediaPreview} />
+              {mediaType === 'video' ? (
+                <Video
+                  source={{ uri: mediaUri }}
+                  style={styles.mediaPreview}
+                  resizeMode={ResizeMode.COVER}
+                  shouldPlay={false}
+                  isMuted
+                />
+              ) : (
+                <Image source={{ uri: mediaUri }} style={styles.mediaPreview} />
+              )}
               <Text style={styles.mediaRemove}>✕</Text>
             </TouchableOpacity>
           ) : null}
@@ -354,7 +365,14 @@ export default function TeenPagesRoute() {
           <View key={String(entry.id)} style={styles.entryCard}>
             <Text style={styles.entryMeta}>{entry.date} · {entry.time}</Text>
             {entry.imageUri ? (
-              <Image source={{ uri: entry.imageUri }} style={styles.entryMedia} />
+              entry.mediaType === 'video' ? (
+                <View style={styles.entryVideoThumb}>
+                  <Text style={styles.entryVideoIcon}>📹</Text>
+                  <Text style={styles.entryVideoLabel}>Video Bip</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: entry.imageUri }} style={styles.entryMedia} />
+              )
             ) : null}
             {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
             {entry.sekretReply ? (
@@ -422,6 +440,9 @@ const styles = StyleSheet.create({
   entryCard: { borderRadius: 18, borderWidth: 1, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.04)', padding: 15, marginBottom: 10 },
   entryMeta: { color: '#8e8495', fontSize: 9, marginBottom: 7 },
   entryMedia: { width: '100%', height: 130, borderRadius: 10, resizeMode: 'cover', marginBottom: 8 },
+  entryVideoThumb: { width: '100%', height: 80, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 8, flexDirection: 'row', gap: 8 },
+  entryVideoIcon: { fontSize: 20 },
+  entryVideoLabel: { color: '#a99fb2', fontSize: 12, fontWeight: '700' },
   entryText: { color: '#eee7f1', fontSize: 14, lineHeight: 22 },
   savedReply: { borderLeftWidth: 2, paddingLeft: 11, marginTop: 12 },
   savedReplyName: { fontSize: 9, fontWeight: '900', marginBottom: 4 },
