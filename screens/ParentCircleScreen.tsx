@@ -155,6 +155,7 @@ export function ParentCircleScreen({
   const [showTagPicker, setShowTagPicker] = useState(false);
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [crisisFlag, setCrisisFlag]       = useState(false);
+  const [confirmedPost, setConfirmedPost] = useState(false);
   const [activeReplyPostId, setActiveReplyPostId] = useState<string | null>(null);
   const [selectedQuietReply, setSelectedQuietReply] = useState('');
 
@@ -194,10 +195,15 @@ export function ParentCircleScreen({
     setParentCirclePostText(val);
     const lower = val.toLowerCase();
     setCrisisFlag(SOFT_CONTENT_FLAGS.some(f => lower.includes(f)));
+    setConfirmedPost(false);
   };
 
   const handleSavePost = async () => {
     if (!parentCirclePostText.trim()) return;
+    if (crisisFlag && !confirmedPost) {
+      setConfirmedPost(true);
+      return;
+    }
     setIsSubmitting(true);
     saveParentCirclePost({
       text:      parentCirclePostText,
@@ -206,6 +212,7 @@ export function ParentCircleScreen({
     setParentCirclePostText('');
     setSelectedTag('');
     setCrisisFlag(false);
+    setConfirmedPost(false);
     setIsSubmitting(false);
     await triggerHaptic(Haptics.ImpactFeedbackStyle.Medium);
   };
@@ -331,7 +338,7 @@ export function ParentCircleScreen({
               disabled={isSubmitting}
             >
               <Text style={styles.postBtnText}>
-                {isSubmitting ? 'posting…' : '+ share anonymously'}
+                {isSubmitting ? 'posting…' : crisisFlag && !confirmedPost ? 'continue?' : '+ share anonymously'}
               </Text>
             </TouchableOpacity>
 
