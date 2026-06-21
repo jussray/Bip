@@ -632,3 +632,174 @@ export async function redeemParentLink(
     return 'error';
   }
 }
+
+// ── Bridge: signal + notes ────────────────────────────────────────────────────
+
+export interface BridgeSignal {
+  id:          number;
+  share_type:  string;
+  conv_mode:   string | null;
+  char_key:    string;
+  sent_at:     string;
+  created_at:  string;
+}
+
+export interface ParentNote {
+  id:           string;
+  content:      string;
+  sent_at:      string;
+  seen_by_teen: boolean;
+}
+
+/** Teen sends metadata signal — message content stays local. */
+export async function sendBridgeSignal(params: {
+  shareType: string;
+  convMode:  string | null;
+  charKey:   'raylene' | 'rylane';
+}): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from('bridge_signals').insert({
+      teen_user_id: uid,
+      char_key:     params.charKey,
+      share_type:   params.shareType,
+      conv_mode:    params.convMode ?? null,
+      sent_at:      new Date().toISOString(),
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] sendBridgeSignal failed', e);
+  }
+}
+
+/** Teen fetches parent warm notes addressed to them. */
+export async function fetchParentNotes(): Promise<ParentNote[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data } = await sb
+      .from('parent_notes')
+      .select('id, content, sent_at, seen_by_teen')
+      .eq('teen_user_id', uid)
+      .order('sent_at', { ascending: false })
+      .limit(20);
+    return (data ?? []) as ParentNote[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchParentNotes failed', e);
+    return [];
+  }
+}
+
+/** Teen marks a parent note as seen. */
+export async function markParentNoteSeen(id: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    await sb.from('parent_notes').update({ seen_by_teen: true }).eq('id', id);
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] markParentNoteSeen failed', e);
+  }
+}
+
+/** Teen subscribes to new parent notes via Realtime. Returns unsubscribe fn. */
+export async function subscribeToParentNotes(
+  onNew: (note: ParentNote) => void,
+): Promise<() => void> {
+  const sb = getSupabase();
+  if (!sb) return () => {};
+  const uid = await currentUserId();
+  if (!uid) return () => {};
+
+  const channel = sb
+    .channel('parent-notes-' + uid)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'parent_notes', filter: `teen_user_id=eq.${uid}` },
+      (payload) => onNew(payload.new as ParentNote),
+    )
+    .subscribe();
+
+  return () => { sb.removeChannel(channel); };
+}
+
+/** Parent gets the linked teen's user_id (null if not linked). */
+export async function fetchLinkedTeenId(): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data } = await sb
+      .from('parent_links')
+      .select('teen_user_id')
+      .eq('parent_user_id', uid)
+      .eq('status', 'active')
+      .maybeSingle();
+    return data?.teen_user_id ?? null;
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchLinkedTeenId failed', e);
+    return null;
+  }
+}
+
+/** Parent fetches bridge signals from their linked teen. */
+export async function fetchBridgeSignals(teenId: string): Promise<BridgeSignal[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  try {
+    const { data } = await sb
+      .from('bridge_signals')
+      .select('id, share_type, conv_mode, char_key, sent_at, created_at')
+      .eq('teen_user_id', teenId)
+      .order('sent_at', { ascending: false })
+      .limit(30);
+    return (data ?? []) as BridgeSignal[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchBridgeSignals failed', e);
+    return [];
+  }
+}
+
+/** Parent sends a warm note to their linked teen. */
+export async function sendParentNote(teenId: string, content: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { error } = await sb.from('parent_notes').insert({
+      teen_user_id:   teenId,
+      parent_user_id: uid,
+      content,
+      sent_at: new Date().toISOString(),
+    });
+    return !error;
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] sendParentNote failed', e);
+    return false;
+  }
+}
+
+/** Parent subscribes to new bridge signals from their teen via Realtime. */
+export async function subscribeToBridgeSignals(
+  teenId:  string,
+  onNew:   (signal: BridgeSignal) => void,
+): Promise<() => void> {
+  const sb = getSupabase();
+  if (!sb) return () => {};
+
+  const channel = sb
+    .channel('bridge-signals-' + teenId)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'bridge_signals', filter: `teen_user_id=eq.${teenId}` },
+      (payload) => onNew(payload.new as BridgeSignal),
+    )
+    .subscribe();
+
+  return () => { sb.removeChannel(channel); };
+}
