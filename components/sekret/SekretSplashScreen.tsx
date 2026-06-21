@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Parent splash → the couple (candlelight, lanterns, warm purple neon)
 const SPLASH_ASSETS = {
   teen: require('../../assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png'),
-  parent: require('../../assets/images/088975D0-598A-4B68-8857-67410DA25BA0.jpeg'),
+  parent: require('../../assets/images/parent-space-splash.png'),
 } as const;
 
 // ─── Role-specific copy ──────────────────────────────────────────────────────
