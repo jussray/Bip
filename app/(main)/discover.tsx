@@ -1,124 +1,149 @@
-/**
- * app/(main)/discover.tsx
- *
- * Discover / Oracle screen.
- * Houses the Oracle companion entry point + future content discovery.
- * Full Supabase-backed content feed in a later sprint.
- */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  Animated,
+  Platform,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { PERSONALITY_CONFIG } from '@/services/ai';
 
-type DiscoverCard = {
-  emoji: string;
-  title: string;
-  desc: string;
-  action: '/(main)/calm' | '/(main)/pages' | '/(main)/circle' | null;
-};
+const COMPANIONS = ['raylene', 'rylane', 'cloud', 'night'] as const;
 
-const DISCOVER_CARDS: DiscoverCard[] = [
-  { emoji: '🌙', title: 'Night Journal',  desc: 'A guided prompt to close your day.',  action: null },
-  { emoji: '🌊', title: 'Breathe',        desc: 'Two minutes of guided breathing.',    action: '/(main)/calm' },
-  { emoji: '📝', title: 'Free Write',     desc: 'No prompts. Just you and the page.', action: '/(main)/pages' },
-  { emoji: '🌐', title: 'Drop in Circle', desc: 'See what others are feeling.',        action: '/(main)/circle' },
-];
+const TOOLS = [
+  { emoji: '🌊', title: 'Breathe',       desc: 'Two minutes of calm.',      route: '/(main)/calm'     },
+  { emoji: '📝', title: 'Write It Out',  desc: 'No prompts. Just you.',     route: '/(main)/pages'    },
+  { emoji: '🌙', title: 'Night Journal', desc: 'Close your day softly.',    route: '/(main)/pages'    },
+  { emoji: '🎙️', title: 'Voice Bip',    desc: 'Say it out loud.',           route: '/(main)/voicebip' },
+  { emoji: '🌐', title: 'Circle',        desc: 'See what others feel.',     route: '/(main)/circle'   },
+  { emoji: '☁️', title: 'Cloud Thoughts',desc: 'Let something float away.', route: '/(main)/cloud'    },
+] as const;
 
 export default function DiscoverScreen() {
-  const oracle = PERSONALITY_CONFIG.oracle;
+  const fade = useRef(new Animated.Value(0)).current;
+  const rise = useRef(new Animated.Value(18)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 1, duration: 700, delay: 100, useNativeDriver: true }),
+      Animated.timing(rise, { toValue: 0, duration: 700, delay: 100, useNativeDriver: true }),
+    ]).start();
+  }, [fade, rise]);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.heading}>Discover ✨</Text>
+    <View style={styles.root}>
+      <LinearGradient colors={['#10091b', '#171024', '#090711']} style={StyleSheet.absoluteFill} />
 
-        {/* Oracle entry card */}
-        <TouchableOpacity
-          style={styles.oracleCard}
-          onPress={() => router.push('/(main)/chat/oracle')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.oracleEmoji}>{oracle.emoji}</Text>
-          <View style={styles.oracleBody}>
-            <Text style={[styles.oracleName, { color: oracle.accentColor }]}>
-              {oracle.name}
-            </Text>
-            <Text style={styles.oracleVibe}>{oracle.vibe}</Text>
-            <Text style={styles.oracleGreeting}>"{oracle.greeting}"</Text>
-          </View>
-        </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <Animated.View style={{ opacity: fade, transform: [{ translateY: rise }] }}>
+          <Text style={styles.kicker}>DISCOVER</Text>
+          <Text style={styles.title}>What do you{'\n'}need right now?</Text>
+        </Animated.View>
 
-        <Text style={styles.sectionLabel}>Quick Access</Text>
-        <View style={styles.grid}>
-          {DISCOVER_CARDS.map((card) => {
-            if (!card.action) {
+        {/* Companions */}
+        <Animated.View style={{ opacity: fade, transform: [{ translateY: rise }] }}>
+          <Text style={styles.sectionLabel}>Your Se'krets</Text>
+        </Animated.View>
+
+        <Animated.View style={{ opacity: fade }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.companionRow}
+          >
+            {COMPANIONS.map(id => {
+              const p = PERSONALITY_CONFIG[id];
               return (
-                <View key={card.title} style={[styles.gridCard, styles.gridCardInactive]}>
-                  <Text style={styles.gridEmoji}>{card.emoji}</Text>
-                  <Text style={styles.gridTitle}>{card.title}</Text>
-                  <Text style={styles.gridDesc}>{card.desc}</Text>
-                  <Text style={styles.gridComingSoon}>Coming soon</Text>
-                </View>
+                <TouchableOpacity
+                  key={id}
+                  style={[styles.companionCard, { borderColor: p.accentColor + '55' }]}
+                  onPress={() => router.push(`/(main)/chat/${id}` as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.companionGlow, { backgroundColor: p.accentColor + '1a' }]} />
+                  <Text style={styles.companionEmoji}>{p.emoji}</Text>
+                  <Text style={[styles.companionName, { color: p.accentColor }]}>{p.name}</Text>
+                  <Text style={styles.companionTitle}>{p.title}</Text>
+                  <Text style={styles.companionGreeting} numberOfLines={2}>
+                    "{p.greeting}"
+                  </Text>
+                </TouchableOpacity>
               );
-            }
-            return (
+            })}
+          </ScrollView>
+        </Animated.View>
+
+        {/* Tools */}
+        <Animated.View style={{ opacity: fade, transform: [{ translateY: rise }] }}>
+          <Text style={[styles.sectionLabel, styles.sectionLabelSpaced]}>Quick Tools</Text>
+          <View style={styles.toolGrid}>
+            {TOOLS.map(tool => (
               <TouchableOpacity
-                key={card.title}
-                style={styles.gridCard}
-                onPress={() => router.push(card.action!)}
+                key={tool.title}
+                style={styles.toolCard}
+                onPress={() => router.push(tool.route as any)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.gridEmoji}>{card.emoji}</Text>
-                <Text style={styles.gridTitle}>{card.title}</Text>
-                <Text style={styles.gridDesc}>{card.desc}</Text>
+                <Text style={styles.toolEmoji}>{tool.emoji}</Text>
+                <Text style={styles.toolTitle}>{tool.title}</Text>
+                <Text style={styles.toolDesc}>{tool.desc}</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            ))}
+          </View>
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe:             { flex: 1, backgroundColor: '#0d0d0d' },
-  content:          { padding: 24, paddingTop: 56, paddingBottom: 40 },
-  heading:          { color: '#fff', fontSize: 24, fontWeight: '800', marginBottom: 20 },
-  oracleCard:       {
-    flexDirection:   'row',
-    alignItems:      'flex-start',
-    backgroundColor: '#1E1B2E',
-    borderRadius:    20,
-    padding:         20,
-    marginBottom:    28,
-    borderWidth:     1,
-    borderColor:     '#A78BFA40',
+  root:               { flex: 1, backgroundColor: '#090711' },
+  scroll:             { paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingBottom: 40 },
+
+  // Header
+  kicker:             { color: '#6d28d9', fontSize: 10, fontWeight: '900', letterSpacing: 2.5, marginBottom: 10, paddingHorizontal: 24 },
+  title:              { color: '#fff', fontSize: 32, fontWeight: '900', lineHeight: 40, marginBottom: 32, paddingHorizontal: 24 },
+
+  // Section labels
+  sectionLabel:       { color: '#4a3f6b', fontSize: 11, fontWeight: '900', letterSpacing: 2, marginBottom: 14, paddingHorizontal: 24 },
+  sectionLabelSpaced: { marginTop: 32 },
+
+  // Companions horizontal scroll
+  companionRow:       { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
+  companionCard:      {
+    width:            148,
+    borderRadius:     24,
+    borderWidth:      1.5,
+    backgroundColor:  'rgba(255,255,255,0.03)',
+    padding:          16,
+    overflow:         'hidden',
   },
-  oracleEmoji:      { fontSize: 36, marginTop: 2, marginRight: 14 },
-  oracleBody:       { flex: 1 },
-  oracleName:       { fontSize: 18, fontWeight: '700', marginBottom: 4 },
-  oracleVibe:       { color: '#888', fontSize: 13, lineHeight: 18, marginBottom: 4 },
-  oracleGreeting:   { color: '#A78BFA', fontSize: 13, fontStyle: 'italic', marginTop: 6 },
-  sectionLabel:     { color: '#555', fontSize: 12, fontWeight: '700', letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
-  grid:             { flexDirection: 'row', flexWrap: 'wrap' },
-  gridCard:         {
-    width:           '47%',
-    backgroundColor: '#111827',
-    borderRadius:    16,
-    padding:         16,
-    marginRight:     '3%',
-    marginBottom:    12,
+  companionGlow:      { position: 'absolute', top: -20, right: -20, width: 90, height: 90, borderRadius: 45 },
+  companionEmoji:     { fontSize: 28, marginBottom: 10 },
+  companionName:      { fontSize: 15, fontWeight: '900', marginBottom: 2 },
+  companionTitle:     { color: '#5a5070', fontSize: 11, fontWeight: '700', marginBottom: 8 },
+  companionGreeting:  { color: '#7a6e8a', fontSize: 11, lineHeight: 16, fontStyle: 'italic' },
+
+  // Tools grid
+  toolGrid:           { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, gap: 10 },
+  toolCard:           {
+    width:            '47%',
+    borderRadius:     20,
+    borderWidth:      1,
+    borderColor:      '#ffffff0f',
+    backgroundColor:  'rgba(255,255,255,0.04)',
+    padding:          16,
+    minHeight:        96,
   },
-  gridCardInactive: { opacity: 0.5 },
-  gridEmoji:        { fontSize: 24, marginBottom: 6 },
-  gridTitle:        { color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 4 },
-  gridDesc:         { color: '#666', fontSize: 12, lineHeight: 17 },
-  gridComingSoon:   { color: '#444', fontSize: 11, marginTop: 6, fontStyle: 'italic' },
+  toolEmoji:          { fontSize: 22, marginBottom: 8 },
+  toolTitle:          { color: '#e8e0f0', fontSize: 13, fontWeight: '800', marginBottom: 4 },
+  toolDesc:           { color: '#4a3f6b', fontSize: 11, lineHeight: 16 },
 });
