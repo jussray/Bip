@@ -57,45 +57,45 @@ const rylaneVoiceNight = require("../assets/images/rylane-voice-night.png");
 const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 
 // ── Room Backgrounds ───────────────────────────────────────────────────────
-const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
-const bgRayleneRoomMidday    = require("../assets/images/bg-raylene-room-midday.png");
-const bgRayleneRoomAfternoon = require("../assets/images/bg-raylene-room-afternoon.png");
-const bgRayleneRoomEvening   = require("../assets/images/bg-raylene-room-evening.png");
-const bgRayleneRoomRain      = require("../assets/images/bg-raylene-room-rain.png");
-const bgRayleneRoomNight     = require("../assets/images/bg-raylene-room-night.png");
-const bgRayleneRoomDeepNight = require("../assets/images/bg-raylene-room-deep-night.png");
+const bgRayleneRoomDay       = require("../assets/images/resized-bg/bg-raylene-room-day.jpg");
+const bgRayleneRoomMidday    = require("../assets/images/resized-bg/bg-raylene-room-midday.jpg");
+const bgRayleneRoomAfternoon = require("../assets/images/resized-bg/bg-raylene-room-afternoon.jpg");
+const bgRayleneRoomEvening   = require("../assets/images/resized-bg/bg-raylene-room-evening.jpg");
+const bgRayleneRoomRain      = require("../assets/images/resized-bg/bg-raylene-room-rain.jpg");
+const bgRayleneRoomNight     = require("../assets/images/resized-bg/bg-raylene-room-night.jpg");
+const bgRayleneRoomDeepNight = require("../assets/images/resized-bg/bg-raylene-room-deep-night.jpg");
 
-const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png");
-const bgRylaneRoomMidday    = require("../assets/images/bg-rylane-room-midday.png");
-const bgRylaneRoomAfternoon = require("../assets/images/bg-rylane-room-afternoon.png");
-const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
-const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
-const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
-const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
+const bgRylaneRoomDay       = require("../assets/images/resized-bg/bg-rylane-room-day.jpg");
+const bgRylaneRoomMidday    = require("../assets/images/resized-bg/bg-rylane-room-midday.jpg");
+const bgRylaneRoomAfternoon = require("../assets/images/resized-bg/bg-rylane-room-afternoon.jpg");
+const bgRylaneRoomEvening   = require("../assets/images/resized-bg/bg-rylane-room-evening.jpg");
+const bgRylaneRoomRain      = require("../assets/images/resized-bg/bg-rylane-room-rain.jpg");
+const bgRylaneRoomNight     = require("../assets/images/resized-bg/bg-rylane-room-night.jpg");
+const bgRylaneRoomDeepNight = require("../assets/images/resized-bg/bg-rylane-room-deep-night.jpg");
 
 // ── Cloud Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Cloud Room identity: cozy purple room, cloud neon sign, city window view,
 // open journals, bean bag, headphones, brain-dump backpack, scrapbook walls.
 // NOT a floating sky — it's the place you go when your brain is loud.
-const bgCloudRoomDay       = require("../assets/images/bg-cloud-room-day.png");
-const bgCloudRoomMidday    = require("../assets/images/bg-cloud-room-midday.png");
-const bgCloudRoomAfternoon = require("../assets/images/bg-cloud-room-afternoon.png");
-const bgCloudRoomEvening   = require("../assets/images/bg-cloud-room-evening.png");
-const bgCloudRoomNight     = require("../assets/images/bg-cloud-room-night.png");
-const bgCloudRoomDeepNight = require("../assets/images/bg-cloud-room-deep-night.png");
-const bgCloudRoomRain      = require("../assets/images/bg-cloud-room-rain.png");
+const bgCloudRoomDay       = require("../assets/images/resized-bg/bg-cloud-room-day.jpg");
+const bgCloudRoomMidday    = require("../assets/images/resized-bg/bg-cloud-room-midday.jpg");
+const bgCloudRoomAfternoon = require("../assets/images/resized-bg/bg-cloud-room-afternoon.jpg");
+const bgCloudRoomEvening   = require("../assets/images/resized-bg/bg-cloud-room-evening.jpg");
+const bgCloudRoomNight     = require("../assets/images/resized-bg/bg-cloud-room-night.jpg");
+const bgCloudRoomDeepNight = require("../assets/images/resized-bg/bg-cloud-room-deep-night.jpg");
+const bgCloudRoomRain      = require("../assets/images/resized-bg/bg-cloud-room-rain.jpg");
 
 // ── Night Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Night Room identity: crescent moon chair, galaxy bedding, "Voice Bip Corner"
 // light-box sign, city window with clock, sticky notes everywhere, 2AM energy.
 // NOT Raylene's room — completely different furniture, palette, and spirit.
-const bgNightRoomDay       = require("../assets/images/bg-night-room-day.png");
-const bgNightRoomMidday    = require("../assets/images/bg-night-room-midday.png");
-const bgNightRoomAfternoon = require("../assets/images/bg-night-room-afternoon.png");
-const bgNightRoomEvening   = require("../assets/images/bg-night-room-evening.png");
-const bgNightRoomNight     = require("../assets/images/bg-night-room-night.png");
-const bgNightRoomDeepNight = require("../assets/images/bg-night-room-deep-night.png");
-const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
+const bgNightRoomDay       = require("../assets/images/resized-bg/bg-night-room-day.jpg");
+const bgNightRoomMidday    = require("../assets/images/resized-bg/bg-night-room-midday.jpg");
+const bgNightRoomAfternoon = require("../assets/images/resized-bg/bg-night-room-afternoon.jpg");
+const bgNightRoomEvening   = require("../assets/images/resized-bg/bg-night-room-evening.jpg");
+const bgNightRoomNight     = require("../assets/images/resized-bg/bg-night-room-night.jpg");
+const bgNightRoomDeepNight = require("../assets/images/resized-bg/bg-night-room-deep-night.jpg");
+const bgNightRoomRain      = require("../assets/images/resized-bg/bg-night-room-rain.jpg");
 
 // ── Night Avatar ───────────────────────────────────────────────────────────
 const nightFullbody    = require("../assets/images/night-fullbody.png");
@@ -131,17 +131,17 @@ const nightVoiceDay   = nightNeutral;   // placeholder until night-voice-day.png
 const nightVoiceNight = nightWindow;    // window/late-night scene fits night voice context
 
 // ── Parent Room Backgrounds ────────────────────────────────────────────────
-const bgMomRoomDay       = require("../assets/images/bg-mom-room-day.png");
-const bgMomRoomEvening   = require("../assets/images/bg-mom-room-evening.png");
-const bgMomRoomNight     = require("../assets/images/bg-mom-room-night.png");
-const bgMomRoomDeepNight = require("../assets/images/bg-mom-room-deep-night.png");
-const bgMomRoomRain      = require("../assets/images/bg-mom-room-rain.png");
+const bgMomRoomDay       = require("../assets/images/resized-bg/bg-mom-room-day.jpg");
+const bgMomRoomEvening   = require("../assets/images/resized-bg/bg-mom-room-evening.jpg");
+const bgMomRoomNight     = require("../assets/images/resized-bg/bg-mom-room-night.jpg");
+const bgMomRoomDeepNight = require("../assets/images/resized-bg/bg-mom-room-deep-night.jpg");
+const bgMomRoomRain      = require("../assets/images/resized-bg/bg-mom-room-rain.jpg");
 
-const bgDadRoomDay       = require("../assets/images/bg-dad-room-day.png");
-const bgDadRoomEvening   = require("../assets/images/bg-dad-room-evening.png");
-const bgDadRoomNight     = require("../assets/images/bg-dad-room-night.png");
-const bgDadRoomDeepNight = require("../assets/images/bg-dad-room-deep-night.png");
-const bgDadRoomRain      = require("../assets/images/bg-dad-room-rain.png");
+const bgDadRoomDay       = require("../assets/images/resized-bg/bg-dad-room-day.jpg");
+const bgDadRoomEvening   = require("../assets/images/resized-bg/bg-dad-room-evening.jpg");
+const bgDadRoomNight     = require("../assets/images/resized-bg/bg-dad-room-night.jpg");
+const bgDadRoomDeepNight = require("../assets/images/resized-bg/bg-dad-room-deep-night.jpg");
+const bgDadRoomRain      = require("../assets/images/resized-bg/bg-dad-room-rain.jpg");
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
 const bgComfort         = require('../assets/images/comfort-bg.png');
@@ -150,7 +150,7 @@ const bgBridge          = require('../assets/images/bridge-bg.png');
 const bgVoiceBip        = require('../assets/images/voice-bip-bg.png');
 // Circle is assembled from React Native controls over a generic atmosphere asset.
 // Design mockups live outside assets/ and are never loaded by the application.
-const bgCircle          = require('../assets/images/room-bg-dark.png');
+const bgCircle          = require('../assets/images/resized-bg/room-bg-dark.jpg');
 const bgWindow          = require('../assets/images/window.png');
 const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
 
@@ -185,14 +185,14 @@ const sekretSplashParent = require("../assets/images/80B326EB-C67B-4369-A3EE-CFE
 const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
 // ── Scene composites (character + room background merged) ──────────────────
-const rayleneRoomDayScene   = require("../assets/images/raylene-room-day-scene.png");
-const rayleneRoomNightScene = require("../assets/images/raylene-room-night-scene.png");
-const rayleneRoomRainScene  = require("../assets/images/raylene-room-rain-scene.png");
-const rylaneRoomDayScene    = require("../assets/images/rylane-room-day-scene.png");
-const rylaneRoomNightScene  = require("../assets/images/rylane-room-night-scene.png");
-const rylaneRoomRainScene   = require("../assets/images/rylane-room-rain-scene.png");
-const cloudRoomDayScene     = require("../assets/images/cloud-room-day-scene.png");
-const nightRoomNightScene   = require("../assets/images/night-room-night-scene.png");
+const rayleneRoomDayScene   = require("../assets/images/resized-bg/raylene-room-day-scene.jpg");
+const rayleneRoomNightScene = require("../assets/images/resized-bg/raylene-room-night-scene.jpg");
+const rayleneRoomRainScene  = require("../assets/images/resized-bg/raylene-room-rain-scene.jpg");
+const rylaneRoomDayScene    = require("../assets/images/resized-bg/rylane-room-day-scene.jpg");
+const rylaneRoomNightScene  = require("../assets/images/resized-bg/rylane-room-night-scene.jpg");
+const rylaneRoomRainScene   = require("../assets/images/resized-bg/rylane-room-rain-scene.jpg");
+const cloudRoomDayScene     = require("../assets/images/resized-bg/cloud-room-day-scene.jpg");
+const nightRoomNightScene   = require("../assets/images/resized-bg/night-room-night-scene.jpg");
 
 
 export const IMAGES = {
