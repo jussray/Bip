@@ -19,7 +19,7 @@ import {
   Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { syncPeriodDay, deletePeriodDay, loadPeriodDays } from '../utils/sync';
+import { syncPeriodDay, deletePeriodDay, loadPeriodDays } from '@/utils/sync';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomBg, TimeOfDay } from '../constants/theme';
 

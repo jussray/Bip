@@ -1,5 +1,5 @@
 import React from 'react';
-import type { JournalEntry } from '../types';
+import type { JournalEntry } from '@/types';
 import { PagesWorkspace, type SavePageInput } from './PagesScreen';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
 

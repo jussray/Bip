@@ -12,7 +12,7 @@ import type {
   StrategyAxis,
   StrategyAxisEntry,
 } from '../types/oracle';
-import { supabase } from '../utils/supabase';
+import { supabase } from '@/utils/supabase';
 
 const STORAGE_KEY: Record<OracleMode, string> = {
   teen: 'oracle_profile_teen',

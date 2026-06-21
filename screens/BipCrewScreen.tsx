@@ -23,9 +23,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
-import { syncCrewMember, deleteCrewMember, syncCrewCheckIn } from '../utils/sync';
+import { syncCrewMember, deleteCrewMember, syncCrewCheckIn } from '@/utils/sync';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
-import type { CrewMember, CrewCheckIn } from '../types/index';
+import type { CrewMember, CrewCheckIn } from '@/types';
 
 const MAX_CREW = 6;
 

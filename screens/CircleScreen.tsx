@@ -36,7 +36,7 @@ import {
   loadCircleFeed,
   syncCircleReaction,
   writeCirclePost,
-} from '../utils/sync';
+} from '@/utils/sync';
 import { SOFT_CONTENT_FLAGS, CRISIS_NUDGE, TONE } from '../constants/guardrails';
 
 // ─── Reaction sets ──────────────────────────────────────────────────────────
