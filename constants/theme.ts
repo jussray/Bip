@@ -184,16 +184,6 @@ const sekretSplashTeen   = require("../assets/images/A2EB8B5A-0109-4A02-927A-FA7
 const sekretSplashParent = require("../assets/images/80B326EB-C67B-4369-A3EE-CFE0348E0701.jpeg");
 const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
-// ── Scene composites (character + room background merged) ──────────────────
-const rayleneRoomDayScene   = require("../assets/images/resized-bg/raylene-room-day-scene.jpg");
-const rayleneRoomNightScene = require("../assets/images/resized-bg/raylene-room-night-scene.jpg");
-const rayleneRoomRainScene  = require("../assets/images/resized-bg/raylene-room-rain-scene.jpg");
-const rylaneRoomDayScene    = require("../assets/images/resized-bg/rylane-room-day-scene.jpg");
-const rylaneRoomNightScene  = require("../assets/images/resized-bg/rylane-room-night-scene.jpg");
-const rylaneRoomRainScene   = require("../assets/images/resized-bg/rylane-room-rain-scene.jpg");
-const cloudRoomDayScene     = require("../assets/images/resized-bg/cloud-room-day-scene.jpg");
-const nightRoomNightScene   = require("../assets/images/resized-bg/night-room-night-scene.jpg");
-
 
 export const IMAGES = {
   // Raylene
@@ -294,16 +284,6 @@ export const IMAGES = {
   nightAvatarFullbody,
   nightVoiceDay,
   nightVoiceNight,
-
-  // Scene composites
-  rayleneRoomDayScene,
-  rayleneRoomNightScene,
-  rayleneRoomRainScene,
-  rylaneRoomDayScene,
-  rylaneRoomNightScene,
-  rylaneRoomRainScene,
-  cloudRoomDayScene,
-  nightRoomNightScene,
 
   // Rooms
   bgRayleneRoomDay,
@@ -432,22 +412,22 @@ export function getRoomPhase(
 
 const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
   raylene: {
-    day: IMAGES.bgRayleneRoomDay,
-    midday: IMAGES.bgRayleneRoomDay,
-    afternoon: IMAGES.bgRayleneRoomEvening,
-    evening: IMAGES.bgRayleneRoomEvening,
-    night: IMAGES.bgRayleneRoomNight,
+    day:       IMAGES.bgRayleneRoomDay,
+    midday:    IMAGES.bgRayleneRoomMidday,
+    afternoon: IMAGES.bgRayleneRoomAfternoon,
+    evening:   IMAGES.bgRayleneRoomEvening,
+    night:     IMAGES.bgRayleneRoomNight,
     deepNight: IMAGES.bgRayleneRoomDeepNight,
-    rain: IMAGES.bgRayleneRoomRain,
+    rain:      IMAGES.bgRayleneRoomRain,
   },
   rylane: {
-    day: IMAGES.bgRylaneRoomDay,
-    midday: IMAGES.bgRylaneRoomDay,
-    afternoon: IMAGES.bgRylaneRoomEvening,
-    evening: IMAGES.bgRylaneRoomEvening,
-    night: IMAGES.bgRylaneRoomNight,
+    day:       IMAGES.bgRylaneRoomDay,
+    midday:    IMAGES.bgRylaneRoomMidday,
+    afternoon: IMAGES.bgRylaneRoomAfternoon,
+    evening:   IMAGES.bgRylaneRoomEvening,
+    night:     IMAGES.bgRylaneRoomNight,
     deepNight: IMAGES.bgRylaneRoomDeepNight,
-    rain: IMAGES.bgRylaneRoomRain,
+    rain:      IMAGES.bgRylaneRoomRain,
   },
   cloud: {
     day: IMAGES.bgCloudRoomDay,
@@ -482,12 +462,7 @@ export function getRoomScene(
   phase: RoomPhase | string,
 ): ImageSourcePropType {
   const p = normalizeRoomPhase(phase as string);
-  const scene = ROOM_SCENES[character]?.[p];
-  if (!scene) {
-    if (p === 'midday')    return ROOM_SCENES[character]?.day ?? ROOM_SCENES.raylene.day;
-    if (p === 'afternoon') return ROOM_SCENES[character]?.evening ?? ROOM_SCENES.raylene.evening;
-  }
-  return scene ?? ROOM_SCENES.raylene.day;
+  return ROOM_SCENES[character]?.[p] ?? ROOM_SCENES.raylene.day;
 }
 
 export function getRoomBg(
