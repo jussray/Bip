@@ -144,10 +144,10 @@ const bgDadRoomDeepNight = require("../assets/images/resized-bg/bg-dad-room-deep
 const bgDadRoomRain      = require("../assets/images/resized-bg/bg-dad-room-rain.jpg");
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
-const bgComfort         = require('../assets/images/comfort-bg.png');
-const bgJournal         = require('../assets/images/journal-bg.png');
-const bgBridge          = require('../assets/images/bridge-bg.png');
-const bgVoiceBip        = require('../assets/images/voice-bip-bg.png');
+const bgComfort         = require('../assets/images/resized-bg/comfort-bg.jpg');
+const bgJournal         = require('../assets/images/resized-bg/journal-bg.jpg');
+const bgBridge          = require('../assets/images/resized-bg/bridge-bg.jpg');
+const bgVoiceBip        = require('../assets/images/resized-bg/voice-bip-bg.jpg');
 // Circle is assembled from React Native controls over a generic atmosphere asset.
 // Design mockups live outside assets/ and are never loaded by the application.
 const bgCircle          = require('../assets/images/resized-bg/room-bg-dark.jpg');

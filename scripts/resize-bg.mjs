@@ -9,7 +9,7 @@ fs.mkdirSync(outputDir, { recursive: true });
 
 const files = fs.readdirSync(inputDir).filter((f) =>
   /\.(png|jpg|jpeg|webp)$/i.test(f) &&
-  (f.includes("bg-") || f.includes("room") || f.includes("splash"))
+  (f.includes("bg-") || f.includes("-bg.") || f.includes("room") || f.includes("splash"))
 );
 
 for (const file of files) {
