@@ -617,7 +617,7 @@ function Composer({
     const lower = val.toLowerCase();
     const flagged = SOFT_CONTENT_FLAGS.some(f => lower.includes(f));
     setCrisisFlag(flagged);
-    if (!flagged) setConfirmedPost(false);
+    setConfirmedPost(false);
   };
 
   const handlePost = () => {
