@@ -3,12 +3,30 @@ import { Stack, router, useSegments } from 'expo-router';
 import { Analytics } from '@/components/shared/Analytics';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { validateEnv } from '@/utils/env';
+import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 
 void validateEnv();
 
 function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
   const segments = useSegments();
+
+  // Auth guard at root so all routes are protected, not just the index.
+  // Listens for sign-out events too (e.g. session expiry).
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const sb = getSupabase();
+    if (!sb) return;
+
+    void sb.auth.getSession().then(({ data }) => {
+      if (!data.session) router.replace('/(auth)/login');
+    });
+
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
+      if (!session) router.replace('/(auth)/login');
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (isLoading || !userSide) return;

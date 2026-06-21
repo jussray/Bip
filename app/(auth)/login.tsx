@@ -35,8 +35,12 @@ export default function LoginScreen() {
 
   async function handleSkip() {
     setLoading(true);
-    await ensureAnonymousSession();
+    const uid = await ensureAnonymousSession();
     setLoading(false);
+    if (!uid) {
+      setError('Could not start a session. Check your connection and try again.');
+      return;
+    }
     router.replace('/');
   }
 
