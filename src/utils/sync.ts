@@ -45,7 +45,10 @@ async function safeUpsert(table: string, payload: any | any[]): Promise<void> {
   try {
     const rows = Array.isArray(payload) ? payload : [payload];
     const withUser = rows.map(r => ({ ...r, user_id: uid }));
-    await sb.from(table).upsert(withUser, { onConflict: 'id,user_id' });
+    const { error } = await sb.from(table).upsert(withUser, { onConflict: 'id,user_id' });
+    if (error) {
+      console.warn('[sync] safeUpsert failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn(`[sync] upsert ${table} failed`, e);
   }
@@ -57,7 +60,10 @@ async function safeDelete(table: string, id: number | string): Promise<void> {
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from(table).delete().match({ id, user_id: uid });
+    const { error } = await sb.from(table).delete().match({ id, user_id: uid });
+    if (error) {
+      console.warn('[sync] safeDelete failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn(`[sync] delete ${table} failed`, e);
   }
@@ -249,12 +255,15 @@ export async function syncCircleReaction(
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb
+    const { error } = await sb
       .from(TABLES.circleReactions)
       .upsert(
         { post_id: postId, post_type: postType, user_id: uid, emoji },
         { onConflict: 'post_id,post_type,user_id', ignoreDuplicates: true },
       );
+    if (error) {
+      console.warn('[sync] syncCircleReaction failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn('[sync] syncCircleReaction failed', e);
   }
@@ -281,7 +290,7 @@ export async function writeCirclePost(
     ? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 }
     : { felt: 0, comfort: 0, proud: 0, stay: 0 };
   try {
-    await sb.from(tableName).insert({
+    const { error } = await sb.from(tableName).insert({
       user_id:    uid,
       text,
       post_mood:  opts.postMood  ?? null,
@@ -290,6 +299,9 @@ export async function writeCirclePost(
       reactions:  defaultReactions,
       created_at: new Date().toISOString(),
     });
+    if (error) {
+      console.warn('[sync] writeCirclePost failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn(`[sync] writeCirclePost(${tab}) failed`, e);
   }
@@ -341,7 +353,7 @@ export async function syncRoomMemory(rm: {
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from(TABLES.roomMemory).upsert(
+    const { error } = await sb.from(TABLES.roomMemory).upsert(
       {
         user_id:      uid,
         character:    rm.character,
@@ -353,6 +365,9 @@ export async function syncRoomMemory(rm: {
       },
       { onConflict: 'user_id' },
     );
+    if (error) {
+      console.warn('[sync] syncRoomMemory failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn('[sync] syncRoomMemory failed', e);
   }
@@ -365,9 +380,12 @@ export async function snapshotPoints(total: number): Promise<void> {
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from(TABLES.bipPoints).insert({
+    const { error } = await sb.from(TABLES.bipPoints).insert({
       user_id: uid, total, captured_at: new Date().toISOString(),
     });
+    if (error) {
+      console.warn('[sync] snapshotPoints failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn('[sync] snapshotPoints failed', e);
   }
@@ -382,10 +400,13 @@ export async function syncPeriodDay(day: string, note?: string): Promise<void> {
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from(TABLES.periodDays).upsert(
+    const { error } = await sb.from(TABLES.periodDays).upsert(
       { user_id: uid, day, note: note ?? null },
       { onConflict: 'user_id,day' },
     );
+    if (error) {
+      console.warn('[sync] syncPeriodDay failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn('[sync] syncPeriodDay failed', e);
   }
@@ -398,7 +419,10 @@ export async function deletePeriodDay(day: string): Promise<void> {
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from(TABLES.periodDays).delete().match({ user_id: uid, day });
+    const { error } = await sb.from(TABLES.periodDays).delete().match({ user_id: uid, day });
+    if (error) {
+      console.warn('[sync] deletePeriodDay failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn('[sync] deletePeriodDay failed', e);
   }
@@ -440,7 +464,7 @@ export async function syncOracleSession(
   const uid = await currentUserId();
   if (!uid) return;
   try {
-    await sb.from(TABLES.oracleSessions).upsert(
+    const { error } = await sb.from(TABLES.oracleSessions).upsert(
       {
         user_id:        uid,
         personality_id: personalityId,
@@ -450,6 +474,9 @@ export async function syncOracleSession(
       },
       { onConflict: 'user_id,personality_id' },
     );
+    if (error) {
+      console.warn('[sync] syncOracleSession failed:', error.message, error.code);
+    }
   } catch (e) {
     if (__DEV__) console.warn('[sync] syncOracleSession failed', e);
   }
