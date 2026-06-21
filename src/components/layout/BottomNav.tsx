@@ -53,7 +53,6 @@ export function BottomNav({ userSide }: BottomNavProps) {
           ['pages',  '📖', 'Pages'],
           ['calm',   '🌙', 'Calm'],
           ['circle', '🌐', 'Circle'],
-          ['sekret', '💜', "Se'kret"],
           ['more',   '☰',  'More'],
         ];
 

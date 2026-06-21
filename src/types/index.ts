@@ -15,6 +15,7 @@ export interface JournalEntry {
   entryMode?: string;
   moodTag?: string;
   imageUri?: string;
+  mediaType?: 'photo' | 'video';
   sekretReply?: string;
   locked?: boolean;
   activeTab?: string;

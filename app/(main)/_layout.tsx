@@ -136,6 +136,9 @@ export default function MainLayout() {
       <Tabs.Screen name="discover"        options={{ href: null }} />
       <Tabs.Screen name="profile"         options={{ href: null }} />
 
+      {/* ── Memories: hidden, reachable from More ── */}
+      <Tabs.Screen name="memories" options={{ href: null }} />
+
       {/* ── Chat nested routes ── */}
       <Tabs.Screen name="chat/index"            options={{ href: null }} />
       <Tabs.Screen name="chat/[personalityId]"  options={{ href: null }} />
