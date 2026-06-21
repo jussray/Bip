@@ -31,12 +31,12 @@ export default function AgeScreen() {
   }
 
   async function handleParent() {
-    setUserSide('parent');
     const done = await AsyncStorage.getItem('parent_profile_done');
     if (done === 'true') {
+      setUserSide('parent');
       router.replace('/(parent)/room');
     } else {
-      router.replace('/(parent)/profile');
+      router.push('/(onboarding)/parent-welcome');
     }
   }
 
