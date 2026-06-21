@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -105,6 +106,8 @@ export default function TeenPagesRoute() {
   const [audioUri, setAudioUri] = useState('');
   const [saving, setSaving] = useState(false);
   const [voiceLoading, setVoiceLoading] = useState(false);
+  const [mediaUri, setMediaUri] = useState<string | undefined>();
+  const [mediaType, setMediaType] = useState<'photo' | 'video' | undefined>();
   const breathe = useRef(new Animated.Value(1)).current;
 
   React.useEffect(() => {
@@ -132,9 +135,35 @@ export default function TeenPagesRoute() {
     setAudioUri('');
   }
 
+  async function choosePhoto() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setMediaUri(result.assets[0].uri);
+      setMediaType('photo');
+    }
+  }
+
+  async function recordVideo() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      videoMaxDuration: 60,
+      quality: 0.8,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setMediaUri(result.assets[0].uri);
+      setMediaType('video');
+    }
+  }
+
   async function saveAndReply() {
     const text = journalText.trim();
-    if (!text || saving) return;
+    if ((!text && !mediaUri) || saving) return;
 
     const id = Date.now();
     const entry: JournalEntry = {
@@ -148,12 +177,15 @@ export default function TeenPagesRoute() {
       activeTab: activeAvatar,
       entryMode: 'typed',
       locked: false,
+      imageUri: mediaUri,
     };
 
     setEntries(previous => [entry, ...previous]);
     setJournalText('');
     setReply('');
     setAudioUri('');
+    setMediaUri(undefined);
+    setMediaType(undefined);
     setSaving(true);
     setAvatarState('thinking');
 
@@ -276,12 +308,37 @@ export default function TeenPagesRoute() {
             </View>
           ) : null}
 
+          {/* Media row — Video Bip + Photo Scrap */}
+          <View style={styles.mediaRow}>
+            <TouchableOpacity
+              onPress={recordVideo}
+              style={[styles.mediaBtn, mediaType === 'video' && { borderColor: avatar.accent, backgroundColor: `${avatar.accent}22` }]}
+            >
+              <Text style={styles.mediaBtnEmoji}>📹</Text>
+              <Text style={styles.mediaBtnLabel}>{mediaType === 'video' ? 'recorded ✓' : 'Video Bip'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={choosePhoto}
+              style={[styles.mediaBtn, mediaType === 'photo' && { borderColor: avatar.accent, backgroundColor: `${avatar.accent}22` }]}
+            >
+              <Text style={styles.mediaBtnEmoji}>🖼️</Text>
+              <Text style={styles.mediaBtnLabel}>{mediaType === 'photo' ? 'added ✓' : 'Photo Scrap'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {mediaUri ? (
+            <TouchableOpacity onPress={() => { setMediaUri(undefined); setMediaType(undefined); }} style={styles.mediaPreviewWrap}>
+              <Image source={{ uri: mediaUri }} style={styles.mediaPreview} />
+              <Text style={styles.mediaRemove}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
+
           <View style={styles.journalFooter}>
             <Text style={styles.privacyNote}>only you can see this unless you choose to share</Text>
             <TouchableOpacity
-              disabled={!journalText.trim() || saving}
+              disabled={(!journalText.trim() && !mediaUri) || saving}
               onPress={saveAndReply}
-              style={[styles.save, { backgroundColor: avatar.accent }, (!journalText.trim() || saving) && styles.disabled]}
+              style={[styles.save, { backgroundColor: avatar.accent }, ((!journalText.trim() && !mediaUri) || saving) && styles.disabled]}
             >
               <Text style={styles.saveText}>{saving ? 'thinking…' : 'Bip 💜'}</Text>
             </TouchableOpacity>
@@ -296,7 +353,10 @@ export default function TeenPagesRoute() {
         {avatarEntries.slice(0, 12).map(entry => (
           <View key={String(entry.id)} style={styles.entryCard}>
             <Text style={styles.entryMeta}>{entry.date} · {entry.time}</Text>
-            <Text style={styles.entryText}>{entry.text}</Text>
+            {entry.imageUri ? (
+              <Image source={{ uri: entry.imageUri }} style={styles.entryMedia} />
+            ) : null}
+            {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
             {entry.sekretReply ? (
               <View style={[styles.savedReply, { borderLeftColor: avatar.accent }]}>
                 <Text style={[styles.savedReplyName, { color: avatar.accent }]}>{avatar.name}</Text>
@@ -346,6 +406,13 @@ const styles = StyleSheet.create({
   hearText: { color: '#d8cfdf', fontSize: 9, fontWeight: '800' },
   journalFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   privacyNote: { flex: 1, color: '#827889', fontSize: 9, lineHeight: 13 },
+  mediaRow:         { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  mediaBtn:         { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 10, alignItems: 'center', gap: 4 },
+  mediaBtnEmoji:    { fontSize: 18 },
+  mediaBtnLabel:    { color: '#a99fb2', fontSize: 10, fontWeight: '700' },
+  mediaPreviewWrap: { marginBottom: 10, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  mediaPreview:     { width: '100%', height: 140, borderRadius: 12, resizeMode: 'cover' },
+  mediaRemove:      { position: 'absolute', top: 6, right: 8, color: '#fff', fontSize: 14, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2 },
   save: { minWidth: 98, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   saveText: { color: '#171018', fontSize: 12, fontWeight: '900' },
   disabled: { opacity: 0.35 },
@@ -354,6 +421,7 @@ const styles = StyleSheet.create({
   historyCount: { color: '#867b8d', fontSize: 11 },
   entryCard: { borderRadius: 18, borderWidth: 1, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.04)', padding: 15, marginBottom: 10 },
   entryMeta: { color: '#8e8495', fontSize: 9, marginBottom: 7 },
+  entryMedia: { width: '100%', height: 130, borderRadius: 10, resizeMode: 'cover', marginBottom: 8 },
   entryText: { color: '#eee7f1', fontSize: 14, lineHeight: 22 },
   savedReply: { borderLeftWidth: 2, paddingLeft: 11, marginTop: 12 },
   savedReplyName: { fontSize: 9, fontWeight: '900', marginBottom: 4 },

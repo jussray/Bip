@@ -32,6 +32,7 @@ import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { VoiceNote } from '../types/bridge';
 import { Audio } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 import { fetchSekretReply, fetchSekretVoice, fetchSekretTranscribe } from '../utils/api';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
@@ -364,6 +365,40 @@ export function VoiceBipScreen({
     setSelectedBipType(null);
   };
 
+  const startVideoRecording = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      setSelectedBipType(null);
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      videoMaxDuration: 60,
+      quality: 0.8,
+      allowsEditing: false,
+    });
+    if (result.canceled || !result.assets[0]) {
+      setSelectedBipType(null);
+      return;
+    }
+    const asset = result.assets[0];
+    const secs = typeof asset.duration === 'number' ? Math.floor(asset.duration) : 0;
+    const note: VoiceNote = {
+      id: Date.now(),
+      title: 'Video Bip',
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      duration: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
+      type: 'video',
+      avatarKey,
+      videoUri: asset.uri,
+    };
+    setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
+    onSave?.(note);
+    setRecorded(true);
+    setSelectedBipType(null);
+  };
+
   useEffect(() => {
     return () => {
       pulseLoop.current?.stop();
@@ -676,6 +711,7 @@ export function VoiceBipScreen({
                   setSelectedBipType(bip.id);
                   if (bip.id === 'text')       { setShowBipMenu(false); setScreen('pages'); }
                   else if (bip.id === 'cloud') { setShowBipMenu(false); setScreen('cloudThoughts'); }
+                  else if (bip.id === 'video') { setShowBipMenu(false); void startVideoRecording(); }
                   else                         { setShowBipMenu(false); startRecording(); }
                 }}
               >
