@@ -23,7 +23,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
-import type { MoodEntry, JournalEntry, VoiceNote, CirclePost } from '../types/index';
+import type { MoodEntry, JournalEntry, VoiceNote, CirclePost } from '@/types';
 
 // ── Glow palette ─────────────────────────────────────────────────────────────
 function timeOfDay(): TimeOfDay {

@@ -18,7 +18,7 @@
 //   • whole night sky      (750+)
 
 import React, { useEffect, useMemo, useRef } from 'react';
-import { snapshotPoints } from '../utils/sync';
+import { snapshotPoints } from '@/utils/sync';
 import {
   Text, TouchableOpacity, ScrollView, View,
   ImageBackground, Animated, Easing, StyleSheet, Platform,
@@ -29,7 +29,7 @@ import { glowForMood as glowFor } from '../constants/moodGlow';
 import type {
   MoodEntry, JournalEntry, VoiceNote, CirclePost,
   ComfortSession, CrewCheckIn,
-} from '../types/index';
+} from '@/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function timeOfDay(): TimeOfDay {

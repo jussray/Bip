@@ -23,7 +23,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
-import type { ComfortSession } from '../types/index';
+import type { ComfortSession } from '@/types';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function timeOfDay(): TimeOfDay {

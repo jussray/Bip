@@ -34,17 +34,17 @@ import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import * as ImagePicker from 'expo-image-picker';
 import { Audio } from 'expo-av';
 import { IMAGES } from '../constants/theme';
-import type { JournalEntry, MoodEntry, VoiceNote } from '../types';
+import type { JournalEntry, MoodEntry, VoiceNote } from '@/types';
 import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
-import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '../utils/sekretReply';
+import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '@/utils/sekretReply';
 import { fetchSekretVoice } from '../utils/api';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import { BipEmptyState } from '../components/BipEmptyState';
 import { PERSONALITY_CONFIG } from '@/services/ai';
-import type { PersonalityId } from '../types';
+import type { PersonalityId } from '@/types';
 
 // ── Section definitions ────────────────────────────────────────────────────
 

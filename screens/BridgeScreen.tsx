@@ -26,7 +26,7 @@ import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
-import { supabase } from '../utils/supabase';
+import { supabase } from '@/utils/supabase';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;

@@ -12,14 +12,14 @@
 import { useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppState } from '../store/useAppStore';
-import { loadState, saveState } from '../../utils/storage';
-import { isSupabaseConfigured } from '../../utils/supabase';
+import { loadState, saveState } from '@/utils/storage';
+import { isSupabaseConfigured } from '@/utils/supabase';
 import {
   ensureAnonymousSession,
   pullAll,
   loadPeriodDays,
   loadOracleSession,
-} from '../../utils/sync';
+} from '@/utils/sync';
 import { mergeById } from '../utils/mergeById';
 import { normalizeVibeKey } from '../../constants/theme';
 import {

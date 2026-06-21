@@ -16,7 +16,7 @@ import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
 import { syncParentCirclePost, loadParentCircleFeed } from '@/utils/sync';
 import { ParentCircleScreen } from '@screens/ParentCircleScreen';
-import type { ParentCirclePost } from '../../types/index';
+import type { ParentCirclePost } from '@/types';
 
 export default function ParentCircleRoute() {
   const {
