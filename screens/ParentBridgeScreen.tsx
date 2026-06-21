@@ -18,7 +18,6 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import {
   PARENT_TOPICS,
@@ -26,9 +25,15 @@ import {
   type ParentTopicId,
   type ParentSekretResponse,
 } from '../constants/parentSekret';
+import {
+  fetchLinkedTeenId,
+  fetchBridgeSignals,
+  sendParentNote,
+  subscribeToBridgeSignals,
+  type BridgeSignal,
+} from '@/utils/sync';
 
 const { width: W } = Dimensions.get('window');
-const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL || '';
 
 // ─── palette ──────────────────────────────────────────────────────────────────
 const P = {
@@ -64,14 +69,25 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
   const [sent,       setSent]       = useState(false);
   const [sending,    setSending]    = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [hasPending,      setHasPending]      = useState(false);
+  const [teenId,     setTeenId]     = useState<string | null>(null);
+  const [signals,    setSignals]    = useState<BridgeSignal[]>([]);
+  const [linked,     setLinked]     = useState(false);
 
-  // Check if teen has marked something to share — parent sees gentle nudge only.
-  // Content stays on the teen side; this key is just a signal.
+  // Load linked teen ID + their signals, then subscribe to Realtime
   useEffect(() => {
-    AsyncStorage.getItem('parent_bridge_pending').then(val => {
-      if (val === 'true') setHasPending(true);
-    }).catch(() => {});
+    let unsub = () => {};
+    (async () => {
+      const id = await fetchLinkedTeenId();
+      if (!id) return;
+      setTeenId(id);
+      setLinked(true);
+      const existing = await fetchBridgeSignals(id);
+      setSignals(existing);
+      subscribeToBridgeSignals(id, (sig) => {
+        setSignals(prev => [sig, ...prev]);
+      }).then(fn => { unsub = fn; });
+    })();
+    return () => { unsub(); };
   }, []);
 
   const fade1 = useRef(new Animated.Value(0)).current;
@@ -105,18 +121,16 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
 
   const handleSend = async () => {
     const text = message.trim();
-    if (!text) return;
+    if (!text || !teenId) return;
     setSending(true);
     try {
-      if (BASE_URL) {
-        await fetch(`${BASE_URL}/api/bridge/parent`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text }),
-        });
+      const ok = await sendParentNote(teenId, text);
+      if (ok) {
+        setSent(true);
+        setMessage('');
+      } else {
+        Alert.alert('Could not send', 'Make sure you\'re connected to a teen account in Settings.');
       }
-      setSent(true);
-      setMessage('');
     } catch {
       Alert.alert('Could not send', 'Please try again in a moment.');
     } finally {
@@ -162,14 +176,39 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
           </View>
         </Animated.View>
 
-        {/* ─── TEEN SHARE SIGNAL ──────────────────────────────────────────────── */}
-        {hasPending && (
+        {/* ─── LINK STATUS / TEEN SIGNALS ─────────────────────────────────────── */}
+        {!linked && (
           <Animated.View style={cardSlide(fade2)}>
-            <View style={[styles.pendingBanner, { borderColor: P.accent + '66', backgroundColor: P.accent + '18' }]}>
-              <Text style={[styles.pendingText, { color: P.soft }]}>
-                💌 Your teen has something they chose to share with you.
+            <View style={[styles.pendingBanner, { borderColor: P.accent + '44', backgroundColor: P.accent + '0e' }]}>
+              <Text style={[styles.pendingText, { color: P.soft + 'bb' }]}>
+                🔗 Not linked to a teen yet — ask them to generate a code in Settings.
               </Text>
             </View>
+          </Animated.View>
+        )}
+
+        {linked && signals.length > 0 && (
+          <Animated.View style={cardSlide(fade2)}>
+            <Text style={[styles.sectionTitle, { color: P.soft, marginBottom: 10 }]}>
+              What they chose to share
+            </Text>
+            {signals.slice(0, 5).map(sig => (
+              <View key={sig.id} style={[styles.signalCard, { borderColor: P.accent + '44' }]}>
+                <Text style={styles.signalEmoji}>
+                  {sig.share_type === 'mood' ? '💜' : sig.share_type === 'thought' ? '💭' : sig.share_type === 'need' ? '🌿' : '⚡'}
+                </Text>
+                <View style={styles.signalBody}>
+                  <Text style={[styles.signalType, { color: P.accent }]}>
+                    {sig.share_type === 'mood' ? 'My Mood' : sig.share_type === 'thought' ? 'A Thought' : sig.share_type === 'need' ? 'Something I Need' : 'A Win'}
+                    {sig.conv_mode ? ` · ${sig.conv_mode}` : ''}
+                  </Text>
+                  <Text style={[styles.signalTime, { color: P.soft + '77' }]}>
+                    {new Date(sig.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · via '}{sig.char_key}
+                  </Text>
+                </View>
+              </View>
+            ))}
           </Animated.View>
         )}
 
@@ -458,9 +497,13 @@ const styles = StyleSheet.create({
   root:   { flex: 1, backgroundColor: '#1e0f06' },
   scroll: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 40, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
-  // Teen share signal banner
   pendingBanner: { borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 14, alignItems: 'center' },
   pendingText:   { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  signalCard:    { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: 'rgba(46,26,16,0.75)', borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 8 },
+  signalEmoji:   { fontSize: 22 },
+  signalBody:    { flex: 1 },
+  signalType:    { fontSize: 13, fontWeight: '700', marginBottom: 2 },
+  signalTime:    { fontSize: 11 },
 
   // Header
   header:        { alignItems: 'center', marginBottom: 20 },

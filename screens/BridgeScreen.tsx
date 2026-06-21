@@ -26,7 +26,13 @@ import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
-import { supabase } from '@/utils/supabase';
+import {
+  sendBridgeSignal,
+  fetchParentNotes,
+  markParentNoteSeen,
+  subscribeToParentNotes,
+  type ParentNote,
+} from '@/utils/sync';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -78,6 +84,7 @@ export function BridgeScreen({
   const [message, setMessage]       = useState('');
   const [sent, setSent]             = useState(false);
   const [sending, setSending]       = useState(false);
+  const [parentNotes, setParentNotes] = useState<ParentNote[]>([]);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
   const isRylane = selectedSekret === 'rylane';
@@ -108,7 +115,15 @@ export function BridgeScreen({
       ])
     );
     loop.start();
-    return () => loop.stop();
+
+    // Load parent notes + subscribe to new ones via Realtime
+    fetchParentNotes().then(setParentNotes);
+    let unsub = () => {};
+    subscribeToParentNotes((note) => {
+      setParentNotes(prev => [note, ...prev]);
+    }).then(fn => { unsub = fn; });
+
+    return () => { loop.stop(); unsub(); };
   }, [fade1, fade2, fade3, breath]);
 
   const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
@@ -118,7 +133,6 @@ export function BridgeScreen({
     transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   });
 
-  // ─── P6: send signal ─────────────────────────────────────────────────────────
   const handleSend = async () => {
     if (!shareType || !message.trim()) {
       Alert.alert('almost there', 'pick a share type and write your message first.');
@@ -127,25 +141,12 @@ export function BridgeScreen({
 
     setSending(true);
     try {
-      // 1. Instant local flag so the parent UI reacts even when offline.
+      // Local flag for instant offline feedback
       await AsyncStorage.setItem('parent_bridge_pending', 'true');
-
-      // 2. Cloud signal — NO message content, only metadata.
-      if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('bridge_signals').insert({
-          teen_user_id: user.id,
-          char_key:    charKey,
-          share_type:  shareType,
-          conv_mode:   convMode ?? null,
-          sent_at:     new Date().toISOString(),
-        });
-        // Errors are intentionally swallowed — the teen's send still succeeds
-        // locally. Cloud sync is best-effort.
-      }
+      // Cloud: metadata signal only — message content stays on device
+      await sendBridgeSignal({ shareType, convMode, charKey });
     } catch {
-      // Network failure: local flag already set, nothing else to do.
+      // Network failure: local experience unaffected
     } finally {
       setSending(false);
     }
@@ -304,6 +305,49 @@ export function BridgeScreen({
           )}
         </Animated.View>
 
+        {/* Parent notes received */}
+        {parentNotes.length > 0 && (
+          <Animated.View style={cardStyle(fade2)}>
+            <Text style={[styles.sectionLabel, { color: '#cbb6f7', marginBottom: 10 }]}>
+              💌 from your person
+            </Text>
+            {parentNotes.map(note => (
+              <View
+                key={note.id}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: note.seen_by_teen ? 'rgba(30,18,55,0.6)' : 'rgba(30,18,55,0.92)',
+                    borderColor: note.seen_by_teen ? glow + '33' : glow + '88',
+                    marginBottom: 10,
+                  },
+                ]}
+              >
+                {!note.seen_by_teen && (
+                  <View style={[styles.unseenDot, { backgroundColor: glow }]} />
+                )}
+                <Text style={[styles.noteText, { color: note.seen_by_teen ? '#9d8eb8' : '#e9defc' }]}>
+                  {note.content}
+                </Text>
+                <Text style={styles.noteTime}>
+                  {new Date(note.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </Text>
+                {!note.seen_by_teen && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      markParentNoteSeen(note.id);
+                      setParentNotes(prev => prev.map(n => n.id === note.id ? { ...n, seen_by_teen: true } : n));
+                    }}
+                    style={[styles.seenBtn, { borderColor: glow + '66' }]}
+                  >
+                    <Text style={[styles.seenBtnText, { color: glow }]}>mark as read</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
         <Animated.View style={cardStyle(fade3)}>
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
@@ -376,4 +420,9 @@ const styles = StyleSheet.create({
   sentEmoji:       { fontSize: 56, textAlign: 'center', marginBottom: 12 },
   sentTitle:       { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   sentSub:         { fontSize: 14, color: '#e9defc', textAlign: 'center', lineHeight: 21 },
+  unseenDot:       { position: 'absolute', top: 14, right: 14, width: 8, height: 8, borderRadius: 4 },
+  noteText:        { fontSize: 14, lineHeight: 22, marginBottom: 6 },
+  noteTime:        { fontSize: 11, color: '#5a4d74', marginBottom: 6 },
+  seenBtn:         { alignSelf: 'flex-start', borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5 },
+  seenBtnText:     { fontSize: 11, fontWeight: '700' },
 });
