@@ -105,6 +105,31 @@ export function useSekretState() {
     isLoading,
   ]);
 
+  function resetAllState() {
+    setTheme('neon');
+    setMood('Happy');
+    setUserSide(null);
+    setSelectedSekret('soft');
+    setGrowthPath('preferNotToSay');
+    setEntries([]);
+    setMoodHistory([]);
+    setCirclePosts([]);
+    setParentMood('Calm');
+    setParentMoodDate('');
+    setParentRoomStyle('forest');
+    setParentPagesDraft('');
+    setParentPagesEntries([]);
+    setParentCirclePosts([]);
+    setParentCirclePostText('');
+    setParentVoiceNotes([]);
+    setParentOracleProfile(null);
+    setParentOracleSessions([]);
+    setCrewMembers([]);
+    setCrewCheckIns([]);
+    setParentCrewMembers([]);
+    setParentCrewCheckIns([]);
+  }
+
   return {
     theme, setTheme,
     mood, setMood,
@@ -130,5 +155,6 @@ export function useSekretState() {
     parentCrewMembers, setParentCrewMembers,
     parentCrewCheckIns, setParentCrewCheckIns,
     isLoading,
+    resetAllState,
   };
 }

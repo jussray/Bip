@@ -1,10 +1,3 @@
-/**
- * app/(main)/circle.tsx
- *
- * Se'kret Bip Circle — teen community board.
- * Cozy scrapbook aesthetic. Avatar/mood identity. Anonymous by default.
- * Reactions: felt · comfort · proud · stay.
- */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
@@ -57,7 +50,14 @@ function normalizeReactions(raw: unknown): CirclePost['reactions'] {
   };
 }
 
-export default function CircleScreen() {
+function getPostMood(text: string): { emoji: string; color: string } | null {
+  for (const m of MOOD_OPTS) {
+    if (text.startsWith(m.emoji + ' ')) return { emoji: m.emoji, color: MOOD_COLORS[m.id] };
+  }
+  return null;
+}
+
+export function CircleFeed() {
   const { circlePosts, setCirclePosts } = useAppContext();
   const [draft, setDraft]             = useState('');
   const [composeMood, setComposeMood] = useState('');
@@ -68,9 +68,7 @@ export default function CircleScreen() {
 
   async function fetchFeed() {
     const cloudPosts = await loadCircleFeed('public', 40);
-    // Supabase may be absent or blocked during early builds. Keep local Circle usable.
     if (!cloudPosts?.length) return;
-
     setCirclePosts(prev => {
       const cloudIds = new Set((cloudPosts as any[]).map((p: any) => String(p.id)));
       const localOnly = prev.filter(p => !cloudIds.has(String(p.id)));
@@ -95,10 +93,8 @@ export default function CircleScreen() {
     const text = draft.trim();
     if (!text || posting) return;
     setPosting(true);
-
     const moodPrefix = composeMood ? `${MOOD_OPTS.find(m => m.id === composeMood)?.emoji} ` : '';
     const fullText   = moodPrefix + text;
-
     const optimisticPost: CirclePost = {
       id:        Date.now(),
       text:      fullText,
@@ -109,12 +105,7 @@ export default function CircleScreen() {
     setCirclePosts(prev => [optimisticPost, ...prev]);
     setDraft('');
     setComposeMood('');
-
-    try {
-      await writeCirclePost('public', fullText);
-    } finally {
-      setPosting(false);
-    }
+    try { await writeCirclePost('public', fullText); } finally { setPosting(false); }
   }
 
   function react(postId: CirclePost['id'], key: keyof CirclePost['reactions']) {
@@ -128,143 +119,121 @@ export default function CircleScreen() {
     void syncCircleReaction(postId, key);
   }
 
-  // Detect mood emoji prefix in post text for display
-  function getPostMood(text: string): { emoji: string; color: string } | null {
-    for (const m of MOOD_OPTS) {
-      if (text.startsWith(m.emoji + ' ')) {
-        return { emoji: m.emoji, color: MOOD_COLORS[m.id] };
+  return (
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} colors={[PURPLE]} />
       }
-    }
-    return null;
-  }
+    >
+      {/* Compose */}
+      <View style={s.composeCard}>
+        <Text style={s.composeLabel}>put something into the circle</Text>
+        <View style={s.moodRow}>
+          {MOOD_OPTS.map(m => {
+            const active = composeMood === m.id;
+            return (
+              <TouchableOpacity
+                key={m.id}
+                style={[s.moodPill, active && { backgroundColor: MOOD_COLORS[m.id] + '30', borderColor: MOOD_COLORS[m.id] }]}
+                onPress={() => setComposeMood(active ? '' : m.id)}
+              >
+                <Text style={s.moodPillEmoji}>{m.emoji}</Text>
+                <Text style={[s.moodPillLabel, active && { color: MOOD_COLORS[m.id] }]}>{m.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <TextInput
+          style={s.input}
+          placeholder="say it here. no names. no judgment."
+          placeholderTextColor="#5a4870"
+          value={draft}
+          onChangeText={setDraft}
+          multiline
+          maxLength={280}
+        />
+        <View style={s.composeFooter}>
+          <Text style={s.charCount}>{280 - draft.length}</Text>
+          <TouchableOpacity
+            style={[s.postBtn, (!draft.trim() || posting) && s.postBtnDisabled]}
+            onPress={submitPost}
+            disabled={!draft.trim() || posting}
+          >
+            <Text style={s.postBtnText}>{posting ? 'dropping…' : 'Bip it 💜'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
+      {/* Feed */}
+      {circlePosts.length === 0 && !refreshing && (
+        <View style={s.empty}>
+          <Text style={s.emptyEmoji}>🌙</Text>
+          <Text style={s.emptyText}>the circle is quiet. be the first to bip.</Text>
+        </View>
+      )}
+
+      {circlePosts.map(post => {
+        const postMood    = getPostMood(post.text);
+        const displayText = postMood ? post.text.slice(post.text.indexOf(' ') + 1) : post.text;
+        const reactions   = normalizeReactions(post.reactions);
+        return (
+          <View key={String(post.id)} style={[s.card, postMood && { borderLeftColor: postMood.color, borderLeftWidth: 3 }]}>
+            <View style={s.cardHeader}>
+              <View style={s.anonBadge}>
+                {postMood
+                  ? <Text style={[s.anonMoodEmoji, { color: postMood.color }]}>{postMood.emoji}</Text>
+                  : <Text style={s.anonDot}>🌑</Text>}
+                <Text style={s.anonLabel}>anonymous bip</Text>
+              </View>
+              <Text style={s.cardTime}>{post.time || ''}</Text>
+            </View>
+            <Text style={s.cardText}>{displayText}</Text>
+            <View style={s.reactions}>
+              {REACTION_LABELS.map(({ key, emoji, label }) => {
+                const count = reactions[key] ?? 0;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[s.reactionBtn, count > 0 && s.reactionBtnActive]}
+                    onPress={() => react(post.id, key)}
+                  >
+                    <Text style={s.reactionEmoji}>{emoji}</Text>
+                    <Text style={[s.reactionLabel, count > 0 && s.reactionLabelActive]}>{label}</Text>
+                    {count > 0 && <Text style={s.reactionCount}>{count}</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
+  );
+}
+
+export default function CircleScreen() {
   return (
     <SafeAreaView style={s.safe}>
-      {/* Header */}
       <View style={s.header}>
         <View>
-          <Text style={s.kicker}>SE'KRET BIP CIRCLE</Text>
-          <Text style={s.title}>Circle 💜</Text>
+          <Text style={s.kicker}>{"SE'KRET BIP"}</Text>
+          <Text style={s.title}>{'Circle 💜'}</Text>
         </View>
         <View style={s.anonPill}>
           <Text style={s.anonPillText}>🌑 anonymous</Text>
         </View>
       </View>
-
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        style={s.scroll}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={PURPLE}
-            colors={[PURPLE]}
-          />
-        }
-      >
-        {/* Compose card */}
-        <View style={s.composeCard}>
-          <Text style={s.composeLabel}>put something into the circle</Text>
-
-          {/* Mood picker */}
-          <View style={s.moodRow}>
-            {MOOD_OPTS.map(m => {
-              const active = composeMood === m.id;
-              return (
-                <TouchableOpacity
-                  key={m.id}
-                  style={[s.moodPill, active && { backgroundColor: MOOD_COLORS[m.id] + '30', borderColor: MOOD_COLORS[m.id] }]}
-                  onPress={() => setComposeMood(active ? '' : m.id)}
-                >
-                  <Text style={s.moodPillEmoji}>{m.emoji}</Text>
-                  <Text style={[s.moodPillLabel, active && { color: MOOD_COLORS[m.id] }]}>{m.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TextInput
-            style={s.input}
-            placeholder="say it here. no names. no judgment."
-            placeholderTextColor="#5a4870"
-            value={draft}
-            onChangeText={setDraft}
-            multiline
-            maxLength={280}
-          />
-          <View style={s.composeFooter}>
-            <Text style={s.charCount}>{280 - draft.length}</Text>
-            <TouchableOpacity
-              style={[s.postBtn, (!draft.trim() || posting) && s.postBtnDisabled]}
-              onPress={submitPost}
-              disabled={!draft.trim() || posting}
-            >
-              <Text style={s.postBtnText}>{posting ? 'dropping…' : 'Bip it 💜'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Feed */}
-        {circlePosts.length === 0 && !refreshing && (
-          <View style={s.empty}>
-            <Text style={s.emptyEmoji}>🌙</Text>
-            <Text style={s.emptyText}>the circle is quiet. be the first to bip.</Text>
-          </View>
-        )}
-
-        {circlePosts.map(post => {
-          const postMood = getPostMood(post.text);
-          const displayText = postMood ? post.text.slice(post.text.indexOf(' ') + 1) : post.text;
-          const reactions = normalizeReactions(post.reactions);
-          return (
-            <View key={String(post.id)} style={[s.card, postMood && { borderLeftColor: postMood.color, borderLeftWidth: 3 }]}>
-              {/* Card header */}
-              <View style={s.cardHeader}>
-                <View style={s.anonBadge}>
-                  {postMood ? (
-                    <Text style={[s.anonMoodEmoji, { color: postMood.color }]}>{postMood.emoji}</Text>
-                  ) : (
-                    <Text style={s.anonDot}>🌑</Text>
-                  )}
-                  <Text style={s.anonLabel}>anonymous bip</Text>
-                </View>
-                <Text style={s.cardTime}>{post.time || ''}</Text>
-              </View>
-
-              <Text style={s.cardText}>{displayText}</Text>
-
-              {/* Reactions */}
-              <View style={s.reactions}>
-                {REACTION_LABELS.map(({ key, emoji, label }) => {
-                  const count = reactions[key] ?? 0;
-                  return (
-                    <TouchableOpacity
-                      key={key}
-                      style={[s.reactionBtn, count > 0 && s.reactionBtnActive]}
-                      onPress={() => react(post.id, key)}
-                    >
-                      <Text style={s.reactionEmoji}>{emoji}</Text>
-                      <Text style={[s.reactionLabel, count > 0 && s.reactionLabelActive]}>{label}</Text>
-                      {count > 0 && <Text style={s.reactionCount}>{count}</Text>}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-          );
-        })}
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
+      <CircleFeed />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe:    { flex: 1, backgroundColor: '#0d0518' },
-  scroll:  { flex: 1 },
+  safe:   { flex: 1, backgroundColor: '#0d0518' },
 
   header: {
     flexDirection: 'row',
@@ -272,7 +241,7 @@ const s = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   kicker: { color: '#5a3a78', fontSize: 9, fontWeight: '900', letterSpacing: 1.8 },
   title:  { color: '#f0e6ff', fontSize: 26, fontWeight: '800', marginTop: 2 },
@@ -302,7 +271,7 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   composeLabel: { color: '#6b4888', fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 10 },
-  moodRow: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
+  moodRow:      { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
   moodPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     borderWidth: 1, borderColor: '#2d1450',
@@ -324,12 +293,7 @@ const s = StyleSheet.create({
   },
   composeFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   charCount:     { color: '#5a3a78', fontSize: 12 },
-  postBtn: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 9,
-  },
+  postBtn:         { backgroundColor: '#7c3aed', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 9 },
   postBtnDisabled: { opacity: 0.35 },
   postBtnText:     { color: '#fff', fontWeight: '800', fontSize: 13 },
 
@@ -348,40 +312,22 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  anonBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  anonBadge:     { flexDirection: 'row', alignItems: 'center', gap: 6 },
   anonDot:       { fontSize: 12, opacity: 0.7 },
   anonMoodEmoji: { fontSize: 14 },
-  anonLabel: { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
-  cardTime:  { color: '#3d2258', fontSize: 10 },
-  cardText:  { color: '#e8dff5', fontSize: 15, lineHeight: 23, marginBottom: 12 },
+  anonLabel:     { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
+  cardTime:      { color: '#3d2258', fontSize: 10 },
+  cardText:      { color: '#e8dff5', fontSize: 15, lineHeight: 23, marginBottom: 12 },
 
   // Reactions
-  reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  reactionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#1e0a30',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: '#2e1250',
-  },
-  reactionBtnActive: {
-    backgroundColor: '#3d1a5e',
-    borderColor: '#7c3aed',
-  },
-  reactionEmoji: { fontSize: 14 },
-  reactionLabel: { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
+  reactions:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  reactionBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#1e0a30', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#2e1250' },
+  reactionBtnActive:   { backgroundColor: '#3d1a5e', borderColor: '#7c3aed' },
+  reactionEmoji:       { fontSize: 14 },
+  reactionLabel:       { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
   reactionLabelActive: { color: '#c4b5fd' },
-  reactionCount: { color: '#a855f7', fontSize: 11, fontWeight: '800', marginLeft: 2 },
+  reactionCount:       { color: '#a855f7', fontSize: 11, fontWeight: '800', marginLeft: 2 },
 
   // Empty state
   empty:      { alignItems: 'center', paddingTop: 60, paddingBottom: 20 },
