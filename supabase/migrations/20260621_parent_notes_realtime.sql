@@ -7,6 +7,16 @@
 --
 -- bridge_signals already has RLS for linked parents (see 20260618).
 -- This migration adds parent_notes and enables Realtime on both tables.
+--
+-- Also adds parent_links.status if the live table is missing it
+-- (older deployments created parent_links without that column).
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 0. Back-fill parent_links.status if missing
+-- ─────────────────────────────────────────────────────────────────────────────
+
+ALTER TABLE public.parent_links
+  ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'pending';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1. parent_notes
@@ -63,8 +73,22 @@ CREATE POLICY "parent_notes: teen mark seen"
   WITH CHECK (auth.uid() = teen_user_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2. Enable Realtime
+-- 2. Enable Realtime (safe — skips if already in publication)
 -- ─────────────────────────────────────────────────────────────────────────────
 
-ALTER PUBLICATION supabase_realtime ADD TABLE public.bridge_signals;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.parent_notes;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'bridge_signals'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.bridge_signals;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'parent_notes'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.parent_notes;
+  END IF;
+END $$;
