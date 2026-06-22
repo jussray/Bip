@@ -35,15 +35,17 @@ export default function PagesTab() {
     moodHistory,
     selectedSekret,
     patchJournalEntry,
+    completeTeenOracleSession,
   } = useAppContext();
 
   const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
 
-  // Stub — Oracle session persistence wired in a later sprint.
   function handleCompleteOracleSession(
-    _profile: OracleProfile,
-    _session: OracleSessionSummary,
-  ) {}
+    profile: OracleProfile,
+    session: OracleSessionSummary,
+  ) {
+    completeTeenOracleSession(profile, session);
+  }
 
   /**
    * Called by PagesWorkspace after the Worker reply arrives.

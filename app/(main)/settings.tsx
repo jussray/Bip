@@ -149,7 +149,7 @@ export default function SettingsScreen() {
 
         {/* ── Account ── */}
         <Text style={styles.sectionLabel}>Account</Text>
-        <TouchableOpacity style={styles.row} onPress={() => router.push('/(onboarding)/welcome' as any)}>
+        <TouchableOpacity style={styles.row} onPress={() => router.push('/(auth)/login' as any)}>
           <Text style={styles.rowLabel}>Sign in / Create account</Text>
           <Text style={styles.rowArrow}>{'›'}</Text>
         </TouchableOpacity>

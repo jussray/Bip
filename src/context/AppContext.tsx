@@ -65,6 +65,13 @@ interface AppContextValue {
   circlePosts: CirclePost[];
   setCirclePosts: React.Dispatch<React.SetStateAction<CirclePost[]>>;
 
+  // Teen Oracle (local-only — stays in AsyncStorage, not Supabase)
+  oracleProfile: OracleProfile | null;
+  setOracleProfile: (profile: OracleProfile | null) => void;
+  oracleSessions: OracleSessionSummary[];
+  setOracleSessions: React.Dispatch<React.SetStateAction<OracleSessionSummary[]>>;
+  completeTeenOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
+
   // UI
   homeMessageIndex: number;
   breatheAnim: Animated.Value;
@@ -209,6 +216,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  function completeTeenOracleSession(profile: OracleProfile, session: OracleSessionSummary) {
+    s.setOracleSessions((sessions: OracleSessionSummary[]) => [session, ...sessions].slice(0, 50));
+    s.setOracleProfile(profile);
+  }
+
   function completeParentOracleSession(profile: OracleProfile, session: OracleSessionSummary) {
     s.setParentOracleSessions((sessions: OracleSessionSummary[]) => [session, ...sessions].slice(0, 50));
     s.setParentOracleProfile(profile);
@@ -243,6 +255,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setVoiceNotes,
     circlePosts,
     setCirclePosts,
+    oracleProfile: s.oracleProfile,
+    setOracleProfile: s.setOracleProfile,
+    oracleSessions: s.oracleSessions,
+    setOracleSessions: s.setOracleSessions,
+    completeTeenOracleSession,
     homeMessageIndex,
     breatheAnim,
     isLoading: s.isLoading,

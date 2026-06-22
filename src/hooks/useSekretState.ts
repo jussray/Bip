@@ -39,6 +39,8 @@ export function useSekretState() {
   const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
   const [parentCirclePostText, setParentCirclePostText] = useState('');
   const [parentVoiceNotes, setParentVoiceNotes]         = useState<VoiceNote[]>([]);
+  const [oracleProfile, setOracleProfile]               = useState<OracleProfile | null>(null);
+  const [oracleSessions, setOracleSessions]             = useState<OracleSessionSummary[]>([]);
   const [parentOracleProfile, setParentOracleProfile]   = useState<OracleProfile | null>(null);
   const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
@@ -69,6 +71,8 @@ export function useSekretState() {
       if (state.parentCirclePosts)      setParentCirclePosts(state.parentCirclePosts);
       if (state.parentCirclePostText)   setParentCirclePostText(state.parentCirclePostText);
       if (state.parentVoiceNotes)       setParentVoiceNotes(state.parentVoiceNotes);
+      if (state.oracleProfile)           setOracleProfile(state.oracleProfile);
+      if (state.oracleSessions)          setOracleSessions(state.oracleSessions);
       if (state.parentOracleProfile)    setParentOracleProfile(state.parentOracleProfile);
       if (state.parentOracleSessions)   setParentOracleSessions(state.parentOracleSessions);
       if (Array.isArray(state.crewMembers))        setCrewMembers(state.crewMembers);
@@ -85,6 +89,7 @@ export function useSekretState() {
       saveState({
         theme, mood, userSide, selectedSekret,
         growthPath, entries, moodHistory, circlePosts,
+        oracleProfile, oracleSessions,
         parentMood, parentMoodDate, parentRoomStyle,
         parentPagesDraft, parentPagesEntries,
         parentCirclePosts, parentCirclePostText,
@@ -96,6 +101,7 @@ export function useSekretState() {
   }, [
     theme, mood, userSide, selectedSekret,
     growthPath, entries, moodHistory, circlePosts,
+    oracleProfile, oracleSessions,
     parentMood, parentMoodDate, parentRoomStyle,
     parentPagesDraft, parentPagesEntries,
     parentCirclePosts, parentCirclePostText,
@@ -122,6 +128,8 @@ export function useSekretState() {
     setParentCirclePosts([]);
     setParentCirclePostText('');
     setParentVoiceNotes([]);
+    setOracleProfile(null);
+    setOracleSessions([]);
     setParentOracleProfile(null);
     setParentOracleSessions([]);
     setCrewMembers([]);
@@ -148,6 +156,8 @@ export function useSekretState() {
     parentCirclePosts, setParentCirclePosts,
     parentCirclePostText, setParentCirclePostText,
     parentVoiceNotes, setParentVoiceNotes,
+    oracleProfile, setOracleProfile,
+    oracleSessions, setOracleSessions,
     parentOracleProfile, setParentOracleProfile,
     parentOracleSessions, setParentOracleSessions,
     crewMembers, setCrewMembers,
