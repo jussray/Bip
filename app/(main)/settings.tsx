@@ -22,7 +22,7 @@ import {
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
 export default function SettingsScreen() {
-  const { theme, setTheme, notificationsEnabled, setNotificationsEnabled } = useAppContext();
+  const { theme, setTheme, notificationsEnabled, setNotificationsEnabled, resetApp } = useAppContext();
 
   async function handleNotificationToggle(enabled: boolean) {
     if (enabled) {
@@ -53,7 +53,8 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.clear();
-            Alert.alert('Done', 'All local data has been cleared.');
+            resetApp();
+            router.replace('/(onboarding)/welcome' as any);
           },
         },
       ],

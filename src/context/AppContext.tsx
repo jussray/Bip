@@ -113,6 +113,9 @@ interface AppContextValue {
   saveParentCirclePost: () => void;
   reactToParentPost: (postId: number, reaction: string) => void;
   completeParentOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
+
+  // Reset
+  resetApp: () => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -128,7 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
   const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
@@ -211,6 +214,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     s.setParentOracleProfile(profile);
   }
 
+  function resetApp() {
+    s.resetAllState();
+    setJournalText('');
+    setCirclePosts([]);
+    setVoiceNotes([]);
+    setNotificationsEnabled(false);
+  }
+
   const value: AppContextValue = {
     theme: s.theme,
     setTheme: s.setTheme,
@@ -272,6 +283,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveParentCirclePost,
     reactToParentPost,
     completeParentOracleSession,
+    resetApp,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

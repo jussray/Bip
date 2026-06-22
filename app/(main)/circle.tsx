@@ -9,14 +9,9 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { BipCrewScreen } from '@screens/BipCrewScreen';
-import { THEME_PACKS } from '@constants/theme';
 import { writeCirclePost, loadCircleFeed, syncCircleReaction } from '@/utils/sync';
 import type { CirclePost } from '@/context/AppContext';
-
-type Tab = 'circle' | 'crew';
 
 const REACTION_LABELS: { key: keyof CirclePost['reactions']; emoji: string; label: string }[] = [
   { key: 'felt',    emoji: '💜', label: 'felt'    },
@@ -55,7 +50,14 @@ function normalizeReactions(raw: unknown): CirclePost['reactions'] {
   };
 }
 
-function CircleFeed() {
+function getPostMood(text: string): { emoji: string; color: string } | null {
+  for (const m of MOOD_OPTS) {
+    if (text.startsWith(m.emoji + ' ')) return { emoji: m.emoji, color: MOOD_COLORS[m.id] };
+  }
+  return null;
+}
+
+export function CircleFeed() {
   const { circlePosts, setCirclePosts } = useAppContext();
   const [draft, setDraft]             = useState('');
   const [composeMood, setComposeMood] = useState('');
@@ -115,13 +117,6 @@ function CircleFeed() {
       )
     );
     void syncCircleReaction(postId, key);
-  }
-
-  function getPostMood(text: string): { emoji: string; color: string } | null {
-    for (const m of MOOD_OPTS) {
-      if (text.startsWith(m.emoji + ' ')) return { emoji: m.emoji, color: MOOD_COLORS[m.id] };
-    }
-    return null;
   }
 
   return (
@@ -221,63 +216,18 @@ function CircleFeed() {
 }
 
 export default function CircleScreen() {
-  const {
-    theme, mood, selectedSekret,
-    crewMembers, setCrewMembers,
-    crewCheckIns, setCrewCheckIns,
-    syncStatus, withSyncWrap,
-  } = useAppContext();
-  const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
-  const [tab, setTab] = useState<Tab>('circle');
-
   return (
     <SafeAreaView style={s.safe}>
-      {/* Header */}
       <View style={s.header}>
         <View>
           <Text style={s.kicker}>{"SE'KRET BIP"}</Text>
-          <Text style={s.title}>{tab === 'circle' ? 'Circle 💜' : 'Crew 🤝'}</Text>
+          <Text style={s.title}>{'Circle 💜'}</Text>
         </View>
-        {tab === 'circle' && (
-          <View style={s.anonPill}>
-            <Text style={s.anonPillText}>🌑 anonymous</Text>
-          </View>
-        )}
+        <View style={s.anonPill}>
+          <Text style={s.anonPillText}>🌑 anonymous</Text>
+        </View>
       </View>
-
-      {/* Tab bar */}
-      <View style={s.tabBar}>
-        <TouchableOpacity
-          style={[s.tabBtn, tab === 'circle' && s.tabBtnActive]}
-          onPress={() => setTab('circle')}
-        >
-          <Text style={[s.tabBtnText, tab === 'circle' && s.tabBtnTextActive]}>🌎 Circle</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[s.tabBtn, tab === 'crew' && s.tabBtnActive]}
-          onPress={() => setTab('crew')}
-        >
-          <Text style={[s.tabBtnText, tab === 'crew' && s.tabBtnTextActive]}>🤝 Crew</Text>
-        </TouchableOpacity>
-      </View>
-
-      {tab === 'circle' ? (
-        <CircleFeed />
-      ) : (
-        <BipCrewScreen
-          t={t}
-          mood={mood}
-          selectedSekret={selectedSekret}
-          crewMembers={crewMembers}
-          setCrewMembers={setCrewMembers}
-          crewCheckIns={crewCheckIns}
-          setCrewCheckIns={setCrewCheckIns}
-          syncStatus={syncStatus}
-          withSyncWrap={withSyncWrap}
-          BottomNav={null}
-          setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
-        />
-      )}
+      <CircleFeed />
     </SafeAreaView>
   );
 }
@@ -304,13 +254,6 @@ const s = StyleSheet.create({
     borderColor: '#3d1a5e',
   },
   anonPillText: { color: '#7c5a9e', fontSize: 11, fontWeight: '600' },
-
-  // Tab bar
-  tabBar:         { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: '#130828', borderRadius: 16, padding: 4 },
-  tabBtn:         { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: 12 },
-  tabBtnActive:   { backgroundColor: '#3d1a5e' },
-  tabBtnText:     { color: '#5a3a78', fontSize: 13, fontWeight: '700' },
-  tabBtnTextActive: { color: '#e0d0ff' },
 
   // Compose card
   composeCard: {
