@@ -1,18 +1,8 @@
-/**
- * Se'kret Brain + Voice Worker
- *
- * Routes:
- *   POST /api/sekret/reply  -> companion brain JSON
- *   POST /api/sekret/voice  -> OpenAI TTS audio for an existing reply
- *
- * Holds OPENAI_API_KEY and optional custom voice IDs as Worker secrets.
- * Never expose these values to Expo.
- */
-
+/** Se'kret Brain + Voice Worker */
 import { getWorkerCompanionRole, ORACLE_HIDDEN_GUIDANCE } from './companion-curriculum';
 
-type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
-type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge';
+type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
+type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
 type AudioFormat = 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
 type OpenAIVoice = string | { id: string };
 type ConversationRole = 'user' | 'assistant';
@@ -23,6 +13,7 @@ interface Env {
   RYLANE_VOICE_ID?: string;
   CLOUD_VOICE_ID?: string;
   NIGHT_VOICE_ID?: string;
+  SEKRET_VOICE_ID?: string;
 }
 
 interface ReplyRequestBody {
@@ -76,33 +67,26 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
     'Okay, I hear you. Which part of that is sitting heaviest on you right now?',
     'You do not have to make it sound neat for me. Say the messy version.',
     'Whew, yeah—that would get under my skin too. Do you need comfort, honesty, or a game plan?',
-    'Let’s slow it down, love. What do you wish somebody understood about this?',
-    'That sounds like a lot to carry at once. Start with the part you keep replaying.',
-    'I caught that. Is this more hurt, anger, embarrassment, or all of it mixed together?',
   ],
   rylane: [
     'Yeah, that is real. What is the part you have not said out loud yet?',
     'Good, you said it. Do you want to vent or figure out your next move?',
     'You do not have to act unbothered in here. Give me the honest version.',
-    'Hold up—before you blame yourself, what did the other person actually do?',
-    'Let’s keep it simple. What is the one thing you need most right now?',
-    'That would throw anybody off. What part can you actually control tonight?',
   ],
   cloud: [
     'We can make this smaller. Take one breath, then tell me the gentlest place to begin.',
     'No rush. You do not have to solve the whole feeling right now.',
     'We do not have to fix it. We can just name what hurts first.',
-    'You can pause here. What would make the next five minutes feel a little safer?',
-    'I am listening. You can say it slowly, badly, or not all at once.',
-    'You are allowed to need softness right now. What kind would actually help?',
   ],
   night: [
     'Yeah… nights make everything talk louder. What thought keeps circling back?',
     'You do not have to pretend you are fine in here. Tell me the version you hide during the day.',
-    'Let’s not rush past it. What did this make you believe about yourself?',
-    'I hear the weight in that. Do you want truth, quiet, or a next step?',
-    'Some things hit different when it gets quiet. What are you afraid this means?',
-    'You can sit in the real feeling without becoming it. Name the sharpest part.',
+    'Let us not rush past it. What did this make you believe about yourself?',
+  ],
+  sekret: [
+    "I might be reading this wrong, but it sounds like you want to be understood without having to explain every detail. Does that feel close?",
+    "Here’s the pattern I’m noticing: you may be carrying more than you let people see. Keep the part that fits and correct the part that doesn’t.",
+    "Your answers seem to point toward wanting both privacy and real connection. Which side feels harder to ask for right now?",
   ],
 };
 
@@ -111,13 +95,15 @@ const BUILT_IN_VOICES: Record<CharacterId, string> = {
   rylane: 'ash',
   cloud: 'shimmer',
   night: 'onyx',
+  sekret: 'sage',
 };
 
 const VOICE_INSTRUCTIONS: Record<CharacterId, string> = {
-  raylene: 'Speak like a warm, expressive 15-to-16-year-old girl. Keep the delivery youthful, natural, quick, emotionally present, and conversational. Do not sound childlike, overly polished, clinical, or like an adult narrator. Preserve natural slang and light profanity exactly when it appears in the input.',
-  rylane: 'Speak like an approachable 16-to-17-year-old boy. Sound relaxed, smooth, grounded, and conversational with natural pacing. Do not sound like a radio host, therapist, or much older adult. Preserve natural slang and light profanity exactly when it appears in the input.',
-  cloud: 'Speak softly and youthfully with a light, calm, airy quality. Keep the flow smooth and comforting without sounding babyish, sleepy, whispery, or overly slow. Preserve the wording exactly.',
-  night: 'Speak with a slightly deeper youthful voice and confident late-night energy. Keep the pace natural and a little quicker, grounded and inviting rather than sad, sleepy, ominous, or theatrical. Preserve natural slang and light profanity exactly when it appears in the input.',
+  raylene: 'Speak like a warm, expressive teen girl. Keep it youthful, natural, emotionally present, and conversational.',
+  rylane: 'Speak like an approachable teen boy. Sound relaxed, grounded, and conversational.',
+  cloud: 'Speak softly and youthfully with a calm, airy quality. Do not sound babyish.',
+  night: 'Speak with a slightly deeper youthful voice and confident late-night energy.',
+  sekret: "Speak warmly, clearly, and curiously as Se'kret. Sound youthful and reflective, never mystical, clinical, or like an adult narrator.",
 };
 
 const CRISIS_RE = /\b(kill myself|end my life|want to die|suicid(?:e|al)|self[- ]?harm|hurt myself|cut myself|disappear forever|run away|abuse|abused|assault|unsafe|not safe|danger|emergency)\b/i;
@@ -127,17 +113,18 @@ function json(data: unknown, status = 200): Response {
 }
 
 function normalizeCharacter(value: unknown): CharacterId | null {
-  const raw = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  const raw = typeof value === 'string' ? value.trim().toLowerCase().replace(/[’']/g, '') : '';
   if (raw === 'raylene' || raw.includes('raylene')) return 'raylene';
   if (raw === 'rylane' || raw.includes('rylane')) return 'rylane';
   if (raw === 'cloud' || raw.includes('cloud')) return 'cloud';
   if (raw === 'night' || raw.includes('night')) return 'night';
+  if (raw === 'sekret' || raw === 'secret' || raw === 'oracle' || raw.includes('sekret')) return 'sekret';
   return null;
 }
 
 function normalizeSurface(value: unknown): Surface {
   const raw = typeof value === 'string' ? value : '';
-  if (raw === 'voiceBip' || raw === 'comfort' || raw === 'circle' || raw === 'parentBridge' || raw === 'journal') return raw;
+  if (raw === 'voiceBip' || raw === 'comfort' || raw === 'circle' || raw === 'parentBridge' || raw === 'journal' || raw === 'selfDiscovery') return raw;
   if (raw === 'pages') return 'journal';
   return 'journal';
 }
@@ -179,9 +166,7 @@ function stableHash(value: string): number {
 
 function getFallbackReply(characterId: CharacterId, userText: string, history: ConversationTurn[]): string {
   const options = CHARACTER_FALLBACKS[characterId];
-  const recentReplies = new Set(
-    history.filter((turn) => turn.role === 'assistant').slice(-4).map((turn) => turn.content.trim().toLowerCase()),
-  );
+  const recentReplies = new Set(history.filter((turn) => turn.role === 'assistant').slice(-4).map((turn) => turn.content.trim().toLowerCase()));
   const start = stableHash(`${characterId}:${userText.toLowerCase()}`) % options.length;
   for (let offset = 0; offset < options.length; offset += 1) {
     const candidate = options[(start + offset) % options.length];
@@ -197,7 +182,9 @@ function getCustomVoiceId(characterId: CharacterId, env: Env): string | undefine
       ? env.RYLANE_VOICE_ID
       : characterId === 'cloud'
         ? env.CLOUD_VOICE_ID
-        : env.NIGHT_VOICE_ID;
+        : characterId === 'night'
+          ? env.NIGHT_VOICE_ID
+          : env.SEKRET_VOICE_ID;
   const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed || undefined;
 }
@@ -219,7 +206,9 @@ function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): C
       ? 'Pause with me for one breath. Your safety matters first.'
       : characterId === 'night'
         ? 'Stay here for this moment. Get a real person close.'
-        : 'Love, this is bigger than holding it alone right now.';
+        : characterId === 'sekret'
+          ? 'Your safety matters more than keeping this private.'
+          : 'Love, this is bigger than holding it alone right now.';
   return {
     reply: `${lead} I'm an AI companion, not a human or emergency service. If you might hurt yourself, someone is hurting you, or you are in danger, tell a trusted adult now and call 911 if it is immediate. In the U.S. you can call or text 988, or text HOME to 741741.`,
     tone: 'supportive-safety',
@@ -231,21 +220,18 @@ function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): C
 }
 
 function buildBrainPrompt(characterId: CharacterId, surface: Surface, mood: string | undefined, memory: unknown, parentSharingEnabled: boolean, history: ConversationTurn[]): string {
-  const recentReplies = history
-    .filter((turn) => turn.role === 'assistant')
-    .slice(-5)
-    .map((turn) => `- ${turn.content}`)
-    .join('\n') || '- none';
+  const recentReplies = history.filter((turn) => turn.role === 'assistant').slice(-5).map((turn) => `- ${turn.content}`).join('\n') || '- none';
   return [
     ORACLE_HIDDEN_GUIDANCE,
     getWorkerCompanionRole(characterId),
     `Surface: ${surface}. Mood: ${mood || 'not provided'}. Teen-safe memory summary: ${safeMemory(memory)}.`,
-    `Parent sharing enabled: ${parentSharingEnabled}. Only create parentShareSummary for safety concerns or when sharing is enabled and the summary is teen-safe; never expose private journal text verbatim.`,
+    `Parent sharing enabled: ${parentSharingEnabled}. Never expose private journal text verbatim.`,
+    characterId === 'sekret'
+      ? "Respond visibly as Se'kret. Never use the name Oracle. Synthesize patterns rather than repeating answers. Use uncertainty language and invite correction."
+      : 'Respond as the selected companion. Oracle remains hidden and must never be named.',
     'Never encourage dependency. Encourage real trusted people, breaks, journaling, grounding, or safety support when appropriate.',
     'Reply directly to the teen’s newest words and carry forward useful details from recent conversation.',
     'Do not reuse an opening, sentence, question, catchphrase, or response structure from recent assistant replies.',
-    'Vary naturally between comfort, reflection, light humor, gentle challenge, planning, celebration, teaching, and quiet presence.',
-    'Do not always end with a question. Avoid generic therapy filler. Do not repeat that you are an AI unless safety or dependency boundaries require it.',
     `Recent assistant replies to avoid repeating:\n${recentReplies}`,
     'Replies should usually be one to four short conversational sentences.',
     'Return only valid JSON with keys reply, tone, safetyFlag, parentShareSummary, suggestedComfortTool. No markdown.',
@@ -258,7 +244,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
   const userText = (typeof body.userText === 'string' ? body.userText : typeof body.text === 'string' ? body.text : '').trim();
   if (!userText) return json({ error: 'userText is required' }, 400);
   const characterId = normalizeCharacter(body.characterId ?? body.personality);
-  if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, or night' }, 400);
+  if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, night, or sekret' }, 400);
   const surface = normalizeSurface(body.surface ?? body.context);
   const parentSharingEnabled = body.parentSharingEnabled === true;
   const history = normalizeHistory(body.history);
@@ -266,7 +252,14 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
 
   const fallbackReply = getFallbackReply(characterId, userText, history);
   if (!env.OPENAI_API_KEY) {
-    return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: 'journal', replySource: 'fallback' });
+    return json({
+      reply: fallbackReply,
+      tone: characterId,
+      safetyFlag: false,
+      parentShareSummary: null,
+      suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
+      replySource: 'fallback',
+    });
   }
 
   try {
@@ -291,7 +284,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
     const openAIReply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
     if (!openAIReply) throw new Error('OpenAI returned an empty reply');
     return json({
-      reply: openAIReply,
+      reply: openAIReply.replace(/\bOracle\b/gi, "Se'kret"),
       tone: String(parsed.tone || characterId),
       safetyFlag: Boolean(parsed.safetyFlag),
       parentShareSummary: typeof parsed.parentShareSummary === 'string' ? parsed.parentShareSummary : null,
@@ -300,7 +293,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
     });
   } catch (error) {
     console.error('[sekret/reply]', error);
-    return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: 'journal', replySource: 'fallback' });
+    return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal', replySource: 'fallback' });
   }
 }
 
@@ -310,9 +303,8 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
   try { body = await request.json() as VoiceRequestBody; } catch { return json({ error: 'Invalid JSON' }, 400); }
   const text = (typeof body.reply === 'string' ? body.reply : typeof body.text === 'string' ? body.text : '').trim();
   if (!text) return json({ error: 'reply is required' }, 400);
-
   const characterId = normalizeCharacter(body.characterId);
-  if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, or night' }, 400);
+  if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, night, or sekret' }, 400);
   const format = normalizeAudioFormat(body.format);
   const selectedVoice = getVoice(characterId, env);
   const res = await fetch('https://api.openai.com/v1/audio/speech', {
@@ -326,17 +318,10 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
       response_format: format,
     }),
   });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    console.error('[sekret/voice]', res.status, detail.slice(0, 500));
-    return json({ error: 'tts failed' }, 502);
-  }
-
+  if (!res.ok) return json({ error: 'tts failed' }, 502);
   const bytes = new Uint8Array(await res.arrayBuffer());
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
-
   return json({
     audioBase64: btoa(binary),
     contentType: `audio/${format === 'mp3' ? 'mpeg' : format}`,
@@ -353,16 +338,11 @@ async function handleTranscribe(request: Request, env: Env): Promise<Response> {
   const audioBase64 = typeof body.audioBase64 === 'string' ? body.audioBase64.trim() : '';
   if (!audioBase64) return json({ error: 'audioBase64 is required' }, 400);
   const contentType = typeof body.contentType === 'string' && body.contentType ? body.contentType : 'audio/m4a';
-  const ext = contentType.includes('webm') ? 'webm'
-    : contentType.includes('ogg') ? 'ogg'
-    : contentType.includes('wav') ? 'wav'
-    : contentType.includes('mp3') || contentType.includes('mpeg') ? 'mp3'
-    : 'm4a';
-
+  const ext = contentType.includes('webm') ? 'webm' : contentType.includes('ogg') ? 'ogg' : contentType.includes('wav') ? 'wav' : contentType.includes('mp3') || contentType.includes('mpeg') ? 'mp3' : 'm4a';
   try {
     const binaryString = atob(audioBase64);
     const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+    for (let i = 0; i < binaryString.length; i += 1) bytes[i] = binaryString.charCodeAt(i);
     const formData = new FormData();
     formData.append('file', new Blob([bytes], { type: contentType }), `audio.${ext}`);
     formData.append('model', 'whisper-1');
@@ -372,14 +352,9 @@ async function handleTranscribe(request: Request, env: Env): Promise<Response> {
       headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: formData,
     });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => '');
-      console.error('[sekret/transcribe]', res.status, detail.slice(0, 500));
-      return json({ error: 'transcription failed' }, 502);
-    }
+    if (!res.ok) return json({ error: 'transcription failed' }, 502);
     const data = await res.json() as { text?: string };
-    const transcript = typeof data.text === 'string' ? data.text.trim() : '';
-    return json({ transcript });
+    return json({ transcript: typeof data.text === 'string' ? data.text.trim() : '' });
   } catch (error) {
     console.error('[sekret/transcribe]', error);
     return json({ error: 'transcription error' }, 500);

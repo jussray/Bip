@@ -15,7 +15,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { IMAGES } from '@/constants/theme';
-import { updateSekretMemory } from '../../services/sekretMemory';
 import { useAppContext } from '@/context/AppContext';
 
 const QUESTIONS: Record<string, string> = {
@@ -59,23 +58,20 @@ export default function ReflectionScreen() {
     setSaving(true);
     try {
       const trimmed = answer.trim();
-      const age     = (await AsyncStorage.getItem('bip_onboarding_age')) ?? '';
+      const age = (await AsyncStorage.getItem('bip_onboarding_age')) ?? '';
 
-      // Persist the full profile
+      // This answer stays local. It is available to visible Se'kret for later
+      // self-discovery synthesis, but is not attributed to Raylene and is not
+      // copied into shared/synced companion activity memory.
       await AsyncStorage.multiSet([
         ['teen_profile_done', 'true'],
         ['teen_profile_data', JSON.stringify({ name, age, reflection: trimmed })],
         ['bip_onboarding_reflection', trimmed],
+        ['sekret_self_discovery_profile', JSON.stringify({ reflection: trimmed, updatedAt: new Date().toISOString() })],
       ]);
 
-      // Seed sekretMemory with the first oracle signal
-      if (trimmed) {
-        await updateSekretMemory({
-          selectedSekret: 'raylene',
-          oracleSignals: { personalityNote: trimmed },
-        }).catch(() => null);
-      }
-
+      // Raylene remains the initial room companion. Se'kret is a separate,
+      // visible self-discovery identity powered by hidden Oracle intelligence.
       setSelectedSekret('raylene');
       router.replace('/(teen)/room');
     } finally {
@@ -101,7 +97,6 @@ export default function ReflectionScreen() {
 
         <Text style={styles.step}>3 OF 3</Text>
 
-        {/* Companion */}
         <Animated.View style={[styles.avatarWrap, { transform: [{ scale: breathe }] }]}>
           <Image source={IMAGES.cloudAvatarNeutral} style={styles.avatar} resizeMode="contain" />
         </Animated.View>

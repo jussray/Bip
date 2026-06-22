@@ -7,8 +7,9 @@
  */
 const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
 
-export type SekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
-export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge';
+export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
+export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
 export type SekretAvatarState = 'neutral' | 'listening' | 'thinking' | 'comforting' | 'happy' | 'concerned' | 'responding';
 export type SekretReplySource = 'openai' | 'fallback';
 
@@ -33,9 +34,19 @@ export interface SekretVoiceResponse {
   characterId: SekretCharacterId;
 }
 
-function normalizeCharacter(value?: string): SekretCharacterId {
-  if (value === 'rylane' || value === 'cloud' || value === 'night') return value;
-  return 'raylene';
+export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'raylene'): SekretCharacterId {
+  const raw = (value ?? '').trim().toLowerCase().replace(/[’']/g, '');
+  if (raw === 'raylene' || raw.includes('raylene')) return 'raylene';
+  if (raw === 'rylane' || raw.includes('rylane')) return 'rylane';
+  if (raw === 'cloud' || raw.includes('cloud')) return 'cloud';
+  if (raw === 'night' || raw.includes('night')) return 'night';
+  if (raw === 'sekret' || raw === 'secret' || raw === 'oracle' || raw.includes('sekret')) return 'sekret';
+  return fallback;
+}
+
+export function getVisibleSekretName(characterId: SekretCharacterId): string {
+  if (characterId === 'sekret') return "Se'kret";
+  return characterId.charAt(0).toUpperCase() + characterId.slice(1);
 }
 
 function normalizeAvatarState(value?: unknown): SekretAvatarState {
@@ -109,16 +120,21 @@ function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrai
       'You do not have to pretend you are fine in here. Tell me the hidden version.',
       'Let us not rush past it. What is underneath the first thing you said?',
     ],
+    sekret: [
+      "I’m noticing a pattern in what you shared: part of you wants to be understood without having to explain every detail. I could be reading that wrong, but does that feel close?",
+      "Here’s what I’m hearing underneath it: you may be carrying more than you let people see. I’m not treating that like a fact—what part fits, and what part doesn’t?",
+      "Your answers seem to point toward wanting both privacy and real connection. That can exist together. Which side feels harder to ask for right now?",
+    ],
   };
   const options = replies[characterId];
   const index = Math.abs([...text].reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) | 0, 0)) % options.length;
   return {
     reply: options[index],
     tone: characterId,
-    avatarState: characterId === 'cloud' || characterId === 'night' ? 'comforting' : 'responding',
+    avatarState: characterId === 'cloud' || characterId === 'night' || characterId === 'sekret' ? 'comforting' : 'responding',
     safetyFlag: false,
     parentShareSummary: null,
-    suggestedComfortTool: 'journal',
+    suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
     replySource: 'fallback',
   };
 }
@@ -170,7 +186,7 @@ export async function fetchSekretVoice(input: {
     if (!res.ok) throw new Error(`voice api error ${res.status}`);
     const data = await res.json() as Partial<SekretVoiceResponse>;
     if (!data.audioBase64 || !data.contentType) return null;
-    return { audioBase64: data.audioBase64, contentType: data.contentType, characterId: normalizeCharacter(data.characterId) };
+    return { audioBase64: data.audioBase64, contentType: data.contentType, characterId: normalizeSekretCharacter(data.characterId, input.characterId) };
   } catch {
     return null;
   }
@@ -202,16 +218,18 @@ export async function fetchSekretReply(
   mood?: string,
   avatarKey?: string,
   _extra1?: unknown,
-  _privateProfile?: unknown,
+  privateProfile?: unknown,
   profileSide?: string,
   history?: unknown[],
 ): Promise<string> {
-  const surface: SekretSurface = context === 'voiceBip' || context === 'comfort' || context === 'circle' || context === 'parentBridge' ? context : 'journal';
+  const surface: SekretSurface = context === 'voiceBip' || context === 'comfort' || context === 'circle' || context === 'parentBridge' || context === 'selfDiscovery' ? context : 'journal';
+  const memory = privateProfile && typeof privateProfile === 'object' ? privateProfile as Record<string, unknown> : undefined;
   const response = await fetchSekretBrainReply({
-    characterId: normalizeCharacter(avatarKey),
+    characterId: normalizeSekretCharacter(avatarKey),
     surface,
     mood,
     userText: text,
+    memory,
     parentSharingEnabled: profileSide === 'parent',
     history: normalizeHistory(history),
   });
