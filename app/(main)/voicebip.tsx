@@ -18,6 +18,7 @@ export default function VoiceBipRoute() {
     theme,
     mood,
     selectedSekret,
+    setSelectedSekret,
     userSide,
     voiceNotes,
     setVoiceNotes,
@@ -36,6 +37,7 @@ export default function VoiceBipRoute() {
       theme={currentTheme}
       mood={mood}
       selectedSekret={selectedSekret}
+      onSelectAvatar={setSelectedSekret}
       voiceNotes={notes}
       setVoiceNotes={setNotes}
       setScreen={navigateTo}
