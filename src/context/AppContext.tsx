@@ -41,6 +41,8 @@ interface AppContextValue {
   setUserSide: (side: 'teen' | 'parent') => void;
   selectedSekret: string;
   setSelectedSekret: (value: string) => void;
+  sekretMode: string;
+  setSekretMode: (mode: string) => void;
 
   // Teen mood
   mood: string;
@@ -241,6 +243,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUserSide: s.setUserSide,
     selectedSekret: s.selectedSekret,
     setSelectedSekret: s.setSelectedSekret,
+    sekretMode: s.sekretMode,
+    setSekretMode: s.setSekretMode,
     mood: s.mood,
     setMood: s.setMood,
     selectMood,

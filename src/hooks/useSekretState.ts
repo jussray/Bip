@@ -24,6 +24,7 @@ export function useSekretState() {
   const [mood, setMood]                     = useState('Happy');
   const [userSide, setUserSide]             = useState<'teen' | 'parent' | null>(null);
   const [selectedSekret, setSelectedSekret] = useState('soft');
+  const [sekretMode, setSekretMode]         = useState('soft');
   const [growthPath, setGrowthPath]         = useState('preferNotToSay');
   const [entries, setEntries]               = useState<JournalEntry[]>([]);
   const [moodHistory, setMoodHistory]       = useState<MoodEntry[]>([]);
@@ -58,6 +59,7 @@ export function useSekretState() {
       if (state.mood)                 setMood(state.mood);
       if (state.userSide)             setUserSide(state.userSide);
       if (state.selectedSekret)       setSelectedSekret(state.selectedSekret);
+      if (state.sekretMode)           setSekretMode(state.sekretMode);
       if (state.growthPath)           setGrowthPath(state.growthPath);
       if (state.entries)              setEntries(state.entries);
       if (state.moodHistory)          setMoodHistory(state.moodHistory);
@@ -87,7 +89,7 @@ export function useSekretState() {
   useEffect(() => {
     if (!isLoading) {
       saveState({
-        theme, mood, userSide, selectedSekret,
+        theme, mood, userSide, selectedSekret, sekretMode,
         growthPath, entries, moodHistory, circlePosts,
         oracleProfile, oracleSessions,
         parentMood, parentMoodDate, parentRoomStyle,
@@ -99,7 +101,7 @@ export function useSekretState() {
       });
     }
   }, [
-    theme, mood, userSide, selectedSekret,
+    theme, mood, userSide, selectedSekret, sekretMode,
     growthPath, entries, moodHistory, circlePosts,
     oracleProfile, oracleSessions,
     parentMood, parentMoodDate, parentRoomStyle,
@@ -116,6 +118,7 @@ export function useSekretState() {
     setMood('Happy');
     setUserSide(null);
     setSelectedSekret('soft');
+    setSekretMode('soft');
     setGrowthPath('preferNotToSay');
     setEntries([]);
     setMoodHistory([]);
@@ -143,6 +146,7 @@ export function useSekretState() {
     mood, setMood,
     userSide, setUserSide,
     selectedSekret, setSelectedSekret,
+    sekretMode, setSekretMode,
     growthPath, setGrowthPath,
     entries, setEntries,
     moodHistory, setMoodHistory,
