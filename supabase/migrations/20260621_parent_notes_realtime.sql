@@ -78,13 +78,20 @@ CREATE POLICY "parent_notes: teen mark seen"
 
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  -- bridge_signals: only add if the table exists AND is not already in the publication.
+  -- (The table is created by 20260618_bridge_oracle_tables.sql — that migration may
+  --  not have run yet on older deployments, so we guard on table existence first.)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'bridge_signals'
+  ) AND NOT EXISTS (
     SELECT 1 FROM pg_publication_tables
     WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'bridge_signals'
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.bridge_signals;
   END IF;
 
+  -- parent_notes: always exists by this point (created above).
   IF NOT EXISTS (
     SELECT 1 FROM pg_publication_tables
     WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'parent_notes'
