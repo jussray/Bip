@@ -67,6 +67,9 @@ export const TABLES = {
   friendships:         'friendships',
   // ── Oracle tables (0003_oracle_parentlinks_period_safety.sql) ───────────
   oracleSessions:      'oracle_sessions',
+  // ── Bridge tables (20260618 + 20260621 migrations) ───────────────────────
+  bridgeSignals:       'bridge_signals',
+  parentNotes:         'parent_notes',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];
