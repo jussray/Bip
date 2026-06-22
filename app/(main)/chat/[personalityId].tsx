@@ -121,14 +121,14 @@ export default function PersonalityChatScreen() {
 
     hadActivity.current = true;
     const userMsg = makeUserMessage(text);
-    const nextMessages = [...messages, userMsg];
-    setMessages(nextMessages);
+    const previousMessages = messages;
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
     setLoading(true);
     scrollRef.current?.scrollToEnd({ animated: true });
 
-    // Pass full history so AI has conversation context
-    const reply     = await sendMessage(id, text, 'chat', mood, nextMessages);
+    // Pass history *before* the new message — the worker appends it separately
+    const reply     = await sendMessage(id, text, 'chat', mood, previousMessages);
     const assistMsg = makeAssistantMessage(reply);
 
     setMessages(m => [...m, assistMsg]);
