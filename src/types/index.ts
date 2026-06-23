@@ -18,6 +18,7 @@ export interface JournalEntry {
   mediaType?: 'photo' | 'video';
   sekretReply?: string;
   locked?: boolean;
+  pinned?: boolean;
   activeTab?: string;
 }
 

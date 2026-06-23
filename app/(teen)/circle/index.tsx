@@ -5,7 +5,7 @@ import { useAppContext } from '@/context/AppContext';
 import { BipCrewScreen } from '@screens/BipCrewScreen';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
-import AnonymousCircle from '../(main)/circle';
+import AnonymousCircle from '../../(main)/circle';
 
 type Tab = 'circle' | 'crew';
 
@@ -32,6 +32,12 @@ export default function TeenCircleRoute() {
           onPress={() => setTab('crew')}
         >
           <Text style={[s.tabText, tab === 'crew' && s.tabTextActive]}>🤝 Crew</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={s.weatherBtn}
+          onPress={() => router.push('/(teen)/circle/weather' as any)}
+        >
+          <Text style={s.weatherBtnText}>🌧️ Weather</Text>
         </TouchableOpacity>
       </View>
 
@@ -68,5 +74,7 @@ const s = StyleSheet.create({
   tabActive:     { borderBottomWidth: 2, borderBottomColor: '#a855f7' },
   tabText:       { color: '#5a3a78', fontSize: 13, fontWeight: '700' },
   tabTextActive: { color: '#e8dff5' },
+  weatherBtn:    { paddingHorizontal: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  weatherBtnText: { color: '#7c5a9e', fontSize: 11, fontWeight: '700' },
   content:       { flex: 1 },
 });

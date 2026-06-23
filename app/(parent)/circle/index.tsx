@@ -5,7 +5,7 @@ import { useAppContext } from '@/context/AppContext';
 import { BipCrewScreen } from '@screens/BipCrewScreen';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
-import ParentCircle from '../(main)/parent-circle';
+import ParentCircle from '../../(main)/parent-circle';
 
 type Tab = 'circle' | 'crew';
 
@@ -35,6 +35,12 @@ export default function ParentCircleRoute() {
           onPress={() => setTab('crew')}
         >
           <Text style={[s.tabText, tab === 'crew' && s.tabTextActive]}>🌿 Crew</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={s.weatherBtn}
+          onPress={() => router.push('/(parent)/circle/weather' as any)}
+        >
+          <Text style={s.weatherBtnText}>🌤️ Weather</Text>
         </TouchableOpacity>
       </View>
 
@@ -71,5 +77,7 @@ const s = StyleSheet.create({
   tabActive:     { borderBottomWidth: 2, borderBottomColor: '#34d399' },
   tabText:       { color: '#3d6b54', fontSize: 13, fontWeight: '700' },
   tabTextActive: { color: '#d1fae5' },
+  weatherBtn:    { paddingHorizontal: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  weatherBtnText: { color: '#6b8f77', fontSize: 11, fontWeight: '700' },
   content:       { flex: 1 },
 });

@@ -12,6 +12,7 @@
  * Pull-to-refresh repeats the same merge.
  */
 import React, { useCallback, useEffect, useState } from 'react';
+import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
 import { syncParentCirclePost, loadParentCircleFeed } from '@/utils/sync';
@@ -91,6 +92,7 @@ export default function ParentCircleRoute() {
       reactToParentPost={(id: string | number, type: string) => reactToParentPost(Number(id), type)}
       setScreen={navigateTo}
       BottomNav={null}
+      onPostPress={(id) => router.push(`/(parent)/circle/${id}` as any)}
     />
   );
 }

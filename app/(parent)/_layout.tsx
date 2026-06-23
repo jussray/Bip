@@ -21,6 +21,8 @@ export default function ParentLayout() {
         <Tabs.Screen name="room" options={{ title: 'Room', tabBarIcon: () => <TabIcon emoji="🌿" /> }} />
         <Tabs.Screen name="pages" options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📝" /> }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🤝" /> }} />
+        <Tabs.Screen name="circle/[id]" options={{ href: null }} />
+        <Tabs.Screen name="circle/weather" options={{ href: null }} />
         <Tabs.Screen name="bridge" options={{ href: null }} />
         <Tabs.Screen name="voicebip" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
