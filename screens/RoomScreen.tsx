@@ -36,7 +36,8 @@ type RoomTarget =
   | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
   | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge' | 's2tell'
   | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard'
-  | 'companionPicker' | 'write' | 'goals' | 'memories' | 'music' | 'rewards' | 'vibeLab';
+  | 'companionPicker' | 'write' | 'goals' | 'memories' | 'music' | 'rewards' | 'vibeLab'
+  | 'userRoom';
 
 type RoomHotspot = {
   id:    string;
@@ -335,6 +336,7 @@ export function RoomScreen({
   // ─── State ──────────────────────────────────────────────────────────────
   const [isSekretVisible, setIsSekretVisible] = useState(false);
   const [isFirstVisit, setIsFirstVisit]       = useState(true);
+  const [showRoomHint, setShowRoomHint]       = useState(false);
   const [greeting, setGreeting]               = useState(
     () => getGreeting(character, mood, timeOfDay, false)
   );
@@ -344,6 +346,9 @@ export function RoomScreen({
   useEffect(() => {
     AsyncStorage.getItem('sekretbip_first_visit_done').then(done => {
       if (done === 'true') setIsFirstVisit(false);
+    });
+    AsyncStorage.getItem('bip_myroom_hint_seen').then(seen => {
+      if (!seen) setShowRoomHint(true);
     });
   }, []);
 
@@ -416,6 +421,14 @@ export function RoomScreen({
     setSelectedSekret(sekretKey(char));
     setIsSekretVisible(false);
     updateRoomMemory?.({ character: char });
+  };
+
+  const handleMyRoomPress = () => {
+    if (showRoomHint) {
+      setShowRoomHint(false);
+      AsyncStorage.setItem('bip_myroom_hint_seen', 'true');
+    }
+    setScreen('userRoom');
   };
 
   // ─── Derived display ──────────────────────────────────────────────────────
@@ -532,26 +545,42 @@ export function RoomScreen({
           )}
         </View>
 
-        {/* Companion switcher */}
-        <View style={styles.characterToggle}>
-          {(
-            [
-              { char: 'raylene' as Character, label: '💜', active: styles.toggleBtnActivePink },
-              { char: 'rylane'  as Character, label: '⚡', active: styles.toggleBtnActivePurple },
-              { char: 'cloud'   as Character, label: '☁️', active: styles.toggleBtnActiveCloud },
-              { char: 'night'   as Character, label: '🌙', active: styles.toggleBtnActiveNight },
-            ] as const
-          ).map(({ char, label, active }) => (
-            <TouchableOpacity
-              key={char}
-              style={[styles.toggleBtn, character === char && active]}
-              onPress={() => handleCharacterSwitch(char)}
-              accessibilityRole="button"
-              accessibilityLabel={`Switch to ${char}`}
-            >
-              <Text style={styles.toggleText}>{label}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Right side: My Room button + companion switcher */}
+        <View style={styles.topRight}>
+          {/* ✦ my room — top-right pill, navigates to userRoom */}
+          <TouchableOpacity
+            style={styles.myRoomBtn}
+            onPress={handleMyRoomPress}
+            accessibilityRole="button"
+            accessibilityLabel="Go to My Room"
+          >
+            <Text style={styles.myRoomBtnText}>✦ my room</Text>
+            {showRoomHint && (
+              <View style={styles.hintDot} />
+            )}
+          </TouchableOpacity>
+
+          {/* Companion switcher */}
+          <View style={styles.characterToggle}>
+            {(
+              [
+                { char: 'raylene' as Character, label: '💜', active: styles.toggleBtnActivePink },
+                { char: 'rylane'  as Character, label: '⚡', active: styles.toggleBtnActivePurple },
+                { char: 'cloud'   as Character, label: '☁️', active: styles.toggleBtnActiveCloud },
+                { char: 'night'   as Character, label: '🌙', active: styles.toggleBtnActiveNight },
+              ] as const
+            ).map(({ char, label, active }) => (
+              <TouchableOpacity
+                key={char}
+                style={[styles.toggleBtn, character === char && active]}
+                onPress={() => handleCharacterSwitch(char)}
+                accessibilityRole="button"
+                accessibilityLabel={`Switch to ${char}`}
+              >
+                <Text style={styles.toggleText}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </Animated.View>
 
@@ -713,8 +742,6 @@ const styles = StyleSheet.create({
     right: 0,
     height: height * 0.38,
     backgroundColor: 'transparent',
-    // expo-linear-gradient not available in RoomScreen — simulate with semi-transparent
-    // view layered on top. Real gradient added via LinearGradient in room.tsx if desired.
     background: 'linear-gradient(to top, rgba(13,0,20,0.82), transparent)',
   },
 
@@ -737,13 +764,40 @@ const styles = StyleSheet.create({
     right: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  topLeft:      { flexDirection: 'column', gap: 6 },
+  topLeft:  { flexDirection: 'column', gap: 6 },
+  topRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 8 },
+
   timeBadge:    { backgroundColor: 'rgba(13,0,20,0.68)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5 },
   timeBadgeText:{ color: '#c4b5fd', fontSize: 12, fontWeight: '600' },
   modeBadge:    { borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
   modeBadgeText:{ fontSize: 11, fontWeight: '700' },
+
+  // ✦ my room button
+  myRoomBtn: {
+    backgroundColor: 'rgba(13,0,20,0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.30)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  myRoomBtnText: {
+    color: '#e9d5ff',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  hintDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#d946ef',
+  },
 
   // Companion switcher — emoji-only pills, compact
   characterToggle: { flexDirection: 'row', gap: 6 },
