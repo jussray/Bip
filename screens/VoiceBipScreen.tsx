@@ -121,6 +121,8 @@ export function VoiceBipScreen({
   oracleJournalEntries, onStoreOracleMemory, syncStatus,
 }: VoiceBipScreenProps) {
 
+  const voiceHistoryRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+
   const [showBipMenu,      setShowBipMenu]      = useState(false);
   const [showArchive,      setShowArchive]       = useState(false);
   const [voicePromptIdx,   setVoicePromptIdx]    = useState(0);
@@ -345,6 +347,7 @@ export function VoiceBipScreen({
     setIsThinking(true);
     presence.endListening();
     const replyText = transcript ?? 'I needed to get some feelings out.';
+    const previousVoiceHistory = voiceHistoryRef.current.slice();
     const reply = await fetchSekretReply(
       replyText,
       'voiceBip',
@@ -353,7 +356,13 @@ export function VoiceBipScreen({
       undefined,
       privateProfile,
       profileSide,
+      previousVoiceHistory,
     );
+    voiceHistoryRef.current = [
+      ...previousVoiceHistory,
+      { role: 'user', content: replyText },
+      { role: 'assistant', content: reply },
+    ].slice(-20);
     setSekretReply(reply);
     setIsVoiceLoading(true);
     const audio = await fetchSekretVoice({ reply, characterId: avatarKey });
@@ -420,6 +429,7 @@ export function VoiceBipScreen({
     setVoicePromptIdx(0);
     setSekretReply('');
     setRecorded(false);
+    voiceHistoryRef.current = [];
     onSelectAvatar?.(nextAvatarKey);
   };
 
