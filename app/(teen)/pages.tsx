@@ -49,6 +49,8 @@ import {
   fetchSekretVoice,
   type SekretAvatarState,
   type SekretCharacterId,
+  type SekretHistoryTurn,
+  type SekretSurface,
 } from '@/utils/api';
 import type { JournalEntry } from '@/types';
 
@@ -63,6 +65,13 @@ const COMPANIONS = [
 ] as const;
 
 type CompanionId = (typeof COMPANIONS)[number]['id'];
+
+// Companions that map directly to SekretCharacterId (excludes 'me' and 'oracle')
+type AiCompanionId = 'raylene' | 'rylane' | 'cloud' | 'night';
+
+function isAiTab(id: CompanionId): id is AiCompanionId {
+  return id === 'raylene' || id === 'rylane' || id === 'cloud' || id === 'night';
+}
 
 // ─── Companion prompts (protected: must rotate per companion) ─────────────────
 const PROMPTS: Record<string, string[]> = {
@@ -199,10 +208,12 @@ export default function TeenPagesRoute() {
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const companion = COMPANIONS.find(c => c.id === activeTab) ?? COMPANIONS[0];
-  const isAiCompanion = activeTab !== 'me' && activeTab !== 'oracle';
-  const companionAvatarId: SekretCharacterId = isAiCompanion
-    ? (activeTab as SekretCharacterId)
-    : 'raylene';
+
+  // FIX 1: use the narrowing helper instead of direct equality checks against
+  // CompanionId, which would compare a union that includes 'me'/'oracle' against
+  // the narrower SekretCharacterId type and produce TS2367.
+  const aiCompanion = isAiTab(activeTab);
+  const companionAvatarId: SekretCharacterId = aiCompanion ? activeTab : 'raylene';
 
   // Entries for current tab, chronological (oldest first for chat timeline)
   const threadEntries = useMemo(
@@ -213,27 +224,25 @@ export default function TeenPagesRoute() {
     [activeTab, entries],
   );
 
-  // Recent history for context window (last 6 companion entries, newest first)
-  const recentHistory = useMemo(
-    () =>
-      threadEntries
-        .slice(-6)
-        .reverse()
-        .map(e => ({ role: 'user' as const, content: e.text }))
-        .concat(
-          threadEntries
-            .slice(-6)
-            .reverse()
-            .filter(e => e.sekretReply)
-            .map(e => ({ role: 'assistant' as const, content: e.sekretReply! })),
-        ),
-    [threadEntries],
-  );
+  // FIX 2: build recentHistory as SekretHistoryTurn[] in a single interleaved
+  // pass so there is no union-type mismatch when TypeScript infers the array
+  // element type from two separate .map() calls joined by .concat().
+  const recentHistory = useMemo((): SekretHistoryTurn[] => {
+    const slice = threadEntries.slice(-6);
+    const turns: SekretHistoryTurn[] = [];
+    for (const e of slice) {
+      turns.push({ role: 'user', content: e.text });
+      if (e.sekretReply) {
+        turns.push({ role: 'assistant', content: e.sekretReply });
+      }
+    }
+    return turns;
+  }, [threadEntries]);
 
   // ── Companion tab switch ───────────────────────────────────────────────────
   function chooseTab(id: CompanionId) {
     setActiveTab(id);
-    if (id !== 'me' && id !== 'oracle') {
+    if (isAiTab(id)) {
       setSelectedSekret(id);
       setAvatarState('listening');
     }
@@ -300,25 +309,33 @@ export default function TeenPagesRoute() {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
 
     updateSekretMemory({
-      selectedSekret: activeTab !== 'me' && activeTab !== 'oracle' ? activeTab : 'raylene',
+      selectedSekret: isAiTab(activeTab) ? activeTab : 'raylene',
       mood,
       journalEntries: [{ id: String(id), text, mood, date: new Date().toISOString() }],
     }).catch(() => null);
 
-    if (!isAiCompanion) return; // Me / Oracle: save only, no AI reply
+    if (!aiCompanion) return; // Me / Oracle: save only, no AI reply
 
     setSaving(true);
     setAvatarState('thinking');
 
     try {
+      // FIX 3: 'oracle' is not a SekretSurface value. Oracle uses 'selfDiscovery'
+      // which is the correct surface for guided self-discovery in the API contract.
+      // FIX 4: the ternary previously compared CompanionId === 'oracle' which
+      // overlaps with the SekretCharacterId union and produced TS2367. That
+      // comparison is now unreachable since aiCompanion guards this block —
+      // activeTab here is always AiCompanionId (raylene/rylane/cloud/night).
+      const surface: SekretSurface = 'journal';
+
       // ── fetchSekretBrainReply is the ONLY AI call path (protected) ──────
       const result = await fetchSekretBrainReply({
         characterId: companionAvatarId,
-        surface: activeTab === 'oracle' ? 'oracle' : 'journal',
+        surface,
         userText: text,
         mood,
         parentSharingEnabled: false,
-        recentHistory,          // recent conversation context
+        history: recentHistory,
       });
       // ── patchJournalEntry is the ONLY sekretReply persistence path ──────
       patchJournalEntry(id, { sekretReply: result.reply });
