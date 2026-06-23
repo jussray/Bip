@@ -341,6 +341,12 @@ const safeImage = (
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
+export type LastActivitySummary = {
+  label: string;
+  snippet?: string;
+  route: string;
+};
+
 interface RoomScreenProps {
   mood: Mood;
   selectedSekret: string;           // sekret key: 'soft' | 'rylane' | 'cloud' | 'night'
@@ -352,6 +358,8 @@ interface RoomScreenProps {
   BottomNav: React.ReactNode;
   companion?: CompanionState;
   sekretMode?: string;
+  onTalkToSekret?: () => void;
+  lastActivity?: LastActivitySummary | null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -367,6 +375,8 @@ export function RoomScreen({
   BottomNav,
   companion,
   sekretMode,
+  onTalkToSekret,
+  lastActivity,
 }: RoomScreenProps) {
 
   // ─── Derived ────────────────────────────────────────────────────────────
@@ -744,18 +754,45 @@ export function RoomScreen({
           <Text style={[styles.greetingTap, { color: t.soft }]}>
             {isSekretVisible ? 'tap to dismiss' : "tap to call Se\u2019kret"}
           </Text>
-          {isSekretVisible ? (
-            <TouchableOpacity
-              style={[styles.roomCompanionButton, { borderColor: t.accent }]}
-              onPress={() => setScreen('companionPicker')}
-              activeOpacity={0.85}
-              accessibilityRole="button"
-              accessibilityLabel="Open Se'kret companion picker"
-            >
-              <Text style={styles.roomCompanionButtonText}>talk to a companion →</Text>
-            </TouchableOpacity>
-          ) : null}
         </TouchableOpacity>
+
+        {/* ── Talk to Se\u2019kret — primary direct CTA ────────────── */}
+        {onTalkToSekret ? (
+          <TouchableOpacity
+            style={[styles.sekretCta, { borderColor: vibePack.accent + '88' }]}
+            onPress={onTalkToSekret}
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel={`Talk to ${
+              character === 'raylene' ? 'Raylene' :
+              character === 'rylane'  ? 'Rylane'  :
+              character === 'cloud'   ? 'Cloud'   : 'Night'
+            }`}
+          >
+            <Text style={styles.sekretCtaText}>
+              {character === 'raylene' ? '💜 Talk to Raylene' :
+               character === 'rylane'  ? '\u26a1 Talk to Rylane'  :
+               character === 'cloud'   ? '\u2601\ufe0f Talk to Cloud'   :
+                                         '🌙 Talk to Night'} →
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {/* ── Continue where you left off ────────────────── */}
+        {lastActivity ? (
+          <TouchableOpacity
+            style={styles.continueCard}
+            onPress={() => setScreen(lastActivity.route)}
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel={lastActivity.label}
+          >
+            <Text style={styles.continueLabelText}>↩ {lastActivity.label}</Text>
+            {lastActivity.snippet ? (
+              <Text style={styles.continueSnippet} numberOfLines={2}>{lastActivity.snippet}</Text>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
 
         {BottomNav}
       </Animated.View>
@@ -973,4 +1010,31 @@ const styles = StyleSheet.create({
   quickLabel:            { color: '#E2E8F0', fontSize: 9, fontWeight: '700' },
 
   tagline:               { color: '#c4b5fd', fontSize: 12, textAlign: 'center', fontStyle: 'italic', opacity: 0.8 },
+
+  sekretCta: {
+    borderWidth: 1.5,
+    borderRadius: 50,
+    paddingVertical: 13,
+    alignItems: 'center' as const,
+    backgroundColor: 'rgba(13,0,20,0.82)',
+    marginBottom: 8,
+    shadowColor: '#d946ef',
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
+  },
+  sekretCtaText: { color: '#f5f0ff', fontSize: 15, fontWeight: '900' as const, letterSpacing: 0.3 },
+
+  continueCard: {
+    backgroundColor: 'rgba(13,0,20,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,114,192,0.28)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 8,
+  },
+  continueLabelText: { color: '#c4b5fd', fontSize: 11, fontWeight: '800' as const, marginBottom: 3 },
+  continueSnippet:   { color: '#f5f0ff', fontSize: 12, fontWeight: '500' as const, opacity: 0.85 },
 });
