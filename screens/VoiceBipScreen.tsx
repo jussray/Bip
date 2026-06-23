@@ -360,8 +360,8 @@ export function VoiceBipScreen({
     );
     voiceHistoryRef.current = [
       ...previousVoiceHistory,
-      { role: 'user', content: replyText },
-      { role: 'assistant', content: reply },
+      { role: 'user' as const, content: replyText },
+      { role: 'assistant' as const, content: reply },
     ].slice(-20);
     setSekretReply(reply);
     setIsVoiceLoading(true);

@@ -76,6 +76,15 @@ function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
       concerned: IMAGES.nightProtective,
       responding: IMAGES.nightSoftsmile,
     },
+    sekret: {
+      neutral: IMAGES.rayleneNeutral,
+      listening: IMAGES.rayleneThinking,
+      thinking: IMAGES.rayleneThinking,
+      comforting: IMAGES.rayleneWindow,
+      happy: IMAGES.rayleneHappy,
+      concerned: IMAGES.rayleeneSad,
+      responding: IMAGES.rayleneConfident,
+    },
   };
   return map[character][state] ?? map[character].neutral;
 }
