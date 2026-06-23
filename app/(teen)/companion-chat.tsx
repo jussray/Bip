@@ -20,6 +20,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -110,9 +112,10 @@ export default function CompanionChatScreen() {
     [profileKey, surface],
   );
 
-  // ── State ────────────────────────────────────────────────────────────────────────────
+  // ── State ────────────────────────────────────────────────────────────────
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMsg>>(null);
 
   // Load history on mount; show companion greeting if empty
@@ -133,9 +136,11 @@ export default function CompanionChatScreen() {
     });
   }, [storageKey]);
 
-  // ── Send ─────────────────────────────────────────────────────────────────────────────
+  // ── Send ─────────────────────────────────────────────────────────────────
   const handleSend = async (text: string) => {
     if (!text.trim() || loading) return;
+
+    setSendError(null);
 
     const userMsg: ChatMsg = {
       id: String(Date.now()),
@@ -153,8 +158,6 @@ export default function CompanionChatScreen() {
     await persistHistory(storageKey, withUser);
 
     try {
-      // Pass companion key so the character answers in their own voice.
-      // fetchSekretReply returns Promise<string> — no unwrapping needed.
       const replyText = await fetchSekretReply(
         userMsg.text,
         surface,
@@ -173,19 +176,20 @@ export default function CompanionChatScreen() {
       const final = [...withUser, companionMsg];
       setMsgs(final);
       await persistHistory(storageKey, final);
-    } catch {
-      const errMsg: ChatMsg = {
-        id: String(Date.now() + 1),
-        from: 'companion',
-        text: `${profile.name} is still here — the connection was shaky but your message was saved 💜`,
-        time: nowTime(),
-      };
-      const final = [...withUser, errMsg];
-      setMsgs(final);
-      await persistHistory(storageKey, final);
+    } catch (error) {
+      console.error('[companion-chat] reply failed', { error, companionKey, surface });
+      setSendError('Something went wrong — your message was saved. Tap to try again.');
     } finally {
       setLoading(false);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+    }
+  };
+
+  const retryLastMessage = () => {
+    const lastUserMsg = [...msgs].reverse().find((m) => m.from === 'user');
+    if (lastUserMsg) {
+      setSendError(null);
+      handleSend(lastUserMsg.text);
     }
   };
 
@@ -229,6 +233,12 @@ export default function CompanionChatScreen() {
             <CompanionTypingIndicator name={profile.name} emoji={profile.emoji} />
           )}
 
+          {sendError && (
+            <TouchableOpacity style={s.errorBanner} onPress={retryLastMessage} activeOpacity={0.8}>
+              <Text style={s.errorText}>{sendError}</Text>
+            </TouchableOpacity>
+          )}
+
           <ChatInput
             onSend={handleSend}
             disabled={loading}
@@ -248,5 +258,22 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 16,
+  },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(220, 53, 69, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 53, 69, 0.35)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  errorText: {
+    color: '#ff8fa3',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
