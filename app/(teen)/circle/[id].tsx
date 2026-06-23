@@ -168,7 +168,7 @@ export default function CirclePostDetail() {
             </View>
 
             {/* Post body */}
-            <View style={[s.postCard, moodColor && { borderLeftColor: moodColor, borderLeftWidth: 3 }]}>
+            <View style={[s.postCard, moodColor ? { borderLeftColor: moodColor, borderLeftWidth: 3 } : null]}>
               <View style={s.postMeta}>
                 <Text style={s.anonLabel}>anonymous bip</Text>
                 <Text style={s.postTime}>{post.time}</Text>
