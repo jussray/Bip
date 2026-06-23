@@ -90,7 +90,7 @@ export interface ParentProfile {
   setupComplete: boolean;
 }
 
-export type PersonalityId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'oracle';
+export type PersonalityId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'oracle' | 'parentCoach';
 
 export type ScreenKey =
   | 'home'
