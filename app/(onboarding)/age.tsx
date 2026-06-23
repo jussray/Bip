@@ -34,9 +34,9 @@ export default function AgeScreen() {
     const done = await AsyncStorage.getItem('parent_profile_done');
     if (done === 'true') {
       setUserSide('parent');
-      router.replace('/(parent)/room');
+      router.replace('/(onboarding)/parent-splash?next=room');
     } else {
-      router.push('/(onboarding)/parent-welcome');
+      router.push('/(onboarding)/parent-splash');
     }
   }
 

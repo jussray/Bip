@@ -9,6 +9,7 @@ import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 export default function Index() {
   const { userSide, isLoading } = useAppContext();
   const [authChecked, setAuthChecked] = useState(!isSupabaseConfigured);
+  const [splashEntered, setSplashEntered] = useState(false);
   const [routed,      setRouted]      = useState(false);
 
   // Auth gate — only when Supabase is configured
@@ -27,13 +28,13 @@ export default function Index() {
 
   // Onboarding / room routing — once auth and context are ready
   useEffect(() => {
-    if (isLoading || !authChecked || routed) return;
+    if (isLoading || !authChecked || !splashEntered || routed) return;
 
     async function route() {
       setRouted(true);
       if (userSide === 'parent') {
         const done = await AsyncStorage.getItem('parent_profile_done');
-        router.replace(done === 'true' ? '/(parent)/room' : '/(parent)/profile');
+        router.replace(done === 'true' ? '/(parent)/room' : '/(onboarding)/parent-welcome');
         return;
       }
       // Teen or brand-new user → onboarding if not done, else room
@@ -42,14 +43,14 @@ export default function Index() {
     }
 
     void route();
-  }, [isLoading, authChecked, routed, userSide]);
+  }, [isLoading, authChecked, splashEntered, routed, userSide]);
 
-  // Returning user: show splash while routing resolves
-  if (!isLoading && authChecked && userSide) {
+  // Show the side-specific splash first; tapping the artwork CTA unlocks routing.
+  if (!isLoading && authChecked && !splashEntered) {
     return (
       <SplashScreen
-        userSide={userSide}
-        setScreen={() => {/* routing handled above */}}
+        userSide={userSide ?? 'teen'}
+        setScreen={() => setSplashEntered(true)}
       />
     );
   }
