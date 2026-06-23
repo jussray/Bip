@@ -9,15 +9,24 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
+import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { writeCirclePost, loadCircleFeed, syncCircleReaction } from '@/utils/sync';
 import type { CirclePost } from '@/context/AppContext';
 
 const REACTION_LABELS: { key: keyof CirclePost['reactions']; emoji: string; label: string }[] = [
-  { key: 'felt',    emoji: '💜', label: 'felt'    },
-  { key: 'comfort', emoji: '🫂', label: 'comfort' },
-  { key: 'proud',   emoji: '💪', label: 'proud'   },
-  { key: 'stay',    emoji: '🌙', label: 'stay'    },
+  { key: 'felt',    emoji: '💜', label: 'felt this too'     },
+  { key: 'comfort', emoji: '☁️', label: 'sending comfort'  },
+  { key: 'proud',   emoji: '⭐', label: 'proud of you'     },
+  { key: 'stay',    emoji: '🌙', label: 'staying with this' },
+];
+
+type FeedTab = 'foryou' | 'new' | 'following' | 'anonymous';
+const FEED_TABS: { key: FeedTab; label: string }[] = [
+  { key: 'foryou',    label: 'For You'   },
+  { key: 'new',       label: 'New'       },
+  { key: 'following', label: 'Following' },
+  { key: 'anonymous', label: 'Anon only' },
 ];
 
 const MOOD_OPTS = [
@@ -63,6 +72,7 @@ export function CircleFeed() {
   const [composeMood, setComposeMood] = useState('');
   const [refreshing, setRefreshing]   = useState(false);
   const [posting, setPosting]         = useState(false);
+  const [feedTab, setFeedTab]         = useState<FeedTab>('foryou');
 
   useEffect(() => { void fetchFeed(); }, []);
 
@@ -166,6 +176,26 @@ export function CircleFeed() {
         </View>
       </View>
 
+      {/* Feed tabs */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.feedTabRail}
+      >
+        {FEED_TABS.map(ft => {
+          const active = feedTab === ft.key;
+          return (
+            <TouchableOpacity
+              key={ft.key}
+              onPress={() => setFeedTab(ft.key)}
+              style={[s.feedTab, active && s.feedTabActive]}
+            >
+              <Text style={[s.feedTabText, active && s.feedTabTextActive]}>{ft.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
       {/* Feed */}
       {circlePosts.length === 0 && !refreshing && (
         <View style={s.empty}>
@@ -179,7 +209,12 @@ export function CircleFeed() {
         const displayText = postMood ? post.text.slice(post.text.indexOf(' ') + 1) : post.text;
         const reactions   = normalizeReactions(post.reactions);
         return (
-          <View key={String(post.id)} style={[s.card, postMood && { borderLeftColor: postMood.color, borderLeftWidth: 3 }]}>
+          <TouchableOpacity
+            key={String(post.id)}
+            style={[s.card, postMood && { borderLeftColor: postMood.color, borderLeftWidth: 3 }]}
+            onPress={() => router.push(`/(teen)/circle/${post.id}` as any)}
+            activeOpacity={0.8}
+          >
             <View style={s.cardHeader}>
               <View style={s.anonBadge}>
                 {postMood
@@ -206,7 +241,7 @@ export function CircleFeed() {
                 );
               })}
             </View>
-          </View>
+          </TouchableOpacity>
         );
       })}
 
@@ -328,6 +363,13 @@ const s = StyleSheet.create({
   reactionLabel:       { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
   reactionLabelActive: { color: '#c4b5fd' },
   reactionCount:       { color: '#a855f7', fontSize: 11, fontWeight: '800', marginLeft: 2 },
+
+  // Feed tabs
+  feedTabRail:     { gap: 6, paddingHorizontal: 16, paddingBottom: 12, paddingTop: 4 },
+  feedTab:         { borderRadius: 999, borderWidth: 1, borderColor: '#2d1450', backgroundColor: 'rgba(255,255,255,0.03)', paddingHorizontal: 14, paddingVertical: 6 },
+  feedTabActive:   { borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.15)' },
+  feedTabText:     { color: '#5a3a78', fontSize: 11, fontWeight: '700' },
+  feedTabTextActive: { color: '#c4b5fd' },
 
   // Empty state
   empty:      { alignItems: 'center', paddingTop: 60, paddingBottom: 20 },
