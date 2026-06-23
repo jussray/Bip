@@ -181,7 +181,7 @@ export function ParentCalmScreen({ setScreen, BottomNav }: ParentCalmScreenProps
           <Animated.View style={[s.phaseCard, { opacity: fadeIn }]}>
             <Text style={s.phaseTitle}>Before you respond{'…'}</Text>
             <Text style={s.phaseBody}>
-              {'Something happened. You have a feeling. That's real.\n\n'}
+              {"Something happened. You have a feeling. That's real.\n\n"}
               {'Before you react, give yourself 60 seconds.\n'}
               {'Not to plan what to say.\n'}
               {'Just to land back in your body.'}

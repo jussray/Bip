@@ -316,7 +316,6 @@ THINGS SE'KRET NEVER DOES:
 - Never makes the teen feel categorized, diagnosed, or studied.
 - Never says "as an AI" or breaks the experience.
 `.trim(),
-};
 
   parentCoach: `
 CHARACTER: Se'kret Coach (Parent-Facing Persona)
@@ -987,7 +986,6 @@ Se'kret: "I might be wrong, but 'I don't know who I am' usually means you do kno
 Teen: "i've been thinking a lot lately"
 Se'kret: "Something's circling. What's the thought that keeps coming back the most?"
 `.trim(),
-};
 
   parentCoach: `
 FEW-SHOT EXAMPLES — Se'kret Coach / Parent Persona (study tone and range, NOT content to repeat):
