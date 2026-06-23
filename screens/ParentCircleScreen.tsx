@@ -32,6 +32,13 @@ type ParentCirclePost = {
   };
 };
 
+type FeedTab = 'foryou' | 'new' | 'following';
+const FEED_TABS: { key: FeedTab; label: string }[] = [
+  { key: 'foryou',    label: 'For You'   },
+  { key: 'new',       label: 'New'       },
+  { key: 'following', label: 'Following' },
+];
+
 type ParentCircleScreenProps = {
   parentCirclePosts: ParentCirclePost[];
   parentCirclePostText: string;
@@ -40,6 +47,7 @@ type ParentCircleScreenProps = {
   reactToParentPost: (id: string | number, type: string) => void;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
+  onPostPress?: (id: string | number) => void;
 };
 
 const PARENT_REACTIONS = [
@@ -149,6 +157,7 @@ export function ParentCircleScreen({
   reactToParentPost,
   setScreen,
   BottomNav,
+  onPostPress,
 }: ParentCircleScreenProps) {
   const [selectedType, setSelectedType] = useState(PARENT_POST_TYPES[0].id);
   const [selectedTag, setSelectedTag]   = useState('');
@@ -158,6 +167,7 @@ export function ParentCircleScreen({
   const [confirmedPost, setConfirmedPost] = useState(false);
   const [activeReplyPostId, setActiveReplyPostId] = useState<string | null>(null);
   const [selectedQuietReply, setSelectedQuietReply] = useState('');
+  const [feedTab, setFeedTab] = useState<FeedTab>('foryou');
 
   const currentType = PARENT_POST_TYPES.find(p => p.id === selectedType) || PARENT_POST_TYPES[0];
 
@@ -354,6 +364,26 @@ export function ParentCircleScreen({
 
         {/* ── Posts ──────────────────────────────────────────────────────── */}
         <Animated.View style={cardStyle(fade4)}>
+          {/* Feed tabs */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.feedTabRail}
+          >
+            {FEED_TABS.map(ft => {
+              const active = feedTab === ft.key;
+              return (
+                <TouchableOpacity
+                  key={ft.key}
+                  onPress={() => setFeedTab(ft.key)}
+                  style={[styles.feedTab, active && styles.feedTabActive]}
+                >
+                  <Text style={[styles.feedTabText, active && styles.feedTabTextActive]}>{ft.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
           <View style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>what parents are carrying</Text>
 
@@ -367,7 +397,12 @@ export function ParentCircleScreen({
             </View>
 
             {visiblePosts.map(post => (
-              <View key={post.id} style={styles.postCard}>
+              <TouchableOpacity
+                key={post.id}
+                style={styles.postCard}
+                onPress={() => onPostPress ? onPostPress(post.id) : setActiveReplyPostId(String(post.id))}
+                activeOpacity={0.8}
+              >
                 <Text style={styles.postSticker}>{postSticker(post.id)}</Text>
                 <View style={styles.postMetaRow}>
                   <View style={styles.anonymousDot} />
@@ -385,7 +420,8 @@ export function ParentCircleScreen({
                   {PARENT_REACTIONS.map(r => (
                     <TouchableOpacity
                       key={r.key}
-                      onPress={() => {
+                      onPress={(e) => {
+                        e.stopPropagation?.();
                         if (!String(post.id).startsWith('ps-')) reactToParentPost(post.id, r.key);
                       }}
                       style={styles.reactionBtn}
@@ -399,13 +435,16 @@ export function ParentCircleScreen({
 
                 <TouchableOpacity
                   style={styles.replyBtn}
-                  onPress={() => setActiveReplyPostId(String(post.id))}
+                  onPress={(e) => {
+                    e.stopPropagation?.();
+                    onPostPress ? onPostPress(post.id) : setActiveReplyPostId(String(post.id));
+                  }}
                 >
                   <Text style={styles.replyBtnText}>
                     reply softly{post.quietRepliesCount ? ` · ${post.quietRepliesCount} quiet replies` : ''}
                   </Text>
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -551,6 +590,12 @@ const styles = StyleSheet.create({
   reactionEmoji:{ fontSize: 15 },
   reactionCount:{ color: '#f5f0e8', fontWeight: 'bold', fontSize: 12, marginTop: 1 },
   reactionLabel:{ color: '#6b7a5e', fontSize: 9, marginTop: 2, textAlign: 'center' },
+
+  feedTabRail:      { gap: 8, paddingHorizontal: 0, paddingBottom: 12, paddingTop: 4 },
+  feedTab:          { borderRadius: 999, borderWidth: 1, borderColor: '#3a4a35', backgroundColor: 'rgba(20,30,18,0.7)', paddingHorizontal: 14, paddingVertical: 6 },
+  feedTabActive:    { borderColor: WARM, backgroundColor: 'rgba(217,119,6,0.18)' },
+  feedTabText:      { color: '#6b7a5e', fontSize: 11, fontWeight: '700' },
+  feedTabTextActive:{ color: WARM_SOFT },
 
   replyBtn:     { marginTop: 10, padding: 10, borderRadius: 14, backgroundColor: 'rgba(217,119,6,0.15)' },
   replyBtnText: { color: WARM_SOFT, fontWeight: '700', fontSize: 12, textAlign: 'center' },
