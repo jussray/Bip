@@ -53,41 +53,12 @@ interface CompanionReply {
   safetyFlag: boolean;
   parentShareSummary: string | null;
   suggestedComfortTool: string | null;
-  replySource: 'openai' | 'fallback';
 }
 
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
-};
-
-const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
-  raylene: [
-    'Okay, I hear you. Which part of that is sitting heaviest on you right now?',
-    'You do not have to make it sound neat for me. Say the messy version.',
-    'Whew, yeah\u2014that would get under my skin too. Do you need comfort, honesty, or a game plan?',
-  ],
-  rylane: [
-    'Yeah, that is real. What is the part you have not said out loud yet?',
-    'Good, you said it. Do you want to vent or figure out your next move?',
-    'You do not have to act unbothered in here. Give me the honest version.',
-  ],
-  cloud: [
-    'We can make this smaller. Take one breath, then tell me the gentlest place to begin.',
-    'No rush. You do not have to solve the whole feeling right now.',
-    'We do not have to fix it. We can just name what hurts first.',
-  ],
-  night: [
-    'Yeah\u2026 nights make everything talk louder. What thought keeps circling back?',
-    'You do not have to pretend you are fine in here. Tell me the version you hide during the day.',
-    'Let us not rush past it. What did this make you believe about yourself?',
-  ],
-  sekret: [
-    "I might be reading this wrong, but it sounds like you want to be understood without having to explain every detail. Does that feel close?",
-    "Here's the pattern I'm noticing: you may be carrying more than you let people see. Keep the part that fits and correct the part that doesn't.",
-    "Your answers seem to point toward wanting both privacy and real connection. Which side feels harder to ask for right now?",
-  ],
 };
 
 const BUILT_IN_VOICES: Record<CharacterId, string> = {
@@ -158,23 +129,6 @@ function normalizeHistory(value: unknown): ConversationTurn[] {
   return turns.slice(-10);
 }
 
-function stableHash(value: string): number {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
-  return Math.abs(hash);
-}
-
-function getFallbackReply(characterId: CharacterId, userText: string, history: ConversationTurn[]): string {
-  const options = CHARACTER_FALLBACKS[characterId];
-  const recentReplies = new Set(history.filter((turn) => turn.role === 'assistant').slice(-4).map((turn) => turn.content.trim().toLowerCase()));
-  const start = stableHash(`${characterId}:${userText.toLowerCase()}`) % options.length;
-  for (let offset = 0; offset < options.length; offset += 1) {
-    const candidate = options[(start + offset) % options.length];
-    if (!recentReplies.has(candidate.toLowerCase())) return candidate;
-  }
-  return options[start];
-}
-
 function getCustomVoiceId(characterId: CharacterId, env: Env): string | undefined {
   const value = characterId === 'raylene'
     ? env.RAYLENE_VOICE_ID
@@ -199,7 +153,7 @@ function normalizeAudioFormat(value: unknown): AudioFormat {
   return value === 'opus' || value === 'aac' || value === 'flac' || value === 'wav' ? value : 'mp3';
 }
 
-function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): CompanionReply {
+function buildCrisisReply(characterId: CharacterId, parentSharingEnabled: boolean) {
   const lead = characterId === 'rylane'
     ? 'Real talk: your safety comes first.'
     : characterId === 'cloud'
@@ -215,7 +169,7 @@ function crisisReply(characterId: CharacterId, parentSharingEnabled: boolean): C
     safetyFlag: true,
     parentShareSummary: parentSharingEnabled ? 'Safety concern: teen may need trusted adult or emergency support.' : null,
     suggestedComfortTool: 'safety-plan',
-    replySource: 'fallback',
+    replySource: 'openai' as const,
   };
 }
 
@@ -241,27 +195,22 @@ function buildBrainPrompt(characterId: CharacterId, surface: Surface, mood: stri
 async function handleReply(request: Request, env: Env): Promise<Response> {
   let body: ReplyRequestBody;
   try { body = await request.json() as ReplyRequestBody; } catch { return json({ error: 'Invalid JSON' }, 400); }
+
   const userText = (typeof body.userText === 'string' ? body.userText : typeof body.text === 'string' ? body.text : '').trim();
   if (!userText) return json({ error: 'userText is required' }, 400);
+
   const characterId = normalizeCharacter(body.characterId ?? body.personality);
   if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, night, or sekret' }, 400);
+
   const surface = normalizeSurface(body.surface ?? body.context);
   const parentSharingEnabled = body.parentSharingEnabled === true;
   const history = normalizeHistory(body.history);
-  if (CRISIS_RE.test(userText)) return json(crisisReply(characterId, parentSharingEnabled));
 
-  const fallbackReply = getFallbackReply(characterId, userText, history);
+  if (CRISIS_RE.test(userText)) return json(buildCrisisReply(characterId, parentSharingEnabled));
 
   if (!env.OPENAI_API_KEY) {
-    console.error('[sekret/reply] OPENAI_API_KEY is missing \u2014 returning fallback', { characterId, surface });
-    return json({
-      reply: fallbackReply,
-      tone: characterId,
-      safetyFlag: false,
-      parentShareSummary: null,
-      suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
-      replySource: 'fallback',
-    });
+    console.error('[sekret/reply] OPENAI_API_KEY is missing', { characterId, surface });
+    return json({ error: 'AI unavailable: missing configuration' }, 503);
   }
 
   try {
@@ -283,12 +232,12 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
     if (!res.ok) {
       const errorBody = await res.text().catch(() => '');
       console.error('[sekret/reply] OpenAI HTTP error', { status: res.status, body: errorBody, characterId, surface });
-      throw new Error(`OpenAI ${res.status}`);
+      return json({ error: `OpenAI error: ${res.status}` }, 502);
     }
     const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
     const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}') as Partial<CompanionReply>;
     const openAIReply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
-    if (!openAIReply) throw new Error('OpenAI returned an empty reply');
+    if (!openAIReply) return json({ error: 'OpenAI returned an empty reply' }, 502);
     return json({
       reply: openAIReply.replace(/\bOracle\b/gi, "Se'kret"),
       tone: String(parsed.tone || characterId),
@@ -299,7 +248,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
     });
   } catch (error) {
     console.error('[sekret/reply] OpenAI request failed', { error, characterId, surface, historyLength: history.length });
-    return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal', replySource: 'fallback' });
+    return json({ error: 'AI request failed' }, 502);
   }
 }
 

@@ -11,7 +11,7 @@ export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
 export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
 export type SekretAvatarState = 'neutral' | 'listening' | 'thinking' | 'comforting' | 'happy' | 'concerned' | 'responding';
-export type SekretReplySource = 'openai' | 'fallback';
+export type SekretReplySource = 'openai';
 
 export interface SekretHistoryTurn {
   role: 'user' | 'assistant';
@@ -57,10 +57,6 @@ function normalizeAvatarState(value?: unknown): SekretAvatarState {
   return 'neutral';
 }
 
-function normalizeReplySource(value?: unknown): SekretReplySource {
-  return value === 'openai' ? 'openai' : 'fallback';
-}
-
 function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
   if (!Array.isArray(value)) return [];
   const turns: SekretHistoryTurn[] = [];
@@ -86,59 +82,11 @@ function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
   return turns.slice(-10);
 }
 
-function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrainResponse {
-  const crisis = /\b(kill myself|end my life|want to die|suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
-  if (crisis) {
-    return {
-      reply: "I'm an AI companion, not emergency help. If you're in danger or might hurt yourself, tell a trusted adult now, call 911, call/text 988, or text HOME to 741741.",
-      tone: 'supportive-safety',
-      avatarState: 'concerned',
-      safetyFlag: true,
-      parentShareSummary: null,
-      suggestedComfortTool: 'safety-plan',
-      replySource: 'fallback',
-    };
-  }
-  const replies: Record<SekretCharacterId, string[]> = {
-    raylene: [
-      'Okay, I hear you. Which part feels the loudest right now?',
-      'You do not have to make it sound neat. Tell me the messy version.',
-      'That is a lot to sit with. Do you need comfort, honesty, or a plan?',
-    ],
-    rylane: [
-      'Yeah, that is real. What is the part you have not said out loud yet?',
-      'I hear you. Do you want to vent or figure out your next move?',
-      'You do not have to act unbothered in here. Give me the honest version.',
-    ],
-    cloud: [
-      'We can make this smaller. Tell me the gentlest place to begin.',
-      'No rush. You do not have to solve the whole feeling right now.',
-      'We do not have to fix it. We can just name what hurts first.',
-    ],
-    night: [
-      'Yeah\u2026 nights make everything talk louder. What keeps circling back?',
-      'You do not have to pretend you are fine in here. Tell me the hidden version.',
-      'Let us not rush past it. What is underneath the first thing you said?',
-    ],
-    sekret: [
-      "I'm noticing a pattern in what you shared: part of you wants to be understood without having to explain every detail. I could be reading that wrong, but does that feel close?",
-      "Here's what I'm hearing underneath it: you may be carrying more than you let people see. I'm not treating that like a fact\u2014what part fits, and what part doesn't?",
-      "Your answers seem to point toward wanting both privacy and real connection. That can exist together. Which side feels harder to ask for right now?",
-    ],
-  };
-  const options = replies[characterId];
-  const index = Math.abs([...text].reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) | 0, 0)) % options.length;
-  return {
-    reply: options[index],
-    tone: characterId,
-    avatarState: characterId === 'cloud' || characterId === 'night' || characterId === 'sekret' ? 'comforting' : 'responding',
-    safetyFlag: false,
-    parentShareSummary: null,
-    suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
-    replySource: 'fallback',
-  };
-}
-
+/**
+ * Calls the secure backend to get a companion reply.
+ * Throws on any failure — callers are responsible for catching and showing
+ * an appropriate error state. No fake replies are ever returned.
+ */
 export async function fetchSekretBrainReply(input: {
   characterId: SekretCharacterId;
   surface: SekretSurface;
@@ -149,66 +97,54 @@ export async function fetchSekretBrainReply(input: {
   history?: SekretHistoryTurn[];
 }): Promise<SekretBrainResponse> {
   if (!BASE_URL) {
-    console.warn('[fetchSekretBrainReply] EXPO_PUBLIC_BACKEND_URL is not set — using fallback');
-    return fallbackReply(input.characterId, input.userText);
+    throw new Error('EXPO_PUBLIC_BACKEND_URL is not configured.');
   }
 
   console.log('[Se\'kret AI request]', {
-    backendUrlConfigured: true,
     characterId: input.characterId,
     surface: input.surface,
     mood: input.mood || null,
     userText: input.userText,
     historyLength: input.history?.length ?? 0,
-    history: input.history ?? [],
   });
 
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
-    });
+  const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
 
-    if (!res.ok) {
-      const errorBody = await res.text().catch(() => '');
-      console.error('[fetchSekretBrainReply] API error', {
-        status: res.status,
-        body: errorBody,
-      });
-      throw new Error(`api error ${res.status}`);
-    }
-
-    const data = await res.json() as Partial<SekretBrainResponse>;
-    const fallback = fallbackReply(input.characterId, input.userText);
-    const result: SekretBrainResponse = {
-      reply: data.reply || fallback.reply,
-      tone: data.tone || input.characterId,
-      avatarState: normalizeAvatarState(data.avatarState),
-      safetyFlag: Boolean(data.safetyFlag),
-      parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
-      suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
-      replySource: normalizeReplySource(data.replySource),
-    };
-
-    console.log('[Se\'kret AI response]', {
-      replySource: result.replySource,
-      tone: result.tone,
-      avatarState: result.avatarState,
-      safetyFlag: result.safetyFlag,
-      reply: result.reply,
-    });
-
-    return result;
-  } catch (error) {
-    console.error('[fetchSekretBrainReply] backend failed', {
-      error,
-      baseUrlConfigured: Boolean(BASE_URL),
-      characterId: input.characterId,
-      surface: input.surface,
-    });
-    return fallbackReply(input.characterId, input.userText);
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => '');
+    console.error('[fetchSekretBrainReply] API error', { status: res.status, body: errorBody });
+    throw new Error(`AI reply failed: ${res.status}`);
   }
+
+  const data = await res.json() as Partial<SekretBrainResponse>;
+
+  if (!data.reply) {
+    throw new Error('AI reply was empty.');
+  }
+
+  const result: SekretBrainResponse = {
+    reply: data.reply,
+    tone: data.tone || input.characterId,
+    avatarState: normalizeAvatarState(data.avatarState),
+    safetyFlag: Boolean(data.safetyFlag),
+    parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
+    suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
+    replySource: 'openai',
+  };
+
+  console.log('[Se\'kret AI response]', {
+    replySource: result.replySource,
+    tone: result.tone,
+    avatarState: result.avatarState,
+    safetyFlag: result.safetyFlag,
+    reply: result.reply,
+  });
+
+  return result;
 }
 
 export async function fetchSekretVoice(input: {
@@ -251,6 +187,9 @@ export async function fetchSekretTranscribe(input: {
   }
 }
 
+/**
+ * Legacy shim — prefer fetchSekretBrainReply directly in new code.
+ */
 export async function fetchSekretReply(
   text: string,
   context: SekretSurface | string = 'journal',
