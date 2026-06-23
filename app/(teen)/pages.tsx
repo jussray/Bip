@@ -126,8 +126,8 @@ function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
     night:   { neutral: IMAGES.nightNeutral, listening: IMAGES.nightListening, thinking: IMAGES.nightThinking, comforting: IMAGES.nightRelaxed, happy: IMAGES.nightHappy, concerned: IMAGES.nightProtective, responding: IMAGES.nightSoftsmile },
     sekret:  { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
   };
-  const charKey = (character === 'me' || character === 'oracle') ? 'raylene' : character;
-  return (map as any)[charKey]?.[state] ?? (map as any)[charKey]?.neutral;
+  // 'me' and 'oracle' are never passed — isAiTab() guards all call sites.
+  return map[character][state] ?? map[character].neutral;
 }
 
 function inferState(state: SekretAvatarState, mood?: string, tone?: string): SekretAvatarState {
