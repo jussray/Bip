@@ -1,4 +1,4 @@
-// app/(teen)/pages.tsx
+// app/(teen)/pages/index.tsx
 // SE'KRET PAGES — Continuous Companion Journal
 //
 // PROTECTED DATA CONTRACT (must not be removed or bypassed):
@@ -39,11 +39,11 @@ import { Audio, ResizeMode, Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AmbientWeatherOverlay } from '../../components/AmbientWeatherOverlay';
+import { AmbientWeatherOverlay } from '../../../components/AmbientWeatherOverlay';
 import { useAppContext } from '@/context/AppContext';
 import { IMAGES } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
-import { updateSekretMemory } from '../../services/sekretMemory';
+import { updateSekretMemory } from '../../../services/sekretMemory';
 import {
   fetchSekretBrainReply,
   fetchSekretVoice,
@@ -209,9 +209,6 @@ export default function TeenPagesRoute() {
   // ── Derived data ───────────────────────────────────────────────────────────
   const companion = COMPANIONS.find(c => c.id === activeTab) ?? COMPANIONS[0];
 
-  // FIX 1: use the narrowing helper instead of direct equality checks against
-  // CompanionId, which would compare a union that includes 'me'/'oracle' against
-  // the narrower SekretCharacterId type and produce TS2367.
   const aiCompanion = isAiTab(activeTab);
   const companionAvatarId: SekretCharacterId = aiCompanion ? activeTab : 'raylene';
 
@@ -224,9 +221,6 @@ export default function TeenPagesRoute() {
     [activeTab, entries],
   );
 
-  // FIX 2: build recentHistory as SekretHistoryTurn[] in a single interleaved
-  // pass so there is no union-type mismatch when TypeScript infers the array
-  // element type from two separate .map() calls joined by .concat().
   const recentHistory = useMemo((): SekretHistoryTurn[] => {
     const slice = threadEntries.slice(-6);
     const turns: SekretHistoryTurn[] = [];
@@ -275,15 +269,11 @@ export default function TeenPagesRoute() {
   }
 
   // ── Save + AI reply (protected path) ──────────────────────────────────────
-  // Every message goes through the existing onSave / setEntries path.
-  // fetchSekretBrainReply is called only for AI companions (not Me / Oracle).
-  // Reply is persisted through patchJournalEntry — NOT through a separate store.
   async function saveAndReply() {
     const text = journalText.trim();
     if ((!text && !mediaUri) || saving) return;
 
     const id = Date.now();
-    // ── Journal entry shape (unchanged contract) ──────────────────────────
     const entry: JournalEntry = {
       id,
       text,
@@ -299,13 +289,11 @@ export default function TeenPagesRoute() {
       mediaType,
     };
 
-    // ── Optimistic update ─────────────────────────────────────────────────
     setEntries(prev => [...prev, entry]);
     setJournalText('');
     setMediaUri(undefined);
     setMediaType(undefined);
 
-    // Scroll to bottom after render
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
 
     updateSekretMemory({
@@ -314,21 +302,14 @@ export default function TeenPagesRoute() {
       journalEntries: [{ id: String(id), text, mood, date: new Date().toISOString() }],
     }).catch(() => null);
 
-    if (!aiCompanion) return; // Me / Oracle: save only, no AI reply
+    if (!aiCompanion) return;
 
     setSaving(true);
     setAvatarState('thinking');
 
     try {
-      // FIX 3: 'oracle' is not a SekretSurface value. Oracle uses 'selfDiscovery'
-      // which is the correct surface for guided self-discovery in the API contract.
-      // FIX 4: the ternary previously compared CompanionId === 'oracle' which
-      // overlaps with the SekretCharacterId union and produced TS2367. That
-      // comparison is now unreachable since aiCompanion guards this block —
-      // activeTab here is always AiCompanionId (raylene/rylane/cloud/night).
       const surface: SekretSurface = 'journal';
 
-      // ── fetchSekretBrainReply is the ONLY AI call path (protected) ──────
       const result = await fetchSekretBrainReply({
         characterId: companionAvatarId,
         surface,
@@ -337,7 +318,6 @@ export default function TeenPagesRoute() {
         parentSharingEnabled: false,
         history: recentHistory,
       });
-      // ── patchJournalEntry is the ONLY sekretReply persistence path ──────
       patchJournalEntry(id, { sekretReply: result.reply });
       setAvatarState(inferState(result.avatarState, mood, result.tone));
     } catch {
@@ -373,9 +353,12 @@ export default function TeenPagesRoute() {
     const entryKey = String(entry.id);
     return (
       <View style={s.exchange} key={entryKey}>
-        {/* ── Teen message bubble ─────────────────────────────────────── */}
+        {/* Teen message bubble */}
         <View style={s.teenRow}>
-          <View style={[s.teenBubble, { borderColor: `${companion.accent}30` }]}>
+          <TouchableOpacity
+            onLongPress={() => router.push(`/(teen)/pages/${entry.id}` as any)}
+            style={[s.teenBubble, { borderColor: `${companion.accent}30` }]}
+          >
             {entry.imageUri ? (
               entry.mediaType === 'video' ? (
                 <View style={s.videoThumb}>
@@ -389,18 +372,18 @@ export default function TeenPagesRoute() {
             {entry.text ? (
               <Text style={s.teenText}>{entry.text}</Text>
             ) : null}
-            {/* ── Mood + lock indicators (protected) ─────────────────── */}
             <View style={s.entryMeta}>
               <Text style={s.metaTime}>{entry.date} · {entry.time}</Text>
               {entry.moodTag ? (
                 <Text style={[s.metaMood, { color: companion.accent }]}>#{entry.moodTag}</Text>
               ) : null}
               {entry.locked ? <Text style={s.metaLock}>🔒</Text> : null}
+              {entry.pinned ? <Text style={s.metaPin}>📌</Text> : null}
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
 
-        {/* ── Companion reply bubble (protected: sekretReply only) ────── */}
+        {/* Companion reply bubble */}
         {entry.sekretReply ? (
           <View style={s.replyRow}>
             <Image
@@ -412,7 +395,6 @@ export default function TeenPagesRoute() {
                 {companion.name}
               </Text>
               <Text style={s.replyText}>{entry.sekretReply}</Text>
-              {/* ── Voice playback (protected) ──────────────────────── */}
               <TouchableOpacity
                 onPress={() => hearReply(entry.id, entry.sekretReply!)}
                 disabled={voiceLoading}
@@ -464,7 +446,6 @@ export default function TeenPagesRoute() {
 
       {toolbarOpen && (
         <>
-          {/* ── Mood tags (protected) ──────────────────────────────────── */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.moodRail}>
             {MOOD_TAGS.map(tag => (
               <TouchableOpacity
@@ -482,9 +463,7 @@ export default function TeenPagesRoute() {
             ))}
           </ScrollView>
 
-          {/* ── Lock + attach row ─────────────────────────────────────── */}
           <View style={s.attachRow}>
-            {/* Privacy lock (protected) */}
             <TouchableOpacity
               onPress={() => setLocked(l => !l)}
               style={[s.iconBtn, locked && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` }]}
@@ -493,7 +472,6 @@ export default function TeenPagesRoute() {
               <Text style={s.iconBtnLabel}>{locked ? 'private' : 'lock it'}</Text>
             </TouchableOpacity>
 
-            {/* Photo attachment (protected) */}
             <TouchableOpacity
               onPress={choosePhoto}
               style={[s.iconBtn, mediaType === 'photo' && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` }]}
@@ -502,7 +480,6 @@ export default function TeenPagesRoute() {
               <Text style={s.iconBtnLabel}>{mediaType === 'photo' ? 'photo ✓' : 'photo'}</Text>
             </TouchableOpacity>
 
-            {/* Video Bip (protected) */}
             <TouchableOpacity
               onPress={recordVideo}
               style={[s.iconBtn, mediaType === 'video' && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` }]}
@@ -511,7 +488,6 @@ export default function TeenPagesRoute() {
               <Text style={s.iconBtnLabel}>{mediaType === 'video' ? 'video ✓' : 'video'}</Text>
             </TouchableOpacity>
 
-            {/* Quick links */}
             <TouchableOpacity onPress={() => router.push(TEEN_ROUTES.voiceBip as any)} style={s.iconBtn}>
               <Text style={s.iconBtnText}>🎙️</Text>
               <Text style={s.iconBtnLabel}>voice</Text>
@@ -520,7 +496,6 @@ export default function TeenPagesRoute() {
         </>
       )}
 
-      {/* Media preview */}
       {mediaUri ? (
         <TouchableOpacity
           onPress={() => { setMediaUri(undefined); setMediaType(undefined); }}
@@ -537,7 +512,7 @@ export default function TeenPagesRoute() {
     </View>
   );
 
-  // ── Composer prompt rail (protected: companion-specific, rotatable) ────────
+  // ── Composer prompt rail ────────────────────────────────────────────────────
   const renderPromptRail = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.promptRail}>
       {promptPool.map((p, i) => (
@@ -560,7 +535,7 @@ export default function TeenPagesRoute() {
     </ScrollView>
   );
 
-  // ── Typing indicator (while saving) ───────────────────────────────────────
+  // ── Typing indicator ───────────────────────────────────────────────────────
   const renderTypingIndicator = () =>
     saving ? (
       <View style={s.typingRow}>
@@ -580,13 +555,20 @@ export default function TeenPagesRoute() {
       <LinearGradient colors={['#10091b', '#171024', '#090711']} style={StyleSheet.absoluteFill} />
 
       <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
-        {/* ── Header ─────────────────────────────────────────────────── */}
+        {/* Header */}
         <View style={s.header}>
           <View>
             <Text style={[s.kicker, { color: companion.accent }]}>SE'KRET PAGES</Text>
             <Text style={s.title}>{companion.name}</Text>
           </View>
           <View style={s.headerRight}>
+            <TouchableOpacity
+              onPress={() => router.push('/(teen)/pages/history' as any)}
+              style={s.libraryBtn}
+            >
+              <Text style={s.libraryBtnText}>📚</Text>
+              <Text style={s.libraryBtnLabel}>all entries</Text>
+            </TouchableOpacity>
             <Animated.Image
               source={avatarImage(companionAvatarId, avatarState)}
               style={[s.headerAvatar, { transform: [{ scale: breathe }] }]}
@@ -595,10 +577,10 @@ export default function TeenPagesRoute() {
           </View>
         </View>
 
-        {/* ── Companion tabs: Raylene, Rylane, Cloud, Night (protected) ─ */}
+        {/* Companion tabs */}
         {renderAvatarStrip()}
 
-        {/* ── Chat timeline ──────────────────────────────────────────── */}
+        {/* Chat timeline */}
         <FlatList
           ref={flatListRef}
           data={threadEntries}
@@ -619,15 +601,12 @@ export default function TeenPagesRoute() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
-        {/* ── Composer ───────────────────────────────────────────────── */}
+        {/* Composer */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={0}
         >
-          {/* Companion prompts (protected: companion-specific, above composer) */}
           {renderPromptRail()}
-
-          {/* Expandable toolbar: mood tags, lock, attach (protected) */}
           {renderToolbar()}
 
           <View style={[s.composerRow, { borderTopColor: `${companion.accent}25` }]}>
@@ -665,24 +644,24 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#090711' },
   safe: { flex: 1 },
 
-  // Header
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
   kicker: { fontSize: 10, fontWeight: '900', letterSpacing: 2 },
   title: { color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 2 },
-  headerRight: { alignItems: 'center', justifyContent: 'center' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatar: { width: 54, height: 54 },
 
-  // Companion tabs (Raylene / Rylane / Cloud / Night / Me / Oracle)
+  libraryBtn: { alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#ffffff18', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 10, paddingVertical: 6 },
+  libraryBtnText: { fontSize: 16 },
+  libraryBtnLabel: { color: '#7a6e83', fontSize: 8, fontWeight: '800', marginTop: 2 },
+
   tabRail: { gap: 8, paddingHorizontal: 14, paddingBottom: 10 },
   tab: { width: 72, minHeight: 66, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff12', backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center', padding: 6 },
   tabImg: { width: 38, height: 38, resizeMode: 'contain' },
   tabEmoji: { fontSize: 24 },
   tabName: { color: '#a99fb2', fontSize: 9, fontWeight: '800', marginTop: 3 },
 
-  // Thread (chat timeline)
   thread: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 20 },
 
-  // Teen message bubble
   exchange: { marginBottom: 18 },
   teenRow: { alignItems: 'flex-end', marginBottom: 8 },
   teenBubble: { maxWidth: '82%', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderRadius: 20, borderBottomRightRadius: 4, paddingHorizontal: 14, paddingVertical: 12 },
@@ -695,8 +674,8 @@ const s = StyleSheet.create({
   metaTime: { color: '#7a7086', fontSize: 9 },
   metaMood: { fontSize: 9, fontWeight: '800' },
   metaLock: { fontSize: 10 },
+  metaPin: { fontSize: 10 },
 
-  // Companion reply bubble (sekretReply)
   replyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginLeft: 6 },
   replyAvatar: { width: 34, height: 34, resizeMode: 'contain', marginTop: 2 },
   replyBubble: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 20, borderBottomLeftRadius: 4, paddingHorizontal: 14, paddingVertical: 12 },
@@ -705,24 +684,20 @@ const s = StyleSheet.create({
   hearBtn: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, borderColor: '#ffffff1a', paddingHorizontal: 10, paddingVertical: 5 },
   hearBtnText: { color: '#c4b9cc', fontSize: 9, fontWeight: '800' },
 
-  // Typing indicator
   typingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginLeft: 6, marginTop: 4, marginBottom: 8 },
   typingAvatar: { width: 32, height: 32, resizeMode: 'contain', opacity: 0.7 },
   typingBubble: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
   typingText: { fontSize: 12, fontStyle: 'italic' },
 
-  // Empty state
   emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 40, marginBottom: 14 },
   emptyTitle: { fontSize: 17, fontWeight: '800', marginBottom: 6, textAlign: 'center' },
   emptyBody: { color: '#7a6e83', fontSize: 13, textAlign: 'center', lineHeight: 20 },
 
-  // Companion prompts rail
   promptRail: { gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
   promptChip: { maxWidth: 200, borderRadius: 12, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 12, paddingVertical: 8 },
   promptChipText: { color: '#9a8fa3', fontSize: 11, lineHeight: 16 },
 
-  // Composer toolbar (expandable)
   toolbar: { paddingHorizontal: 12, paddingBottom: 4 },
   toolbarToggle: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 2, marginBottom: 4 },
   toolbarToggleText: { color: '#7a6e83', fontSize: 10, fontWeight: '700' },
@@ -737,7 +712,6 @@ const s = StyleSheet.create({
   mediaPreview: { width: '100%', height: 120, borderRadius: 12, resizeMode: 'cover' },
   mediaRemove: { position: 'absolute', top: 6, right: 8, color: '#fff', fontSize: 13, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
 
-  // Composer row
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 20, borderTopWidth: 1 },
   composerInput: { flex: 1, color: '#f0eaf4', fontSize: 15, lineHeight: 23, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', maxHeight: 120 },
   sendBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
