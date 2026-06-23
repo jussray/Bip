@@ -25,7 +25,7 @@ export interface SendMessageOptions {
   userName?: string;
   displayName?: string;
   profileName?: string;
-  surface?: 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
+  surface?: 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery' | 'parentCoach';
   parentSharingEnabled?: boolean;
 }
 
@@ -135,6 +135,9 @@ export async function sendMessage(
   await saveTeenRelationshipProfile(learnedRelationship);
 
   if (!BASE_URL) {
+    if (personalityId === 'parentCoach') {
+      return "Hey. Glad you're here. What's going on at home?";
+    }
     return localFallback(personalityId, text, learnedRelationship);
   }
 
@@ -147,7 +150,8 @@ export async function sendMessage(
           : context === 'circle' ? 'circle'
             : context === 'parentBridge' ? 'parentBridge'
               : context === 'selfDiscovery' ? 'selfDiscovery'
-                : 'journal');
+                : context === 'parentCoach' ? 'parentCoach'
+                  : 'journal');
 
   // Map history to worker shape
   const workerHistory = (history ?? []).map((m) => ({

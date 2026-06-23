@@ -1,18 +1,18 @@
 // src/parent/features/sekret/ParentSekretCoachScreen.tsx
 //
-// Se'kret Coach — the parent's version of the Se'kret companion.
-// Focused on: parenting communication, understanding teen behavior,
-// responding with connection, and self-reflection for parents.
-//
-// NOT a chat. A coaching presence — ambient wisdom, prompted reflection,
-// and conversation guides. Think: a wise older parent sitting with you.
+// Se'kret Coach — the parent's AI coaching companion.
+// Live AI chat at the top (parent talks to Se'kret Coach directly).
+// Static coaching guides, conversation starters, and calm shortcut below.
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Animated, Platform, Image,
+  View, Text, TouchableOpacity, ScrollView, TextInput,
+  StyleSheet, Animated, Platform, Image, KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { IMAGES } from '@constants/theme';
+import { sendMessage, makeUserMessage, makeAssistantMessage } from '@/parent/services';
+import type { ChatMessage } from '@/parent/services';
 
 const TOP = Platform.OS === 'ios' ? 56 : 36;
 
@@ -50,7 +50,7 @@ const WISDOM = [
   "showing up imperfectly is still showing up.",
 ];
 
-// ── Mood-specific wisdom — surfaces when parentMood is set ────────────────────
+// ── Mood-specific wisdom ──────────────────────────────────────────────────────
 const MOOD_WISDOM: Record<string, string[]> = {
   heavy: [
     "heavy is real. you don't have to perform okay right now.",
@@ -78,7 +78,7 @@ const MOOD_WISDOM: Record<string, string[]> = {
   ],
 };
 
-// ── Mood → highlighted module ─────────────────────────────────────────────────
+// ── Mood → featured module ────────────────────────────────────────────────────
 const MOOD_MODULE: Record<string, string> = {
   heavy:   'regulate',
   hopeful: 'connect',
@@ -161,7 +161,7 @@ const MODULES = [
   {
     id: 'mental_health',
     icon: '💙',
-    label: 'When They\'re Struggling',
+    label: "When They're Struggling",
     sub: 'signals, support, and when to get help',
     tips: [
       "Struggling doesn't mean broken. It means human.",
@@ -218,26 +218,26 @@ const MODULES = [
 
 // ── Conversation starters ─────────────────────────────────────────────────────
 const CONVERSATION_STARTERS = [
-  { situation: "After a bad day",        starter: "\"That looked rough. You want company or space?\"" },
-  { situation: "They seem off",          starter: "\"Hey. Not fishing. Just checking. You good?\"" },
-  { situation: "After a fight",          starter: "\"I handled that badly. Can we try again?\"" },
-  { situation: "They shut down",         starter: "\"You don't have to talk. I'm just here.\"" },
-  { situation: "They're struggling",     starter: "\"What do you need from me right now — to talk, to listen, or to just be here?\"" },
-  { situation: "Celebrating a win",      starter: "\"I see you working hard. I'm proud of you.\"" },
-  { situation: "School stress",          starter: "\"School feels like a lot right now. What's the hardest part this week?\"" },
-  { situation: "Friend drama",           starter: "\"That situation with your friend sounds complicated. Do you want to talk through it or just vent?\"" },
-  { situation: "You overheard something",starter: "\"I wasn't trying to snoop. But I noticed something. Can I ask?\"" },
-  { situation: "They got in trouble",    starter: "\"I'm not here to lecture. I just want to understand what happened.\"" },
-  { situation: "They seem distant",      starter: "\"I've noticed we haven't really talked in a minute. Anything between us I should know about?\"" },
-  { situation: "Big life question",      starter: "\"I don't have the answer. But I want to think through it with you if you'll let me.\"" },
-  { situation: "After a disappointment", starter: "\"That really mattered to you. I'm sorry it didn't go the way you hoped.\"" },
-  { situation: "Quiet car ride",         starter: "\"No agenda. Just wondering what's been on your mind lately.\"" },
-  { situation: "Before bed",             starter: "\"Hey. Before you close the door — anything you want to say?\"" },
-  { situation: "You made a mistake",     starter: "\"I need to apologize for something. Can I?\"" },
-  { situation: "They're excited",        starter: "\"Tell me about it. All of it. I actually want to know.\"" },
-  { situation: "After a hard week",      starter: "\"This week was a lot. You holding up okay?\"" },
-  { situation: "Phone/screen tension",   starter: "\"I don't want to fight about this. Can we figure out what would actually work for both of us?\"" },
-  { situation: "When they push you away",starter: "\"Okay. I'm not going far. Door's open when you're ready.\"" },
+  { situation: "After a bad day",         starter: "\"That looked rough. You want company or space?\"" },
+  { situation: "They seem off",           starter: "\"Hey. Not fishing. Just checking. You good?\"" },
+  { situation: "After a fight",           starter: "\"I handled that badly. Can we try again?\"" },
+  { situation: "They shut down",          starter: "\"You don't have to talk. I'm just here.\"" },
+  { situation: "They're struggling",      starter: "\"What do you need from me right now — to talk, to listen, or to just be here?\"" },
+  { situation: "Celebrating a win",       starter: "\"I see you working hard. I'm proud of you.\"" },
+  { situation: "School stress",           starter: "\"School feels like a lot right now. What's the hardest part this week?\"" },
+  { situation: "Friend drama",            starter: "\"That situation with your friend sounds complicated. Do you want to talk through it or just vent?\"" },
+  { situation: "You overheard something", starter: "\"I wasn't trying to snoop. But I noticed something. Can I ask?\"" },
+  { situation: "They got in trouble",     starter: "\"I'm not here to lecture. I just want to understand what happened.\"" },
+  { situation: "They seem distant",       starter: "\"I've noticed we haven't really talked in a minute. Anything between us I should know about?\"" },
+  { situation: "Big life question",       starter: "\"I don't have the answer. But I want to think through it with you if you'll let me.\"" },
+  { situation: "After a disappointment",  starter: "\"That really mattered to you. I'm sorry it didn't go the way you hoped.\"" },
+  { situation: "Quiet car ride",          starter: "\"No agenda. Just wondering what's been on your mind lately.\"" },
+  { situation: "Before bed",              starter: "\"Hey. Before you close the door — anything you want to say?\"" },
+  { situation: "You made a mistake",      starter: "\"I need to apologize for something. Can I?\"" },
+  { situation: "They're excited",         starter: "\"Tell me about it. All of it. I actually want to know.\"" },
+  { situation: "After a hard week",       starter: "\"This week was a lot. You holding up okay?\"" },
+  { situation: "Phone/screen tension",    starter: "\"I don't want to fight about this. Can we figure out what would actually work for both of us?\"" },
+  { situation: "When they push you away", starter: "\"Okay. I'm not going far. Door's open when you're ready.\"" },
 ];
 
 function pick<T>(arr: T[]): T {
@@ -256,11 +256,18 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
     const moodPool = parentMood ? MOOD_WISDOM[parentMood] : null;
     return moodPool ? pick(moodPool) : pick(WISDOM);
   });
-  const [activeModule, setActiveModule] = useState<string | null>(null);
-  const [starterIdx, setStarterIdx]     = useState(0);
+
+  // ── AI Chat state ────────────────────────────────────────────────────────
+  const [chatMessages, setChatMessages]   = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput]         = useState('');
+  const [chatLoading, setChatLoading]     = useState(false);
+  const [showGuides, setShowGuides]       = useState(false);
+  const [activeModule, setActiveModule]   = useState<string | null>(null);
+  const [starterIdx, setStarterIdx]       = useState(0);
 
   const cloudBreath = useRef(new Animated.Value(0)).current;
   const fadeIn      = useRef(new Animated.Value(0)).current;
+  const scrollRef   = useRef<ScrollView>(null);
 
   useEffect(() => {
     Animated.timing(fadeIn, { toValue: 1, duration: 600, useNativeDriver: true }).start();
@@ -274,18 +281,42 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
 
   const cloudScale = cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] });
 
-  const currentModule     = MODULES.find(m => m.id === activeModule);
-  const suggestedModuleId = parentMood ? MOOD_MODULE[parentMood] : null;
+  const handleSend = useCallback(async () => {
+    const text = chatInput.trim();
+    if (!text || chatLoading) return;
+    const userMsg = makeUserMessage(text);
+    setChatInput('');
+    const nextMessages = [...chatMessages, userMsg];
+    setChatMessages(nextMessages);
+    setChatLoading(true);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    try {
+      const reply = await sendMessage(
+        'parentCoach',
+        text,
+        'parentCoach',
+        {
+          history: chatMessages,
+          mood: parentMood,
+          surface: 'parentCoach',
+        },
+      );
+      setChatMessages(prev => [...prev, makeAssistantMessage(reply)]);
+    } catch {
+      setChatMessages(prev => [...prev, makeAssistantMessage("Something got in the way. Try again.")]);
+    } finally {
+      setChatLoading(false);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
+    }
+  }, [chatInput, chatLoading, chatMessages, parentMood]);
 
-  // Render modules: suggested one floats to the top
+  const suggestedModuleId = parentMood ? MOOD_MODULE[parentMood] : null;
   const sortedModules = suggestedModuleId
-    ? [
-        ...MODULES.filter(m => m.id === suggestedModuleId),
-        ...MODULES.filter(m => m.id !== suggestedModuleId),
-      ]
+    ? [...MODULES.filter(m => m.id === suggestedModuleId), ...MODULES.filter(m => m.id !== suggestedModuleId)]
     : MODULES;
 
   // ── Module detail view ───────────────────────────────────────────────────
+  const currentModule = MODULES.find(m => m.id === activeModule);
   if (currentModule) {
     return (
       <View style={s.root}>
@@ -312,13 +343,19 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
     );
   }
 
-  // ── Main coach view ──────────────────────────────────────────────────────
+  // ── Main view ────────────────────────────────────────────────────────────
   return (
-    <View style={s.root}>
+    <KeyboardAvoidingView
+      style={s.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+    >
       <Animated.ScrollView
+        ref={scrollRef}
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
         style={{ opacity: fadeIn }}
+        keyboardShouldPersistTaps="handled"
       >
 
         {/* ── Header ── */}
@@ -332,7 +369,7 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
           </View>
         </View>
 
-        {/* ── Se'kret cloud ── */}
+        {/* ── Se'kret cloud + wisdom ── */}
         <View style={s.cloudBlock}>
           <Animated.View style={{ transform: [{ scale: cloudScale }] }}>
             <Image source={IMAGES.cloudHeadphones} style={s.cloudImg} resizeMode="contain" />
@@ -348,9 +385,59 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
           </View>
         </View>
 
-        {/* ── Coaching modules ── */}
-        <Text style={s.sectionLabel}>Coaching Guides</Text>
-        {sortedModules.map(m => {
+        {/* ── AI Chat ── */}
+        <Text style={s.sectionLabel}>Talk to Se'kret</Text>
+        <View style={s.chatArea}>
+          {chatMessages.length === 0 && (
+            <Text style={s.chatHint}>Tell Se'kret what's going on. She's here for you, not for your teen.</Text>
+          )}
+          {chatMessages.map((msg) => (
+            <View
+              key={msg.id}
+              style={[s.bubble, msg.role === 'user' ? s.bubbleUser : s.bubbleCoach]}
+            >
+              <Text style={[s.bubbleText, msg.role === 'user' ? s.bubbleTextUser : s.bubbleTextCoach]}>
+                {msg.text}
+              </Text>
+            </View>
+          ))}
+          {chatLoading && (
+            <View style={[s.bubble, s.bubbleCoach]}>
+              <ActivityIndicator size="small" color="#c084fc" />
+            </View>
+          )}
+        </View>
+
+        {/* ── Chat input ── */}
+        <View style={s.inputRow}>
+          <TextInput
+            style={s.chatInput}
+            value={chatInput}
+            onChangeText={setChatInput}
+            placeholder="What's going on at home…"
+            placeholderTextColor="#475569"
+            multiline
+            maxLength={1000}
+            returnKeyType="send"
+            onSubmitEditing={handleSend}
+            blurOnSubmit={false}
+          />
+          <TouchableOpacity
+            style={[s.sendBtn, (!chatInput.trim() || chatLoading) && s.sendBtnDisabled]}
+            onPress={handleSend}
+            disabled={!chatInput.trim() || chatLoading}
+          >
+            <Text style={s.sendBtnText}>↑</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Coaching guides (collapsible) ── */}
+        <TouchableOpacity style={s.guidesToggle} onPress={() => setShowGuides(v => !v)} activeOpacity={0.8}>
+          <Text style={s.sectionLabel} numberOfLines={1}>Coaching Guides</Text>
+          <Text style={s.guidesChevron}>{showGuides ? '↑' : '↓'}</Text>
+        </TouchableOpacity>
+
+        {showGuides && sortedModules.map(m => {
           const isSuggested = m.id === suggestedModuleId;
           return (
             <TouchableOpacity
@@ -383,7 +470,7 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
           </TouchableOpacity>
         </View>
 
-        {/* ── Calm before replying shortcut ── */}
+        {/* ── Calm shortcut ── */}
         <TouchableOpacity style={s.calmShortcut} onPress={() => setScreen('calm')} activeOpacity={0.8}>
           <Text style={s.calmShortcutEmoji}>🌬️</Text>
           <View style={{ flex: 1 }}>
@@ -396,7 +483,7 @@ export function ParentSekretCoachScreen({ setScreen, parentMood, BottomNav }: Pa
         <View style={s.spacer} />
       </Animated.ScrollView>
       {BottomNav}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -413,25 +500,71 @@ const s = StyleSheet.create({
   title: { color: '#fff', fontSize: 20, fontWeight: '800' },
   sub:   { color: '#94A3B8', fontSize: 12, marginTop: 2 },
 
-  cloudBlock: {
-    alignItems: 'center', paddingHorizontal: 24, marginBottom: 20,
-  },
-  cloudImg: { width: 72, height: 72, marginBottom: 10 },
+  cloudBlock: { alignItems: 'center', paddingHorizontal: 24, marginBottom: 20 },
+  cloudImg:   { width: 72, height: 72, marginBottom: 10 },
   wisdomBubble: {
     backgroundColor: 'rgba(192,132,252,0.08)',
     borderWidth: 1, borderColor: 'rgba(192,132,252,0.25)',
     borderRadius: 14, padding: 16,
   },
-  moodTag: {
-    color: '#c084fc', fontSize: 10, fontWeight: '700', letterSpacing: 0.6,
-    textTransform: 'uppercase', marginBottom: 8, textAlign: 'center',
-  },
+  moodTag:    { color: '#c084fc', fontSize: 10, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 8, textAlign: 'center' },
   wisdomText: { color: '#e9d5ff', fontSize: 14, fontStyle: 'italic', lineHeight: 22, textAlign: 'center' },
 
   sectionLabel: {
     color: '#c084fc', fontSize: 12, fontWeight: '700', letterSpacing: 0.8,
     textTransform: 'uppercase', marginHorizontal: 20, marginBottom: 10,
   },
+
+  // ── Chat ──
+  chatArea: {
+    marginHorizontal: 20, marginBottom: 8, gap: 10,
+  },
+  chatHint: {
+    color: '#475569', fontSize: 13, fontStyle: 'italic', lineHeight: 20,
+    textAlign: 'center', paddingVertical: 12,
+  },
+  bubble: {
+    maxWidth: '85%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
+  },
+  bubbleUser: {
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(192,132,252,0.18)',
+    borderWidth: 1, borderColor: 'rgba(192,132,252,0.3)',
+  },
+  bubbleCoach: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: '#1e293b',
+  },
+  bubbleText:      { fontSize: 14, lineHeight: 22 },
+  bubbleTextUser:  { color: '#e9d5ff' },
+  bubbleTextCoach: { color: '#CBD5E1' },
+
+  inputRow: {
+    flexDirection: 'row', gap: 10, marginHorizontal: 20, marginBottom: 24, alignItems: 'flex-end',
+  },
+  chatInput: {
+    flex: 1, color: '#fff', fontSize: 14, lineHeight: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: '#334155',
+    borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
+    maxHeight: 100,
+  },
+  sendBtn: {
+    backgroundColor: 'rgba(192,132,252,0.18)',
+    borderWidth: 1, borderColor: '#c084fc',
+    borderRadius: 14, width: 40, height: 40,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  sendBtnDisabled: { opacity: 0.35 },
+  sendBtnText:     { color: '#e9d5ff', fontSize: 18, fontWeight: '700' },
+
+  // ── Guides ──
+  guidesToggle: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 20, marginBottom: 10,
+  },
+  guidesChevron: { color: '#c084fc', fontSize: 14, fontWeight: '700' },
 
   moduleCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
