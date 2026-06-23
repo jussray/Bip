@@ -41,6 +41,8 @@ interface AppContextValue {
   setUserSide: (side: 'teen' | 'parent') => void;
   selectedSekret: string;
   setSelectedSekret: (value: string) => void;
+  sekretMode: string;
+  setSekretMode: (mode: string) => void;
 
   // Teen mood
   mood: string;
@@ -64,6 +66,13 @@ interface AppContextValue {
   // Teen circle
   circlePosts: CirclePost[];
   setCirclePosts: React.Dispatch<React.SetStateAction<CirclePost[]>>;
+
+  // Teen Oracle (local-only — stays in AsyncStorage, not Supabase)
+  oracleProfile: OracleProfile | null;
+  setOracleProfile: (profile: OracleProfile | null) => void;
+  oracleSessions: OracleSessionSummary[];
+  setOracleSessions: React.Dispatch<React.SetStateAction<OracleSessionSummary[]>>;
+  completeTeenOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 
   // UI
   homeMessageIndex: number;
@@ -209,6 +218,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  function completeTeenOracleSession(profile: OracleProfile, session: OracleSessionSummary) {
+    s.setOracleSessions((sessions: OracleSessionSummary[]) => [session, ...sessions].slice(0, 50));
+    s.setOracleProfile(profile);
+  }
+
   function completeParentOracleSession(profile: OracleProfile, session: OracleSessionSummary) {
     s.setParentOracleSessions((sessions: OracleSessionSummary[]) => [session, ...sessions].slice(0, 50));
     s.setParentOracleProfile(profile);
@@ -229,6 +243,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUserSide: s.setUserSide,
     selectedSekret: s.selectedSekret,
     setSelectedSekret: s.setSelectedSekret,
+    sekretMode: s.sekretMode,
+    setSekretMode: s.setSekretMode,
     mood: s.mood,
     setMood: s.setMood,
     selectMood,
@@ -243,6 +259,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setVoiceNotes,
     circlePosts,
     setCirclePosts,
+    oracleProfile: s.oracleProfile,
+    setOracleProfile: s.setOracleProfile,
+    oracleSessions: s.oracleSessions,
+    setOracleSessions: s.setOracleSessions,
+    completeTeenOracleSession,
     homeMessageIndex,
     breatheAnim,
     isLoading: s.isLoading,

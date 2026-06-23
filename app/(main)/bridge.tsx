@@ -1,27 +1,19 @@
 /**
  * app/(main)/bridge.tsx
  *
- * Parent Bridge — safe channel between teen and parent.
+ * Teen-side Bridge screen.
  *
- * Teen side:
- *   - Leave a note for your parent (free-write or quick prompt).
- *   - Reachable directly from Bridge tab (parent side) or from
- *     Pages → S2Tell (arrives with ?compose=true, auto-focuses input).
- *
- * Parent side:
- *   - View notes the teen has sent this session.
- *   - Respond with supportive prompts.
- *
- * S2Tell intent:
- *   When arriving with ?compose=true the compose area is auto-focused
- *   so tapping S2Tell in Pages feels like one continuous gesture
- *   rather than two separate screens.
- *
- * NOTE: `sent` is local component state — notes are only visible
- * this session. Supabase sync (cross-device persistence) is wired
- * in a later sprint.
+ * Privacy design:
+ *   - Teen's message text is NEVER sent to Supabase (local-first privacy rule).
+ *   - When the teen taps Send, a bridge_signal row is inserted (metadata only:
+ *     share_type, char_key, sent_at). This lets the parent see "your teen
+ *     reached out" without seeing the actual text.
+ *   - Parent warm notes (parent_notes table) ARE fetched and displayed here
+ *     because the parent is the author of that content — it's not the teen's
+ *     private diary.
+ *   - Realtime subscription keeps parent notes live across sessions.
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -34,6 +26,13 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import {
+  sendBridgeSignal,
+  fetchParentNotes,
+  markParentNoteSeen,
+  subscribeToParentNotes,
+  type ParentNote,
+} from '@/utils/sync';
 
 const BRIDGE_PROMPTS = [
   'I had a hard day.',
@@ -48,12 +47,31 @@ export default function BridgeScreen() {
   const { compose } = useLocalSearchParams<{ compose?: string }>();
   const autoFocus = compose === 'true';
 
-  const [message, setMessage] = useState('');
-  const [sent, setSent]       = useState<string[]>([]);
-  const inputRef              = useRef<TextInputType>(null);
-  const scrollRef             = useRef<ScrollView>(null);
+  const [message, setMessage]           = useState('');
+  const [sent, setSent]                 = useState<string[]>([]);
+  const [parentNotes, setParentNotes]   = useState<ParentNote[]>([]);
+  const inputRef                        = useRef<TextInputType>(null);
+  const scrollRef                       = useRef<ScrollView>(null);
 
-  // When arriving from Pages → S2Tell, focus the input immediately.
+  // Load parent notes + subscribe to Realtime on mount.
+  useEffect(() => {
+    let unsub = () => {};
+    if (userSide !== 'parent') {
+      (async () => {
+        const existing = await fetchParentNotes();
+        setParentNotes(existing);
+        // Mark all unseen notes as seen now that the teen has opened Bridge.
+        existing.filter(n => !n.seen_by_teen).forEach(n => markParentNoteSeen(n.id));
+        unsub = await subscribeToParentNotes((note) => {
+          setParentNotes(prev => [note, ...prev]);
+          markParentNoteSeen(note.id);
+        });
+      })();
+    }
+    return () => { unsub(); };
+  }, [userSide]);
+
+  // Auto-focus when arriving via S2Tell.
   useEffect(() => {
     if (autoFocus && userSide !== 'parent') {
       const t = setTimeout(() => {
@@ -64,12 +82,15 @@ export default function BridgeScreen() {
     }
   }, [autoFocus, userSide]);
 
-  function sendNote(text: string) {
+  const sendNote = useCallback((text: string) => {
     const t = text.trim();
     if (!t) return;
-    setSent((s) => [t, ...s]);
+    // Show locally — privacy rule: text never goes to Supabase.
+    setSent(s => [t, ...s]);
     setMessage('');
-  }
+    // Fire metadata signal so parent sees "your teen reached out".
+    void sendBridgeSignal({ shareType: 'thought', convMode: null, charKey: 'rylane' });
+  }, []);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -130,11 +151,29 @@ export default function BridgeScreen() {
                 <Text style={styles.sendBtnText}>Send Note</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Parent notes section */}
+            {parentNotes.length > 0 && (
+              <>
+                <Text style={styles.sectionLabel}>From your parent 💜</Text>
+                {parentNotes.map((note) => (
+                  <View key={note.id} style={styles.parentNoteCard}>
+                    <Text style={styles.noteText}>{note.content}</Text>
+                    <Text style={styles.noteTime}>
+                      {new Date(note.sent_at).toLocaleDateString(undefined, {
+                        month: 'short', day: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
           </>
         )}
 
-        {/* Sent notes */}
-        {sent.length === 0 ? (
+        {/* Teen's sent notes (local only) */}
+        {sent.length === 0 && parentNotes.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>🌉</Text>
             <Text style={styles.emptyText}>
@@ -143,13 +182,16 @@ export default function BridgeScreen() {
                 : 'Notes you send will appear here.'}
             </Text>
           </View>
-        ) : (
-          sent.map((note, i) => (
-            <View key={i} style={styles.noteCard}>
-              <Text style={styles.noteText}>{note}</Text>
-            </View>
-          ))
-        )}
+        ) : sent.length > 0 ? (
+          <>
+            {userSide !== 'parent' && <Text style={styles.sectionLabel}>Sent this session</Text>}
+            {sent.map((note, i) => (
+              <View key={i} style={styles.noteCard}>
+                <Text style={styles.noteText}>{note}</Text>
+              </View>
+            ))}
+          </>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -168,9 +210,12 @@ const styles = StyleSheet.create({
   sendBtn:         { alignSelf: 'flex-end', backgroundColor: '#4DA3FF', borderRadius: 20, paddingHorizontal: 18, paddingVertical: 8, marginTop: 8 },
   sendBtnDisabled: { opacity: 0.35 },
   sendBtnText:     { color: '#fff', fontWeight: '700', fontSize: 14 },
+  sectionLabel:    { color: '#555', fontSize: 11, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8, marginTop: 4 },
+  parentNoteCard:  { backgroundColor: '#1a1130', borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: '#7c3aed40' },
+  noteCard:        { backgroundColor: '#111827', borderRadius: 14, padding: 14, marginBottom: 10 },
+  noteText:        { color: '#E2E8F0', fontSize: 15, lineHeight: 22 },
+  noteTime:        { color: '#6b7280', fontSize: 11, marginTop: 6 },
   emptyState:      { alignItems: 'center', paddingTop: 60 },
   emptyEmoji:      { fontSize: 36, marginBottom: 10 },
   emptyText:       { color: '#555', fontSize: 14 },
-  noteCard:        { backgroundColor: '#111827', borderRadius: 14, padding: 14, marginBottom: 10 },
-  noteText:        { color: '#E2E8F0', fontSize: 15, lineHeight: 22 },
 });

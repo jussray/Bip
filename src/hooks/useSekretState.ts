@@ -24,6 +24,7 @@ export function useSekretState() {
   const [mood, setMood]                     = useState('Happy');
   const [userSide, setUserSide]             = useState<'teen' | 'parent' | null>(null);
   const [selectedSekret, setSelectedSekret] = useState('soft');
+  const [sekretMode, setSekretMode]         = useState('soft');
   const [growthPath, setGrowthPath]         = useState('preferNotToSay');
   const [entries, setEntries]               = useState<JournalEntry[]>([]);
   const [moodHistory, setMoodHistory]       = useState<MoodEntry[]>([]);
@@ -39,6 +40,8 @@ export function useSekretState() {
   const [parentCirclePosts, setParentCirclePosts]       = useState<ParentCirclePost[]>([]);
   const [parentCirclePostText, setParentCirclePostText] = useState('');
   const [parentVoiceNotes, setParentVoiceNotes]         = useState<VoiceNote[]>([]);
+  const [oracleProfile, setOracleProfile]               = useState<OracleProfile | null>(null);
+  const [oracleSessions, setOracleSessions]             = useState<OracleSessionSummary[]>([]);
   const [parentOracleProfile, setParentOracleProfile]   = useState<OracleProfile | null>(null);
   const [parentOracleSessions, setParentOracleSessions] = useState<OracleSessionSummary[]>([]);
 
@@ -56,6 +59,7 @@ export function useSekretState() {
       if (state.mood)                 setMood(state.mood);
       if (state.userSide)             setUserSide(state.userSide);
       if (state.selectedSekret)       setSelectedSekret(state.selectedSekret);
+      if (state.sekretMode)           setSekretMode(state.sekretMode);
       if (state.growthPath)           setGrowthPath(state.growthPath);
       if (state.entries)              setEntries(state.entries);
       if (state.moodHistory)          setMoodHistory(state.moodHistory);
@@ -69,6 +73,8 @@ export function useSekretState() {
       if (state.parentCirclePosts)      setParentCirclePosts(state.parentCirclePosts);
       if (state.parentCirclePostText)   setParentCirclePostText(state.parentCirclePostText);
       if (state.parentVoiceNotes)       setParentVoiceNotes(state.parentVoiceNotes);
+      if (state.oracleProfile)           setOracleProfile(state.oracleProfile);
+      if (state.oracleSessions)          setOracleSessions(state.oracleSessions);
       if (state.parentOracleProfile)    setParentOracleProfile(state.parentOracleProfile);
       if (state.parentOracleSessions)   setParentOracleSessions(state.parentOracleSessions);
       if (Array.isArray(state.crewMembers))        setCrewMembers(state.crewMembers);
@@ -83,8 +89,9 @@ export function useSekretState() {
   useEffect(() => {
     if (!isLoading) {
       saveState({
-        theme, mood, userSide, selectedSekret,
+        theme, mood, userSide, selectedSekret, sekretMode,
         growthPath, entries, moodHistory, circlePosts,
+        oracleProfile, oracleSessions,
         parentMood, parentMoodDate, parentRoomStyle,
         parentPagesDraft, parentPagesEntries,
         parentCirclePosts, parentCirclePostText,
@@ -94,8 +101,9 @@ export function useSekretState() {
       });
     }
   }, [
-    theme, mood, userSide, selectedSekret,
+    theme, mood, userSide, selectedSekret, sekretMode,
     growthPath, entries, moodHistory, circlePosts,
+    oracleProfile, oracleSessions,
     parentMood, parentMoodDate, parentRoomStyle,
     parentPagesDraft, parentPagesEntries,
     parentCirclePosts, parentCirclePostText,
@@ -110,6 +118,7 @@ export function useSekretState() {
     setMood('Happy');
     setUserSide(null);
     setSelectedSekret('soft');
+    setSekretMode('soft');
     setGrowthPath('preferNotToSay');
     setEntries([]);
     setMoodHistory([]);
@@ -122,6 +131,8 @@ export function useSekretState() {
     setParentCirclePosts([]);
     setParentCirclePostText('');
     setParentVoiceNotes([]);
+    setOracleProfile(null);
+    setOracleSessions([]);
     setParentOracleProfile(null);
     setParentOracleSessions([]);
     setCrewMembers([]);
@@ -135,6 +146,7 @@ export function useSekretState() {
     mood, setMood,
     userSide, setUserSide,
     selectedSekret, setSelectedSekret,
+    sekretMode, setSekretMode,
     growthPath, setGrowthPath,
     entries, setEntries,
     moodHistory, setMoodHistory,
@@ -148,6 +160,8 @@ export function useSekretState() {
     parentCirclePosts, setParentCirclePosts,
     parentCirclePostText, setParentCirclePostText,
     parentVoiceNotes, setParentVoiceNotes,
+    oracleProfile, setOracleProfile,
+    oracleSessions, setOracleSessions,
     parentOracleProfile, setParentOracleProfile,
     parentOracleSessions, setParentOracleSessions,
     crewMembers, setCrewMembers,
