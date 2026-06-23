@@ -1,13 +1,17 @@
 // app/(teen)/pages/[id].tsx
 // SE'KRET PAGES — Entry Detail
-// Full entry view: text, media, sekretReply, voice playback, pin toggle.
+// Full entry view: text, media, sekretReply, voice playback, pin toggle,
+// Today's Check-In, Entry Insights, and Reply to Se'kret composer.
 
 import React, { useRef, useState } from 'react';
 import {
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,7 +20,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppContext } from '@/context/AppContext';
-import { fetchSekretVoice, type SekretCharacterId } from '@/utils/api';
+import {
+  fetchSekretBrainReply,
+  fetchSekretVoice,
+  type SekretCharacterId,
+  type SekretSurface,
+} from '@/utils/api';
 
 const COMPANION_META: Record<string, { label: string; accent: string; emoji: string; avatarId: SekretCharacterId }> = {
   raylene: { label: 'Raylene', accent: '#f08bc5', emoji: '💜', avatarId: 'raylene' },
@@ -27,12 +36,40 @@ const COMPANION_META: Record<string, { label: string; accent: string; emoji: str
   oracle:  { label: 'Oracle',  accent: '#c7b87a', emoji: '🔮', avatarId: 'raylene' },
 };
 
+const AI_COMPANIONS = new Set(['raylene', 'rylane', 'cloud', 'night']);
+
+const CHECK_IN_MOODS = [
+  { emoji: '😔', label: 'alone' },
+  { emoji: '😮', label: 'a lot' },
+  { emoji: '😌', label: 'a little' },
+  { emoji: '🙂', label: 'okay' },
+];
+
+function getEnergyLevel(moodTag?: string): string {
+  if (['heavy', 'anxious', 'numb'].includes(moodTag ?? '')) return 'low';
+  if (moodTag === 'fired') return 'high';
+  if (['soft', 'hopeful', 'okay'].includes(moodTag ?? '')) return 'medium';
+  return 'medium';
+}
+
+function getSekretTip(moodTag?: string): string {
+  const tips: Record<string, string> = {
+    heavy: 'rest + breathe',
+    anxious: 'ground yourself',
+    numb: 'just feel it',
+    soft: 'stay soft',
+    okay: 'keep going',
+    hopeful: 'hold onto this',
+    fired: 'channel it',
+  };
+  return tips[moodTag ?? ''] ?? 'be gentle';
+}
+
 export default function EntryDetailRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { entries, patchJournalEntry } = useAppContext();
+  const { entries, setEntries, patchJournalEntry } = useAppContext();
 
   const entry = entries.find(e => String(e.id) === id);
-
   const companion = entry
     ? (COMPANION_META[(entry.activeTab || entry.source) ?? ''] ?? {
         label: 'Pages', accent: '#b8a9c9', emoji: '📄', avatarId: 'raylene' as SekretCharacterId,
@@ -40,6 +77,9 @@ export default function EntryDetailRoute() {
     : null;
 
   const [voiceLoading, setVoiceLoading] = useState(false);
+  const [checkInMood, setCheckInMood] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replying, setReplying] = useState(false);
   const audioCache = useRef<Record<string, string>>({});
 
   async function playReply() {
@@ -69,6 +109,49 @@ export default function EntryDetailRoute() {
     patchJournalEntry(entry.id, { pinned: !entry.pinned });
   }
 
+  async function handleReply() {
+    if (!replyText.trim() || replying || !entry || !companion) return;
+    const text = replyText.trim();
+    setReplying(true);
+
+    const newId = Date.now();
+    const companionKey = entry.activeTab || entry.source;
+    setEntries(prev => [
+      ...prev,
+      {
+        id: newId,
+        text,
+        mood: entry.moodTag ?? '',
+        moodTag: entry.moodTag,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        source: companionKey,
+        activeTab: companionKey,
+        entryMode: 'typed',
+        locked: entry.locked,
+      },
+    ]);
+    setReplyText('');
+    router.push('/(teen)/pages' as any);
+
+    if (AI_COMPANIONS.has(companionKey ?? '')) {
+      try {
+        const result = await fetchSekretBrainReply({
+          characterId: companion.avatarId,
+          surface: 'journal' as SekretSurface,
+          userText: text,
+          mood: entry.moodTag ?? '',
+          parentSharingEnabled: false,
+          history: [],
+        });
+        patchJournalEntry(newId, { sekretReply: result.reply });
+      } catch {
+        // silent — companion thread will show entry without reply
+      }
+    }
+    setReplying(false);
+  }
+
   if (!entry || !companion) {
     return (
       <View style={s.root}>
@@ -86,6 +169,9 @@ export default function EntryDetailRoute() {
       </View>
     );
   }
+
+  const energyLevel = getEnergyLevel(entry.moodTag);
+  const sekretTip = getSekretTip(entry.moodTag);
 
   return (
     <View style={s.root}>
@@ -109,14 +195,10 @@ export default function EntryDetailRoute() {
           </View>
         </View>
 
-        <ScrollView
-          contentContainerStyle={s.scroll}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Date / time */}
+        {/* Scrollable content */}
+        <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <Text style={s.dateTime}>{entry.date} at {entry.time}</Text>
 
-          {/* Mood tag */}
           {entry.moodTag ? (
             <View style={s.moodTagWrap}>
               <Text style={[s.moodTag, { color: companion.accent, borderColor: `${companion.accent}40` }]}>
@@ -125,16 +207,10 @@ export default function EntryDetailRoute() {
             </View>
           ) : null}
 
-          {/* Media */}
           {entry.imageUri ? (
-            <Image
-              source={{ uri: entry.imageUri }}
-              style={s.media}
-              resizeMode="cover"
-            />
+            <Image source={{ uri: entry.imageUri }} style={s.media} resizeMode="cover" />
           ) : null}
 
-          {/* Entry text */}
           {entry.text ? (
             <View style={s.textCard}>
               <Text style={s.entryText}>{entry.text}</Text>
@@ -148,25 +224,109 @@ export default function EntryDetailRoute() {
                 {companion.emoji} {companion.label} said
               </Text>
               <Text style={s.replyText}>{entry.sekretReply}</Text>
-              <TouchableOpacity
-                onPress={playReply}
-                disabled={voiceLoading}
-                style={[s.hearBtn, { borderColor: `${companion.accent}40` }]}
-              >
-                <Text style={[s.hearBtnText, { color: companion.accent }]}>
-                  {voiceLoading ? 'loading…' : '▶ hear this'}
-                </Text>
-              </TouchableOpacity>
+              <View style={s.replyActions}>
+                <TouchableOpacity
+                  onPress={playReply}
+                  disabled={voiceLoading}
+                  style={[s.hearBtn, { borderColor: `${companion.accent}40` }]}
+                >
+                  <Text style={[s.hearBtnText, { color: companion.accent }]}>
+                    {voiceLoading ? 'loading…' : '▶ hear this'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.quickReplyBtn, { borderColor: `${companion.accent}30` }]}>
+                  <Text style={[s.quickReplyText, { color: companion.accent }]}>talk more</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.quickReplyBtn, { borderColor: `${companion.accent}30` }]}>
+                  <Text style={[s.quickReplyText, { color: companion.accent }]}>comfort me</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
 
-          {/* Pin hint */}
+          {/* Today's Check-In */}
+          <View style={s.sectionCard}>
+            <Text style={[s.sectionTitle, { color: companion.accent }]}>Today's Check-In ♡</Text>
+            <Text style={s.sectionSub}>How are you feeling now?</Text>
+            <View style={s.checkInRow}>
+              {CHECK_IN_MOODS.map(m => (
+                <TouchableOpacity
+                  key={m.label}
+                  onPress={() => setCheckInMood(m.label)}
+                  style={[
+                    s.checkInChip,
+                    checkInMood === m.label && {
+                      borderColor: companion.accent,
+                      backgroundColor: `${companion.accent}20`,
+                    },
+                  ]}
+                >
+                  <Text style={s.checkInEmoji}>{m.emoji}</Text>
+                  <Text style={[s.checkInLabel, checkInMood === m.label && { color: companion.accent }]}>
+                    {m.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Entry Insights */}
+          <View style={s.sectionCard}>
+            <Text style={[s.sectionTitle, { color: companion.accent }]}>Entry Insights</Text>
+            <View style={s.insightRow}>
+              <View style={s.insightItem}>
+                <Text style={s.insightKey}>Top Feeling</Text>
+                <Text style={[s.insightValue, { color: companion.accent }]}>
+                  {entry.moodTag ?? 'not tagged'}
+                </Text>
+              </View>
+              <View style={s.insightItem}>
+                <Text style={s.insightKey}>Energy Level</Text>
+                <Text style={[s.insightValue, { color: companion.accent }]}>{energyLevel}</Text>
+              </View>
+              <View style={s.insightItem}>
+                <Text style={s.insightKey}>Se'kret Tip</Text>
+                <Text style={[s.insightValue, { color: companion.accent }]}>{sekretTip}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Pin toggle */}
           <TouchableOpacity onPress={togglePin} style={s.pinHint}>
             <Text style={s.pinHintText}>
               {entry.pinned ? '📌 Pinned — tap to unpin' : '📍 Tap to pin this entry'}
             </Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Reply to Se'kret composer */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          <View style={[s.composer, { borderTopColor: `${companion.accent}20` }]}>
+            <TextInput
+              value={replyText}
+              onChangeText={setReplyText}
+              placeholder="reply to se'kret…"
+              placeholderTextColor="#6b607a"
+              style={s.composerInput}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity
+              onPress={handleReply}
+              disabled={!replyText.trim() || replying}
+              style={[
+                s.composerSend,
+                { backgroundColor: companion.accent },
+                (!replyText.trim() || replying) && s.composerSendDisabled,
+              ]}
+            >
+              <Text style={s.composerSendText}>{replying ? '…' : '›'}</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -187,7 +347,7 @@ const s = StyleSheet.create({
   pinBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
   pinBtnText: { fontSize: 16 },
 
-  scroll: { paddingHorizontal: 16, paddingBottom: 60 },
+  scroll: { paddingHorizontal: 16, paddingBottom: 20 },
 
   dateTime: { color: '#6b607a', fontSize: 11, marginBottom: 10 },
 
@@ -201,12 +361,35 @@ const s = StyleSheet.create({
 
   replyCard: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 18, borderWidth: 1, padding: 16, marginBottom: 14 },
   replyLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 0.6, marginBottom: 8 },
-  replyText: { color: '#cfc5d5', fontSize: 15, lineHeight: 24 },
-  hearBtn: { marginTop: 12, alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 7 },
-  hearBtnText: { fontSize: 11, fontWeight: '800' },
+  replyText: { color: '#cfc5d5', fontSize: 15, lineHeight: 24, marginBottom: 12 },
+  replyActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  hearBtn: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
+  hearBtnText: { fontSize: 10, fontWeight: '800' },
+  quickReplyBtn: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
+  quickReplyText: { fontSize: 10, fontWeight: '700' },
 
-  pinHint: { alignSelf: 'center', paddingVertical: 8 },
+  sectionCard: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 14, marginBottom: 12 },
+  sectionTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 0.4, marginBottom: 4 },
+  sectionSub: { color: '#6b607a', fontSize: 11, marginBottom: 12 },
+
+  checkInRow: { flexDirection: 'row', gap: 8 },
+  checkInChip: { flex: 1, alignItems: 'center', gap: 4, borderRadius: 14, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 10 },
+  checkInEmoji: { fontSize: 20 },
+  checkInLabel: { color: '#7a6e83', fontSize: 9, fontWeight: '700' },
+
+  insightRow: { flexDirection: 'row', gap: 8 },
+  insightItem: { flex: 1, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 10 },
+  insightKey: { color: '#6b607a', fontSize: 9, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
+  insightValue: { fontSize: 11, fontWeight: '900', textAlign: 'center' },
+
+  pinHint: { alignSelf: 'center', paddingVertical: 10 },
   pinHintText: { color: '#504660', fontSize: 11 },
+
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 24, borderTopWidth: 1 },
+  composerInput: { flex: 1, color: '#f0eaf4', fontSize: 14, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', paddingHorizontal: 14, paddingVertical: 10, maxHeight: 100 },
+  composerSend: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  composerSendText: { color: '#fff', fontSize: 20, fontWeight: '900' },
+  composerSendDisabled: { opacity: 0.3 },
 
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   notFoundText: { color: '#6b607a', fontSize: 15 },
