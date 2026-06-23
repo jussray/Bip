@@ -21,7 +21,7 @@ import {
   cancelDailyReminder,
 } from '@/utils/notifications';
 import { createParentLink, redeemParentLink } from '@/utils/sync';
-import { useSleepGuard, type SleepWindow } from '../../../hooks/useSleepGuard';
+import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
