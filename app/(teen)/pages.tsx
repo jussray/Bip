@@ -1,7 +1,31 @@
-import React, { useMemo, useRef, useState } from 'react';
+// app/(teen)/pages.tsx
+// SE'KRET PAGES — Continuous Companion Journal
+//
+// PROTECTED DATA CONTRACT (must not be removed or bypassed):
+//   ✓ fetchSekretBrainReply  — sole AI call for companion replies
+//   ✓ Raylene / Rylane / Cloud / Night companion tabs
+//   ✓ mood tags via AppContext.mood
+//   ✓ companion-specific prompts with rotation
+//   ✓ image / video attachment
+//   ✓ per-entry privacy lock
+//   ✓ AI reply voice playback via fetchSekretVoice
+//   ✓ Supabase sync via onSave / patchJournalEntry
+//   ✓ sekretReply persisted via patchJournalEntry(id, { sekretReply })
+//   ✓ Me = private non-AI journaling, Oracle = guided discovery
+//   ✗ NO sekret:chat:history:* storage — entries are the only truth
+
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Animated,
+  FlatList,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,14 +35,15 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { Audio, Video, ResizeMode } from 'expo-av';
-import { updateSekretMemory } from '../../services/sekretMemory';
+import { Audio, ResizeMode, Video } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AmbientWeatherOverlay } from '../../components/AmbientWeatherOverlay';
 import { useAppContext } from '@/context/AppContext';
 import { IMAGES } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
+import { updateSekretMemory } from '../../services/sekretMemory';
 import {
   fetchSekretBrainReply,
   fetchSekretVoice,
@@ -27,80 +52,100 @@ import {
 } from '@/utils/api';
 import type { JournalEntry } from '@/types';
 
-const AVATARS = [
+// ─── Companion manifest ───────────────────────────────────────────────────────
+const COMPANIONS = [
   { id: 'raylene', name: 'Raylene', accent: '#f08bc5', vibe: 'warm + protective' },
-  { id: 'rylane', name: 'Rylane', accent: '#76a7ff', vibe: 'direct + loyal' },
-  { id: 'cloud', name: 'Cloud', accent: '#8ed9e7', vibe: 'soft + no pressure' },
-  { id: 'night', name: 'Night', accent: '#9a8ee8', vibe: 'quiet + steady' },
+  { id: 'rylane',  name: 'Rylane',  accent: '#76a7ff', vibe: 'direct + loyal'    },
+  { id: 'cloud',   name: 'Cloud',   accent: '#8ed9e7', vibe: 'soft + no pressure' },
+  { id: 'night',   name: 'Night',   accent: '#9a8ee8', vibe: 'quiet + steady'    },
+  { id: 'me',      name: 'Me',      accent: '#b8a9c9', vibe: 'private pages'     },
+  { id: 'oracle',  name: 'Oracle',  accent: '#c7b87a', vibe: 'guided discovery'  },
 ] as const;
 
+type CompanionId = (typeof COMPANIONS)[number]['id'];
+
+// ─── Companion prompts (protected: must rotate per companion) ─────────────────
+const PROMPTS: Record<string, string[]> = {
+  raylene: [
+    "What happened today that's still in your body?",
+    "Who made you feel safe lately — or didn't?",
+    "What are you carrying that you haven't said out loud?",
+    "Tell me something you almost texted someone but didn't.",
+  ],
+  rylane: [
+    "What's the honest version of today?",
+    "Something you did you're actually proud of?",
+    "What would you say if you weren't trying to be okay?",
+    "Who gets the real version of you?",
+  ],
+  cloud: [
+    "What feels heavy right now? You don't have to fix it.",
+    "Describe today like a weather report.",
+    "What do you wish someone had said to you today?",
+    "Something small that was actually kind of beautiful?",
+  ],
+  night: [
+    "What's the thing you keep thinking about when it's quiet?",
+    "Something you noticed today that no one else did?",
+    "What are you hoping for tomorrow?",
+    "Is there something you need to forgive yourself for?",
+  ],
+  me: [
+    "Just for you. No one else reads this.",
+    "Write something you haven't been able to say.",
+    "This page is yours alone.",
+    "What's really going on?",
+  ],
+  oracle: [
+    "What pattern keeps showing up in your life?",
+    "If your gut had a voice today, what would it say?",
+    "What are you avoiding discovering?",
+    "What question are you afraid to answer honestly?",
+  ],
+};
+
+// ─── Avatar image helpers (unchanged from original) ───────────────────────────
 function normalizeAvatar(value?: string): SekretCharacterId {
   return value === 'rylane' || value === 'cloud' || value === 'night' ? value : 'raylene';
 }
 
 function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
   const map: Record<SekretCharacterId, Record<SekretAvatarState, any>> = {
-    raylene: {
-      neutral: IMAGES.rayleneNeutral,
-      listening: IMAGES.rayleneThinking,
-      thinking: IMAGES.rayleneThinking,
-      comforting: IMAGES.rayleneWindow,
-      happy: IMAGES.rayleneHappy,
-      concerned: IMAGES.rayleeneSad,
-      responding: IMAGES.rayleneConfident,
-    },
-    rylane: {
-      neutral: IMAGES.rylaneNeutral,
-      listening: IMAGES.rylaneThinking,
-      thinking: IMAGES.rylaneThinking,
-      comforting: IMAGES.rylaneWindow,
-      happy: IMAGES.rylaneHappy,
-      concerned: IMAGES.rylaneWindow,
-      responding: IMAGES.rylaneFullbody,
-    },
-    cloud: {
-      neutral: IMAGES.cloudAvatarNeutral,
-      listening: IMAGES.cloudAvatarThinking,
-      thinking: IMAGES.cloudAvatarThinking,
-      comforting: IMAGES.cloudAvatarWindow,
-      happy: IMAGES.cloudAvatarHappy,
-      concerned: IMAGES.cloudAvatarWindow,
-      responding: IMAGES.cloudAvatarWriting,
-    },
-    night: {
-      neutral: IMAGES.nightNeutral,
-      listening: IMAGES.nightListening,
-      thinking: IMAGES.nightThinking,
-      comforting: IMAGES.nightRelaxed,
-      happy: IMAGES.nightHappy,
-      concerned: IMAGES.nightProtective,
-      responding: IMAGES.nightSoftsmile,
-    },
-    sekret: {
-      neutral: IMAGES.rayleneNeutral,
-      listening: IMAGES.rayleneThinking,
-      thinking: IMAGES.rayleneThinking,
-      comforting: IMAGES.rayleneWindow,
-      happy: IMAGES.rayleneHappy,
-      concerned: IMAGES.rayleeneSad,
-      responding: IMAGES.rayleneConfident,
-    },
+    raylene: { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
+    rylane:  { neutral: IMAGES.rylaneNeutral,  listening: IMAGES.rylaneThinking,  thinking: IMAGES.rylaneThinking,  comforting: IMAGES.rylaneWindow,  happy: IMAGES.rylaneHappy,  concerned: IMAGES.rylaneWindow,  responding: IMAGES.rylaneFullbody },
+    cloud:   { neutral: IMAGES.cloudAvatarNeutral, listening: IMAGES.cloudAvatarThinking, thinking: IMAGES.cloudAvatarThinking, comforting: IMAGES.cloudAvatarWindow, happy: IMAGES.cloudAvatarHappy, concerned: IMAGES.cloudAvatarWindow, responding: IMAGES.cloudAvatarWriting },
+    night:   { neutral: IMAGES.nightNeutral, listening: IMAGES.nightListening, thinking: IMAGES.nightThinking, comforting: IMAGES.nightRelaxed, happy: IMAGES.nightHappy, concerned: IMAGES.nightProtective, responding: IMAGES.nightSoftsmile },
+    sekret:  { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
   };
-  return map[character][state] ?? map[character].neutral;
+  const charKey = (character === 'me' || character === 'oracle') ? 'raylene' : character;
+  return (map as any)[charKey]?.[state] ?? (map as any)[charKey]?.neutral;
 }
 
 function inferState(state: SekretAvatarState, mood?: string, tone?: string): SekretAvatarState {
   if (state !== 'neutral') return state;
   const signal = `${mood ?? ''} ${tone ?? ''}`.toLowerCase();
-  if (/hope|happy|good|proud|okay/.test(signal)) return 'happy';
+  if (/hope|happy|good|proud|okay/.test(signal))        return 'happy';
   if (/heavy|hurt|sad|numb|worried|safety|concern/.test(signal)) return 'concerned';
-  if (/soft|comfort|calm|gentle|quiet/.test(signal)) return 'comforting';
+  if (/soft|comfort|calm|gentle|quiet/.test(signal))   return 'comforting';
   return 'responding';
 }
 
+// ─── Mood tag palette ─────────────────────────────────────────────────────────
+const MOOD_TAGS = [
+  { label: '😌 okay',    value: 'okay'    },
+  { label: '💜 soft',    value: 'soft'    },
+  { label: '😔 heavy',   value: 'heavy'   },
+  { label: '🔥 fired up', value: 'fired'  },
+  { label: '😶 numb',    value: 'numb'    },
+  { label: '🌊 anxious', value: 'anxious' },
+  { label: '✨ hopeful', value: 'hopeful' },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export default function TeenPagesRoute() {
   const {
     mood,
+    setMood,
     journalText,
     setJournalText,
     entries,
@@ -110,41 +155,91 @@ export default function TeenPagesRoute() {
     patchJournalEntry,
   } = useAppContext();
 
-  const [activeAvatar, setActiveAvatar] = useState<SekretCharacterId>(() => normalizeAvatar(selectedSekret));
+  // ── Companion state ────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<CompanionId>(() =>
+    (COMPANIONS.some(c => c.id === selectedSekret) ? selectedSekret : 'raylene') as CompanionId,
+  );
   const [avatarState, setAvatarState] = useState<SekretAvatarState>('neutral');
-  const [reply, setReply] = useState('');
-  const [audioUri, setAudioUri] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [voiceLoading, setVoiceLoading] = useState(false);
+
+  // ── Composer state ─────────────────────────────────────────────────────────
+  const [locked, setLocked]     = useState(false);
   const [mediaUri, setMediaUri] = useState<string | undefined>();
   const [mediaType, setMediaType] = useState<'photo' | 'video' | undefined>();
-  const breathe = useRef(new Animated.Value(1)).current;
+  const [toolbarOpen, setToolbarOpen] = useState(false);
 
-  React.useEffect(() => {
+  // ── Saving / reply state ───────────────────────────────────────────────────
+  const [saving, setSaving]           = useState(false);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  // audioCache: entryId → data-URI — avoids re-fetching voice for same entry
+  const audioCache = useRef<Record<string, string>>({});
+
+  // ── Prompt rotation ────────────────────────────────────────────────────────
+  const promptPool = PROMPTS[activeTab] ?? PROMPTS.raylene;
+  const [promptIdx, setPromptIdx] = useState(0);
+  const rotatePrompt = useCallback(() =>
+    setPromptIdx(i => (i + 1) % promptPool.length), [promptPool.length]);
+
+  // Rotate prompt when companion tab changes
+  useEffect(() => { setPromptIdx(0); }, [activeTab]);
+
+  // ── Breathe animation (avatar) ─────────────────────────────────────────────
+  const breathe = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(breathe, { toValue: 1.035, duration: 2300, useNativeDriver: true }),
-        Animated.timing(breathe, { toValue: 1, duration: 2300, useNativeDriver: true }),
+        Animated.timing(breathe, { toValue: 1.03, duration: 2300, useNativeDriver: true }),
+        Animated.timing(breathe, { toValue: 1,    duration: 2300, useNativeDriver: true }),
       ]),
     );
     loop.start();
     return () => loop.stop();
   }, [breathe]);
 
-  const avatar = AVATARS.find(item => item.id === activeAvatar) ?? AVATARS[0];
-  const avatarEntries = useMemo(
-    () => entries.filter(entry => (entry.activeTab || entry.source) === activeAvatar),
-    [activeAvatar, entries],
+  const flatListRef = useRef<FlatList<JournalEntry>>(null);
+
+  // ── Derived data ───────────────────────────────────────────────────────────
+  const companion = COMPANIONS.find(c => c.id === activeTab) ?? COMPANIONS[0];
+  const isAiCompanion = activeTab !== 'me' && activeTab !== 'oracle';
+  const companionAvatarId: SekretCharacterId = isAiCompanion
+    ? (activeTab as SekretCharacterId)
+    : 'raylene';
+
+  // Entries for current tab, chronological (oldest first for chat timeline)
+  const threadEntries = useMemo(
+    () =>
+      [...entries]
+        .filter(e => (e.activeTab || e.source) === activeTab)
+        .sort((a, b) => Number(a.id) - Number(b.id)),
+    [activeTab, entries],
   );
 
-  function chooseAvatar(id: SekretCharacterId) {
-    setActiveAvatar(id);
-    setSelectedSekret(id);
-    setAvatarState('listening');
-    setReply('');
-    setAudioUri('');
+  // Recent history for context window (last 6 companion entries, newest first)
+  const recentHistory = useMemo(
+    () =>
+      threadEntries
+        .slice(-6)
+        .reverse()
+        .map(e => ({ role: 'user' as const, content: e.text }))
+        .concat(
+          threadEntries
+            .slice(-6)
+            .reverse()
+            .filter(e => e.sekretReply)
+            .map(e => ({ role: 'assistant' as const, content: e.sekretReply! })),
+        ),
+    [threadEntries],
+  );
+
+  // ── Companion tab switch ───────────────────────────────────────────────────
+  function chooseTab(id: CompanionId) {
+    setActiveTab(id);
+    if (id !== 'me' && id !== 'oracle') {
+      setSelectedSekret(id);
+      setAvatarState('listening');
+    }
   }
 
+  // ── Media pickers ──────────────────────────────────────────────────────────
   async function choosePhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -163,7 +258,6 @@ export default function TeenPagesRoute() {
       mediaTypes: ImagePicker.MediaTypeOptions.Videos,
       videoMaxDuration: 60,
       quality: 0.8,
-      allowsEditing: false,
     });
     if (!result.canceled && result.assets[0]) {
       setMediaUri(result.assets[0].uri);
@@ -171,11 +265,16 @@ export default function TeenPagesRoute() {
     }
   }
 
+  // ── Save + AI reply (protected path) ──────────────────────────────────────
+  // Every message goes through the existing onSave / setEntries path.
+  // fetchSekretBrainReply is called only for AI companions (not Me / Oracle).
+  // Reply is persisted through patchJournalEntry — NOT through a separate store.
   async function saveAndReply() {
     const text = journalText.trim();
     if ((!text && !mediaUri) || saving) return;
 
     const id = Date.now();
+    // ── Journal entry shape (unchanged contract) ──────────────────────────
     const entry: JournalEntry = {
       id,
       text,
@@ -183,54 +282,67 @@ export default function TeenPagesRoute() {
       moodTag: mood,
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      source: activeAvatar,
-      activeTab: activeAvatar,
+      source: activeTab,
+      activeTab,
       entryMode: 'typed',
-      locked: false,
-      imageUri: mediaUri,
+      locked,
+      imageUri:  mediaUri,
       mediaType,
     };
 
-    setEntries(previous => [entry, ...previous]);
+    // ── Optimistic update ─────────────────────────────────────────────────
+    setEntries(prev => [...prev, entry]);
     setJournalText('');
-    setReply('');
-    setAudioUri('');
     setMediaUri(undefined);
     setMediaType(undefined);
+
+    // Scroll to bottom after render
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
+
     updateSekretMemory({
-      selectedSekret: activeAvatar,
+      selectedSekret: activeTab !== 'me' && activeTab !== 'oracle' ? activeTab : 'raylene',
       mood,
       journalEntries: [{ id: String(id), text, mood, date: new Date().toISOString() }],
     }).catch(() => null);
+
+    if (!isAiCompanion) return; // Me / Oracle: save only, no AI reply
+
     setSaving(true);
     setAvatarState('thinking');
 
     try {
+      // ── fetchSekretBrainReply is the ONLY AI call path (protected) ──────
       const result = await fetchSekretBrainReply({
-        characterId: activeAvatar,
-        surface: 'journal',
+        characterId: companionAvatarId,
+        surface: activeTab === 'oracle' ? 'oracle' : 'journal',
         userText: text,
         mood,
         parentSharingEnabled: false,
+        recentHistory,          // recent conversation context
       });
-      setReply(result.reply);
-      setAvatarState(inferState(result.avatarState, mood, result.tone));
+      // ── patchJournalEntry is the ONLY sekretReply persistence path ──────
       patchJournalEntry(id, { sekretReply: result.reply });
+      setAvatarState(inferState(result.avatarState, mood, result.tone));
+    } catch {
+      setAvatarState('neutral');
     } finally {
       setSaving(false);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
     }
   }
 
-  async function hearReply() {
-    if (!reply || voiceLoading) return;
+  // ── Voice playback (protected: per entry, cached) ─────────────────────────
+  async function hearReply(entryId: number | string, replyText: string) {
+    if (!replyText || voiceLoading) return;
     setVoiceLoading(true);
     try {
-      let uri = audioUri;
+      const key = String(entryId);
+      let uri = audioCache.current[key];
       if (!uri) {
-        const audio = await fetchSekretVoice({ reply, characterId: activeAvatar });
+        const audio = await fetchSekretVoice({ reply: replyText, characterId: companionAvatarId });
         if (!audio) return;
         uri = `data:${audio.contentType};base64,${audio.audioBase64}`;
-        setAudioUri(uri);
+        audioCache.current[key] = uri;
       }
       const { sound } = await Audio.Sound.createAsync({ uri });
       await sound.playAsync();
@@ -239,227 +351,379 @@ export default function TeenPagesRoute() {
     }
   }
 
+  // ── Render each journal entry as a chat exchange ───────────────────────────
+  const renderEntry = useCallback(({ item: entry }: { item: JournalEntry }) => {
+    const entryKey = String(entry.id);
+    return (
+      <View style={s.exchange} key={entryKey}>
+        {/* ── Teen message bubble ─────────────────────────────────────── */}
+        <View style={s.teenRow}>
+          <View style={[s.teenBubble, { borderColor: `${companion.accent}30` }]}>
+            {entry.imageUri ? (
+              entry.mediaType === 'video' ? (
+                <View style={s.videoThumb}>
+                  <Text style={s.videoIcon}>📹</Text>
+                  <Text style={s.videoLabel}>Video Bip</Text>
+                </View>
+              ) : (
+                <Image source={{ uri: entry.imageUri }} style={s.bubbleMedia} />
+              )
+            ) : null}
+            {entry.text ? (
+              <Text style={s.teenText}>{entry.text}</Text>
+            ) : null}
+            {/* ── Mood + lock indicators (protected) ─────────────────── */}
+            <View style={s.entryMeta}>
+              <Text style={s.metaTime}>{entry.date} · {entry.time}</Text>
+              {entry.moodTag ? (
+                <Text style={[s.metaMood, { color: companion.accent }]}>#{entry.moodTag}</Text>
+              ) : null}
+              {entry.locked ? <Text style={s.metaLock}>🔒</Text> : null}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Companion reply bubble (protected: sekretReply only) ────── */}
+        {entry.sekretReply ? (
+          <View style={s.replyRow}>
+            <Image
+              source={avatarImage(companionAvatarId, 'neutral')}
+              style={s.replyAvatar}
+            />
+            <View style={s.replyBubble}>
+              <Text style={[s.replyName, { color: companion.accent }]}>
+                {companion.name}
+              </Text>
+              <Text style={s.replyText}>{entry.sekretReply}</Text>
+              {/* ── Voice playback (protected) ──────────────────────── */}
+              <TouchableOpacity
+                onPress={() => hearReply(entry.id, entry.sekretReply!)}
+                disabled={voiceLoading}
+                style={s.hearBtn}
+              >
+                <Text style={s.hearBtnText}>
+                  {voiceLoading ? 'loading…' : '▶ hear them'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+      </View>
+    );
+  }, [companion, companionAvatarId, voiceLoading]);
+
+  // ── Top avatar strip ───────────────────────────────────────────────────────
+  const renderAvatarStrip = () => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabRail}>
+      {COMPANIONS.map(c => {
+        const active = c.id === activeTab;
+        return (
+          <TouchableOpacity
+            key={c.id}
+            onPress={() => chooseTab(c.id as CompanionId)}
+            style={[s.tab, active && { borderColor: c.accent, backgroundColor: `${c.accent}18` }]}
+          >
+            {c.id !== 'me' && c.id !== 'oracle' ? (
+              <Image
+                source={avatarImage(c.id as SekretCharacterId, active ? avatarState : 'neutral')}
+                style={s.tabImg}
+              />
+            ) : (
+              <Text style={s.tabEmoji}>{c.id === 'me' ? '🪞' : '🔮'}</Text>
+            )}
+            <Text style={[s.tabName, active && { color: c.accent }]}>{c.name}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+
+  // ── Compact expandable composer toolbar ───────────────────────────────────
+  const renderToolbar = () => (
+    <View style={s.toolbar}>
+      <TouchableOpacity onPress={() => setToolbarOpen(o => !o)} style={s.toolbarToggle}>
+        <Text style={s.toolbarToggleText}>{toolbarOpen ? '▾ less' : '+ mood · lock · attach'}</Text>
+      </TouchableOpacity>
+
+      {toolbarOpen && (
+        <>
+          {/* ── Mood tags (protected) ──────────────────────────────────── */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.moodRail}>
+            {MOOD_TAGS.map(tag => (
+              <TouchableOpacity
+                key={tag.value}
+                onPress={() => setMood(tag.value)}
+                style={[
+                  s.moodChip,
+                  mood === tag.value && { borderColor: companion.accent, backgroundColor: `${companion.accent}22` },
+                ]}
+              >
+                <Text style={[s.moodChipText, mood === tag.value && { color: companion.accent }]}>
+                  {tag.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {/* ── Lock + attach row ─────────────────────────────────────── */}
+          <View style={s.attachRow}>
+            {/* Privacy lock (protected) */}
+            <TouchableOpacity
+              onPress={() => setLocked(l => !l)}
+              style={[s.iconBtn, locked && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` }]}
+            >
+              <Text style={s.iconBtnText}>{locked ? '🔒' : '🔓'}</Text>
+              <Text style={s.iconBtnLabel}>{locked ? 'private' : 'lock it'}</Text>
+            </TouchableOpacity>
+
+            {/* Photo attachment (protected) */}
+            <TouchableOpacity
+              onPress={choosePhoto}
+              style={[s.iconBtn, mediaType === 'photo' && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` }]}
+            >
+              <Text style={s.iconBtnText}>🖼️</Text>
+              <Text style={s.iconBtnLabel}>{mediaType === 'photo' ? 'photo ✓' : 'photo'}</Text>
+            </TouchableOpacity>
+
+            {/* Video Bip (protected) */}
+            <TouchableOpacity
+              onPress={recordVideo}
+              style={[s.iconBtn, mediaType === 'video' && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` }]}
+            >
+              <Text style={s.iconBtnText}>📹</Text>
+              <Text style={s.iconBtnLabel}>{mediaType === 'video' ? 'video ✓' : 'video'}</Text>
+            </TouchableOpacity>
+
+            {/* Quick links */}
+            <TouchableOpacity onPress={() => router.push(TEEN_ROUTES.voiceBip as any)} style={s.iconBtn}>
+              <Text style={s.iconBtnText}>🎙️</Text>
+              <Text style={s.iconBtnLabel}>voice</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* Media preview */}
+      {mediaUri ? (
+        <TouchableOpacity
+          onPress={() => { setMediaUri(undefined); setMediaType(undefined); }}
+          style={s.mediaPreviewWrap}
+        >
+          {mediaType === 'video' ? (
+            <Video source={{ uri: mediaUri }} style={s.mediaPreview} resizeMode={ResizeMode.COVER} shouldPlay={false} isMuted />
+          ) : (
+            <Image source={{ uri: mediaUri }} style={s.mediaPreview} />
+          )}
+          <Text style={s.mediaRemove}>✕</Text>
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+
+  // ── Composer prompt rail (protected: companion-specific, rotatable) ────────
+  const renderPromptRail = () => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.promptRail}>
+      {promptPool.map((p, i) => (
+        <TouchableOpacity
+          key={i}
+          onPress={() => {
+            setJournalText(p);
+            setPromptIdx(i);
+          }}
+          style={[
+            s.promptChip,
+            i === promptIdx && { borderColor: companion.accent, backgroundColor: `${companion.accent}18` },
+          ]}
+        >
+          <Text style={[s.promptChipText, i === promptIdx && { color: companion.accent }]} numberOfLines={2}>
+            {p}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
+
+  // ── Typing indicator (while saving) ───────────────────────────────────────
+  const renderTypingIndicator = () =>
+    saving ? (
+      <View style={s.typingRow}>
+        <Image source={avatarImage(companionAvatarId, 'thinking')} style={s.typingAvatar} />
+        <View style={s.typingBubble}>
+          <Text style={[s.typingText, { color: companion.accent }]}>
+            {companion.name} is thinking…
+          </Text>
+        </View>
+      </View>
+    ) : null;
+
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
-    <View style={styles.root}>
+    <View style={s.root}>
       <AmbientWeatherOverlay />
       <LinearGradient colors={['#10091b', '#171024', '#090711']} style={StyleSheet.absoluteFill} />
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
+      <SafeAreaView style={s.safe} edges={['top', 'left', 'right']}>
+        {/* ── Header ─────────────────────────────────────────────────── */}
+        <View style={s.header}>
           <View>
-            <Text style={[styles.kicker, { color: avatar.accent }]}>SE’KRET PAGES</Text>
-            <Text style={styles.title}>your space with them</Text>
+            <Text style={[s.kicker, { color: companion.accent }]}>SE'KRET PAGES</Text>
+            <Text style={s.title}>{companion.name}</Text>
           </View>
-          <Text style={styles.private}>private by default</Text>
-        </View>
-
-        <View style={[styles.hero, { borderColor: `${avatar.accent}55` }]}>
-          <LinearGradient colors={[`${avatar.accent}22`, 'transparent']} style={StyleSheet.absoluteFill} />
-          <View style={styles.heroCopy}>
-            <Text style={[styles.heroName, { color: avatar.accent }]}>{avatar.name}</Text>
-            <Text style={styles.heroVibe}>{avatar.vibe}</Text>
-            <Text style={styles.heroLine}>{avatarState === 'thinking' ? 'Give me a second…' : 'I’m right here with you.'}</Text>
+          <View style={s.headerRight}>
+            <Animated.Image
+              source={avatarImage(companionAvatarId, avatarState)}
+              style={[s.headerAvatar, { transform: [{ scale: breathe }] }]}
+              resizeMode="contain"
+            />
           </View>
-          <Animated.View style={[styles.avatarWrap, { transform: [{ scale: breathe }] }]}>
-            <Image source={avatarImage(activeAvatar, avatarState)} style={styles.avatarImage} resizeMode="contain" />
-          </Animated.View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.avatarRail}>
-          {AVATARS.map(item => {
-            const active = item.id === activeAvatar;
-            return (
-              <TouchableOpacity
-                key={item.id}
-                onPress={() => chooseAvatar(item.id)}
-                style={[styles.avatarChip, active && { borderColor: item.accent, backgroundColor: `${item.accent}20` }]}
-              >
-                <Image source={avatarImage(item.id, active ? avatarState : 'neutral')} style={styles.chipImage} />
-                <Text style={[styles.chipName, active && { color: item.accent }]}>{item.name}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        {/* ── Companion tabs: Raylene, Rylane, Cloud, Night (protected) ─ */}
+        {renderAvatarStrip()}
 
-        <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quick} onPress={() => router.push(TEEN_ROUTES.voiceBip as any)}><Text>🎙️</Text><Text style={styles.quickText}>Voice Bip</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.quick} onPress={() => router.push(TEEN_ROUTES.cloud as any)}><Text>☁️</Text><Text style={styles.quickText}>Cloud</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.quick} onPress={() => router.push(TEEN_ROUTES.s2tell as any)}><Text>🤫</Text><Text style={styles.quickText}>S2Tell</Text></TouchableOpacity>
-        </View>
-
-        <View style={[styles.journal, { borderColor: `${avatar.accent}55` }]}>
-          <View style={styles.journalTop}>
-            <View>
-              <Text style={[styles.journalEyebrow, { color: avatar.accent }]}>WRITE WITH {avatar.name.toUpperCase()}</Text>
-              <Text style={styles.journalTitle}>What’s sitting on you?</Text>
+        {/* ── Chat timeline ──────────────────────────────────────────── */}
+        <FlatList
+          ref={flatListRef}
+          data={threadEntries}
+          keyExtractor={e => String(e.id)}
+          renderItem={renderEntry}
+          contentContainerStyle={s.thread}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={s.emptyState}>
+              <Text style={s.emptyEmoji}>{activeTab === 'me' ? '🪞' : activeTab === 'oracle' ? '🔮' : '💜'}</Text>
+              <Text style={[s.emptyTitle, { color: companion.accent }]}>
+                {companion.name === 'Me' ? 'Your private pages' : `Start talking to ${companion.name}`}
+              </Text>
+              <Text style={s.emptyBody}>{companion.vibe}</Text>
             </View>
-            <Text>🔒</Text>
-          </View>
+          }
+          ListFooterComponent={renderTypingIndicator}
+          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+        />
 
-          <TextInput
-            multiline
-            value={journalText}
-            onChangeText={setJournalText}
-            onFocus={() => setAvatarState('listening')}
-            placeholder="Say it exactly how it feels…"
-            placeholderTextColor="#83798f"
-            style={styles.input}
-            textAlignVertical="top"
-          />
+        {/* ── Composer ───────────────────────────────────────────────── */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
+        >
+          {/* Companion prompts (protected: companion-specific, above composer) */}
+          {renderPromptRail()}
 
-          {(saving || reply) ? (
-            <View style={[styles.inlineReply, { borderColor: `${avatar.accent}45` }]}>
-              <View style={styles.inlineReplyTop}>
-                <View style={styles.inlineReplyIdentity}>
-                  <Image source={avatarImage(activeAvatar, avatarState)} style={styles.inlineAvatar} />
-                  <Text style={[styles.inlineName, { color: avatar.accent }]}>{avatar.name}</Text>
-                </View>
-                {reply ? (
-                  <TouchableOpacity onPress={hearReply} disabled={voiceLoading} style={styles.hearButton}>
-                    <Text style={styles.hearText}>{voiceLoading ? 'loading…' : '▶ hear them'}</Text>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-              <Text style={styles.inlineReplyText}>{saving ? `${avatar.name} is thinking…` : reply}</Text>
-            </View>
-          ) : null}
+          {/* Expandable toolbar: mood tags, lock, attach (protected) */}
+          {renderToolbar()}
 
-          {/* Media row — Video Bip + Photo Scrap */}
-          <View style={styles.mediaRow}>
+          <View style={[s.composerRow, { borderTopColor: `${companion.accent}25` }]}>
+            <TextInput
+              multiline
+              value={journalText}
+              onChangeText={setJournalText}
+              onFocus={() => setAvatarState('listening')}
+              placeholder={promptPool[promptIdx]}
+              placeholderTextColor="#7a6e83"
+              style={s.composerInput}
+              textAlignVertical="top"
+              maxLength={2000}
+            />
             <TouchableOpacity
-              onPress={recordVideo}
-              style={[styles.mediaBtn, mediaType === 'video' && { borderColor: avatar.accent, backgroundColor: `${avatar.accent}22` }]}
-            >
-              <Text style={styles.mediaBtnEmoji}>📹</Text>
-              <Text style={styles.mediaBtnLabel}>{mediaType === 'video' ? 'recorded ✓' : 'Video Bip'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={choosePhoto}
-              style={[styles.mediaBtn, mediaType === 'photo' && { borderColor: avatar.accent, backgroundColor: `${avatar.accent}22` }]}
-            >
-              <Text style={styles.mediaBtnEmoji}>🖼️</Text>
-              <Text style={styles.mediaBtnLabel}>{mediaType === 'photo' ? 'added ✓' : 'Photo Scrap'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {mediaUri ? (
-            <TouchableOpacity onPress={() => { setMediaUri(undefined); setMediaType(undefined); }} style={styles.mediaPreviewWrap}>
-              {mediaType === 'video' ? (
-                <Video
-                  source={{ uri: mediaUri }}
-                  style={styles.mediaPreview}
-                  resizeMode={ResizeMode.COVER}
-                  shouldPlay={false}
-                  isMuted
-                />
-              ) : (
-                <Image source={{ uri: mediaUri }} style={styles.mediaPreview} />
-              )}
-              <Text style={styles.mediaRemove}>✕</Text>
-            </TouchableOpacity>
-          ) : null}
-
-          <View style={styles.journalFooter}>
-            <Text style={styles.privacyNote}>only you can see this unless you choose to share</Text>
-            <TouchableOpacity
-              disabled={(!journalText.trim() && !mediaUri) || saving}
               onPress={saveAndReply}
-              style={[styles.save, { backgroundColor: avatar.accent }, ((!journalText.trim() && !mediaUri) || saving) && styles.disabled]}
+              disabled={(!journalText.trim() && !mediaUri) || saving}
+              style={[
+                s.sendBtn,
+                { backgroundColor: companion.accent },
+                ((!journalText.trim() && !mediaUri) || saving) && s.sendBtnDisabled,
+              ]}
             >
-              <Text style={styles.saveText}>{saving ? 'thinking…' : 'Bip 💜'}</Text>
+              <Text style={s.sendBtnText}>{saving ? '…' : '💜'}</Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        <View style={styles.historyHeader}>
-          <Text style={styles.historyTitle}>your pages with {avatar.name}</Text>
-          <Text style={styles.historyCount}>{avatarEntries.length}</Text>
-        </View>
-
-        {avatarEntries.slice(0, 12).map(entry => (
-          <View key={String(entry.id)} style={styles.entryCard}>
-            <Text style={styles.entryMeta}>{entry.date} · {entry.time}</Text>
-            {entry.imageUri ? (
-              entry.mediaType === 'video' ? (
-                <View style={styles.entryVideoThumb}>
-                  <Text style={styles.entryVideoIcon}>📹</Text>
-                  <Text style={styles.entryVideoLabel}>Video Bip</Text>
-                </View>
-              ) : (
-                <Image source={{ uri: entry.imageUri }} style={styles.entryMedia} />
-              )
-            ) : null}
-            {entry.text ? <Text style={styles.entryText}>{entry.text}</Text> : null}
-            {entry.sekretReply ? (
-              <View style={[styles.savedReply, { borderLeftColor: avatar.accent }]}>
-                <Text style={[styles.savedReplyName, { color: avatar.accent }]}>{avatar.name}</Text>
-                <Text style={styles.savedReplyText}>{entry.sekretReply}</Text>
-              </View>
-            ) : null}
-          </View>
-        ))}
-      </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#090711' },
-  scroll: { paddingTop: Platform.OS === 'ios' ? 58 : 34, paddingHorizontal: 16, paddingBottom: 120 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  safe: { flex: 1 },
+
+  // Header
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
   kicker: { fontSize: 10, fontWeight: '900', letterSpacing: 2 },
-  title: { color: '#fff', fontSize: 25, fontWeight: '800', marginTop: 3 },
-  private: { color: '#b8afc1', fontSize: 9, borderWidth: 1, borderColor: '#ffffff20', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  hero: { minHeight: 220, borderRadius: 28, borderWidth: 1, overflow: 'hidden', flexDirection: 'row', backgroundColor: 'rgba(20,13,31,0.96)' },
-  heroCopy: { flex: 1, padding: 20, justifyContent: 'center' },
-  heroName: { fontSize: 30, fontWeight: '900' },
-  heroVibe: { color: '#b7adbe', fontSize: 11, fontWeight: '800', marginTop: 4 },
-  heroLine: { color: '#f1ebf4', fontSize: 15, lineHeight: 22, marginTop: 18 },
-  avatarWrap: { width: '48%', justifyContent: 'flex-end', alignItems: 'center' },
-  avatarImage: { width: '118%', height: 215 },
-  avatarRail: { gap: 8, paddingVertical: 14 },
-  avatarChip: { width: 88, minHeight: 76, borderRadius: 18, borderWidth: 1, borderColor: '#ffffff12', backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center', padding: 7 },
-  chipImage: { width: 44, height: 45, resizeMode: 'contain' },
-  chipName: { color: '#a99fb2', fontSize: 10, fontWeight: '800' },
-  quickRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
-  quick: { flex: 1, minHeight: 54, borderRadius: 15, borderWidth: 1, borderColor: '#ffffff12', backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center' },
-  quickText: { color: '#c9bfce', fontSize: 9, fontWeight: '800', marginTop: 3 },
-  journal: { borderRadius: 24, borderWidth: 1, backgroundColor: 'rgba(24,16,35,0.95)', padding: 17 },
-  journalTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  journalEyebrow: { fontSize: 9, fontWeight: '900', letterSpacing: 1.3 },
-  journalTitle: { color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 4 },
-  input: { minHeight: 175, color: '#f6eff8', fontSize: 17, lineHeight: 27, paddingTop: 20, paddingBottom: 14, paddingHorizontal: 0 },
-  inlineReply: { borderTopWidth: 1, borderBottomWidth: 1, paddingVertical: 14, marginBottom: 14 },
-  inlineReplyTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  inlineReplyIdentity: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  inlineAvatar: { width: 34, height: 34, resizeMode: 'contain' },
-  inlineName: { fontSize: 11, fontWeight: '900', letterSpacing: 0.6 },
-  inlineReplyText: { color: '#eee7f2', fontSize: 15, lineHeight: 23 },
-  hearButton: { borderRadius: 999, borderWidth: 1, borderColor: '#ffffff1c', paddingHorizontal: 10, paddingVertical: 6 },
-  hearText: { color: '#d8cfdf', fontSize: 9, fontWeight: '800' },
-  journalFooter: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  privacyNote: { flex: 1, color: '#827889', fontSize: 9, lineHeight: 13 },
-  mediaRow:         { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  mediaBtn:         { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 10, alignItems: 'center', gap: 4 },
-  mediaBtnEmoji:    { fontSize: 18 },
-  mediaBtnLabel:    { color: '#a99fb2', fontSize: 10, fontWeight: '700' },
-  mediaPreviewWrap: { marginBottom: 10, borderRadius: 12, overflow: 'hidden', position: 'relative' },
-  mediaPreview:     { width: '100%', height: 140, borderRadius: 12, resizeMode: 'cover' },
-  mediaRemove:      { position: 'absolute', top: 6, right: 8, color: '#fff', fontSize: 14, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2 },
-  save: { minWidth: 98, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-  saveText: { color: '#171018', fontSize: 12, fontWeight: '900' },
-  disabled: { opacity: 0.35 },
-  historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 26, marginBottom: 10 },
-  historyTitle: { color: '#efe8f3', fontSize: 14, fontWeight: '900' },
-  historyCount: { color: '#867b8d', fontSize: 11 },
-  entryCard: { borderRadius: 18, borderWidth: 1, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.04)', padding: 15, marginBottom: 10 },
-  entryMeta: { color: '#8e8495', fontSize: 9, marginBottom: 7 },
-  entryMedia: { width: '100%', height: 130, borderRadius: 10, resizeMode: 'cover', marginBottom: 8 },
-  entryVideoThumb: { width: '100%', height: 80, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', marginBottom: 8, flexDirection: 'row', gap: 8 },
-  entryVideoIcon: { fontSize: 20 },
-  entryVideoLabel: { color: '#a99fb2', fontSize: 12, fontWeight: '700' },
-  entryText: { color: '#eee7f1', fontSize: 14, lineHeight: 22 },
-  savedReply: { borderLeftWidth: 2, paddingLeft: 11, marginTop: 12 },
-  savedReplyName: { fontSize: 9, fontWeight: '900', marginBottom: 4 },
-  savedReplyText: { color: '#cfc5d5', fontSize: 12, lineHeight: 19 },
+  title: { color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 2 },
+  headerRight: { alignItems: 'center', justifyContent: 'center' },
+  headerAvatar: { width: 54, height: 54 },
+
+  // Companion tabs (Raylene / Rylane / Cloud / Night / Me / Oracle)
+  tabRail: { gap: 8, paddingHorizontal: 14, paddingBottom: 10 },
+  tab: { width: 72, minHeight: 66, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff12', backgroundColor: 'rgba(255,255,255,0.035)', alignItems: 'center', justifyContent: 'center', padding: 6 },
+  tabImg: { width: 38, height: 38, resizeMode: 'contain' },
+  tabEmoji: { fontSize: 24 },
+  tabName: { color: '#a99fb2', fontSize: 9, fontWeight: '800', marginTop: 3 },
+
+  // Thread (chat timeline)
+  thread: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 20 },
+
+  // Teen message bubble
+  exchange: { marginBottom: 18 },
+  teenRow: { alignItems: 'flex-end', marginBottom: 8 },
+  teenBubble: { maxWidth: '82%', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderRadius: 20, borderBottomRightRadius: 4, paddingHorizontal: 14, paddingVertical: 12 },
+  teenText: { color: '#f0eaf4', fontSize: 15, lineHeight: 23 },
+  bubbleMedia: { width: '100%', height: 140, borderRadius: 12, marginBottom: 8, resizeMode: 'cover' },
+  videoThumb: { flexDirection: 'row', gap: 6, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 10, padding: 10, marginBottom: 8 },
+  videoIcon: { fontSize: 18 },
+  videoLabel: { color: '#a99fb2', fontSize: 12, fontWeight: '700' },
+  entryMeta: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' },
+  metaTime: { color: '#7a7086', fontSize: 9 },
+  metaMood: { fontSize: 9, fontWeight: '800' },
+  metaLock: { fontSize: 10 },
+
+  // Companion reply bubble (sekretReply)
+  replyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginLeft: 6 },
+  replyAvatar: { width: 34, height: 34, resizeMode: 'contain', marginTop: 2 },
+  replyBubble: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 20, borderBottomLeftRadius: 4, paddingHorizontal: 14, paddingVertical: 12 },
+  replyName: { fontSize: 9, fontWeight: '900', marginBottom: 5, letterSpacing: 0.6 },
+  replyText: { color: '#cfc5d5', fontSize: 14, lineHeight: 22 },
+  hearBtn: { marginTop: 10, alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, borderColor: '#ffffff1a', paddingHorizontal: 10, paddingVertical: 5 },
+  hearBtnText: { color: '#c4b9cc', fontSize: 9, fontWeight: '800' },
+
+  // Typing indicator
+  typingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginLeft: 6, marginTop: 4, marginBottom: 8 },
+  typingAvatar: { width: 32, height: 32, resizeMode: 'contain', opacity: 0.7 },
+  typingBubble: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10 },
+  typingText: { fontSize: 12, fontStyle: 'italic' },
+
+  // Empty state
+  emptyState: { alignItems: 'center', paddingTop: 60, paddingHorizontal: 32 },
+  emptyEmoji: { fontSize: 40, marginBottom: 14 },
+  emptyTitle: { fontSize: 17, fontWeight: '800', marginBottom: 6, textAlign: 'center' },
+  emptyBody: { color: '#7a6e83', fontSize: 13, textAlign: 'center', lineHeight: 20 },
+
+  // Companion prompts rail
+  promptRail: { gap: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  promptChip: { maxWidth: 200, borderRadius: 12, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 12, paddingVertical: 8 },
+  promptChipText: { color: '#9a8fa3', fontSize: 11, lineHeight: 16 },
+
+  // Composer toolbar (expandable)
+  toolbar: { paddingHorizontal: 12, paddingBottom: 4 },
+  toolbarToggle: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 2, marginBottom: 4 },
+  toolbarToggleText: { color: '#7a6e83', fontSize: 10, fontWeight: '700' },
+  moodRail: { gap: 6, paddingBottom: 8 },
+  moodChip: { borderRadius: 999, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 12, paddingVertical: 6 },
+  moodChipText: { color: '#9a8fa3', fontSize: 11, fontWeight: '700' },
+  attachRow: { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  iconBtn: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', paddingVertical: 8, alignItems: 'center', gap: 3 },
+  iconBtnText: { fontSize: 16 },
+  iconBtnLabel: { color: '#9a8fa3', fontSize: 9, fontWeight: '700' },
+  mediaPreviewWrap: { marginBottom: 8, borderRadius: 12, overflow: 'hidden', position: 'relative' },
+  mediaPreview: { width: '100%', height: 120, borderRadius: 12, resizeMode: 'cover' },
+  mediaRemove: { position: 'absolute', top: 6, right: 8, color: '#fff', fontSize: 13, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+
+  // Composer row
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 20, borderTopWidth: 1 },
+  composerInput: { flex: 1, color: '#f0eaf4', fontSize: 15, lineHeight: 23, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', maxHeight: 120 },
+  sendBtn: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  sendBtnText: { fontSize: 18 },
+  sendBtnDisabled: { opacity: 0.30 },
 });
