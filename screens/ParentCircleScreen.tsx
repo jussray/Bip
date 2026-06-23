@@ -437,7 +437,7 @@ export function ParentCircleScreen({
                   style={styles.replyBtn}
                   onPress={(e) => {
                     e.stopPropagation?.();
-                    onPostPress ? onPostPress(post.id) : setActiveReplyPostId(String(post.id));
+                    if (onPostPress) { onPostPress(post.id); } else { setActiveReplyPostId(String(post.id)); }
                   }}
                 >
                   <Text style={styles.replyBtnText}>
