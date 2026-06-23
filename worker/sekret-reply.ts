@@ -66,7 +66,7 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
   raylene: [
     'Okay, I hear you. Which part of that is sitting heaviest on you right now?',
     'You do not have to make it sound neat for me. Say the messy version.',
-    'Whew, yeah—that would get under my skin too. Do you need comfort, honesty, or a game plan?',
+    'Whew, yeah\u2014that would get under my skin too. Do you need comfort, honesty, or a game plan?',
   ],
   rylane: [
     'Yeah, that is real. What is the part you have not said out loud yet?',
@@ -79,13 +79,13 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
     'We do not have to fix it. We can just name what hurts first.',
   ],
   night: [
-    'Yeah… nights make everything talk louder. What thought keeps circling back?',
+    'Yeah\u2026 nights make everything talk louder. What thought keeps circling back?',
     'You do not have to pretend you are fine in here. Tell me the version you hide during the day.',
     'Let us not rush past it. What did this make you believe about yourself?',
   ],
   sekret: [
     "I might be reading this wrong, but it sounds like you want to be understood without having to explain every detail. Does that feel close?",
-    "Here’s the pattern I’m noticing: you may be carrying more than you let people see. Keep the part that fits and correct the part that doesn’t.",
+    "Here's the pattern I'm noticing: you may be carrying more than you let people see. Keep the part that fits and correct the part that doesn't.",
     "Your answers seem to point toward wanting both privacy and real connection. Which side feels harder to ask for right now?",
   ],
 };
@@ -113,7 +113,7 @@ function json(data: unknown, status = 200): Response {
 }
 
 function normalizeCharacter(value: unknown): CharacterId | null {
-  const raw = typeof value === 'string' ? value.trim().toLowerCase().replace(/[’']/g, '') : '';
+  const raw = typeof value === 'string' ? value.trim().toLowerCase().replace(/['']/g, '') : '';
   if (raw === 'raylene' || raw.includes('raylene')) return 'raylene';
   if (raw === 'rylane' || raw.includes('rylane')) return 'rylane';
   if (raw === 'cloud' || raw.includes('cloud')) return 'cloud';
@@ -230,7 +230,7 @@ function buildBrainPrompt(characterId: CharacterId, surface: Surface, mood: stri
       ? "Respond visibly as Se'kret. Never use the name Oracle. Synthesize patterns rather than repeating answers. Use uncertainty language and invite correction."
       : 'Respond as the selected companion. Oracle remains hidden and must never be named.',
     'Never encourage dependency. Encourage real trusted people, breaks, journaling, grounding, or safety support when appropriate.',
-    'Reply directly to the teen’s newest words and carry forward useful details from recent conversation.',
+    'Reply directly to the teen\u2019s newest words and carry forward useful details from recent conversation.',
     'Do not reuse an opening, sentence, question, catchphrase, or response structure from recent assistant replies.',
     `Recent assistant replies to avoid repeating:\n${recentReplies}`,
     'Replies should usually be one to four short conversational sentences.',
@@ -251,7 +251,9 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
   if (CRISIS_RE.test(userText)) return json(crisisReply(characterId, parentSharingEnabled));
 
   const fallbackReply = getFallbackReply(characterId, userText, history);
+
   if (!env.OPENAI_API_KEY) {
+    console.error('[sekret/reply] OPENAI_API_KEY is missing \u2014 returning fallback', { characterId, surface });
     return json({
       reply: fallbackReply,
       tone: characterId,
@@ -278,7 +280,11 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
         ],
       }),
     });
-    if (!res.ok) throw new Error(`OpenAI ${res.status}`);
+    if (!res.ok) {
+      const errorBody = await res.text().catch(() => '');
+      console.error('[sekret/reply] OpenAI HTTP error', { status: res.status, body: errorBody, characterId, surface });
+      throw new Error(`OpenAI ${res.status}`);
+    }
     const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
     const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}') as Partial<CompanionReply>;
     const openAIReply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
@@ -292,7 +298,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
       replySource: 'openai',
     });
   } catch (error) {
-    console.error('[sekret/reply]', error);
+    console.error('[sekret/reply] OpenAI request failed', { error, characterId, surface, historyLength: history.length });
     return json({ reply: fallbackReply, tone: characterId, safetyFlag: false, parentShareSummary: null, suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal', replySource: 'fallback' });
   }
 }
