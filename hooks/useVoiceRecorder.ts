@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Audio } from 'expo-av';
-import { Platform } from 'react-native';
 import { requestMicrophonePermission } from '../components/audio/RecordingPermissionGate';
 import { saveRecordingLocally } from '../services/audio/audioStorage';
 
@@ -77,9 +76,9 @@ export function useVoiceRecorder(): VoiceRecorderResult {
       timerRef.current = setInterval(() => {
         setDurationMs((d) => d + 100);
       }, 100);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setState('error');
-      setError(e?.message ?? 'Recording failed to start.');
+      setError(e instanceof Error ? e.message : 'Recording failed to start.');
     }
   }, []);
 
@@ -89,8 +88,8 @@ export function useVoiceRecorder(): VoiceRecorderResult {
       await recordingRef.current.pauseAsync();
       clearTimer();
       setState('paused');
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to pause.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to pause.');
     }
   }, [state, clearTimer]);
 
@@ -102,8 +101,8 @@ export function useVoiceRecorder(): VoiceRecorderResult {
       timerRef.current = setInterval(() => {
         setDurationMs((d) => d + 100);
       }, 100);
-    } catch (e: any) {
-      setError(e?.message ?? 'Failed to resume.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to resume.');
     }
   }, [state]);
 
@@ -126,9 +125,9 @@ export function useVoiceRecorder(): VoiceRecorderResult {
 
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
       return savedUri;
-    } catch (e: any) {
+    } catch (e: unknown) {
       setState('error');
-      setError(e?.message ?? 'Failed to stop recording.');
+      setError(e instanceof Error ? e.message : 'Failed to stop recording.');
       return null;
     }
   }, [clearTimer]);

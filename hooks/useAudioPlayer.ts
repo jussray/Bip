@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Audio } from 'expo-av';
+import { Audio, AVPlaybackStatus } from 'expo-av';
 
 export type PlaybackState = 'idle' | 'loading' | 'playing' | 'paused' | 'finished' | 'error';
 
@@ -45,26 +45,27 @@ export function useAudioPlayer(): AudioPlayerResult {
     try {
       setState('loading');
       setError(null);
+
+      const onPlaybackStatus = (s: AVPlaybackStatus) => {
+        if (!s.isLoaded) return;
+        setPositionMs(s.positionMillis);
+        setDurationMs(s.durationMillis ?? 0);
+        if (s.didJustFinish) setState('finished');
+      };
+
       const { sound, status } = await Audio.Sound.createAsync(
         { uri },
         { shouldPlay: false },
-        (s) => {
-          if (!s.isLoaded) return;
-          setPositionMs(s.positionMillis);
-          setDurationMs(s.durationMillis ?? 0);
-          if (s.didJustFinish) {
-            setState('finished');
-          }
-        }
+        onPlaybackStatus
       );
       soundRef.current = sound;
       if (status.isLoaded) {
         setDurationMs(status.durationMillis ?? 0);
       }
       setState('paused');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setState('error');
-      setError(e?.message ?? 'Failed to load audio.');
+      setError(e instanceof Error ? e.message : 'Failed to load audio.');
     }
   }, [unload]);
 
@@ -73,8 +74,8 @@ export function useAudioPlayer(): AudioPlayerResult {
     try {
       await soundRef.current.playAsync();
       setState('playing');
-    } catch (e: any) {
-      setError(e?.message ?? 'Playback failed.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Playback failed.');
     }
   }, []);
 
@@ -83,8 +84,8 @@ export function useAudioPlayer(): AudioPlayerResult {
     try {
       await soundRef.current.pauseAsync();
       setState('paused');
-    } catch (e: any) {
-      setError(e?.message ?? 'Pause failed.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Pause failed.');
     }
   }, []);
 
@@ -93,8 +94,8 @@ export function useAudioPlayer(): AudioPlayerResult {
     try {
       await soundRef.current.setPositionAsync(ms);
       setPositionMs(ms);
-    } catch (e: any) {
-      setError(e?.message ?? 'Seek failed.');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Seek failed.');
     }
   }, []);
 
