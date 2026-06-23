@@ -30,6 +30,7 @@ import type {
   CrewCheckIn,
 } from '@/types';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
+import type { SavePageInput } from '@screens/PagesScreen';
 
 export type { CirclePost } from '@/types';
 
@@ -118,7 +119,7 @@ interface AppContextValue {
   setParentCrewCheckIns: React.Dispatch<React.SetStateAction<CrewCheckIn[]>>;
 
   // Parent actions
-  saveParentPageEntry: () => void;
+  saveParentPageEntry: (entry: SavePageInput) => void;
   saveParentCirclePost: () => void;
   reactToParentPost: (postId: number, reaction: string) => void;
   completeParentOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
@@ -191,10 +192,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   // ── Parent actions ───────────────────────────────────────────────
-  function saveParentPageEntry() {
-    if (!s.parentPagesDraft.trim()) return;
+  function saveParentPageEntry(entry: SavePageInput) {
+    if (!entry.text.trim()) return;
     s.setParentPagesEntries((e: JournalEntry[]) => [
-      { id: Date.now(), text: s.parentPagesDraft, mood: s.parentMood, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
+      {
+        id: entry.id ?? Date.now(),
+        text: entry.text,
+        mood: s.parentMood,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+        source: entry.source,
+        entryMode: entry.entryMode,
+        moodTag: entry.moodTag,
+        locked: entry.locked,
+        imageUri: entry.imageUri,
+      },
       ...e,
     ]);
     s.setParentPagesDraft('');
