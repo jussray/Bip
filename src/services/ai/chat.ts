@@ -104,8 +104,8 @@ function localFallback(
 export async function sendMessage(
   personalityId: PersonalityId,
   text: string,
-  context: string = 'chat',
-  options: SendMessageOptions = {},
+  context: string,
+  options: SendMessageOptions,
 ): Promise<string>;
 // Legacy overload — mood and history as positional params (backward compat)
 export async function sendMessage(
