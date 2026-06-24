@@ -85,7 +85,7 @@ export default function MainLayout() {
         name="parent-room"
         options={{
           title: 'Room',
-          tabBarIcon: () => <TabIcon emoji="🌿" />,
+          tabBarIcon: () => <TabIcon emoji="🏡" />,
           href: isTeen ? null : undefined,
         }}
       />

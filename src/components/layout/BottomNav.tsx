@@ -43,7 +43,7 @@ export function BottomNav({ userSide }: BottomNavProps) {
   const items: [string, string, string][] =
     userSide === 'parent'
       ? [
-          ['parentHome', '🌿', 'Room'],
+          ['parentHome', '🏡', 'Room'],
           ['parentPages', '📝', 'Pages'],
           ['parentCircle', '🤝', 'Circle'],
           ['parentMore', '☰',  'More'],

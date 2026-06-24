@@ -311,7 +311,7 @@ export function Bippin2Screen({
         >
           <View style={styles.headerRow}>
             <TouchableOpacity style={styles.backChip} onPress={() => setScreen('home')}>
-              <Text style={styles.backChipText}>🌿 room</Text>
+              <Text style={styles.backChipText}>🏡 room</Text>
             </TouchableOpacity>
             <View style={[styles.privateBadge, { backgroundColor: 'rgba(20,12,40,0.7)', borderColor: pAccent + '66' }]}>
               <Text style={styles.privateBadgeText}>your space</Text>

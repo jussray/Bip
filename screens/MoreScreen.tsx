@@ -62,13 +62,13 @@ export function MoreScreen({
 
         {/* ── Side switch card ── */}
         <View style={card()}>
-          <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🌿' : '💜'}</Text>
+          <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🏡' : '💜'}</Text>
           <Text style={styles.cardText}>
             {userSide === 'parent' ? 'Parent Mode' : 'Teen Mode'}
           </Text>
           <TouchableOpacity style={btn()} onPress={handleSideSwitch}>
             <Text style={styles.buttonText}>
-              Switch to {userSide === 'parent' ? 'Teen Side 💜' : 'Parent Side 🌿'}
+              Switch to {userSide === 'parent' ? 'Teen Side 💜' : 'Parent Side 🏡'}
             </Text>
           </TouchableOpacity>
         </View>
