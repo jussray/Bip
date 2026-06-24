@@ -15,6 +15,7 @@ export default function Bippin2Route() {
       selectedSekret={selectedSekret}
       setScreen={(screen: string) => router.push(routeForSide('teen', screen) as any)}
       BottomNav={null}
+      side="teen"
       onOpenGuide={(guide) => router.push(`/(teen)/bippin2/${guide}` as any)}
     />
   );
