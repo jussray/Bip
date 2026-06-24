@@ -55,14 +55,14 @@ const TIME_BADGE: Record<TimeOfDay, string> = {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
-  { emoji: '🌙', text: 'You’ve survived every hard day so far. That matters.' },
+  { emoji: '🌙', text: 'You've survived every hard day so far. That matters.' },
   { emoji: '☁️', text: 'Rest is productive too. You are allowed to pause.' },
-  { emoji: '💙', text: 'Someone is glad you’re still here tonight.' },
+  { emoji: '💙', text: 'Someone is glad you're still here tonight.' },
   { emoji: '🌧️', text: 'Bad moments are real. So is your strength.' },
-  { emoji: '✨', text: 'You don’t need to be perfect to be loved.' },
+  { emoji: '✨', text: 'You don't need to be perfect to be loved.' },
   { emoji: '🫶', text: 'Your feelings are allowed here.' },
   { emoji: '🕯️', text: 'Soft moment. Slow breath. Stay with me.' },
-  { emoji: '💜', text: 'Rest is productive, too. You don’t have to earn peace. I’m proud of you for choosing you tonight.' },
+  { emoji: '💜', text: 'Rest is productive, too. You don't have to earn peace. I'm proud of you for choosing you tonight.' },
 ];
 
 const MOOD_CHIPS = [
@@ -93,7 +93,7 @@ const CALM_PICKS = [
 
 const DEFAULT_PLAN = [
   { id: 1, label: 'Breathe for 2 minutes',      time: '7:30 PM', done: false },
-  { id: 2, label: 'Write down what’s heavy', time: '7:40 PM', done: false },
+  { id: 2, label: 'Write down what's heavy', time: '7:40 PM', done: false },
   { id: 3, label: 'Listen to a comfort sound',  time: '',        done: false },
   { id: 4, label: 'Affirm something kind',      time: '',        done: false },
 ];
@@ -316,7 +316,7 @@ export function CalmScreen({
           <Text style={[styles.reminderSub, { color: t.soft }]}>set a gentle reminder to breathe</Text>
           <TouchableOpacity
             style={[styles.addReminderBtn, { borderColor: t.accent }]}
-            onPress={() => Alert.alert('Breathe Reminder', 'Reminder set. You’ll get a gentle nudge to breathe. 💜')}
+            onPress={() => Alert.alert('Breathe Reminder', 'Reminder set. You'll get a gentle nudge to breathe. 💜')}
           >
             <Text style={[styles.addReminderText, { color: t.soft }]}>+ Add Reminder</Text>
           </TouchableOpacity>
@@ -369,13 +369,13 @@ export function CalmScreen({
           {/* Companion presence pill */}
           <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {charLabel}’s here · weighted blanket mode
+              {charLabel}'s here · weighted blanket mode
             </Text>
           </Animated.View>
 
           <View style={styles.heroOverlay} pointerEvents="none">
             <Text style={[styles.heroTitle, { color: '#fff', textShadowColor: moodGlow + '99' }]}>
-              Se’kret Calm 💜
+              Se'kret Calm 💜
             </Text>
             <Text style={[styles.heroLines, { color: t.soft }]}>
               your calm.{'\n'}your reset.{'\n'}your safe place.
@@ -455,7 +455,7 @@ export function CalmScreen({
         {/* Today's Calm Plan */}
         <Animated.View style={cardAnim(3)}>
           <View style={styles.toolsHeader}>
-            <Text style={[styles.sectionTitle, { color: t.accent }]}>Today’s Calm Plan 💜</Text>
+            <Text style={[styles.sectionTitle, { color: t.accent }]}>Today's Calm Plan 💜</Text>
             <TouchableOpacity>
               <Text style={[styles.seeAll, { color: t.soft }]}>edit plan ✏️</Text>
             </TouchableOpacity>

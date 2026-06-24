@@ -800,7 +800,7 @@ export function Bippin2Screen({
             <Text style={styles.stickyText}>
               {isManhoodChar
                 ? `”grow at your pace. no race. respect.”`
-                : `”soft is strong. you’re growing right on time.”`
+                : `”soft is strong. you're growing right on time.”`
               }
             </Text>
           </View>

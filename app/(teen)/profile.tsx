@@ -34,7 +34,7 @@ export default function TeenProfile() {
       <Text style={styles.sub}>Pick what this space should remember for you.</Text>
       <Text style={styles.label}>Name or nickname</Text>
       <TextInput value={name} onChangeText={setName} placeholder="nickname" placeholderTextColor="#7f7487" style={styles.input} />
-      <Text style={styles.label}>First Se’kret</Text>
+      <Text style={styles.label}>First Se'kret</Text>
       <View style={styles.grid}>
         {OPTIONS.map(item => (
           <TouchableOpacity key={item.id} onPress={() => setChoice(item.id)} style={[styles.card, choice === item.id && styles.active]}>

@@ -307,7 +307,7 @@ function SekretReplyBubble({ tab, reply, typing, accent }: SekretReplyBubbleProp
 
   return (
     <View style={[replyStyles.bubble, { borderColor: accent + '55' }]}>
-      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey ? avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1) : 'Parent Se’kret'}</Text>
+      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey ? avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1) : 'Parent Se'kret'}</Text>
       <Text style={replyStyles.text}>
         {typing ? label : reply}
       </Text>

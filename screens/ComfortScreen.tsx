@@ -48,11 +48,11 @@ const { width: SCREEN_W } = Dimensions.get('window');
 
 // ── Comfort messages ───────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
-  { emoji: '🌙', text: 'You’ve survived every hard day so far. That matters.' },
+  { emoji: '🌙', text: 'You've survived every hard day so far. That matters.' },
   { emoji: '☁️', text: 'Rest is productive too. You are allowed to pause.' },
-  { emoji: '💙', text: 'Someone is glad you’re still here tonight.' },
+  { emoji: '💙', text: 'Someone is glad you're still here tonight.' },
   { emoji: '🌧️', text: 'Bad moments are real. So is your strength.' },
-  { emoji: '✨', text: 'You don’t need to be perfect to be loved.' },
+  { emoji: '✨', text: 'You don't need to be perfect to be loved.' },
   { emoji: '🫶', text: 'Your feelings are allowed here.' },
   { emoji: '🕯️', text: 'Soft moment. Slow breath. Stay with me.' },
 ];
@@ -99,11 +99,11 @@ export function ComfortScreen({
 
   // Copy variants ───────────────────────────────────────────────────────────
   const heroCopy = isRylane
-    ? { title: 'Comfort Mode 🚨', sub: 'Heavy moment. I’m right here.' }
+    ? { title: 'Comfort Mode 🚨', sub: 'Heavy moment. I'm right here.' }
     : { title: 'Comfort Mode 🚨', sub: 'When it feels heavy, Bip stays with you.' }; // default
 
   const notAloneCopy = isRylane
-    ? { title: 'You’re not in this alone.',  sub: 'No fix. No fix-it talk. Just here.' }
+    ? { title: 'You're not in this alone.',  sub: 'No fix. No fix-it talk. Just here.' }
     : { title: 'You are not alone in this moment.', sub: 'This is a safe space. Take your time. No rush.' };
 
   const allDoneCopy = isRylane
@@ -112,8 +112,8 @@ export function ComfortScreen({
 
   const calmBtnCopy = isRylane ? '🌙 Slide into Calm Space' : '🌙 Go to Calm Space';
   const betterCopy  = isRylane
-    ? 'I’m good now ›'
-    : 'I’m feeling a little better ›';
+    ? 'I'm good now ›'
+    : 'I'm feeling a little better ›';
 
   // Track session on mount
   useEffect(() => {

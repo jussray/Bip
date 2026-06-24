@@ -57,28 +57,28 @@ const TRACKS: Track[] = [
     emoji: '🎯',
     title: 'Lock In',
     sub: 'focus when it counts',
-    lesson: 'focus isn’t magic. it’s removing the easy distractions before you start.',
+    lesson: 'focus isn't magic. it's removing the easy distractions before you start.',
     micro: [
       'Phone face down, in another room if you can.',
       'Set a 25-min timer. Just start.',
-      'When you drift, come back gently. Don’t shame yourself.',
+      'When you drift, come back gently. Don't shame yourself.',
     ],
-    rylaneHook: 'bet. lock in for 25. that’s it.',
-    rayleneHook: 'one small block. you don’t have to grind, just start.',
+    rylaneHook: 'bet. lock in for 25. that's it.',
+    rayleneHook: 'one small block. you don't have to grind, just start.',
   },
   {
     key: 'confidence',
     emoji: '🪞',
     title: 'Show Up',
     sub: 'confidence is a verb',
-    lesson: 'confidence isn’t feeling fearless. it’s doing it scared and finding out you survive.',
+    lesson: 'confidence isn't feeling fearless. it's doing it scared and finding out you survive.',
     micro: [
       'Speak first in a small moment today.',
       'Walk in like you already belong (because you do).',
       'Catch one self-roast. Replace it with neutral words.',
     ],
-    rylaneHook: 'shoulders back. head up. that’s the move.',
-    rayleneHook: 'you don’t need permission to take up space. 💜',
+    rylaneHook: 'shoulders back. head up. that's the move.',
+    rayleneHook: 'you don't need permission to take up space. 💜',
   },
   {
     key: 'mindset',
@@ -105,22 +105,22 @@ const TRACKS: Track[] = [
       'Name one need vs one want from this week.',
       'Save anything. $1 counts.',
     ],
-    rylaneHook: 'know where every dollar going. that’s power.',
-    rayleneHook: 'small habits stack. you don’t need it perfect 💜',
+    rylaneHook: 'know where every dollar going. that's power.',
+    rayleneHook: 'small habits stack. you don't need it perfect 💜',
   },
   {
     key: 'school',
     emoji: '📚',
     title: 'School Pressure',
     sub: 'when it feels like a lot',
-    lesson: 'pressure isn’t proof you’re failing. it’s proof you care. break it down.',
+    lesson: 'pressure isn't proof you're failing. it's proof you care. break it down.',
     micro: [
       'Write the next 3 things. Not all of it.',
       'Pick the easiest one. Start there.',
       'Drink water. Sit up. Try again.',
     ],
-    rylaneHook: 'don’t fight everything. pick one.',
-    rayleneHook: 'one task at a time. you’re doing more than you think 💜',
+    rylaneHook: 'don't fight everything. pick one.',
+    rayleneHook: 'one task at a time. you're doing more than you think 💜',
   },
   {
     key: 'social',
@@ -130,11 +130,11 @@ const TRACKS: Track[] = [
     lesson: 'people remember how you made them feel, not your perfect sentence. be curious, not impressive.',
     micro: [
       'Ask one real question today.',
-      'Listen for the answer (don’t plan your reply).',
+      'Listen for the answer (don't plan your reply).',
       'Say something kind without expecting anything back.',
     ],
-    rylaneHook: 'don’t try to win the convo. just be there.',
-    rayleneHook: 'you don’t have to be on. just present 💜',
+    rylaneHook: 'don't try to win the convo. just be there.',
+    rayleneHook: 'you don't have to be on. just present 💜',
   },
   {
     key: 'habits',
@@ -147,8 +147,8 @@ const TRACKS: Track[] = [
       'Drink one full glass of water.',
       'Step outside for 2 minutes.',
     ],
-    rylaneHook: 'small wins. stack ’em. respect.',
-    rayleneHook: 'kindness counts when it’s for you too 💜',
+    rylaneHook: 'small wins. stack 'em. respect.',
+    rayleneHook: 'kindness counts when it's for you too 💜',
   },
 ];
 
@@ -224,9 +224,9 @@ export function GrowthScreen({
   const heroTitle = isRylane ? 'Growth 🪱' : 'Growth 🌱';
   const heroSub   = isRylane
     ? 'real life skills. small reps. keep building.'
-    : 'real life skills. soft pace. you’re doing it.';
+    : 'real life skills. soft pace. you're doing it.';
   const cloudLine = isRylane
-    ? 'pick one. don’t overthink it. lock in.'
+    ? 'pick one. don't overthink it. lock in.'
     : 'pick what feels light today. nothing is required 💜';
   const streakLabel = isRylane ? 'reps streak' : 'showing up streak';
   const streakNote  = isRylane ? 'respect, fr.' : 'proud of you 💜';

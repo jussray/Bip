@@ -128,13 +128,13 @@ const TIME_BADGE: Record<string, string> = {
 //   cloud neon on bookshelf (center-mid), laptop/bridge desk (right),
 //   cork board (right-upper), memory shelf (left-mid)
 const HOTSPOTS = [
-  { icon: ‘📔’, label: ‘Pages’,      route: ‘pages’,             xf: 0.42, yf: 0.58, delay: 0   },
-  { icon: ‘☕’, label: "Se’kret",    route: ‘sekret’,            xf: 0.20, yf: 0.65, delay: 350 },
-  { icon: ‘🌉’, label: ‘Bridge’,     route: ‘bridge’,            xf: 0.74, yf: 0.52, delay: 600 },
-  { icon: ‘🌐’, label: ‘Circle’,     route: ‘circle’,            xf: 0.83, yf: 0.38, delay: 900 },
-  { icon: ‘🌬️’, label: ‘Calm’,       route: ‘calm’,              xf: 0.13, yf: 0.47, delay: 450 },
-  { icon: ‘🤝’, label: ‘Connection’, route: ‘parent-connection’, xf: 0.58, yf: 0.36, delay: 700 },
-  { icon: ‘🌱’, label: ‘Growth’,     route: ‘parent-growth’,     xf: 0.31, yf: 0.35, delay: 550 },
+  { icon: '📔', label: 'Pages',      route: 'pages',             xf: 0.42, yf: 0.58, delay: 0   },
+  { icon: '☕', label: "Se'kret",    route: 'sekret',            xf: 0.20, yf: 0.65, delay: 350 },
+  { icon: '🌉', label: 'Bridge',     route: 'bridge',            xf: 0.74, yf: 0.52, delay: 600 },
+  { icon: '🌐', label: 'Circle',     route: 'circle',            xf: 0.83, yf: 0.38, delay: 900 },
+  { icon: '🌬️', label: 'Calm',       route: 'calm',              xf: 0.13, yf: 0.47, delay: 450 },
+  { icon: '🤝', label: 'Connection', route: 'parent-connection', xf: 0.58, yf: 0.36, delay: 700 },
+  { icon: '🌱', label: 'Growth',     route: 'parent-growth',     xf: 0.31, yf: 0.35, delay: 550 },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
