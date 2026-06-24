@@ -3,9 +3,8 @@ import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { Bippin2Screen } from '@screens/Bippin2Screen';
-import { routeForSide } from '@/shared/routes';
 
-export default function Bippin2Route() {
+export default function ParentGrowthRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
   return (
@@ -13,8 +12,9 @@ export default function Bippin2Route() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
-      setScreen={(screen: string) => router.push(routeForSide('teen', screen) as any)}
+      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
       BottomNav={null}
+      side="parent"
     />
   );
 }

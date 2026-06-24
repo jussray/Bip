@@ -71,12 +71,12 @@ type ParentCirclePost = {
 };
 
 const SEED_POSTS: ParentCirclePost[] = [
-  { id: 'ps-1', anonymousName: 'anonymous parent', circleTag: 'communication', text: "my teenager won't talk to me and I'm trying to not take it personally. it's really hard.", reactions: { beenThere: 47, solidarity: 38, reminder: 12, needed: 21, strength: 29 }, quietRepliesCount: 14 },
+  { id: 'ps-1', anonymousName: 'anonymous parent', circleTag: 'communication', text: "my teenager won\'t talk to me and I'm trying to not take it personally. it's really hard.", reactions: { beenThere: 47, solidarity: 38, reminder: 12, needed: 21, strength: 29 }, quietRepliesCount: 14 },
   { id: 'ps-2', anonymousName: 'anonymous parent', circleTag: 'connection', text: "I let them stay up late and skip the homework lecture. sometimes connection is the homework.", reactions: { beenThere: 31, solidarity: 19, reminder: 44, needed: 37, strength: 16 }, quietRepliesCount: 9 },
   { id: 'ps-3', anonymousName: 'anonymous parent', circleTag: 'proud moment', text: "I apologized to my kid for how I reacted yesterday. their face when I said sorry — I'll remember that.", reactions: { beenThere: 22, solidarity: 18, reminder: 53, needed: 41, strength: 27 }, quietRepliesCount: 11 },
   { id: 'ps-4', anonymousName: 'anonymous parent', circleTag: 'just venting', text: "does anyone else feel like they're always one wrong word away from a wall going up?", reactions: { beenThere: 68, solidarity: 55, reminder: 9, needed: 33, strength: 24 }, quietRepliesCount: 22 },
   { id: 'ps-5', anonymousName: 'anonymous parent', circleTag: 'connection', text: "three years of hard moments and today we laughed together for a whole hour. those are the ones I hold on to.", reactions: { beenThere: 29, solidarity: 24, reminder: 38, needed: 51, strength: 43 }, quietRepliesCount: 17 },
-  { id: 'ps-6', anonymousName: 'anonymous parent', circleTag: 'burnout', text: "I love my kids more than anything. and I'm exhausted in a way that sleep doesn't fix. both things are true.", reactions: { beenThere: 84, solidarity: 71, reminder: 19, needed: 62, strength: 48 }, quietRepliesCount: 31 },
+  { id: 'ps-6', anonymousName: 'anonymous parent', circleTag: 'burnout', text: "I love my kids more than anything. and I\'m exhausted in a way that sleep doesn't fix. both things are true.", reactions: { beenThere: 84, solidarity: 71, reminder: 19, needed: 62, strength: 48 }, quietRepliesCount: 31 },
 ];
 
 export default function ParentCirclePostDetail() {
@@ -331,7 +331,7 @@ export default function ParentCirclePostDetail() {
             <Text style={s.modalEmoji}>🕯️</Text>
             <Text style={s.modalTitle}>sit with this post</Text>
             <Text style={s.modalBody}>
-              you don't have to say anything. reading, feeling, staying — sometimes that's the whole thing. the circle knows you're here.
+              you don"t have to say anything. reading, feeling, staying — sometimes that's the whole thing. the circle knows you"re here.
             </Text>
             <TouchableOpacity style={s.modalBtn} onPress={handleSit}>
               <Text style={s.modalBtnText}>I'm sitting with it 🕯️</Text>

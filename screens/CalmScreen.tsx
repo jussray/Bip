@@ -17,7 +17,9 @@
 // Previous fixes preserved: A1/A2/A3, B1/B2/B3/B4/B5, C1/C2/C3, D1/D2
 
 import React, { useState, useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { IMAGES, getRoomBg, type TimeOfDay } from '../constants/theme';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MOOD_GLOW } from '../constants/moodGlow';
@@ -53,14 +55,14 @@ const TIME_BADGE: Record<TimeOfDay, string> = {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
-  { emoji: '🌙', text: 'You’ve survived every hard day so far. That matters.' },
+  { emoji: '🌙', text: "You've survived every hard day so far. That matters." },
   { emoji: '☁️', text: 'Rest is productive too. You are allowed to pause.' },
-  { emoji: '💙', text: 'Someone is glad you’re still here tonight.' },
+  { emoji: '💙', text: "Someone is glad you're still here tonight." },
   { emoji: '🌧️', text: 'Bad moments are real. So is your strength.' },
-  { emoji: '✨', text: 'You don’t need to be perfect to be loved.' },
+  { emoji: '✨', text: "You don't need to be perfect to be loved." },
   { emoji: '🫶', text: 'Your feelings are allowed here.' },
   { emoji: '🕯️', text: 'Soft moment. Slow breath. Stay with me.' },
-  { emoji: '💜', text: 'Rest is productive, too. You don’t have to earn peace. I’m proud of you for choosing you tonight.' },
+  { emoji: '💜', text: "Rest is productive, too. You don't have to earn peace. I'm proud of you for choosing you tonight." },
 ];
 
 const MOOD_CHIPS = [
@@ -80,17 +82,18 @@ const CALM_TOOLS = [
   { emoji: '🚨', label: 'SOS\nCalm Now',     sub: '30 sec reset',         action: 'comfort' },
 ];
 
+// Replace uri values with real CDN audio URLs before shipping.
 const CALM_PICKS = [
-  { emoji: '🌧️', label: 'late night\nrain',   duration: '20 min' },
-  { emoji: '🌊', label: 'deep sleep\nwaves',   duration: '30 min' },
-  { emoji: '🎹', label: 'soft piano\n+ heart', duration: '25 min' },
-  { emoji: '📖', label: 'bedtime\nstory',      duration: '15 min' },
-  { emoji: '✨', label: 'healing\nfrequency',  duration: '20 min' },
+  { emoji: '🌧️', label: 'late night\nrain',   duration: '20 min', uri: '' },
+  { emoji: '🌊', label: 'deep sleep\nwaves',   duration: '30 min', uri: '' },
+  { emoji: '🎹', label: 'soft piano\n+ heart', duration: '25 min', uri: '' },
+  { emoji: '📖', label: 'bedtime\nstory',      duration: '15 min', uri: '' },
+  { emoji: '✨', label: 'healing\nfrequency',  duration: '20 min', uri: '' },
 ];
 
 const DEFAULT_PLAN = [
   { id: 1, label: 'Breathe for 2 minutes',      time: '7:30 PM', done: false },
-  { id: 2, label: 'Write down what’s heavy', time: '7:40 PM', done: false },
+  { id: 2, label: "Write down what's heavy", time: '7:40 PM', done: false },
   { id: 3, label: 'Listen to a comfort sound',  time: '',        done: false },
   { id: 4, label: 'Affirm something kind',      time: '',        done: false },
 ];
@@ -122,11 +125,14 @@ interface CalmScreenProps {
   setScreen:       (screen: string) => void;
   BottomNav:       React.ReactNode;
   selectedSekret?: string;
+  onOpenBreathe?:  () => void;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────
+const PLAN_KEY = '@bip/calm_plan';
+
 export function CalmScreen({
-  t, mood, setMood, setScreen, BottomNav, selectedSekret = 'raylene',
+  t, mood, setMood, setScreen, BottomNav, selectedSekret = 'raylene', onOpenBreathe,
 }: CalmScreenProps) {
 
   const breatheAnim = useRef(new Animated.Value(1)).current;
@@ -135,6 +141,8 @@ export function CalmScreen({
   const [showBreathe, setShowBreathe] = useState(false);
   const [breatheStep, setBreatheStep] = useState(0);
   const [breatheRunning, setBreatheRunning] = useState(false);
+  const [activePick, setActivePick] = useState<string | null>(null);
+  const pickAudio = useAudioPlayer();
 
   const scrollRef = useRef<ScrollView>(null);
   const moodRowY  = useRef(0);
@@ -176,6 +184,16 @@ export function CalmScreen({
     return () => clearInterval(timer);
   }, [breatheRunning]);
 
+  // Persist Calm Plan to AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem(PLAN_KEY).then(saved => {
+      if (saved) setPlan(JSON.parse(saved));
+    }).catch(() => {});
+  }, []);
+  useEffect(() => {
+    AsyncStorage.setItem(PLAN_KEY, JSON.stringify(plan)).catch(() => {});
+  }, [plan]);
+
   // Companion presence breath
   const pillBreath = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -202,6 +220,21 @@ export function CalmScreen({
     opacity: cards[i],
     transform: [{ translateY: cards[i].interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
   });
+
+  async function handlePickPlay(label: string, uri: string) {
+    if (!uri) {
+      Alert.alert('Coming soon 💜', 'Audio tracks will be available in the next update.');
+      return;
+    }
+    if (activePick === label) {
+      if (pickAudio.state === 'playing') await pickAudio.pause();
+      else await pickAudio.play();
+      return;
+    }
+    setActivePick(label);
+    await pickAudio.load(uri);
+    await pickAudio.play();
+  }
 
   const togglePlanItem = (id: number) => {
     setPlan(prev => prev.map(item => item.id === id ? { ...item, done: !item.done } : item));
@@ -283,7 +316,7 @@ export function CalmScreen({
           <Text style={[styles.reminderSub, { color: t.soft }]}>set a gentle reminder to breathe</Text>
           <TouchableOpacity
             style={[styles.addReminderBtn, { borderColor: t.accent }]}
-            onPress={() => Alert.alert('Breathe Reminder', 'Reminder set. You’ll get a gentle nudge to breathe. 💜')}
+            onPress={() => Alert.alert('Breathe Reminder', "Reminder set. You'll get a gentle nudge to breathe. 💜")}
           >
             <Text style={[styles.addReminderText, { color: t.soft }]}>+ Add Reminder</Text>
           </TouchableOpacity>
@@ -336,13 +369,13 @@ export function CalmScreen({
           {/* Companion presence pill */}
           <Animated.View style={[styles.presencePill, pillStyle]} pointerEvents="none">
             <Text style={styles.presenceText}>
-              {charLabel}’s here · weighted blanket mode
+              {charLabel}'s here · weighted blanket mode
             </Text>
           </Animated.View>
 
           <View style={styles.heroOverlay} pointerEvents="none">
             <Text style={[styles.heroTitle, { color: '#fff', textShadowColor: moodGlow + '99' }]}>
-              Se’kret Calm 💜
+              Se'kret Calm 💜
             </Text>
             <Text style={[styles.heroLines, { color: t.soft }]}>
               your calm.{'\n'}your reset.{'\n'}your safe place.
@@ -404,7 +437,10 @@ export function CalmScreen({
                 key={tool.label}
                 style={[styles.toolCard, { backgroundColor: t.card, borderColor: t.accent }]}
                 onPress={() => {
-                  if (tool.action === 'breathe') { setShowBreathe(true); return; }
+                  if (tool.action === 'breathe') {
+                    if (onOpenBreathe) { onOpenBreathe(); return; }
+                    setShowBreathe(true); return;
+                  }
                   if (tool.action) setScreen(tool.action);
                 }}
               >
@@ -419,7 +455,7 @@ export function CalmScreen({
         {/* Today's Calm Plan */}
         <Animated.View style={cardAnim(3)}>
           <View style={styles.toolsHeader}>
-            <Text style={[styles.sectionTitle, { color: t.accent }]}>Today’s Calm Plan 💜</Text>
+            <Text style={[styles.sectionTitle, { color: t.accent }]}>Today's Calm Plan 💜</Text>
             <TouchableOpacity>
               <Text style={[styles.seeAll, { color: t.soft }]}>edit plan ✏️</Text>
             </TouchableOpacity>
@@ -449,7 +485,7 @@ export function CalmScreen({
         </Animated.View>
 
         {/* ── Breathing circle teaser ── */}
-        <TouchableOpacity style={styles.circleWrap} onPress={() => setShowBreathe(true)}>
+        <TouchableOpacity style={styles.circleWrap} onPress={() => onOpenBreathe ? onOpenBreathe() : setShowBreathe(true)}>
           <Animated.View style={[
             styles.circle,
             {
@@ -476,15 +512,30 @@ export function CalmScreen({
         </View>
         <Text style={[styles.sectionSub, { color: t.soft }]}>we picked these just for your vibe</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.picksScroll}>
-          {CALM_PICKS.map(pick => (
-            <View key={pick.label} style={[styles.pickCard, { backgroundColor: t.card, borderColor: t.accent }]}>
-              <View style={styles.pickPlayCircle}>
-                <Text style={styles.pickPlayIcon}>▶</Text>
-              </View>
-              <Text style={[styles.pickLabel, { color: '#fff' }]}>{pick.label}</Text>
-              <Text style={[styles.pickDur, { color: t.soft }]}>{pick.duration}</Text>
-            </View>
-          ))}
+          {CALM_PICKS.map(pick => {
+            const isActive  = activePick === pick.label;
+            const isPlaying = isActive && pickAudio.state === 'playing';
+            const isLoading = isActive && pickAudio.state === 'loading';
+            return (
+              <TouchableOpacity
+                key={pick.label}
+                style={[styles.pickCard, { backgroundColor: t.card, borderColor: isActive ? t.accent : t.accent + '55' }]}
+                onPress={() => handlePickPlay(pick.label, pick.uri)}
+                activeOpacity={0.75}
+              >
+                <View style={[styles.pickPlayCircle, isActive && { backgroundColor: t.accent + '44' }]}>
+                  <Text style={styles.pickPlayIcon}>{isLoading ? '⏳' : isPlaying ? '⏸' : '▶'}</Text>
+                </View>
+                {isActive && pickAudio.durationMs > 0 && (
+                  <View style={styles.pickProgress}>
+                    <View style={[styles.pickProgressFill, { width: `${pickAudio.progress * 100}%` as any, backgroundColor: t.accent }]} />
+                  </View>
+                )}
+                <Text style={[styles.pickLabel, { color: '#fff' }]}>{pick.label}</Text>
+                <Text style={[styles.pickDur, { color: t.soft }]}>{pick.duration}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Character says ── */}
@@ -600,6 +651,8 @@ const styles = StyleSheet.create({
   pickPlayIcon:      { color: '#fff', fontSize: 16 },
   pickLabel:         { fontSize: 11, fontWeight: '700', textAlign: 'center', marginBottom: 3 },
   pickDur:           { fontSize: 10, textAlign: 'center' },
+  pickProgress:      { height: 3, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden', width: '90%', marginBottom: 4 },
+  pickProgressFill:  { height: 3, borderRadius: 2 },
 
   // Se'kret says
   sekretSaysCard:    {

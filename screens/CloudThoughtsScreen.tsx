@@ -74,7 +74,7 @@ const PROMPT_SETS: Record<string, { emoji: string; text: string }[]> = {
   checkin: [
     { emoji: '🫶', text: "How are you actually doing right now?" },
     { emoji: '💚', text: "What's one thing your body is telling you today?" },
-    { emoji: '☀️', text: "What's something you're grateful you got through?" },
+    { emoji: '☀️', text: "What\'s something you're grateful you got through?" },
     { emoji: '🌊', text: "On a scale of heavy to okay — where are you?" },
   ],
 };

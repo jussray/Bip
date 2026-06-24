@@ -46,7 +46,7 @@ const QUICK_ACCESS = [
   { emoji: '🌙', label: 'cycle\nwellness',       target: 'periodCalendar' },
   { emoji: '💜', label: 'mood + body\ncheck-in',  target: null },
   { emoji: '🫂', label: 'comfort\nmode',          target: 'calm' },
-  { emoji: '💬', label: "ask\nse'kret",           target: 'sekret' },
+  { emoji: '💬', label: "ask\nse\'kret",           target: 'sekret' },
   { emoji: '📔', label: 'private\njournal',       target: 'pages' },
 ];
 

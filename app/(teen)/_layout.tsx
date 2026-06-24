@@ -28,6 +28,7 @@ export default function TeenLayout() {
         <Tabs.Screen name="room" options={{ title: 'Room', tabBarIcon: () => <TabIcon emoji="🏠" /> }} />
         <Tabs.Screen name="pages" options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📖" /> }} />
         <Tabs.Screen name="calm" options={{ title: 'Calm', tabBarIcon: () => <TabIcon emoji="🌙" /> }} />
+        <Tabs.Screen name="calm/breathe" options={{ href: null }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🌐" /> }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
         <Tabs.Screen name="user-room" options={{ href: null }} />
@@ -48,6 +49,8 @@ export default function TeenLayout() {
         <Tabs.Screen name="chat/index" options={{ href: null }} />
         <Tabs.Screen name="chat/[personalityId]" options={{ href: null }} />
         <Tabs.Screen name="bippin2" options={{ href: null }} />
+        <Tabs.Screen name="bippin2/womanhood" options={{ href: null }} />
+        <Tabs.Screen name="bippin2/manhood" options={{ href: null }} />
         <Tabs.Screen name="growth" options={{ href: null }} />
         <Tabs.Screen name="mind-body-reset" options={{ href: null }} />
       </Tabs>

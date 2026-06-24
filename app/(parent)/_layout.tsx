@@ -18,7 +18,7 @@ export default function ParentLayout() {
           tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         }}
       >
-        <Tabs.Screen name="room" options={{ title: 'Room', tabBarIcon: () => <TabIcon emoji="🌿" /> }} />
+        <Tabs.Screen name="room" options={{ title: 'Room', tabBarIcon: () => <TabIcon emoji="🏡" /> }} />
         <Tabs.Screen name="pages" options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📝" /> }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🤝" /> }} />
         <Tabs.Screen name="circle/[id]" options={{ href: null }} />
@@ -33,6 +33,7 @@ export default function ParentLayout() {
         <Tabs.Screen name="voicereflect" options={{ href: null }} />
         <Tabs.Screen name="period-calendar" options={{ href: null }} />
         <Tabs.Screen name="sekret" options={{ href: null }} />
+        <Tabs.Screen name="growth" options={{ href: null }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
       </Tabs>
       <SideSafeBackButton side="parent" />

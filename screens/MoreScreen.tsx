@@ -24,7 +24,7 @@ interface MoreScreenProps {
 
 export function MoreScreen({
   t, userSide, setUserSide, setScreen, BottomNav,
-  mood, selectedSekret,
+  mood, selectedSekret, onSideChanged,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
   const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow + '88', shadowColor: glow }] as any;
@@ -43,10 +43,12 @@ export function MoreScreen({
   function handleSideSwitch() {
     if (userSide === 'parent') {
       setUserSide('teen');
-      setScreen('home');           // ← direct route, no splash bounce
+      onSideChanged?.();
+      setScreen('home');
     } else {
       setUserSide('parent');
-      setScreen('parent-room');    // ← direct route, no splash bounce
+      onSideChanged?.();
+      setScreen('parent-room');
     }
   }
 
@@ -62,13 +64,13 @@ export function MoreScreen({
 
         {/* ── Side switch card ── */}
         <View style={card()}>
-          <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🌿' : '💜'}</Text>
+          <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🏡' : '💜'}</Text>
           <Text style={styles.cardText}>
             {userSide === 'parent' ? 'Parent Mode' : 'Teen Mode'}
           </Text>
           <TouchableOpacity style={btn()} onPress={handleSideSwitch}>
             <Text style={styles.buttonText}>
-              Switch to {userSide === 'parent' ? 'Teen Side 💜' : 'Parent Side 🌿'}
+              Switch to {userSide === 'parent' ? 'Teen Side 💜' : 'Parent Side 🏡'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -112,6 +114,25 @@ export function MoreScreen({
           <Text style={styles.buttonText}>
             {userSide === 'parent' ? '🌉 Parent Bridge' : '🌉 Bridge'}
           </Text>
+        </TouchableOpacity>
+        {userSide === 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('parent-growth')}>
+            <Text style={styles.buttonText}>🌱 Bippin 2</Text>
+          </TouchableOpacity>
+        )}
+        {userSide === 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('parent-connection')}>
+            <Text style={styles.buttonText}>🤝 Connection Hub</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={btn()} onPress={() => setScreen(userSide === 'parent' ? 'parent-insights' : 'insights')}>
+          <Text style={styles.buttonText}>🔍 Insights</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('messages')}>
+          <Text style={styles.buttonText}>{userSide === 'parent' ? '💜 Warm Notes' : '💜 Messages'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('resources')}>
+          <Text style={styles.buttonText}>📚 Resources</Text>
         </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('comfort')}>
           <Text style={styles.buttonText}>✨ Comfort</Text>

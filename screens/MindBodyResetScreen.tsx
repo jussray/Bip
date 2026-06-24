@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Text, TouchableOpacity,
+  Alert, Text, TouchableOpacity,
   View, Animated, Image, StyleSheet, Platform, ImageBackground,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -159,11 +159,24 @@ export function MindBodyResetScreen({
   // ─── Mood state ──────────────────────────────────────────────────────────
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
-  // ─── Tool stub alerts ────────────────────────────────────────────────────
+  // ─── Tool handlers ───────────────────────────────────────────────────────
   const handleTool = (label: string) => {
-    // Stub — future: navigate or open modal
-    // e.g. if (label === 'Brain Dump') setScreen('pages');
-    //      if (label === 'Calm Sounds') setScreen('calm');
+    switch (label) {
+      case 'Brain Dump':  return setScreen('pages');
+      case 'Calm Sounds': return setScreen('calm');
+      case 'Night Mode':  return setScreen('calm');
+      case 'Release':     return setScreen('calm');
+      case 'Rest Mode':   return setScreen('calm');
+      case '+Reminders':
+        Alert.alert('Reminders', 'Set a reminder in your device settings or Calm space.');
+        break;
+      case 'Stretch':
+        Alert.alert('Stretch', 'Stand up, roll your shoulders back, and take three deep breaths. You got this.');
+        break;
+      case 'Water Check':
+        Alert.alert('Water Check', 'Have you had water recently? Go grab a glass — your brain will thank you.');
+        break;
+    }
   };
 
   // ─── onComplete hook ─────────────────────────────────────────────────────

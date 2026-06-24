@@ -189,7 +189,7 @@ export function ComfortStreaksScreen({
   // ── Copy ───────────────────────────────────────────────────────────────────
   const heroTitle = isRylane ? 'comfort streaks' : 'comfort streaks \u{1F49C}';
   const heroSub = isRylane
-    ? 'soft reps. consistent. that’s the move.'
+    ? "soft reps. consistent. that's the move."
     : 'soft on soft. cozy on cozy. you keep showing up.';
 
   const currentCopy =
@@ -203,14 +203,14 @@ export function ComfortStreaksScreen({
 
   const longestCopy =
     longest <= 0
-      ? (isRylane ? 'no record yet. let’s build one.' : 'no record yet. soft beginnings \u{1F49C}')
+      ? (isRylane ? "no record yet. let's build one." : 'no record yet. soft beginnings \u{1F49C}')
       : (isRylane
           ? `your longest run: ${longest} days. legend.`
-          : `your longest run: ${longest} days \u{1F49C} that’s yours forever`);
+          : `your longest run: ${longest} days \u{1F49C} that's yours forever`);
 
   const stickyAffirmation = isRylane
     ? '“the streak is the work. not the number.”'
-    : '“cozy is a discipline too. you’re doing it.”';
+    : "“cozy is a discipline too. you're doing it.”";
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (

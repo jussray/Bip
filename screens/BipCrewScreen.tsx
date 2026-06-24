@@ -136,7 +136,7 @@ export function BipCrewScreen({
       name,
       relation: "",
       emoji: newEmoji || "\u{1F49C}",
-      commitment: commit || (isRylane ? "we lock in for each other" : "we’re here for each other"),
+      commitment: commit || (isRylane ? "we lock in for each other" : "we're here for each other"),
       cadence: newCadence,
       inviteCode: makeInviteCode(),
       addedAt: new Date().toISOString(),
@@ -206,8 +206,8 @@ export function BipCrewScreen({
     : 'no crew yet. pick your 2–6. the ones who actually get it \u{1F49C}';
 
   const stickyAffirmation = isRylane
-    ? '“a real one shows up. that’s the whole rule.”'
-    : '“you don’t need a crowd. you need 2–6 soft ones.”';
+    ? "“a real one shows up. that's the whole rule.”"
+    : "“you don't need a crowd. you need 2–6 soft ones.”";
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -293,7 +293,7 @@ export function BipCrewScreen({
                   <View style={{ marginTop: 8 }}>
                     <TextInput
                       style={styles.input}
-                      placeholder={isRylane ? 'what’d they say? what’d you say?' : 'soft note about today \u{1F49C}'}
+                      placeholder={isRylane ? "what'd they say? what'd you say?" : "soft note about today \u{1F49C}"}
                       placeholderTextColor="rgba(255,255,255,0.45)"
                       value={checkInNote}
                       onChangeText={setCheckInNote}
@@ -356,7 +356,7 @@ export function BipCrewScreen({
               ))}
             </View>
 
-            <Text style={styles.label}>what we said we’d do for each other</Text>
+            <Text style={styles.label}>what we said we'd do for each other</Text>
             <TextInput
               style={styles.input}
               placeholder={isRylane ? '“text me when you spiral”' : '“we show up. softly.”'}

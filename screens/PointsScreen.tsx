@@ -228,7 +228,7 @@ export function PointsScreen({
 
   const stickyAffirmation = isRylane
     ? '“the points are receipts, not a leaderboard.”'
-    : '“these aren’t scores. they’re soft proof you’re you-ing well.”';
+    : '"these aren\'t scores. they\'re soft proof you\'re you-ing well."';
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -322,7 +322,7 @@ export function PointsScreen({
                   </Text>
                 </View>
                 {current && (
-                  <Text style={[styles.tierBadge, { color: t2.color }]}>you’re here</Text>
+                  <Text style={[styles.tierBadge, { color: t2.color }]}>you're here</Text>
                 )}
               </View>
             );

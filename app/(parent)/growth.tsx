@@ -2,20 +2,19 @@ import React from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
-import { GrowthScreen } from '@screens/GrowthScreen';
-import { routeForSide } from '@/shared/routes';
+import { Bippin2Screen } from '@screens/Bippin2Screen';
 
-export default function GrowthRoute() {
+export default function ParentGrowthRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
   return (
-    <GrowthScreen
+    <Bippin2Screen
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
-      setScreen={(screen: string) => router.push(routeForSide('teen', screen) as any)}
-      onMilestone={() => {}}
+      setScreen={(screen: string) => router.push(`/(parent)/${screen}` as any)}
       BottomNav={null}
+      side="parent"
     />
   );
 }

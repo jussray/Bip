@@ -19,6 +19,7 @@ export default function MoreRoute() {
       userSide={userSide ?? 'teen'}
       setUserSide={(side: string) => setUserSide(side === 'parent' ? 'parent' : 'teen')}
       setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      onSideChanged={() => {}}
       BottomNav={null}
     />
   );
