@@ -115,9 +115,23 @@ export function MoreScreen({
         </TouchableOpacity>
         {userSide === 'parent' && (
           <TouchableOpacity style={btn()} onPress={() => setScreen('parent-growth')}>
-            <Text style={styles.buttonText}>🌿 My Growth in Bip</Text>
+            <Text style={styles.buttonText}>🌱 Bippin 2</Text>
           </TouchableOpacity>
         )}
+        {userSide === 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('parent-connection')}>
+            <Text style={styles.buttonText}>🤝 Connection Hub</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={btn()} onPress={() => setScreen(userSide === 'parent' ? 'parent-insights' : 'insights')}>
+          <Text style={styles.buttonText}>🔍 Insights</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('messages')}>
+          <Text style={styles.buttonText}>{userSide === 'parent' ? '💜 Warm Notes' : '💜 Messages'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={btn()} onPress={() => setScreen('resources')}>
+          <Text style={styles.buttonText}>📚 Resources</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('comfort')}>
           <Text style={styles.buttonText}>✨ Comfort</Text>
         </TouchableOpacity>

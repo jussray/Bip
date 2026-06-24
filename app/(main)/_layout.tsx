@@ -105,14 +105,13 @@ export default function MainLayout() {
           href: isTeen ? null : undefined,
         }}
       />
-      <Tabs.Screen
-        name="parent-bridge"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="parent-growth"
-        options={{ href: null }}
-      />
+      <Tabs.Screen name="parent-bridge"      options={{ href: null }} />
+      <Tabs.Screen name="parent-growth"      options={{ href: null }} />
+      <Tabs.Screen name="parent-insights"    options={{ href: null }} />
+      <Tabs.Screen name="parent-connection"  options={{ href: null }} />
+      <Tabs.Screen name="insights"           options={{ href: null }} />
+      <Tabs.Screen name="messages"           options={{ href: null }} />
+      <Tabs.Screen name="resources"          options={{ href: null }} />
 
       {/* ── More: visible on BOTH sides ── */}
       <Tabs.Screen

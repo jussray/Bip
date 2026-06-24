@@ -694,6 +694,26 @@ export async function fetchParentNotes(): Promise<ParentNote[]> {
   }
 }
 
+/** Parent fetches the notes they have sent to their linked teen. */
+export async function fetchParentSentNotes(): Promise<ParentNote[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data } = await sb
+      .from('parent_notes')
+      .select('id, content, sent_at, seen_by_teen')
+      .eq('parent_user_id', uid)
+      .order('sent_at', { ascending: false })
+      .limit(30);
+    return (data ?? []) as ParentNote[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchParentSentNotes failed', e);
+    return [];
+  }
+}
+
 /** Teen marks a parent note as seen. */
 export async function markParentNoteSeen(id: string): Promise<void> {
   const sb = getSupabase();
