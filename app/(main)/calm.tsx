@@ -16,6 +16,7 @@
  * CalmScreenProps.  That caused a prop-type mismatch that crashed the tab.
  */
 import React from 'react';
+import { router } from 'expo-router';
 import { CalmScreen } from '@screens/CalmScreen';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
@@ -35,6 +36,7 @@ export default function CalmTab() {
       setScreen={navigateTo}
       BottomNav={null}
       selectedSekret={selectedSekret}
+      onOpenBreathe={() => router.push('/(teen)/calm/breathe' as any)}
     />
   );
 }
