@@ -179,15 +179,15 @@ export function HistoryScreen({
   // ── Copy ───────────────────────────────────────────────────────────────────
   const heroTitle = isRylane
     ? 'respect — look at the reps'
-    : 'look how far you've come \u{1F49C}';
+    : "look how far you've come \u{1F49C}";
 
   const heroSub = isRylane
     ? 'lock in continues. quietly. day by day.'
-    : 'soft proof that you're actually doing better.';
+    : "soft proof that you're actually doing better.";
 
   const streakCopy =
     streakDays <= 0
-      ? (isRylane ? 'fresh start. let's build it.' : 'today counts. that's a start \u{1F49C}')
+      ? (isRylane ? "fresh start. let's build it." : "today counts. that's a start \u{1F49C}")
       : streakDays === 1
         ? (isRylane ? 'day 1. respect.' : 'day 1. proud of you already \u{1F49C}')
         : (isRylane
@@ -200,12 +200,12 @@ export function HistoryScreen({
         ? `most logged in the last 2 weeks: ${moodTop}. noted.`
         : `most logged in the last 2 weeks: ${moodTop}. that's real info \u{1F49C}`)
     : (isRylane
-        ? 'no mood logs yet. drop one when you're ready.'
-        : 'no mood logs yet. tap one when you're ready.');
+        ? "no mood logs yet. drop one when you're ready."
+        : "no mood logs yet. tap one when you're ready.");
 
   const stickyAffirmation = isRylane
     ? '“the reps are quiet. the change is loud.”'
-    : '“you're actually doing better. it's ok to notice.”';
+    : '"you\'re actually doing better. it\'s ok to notice."';
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -244,7 +244,7 @@ export function HistoryScreen({
           <View style={styles.divider} />
           <Text style={styles.cardSub}>
             {isRylane
-              ? 'streak = days you opened the room. that's it. small reps, real result.'
+              ? "streak = days you opened the room. that's it. small reps, real result."
               : 'streak = days you opened the room. soft and small. it counts \u{1F49C}'}
           </Text>
         </Animated.View>
@@ -289,7 +289,7 @@ export function HistoryScreen({
           </View>
           <Text style={styles.cardSub}>
             {isRylane
-              ? 'the reps don't need to be huge. they need to be yours.'
+              ? "the reps don't need to be huge. they need to be yours."
               : 'small steps stack \u{1F49C} look at all that softness.'}
           </Text>
         </Animated.View>
@@ -305,8 +305,8 @@ export function HistoryScreen({
           </View>
           <Text style={styles.cardSub}>
             {isRylane
-              ? 'numbers are not the point. they're proof the point is working.'
-              : 'these aren't scores. they're soft proof you showed up \u{1F49C}'}
+              ? "numbers are not the point. they're proof the point is working."
+              : "these aren't scores. they're soft proof you showed up \u{1F49C}"}
           </Text>
 
           <TouchableOpacity

@@ -61,7 +61,7 @@ const PARENT_REACTIONS = [
 const PARENT_POST_TYPES = [
   { id: 'parenting-win',   emoji: '🏡', label: 'Parenting win',    sub: 'something landed right'               },
   { id: 'parenting-hard',  emoji: '🌧', label: 'Hard right now',   sub: 'carrying something heavy'              },
-  { id: 'lets-talk',       emoji: '💬', label: "Let's talk",       sub: 'want to hear from other parents'       },
+  { id: 'lets-talk',       emoji: '💬', label: "Let\'s talk",       sub: 'want to hear from other parents'       },
   { id: 'connection',      emoji: '🌉', label: 'Connection moment', sub: 'the moment something clicked'         },
 ];
 

@@ -20,7 +20,7 @@ import { useAppContext } from '@/context/AppContext';
 const QUESTIONS: Record<string, string> = {
   '13-15': "What's something you keep to yourself that you really wish someone just got?",
   '16-17': "Right now, what's taking up the most space in your head?",
-  '18-19': "What's something you're figuring out that no one around you seems to understand?",
+  '18-19': "What\'s something you're figuring out that no one around you seems to understand?",
   default:  "What's one thing you're carrying right now that nobody else knows?",
 };
 

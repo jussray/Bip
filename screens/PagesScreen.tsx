@@ -307,7 +307,7 @@ function SekretReplyBubble({ tab, reply, typing, accent }: SekretReplyBubbleProp
 
   return (
     <View style={[replyStyles.bubble, { borderColor: accent + '55' }]}>
-      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey ? avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1) : 'Parent Se'kret'}</Text>
+      <Text style={[replyStyles.name, { color: accent }]}>{avatarKey ? avatarKey.charAt(0).toUpperCase() + avatarKey.slice(1) : "Parent Se'kret"}</Text>
       <Text style={replyStyles.text}>
         {typing ? label : reply}
       </Text>
@@ -649,7 +649,7 @@ function PagesWorkspace({
     });
 
     if (isFirstEverEntry) {
-      Alert.alert('there it is. 💜', "that's your first page in here. come back whenever you need to put something down — it'll be waiting.");
+      Alert.alert('there it is. 💜', "that\'s your first page in here. come back whenever you need to put something down — it'll be waiting.");
     }
 
     const savedText = text.trim();
