@@ -9,7 +9,7 @@ import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, Animated, Platform, Easing, Alert,
 } from 'react-native';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useAudioPlayer } from '../../../../hooks/useAudioPlayer';
 
 const TOP = Platform.OS === 'ios' ? 56 : 36;
 

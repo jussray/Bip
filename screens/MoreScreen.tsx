@@ -113,6 +113,11 @@ export function MoreScreen({
             {userSide === 'parent' ? '🌉 Parent Bridge' : '🌉 Bridge'}
           </Text>
         </TouchableOpacity>
+        {userSide === 'parent' && (
+          <TouchableOpacity style={btn()} onPress={() => setScreen('parent-growth')}>
+            <Text style={styles.buttonText}>🌿 My Growth in Bip</Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity style={btn()} onPress={() => setScreen('comfort')}>
           <Text style={styles.buttonText}>✨ Comfort</Text>
         </TouchableOpacity>

@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAudioPlayer } from '@/hooks/useAudioPlayer';
+import { useAudioPlayer } from '../../../hooks/useAudioPlayer';
 
 // ── Breathing patterns ────────────────────────────────────────────────────────
 type BreathPhase = 'in' | 'hold' | 'out';

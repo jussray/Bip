@@ -784,6 +784,36 @@ export async function sendParentNote(teenId: string, content: string): Promise<b
   }
 }
 
+export interface ParentEngagement {
+  notesSent:  number;
+  tipsRead:   number;
+  daysActive: number;
+  bridgeUsed: boolean;
+}
+
+/** Fetch the parent's own engagement stats within Bip. */
+export async function fetchParentEngagement(): Promise<ParentEngagement | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const [notesRes, engRes] = await Promise.all([
+      sb.from('parent_notes').select('id', { count: 'exact', head: true }).eq('parent_user_id', uid),
+      sb.from('parent_engagement').select('*').eq('parent_user_id', uid).maybeSingle(),
+    ]);
+    return {
+      notesSent:  notesRes.count ?? 0,
+      tipsRead:   (engRes.data as any)?.tips_read ?? 0,
+      daysActive: (engRes.data as any)?.days_active ?? 0,
+      bridgeUsed: (engRes.data as any)?.bridge_used ?? false,
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchParentEngagement failed', e);
+    return null;
+  }
+}
+
 /** Parent subscribes to new bridge signals from their teen via Realtime. */
 export async function subscribeToBridgeSignals(
   teenId:  string,

@@ -109,6 +109,10 @@ export default function MainLayout() {
         name="parent-bridge"
         options={{ href: null }}
       />
+      <Tabs.Screen
+        name="parent-growth"
+        options={{ href: null }}
+      />
 
       {/* ── More: visible on BOTH sides ── */}
       <Tabs.Screen
