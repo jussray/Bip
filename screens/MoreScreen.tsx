@@ -24,7 +24,7 @@ interface MoreScreenProps {
 
 export function MoreScreen({
   t, userSide, setUserSide, setScreen, BottomNav,
-  mood, selectedSekret,
+  mood, selectedSekret, onSideChanged,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
   const card = () => [styles.card, { backgroundColor: 'rgba(30,18,55,0.88)', borderColor: glow + '88', shadowColor: glow }] as any;
@@ -43,10 +43,12 @@ export function MoreScreen({
   function handleSideSwitch() {
     if (userSide === 'parent') {
       setUserSide('teen');
-      setScreen('home');           // ← direct route, no splash bounce
+      onSideChanged?.();
+      setScreen('home');
     } else {
       setUserSide('parent');
-      setScreen('parent-room');    // ← direct route, no splash bounce
+      onSideChanged?.();
+      setScreen('parent-room');
     }
   }
 

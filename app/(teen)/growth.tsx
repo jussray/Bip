@@ -14,6 +14,7 @@ export default function GrowthRoute() {
       mood={mood}
       selectedSekret={selectedSekret}
       setScreen={(screen: string) => router.push(routeForSide('teen', screen) as any)}
+      onMilestone={() => {}}
       BottomNav={null}
     />
   );
