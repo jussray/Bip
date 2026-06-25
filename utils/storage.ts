@@ -32,6 +32,9 @@ export const STORAGE_KEYS = {
   parentRoomStyle: 'parentRoomStyle',
   parentMood: 'parentMood',
   parentMoodDate: 'parentMoodDate',
+  accountProfile: 'accountProfile',
+  notificationPreferences: 'notificationPreferences',
+  ageGateStatus: 'age_gate_status',
 };
 
 export const JSON_KEYS = new Set([
@@ -76,7 +79,7 @@ export const saveState = async (stateUpdates: Record<string, any>) => {
   }
 };
 
-const PRIVATE_ACCOUNT_KEYS = [
+export const PRIVATE_ACCOUNT_KEYS = [
   STORAGE_KEYS.journalText,
   STORAGE_KEYS.entries,
   STORAGE_KEYS.parentPagesEntries,
@@ -101,6 +104,8 @@ const PRIVATE_ACCOUNT_KEYS = [
   STORAGE_KEYS.lastPeriodStart,
   STORAGE_KEYS.parentMood,
   STORAGE_KEYS.parentMoodDate,
+  STORAGE_KEYS.accountProfile,
+  STORAGE_KEYS.notificationPreferences,
 ];
 
 export const clearPrivateLocalState = async () => {

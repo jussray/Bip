@@ -141,10 +141,14 @@ export async function upsertPrivateProfile(id: string, profile: AccountProfileIn
   return data as PrivateAccountProfile;
 }
 
-export async function signOutAccount(): Promise<void> {
+export async function signOutAndClearLocalState(): Promise<void> {
   const sb = getSupabase();
   await clearPrivateLocalState();
-  if (!sb) return;
-  const { error } = await sb.auth.signOut();
-  if (error) throw error;
+  if (sb) {
+    const { error } = await sb.auth.signOut();
+    if (error) throw error;
+  }
+  await clearPrivateLocalState();
 }
+
+export const signOutAccount = signOutAndClearLocalState;

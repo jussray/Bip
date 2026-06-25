@@ -19,12 +19,13 @@ import type { AgeGateStatus } from './AgeGate';
 interface AccountGateProps {
   ageGateStatus: AgeGateStatus | 'unknown';
   onReady: (profile: PrivateAccountProfile) => void;
+  onSignedOut?: () => void;
   children: React.ReactNode;
 }
 
 const AVATAR_OPTIONS = ['soft', 'rylane', 'cloud', 'night'] as const;
 
-export function AccountGate({ ageGateStatus, onReady, children }: AccountGateProps) {
+export function AccountGate({ ageGateStatus, onReady, onSignedOut, children }: AccountGateProps) {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'create' | 'signin'>('create');
   const [email, setEmail] = useState('');
@@ -50,10 +51,11 @@ export function AccountGate({ ageGateStatus, onReady, children }: AccountGatePro
         await clearPrivateLocalState();
         setProfile(null);
         setNeedsProfile(false);
+        onSignedOut?.();
       }
     }).data.subscription;
     return () => subscription?.unsubscribe();
-  }, []);
+  }, [onSignedOut]);
 
   const side: AccountSide | null = useMemo(() => {
     if (ageGateStatus === 'teen') return 'teen';

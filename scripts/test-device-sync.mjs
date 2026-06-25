@@ -46,3 +46,22 @@ test('public and trusted identity contexts are explicit in UI rules', () => {
   assert.match(crew, /connectionStatus === 'accepted' \? mem\.name : \(mem\.bipId \|\| 'pending Bip ID'\)/, 'Bip Crew should show first name only after acceptance');
   assert.match(app, /visibility:\s*extra\?\.visibility \?\? 'public_circle'/, 'Circle posts must default to public visibility');
 });
+
+test('sign-out clears private local state and blocks next-user sync until profile ready', () => {
+  const app = read('app/index.tsx');
+  const account = read('utils/account.ts');
+  const storage = read('utils/storage.ts');
+  const settings = read('screens/SettingsScreen.tsx');
+
+  assert.match(account, /signOutAndClearLocalState/, 'central sign-out helper must exist');
+  assert.match(account, /auth\.signOut\(\)/, 'central helper must sign out from Supabase auth');
+  assert.match(account, /clearPrivateLocalState\(\)[\s\S]*auth\.signOut\(\)[\s\S]*clearPrivateLocalState\(\)/, 'helper must clear local private data around auth sign-out');
+  for (const key of ['accountProfile', 'journalText', 'entries', 'voiceNotes', 'circlePosts', 'crewMembers', 'crewCheckIns', 'streakDays', 'roomMemory', 'oracleProfile', 'oracleJournalEntries', 'parentPagesEntries', 'parentCirclePosts', 'notificationPreferences']) {
+    assert.match(storage, new RegExp(`STORAGE_KEYS\\.${key}`), `${key} must be in private clear list`);
+  }
+  assert.match(app, /setAccountReady\(false\)/, 'sign-out reset must mark account not ready');
+  assert.match(app, /setJournalEntries\(\[\]\)[\s\S]*setVoiceNotes\(\[\]\)[\s\S]*setCrewMembers\(\[\]\)/, 'in-memory private arrays must reset');
+  assert.match(app, /setScreen\('splash'\)/, 'sign-out reset must leave app routes');
+  assert.match(app, /if \(!accountReady\) return;/, 'boot sync must remain blocked until User B profile is ready');
+  assert.match(settings, /Sign out \+ clear private data/, 'Settings must expose true sign-out');
+});

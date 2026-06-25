@@ -54,3 +54,9 @@ This pass tightens Se'kret Bip's relationship boundaries:
 - Friends-only Circle is a trusted-audience context. First names may be resolved only after accepted crew membership; otherwise the fallback identity remains anonymous.
 - Parent/guardian visibility is a separate permission context and must not be inferred from Bip Crew acceptance.
 - Logout/sign-out clears local private account data caches before another account can use the device.
+
+## True sign-out and same-device account switching
+
+Sign-out now runs through `signOutAndClearLocalState()`, which signs out of Supabase auth and clears account-scoped AsyncStorage data before another user can enter the app on the same device. The in-memory app state is also reset to empty defaults and routed back to splash/account gating, so User B cannot see User A's journals, voice notes, Circle cache, crew, rewards/streaks, room memory, AI companion memory, or linked parent/teen data.
+
+Safe app-level presentation settings such as theme may remain. Account-scoped notification preferences are included in the private clear list.
