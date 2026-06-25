@@ -46,9 +46,10 @@ const SHORTCUTS = [
 interface SplashScreenProps {
   setScreen: (screen: string) => void;
   userSide?: "teen" | "parent";
+  interactive?: boolean;
 }
 
-export function SplashScreen({ setScreen, userSide = "teen" }: SplashScreenProps) {
+export function SplashScreen({ setScreen, userSide = "teen", interactive = true }: SplashScreenProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const isParent = userSide === "parent";
 
@@ -81,36 +82,40 @@ export function SplashScreen({ setScreen, userSide = "teen" }: SplashScreenProps
         </View>
       ) : null}
 
-      {/* Se'kret Bip CTA button — the only way to enter the app */}
-      <TouchableOpacity
-        style={isParent ? styles.parentEnter : [styles.hitTarget, {
-          top: height * CTA_TOP,
-          height: height * (CTA_BOTTOM - CTA_TOP),
-          left: width * CTA_LEFT,
-          right: width * (1 - CTA_RIGHT),
-        }]}
-        onPress={() => setScreen("home")}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={isParent ? "Enter Parent Space" : "Se'kret Bip — enter your safe space"}
-        accessibilityHint="Opens the app"
-      />
-
-      {/* Transparent hit-targets aligned with the shortcut row baked into the image */}
-      {!isParent ? <View style={[styles.shortcutRow, {
-        top:    height * SC_TOP,
-        height: height * (SC_BOTTOM - SC_TOP),
-      }]}>
-        {SHORTCUTS.map(({ label, target }) => (
+      {interactive ? (
+        <>
+          {/* Se'kret Bip CTA button — the only way to enter the app */}
           <TouchableOpacity
-            key={target}
-            style={styles.shortcutHit}
-            onPress={() => setScreen(target)}
+            style={isParent ? styles.parentEnter : [styles.hitTarget, {
+              top: height * CTA_TOP,
+              height: height * (CTA_BOTTOM - CTA_TOP),
+              left: width * CTA_LEFT,
+              right: width * (1 - CTA_RIGHT),
+            }]}
+            onPress={() => setScreen("home")}
+            activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel={label}
+            accessibilityLabel={isParent ? "Enter Parent Space" : "Se'kret Bip — enter your safe space"}
+            accessibilityHint="Opens the app"
           />
-        ))}
-      </View> : null}
+
+          {/* Transparent hit-targets aligned with the shortcut row baked into the image */}
+          {!isParent ? <View style={[styles.shortcutRow, {
+            top:    height * SC_TOP,
+            height: height * (SC_BOTTOM - SC_TOP),
+          }]}>
+            {SHORTCUTS.map(({ label, target }) => (
+              <TouchableOpacity
+                key={target}
+                style={styles.shortcutHit}
+                onPress={() => setScreen(target)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              />
+            ))}
+          </View> : null}
+        </>
+      ) : null}
     </Animated.View>
   );
 }

@@ -53,6 +53,8 @@ import { useSyncStatus } from '../hooks/useSyncStatus';
 import { useSleepGuard } from '../hooks/useSleepGuard';
 import { SleepGate } from '../components/SleepGate';
 import { AgeGate, type AgeGateStatus } from '../components/AgeGate';
+import { AccountGate } from '../components/AccountGate';
+import { profileIdentity, type PrivateAccountProfile } from '../utils/account';
 import {
   ensureAnonymousSession, pullAll,
   syncMood, syncJournal, syncCirclePost, syncParentCirclePost,
@@ -147,6 +149,9 @@ function AppContent() {
   const [selectedSekret, setSelectedSekret] = useState('soft');
   const [sekretMode, setSekretMode]         = useState('soft');
   const [userSide, setUserSide]             = useState<'teen' | 'parent'>('teen');
+  const [ageGateStatus, setAgeGateStatus]   = useState<AgeGateStatus | 'unknown'>('unknown');
+  const [accountProfile, setAccountProfile] = useState<PrivateAccountProfile | null>(null);
+  const [accountReady, setAccountReady]     = useState(false);
   const [parentRoomStyle, setParentRoomStyle] = useState<ParentRoomStyle>('mom');
   const [parentMood,      setParentMood]      = useState('');
   const [parentMoodDate,  setParentMoodDate]  = useState('');
@@ -216,6 +221,8 @@ function AppContent() {
     isLateNight: new Date().getHours() >= 22 || new Date().getHours() < 5,
   }), [selectedSekret, mood, journalEntries, moodHistory, voiceNotes, comfortSessions, circlePosts, streakDays, lastOpenDate, screen]);
   const companion = useSekretCompanion(companionInput);
+  const privateIdentity = profileIdentity(accountProfile, 'private_self');
+  const publicIdentity = profileIdentity(accountProfile, 'public_circle');
   const { syncStatus, withSyncWrap } = useSyncStatus();
   const { sleepActive, sleepWindow, setSleepWindow } = useSleepGuard();
 
@@ -292,27 +299,31 @@ function AppContent() {
     return () => clearTimeout(timer);
   }, [userSide]);
 
-  // ── Supabase: sign in anonymously, then pull cloud state and merge it in.
+  // ── Supabase: after age-gate + account/profile resolution, pull cloud state and merge it in.
   //
   // Safety guarantees:
   //   1. AsyncStorage loads first (effect above flips isLoading → false).
   //      This effect is gated on !isLoading, so local state is always
   //      populated before any cloud data arrives.
-  //   2. If Supabase is not configured, the effect returns immediately —
+  //   2. If age gate + account/profile setup are not resolved yet, the effect
+  //      returns without creating or merging app data.
+  //   3. If Supabase is not configured, the effect returns immediately —
   //      no network call, no crash.
-  //   3. If ensureAnonymousSession() fails (no network, wrong env vars),
+  //   4. If ensureAnonymousSession() fails (no network, wrong env vars),
   //      uid is null and the effect returns — local state is untouched.
-  //   4. If pullAll() returns null (network error, Supabase down), the
+  //   5. If pullAll() returns null (network error, Supabase down), the
   //      effect returns — local state is untouched.
-  //   5. mergeById: cloud rows win on id collision; local-only rows
+  //   6. mergeById: cloud rows win on id collision; local-only rows
   //      (not yet synced) are appended — nothing is lost.
-  //   6. roomMemory: object-spread merge so only present cloud fields
+  //   7. roomMemory: object-spread merge so only present cloud fields
   //      overwrite local fields; visitCount is NOT reset.
-  //   7. cancelled flag prevents stale state updates if the component
+  //   8. cancelled flag prevents stale state updates if the component
   //      unmounts before the async chain resolves.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     if (isLoading) return;
+    if (ageGateStatus !== 'teen' && ageGateStatus !== 'guardian') return;
+    if (!accountReady) return;
     let cancelled = false;
 
     (async () => {
@@ -407,7 +418,7 @@ function AppContent() {
     })();
 
     return () => { cancelled = true; };
-  }, [isLoading]);
+  }, [isLoading, ageGateStatus, accountReady]);
 
   // ── AsyncStorage: save on change ──────────────────────────────────────────
   // saveState() takes a single object — all key/value pairs to persist.
@@ -590,6 +601,7 @@ function AppContent() {
       mediaKind: extra?.mediaKind,
       circleTag: extra?.circleTag,
       postMood:  extra?.postMood,
+      anonymousName: publicIdentity.label,
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0, sameHere: 0 },
     };
     setCirclePosts(p => [post, ...p]);
@@ -692,6 +704,7 @@ function AppContent() {
         companion={companion}
         sekretMode={selectedSekret}
         BottomNav={nav}
+        firstName={privateIdentity.label}
       />
     );
   }
@@ -1037,10 +1050,22 @@ function AppContent() {
   };
 
   return (
-    <AgeGate onResolved={(next: AgeGateStatus) => { if (next === 'guardian') setUserSide('parent'); }}>
-      <SleepGate sleepActive={sleepActive} allowComfort={allowComfort} onComfort={() => setScreen('comfort')}>
-        {renderRoute()}
-      </SleepGate>
+    <AgeGate onResolved={(next: AgeGateStatus) => {
+      setAgeGateStatus(next);
+      if (next === 'guardian') setUserSide('parent');
+    }}>
+      <AccountGate
+        ageGateStatus={ageGateStatus}
+        onReady={(profile) => {
+          setAccountProfile(profile);
+          setAccountReady(true);
+          setUserSide(profile.side === 'guardian' ? 'parent' : 'teen');
+        }}
+      >
+        <SleepGate sleepActive={sleepActive} allowComfort={allowComfort} onComfort={() => setScreen('comfort')}>
+          {renderRoute()}
+        </SleepGate>
+      </AccountGate>
     </AgeGate>
   );
 }
