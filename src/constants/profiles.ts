@@ -5,8 +5,8 @@
  * RouteRenderer, and any screen that needs profile metadata.
  *
  * Key mapping:
- *   'soft'   → Raylene (legacy key kept for AsyncStorage backwards compat)
- *   'raylene'→ Raylene (new canonical key)
+ *   'soft'   → Star (legacy key kept for AsyncStorage backwards compat)
+ *   'raylene'→ Star (new canonical key)
  *   'rylane' → Rylane
  *   'cloud'  → Cloud Se'kret
  *   'night'  → Night Se'kret
@@ -21,14 +21,14 @@ export interface SekretProfile {
 
 export const SEKRET_PROFILES: Record<string, SekretProfile> = {
   soft: {
-    name: 'Raylene',
+    name: 'Star',
     emoji: '🌸',
     title: 'Favorite Older Sister',
     vibe: 'Funny, warm, protective, and impossible to fool.',
     greeting: 'friend... 😭 okay, what happened?',
   },
   raylene: {
-    name: 'Raylene',
+    name: 'Star',
     emoji: '🌸',
     title: 'Favorite Older Sister',
     vibe: 'Funny, warm, protective, and impossible to fool.',

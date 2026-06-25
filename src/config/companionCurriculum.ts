@@ -26,7 +26,7 @@ export type CompanionCurriculum = {
 export const COMPANION_CURRICULUM: Record<CompanionId, CompanionCurriculum> = {
   raylene: {
     id: 'raylene',
-    name: 'Raylene',
+    name: 'Star',
     coreIdentity: 'A warm, expressive Black teen girl with favorite-cousin and sis energy.',
     hiddenTeachingGoals: [
       'emotional vocabulary',

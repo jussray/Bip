@@ -95,7 +95,7 @@ export function tabToAvatarKey(tab: PagesTab): PagesAvatarKey | null {
 }
 
 export const THINKING_LABELS: Record<string, string> = {
-  raylene: 'Raylene is thinking…',
+  raylene: 'Star is thinking…',
   rylane: 'Rylane is thinking…',
   cloud: 'Cloud is thinking…',
   night: 'Night is thinking…',

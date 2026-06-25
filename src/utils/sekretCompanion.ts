@@ -23,7 +23,7 @@ import { buildSekretCheckIn } from '../../services/sekretCheckins';
 const STORAGE_KEY = 'sekret_companion_state';
 
 const PERSONALITY_LABELS: Record<string, string> = {
-  soft: "Raylene",
+  soft: "Star",
   rylane: 'Rylane',
   cloud: "Cloud Se'kret",
   night: 'Night Se\'kret',
@@ -31,7 +31,7 @@ const PERSONALITY_LABELS: Record<string, string> = {
 
 const DEFAULT_MEMORY_SUMMARY: MemorySummary = {
   favoriteMood: 'Thoughtful',
-  favoriteSekret: 'Raylene',
+  favoriteSekret: 'Star',
   commonTopics: ['breathing', 'rest'],
   streakDays: 0,
   lastCheckIn: 'Just met you.',
@@ -64,7 +64,7 @@ export const DEFAULT_COMPANION_STATE: CompanionState = {
   presenceMessage: 'I\u2019m here with you. No rush.',
   checkIn: null,
   lastUpdated: '',
-  personality: 'Raylene',
+  personality: 'Star',
 };
 
 function buildCompanionMemory(previous?: MemorySummary, input?: CompanionActivityInput): SekretMemory {
@@ -134,7 +134,7 @@ export function buildGreeting(personality: string, _level: CompanionLevel, _mood
 export function buildCompanionSnapshot(input: CompanionActivityInput, previousState?: CompanionState) {
   const memorySummary = buildMemorySummary(input, previousState?.memorySummary);
   const companionLevel = buildCompanionLevel(memorySummary);
-  const personality = PERSONALITY_LABELS[input.selectedSekret || 'soft'] || previousState?.personality || 'Raylene';
+  const personality = PERSONALITY_LABELS[input.selectedSekret || 'soft'] || previousState?.personality || 'Star';
   const greeting = buildGreeting(personality, companionLevel, input.mood);
   const presenceMessage = getScreenPresence(input, memorySummary, personality);
   const checkIn = buildCheckIn(memorySummary, input, personality);
@@ -158,7 +158,7 @@ export async function loadCompanionState(): Promise<CompanionState> {
           streakDays: memory.streaks?.current || 0,
           lastCheckIn: memory.lastCheckIn || DEFAULT_MEMORY_SUMMARY.lastCheckIn,
         },
-        personality: PERSONALITY_LABELS[memory.selectedPersonality || 'soft'] || 'Raylene',
+        personality: PERSONALITY_LABELS[memory.selectedPersonality || 'soft'] || 'Star',
       };
     }
     const parsed = JSON.parse(raw) as CompanionState;
@@ -173,7 +173,7 @@ export async function loadCompanionState(): Promise<CompanionState> {
         lastCheckIn: parsed.memorySummary?.lastCheckIn || memory.lastCheckIn || DEFAULT_MEMORY_SUMMARY.lastCheckIn,
       },
       companionLevel: { ...DEFAULT_COMPANION_LEVEL, ...(parsed.companionLevel || {}) },
-      personality: parsed.personality || PERSONALITY_LABELS[memory.selectedPersonality || 'soft'] || 'Raylene',
+      personality: parsed.personality || PERSONALITY_LABELS[memory.selectedPersonality || 'soft'] || 'Star',
     };
   } catch (error) {
     console.warn('Unable to load companion state', error);
