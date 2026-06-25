@@ -38,6 +38,7 @@ type ParentCircleScreenProps = {
   setParentCirclePostText: (text: string) => void;
   saveParentCirclePost: (extra?: Partial<ParentCirclePost>) => void;
   reactToParentPost: (id: string | number, type: string) => void;
+  onSendQuietReply?: (postId: string | number, reply: string) => void;
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
 };
@@ -147,6 +148,7 @@ export function ParentCircleScreen({
   setParentCirclePostText,
   saveParentCirclePost,
   reactToParentPost,
+  onSendQuietReply,
   setScreen,
   BottomNav,
 }: ParentCircleScreenProps) {
@@ -446,7 +448,12 @@ export function ParentCircleScreen({
               />
               <TouchableOpacity
                 style={styles.sendBtn}
-                onPress={() => { setSelectedQuietReply(''); setActiveReplyPostId(null); }}
+                onPress={() => {
+                  const reply = selectedQuietReply.trim();
+                  if (reply && activeReplyPostId) onSendQuietReply?.(activeReplyPostId, reply);
+                  setSelectedQuietReply('');
+                  setActiveReplyPostId(null);
+                }}
               >
                 <Text style={styles.sendBtnText}>send quietly</Text>
               </TouchableOpacity>
