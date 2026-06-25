@@ -42,6 +42,8 @@ interface ReplyRequestBody {
   userName?: unknown;
   displayName?: unknown;
   profileName?: unknown;
+  conversationPhase?: unknown;
+  phaseInstruction?: unknown;
 }
 
 interface VoiceRequestBody {
@@ -1458,6 +1460,7 @@ function buildBrainPrompt(
   history: ConversationTurn[],
   userName: string,
   intent: ConversationIntent,
+  phaseInstruction?: string,
 ): string {
   const recentReplies = history
     .filter((turn) => turn.role === 'assistant')
@@ -1495,6 +1498,11 @@ function buildBrainPrompt(
   const firstTurnNote = isFirstTurn
     ? 'This is the FIRST turn of the conversation. Do not reference previous topics. Do not re-introduce yourself. Just open naturally.'
     : 'This is a continuing conversation. Do not restart. Carry the thread forward.';
+
+  const phaseNote =
+    typeof phaseInstruction === 'string' && phaseInstruction.trim()
+      ? `APP CONVERSATION PHASE INSTRUCTION:\n${phaseInstruction.trim()}`
+      : '';
 
   const greetingVariantsNote = intent === 'greeting' && isFirstTurn
     ? `GREETING VARIANTS for ${characterId} — pick ONE that fits, adapt it naturally, never use exactly the same one twice:\n${GREETING_VARIANTS[characterId].map((v) => `- ${applyUserName(v, userName)}`).join('\n')}`
@@ -1538,6 +1546,7 @@ function buildBrainPrompt(
     nameNote,
     intentNote,
     firstTurnNote,
+    phaseNote,
     sekretIdentityNote,
   ];
 
@@ -1602,7 +1611,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
         max_tokens: 300,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: buildBrainPrompt(characterId, surface, typeof body.mood === 'string' ? body.mood : undefined, body.memory, parentSharingEnabled, history, userName, intent) },
+          { role: 'system', content: buildBrainPrompt(characterId, surface, typeof body.mood === 'string' ? body.mood : undefined, body.memory, parentSharingEnabled, history, userName, intent, typeof body.phaseInstruction === 'string' ? body.phaseInstruction : undefined) },
           ...history,
           { role: 'user', content: userText.slice(0, 4000) },
         ],
