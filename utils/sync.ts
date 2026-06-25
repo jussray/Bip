@@ -115,6 +115,10 @@ export function syncCirclePost(post: CirclePost): void {
     circle_tag: post.circleTag ?? null,
     post_mood:  post.postMood ?? null,
     media_kind: post.mediaKind ?? null,
+    anonymous_name: post.anonymousName ?? null,
+    avatar_key: post.avatarKey ?? null,
+    visibility: post.visibility ?? 'public_circle',
+    identity_context: post.identityContext ?? 'public_circle',
   });
 }
 
@@ -161,6 +165,8 @@ export function syncCrewMember(m: CrewMember): void {
     commitment:  m.commitment,
     cadence:     m.cadence,
     invite_code: m.inviteCode,
+    bip_id:      m.bipId ?? null,
+    connection_status: m.connectionStatus ?? 'pending',
     added_at:    new Date(m.addedAt).toISOString(),
   });
 }
@@ -262,11 +268,17 @@ export async function pullAll(): Promise<{
         ...r,
         sekretReply: r.sekret_reply ?? undefined,
       })) as JournalEntry[],
-      circlePosts:     circle  as CirclePost[],
+      circlePosts:     (circle as any[]).map(r => ({
+        id: r.id, text: r.text, date: r.date, time: r.time,
+        reactions: r.reactions, circleTag: r.circle_tag ?? undefined, postMood: r.post_mood ?? undefined,
+        mediaKind: r.media_kind ?? undefined, anonymousName: r.anonymous_name ?? undefined,
+        avatarKey: r.avatar_key ?? undefined, visibility: r.visibility ?? 'public_circle',
+        identityContext: r.identity_context ?? 'public_circle',
+      })) as CirclePost[],
       voiceNotes:      voice   as VoiceNote[],
       comfortSessions: comfort as ComfortSession[],
       crewMembers:     (crew as any[]).map(r => ({
-        id: r.id, name: r.name, emoji: r.emoji, commitment: r.commitment,
+        id: r.id, name: r.name, bipId: r.bip_id ?? undefined, connectionStatus: r.connection_status ?? 'pending', emoji: r.emoji, commitment: r.commitment,
         cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
       })),
       crewCheckIns:    (check as any[]).map(r => ({

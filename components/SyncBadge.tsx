@@ -91,7 +91,8 @@ export function SyncBadge({ status, color }: Props) {
         },
       ]}
       accessibilityLabel={LABELS[status]}
-      accessibilityRole="status"
+      accessibilityRole="text"
+      accessibilityLiveRegion="polite"
     >
       <Text style={[styles.label, { color: textColor }]}>{LABELS[status]}</Text>
     </Animated.View>

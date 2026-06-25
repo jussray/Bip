@@ -8,7 +8,7 @@ import {
   View, Image, StyleSheet, Platform, Dimensions, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearPrivateLocalState } from '../utils/storage';
 import { IMAGES } from '../constants/theme';
 import type { SleepWindow } from '../hooks/useSleepGuard';
 
@@ -98,6 +98,7 @@ interface SettingsScreenProps {
   mood?:              string;
   sleepWindow?:       SleepWindow | null;
   setSleepWindow?:    (w: SleepWindow | null) => void;
+  onSignOut?:         () => Promise<void> | void;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -109,13 +110,13 @@ export function SettingsScreen({
   userSide, setUserSide,
   parentRoomStyle, setParentRoomStyle,
   setScreen, BottomNav,
-  sleepWindow, setSleepWindow,
+  sleepWindow, setSleepWindow, onSignOut,
 }: SettingsScreenProps) {
 
   const handleClearLocalData = () => {
     Alert.alert(
-      'Clear everything saved on this device?',
-      "This wipes your journal, moods, voice bips, and Circle drafts that live only on this phone. If something was synced, it stays safe in your account — this just clears what's local.",
+      'Clear private data saved on this device?',
+      "This wipes account-scoped journals, moods, voice bips, Circle drafts/posts, crew, streaks, room memory, and AI memory on this phone. Safe app-level settings like theme stay.",
       [
         { text: 'Never mind', style: 'cancel' },
         {
@@ -123,10 +124,33 @@ export function SettingsScreen({
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.clear();
+              await clearPrivateLocalState();
               Alert.alert('Done', "This device's local data is cleared. 💜");
             } catch {
               Alert.alert("Couldn't clear it", 'Something blocked the clear — try again in a bit.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign out and clear this device?',
+      'This signs out of your private account and clears account-scoped journals, voice notes, Circle posts, crew, rewards, room memory, and AI companion memory from this device.',
+      [
+        { text: 'Stay signed in', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await onSignOut?.();
+              Alert.alert('Signed out', 'Private data from this account was cleared from this device.');
+            } catch {
+              Alert.alert("Couldn't sign out", 'Something blocked sign-out — try again in a bit.');
             }
           },
         },
@@ -397,6 +421,13 @@ export function SettingsScreen({
           <Text style={styles.privacyText}>
             ☁️ <Text style={styles.privacyStrong}>Syncs when possible</Text> — if you're signed in and online, your stuff backs up safely. If not, it just stays saved on this device.
           </Text>
+
+          <TouchableOpacity
+            onPress={handleSignOut}
+            style={[styles.sideBtn, { borderColor: 'rgba(248,113,113,0.55)', backgroundColor: 'rgba(248,113,113,0.16)', marginTop: 4 }]}
+          >
+            <Text style={[styles.sideBtnLabel, { color: '#fca5a5' }]}>🚪 Sign out + clear private data</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleClearLocalData}
             style={[styles.sideBtn, { borderColor: 'rgba(248,113,113,0.45)', backgroundColor: 'rgba(248,113,113,0.12)', marginTop: 4 }]}

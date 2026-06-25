@@ -461,6 +461,7 @@ interface RoomScreenProps {
   BottomNav: React.ReactNode;
   companion?: CompanionState;
   sekretMode?: string;
+  firstName?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -476,6 +477,7 @@ export function RoomScreen({
   BottomNav,
   companion,
   sekretMode,
+  firstName,
 }: RoomScreenProps) {
 
   // ─── Derived ────────────────────────────────────────────────────────────
@@ -926,6 +928,7 @@ export function RoomScreen({
              character === 'cloud'   ? "☁️ Cloud Se’kret" :
                                        "🌙 Night Se’kret"}
           </Text>
+          {firstName ? <Text style={styles.privateGreeting}>Hey {firstName}, this room is yours.</Text> : null}
           <Text style={styles.roomCopy}>{getRoomCopy(character, timeOfDay)}</Text>
           {!!rememberedLine && (
             <View style={styles.memoryTag}>
@@ -1098,6 +1101,7 @@ const styles = StyleSheet.create({
   memoryTag:             { borderLeftWidth: 2, borderLeftColor: '#d8b4fe', paddingLeft: 9, marginTop: 8, marginBottom: 9 },
   memoryTagLabel:        { color: '#bca7d5', fontSize: 8, fontWeight: '900', letterSpacing: 1.5, marginBottom: 3 },
   memoryTagText:         { color: '#f4eaff', fontSize: 12, lineHeight: 17, fontWeight: '600' },
+  privateGreeting: { color: '#f5d0fe', fontSize: 13, fontWeight: '800', marginTop: 4 },
   roomCopy:              { color: '#f5f0ff', fontSize: 12, fontWeight: '700', opacity: 0.9, marginBottom: 6 },
   greetingText:          { color: '#f5f0ff', fontSize: 15, fontWeight: '600', lineHeight: 22, fontStyle: 'italic', marginBottom: 6 },
   greetingTap:           { fontSize: 10, fontStyle: 'italic' },
