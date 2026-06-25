@@ -3,6 +3,7 @@
  * Sends a message to the Cloudflare Worker with companion and Oracle context.
  */
 import type { PersonalityId } from '@/types';
+import { PERSONALITY_CONFIG } from './personalities';
 import {
   learnTeenRelationshipStyle,
   loadTeenRelationshipProfile,
@@ -59,7 +60,8 @@ function localFallback(
   relationship: TeenRelationshipProfile,
   historyLength = 0,
 ): string {
-  if (personalityId !== 'parentCoach' && isArrivalMessage(text, historyLength)) {
+  // Arrival: pure greeting with zero pressure, no question
+  if (isArrivalMessage(text, historyLength)) {
     return getArrivalReply(personalityId);
   }
 
@@ -74,7 +76,7 @@ function localFallback(
   if (isShortContinuation) {
     if (personalityId === 'rylane') return "Aight, I'm here. Talk.";
     if (personalityId === 'cloud') return "Hey. No pressure — whatever you want to say, or nothing at all.";
-    if (personalityId === 'night') return "Still here. No rush.";
+    if (personalityId === 'night') return "Hey. You trying to talk, plan, or just sit in it?";
     return "Hey! Random or did something actually happen?";
   }
 
@@ -140,15 +142,14 @@ export async function sendMessage(
   const { mood, history = [], userName, displayName, profileName, surface, parentSharingEnabled } = options;
   const historyLength = history.length;
 
+  const config = PERSONALITY_CONFIG[personalityId];
   const currentRelationship = await loadTeenRelationshipProfile();
   const learnedRelationship = learnTeenRelationshipStyle(text, currentRelationship);
   await saveTeenRelationshipProfile(learnedRelationship);
 
-  // Pure greeting on first touch: return immediately with no Worker latency.
-  if (personalityId !== 'parentCoach' && isArrivalMessage(text, historyLength)) {
-    return getArrivalReply(personalityId);
-  }
-
+  // ── Instant arrival reply ─────────────────────────────────────────────
+  // Pure greeting on first message — skip the network call entirely.
+  // The character just shows up. The conversation starts with the next message.
   if (!BASE_URL && personalityId !== 'parentCoach') {
     return localFallback(personalityId, text, learnedRelationship, historyLength);
   }
