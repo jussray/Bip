@@ -122,3 +122,18 @@ export type OracleSessionLog = {
   completed_at: string;          // ISO timestamp
   created_at: string;
 };
+
+// ─── User Room ────────────────────────────────────────────────────────────────
+
+export type UserRoom = {
+  user_id:       string;
+  base_room_id:  string;
+  lighting_mode: string;
+  companion_id:  string;
+  room_name:     string;
+  placed_items:  unknown[];   // JSON array of PlacedItem
+  vibe_overlay:  string;
+  room_quote:    string;
+  glow_color:    string;
+  updated_at:    string;
+};

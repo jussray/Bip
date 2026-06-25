@@ -31,6 +31,7 @@ import STICKER_IMAGES from '../constants/stickerImages';
 import { FURNISH_CATALOG, type FurnishCategory } from '../constants/furnishingCatalog';
 import { BareRoomRenderer } from '../components/rooms/BareRoomRenderer';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
+import { loadUserRoom as loadUserRoomFromSupabase, saveUserRoom as saveUserRoomToSupabase } from '../services/userRoom';
 
 const { width, height } = Dimensions.get('window');
 
@@ -680,15 +681,26 @@ export function UserRoomScreen({
   });
   const [vibeLabOpen, setVibeLabOpen] = useState(false);
 
-  // Load persisted config on mount — migrates v1 saves to v2, clearing old sticker placements
+  // Load persisted config on mount.
+  // Priority: Supabase (cloud) → AsyncStorage v2 (local cache) → AsyncStorage v1 (migrate)
   useEffect(() => {
     (async () => {
+      // 1. Try Supabase first
+      const cloud = await loadUserRoomFromSupabase();
+      if (cloud) {
+        setUserRoom(prev => ({ ...prev, ...cloud }));
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_USER_ROOM, ...cloud })).catch(() => {});
+        return;
+      }
+
+      // 2. Local cache (v2)
       const raw2 = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw2) {
         try { setUserRoom(prev => ({ ...prev, ...(JSON.parse(raw2) as Partial<UserRoomConfig>) })); } catch {}
         return;
       }
-      // v1 → v2 migration: carry room/lighting/companion settings, drop old sticker placements
+
+      // 3. v1 → v2 migration: carry room/lighting/companion, drop old sticker placements
       const raw1 = await AsyncStorage.getItem(STORAGE_KEY_V1);
       if (raw1) {
         try {
@@ -698,7 +710,7 @@ export function UserRoomScreen({
             lightingMode: old.lightingMode,
             companionId:  old.companionId,
             roomName:     old.roomName ?? '',
-            placedItems:  [], // old sticker IDs don't match new catalog — start fresh
+            placedItems:  [],
           };
           setUserRoom(prev => ({ ...prev, ...migrated }));
           AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_USER_ROOM, ...migrated })).catch(() => {});
@@ -709,7 +721,9 @@ export function UserRoomScreen({
 
   const saveUserRoom = useCallback((cfg: UserRoomConfig) => {
     setUserRoom(cfg);
+    // Persist locally (instant) and to cloud (primary source of truth)
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(cfg)).catch(() => {});
+    saveUserRoomToSupabase(cfg).catch(() => {});
     updateRoomMemory?.({ character: cfg.companionId });
   }, [updateRoomMemory]);
 
