@@ -1,5 +1,5 @@
 -- Se'kret Bip — Supabase schema (Phase 2)
--- Run once in the Supabase SQL editor (or via supabase db push).
+-- Safe to rerun in the Supabase SQL editor (or via supabase db push).
 -- All tables use Row Level Security scoped to auth.uid().
 
 -- ── Enable UUID extension ───────────────────────────────────────────────────
@@ -15,6 +15,7 @@ create table if not exists public.mood_history (
   created_at  timestamptz   not null default now()
 );
 alter table public.mood_history enable row level security;
+drop policy if exists "mood_history_self" on public.mood_history;
 create policy "mood_history_self" on public.mood_history
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -30,6 +31,7 @@ create table if not exists public.journal_entries (
   created_at    timestamptz   not null default now()
 );
 alter table public.journal_entries enable row level security;
+drop policy if exists "journal_entries_self" on public.journal_entries;
 create policy "journal_entries_self" on public.journal_entries
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -47,6 +49,7 @@ create table if not exists public.circle_posts (
   created_at  timestamptz   not null default now()
 );
 alter table public.circle_posts enable row level security;
+drop policy if exists "circle_posts_self" on public.circle_posts;
 create policy "circle_posts_self" on public.circle_posts
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -65,6 +68,7 @@ create table if not exists public.parent_circle_posts (
   created_at  timestamptz   not null default now()
 );
 alter table public.parent_circle_posts enable row level security;
+drop policy if exists "parent_circle_posts_self" on public.parent_circle_posts;
 create policy "parent_circle_posts_self" on public.parent_circle_posts
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -79,6 +83,7 @@ create table if not exists public.voice_notes (
   created_at  timestamptz   not null default now()
 );
 alter table public.voice_notes enable row level security;
+drop policy if exists "voice_notes_self" on public.voice_notes;
 create policy "voice_notes_self" on public.voice_notes
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -93,6 +98,7 @@ create table if not exists public.comfort_sessions (
   created_at  timestamptz   not null default now()
 );
 alter table public.comfort_sessions enable row level security;
+drop policy if exists "comfort_sessions_self" on public.comfort_sessions;
 create policy "comfort_sessions_self" on public.comfort_sessions
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -109,6 +115,7 @@ create table if not exists public.crew_members (
   created_at   timestamptz   not null default now()
 );
 alter table public.crew_members enable row level security;
+drop policy if exists "crew_members_self" on public.crew_members;
 create policy "crew_members_self" on public.crew_members
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -124,6 +131,7 @@ create table if not exists public.crew_check_ins (
   created_at  timestamptz   not null default now()
 );
 alter table public.crew_check_ins enable row level security;
+drop policy if exists "crew_check_ins_self" on public.crew_check_ins;
 create policy "crew_check_ins_self" on public.crew_check_ins
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -135,6 +143,7 @@ create table if not exists public.bip_points (
   captured_at  timestamptz   not null default now()
 );
 alter table public.bip_points enable row level security;
+drop policy if exists "bip_points_self" on public.bip_points;
 create policy "bip_points_self" on public.bip_points
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
@@ -150,5 +159,6 @@ create table if not exists public.room_memory (
   updated_at   timestamptz   not null default now()
 );
 alter table public.room_memory enable row level security;
+drop policy if exists "room_memory_self" on public.room_memory;
 create policy "room_memory_self" on public.room_memory
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
