@@ -25,6 +25,7 @@ import {
   type ParentTopicId,
   type ParentSekretResponse,
 } from '../constants/parentSekret';
+import { requestGuardianLinkByCode } from '../utils/parentLinks';
 
 const { width: W } = Dimensions.get('window');
 const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL || '';
@@ -64,6 +65,8 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
   const [sending,    setSending]    = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [hasPending,      setHasPending]      = useState(false);
+  const [inviteCode,      setInviteCode]      = useState('');
+  const [linkRequested,   setLinkRequested]   = useState(false);
 
   // Check if teen has marked something to share — parent sees gentle nudge only.
   // Content stays on the teen side; this key is just a signal.
@@ -100,6 +103,22 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
     setTopic(id);
     setExpandedSection(null);
     animateResponse();
+  };
+
+
+  const handleRequestLink = async () => {
+    const code = inviteCode.trim().toUpperCase();
+    if (!code) {
+      Alert.alert('Invite code needed', 'Ask your teen for their Bip family invite code or QR. No name or email search.');
+      return;
+    }
+    try {
+      await requestGuardianLinkByCode(code);
+      setLinkRequested(true);
+      setInviteCode('');
+    } catch {
+      Alert.alert('Could not request link', 'Check the code with your teen and try again.');
+    }
   };
 
   const handleSend = async () => {
@@ -157,6 +176,25 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
               Street-smart. Emotionally intelligent. A little salty. A little funny.{'\n'}
               Never going to pick sides. Always going to keep it real.
             </Text>
+          </View>
+        </Animated.View>
+
+
+        <Animated.View style={cardSlide(fade2)}>
+          <View style={[styles.card, { marginBottom: 16 }]}>
+            <Text style={styles.cardTitle}>Connect with your teen</Text>
+            <Text style={[styles.bodyText, { color: P.soft }]}>Enter or scan your teen's Bip family invite. You cannot search by real name or email, and access stays pending until your teen approves you.</Text>
+            <TextInput
+              style={[styles.input, { borderColor: P.accent + '88', color: '#fff', minHeight: 54 }]}
+              placeholder="BIP-FAM-8Q4L2M"
+              placeholderTextColor={P.soft + '66'}
+              value={inviteCode}
+              onChangeText={setInviteCode}
+              autoCapitalize="characters"
+            />
+            <TouchableOpacity style={[styles.sendBtn, { backgroundColor: inviteCode.trim() ? P.accent : 'rgba(60,30,10,0.55)' }]} onPress={handleRequestLink} disabled={!inviteCode.trim()}>
+              <Text style={[styles.sendBtnText, { color: inviteCode.trim() ? P.deep : '#fff' }]}>{linkRequested ? 'request pending teen approval' : 'request teen approval'}</Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
 

@@ -1,7 +1,8 @@
 import { getSupabase, TABLES } from './supabase';
+import { clearPrivateLocalState } from './storage';
 
 export type AccountSide = 'teen' | 'guardian';
-export type IdentityContext = 'private_self' | 'trusted_friend' | 'guardian' | 'public_circle' | 'fallback';
+export type IdentityContext = 'private_self' | 'trusted_friend' | 'guardian' | 'public_circle' | 'friends_circle' | 'fallback';
 
 export interface PrivateAccountProfile {
   id: string;
@@ -11,6 +12,7 @@ export interface PrivateAccountProfile {
   age_gate_status: 'teen' | 'guardian';
   anonymous_handle: string;
   avatar_key: string;
+  bip_id: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -24,6 +26,15 @@ export interface AccountProfileInput {
   avatarKey: string;
 }
 
+export function generateBipId(handle: string, seed = ''): string {
+  const base = normalizeAnonymousHandle(handle, seed || 'bip').replace(/^@/, '');
+  const suffix = (seed || Math.random().toString(36).slice(2))
+    .replace(/[^a-z0-9]/gi, '')
+    .slice(0, 4)
+    .toUpperCase();
+  return base.length >= 4 ? `@${base}` : `BIP-${suffix || '8Q4L2M'}`;
+}
+
 export function normalizeAnonymousHandle(value: string, fallbackSeed = 'bip'): string {
   const cleaned = value
     .trim()
@@ -34,12 +45,20 @@ export function normalizeAnonymousHandle(value: string, fallbackSeed = 'bip'): s
   return cleaned || `secret_${fallbackSeed.slice(0, 8).toLowerCase()}`;
 }
 
-export function profileIdentity(profile: Pick<PrivateAccountProfile, 'first_name' | 'anonymous_handle' | 'avatar_key'> | null | undefined, context: IdentityContext) {
+export function profileIdentity(
+  profile: Pick<PrivateAccountProfile, 'first_name' | 'anonymous_handle' | 'avatar_key'> | null | undefined,
+  context: IdentityContext,
+  allowed = false,
+) {
   const anonymousHandle = profile?.anonymous_handle || 'secret_bip';
   const firstName = profile?.first_name || anonymousHandle;
   const avatarKey = profile?.avatar_key || 'soft';
 
-  if (context === 'private_self' || context === 'trusted_friend' || context === 'guardian') {
+  if (context === 'private_self') {
+    return { label: firstName, avatarKey, isRealIdentity: true };
+  }
+
+  if ((context === 'trusted_friend' || context === 'guardian' || context === 'friends_circle') && allowed) {
     return { label: firstName, avatarKey, isRealIdentity: true };
   }
 
@@ -108,6 +127,7 @@ export async function upsertPrivateProfile(id: string, profile: AccountProfileIn
     age_gate_status: profile.ageGateStatus,
     anonymous_handle: normalizeAnonymousHandle(profile.anonymousHandle, id),
     avatar_key: profile.avatarKey,
+    bip_id: generateBipId(profile.anonymousHandle, id),
     updated_at: now,
   };
 
@@ -120,3 +140,15 @@ export async function upsertPrivateProfile(id: string, profile: AccountProfileIn
   if (error) throw error;
   return data as PrivateAccountProfile;
 }
+
+export async function signOutAndClearLocalState(): Promise<void> {
+  const sb = getSupabase();
+  await clearPrivateLocalState();
+  if (sb) {
+    const { error } = await sb.auth.signOut();
+    if (error) throw error;
+  }
+  await clearPrivateLocalState();
+}
+
+export const signOutAccount = signOutAndClearLocalState;

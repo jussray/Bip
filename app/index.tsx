@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Analytics } from '../components/Analytics';
 
@@ -54,7 +54,7 @@ import { useSleepGuard } from '../hooks/useSleepGuard';
 import { SleepGate } from '../components/SleepGate';
 import { AgeGate, type AgeGateStatus } from '../components/AgeGate';
 import { AccountGate } from '../components/AccountGate';
-import { profileIdentity, type PrivateAccountProfile } from '../utils/account';
+import { profileIdentity, signOutAndClearLocalState, type PrivateAccountProfile } from '../utils/account';
 import {
   ensureAnonymousSession, pullAll,
   syncMood, syncJournal, syncCirclePost, syncParentCirclePost,
@@ -225,6 +225,42 @@ function AppContent() {
   const publicIdentity = profileIdentity(accountProfile, 'public_circle');
   const { syncStatus, withSyncWrap } = useSyncStatus();
   const { sleepActive, sleepWindow, setSleepWindow } = useSleepGuard();
+
+  const resetPrivateInMemoryState = useCallback(() => {
+    setAccountProfile(null);
+    setAccountReady(false);
+    setJournalText('');
+    setJournalEntries([]);
+    setParentPagesDraft('');
+    setParentPagesEntries([]);
+    setOracleJournalEntries([]);
+    setOracleProfile(createOracleProfile('teen'));
+    setParentOracleProfile(createOracleProfile('parent'));
+    setOracleSessions([]);
+    setParentOracleSessions([]);
+    setCirclePosts([]);
+    setCirclePostText('');
+    setParentCirclePosts([]);
+    setParentCirclePostText('');
+    setVoiceNotes([]);
+    setParentVoiceNotes([]);
+    setComfortSessions([]);
+    setCrewMembers([]);
+    setCrewCheckIns([]);
+    setStreakDays(0);
+    setLastOpenDate('');
+    setStreakJustReset(false);
+    setRoomMemory(DEFAULT_ROOM_MEMORY);
+    setParentMood('');
+    setParentMoodDate('');
+    setMood('Happy');
+    setScreen('splash');
+  }, []);
+
+  const handleSignOut = useCallback(async () => {
+    resetPrivateInMemoryState();
+    await signOutAndClearLocalState();
+  }, [resetPrivateInMemoryState]);
 
   // ── AsyncStorage: load on mount ───────────────────────────────────────────
   // loadState() returns the full state object — no args needed.
@@ -602,6 +638,9 @@ function AppContent() {
       circleTag: extra?.circleTag,
       postMood:  extra?.postMood,
       anonymousName: publicIdentity.label,
+      avatarKey: publicIdentity.avatarKey,
+      visibility: extra?.visibility ?? 'public_circle',
+      identityContext: 'public_circle',
       reactions: { felt: 0, comfort: 0, proud: 0, stay: 0, sameHere: 0 },
     };
     setCirclePosts(p => [post, ...p]);
@@ -983,6 +1022,7 @@ function AppContent() {
       BottomNav={nav}
       syncStatus={syncStatus}
       withSyncWrap={withSyncWrap}
+      ownBipId={accountProfile?.bip_id}
     />
   );
 
@@ -1043,6 +1083,7 @@ function AppContent() {
       mood={mood}
       sleepWindow={sleepWindow}
       setSleepWindow={setSleepWindow}
+      onSignOut={handleSignOut}
     />
   );
 
@@ -1061,6 +1102,7 @@ function AppContent() {
           setAccountReady(true);
           setUserSide(profile.side === 'guardian' ? 'parent' : 'teen');
         }}
+        onSignedOut={resetPrivateInMemoryState}
       >
         <SleepGate sleepActive={sleepActive} allowComfort={allowComfort} onComfort={() => setScreen('comfort')}>
           {renderRoute()}

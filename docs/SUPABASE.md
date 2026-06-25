@@ -30,8 +30,8 @@ age gate + account/profile setup resolves.
 2. Optionally enable magic links for passwordless sign-in.
 3. After the age gate resolves to teen/guardian, the app routes to
    `components/AccountGate.tsx`. Users create/sign into an email account, then
-   upsert `public.accounts` with private real identity fields and public
-   anonymous identity fields.
+   upsert `public.accounts` with private real identity fields, public anonymous identity fields, and a permanent
+   `bip_id` for friend/QR discovery without real-name search.
 
 ## 4. Add env vars
 

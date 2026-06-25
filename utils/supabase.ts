@@ -66,6 +66,9 @@ export const TABLES = {
   crewMembers:      'crew_members',
   crewCheckIns:     'crew_check_ins',
   bipPoints:        'bip_points',
+  parentTeenInvites:'parent_teen_invites',
+  parentTeenLinks:  'parent_teen_links',
+  teenGuardianShares:'teen_guardian_shares',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

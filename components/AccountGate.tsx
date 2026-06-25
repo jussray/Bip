@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { isSupabaseConfigured } from '../utils/supabase';
+import { getSupabase, isSupabaseConfigured } from '../utils/supabase';
 import {
   getAuthenticatedProfile,
   getCurrentAccountUserId,
+  generateBipId,
   normalizeAnonymousHandle,
   sendMagicLink,
   signInWithEmailPassword,
@@ -12,17 +13,19 @@ import {
   type AccountSide,
   type PrivateAccountProfile,
 } from '../utils/account';
+import { clearPrivateLocalState } from '../utils/storage';
 import type { AgeGateStatus } from './AgeGate';
 
 interface AccountGateProps {
   ageGateStatus: AgeGateStatus | 'unknown';
   onReady: (profile: PrivateAccountProfile) => void;
+  onSignedOut?: () => void;
   children: React.ReactNode;
 }
 
 const AVATAR_OPTIONS = ['soft', 'rylane', 'cloud', 'night'] as const;
 
-export function AccountGate({ ageGateStatus, onReady, children }: AccountGateProps) {
+export function AccountGate({ ageGateStatus, onReady, onSignedOut, children }: AccountGateProps) {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'create' | 'signin'>('create');
   const [email, setEmail] = useState('');
@@ -39,6 +42,20 @@ export function AccountGate({ ageGateStatus, onReady, children }: AccountGatePro
   useEffect(() => {
     onReadyRef.current = onReady;
   }, [onReady]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const sb = getSupabase();
+    const subscription = sb?.auth.onAuthStateChange(async (event) => {
+      if (event === 'SIGNED_OUT') {
+        await clearPrivateLocalState();
+        setProfile(null);
+        setNeedsProfile(false);
+        onSignedOut?.();
+      }
+    }).data.subscription;
+    return () => subscription?.unsubscribe();
+  }, [onSignedOut]);
 
   const side: AccountSide | null = useMemo(() => {
     if (ageGateStatus === 'teen') return 'teen';
@@ -166,12 +183,13 @@ export function AccountGate({ ageGateStatus, onReady, children }: AccountGatePro
   }
 
   const normalizedHandle = normalizeAnonymousHandle(anonymousHandle || firstName || 'bip');
+  const previewBipId = generateBipId(normalizedHandle, email || 'bip');
 
   return (
     <View style={styles.root}>
       <Text style={styles.emoji}>🔐</Text>
       <Text style={styles.title}>{mode === 'create' ? 'Create your private account' : 'Sign in to your private account'}</Text>
-      <Text style={styles.body}>Your real name/email stay private. Public spaces use your anonymous handle.</Text>
+      <Text style={styles.body}>Your real name/email stay private. Friends find you by Bip ID or QR — public spaces use your anonymous handle.</Text>
 
       <View style={styles.switchRow}>
         <TouchableOpacity style={[styles.switchBtn, mode === 'create' && styles.switchActive]} onPress={() => setMode('create')}>
@@ -189,7 +207,7 @@ export function AccountGate({ ageGateStatus, onReady, children }: AccountGatePro
         <>
           <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder="First name — private" placeholderTextColor="#8b7ca8" />
           <TextInput style={styles.input} value={anonymousHandle} onChangeText={setAnonymousHandle} placeholder="Anonymous handle" placeholderTextColor="#8b7ca8" autoCapitalize="none" />
-          <Text style={styles.preview}>Public preview: @{normalizedHandle}</Text>
+          <Text style={styles.preview}>Public preview: @{normalizedHandle} · Bip ID {previewBipId}</Text>
           <View style={styles.avatarRow}>
             {AVATAR_OPTIONS.map(option => (
               <TouchableOpacity key={option} style={[styles.avatarBtn, avatarKey === option && styles.avatarActive]} onPress={() => setAvatarKey(option)}>

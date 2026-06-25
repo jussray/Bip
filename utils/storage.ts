@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   theme: 'theme',
   mood: 'mood',
   userSide: 'userSide',
@@ -32,13 +32,18 @@ const STORAGE_KEYS = {
   parentRoomStyle: 'parentRoomStyle',
   parentMood: 'parentMood',
   parentMoodDate: 'parentMoodDate',
+  accountProfile: 'accountProfile',
+  notificationPreferences: 'notificationPreferences',
+  parentTeenLinks: 'parentTeenLinks',
+  teenGuardianShares: 'teenGuardianShares',
+  ageGateStatus: 'age_gate_status',
 };
 
-const JSON_KEYS = new Set([
+export const JSON_KEYS = new Set([
   'entries', 'parentPagesEntries', 'oracleJournalEntries',
   'oracleProfile', 'parentOracleProfile', 'oracleSessions', 'parentOracleSessions',
   'moodHistory', 'circlePosts', 'parentCirclePosts', 'voiceNotes', 'parentVoiceNotes',
-  'comfortSessions', 'crewMembers', 'crewCheckIns', 'roomMemory', 'periodDays',
+  'comfortSessions', 'crewMembers', 'crewCheckIns', 'parentTeenLinks', 'teenGuardianShares', 'roomMemory', 'periodDays',
 ]);
 
 export const loadState = async () => {
@@ -73,5 +78,44 @@ export const saveState = async (stateUpdates: Record<string, any>) => {
     await AsyncStorage.multiSet(pairs);
   } catch (error) {
     console.error('Error saving state:', error);
+  }
+};
+
+export const PRIVATE_ACCOUNT_KEYS = [
+  STORAGE_KEYS.journalText,
+  STORAGE_KEYS.entries,
+  STORAGE_KEYS.parentPagesEntries,
+  STORAGE_KEYS.parentPagesDraft,
+  STORAGE_KEYS.oracleProfile,
+  STORAGE_KEYS.oracleJournalEntries,
+  STORAGE_KEYS.parentOracleProfile,
+  STORAGE_KEYS.oracleSessions,
+  STORAGE_KEYS.parentOracleSessions,
+  STORAGE_KEYS.moodHistory,
+  STORAGE_KEYS.circlePosts,
+  STORAGE_KEYS.parentCirclePosts,
+  STORAGE_KEYS.voiceNotes,
+  STORAGE_KEYS.parentVoiceNotes,
+  STORAGE_KEYS.comfortSessions,
+  STORAGE_KEYS.crewMembers,
+  STORAGE_KEYS.crewCheckIns,
+  STORAGE_KEYS.streakDays,
+  STORAGE_KEYS.lastOpenDate,
+  STORAGE_KEYS.roomMemory,
+  STORAGE_KEYS.periodDays,
+  STORAGE_KEYS.lastPeriodStart,
+  STORAGE_KEYS.parentMood,
+  STORAGE_KEYS.parentMoodDate,
+  STORAGE_KEYS.accountProfile,
+  STORAGE_KEYS.notificationPreferences,
+  STORAGE_KEYS.parentTeenLinks,
+  STORAGE_KEYS.teenGuardianShares,
+];
+
+export const clearPrivateLocalState = async () => {
+  try {
+    await AsyncStorage.multiRemove(PRIVATE_ACCOUNT_KEYS);
+  } catch (error) {
+    console.error('Error clearing private account state:', error);
   }
 };

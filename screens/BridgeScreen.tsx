@@ -20,6 +20,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
+import { createTeenGuardianInvite, generateTeenGuardianInviteCode } from '../utils/parentLinks';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -70,6 +71,7 @@ export function BridgeScreen({
   const [convMode, setConvMode]     = useState<ConvModeId | null>(null);
   const [message, setMessage]       = useState('');
   const [sent, setSent]             = useState(false);
+  const [guardianInviteCode, setGuardianInviteCode] = useState('');
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
   const isRylane = selectedSekret === 'rylane';
@@ -109,6 +111,16 @@ export function BridgeScreen({
     opacity: val,
     transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   });
+
+
+  const handleGenerateGuardianInvite = async () => {
+    try {
+      const code = await createTeenGuardianInvite();
+      setGuardianInviteCode(code || generateTeenGuardianInviteCode('local'));
+    } catch {
+      setGuardianInviteCode(generateTeenGuardianInviteCode('local'));
+    }
+  };
 
   const handleSend = async () => {
     if (!shareType || !message.trim()) {
@@ -196,6 +208,18 @@ export function BridgeScreen({
               {charLabel} helps you bridge it · you stay in control
             </Text>
           </Animated.View>
+        </Animated.View>
+
+
+        <Animated.View style={cardStyle(fade2)}>
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
+            <Text style={[styles.cardLabel, { color: glow }]}>Guardian link</Text>
+            <Text style={styles.guardianCopy}>Parents cannot search for you by real name or email. Generate a Bip family invite or QR, then approve or block the request before they see anything.</Text>
+            {guardianInviteCode ? <Text style={styles.inviteCode}>{guardianInviteCode}</Text> : null}
+            <TouchableOpacity style={[styles.ghostButton, { borderColor: glow + '88' }]} onPress={handleGenerateGuardianInvite}>
+              <Text style={[styles.ghostButtonText, { color: '#e9defc' }]}>{guardianInviteCode ? 'refresh invite code' : 'generate guardian invite'}</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
         <Animated.View style={cardStyle(fade2)}>
@@ -345,4 +369,6 @@ const styles = StyleSheet.create({
   sentEmoji:       { fontSize: 56, textAlign: 'center', marginBottom: 12 },
   sentTitle:       { fontSize: 22, fontWeight: 'bold', color: '#fff', textAlign: 'center', marginBottom: 8 },
   sentSub:         { fontSize: 14, color: '#e9defc', textAlign: 'center', lineHeight: 21 },
+  guardianCopy:    { color: '#e9defc', fontSize: 13, lineHeight: 20, marginBottom: 10 },
+  inviteCode:      { color: '#fff', fontWeight: '900', fontSize: 18, letterSpacing: 1.2, textAlign: 'center', marginBottom: 10 },
 });
