@@ -416,6 +416,32 @@ export function syncComfortSession(session: ComfortSession): void {
   });
 }
 
+export async function loadComfortSessions(): Promise<ComfortSession[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.comfortSessions)
+      .select('id, type, mood, date, time')
+      .eq('user_id', uid)
+      .order('id', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id:   r.id,
+      type: r.type,
+      mood: r.mood ?? undefined,
+      date: r.date,
+      time: r.time,
+    })) as ComfortSession[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadComfortSessions failed', e);
+    return [];
+  }
+}
+
 // ── Crew ─────────────────────────────────────────────────────────────
 export function syncCrewMember(m: CrewMember): void {
   void safeUpsert(TABLES.crewMembers, {
