@@ -161,6 +161,7 @@ export function syncCrewMember(m: CrewMember): void {
     commitment:  m.commitment,
     cadence:     m.cadence,
     invite_code: m.inviteCode,
+    bip_id:      m.bipId ?? null,
     added_at:    new Date(m.addedAt).toISOString(),
   });
 }
@@ -266,7 +267,7 @@ export async function pullAll(): Promise<{
       voiceNotes:      voice   as VoiceNote[],
       comfortSessions: comfort as ComfortSession[],
       crewMembers:     (crew as any[]).map(r => ({
-        id: r.id, name: r.name, emoji: r.emoji, commitment: r.commitment,
+        id: r.id, name: r.name, bipId: r.bip_id ?? undefined, connectionStatus: r.bip_id ? 'pending' : 'accepted', emoji: r.emoji, commitment: r.commitment,
         cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
       })),
       crewCheckIns:    (check as any[]).map(r => ({

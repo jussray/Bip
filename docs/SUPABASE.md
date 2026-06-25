@@ -1,12 +1,12 @@
 # Se'kret Bip — Supabase setup
 
-Phase 2 backend. Wires real cloud sync for mood, journal, voice, circle,
-comfort sessions, bip crew, and crew check-ins.
+Phase 2 backend. Wires email-authenticated private account profiles plus
+real cloud sync for mood, journal, voice, circle, comfort sessions, bip crew,
+and crew check-ins.
 
-The app **already works without Supabase** — every cloud call is a safe
-no-op when env vars are missing, and all state stays in AsyncStorage. Add
-Supabase to get cross-device sync, durable history, and (eventually) real
-crew invites.
+The account gate requires Supabase credentials before users can enter the app.
+Cloud writes still fail safe, but no private app data should be created before
+age gate + account/profile setup resolves.
 
 ## 1. Create the project
 
@@ -26,10 +26,12 @@ crew invites.
 
 ## 3. Enable anonymous auth
 
-1. Authentication → Providers → enable **Anonymous Sign-Ins**.
-2. The app calls `supabase.auth.signInAnonymously()` on boot
-   (`utils/sync.ts → ensureAnonymousSession`) so each user gets a stable
-   `auth.uid()` without giving up an email. They can upgrade later.
+1. Authentication → Providers → enable **Email** sign-ins.
+2. Optionally enable magic links for passwordless sign-in.
+3. After the age gate resolves to teen/guardian, the app routes to
+   `components/AccountGate.tsx`. Users create/sign into an email account, then
+   upsert `public.accounts` with private real identity fields, public anonymous identity fields, and a permanent
+   `bip_id` for friend/QR discovery without real-name search.
 
 ## 4. Add env vars
 
@@ -61,6 +63,7 @@ there. The most common issue is forgetting to enable anonymous sign-ins.
 
 | Local state         | Cloud table         | Helper                  |
 |---------------------|---------------------|-------------------------|
+| Account/profile     | `accounts`          | `AccountGate` / `utils/account.ts` |
 | `moodHistory`       | `mood_history`      | `syncMood`              |
 | `journalEntries`    | `journal_entries`   | `syncJournal`           |
 | `circlePosts`       | `circle_posts`      | `syncCirclePost`        |
@@ -131,3 +134,7 @@ tests), see [`docs/CODESPACES.md`](./CODESPACES.md). The short version:
 Without `.env.local` the app still runs — it just stays offline-only and
 `pullAll` short-circuits silently. That's intentional so contributors can
 demo the UI without a Supabase project.
+
+## Identity separation
+
+For identity display rules, see [`docs/IDENTITY_MODEL.md`](./IDENTITY_MODEL.md). Real `email` and `first_name` live only in private account/profile contexts; public/community UI uses `anonymous_handle` and `avatar_key`.

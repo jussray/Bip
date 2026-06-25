@@ -5,6 +5,30 @@
 -- ── Enable UUID extension ───────────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
 
+-- ── accounts ────────────────────────────────────────────────────────────────
+-- One private account/profile row per Supabase auth user. Real identity stays
+-- here for login, recovery, billing, and connected guardian/family contexts;
+-- public/community UI must use anonymous_handle + avatar_key instead.
+create table if not exists public.accounts (
+  id                uuid        primary key references auth.users(id) on delete cascade,
+  email             text        not null,
+  first_name        text        not null,
+  side              text        not null check (side in ('teen', 'guardian')),
+  age_gate_status   text        not null check (age_gate_status in ('teen', 'guardian')),
+  anonymous_handle  text        not null,
+  avatar_key        text        not null default 'soft',
+  bip_id            text        not null unique,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+alter table public.accounts enable row level security;
+create policy "accounts_self_select" on public.accounts
+  for select using (auth.uid() = id);
+create policy "accounts_self_insert" on public.accounts
+  for insert with check (auth.uid() = id);
+create policy "accounts_self_update" on public.accounts
+  for update using (auth.uid() = id) with check (auth.uid() = id);
+
 -- ── mood_history ────────────────────────────────────────────────────────────
 create table if not exists public.mood_history (
   id          bigint        primary key,
@@ -105,6 +129,7 @@ create table if not exists public.crew_members (
   commitment   text          not null,
   cadence      text          not null,
   invite_code  text          not null,
+  bip_id       text,
   added_at     timestamptz   not null,
   created_at   timestamptz   not null default now()
 );

@@ -53,6 +53,7 @@ export function getSupabase(): SupabaseClient | null {
 // Centralized so Phase 2 wiring touches one file when schema names change.
 // These match the planned Supabase schema — do not rename without migrating.
 export const TABLES = {
+  accounts:         'accounts',
   journalEntries:   'journal_entries',
   moodHistory:      'mood_history',
   circlePosts:      'circle_posts',
