@@ -436,6 +436,61 @@ export function syncCrewCheckIn(c: CrewCheckIn): void {
   });
 }
 
+export async function loadCrewMembers(): Promise<CrewMember[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.crewMembers)
+      .select('id, name, emoji, relation, commitment, cadence, invite_code, added_at')
+      .eq('user_id', uid)
+      .order('id', { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id:         r.id,
+      name:       r.name,
+      emoji:      r.emoji,
+      relation:   r.relation ?? '',
+      commitment: r.commitment,
+      cadence:    r.cadence,
+      inviteCode: r.invite_code,
+      addedAt:    r.added_at,
+    })) as CrewMember[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadCrewMembers failed', e);
+    return [];
+  }
+}
+
+export async function loadCrewCheckIns(): Promise<CrewCheckIn[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.crewCheckIns)
+      .select('id, member_id, note, mood, date, time')
+      .eq('user_id', uid)
+      .order('id', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id:       r.id,
+      memberId: r.member_id,
+      note:     r.note,
+      mood:     r.mood ?? undefined,
+      date:     r.date,
+      time:     r.time,
+    })) as CrewCheckIn[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadCrewCheckIns failed', e);
+    return [];
+  }
+}
+
 // ── Room memory ───────────────────────────────────────────────────────────────
 export async function syncRoomMemory(rm: {
   character: string; lastVisit: string; lastHotspot: string;

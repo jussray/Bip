@@ -394,8 +394,8 @@ export function BipCrewScreen({
 
             <Text style={styles.cardSub}>
               {isRylane
-                ? 'local only for now. when supabase lands, the code becomes a real invite.'
-                : 'local only for now. when supabase lands the code becomes a real invite \u{1F49C}'}
+                ? 'your crew syncs to your account. the invite code is theirs to join.'
+                : 'your crew syncs to your account. the invite code is theirs to join \u{1F49C}'}
             </Text>
           </Animated.View>
         )}
