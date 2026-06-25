@@ -18,23 +18,26 @@ export default function ParentLayout() {
           tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         }}
       >
+        {/* Keep both sides consistent: Room · Pages · Calm · Circle · More. */}
         <Tabs.Screen name="room" options={{ title: 'Room', tabBarIcon: () => <TabIcon emoji="🏡" /> }} />
         <Tabs.Screen name="pages" options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📝" /> }} />
+        <Tabs.Screen name="calm" options={{ title: 'Calm', tabBarIcon: () => <TabIcon emoji="🌙" /> }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🤝" /> }} />
+        <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
+
+        {/* Everything else stays off the bottom nav and is reached from More or in-flow navigation. */}
         <Tabs.Screen name="circle/[id]" options={{ href: null }} />
         <Tabs.Screen name="circle/weather" options={{ href: null }} />
         <Tabs.Screen name="bridge" options={{ href: null }} />
         <Tabs.Screen name="voicebip" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="profile" options={{ href: null }} />
-        <Tabs.Screen name="calm" options={{ href: null }} />
         <Tabs.Screen name="s2tell" options={{ href: null }} />
         <Tabs.Screen name="repair" options={{ href: null }} />
         <Tabs.Screen name="voicereflect" options={{ href: null }} />
         <Tabs.Screen name="period-calendar" options={{ href: null }} />
         <Tabs.Screen name="sekret" options={{ href: null }} />
         <Tabs.Screen name="growth" options={{ href: null }} />
-        <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
       </Tabs>
       <SideSafeBackButton side="parent" />
     </View>
