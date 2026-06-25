@@ -65,8 +65,10 @@ export const TABLES = {
   safetyAlerts:        'safety_alerts',
   crews:               'crews',
   friendships:         'friendships',
-  // ── Oracle tables (0003_oracle_parentlinks_period_safety.sql) ───────────
+  // ── Oracle tables (0003 + bridge_oracle_tables) ─────────────────────────
   oracleSessions:      'oracle_sessions',
+  oracleRecords:       'oracle_records',
+  bridgeSignals:       'bridge_signals',
   // ── Circle V1 social layer ───────────────────────────────────────────────
   circleComments:       'circle_comments',
   circleFriendRequests: 'circle_friend_requests',

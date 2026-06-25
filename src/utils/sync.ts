@@ -17,6 +17,7 @@ import type {
   JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
 } from '../types/index';
+import type { OracleProfile, OracleSessionSummary } from '../../services/oracleDiscovery';
 import type {
   CircleTab,
   PublicCirclePost,
@@ -789,5 +790,69 @@ export async function redeemParentLink(
   } catch (e) {
     if (__DEV__) console.warn('[sync] redeemParentLink failed', e);
     return 'error';
+  }
+}
+
+// ── Oracle Discovery ──────────────────────────────────────────────────────────
+
+export async function loadDiscoveryProfile(
+  mode: 'teen' | 'parent',
+): Promise<OracleProfile | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data, error } = await sb
+      .from(TABLES.oracleRecords)
+      .select('profile_snapshot')
+      .eq('user_id', uid)
+      .eq('mode', mode)
+      .maybeSingle();
+    if (error || !data?.profile_snapshot) return null;
+    return JSON.parse(data.profile_snapshot) as OracleProfile;
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadDiscoveryProfile failed', e);
+    return null;
+  }
+}
+
+export async function saveDiscoveryProfile(
+  mode: 'teen' | 'parent',
+  profile: OracleProfile,
+  session: OracleSessionSummary,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    const dimensionSummary: Record<string, string> = {};
+    for (const [dim, state] of Object.entries(profile.dimensions ?? {})) {
+      if (state) dimensionSummary[dim] = state;
+    }
+    await sb.from(TABLES.oracleRecords).upsert({
+      user_id:           uid,
+      mode,
+      session_count:     profile.sessionCount,
+      total_turns:       session.questionIds.length,
+      last_session:      session.completedAt,
+      dimension_summary: dimensionSummary,
+      profile_snapshot:  JSON.stringify(profile),
+      updated_at:        new Date().toISOString(),
+    }, { onConflict: 'user_id,mode' });
+
+    await sb.from(TABLES.oracleSessions).insert({
+      user_id:           uid,
+      mode,
+      session_index:     profile.sessionCount,
+      total_turns:       session.questionIds.length,
+      question_ids:      session.questionIds,
+      dimension_summary: dimensionSummary,
+      profile_snapshot:  JSON.stringify(profile),
+      completed_at:      session.completedAt,
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] saveDiscoveryProfile failed', e);
   }
 }

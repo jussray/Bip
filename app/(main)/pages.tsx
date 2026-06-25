@@ -15,12 +15,13 @@
  *   Tapping S2Tell in Pages opens Bridge in compose mode (?compose=true)
  *   so the two feel like one continuous gesture.
  */
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { PagesScreen } from '@screens/PagesScreen';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
+import { loadDiscoveryProfile, saveDiscoveryProfile } from '@/utils/sync';
 import type { OracleProfile, OracleSessionSummary } from '@/services/oracleDiscovery';
 import type { PersonalityId } from '@/types';
 
@@ -39,11 +40,21 @@ export default function PagesTab() {
 
   const t = THEME_PACKS[theme] ?? THEME_PACKS['neon'];
 
-  // Stub — Oracle session persistence wired in a later sprint.
-  function handleCompleteOracleSession(
-    _profile: OracleProfile,
-    _session: OracleSessionSummary,
-  ) {}
+  const [oracleProfile, setOracleProfile] = useState<OracleProfile | undefined>(undefined);
+
+  useEffect(() => {
+    void loadDiscoveryProfile('teen').then(p => {
+      if (p) setOracleProfile(p);
+    });
+  }, []);
+
+  const handleCompleteOracleSession = useCallback(
+    (profile: OracleProfile, session: OracleSessionSummary) => {
+      setOracleProfile(profile);
+      void saveDiscoveryProfile('teen', profile, session);
+    },
+    [],
+  );
 
   /**
    * Called by PagesWorkspace after the Worker reply arrives.
@@ -117,6 +128,7 @@ export default function PagesTab() {
         BottomNav={null}
         moodHistory={moodHistory}
         selectedSekret={selectedSekret}
+        oracleProfile={oracleProfile}
         onCompleteOracleSession={handleCompleteOracleSession}
         onSekretReply={handleSekretReply}
         onOpenCompanion={handleOpenCompanion}

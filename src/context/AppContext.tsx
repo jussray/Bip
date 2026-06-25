@@ -19,6 +19,7 @@ import React, {
 import { Animated } from 'react-native';
 import { useSekretState } from '@/hooks/useSekretState';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
+import { loadDiscoveryProfile, saveDiscoveryProfile } from '@/utils/sync';
 import { HOME_MESSAGES } from '@constants/theme';
 import type {
   JournalEntry,
@@ -206,9 +207,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  useEffect(() => {
+    void loadDiscoveryProfile('parent').then(p => {
+      if (p) s.setParentOracleProfile(p);
+    });
+  }, []);
+
   function completeParentOracleSession(profile: OracleProfile, session: OracleSessionSummary) {
     s.setParentOracleSessions((sessions: OracleSessionSummary[]) => [session, ...sessions].slice(0, 50));
     s.setParentOracleProfile(profile);
+    void saveDiscoveryProfile('parent', profile, session);
   }
 
   const value: AppContextValue = {

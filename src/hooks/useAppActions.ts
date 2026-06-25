@@ -4,6 +4,7 @@ import {
   syncParentCirclePost, syncComfortSession, syncRoomMemory,
   syncVoiceNote, syncCrewMember, deleteCrewMember, syncCrewCheckIn,
   syncOracleSession, syncPeriodDay, deletePeriodDay,
+  saveDiscoveryProfile,
 } from '../utils/sync';
 import type {
   JournalEntry, CirclePost, ParentCirclePost, MoodEntry,
@@ -190,9 +191,10 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     s.setOracleProfile(profile);
     s.setOracleSessions(prev => {
       const updated = [session, ...prev];
-      void withSyncWrap(async () =>
-        syncOracleSession('teen', profile as unknown as Record<string, unknown>, updated.length)
-      );
+      void withSyncWrap(async () => {
+        await syncOracleSession('teen', profile as unknown as Record<string, unknown>, updated.length);
+        await saveDiscoveryProfile('teen', profile, session);
+      });
       return updated;
     });
   };
@@ -201,9 +203,10 @@ export function useAppActions(s: S, withSyncWrap: SyncWrap) {
     s.setParentOracleProfile(profile);
     s.setParentOracleSessions(prev => {
       const updated = [session, ...prev];
-      void withSyncWrap(async () =>
-        syncOracleSession('parent', profile as unknown as Record<string, unknown>, updated.length)
-      );
+      void withSyncWrap(async () => {
+        await syncOracleSession('parent', profile as unknown as Record<string, unknown>, updated.length);
+        await saveDiscoveryProfile('parent', profile, session);
+      });
       return updated;
     });
   };
