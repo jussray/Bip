@@ -3,7 +3,6 @@
  * Sends a message to the Cloudflare Worker with companion and Oracle context.
  */
 import type { PersonalityId } from '@/types';
-import { PERSONALITY_CONFIG } from './personalities';
 import {
   learnTeenRelationshipStyle,
   loadTeenRelationshipProfile,
@@ -11,6 +10,15 @@ import {
   saveTeenRelationshipProfile,
   type TeenRelationshipProfile,
 } from '../../../services/oracleRelationship';
+import {
+  getArrivalReply,
+  getConversationPhase,
+  isArrivalMessage,
+  keepSekretReply,
+  getSekretFallback,
+  buildConversationPhaseInstruction,
+  type ConversationPhase,
+} from '../../../services/sekretVoice';
 
 export interface ChatMessage {
   id: string;
@@ -49,9 +57,13 @@ function localFallback(
   personalityId: PersonalityId,
   text: string,
   relationship: TeenRelationshipProfile,
+  historyLength = 0,
 ): string {
+  if (personalityId !== 'parentCoach' && isArrivalMessage(text, historyLength)) {
+    return getArrivalReply(personalityId);
+  }
+
   const lower = text.toLowerCase();
-  const isGreeting = /^(hey+|hi+|hello|wyd|wassup|sup|yo+)\s*[!?.]*$/i.test(lower);
   const isShortContinuation = /^(idk|nothing|lol|lmao|ok|okay|yeah|nah|sure|random|fine|k+)\s*[!?.]*$/i.test(lower);
   const sad = /\b(sad|cry|lonely|alone|hurt|heavy|depressed|overwhelmed)\b/.test(lower);
   const angry = /\b(angry|mad|pissed|annoyed|frustrated)\b/.test(lower);
@@ -59,10 +71,10 @@ function localFallback(
   const reset = /\b(failed|fell off|gave up|stopped|missed|behind|procrastinat)\w*\b/.test(lower);
   const mirror = mayMirrorProfanity(relationship);
 
-  if (isGreeting || isShortContinuation) {
+  if (isShortContinuation) {
     if (personalityId === 'rylane') return "Aight, I'm here. Talk.";
     if (personalityId === 'cloud') return "Hey. No pressure — whatever you want to say, or nothing at all.";
-    if (personalityId === 'night') return "Hey. You trying to talk, plan, or just sit in it?";
+    if (personalityId === 'night') return "Still here. No rush.";
     return "Hey! Random or did something actually happen?";
   }
 
@@ -107,7 +119,6 @@ export async function sendMessage(
   context: string,
   options: SendMessageOptions,
 ): Promise<string>;
-// Legacy overload — mood and history as positional params (backward compat)
 export async function sendMessage(
   personalityId: PersonalityId,
   text: string,
@@ -122,26 +133,33 @@ export async function sendMessage(
   moodOrOptions?: string | SendMessageOptions,
   legacyHistory?: ChatMessage[],
 ): Promise<string> {
-  // Normalize overloaded args
   const options: SendMessageOptions = typeof moodOrOptions === 'object' && moodOrOptions !== null
     ? moodOrOptions
     : { mood: moodOrOptions as string | undefined, history: legacyHistory };
 
-  const { mood, history, userName, displayName, profileName, surface, parentSharingEnabled } = options;
+  const { mood, history = [], userName, displayName, profileName, surface, parentSharingEnabled } = options;
+  const historyLength = history.length;
 
-  const config = PERSONALITY_CONFIG[personalityId];
   const currentRelationship = await loadTeenRelationshipProfile();
   const learnedRelationship = learnTeenRelationshipStyle(text, currentRelationship);
   await saveTeenRelationshipProfile(learnedRelationship);
 
-  if (!BASE_URL) {
-    if (personalityId === 'parentCoach') {
-      return "Hey. Glad you're here. What's going on at home?";
-    }
-    return localFallback(personalityId, text, learnedRelationship);
+  // Pure greeting on first touch: return immediately with no Worker latency.
+  if (personalityId !== 'parentCoach' && isArrivalMessage(text, historyLength)) {
+    return getArrivalReply(personalityId);
   }
 
-  // Normalize surface — map legacy 'chat' context to a valid surface
+  if (!BASE_URL && personalityId !== 'parentCoach') {
+    return localFallback(personalityId, text, learnedRelationship, historyLength);
+  }
+
+  if (!BASE_URL) {
+    return "Hey. Glad you're here. What's going on at home?";
+  }
+
+  const phase: ConversationPhase = getConversationPhase(historyLength);
+  const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, personalityId);
+
   const normalizedSurface: SendMessageOptions['surface'] =
     surface ??
     (context === 'pages' ? 'journal'
@@ -153,8 +171,7 @@ export async function sendMessage(
                 : context === 'parentCoach' ? 'parentCoach'
                   : 'journal');
 
-  // Map history to worker shape
-  const workerHistory = (history ?? []).map((m) => ({
+  const workerHistory = history.map((m) => ({
     role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
     content: m.text,
   }));
@@ -173,6 +190,8 @@ export async function sendMessage(
         userName,
         displayName,
         profileName,
+        conversationPhase: phase,
+        phaseInstruction,
         memory: {
           relationshipStyle: relationshipProfileToOracleNote(learnedRelationship),
         },
@@ -181,19 +200,22 @@ export async function sendMessage(
 
     if (!res.ok) {
       console.error(`[sendMessage] Worker responded ${res.status}`);
-      return localFallback(personalityId, text, learnedRelationship);
+      return localFallback(personalityId, text, learnedRelationship, historyLength);
     }
 
     const data = await res.json() as { reply?: string; replySource?: string; detectedIntent?: string };
-    const reply = data.reply ?? '';
-    if (!reply) {
+    const rawReply = data.reply ?? '';
+
+    if (!rawReply) {
       console.error('[sendMessage] Worker returned empty reply, using fallback');
-      return localFallback(personalityId, text, learnedRelationship);
+      return localFallback(personalityId, text, learnedRelationship, historyLength);
     }
-    return reply;
+
+    const fallback = getSekretFallback(personalityId, text);
+    return keepSekretReply(rawReply, fallback);
   } catch (err) {
     console.error('[sendMessage] Worker fetch failed:', err);
-    return localFallback(personalityId, text, learnedRelationship);
+    return localFallback(personalityId, text, learnedRelationship, historyLength);
   }
 }
 
