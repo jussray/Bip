@@ -61,7 +61,7 @@ export default function ReflectionScreen() {
       const age = (await AsyncStorage.getItem('bip_onboarding_age')) ?? '';
 
       // This answer stays local. It is available to visible Se'kret for later
-      // self-discovery synthesis, but is not attributed to Raylene and is not
+      // self-discovery synthesis, but is not attributed to Star and is not
       // copied into shared/synced companion activity memory.
       await AsyncStorage.multiSet([
         ['teen_profile_done', 'true'],
@@ -70,7 +70,7 @@ export default function ReflectionScreen() {
         ['sekret_self_discovery_profile', JSON.stringify({ reflection: trimmed, updatedAt: new Date().toISOString() })],
       ]);
 
-      // Raylene remains the initial room companion. Se'kret is a separate,
+      // Star remains the initial room companion. Se'kret is a separate,
       // visible self-discovery identity powered by hidden Oracle intelligence.
       setSelectedSekret('raylene');
       router.replace('/(teen)/room');

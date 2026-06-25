@@ -8,7 +8,7 @@
  *   Cloud Thoughts · S2Tell · Period Calendar · History
  *
  * Se'kret Replies:
- *   Companion-picker grid (Raylene / Rylane / Cloud / Night / Oracle).
+ *   Companion-picker grid (Star / Rylane / Cloud / Night / Oracle).
  *   Tapping a card calls onOpenCompanion(id) → router.push to chat screen.
  *   Previously saved sekretReply entries are also listed below the picker.
  *
@@ -164,7 +164,7 @@ const TEEN_TABS: TabDefinition[] = [
   { id: 'me', label: 'Me', icon: '\u25cc', title: '', accent: '#c4b5fd' },
   { id: 'oracle', label: 'Se\u2019kret', icon: '\u25c7', title: 'Se\u2019kret Discovery', accent: '#8b7bb8' },
   {
-    id: 'raylene', label: 'Raylene', icon: '\u2726', eyebrow: 'Raylene pulled up',
+    id: 'raylene', label: 'Star', icon: '\u2726', eyebrow: 'Star pulled up',
     title: 'You been a little too quiet. What happened?',
     subtitle: 'Warm, curious, and already paying attention.', accent: '#e9a8d2',
     prompts: [

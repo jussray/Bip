@@ -28,7 +28,7 @@ import {
 } from '@/utils/api';
 
 const COMPANION_META: Record<string, { label: string; accent: string; emoji: string; avatarId: SekretCharacterId }> = {
-  raylene: { label: 'Raylene', accent: '#f08bc5', emoji: '💜', avatarId: 'raylene' },
+  raylene: { label: 'Star', accent: '#f08bc5', emoji: '💜', avatarId: 'raylene' },
   rylane:  { label: 'Rylane',  accent: '#76a7ff', emoji: '⚡',  avatarId: 'rylane'  },
   cloud:   { label: 'Cloud',   accent: '#8ed9e7', emoji: '☁️', avatarId: 'cloud'   },
   night:   { label: 'Night',   accent: '#9a8ee8', emoji: '🌙', avatarId: 'night'   },

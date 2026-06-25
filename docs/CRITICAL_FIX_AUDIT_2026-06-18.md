@@ -15,7 +15,7 @@ Cleanup pass after PR #57 fallout.
 
 2. Added fallback avatar rendering in `components/MiniAvatarSticker.tsx`.
 
-The sticker registry references sticker asset keys that are not exposed in the active `IMAGES` map yet. Before this fix, Pages and journal mini avatars could render nothing. Now Raylene, Rylane, Cloud, and Night fall back to normal avatar art if a mini-sticker asset key is missing.
+The sticker registry references sticker asset keys that are not exposed in the active `IMAGES` map yet. Before this fix, Pages and journal mini avatars could render nothing. Now Star, Rylane, Cloud, and Night fall back to normal avatar art if a mini-sticker asset key is missing.
 
 3. Hardened `app/(main)/circle.tsx`.
 

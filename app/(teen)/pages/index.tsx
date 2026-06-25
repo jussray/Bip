@@ -3,7 +3,7 @@
 //
 // PROTECTED DATA CONTRACT (must not be removed or bypassed):
 //   ✓ fetchSekretBrainReply  — sole AI call for companion replies
-//   ✓ Raylene / Rylane / Cloud / Night companion tabs
+//   ✓ Star / Rylane / Cloud / Night companion tabs
 //   ✓ mood tags via AppContext.mood
 //   ✓ companion-specific prompts with rotation
 //   ✓ image / video attachment
@@ -56,7 +56,7 @@ import type { JournalEntry } from '@/types';
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
-  { id: 'raylene', name: 'Raylene', accent: '#f08bc5', vibe: 'warm + protective' },
+  { id: 'raylene', name: 'Star', accent: '#f08bc5', vibe: 'warm + protective' },
   { id: 'rylane',  name: 'Rylane',  accent: '#76a7ff', vibe: 'direct + loyal'    },
   { id: 'cloud',   name: 'Cloud',   accent: '#8ed9e7', vibe: 'soft + no pressure' },
   { id: 'night',   name: 'Night',   accent: '#9a8ee8', vibe: 'quiet + steady'    },

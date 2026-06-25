@@ -251,7 +251,7 @@ export const EMERGENCY_COMFORT = [
 // ── VoiceBuckets ──────────────────────────────────────────────────────────────
 
 export const RAYLENE: VoiceBucket = {
-  name: "Raylene",
+  name: "Star",
   emoji: "🌸",
   title: "Favorite Older Sister",
   greetings: [
@@ -715,7 +715,7 @@ export const VOICE_BIP_UI: VoiceBipUi = {
   recording: "Recording...",
   startLabel: "▶ Start Voice Bip",
   stopLabel: "⏹ Stop Recording",
-  thinkingText: "Raylene is listening... ☁️",
+  thinkingText: "Star is listening... ☁️",
   replyPrefix: "Se'kret replied 💜",
   savedLabel: "Saved Voice Bips",
   playLabel: "▶ Play",
@@ -778,7 +778,7 @@ export function getVoicePack(character: CharacterKey): VoiceBucket {
 // ── NEW: selectedSekret → CharacterKey adapter ─────────────────────────────
 //
 // index.tsx stores selectedSekret as lowercase strings:
-//   'soft'   → maps to RAYLENE (Raylene is the 'soft big sis' profile)
+//   'soft'   → maps to RAYLENE (Star is the 'soft big sis' profile)
 //   'rylane' → maps to RYLANE
 //   'cloud'  → maps to CLOUD
 //   'night'  → maps to NIGHT

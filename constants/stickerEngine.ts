@@ -65,20 +65,20 @@ type StickerMap = Record<SekretPersonality, Record<EmotionalState, StickerEntry>
 
 export const STICKER_MAP: StickerMap = {
 
-  // ── Raylene ─────────────────────────────────────────────────────────────────
+  // ── Star ─────────────────────────────────────────────────────────────────
   raylene: {
-    neutral:    { imageKey: 'rayleneNeutral',    fallbackKey: 'rayleneNeutral',   description: 'Raylene — calm, present' },
-    happy:      { imageKey: 'rayleneHappy',      fallbackKey: 'rayleneNeutral',   description: 'Raylene — joy, celebration' },
-    thinking:   { imageKey: 'rayleneThinking',   fallbackKey: 'rayleneNeutral',   description: 'Raylene — processing, pondering' },
-    journaling: { imageKey: 'rayleneWriting',    fallbackKey: 'rayleneNeutral',   description: 'Raylene — writing in journal' },
-    reflecting: { imageKey: 'rayleneWindow',     fallbackKey: 'rayleneNeutral',   description: 'Raylene — quiet reflection at window' },
-    listening:  { imageKey: 'rayleneVoiceDay',   fallbackKey: 'rayleneNeutral',   description: 'Raylene — present, listening' },
-    responding: { imageKey: 'rayleneHappy',      fallbackKey: 'rayleneNeutral',   description: 'Raylene — engaged, replying' },
-    comforting: { imageKey: 'rayleneWindowRainy',fallbackKey: 'rayleneWindow',    description: 'Raylene — soft comfort, rainy window' },
-    sleepy:     { imageKey: 'rayleneNightWindow',fallbackKey: 'rayleneWindow',    description: 'Raylene — late night, low energy' },
-    stormy:     { imageKey: 'rayleneWriting',    fallbackKey: 'rayleneNeutral',   description: 'Raylene — big feelings, processing' },
-    voiceDay:   { imageKey: 'rayleneVoiceDay',   fallbackKey: 'rayleneWindow',    description: 'Raylene — voice bip, daytime' },
-    voiceNight: { imageKey: 'rayleneVoiceNight', fallbackKey: 'rayleneNightWindow', description: 'Raylene — voice bip, nighttime' },
+    neutral:    { imageKey: 'rayleneNeutral',    fallbackKey: 'rayleneNeutral',   description: 'Star — calm, present' },
+    happy:      { imageKey: 'rayleneHappy',      fallbackKey: 'rayleneNeutral',   description: 'Star — joy, celebration' },
+    thinking:   { imageKey: 'rayleneThinking',   fallbackKey: 'rayleneNeutral',   description: 'Star — processing, pondering' },
+    journaling: { imageKey: 'rayleneWriting',    fallbackKey: 'rayleneNeutral',   description: 'Star — writing in journal' },
+    reflecting: { imageKey: 'rayleneWindow',     fallbackKey: 'rayleneNeutral',   description: 'Star — quiet reflection at window' },
+    listening:  { imageKey: 'rayleneVoiceDay',   fallbackKey: 'rayleneNeutral',   description: 'Star — present, listening' },
+    responding: { imageKey: 'rayleneHappy',      fallbackKey: 'rayleneNeutral',   description: 'Star — engaged, replying' },
+    comforting: { imageKey: 'rayleneWindowRainy',fallbackKey: 'rayleneWindow',    description: 'Star — soft comfort, rainy window' },
+    sleepy:     { imageKey: 'rayleneNightWindow',fallbackKey: 'rayleneWindow',    description: 'Star — late night, low energy' },
+    stormy:     { imageKey: 'rayleneWriting',    fallbackKey: 'rayleneNeutral',   description: 'Star — big feelings, processing' },
+    voiceDay:   { imageKey: 'rayleneVoiceDay',   fallbackKey: 'rayleneWindow',    description: 'Star — voice bip, daytime' },
+    voiceNight: { imageKey: 'rayleneVoiceNight', fallbackKey: 'rayleneNightWindow', description: 'Star — voice bip, nighttime' },
   },
 
   // ── Rylane ──────────────────────────────────────────────────────────────────

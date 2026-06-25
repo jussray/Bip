@@ -125,7 +125,7 @@ user remembering BottomNav exists.
 ### 1.3 Room UX pass (Phase 6)
 
 - Room is genuinely the most "alive" surface in the app: 4 characters
-  (Raylene/Rylane/Cloud/Night) each have their own hotspot map, the
+  (Star/Rylane/Cloud/Night) each have their own hotspot map, the
   companion's pose changes by mood + time (`RoomScreen.tsx:362-444`,
   40+ greeting combinations), and a remembered-topics "I REMEMBER" tag
   surfaces continuity (`RoomScreen.tsx:516-539`). This is a strong, on-brand
@@ -229,7 +229,7 @@ with the "cool cousin" mandate in `docs/VISION.md`:
 
 ### 2.1 What the design system actually contains today
 
-`constants/theme.ts` defines 5 complete theme/character packs (Raylene,
+`constants/theme.ts` defines 5 complete theme/character packs (Star,
 Rylane, Cloud, Night, Rain/Sunset variants), each a flat object of
 `background / card / accent / soft` hex colors + a room background image +
 a 3-stop overlay gradient. That's it — **there is no spacing scale and no
@@ -375,7 +375,7 @@ values already in majority use.
    before this question — VISION.md's own brief for the Opening Screen
    ("Purpose: Immediately create emotional safety… Feeling: Entering your
    safe space, not opening an app") is not yet what's in code: a teen sees
-   an age-verification form before they see Raylene, Rylane, or Cloud say
+   an age-verification form before they see Star, Rylane, or Cloud say
    anything to them.
 3. **Lands on Room** (`RoomScreen.tsx`). First-ever visit triggers a
    "fullbody" companion pose and (only on the Pages hotspot) an 800ms hint
@@ -398,7 +398,7 @@ already exist** — no new screen needed, per the sprint's own constraint:
 
 1. Before the Age Gate, or merged into the same beat, give Splash one
    added line of voice copy that names the experience ("This is your
-   space. Raylene, Rylane, and Cloud are here whenever you need them.")
+   space. Star, Rylane, and Cloud are here whenever you need them.")
    so the very first thing a teen reads is in-voice, not a form.
 2. On first Room visit, extend the existing hint pattern (already built —
    `RoomScreen.tsx:794-807`) from 1 hotspot to a short, skippable sequence

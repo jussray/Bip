@@ -58,7 +58,7 @@ export interface CharacterAsset {
 
 export const CHARACTER_ASSETS: CharacterAsset[] = [
 
-  // ── Raylene ─────────────────────────────────────────────────────────────────
+  // ── Star ─────────────────────────────────────────────────────────────────
   {
     character: 'raylene',
     assetKey: 'rayleneNeutral',
@@ -192,7 +192,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
 
-  // ── Raylene — missing from disk (referenceOnly, share IMAGES keys as fallback) ─
+  // ── Star — missing from disk (referenceOnly, share IMAGES keys as fallback) ─
   {
     character: 'raylene',
     assetKey: 'rayleneThinking',

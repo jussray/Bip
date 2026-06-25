@@ -20,7 +20,7 @@ import { useAppContext } from '@/context/AppContext';
 import type { JournalEntry } from '@/types';
 
 const COMPANION_META: Record<string, { label: string; accent: string; emoji: string }> = {
-  raylene: { label: 'Raylene', accent: '#f08bc5', emoji: '💜' },
+  raylene: { label: 'Star', accent: '#f08bc5', emoji: '💜' },
   rylane:  { label: 'Rylane',  accent: '#76a7ff', emoji: '⚡' },
   cloud:   { label: 'Cloud',   accent: '#8ed9e7', emoji: '☁️' },
   night:   { label: 'Night',   accent: '#9a8ee8', emoji: '🌙' },

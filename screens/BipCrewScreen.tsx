@@ -8,7 +8,7 @@
 //
 // Voice:
 //   • Rylane: "loyal bros. small crew. lock in together."
-//   • Raylene: "your soft people 💜 the ones who get it. invite-only."
+//   • Star: "your soft people 💜 the ones who get it. invite-only."
 //
 // Local-only for now (no Supabase yet — that's task #21). Each member gets a
 // generated invite code as a placeholder. Cadence drives a "due to check in"

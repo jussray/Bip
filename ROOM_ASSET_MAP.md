@@ -20,7 +20,7 @@
 
 These are fully rendered single-layer PNGs. Each image contains walls, lighting, furniture, and hotspot objects all baked together. Extraction = slicing in Figma/Photoshop to produce separate layers.
 
-### 1A — Raylene Room (7 phases × 2 copies = 14 files)
+### 1A — Star Room (7 phases × 2 copies = 14 files)
 
 | Phase | Production File | Archive File | Status |
 |-------|----------------|--------------|--------|
@@ -32,7 +32,7 @@ These are fully rendered single-layer PNGs. Each image contains walls, lighting,
 | Deep Night | `assets/images/bg-raylene-room-deep-night.png` | `assets/images/archive/bg-raylene-room-deep-night.png` | production + archive |
 | Rain | `assets/images/bg-raylene-room-rain.png` | `assets/images/archive/bg-raylene-room-rain.png` | production + archive |
 
-**Raylene Room — Baked Elements Inventory:**
+**Star Room — Baked Elements Inventory:**
 
 | Element | Type | Current Status | Proposed Extraction Filename | Recolor | Hotspot | Priority |
 |---------|------|---------------|------------------------------|---------|---------|----------|
@@ -162,9 +162,9 @@ Pre-rendered merges of character + room background. These are reference/marketin
 
 | File | Character | Phase | Usage | Status |
 |------|-----------|-------|-------|--------|
-| `assets/images/raylene-room-day-scene.png` | Raylene | Day | Reference | reference |
-| `assets/images/raylene-room-night-scene.png` | Raylene | Night | Reference | reference |
-| `assets/images/raylene-room-rain-scene.png` | Raylene | Rain | Reference | reference |
+| `assets/images/raylene-room-day-scene.png` | Star | Day | Reference | reference |
+| `assets/images/raylene-room-night-scene.png` | Star | Night | Reference | reference |
+| `assets/images/raylene-room-rain-scene.png` | Star | Rain | Reference | reference |
 | `assets/images/rylane-room-day-scene.png` | Rylane | Day | Reference | reference |
 | `assets/images/rylane-room-night-scene.png` | Rylane | Night | Reference | reference |
 | `assets/images/rylane-room-rain-scene.png` | Rylane | Rain | Reference | reference |
@@ -179,7 +179,7 @@ Pre-rendered merges of character + room background. These are reference/marketin
 
 These are already separate from room backgrounds. They render as a floating image layer on top of the room background in `RoomScreen.tsx`. These are ready for the avatar layer in the new system with no extraction needed.
 
-### 3A — Raylene (17 states)
+### 3A — Star (17 states)
 
 | File | Mood/State | Recolor | Hotspot | Production |
 |------|-----------|---------|---------|------------|
@@ -258,7 +258,7 @@ These are already separate from room backgrounds. They render as a floating imag
 
 Stickers are already individual PNGs and are the primary candidate for room decoration layer items in the User Room system.
 
-### 4A — Raylene Stickers (19 production)
+### 4A — Star Stickers (19 production)
 
 | File | Label | Mood/Pose | Recolor | Room Decor Use | Production |
 |------|-------|-----------|---------|----------------|------------|
@@ -375,7 +375,7 @@ These are design mockup/reference PNGs imported from Figma. They are not rendere
 assets/
 └── rooms/
     ├── base/                        # Bare structural shells — walls, floor, window only
-    │   ├── raylene-bare-room.png    # Extracted from Raylene Room (all phases share one base)
+    │   ├── raylene-bare-room.png    # Extracted from Star Room (all phases share one base)
     │   ├── rylane-bare-room.png     # Extracted from Rylane Room
     │   ├── night-bare-room.png      # Extracted from Night Room
     │   ├── cloud-bare-sky.png       # Extracted from Cloud Room (sky + cloud islands)
@@ -450,7 +450,7 @@ assets/
 
 All hotspots defined in `screens/RoomScreen.tsx`. These are invisible tap zones overlaid on the baked room background. In the new system they become positioned interactive sticker objects.
 
-### Raylene Room Hotspots
+### Star Room Hotspots
 
 | ID | Label | Target Screen | Position | Pulse |
 |----|-------|--------------|----------|-------|
@@ -506,10 +506,10 @@ All hotspots defined in `screens/RoomScreen.tsx`. These are invisible tap zones 
 | Category | Count | Notes |
 |----------|-------|-------|
 | Room backgrounds (production) | 38 | 4 teen rooms × 7 phases + 2 parent rooms × 5 phases |
-| Room backgrounds (archive) | 28 | Raylene + Rylane + Cloud + Night all 7 phases |
+| Room backgrounds (archive) | 28 | Star + Rylane + Cloud + Night all 7 phases |
 | Scene composites | 8 | Reference/marketing only |
-| Character avatar images | 53 | Raylene 17, Rylane 10, Cloud 6, Night 20 |
-| Character stickers | 53 | Raylene 19, Rylane 19, Cloud 15 |
+| Character avatar images | 53 | Star 17, Rylane 10, Cloud 6, Night 20 |
+| Character stickers | 53 | Star 19, Rylane 19, Cloud 15 |
 | UUID design references | 22 | Figma exports, not rendered |
 | Other room assets | 3 | window.png, rylane-window.png, room-bg-dark.png |
 | **TOTAL** | **205** | |

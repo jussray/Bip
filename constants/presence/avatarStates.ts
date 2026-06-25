@@ -58,7 +58,7 @@ export type PresenceCharacter = 'raylene' | 'rylane' | 'cloud' | 'night';
 
 /** Display name for each character (for badges, accessibility labels). */
 export const CHARACTER_NAME: Record<PresenceCharacter, string> = {
-  raylene: 'Raylene',
+  raylene: 'Star',
   rylane:  'Rylane',
   cloud:   'Cloud',
   night:   'Night',
@@ -268,7 +268,7 @@ const ULTIMATE_FALLBACK = IMAGES.sekretSplash;
  * IMPORTANT: fallbacks STAY WITHIN the same character's bank. We never
  * borrow another character's art — a missing Night pose falls back to
  * Night's other Night poses (or to sekret-splash), never to Rylane or
- * Raylene. The four avatars are distinct people, not lighting variants of
+ * Star. The four avatars are distinct people, not lighting variants of
  * each other.
  *
  * Fallback chain (all within the same character):

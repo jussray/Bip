@@ -205,7 +205,7 @@ const LIGHTING_PRESETS: { key: LightingMode; label: string; emoji: string; hint:
 ];
 
 const ROOM_META: Record<Character, { name: string; emoji: string; vibe: string }> = {
-  raylene: { name: "Raylene's Room", emoji: '💜', vibe: 'scrapbook soft' },
+  raylene: { name: "Star's Room", emoji: '💜', vibe: 'scrapbook soft' },
   rylane:  { name: "Rylane's Room",  emoji: '⚡', vibe: 'city night'      },
   cloud:   { name: 'Cloud Room',     emoji: '☁️', vibe: 'brain dump space' },
   night:   { name: "Night's Room",   emoji: '🌙', vibe: '2AM energy'      },
@@ -262,7 +262,7 @@ const getTimeOfDay = (): TimeOfDay => {
 const getPresenceLine = (companion: Character, tod: TimeOfDay): string => {
   if (companion === 'cloud') return 'Cloud is drifting nearby.';
   if (companion === 'night') return tod === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
-  if (companion === 'raylene') return 'Raylene is nearby.';
+  if (companion === 'raylene') return 'Star is nearby.';
   return 'Rylane is posted up.';
 };
 

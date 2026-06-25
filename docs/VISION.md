@@ -38,7 +38,7 @@ The app should feel **alive and emotionally responsive**.
 
 ## The Characters
 
-### Raylene — big sister energy
+### Star — big sister energy
 Warm. Protective. Encouraging. Gentle.
 
 **Used heavily in:** Journaling, Womanhood, Emotional support, Comfort Mode, Reflection
@@ -73,7 +73,7 @@ Represents mood, comfort, feelings, reflection. Different cloud versions appear 
 
 ### Opening Screen
 **Purpose:** Immediately create emotional safety.
-**User sees:** Raylene, Rylane, Cloud
+**User sees:** Star, Rylane, Cloud
 **Main CTA:** ENTER SE'KRET BIP
 **Feeling:** Entering your safe space. Not opening an app.
 
@@ -100,7 +100,7 @@ Represents mood, comfort, feelings, reflection. Different cloud versions appear 
 
 **Users can:** Write journals · Save thoughts · Add mood tags · Reflect
 
-**Raylene appears here most.**
+**Star appears here most.**
 **Background:** Cozy desk, notebook, candle, room aesthetic.
 **Feeling:** Late-night diary.
 
@@ -110,7 +110,7 @@ Represents mood, comfort, feelings, reflection. Different cloud versions appear 
 **Users record:** Thoughts · Rants · Wins · Frustrations · Feelings
 
 **Current:** Voice journal. **Future:** Voice AI companion.
-**Uses:** Headphone Cloud, Raylene, Rylane.
+**Uses:** Headphone Cloud, Star, Rylane.
 **Background:** Animated purple room.
 
 ### Calm Me
@@ -122,7 +122,7 @@ Represents mood, comfort, feelings, reflection. Different cloud versions appear 
 ### Comfort Mode
 **Purpose:** Emergency comfort. When users feel overwhelmed, lonely, sad, angry, anxious.
 
-**Shows:** Comfort messages · Breathing · Grounding · Raylene support
+**Shows:** Comfort messages · Breathing · Grounding · Star support
 **Background:** Rainy room, Sad Cloud, purple city lights.
 **Feeling:** Someone sitting beside you.
 
@@ -151,7 +151,7 @@ Represents mood, comfort, feelings, reflection. Different cloud versions appear 
 ### Bippin 2 Womanhood
 **Purpose:** Safe puberty and womanhood education.
 **Topics:** First period · Cycle tracking · Hormones · Mood changes · Body changes · Hygiene · Confidence
-**Led by:** Raylene
+**Led by:** Star
 **Feeling:** Big sister guidance. Not medical textbook. Not awkward. Not embarrassing.
 
 ### Bippin 2 Manhood

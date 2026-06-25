@@ -6,7 +6,7 @@
 
 ## OVERVIEW
 
-Transform Se'kret Bip's four static character rooms (Raylene, Rylane, Cloud, Night) into a layered, customizable **User Room** system. The room becomes the user's personal space — a digital bedroom, mood board, and identity canvas they build over time.
+Transform Se'kret Bip's four static character rooms (Star, Rylane, Cloud, Night) into a layered, customizable **User Room** system. The room becomes the user's personal space — a digital bedroom, mood board, and identity canvas they build over time.
 
 The existing character rooms become the **starting point templates**, not permanent destinations.
 
@@ -246,7 +246,7 @@ Deep Night     — near-black, stars, minimal light
 User chooses which companion lives in their room. The companion sits naturally in the room environment — no popup card, no summon animation. They are just there, like a room resident.
 
 Options:
-- Raylene — neutral pose, left side, sitting near desk
+- Star — neutral pose, left side, sitting near desk
 - Rylane — thinking pose, near window
 - Cloud — floating pose, center-upper area (floats)
 - Night — relaxed pose, near moon chair

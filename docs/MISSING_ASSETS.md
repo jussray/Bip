@@ -32,7 +32,7 @@ The following files were removed from `assets/images/` during this audit:
 - `rylane-reference-board.png`
 - `rylane-reference-sheet.png`
 
-Several Raylene sheets and `circle-mockup.png` are two-byte placeholders. The
+Several Star sheets and `circle-mockup.png` are two-byte placeholders. The
 Rylane sheets and dashboard references are loadable images, but remain
 reference-only because they are composite boards or screen mockups. The former
 `sekret-splash.png` was byte-identical to the parent dashboard mockup and is now
@@ -46,7 +46,7 @@ slots to valid standalone character art or room art until proper exports are
 available.
 
 - Room variants currently fall back to `bg-raylene-room-night.png`.
-- Missing Raylene poses fall back to standalone neutral, happy, writing, or
+- Missing Star poses fall back to standalone neutral, happy, writing, or
   window art.
 - Missing Rylane poses fall back to standalone neutral, full-body, or window
   art.

@@ -9,7 +9,7 @@
 //
 // Voice:
 //   • Rylane: "respect, you kept showing up · the streak is the work"
-//   • Raylene: "look at you, soft and consistent 💜 · cozy on cozy"
+//   • Star: "look at you, soft and consistent 💜 · cozy on cozy"
 //
 // Pulls from comfortSessions[] — every time trackActivity() fires we log a
 // session. We compute current streak, longest streak, by-type tallies, and

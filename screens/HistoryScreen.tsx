@@ -9,7 +9,7 @@
 //
 // Voice:
 //   • Rylane (blue): "respect, look at the reps fr · lock in continues"
-//   • Raylene (pink/purple): "we see you 💜 · look how far you've come"
+//   • Star (pink/purple): "we see you 💜 · look how far you've come"
 //
 // Same polish patterns as the rest of the app: time-of-day backdrop, mood
 // glow, gradient hero overlay, stagger entrance, breath-loop on the streak

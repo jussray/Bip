@@ -26,7 +26,7 @@ import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
 const COMPANIONS = [
-  { key: 'soft',   name: 'Raylene', emoji: '💜', title: 'Big Sis', tagline: 'warm · protective · emotionally real' },
+  { key: 'soft',   name: 'Star', emoji: '💜', title: 'Big Sis', tagline: 'warm · protective · emotionally real' },
   { key: 'rylane', name: 'Rylane',  emoji: '⚡', title: 'Loyal Bro', tagline: 'street smart · down to earth · no cap' },
 ];
 

@@ -124,6 +124,9 @@ export async function fetchPagesReplyDetails(input: {
   const personality = normalizeSekretPersonality(avatarKey);
   const fallback = getSekretFallback(personality, input.text);
 
+  // ── Instant arrival reply ────────────────────────────────────────────
+  // Pure first-touch greeting — skip the network call entirely.
+  // Character just shows up. Conversation starts with the next exchange.
   if (isArrivalMessage(input.text, historyLength)) {
     const arrivalReply = getArrivalReply(avatarKey);
     const arrivalState: SekretAvatarState = avatarKey === 'cloud' || avatarKey === 'night'
@@ -135,24 +138,27 @@ export async function fetchPagesReplyDetails(input: {
 
   setAvatarState(avatarKey, 'thinking');
 
+  // Phase instruction travels to the worker so it can be injected into
+  // the system prompt before the AI call. The worker owns the final prompt
+  // assembly — we just make sure it knows where in the conversation we are.
   const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, avatarKey);
+
+  // Map history to the shape the brain API expects
   const workerHistory = history.map((m) => ({
     role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
     content: m.text,
   }));
 
   try {
-    const request = {
-      characterId: avatarKey,
-      surface: 'journal' as const,
-      userText: input.text,
-      mood: input.mood,
-      history: workerHistory,
+    const response = await fetchSekretBrainReply({
+      characterId:       avatarKey,
+      surface:           'journal',
+      userText:          input.text,
+      mood:              input.mood,
+      history:           workerHistory,
       conversationPhase: phase,
       phaseInstruction,
-    };
-
-    const response = await fetchSekretBrainReply(request as Parameters<typeof fetchSekretBrainReply>[0]);
+    } as Parameters<typeof fetchSekretBrainReply>[0]);
 
     const nextState = inferAvatarState({
       state: response.avatarState,

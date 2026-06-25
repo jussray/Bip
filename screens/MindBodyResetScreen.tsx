@@ -18,7 +18,7 @@ function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
 // ─── Local assets ─────────────────────────────────────────────────────────────
 // assets/images/cloud-headphones.png  — mind reset circle art
 // assets/images/cloud.png             — body reset circle art
-// assets/images/raylene-neutral.png   — Raylene presence (swap raylene-avatar.png when available)
+// assets/images/raylene-neutral.png   — Star presence (swap raylene-avatar.png when available)
 // assets/images/rylane-profile.png    — Rylane presence
 const CLOUD_HEADPHONES = IMAGES.cloudHeadphones;
 const CLOUD            = IMAGES.cloud;

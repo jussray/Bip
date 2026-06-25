@@ -1,6 +1,6 @@
 // CHARACTER AVATARS — full-size avatar art ONLY.
 // Not stickers, not backgrounds. The companion/mascot presence images.
-// tolan layer: Raylene, Rylane, Night (Tolan-style companion avatars).
+// tolan layer: Star, Rylane, Night (Tolan-style companion avatars).
 // mascot layer: Cloud (app mascot, not a companion).
 
 export type CharacterKey = 'raylene' | 'rylane' | 'cloud' | 'night';
@@ -37,7 +37,7 @@ export interface CharacterAvatar {
 }
 
 export const AVATAR_REGISTRY: CharacterAvatar[] = [
-  // ── Raylene (tolan) ────────────────────────────────────────────────────────
+  // ── Star (tolan) ────────────────────────────────────────────────────────
   { character: 'raylene', layer: 'tolan', assetKey: 'rayleneNeutral',     filename: 'raylene-neutral.png',           mood: ['neutral','calm'],            state: ['idle','presence'], pose: ['portrait'],          timeOfDay: 'any',   roomUse: true,  voiceUse: false, companionUse: true,  renderable: true,  referenceOnly: false },
   { character: 'raylene', layer: 'tolan', assetKey: 'rayleneNeutralV3',   filename: 'raylene-neutral-v3.png',        mood: ['neutral','calm'],            state: ['idle'],            pose: ['portrait'],          timeOfDay: 'any',   roomUse: false, voiceUse: false, companionUse: false, renderable: false, referenceOnly: false },
   { character: 'raylene', layer: 'tolan', assetKey: 'rayleneHappy',       filename: 'raylene-happy.png',             mood: ['happy','energetic','loving'], state: ['idle'],           pose: ['portrait'],          timeOfDay: 'any',   roomUse: true,  voiceUse: false, companionUse: true,  renderable: true,  referenceOnly: false },

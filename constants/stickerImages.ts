@@ -5,7 +5,7 @@ import type { ImageSourcePropType } from 'react-native';
 // Metro bundler requires static require() calls — no dynamic paths.
 
 const STICKER_IMAGES: Record<string, ImageSourcePropType> = {
-  // ── Raylene (19) ─────────────────────────────────────────────────────────────
+  // ── Star (19) ─────────────────────────────────────────────────────────────
   'raylene-standing':     require('../assets/images/stickers/raylene/raylene-sticker-standing.png'),
   'raylene-lounging':     require('../assets/images/stickers/raylene/raylene-sticker-lounging.png'),
   'raylene-studying':     require('../assets/images/stickers/raylene/raylene-sticker-studying.png'),

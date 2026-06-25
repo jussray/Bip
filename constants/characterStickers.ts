@@ -25,7 +25,7 @@ export interface CharacterSticker {
 const STICKER_BASE = { layer: 'sticker' as const, renderable: true, placeholder: false };
 
 export const STICKER_REGISTRY: CharacterSticker[] = [
-  // ── Raylene (19) ──────────────────────────────────────────────────────────
+  // ── Star (19) ──────────────────────────────────────────────────────────
   { ...STICKER_BASE, id: 'raylene-standing',     character: 'raylene', emotion: 'standing',     assetKey: 'rayStickerStanding',    assetPath: 'assets/images/stickers/raylene/raylene-sticker-standing.png',     tags: ['standing','raylene','neutral','confident','idle'], prod: true },
   { ...STICKER_BASE, id: 'raylene-lounging',     character: 'raylene', emotion: 'lounging',     assetKey: 'rayStickerLounging',    assetPath: 'assets/images/stickers/raylene/raylene-sticker-lounging.png',     tags: ['lounging','raylene','calm','relaxed'], prod: true },
   { ...STICKER_BASE, id: 'raylene-studying',     character: 'raylene', emotion: 'studying',     assetKey: 'rayStickerStudying',    assetPath: 'assets/images/stickers/raylene/raylene-sticker-studying.png',     tags: ['studying','raylene','focused','productive'], prod: true },

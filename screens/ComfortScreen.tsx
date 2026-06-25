@@ -10,7 +10,7 @@
 //   - Cloud floats with breath + drift loops
 //   - Falling rain streaks (8 animated lines, randomized delays)
 //   - selectedSekret + mood wired through (both optional)
-//   - Character-aware copy: Cloud-lead (quiet) / Raylene (soft) / Rylane (loyal)
+//   - Character-aware copy: Cloud-lead (quiet) / Star (soft) / Rylane (loyal)
 //   - Mood-tinted glow on hero + 'says' card
 //   - Companion presence pill ('cloud is here · rainy room')
 //   - Curly quotes throughout

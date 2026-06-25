@@ -14,7 +14,7 @@ bg-{sekret}-room-{time-of-day}.png
 
 | Se'kret | Slug |
 |---|---|
-| Raylene | `raylene` |
+| Star | `raylene` |
 | Rylane | `rylane` |
 | Cloud | `cloud` |
 | Night | `night` |

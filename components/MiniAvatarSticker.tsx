@@ -9,7 +9,7 @@
 // Stickers NEVER replace full-size avatars.
 //
 // CHARACTER ROUTING RULES:
-//   raylene page/context  → raylene mini sticker, fallback to Raylene avatar
+//   raylene page/context  → raylene mini sticker, fallback to Star avatar
 //   rylane  page/context  → rylane  mini sticker, fallback to Rylane avatar
 //   cloud   page/context  → cloud   mini sticker, fallback to Cloud avatar
 //   night   context       → night/rylane-night sticker, fallback to Night avatar
@@ -122,7 +122,7 @@ export function MiniAvatarSticker({
     );
   }
 
-  // Raylene / Rylane / Cloud: look up context sticker from registry first.
+  // Star / Rylane / Cloud: look up context sticker from registry first.
   const sticker = getContextSticker(character, ctx);
   const imgSource = sticker?.renderable && sticker.assetKey
     ? imageMap[sticker.assetKey]

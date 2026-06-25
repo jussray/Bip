@@ -92,7 +92,7 @@ export default function CompanionChatScreen() {
   const companionKey = params.companion ?? 'raylene';
   const surface = (params.surface ?? 'journal') as SekretSurface;
 
-  // Resolve profile — fall back to 'soft' (Raylene) for legacy 'soft' key
+  // Resolve profile — fall back to 'soft' (Star) for legacy 'soft' key
   const profileKey = companionKey in SEKRET_PROFILES ? companionKey : 'soft';
   const profile = SEKRET_PROFILES[profileKey];
   const charKey: Character = normalizeCharacterKey(profileKey);

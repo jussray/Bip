@@ -19,7 +19,7 @@ import { COMPANION_CURRICULUM, type CompanionId } from '../src/config/companionC
 import type { CompanionActivityInput, CompanionLevel, CompanionState, MemorySummary } from '../types/sekretCompanion';
 
 const PERSONALITY_LABELS = {
-  raylene: 'Raylene',
+  raylene: 'Star',
   rylane: 'Rylane',
   cloud: 'Cloud',
   night: 'Night',
@@ -45,7 +45,7 @@ const DEFAULT_STATE: CompanionState = {
   presenceMessage: 'You do not have to act fine with me.',
   checkIn: null,
   lastUpdated: '',
-  personality: 'Raylene',
+  personality: 'Star',
 };
 
 function buildLevel(summary: MemorySummary): CompanionLevel {

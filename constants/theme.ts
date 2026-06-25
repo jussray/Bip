@@ -9,7 +9,7 @@ import type { ImageSourcePropType } from "react-native";
 // never crashes. Replace the fallback with the real asset later — the variable
 // name stays the same so no screen code has to change.
 
-// ── Raylene (updated look — new portraits match Night/Rylane art style) ───
+// ── Star (updated look — new portraits match Night/Rylane art style) ───
 const rayleneNeutral    = require("../assets/images/raylene-neutral-new.png");
 const rayleneHappy      = require("../assets/images/raylene-happy-new.png");
 const rayleneWriting    = require("../assets/images/raylene-writing.png");       // old style kept
@@ -18,7 +18,7 @@ const rayleneFullbody   = require("../assets/images/raylene-confident-new.png");
 const rayleneHappyV3    = require("../assets/images/raylene-happy-v3.png");      // old style kept
 const rayleneNeutralV3  = rayleneNeutral;
 
-// ── Raylene (new emotions) ─────────────────────────────────────────────────
+// ── Star (new emotions) ─────────────────────────────────────────────────
 const rayleneConfident  = require("../assets/images/raylene-confident-new.png");
 const raylenePlayful    = require("../assets/images/raylene-playful-new.png");
 const rayleeneSad       = require("../assets/images/raylene-sad-new.png");
@@ -26,7 +26,7 @@ const rayleeneMad       = require("../assets/images/raylene-mad-new.png");
 const rayleeneSurprised = require("../assets/images/raylene-surprised-new.png");
 const rayleeneCrouching = require("../assets/images/raylene-crouching-new.png");
 
-// ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
+// ── Star (pose variants; voice/window-rainy now have real assets) ──────
 const rayleneThinking    = require("../assets/images/raylene-thinking-new.png");
 const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
 const rayleneNightWindow = rayleneWindowRainy; // night window → rainy window (closer semantic)
@@ -88,7 +88,7 @@ const bgCloudRoomRain      = require("../assets/images/resized-bg/bg-cloud-room-
 // ── Night Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Night Room identity: crescent moon chair, galaxy bedding, "Voice Bip Corner"
 // light-box sign, city window with clock, sticky notes everywhere, 2AM energy.
-// NOT Raylene's room — completely different furniture, palette, and spirit.
+// NOT Star's room — completely different furniture, palette, and spirit.
 const bgNightRoomDay       = require("../assets/images/resized-bg/bg-night-room-day.jpg");
 const bgNightRoomMidday    = require("../assets/images/resized-bg/bg-night-room-midday.jpg");
 const bgNightRoomAfternoon = require("../assets/images/resized-bg/bg-night-room-afternoon.jpg");
@@ -152,7 +152,7 @@ const bgVoiceBip        = require('../assets/images/resized-bg/voice-bip-bg.jpg'
 // Design mockups live outside assets/ and are never loaded by the application.
 const bgCircle          = require('../assets/images/resized-bg/room-bg-dark.jpg');
 const bgWindow          = require('../assets/images/window.png');
-const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
+const bgCalmHero        = rayleneWindow; // hero on Calm = Star at the window
 
 // ── Cloud / Mascot (all real) ──────────────────────────────────────────────
 const cloud             = require('../assets/images/cloud.png');
@@ -186,7 +186,7 @@ const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
 
 export const IMAGES = {
-  // Raylene
+  // Star
   rayleneNeutral,
   rayleneNeutralV2,
   rayleneNeutralV3,
@@ -510,7 +510,7 @@ export type VibePack = {
 // an existing production room scene so previews and the live room stay honest.
 export const THEME_PACKS: Record<VibeKey, VibePack> = {
   raylene: {
-    name: "Raylene's Room",
+    name: "Star's Room",
     emoji: "💜",
     feeling: "scrapbook soft",
     detail: "lavender · warm pink glow · fairy lights",
@@ -592,7 +592,7 @@ export const normalizeVibeKey = (key?: string): VibeKey => {
 };
 
 // Normalize a sekret selector key (e.g. 'soft' from legacy code) to a Character.
-// 'soft' is the internal key for Raylene; all others map 1-to-1.
+// 'soft' is the internal key for Star; all others map 1-to-1.
 export const normalizeCharacterKey = (key?: string): Character => {
   if (key === "rylane") return "rylane";
   if (key === "cloud")  return "cloud";
@@ -611,7 +611,7 @@ export const SEKRET_PROFILES: Record<
   }
 > = {
   soft: {
-    name: "Raylene",
+    name: "Star",
     emoji: "🌸",
     title: "Favorite Older Sister",
     vibe: "Funny, warm, protective, and impossible to fool.",

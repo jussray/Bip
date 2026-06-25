@@ -42,7 +42,7 @@ Prompt shown at top of composer:
 |---|---|
 | 🌎 Public Circle | Posting anonymously |
 | 💜 Friends Circle | Posting as: `MoonGirl_17` (chosen nickname) |
-| 🤝 Crew Circle | Posting as: `Raylene 💜` (identity visible) |
+| 🤝 Crew Circle | Posting as: `Star 💜` (identity visible) |
 | 🌿 Parent Circle | Posting anonymously |
 
 Composer resolves identity automatically based on destination. No extra taps required.

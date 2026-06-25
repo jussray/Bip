@@ -22,7 +22,7 @@ const VIBE_CONFIG: Record<string, {
   previewBg: any; glow: string; gtop: string; gbot: string;
 }> = {
   raylene: {
-    name: "Raylene's Room",  tagline: 'lavender · fairy lights · cozy bedroom',
+    name: "Star's Room",  tagline: 'lavender · fairy lights · cozy bedroom',
     emoji: '💜', previewBg: IMAGES.bgRayleneRoomEvening,
     glow: '#e879f9', gtop: 'rgba(80,0,80,0.55)',  gbot: 'rgba(20,0,45,0.90)',
   },
@@ -59,7 +59,7 @@ const SEKRET_PROFILES: Record<string, {
   name: string; emoji: string; title: string; tagline: string; avatar: any; accent: string;
 }> = {
   soft:   {
-    name: 'Raylene', emoji: '💜', title: 'Big Sis',
+    name: 'Star', emoji: '💜', title: 'Big Sis',
     tagline: 'warm, protective, emotionally real',
     avatar: IMAGES.rayleneNeutral, accent: '#e879f9',
   },

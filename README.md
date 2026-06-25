@@ -3,7 +3,7 @@
 A private emotional wellness and self-expression app built with React Native and Expo.
 
 > Cool cousin, teen-safe, private, soft, scrapbook, purple-night.
-> Raylene / Rylane / Cloud / Night companion energy.
+> Star / Rylane / Cloud / Night companion energy.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/jussray/Bip?quickstart=1)
 

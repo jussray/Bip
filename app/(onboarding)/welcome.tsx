@@ -56,7 +56,7 @@ export default function Welcome() {
         </Text>
 
         <View style={styles.companionRow}>
-          {['💜 Raylene', '💙 Rylane', '☁️ Cloud', '🌙 Night'].map(label => (
+          {['💜 Star', '💙 Rylane', '☁️ Cloud', '🌙 Night'].map(label => (
             <View key={label} style={styles.companionChip}>
               <Text style={styles.companionText}>{label}</Text>
             </View>

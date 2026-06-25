@@ -6,7 +6,7 @@ Branch work for portrait, app-ready room backgrounds.
 
 Create non-destructive mobile variants for all four companion room families:
 
-- Raylene
+- Star
 - Rylane
 - Cloud
 - Night
@@ -52,7 +52,7 @@ Original production and archive files must remain untouched.
 
 - [x] Night visual direction approved in chat
 - [ ] Night: 7 phases exported
-- [ ] Raylene: 7 phases exported
+- [ ] Star: 7 phases exported
 - [ ] Rylane: 7 phases exported
 - [ ] Cloud: 7 phases exported
 - [ ] Mobile room asset map wired into app

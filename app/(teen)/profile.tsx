@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 
 const OPTIONS = [
-  { id: 'raylene', label: 'Raylene' },
+  { id: 'raylene', label: 'Star' },
   { id: 'rylane', label: 'Rylane' },
   { id: 'cloud', label: 'Cloud' },
   { id: 'night', label: 'Night' },

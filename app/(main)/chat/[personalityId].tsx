@@ -3,7 +3,7 @@
  *
  * Full personality chat screen.
  * Routes:
- *   /chat/raylene  →  Raylene (Soft Big Sis)
+ *   /chat/raylene  →  Star (Soft Big Sis)
  *   /chat/rylane   →  Rylane  (Loyal Bro)
  *   /chat/cloud    →  Cloud   (Quiet Comfort)
  *   /chat/night    →  Night   (Late-Night Listener)

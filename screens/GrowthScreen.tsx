@@ -169,7 +169,7 @@ export function GrowthScreen({
 
   const isRylane = selectedSekret === 'rylane';
   const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
-  const charName = isRylane ? 'Rylane' : 'Raylene';
+  const charName = isRylane ? 'Rylane' : 'Star';
 
   const time     = useMemo(() => timeOfDay(), []);
   const bgSource = useMemo(() => getRoomBg(charKey, time), [charKey, time]);

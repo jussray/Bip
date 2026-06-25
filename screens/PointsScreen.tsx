@@ -8,7 +8,7 @@
 //
 // Voice:
 //   • Rylane: "the reps stack. respect."
-//   • Raylene: "soft points 💜 you earned every single one."
+//   • Star: "soft points 💜 you earned every single one."
 //
 // Tiers are emotional, not competitive:
 //   • cloud just forming   (0–49)

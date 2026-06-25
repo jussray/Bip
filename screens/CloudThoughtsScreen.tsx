@@ -121,7 +121,7 @@ export function CloudThoughtsScreen({
     selectedSekret === 'rylane' ? 'Rylane' :
     selectedSekret === 'cloud'  ? 'Cloud'  :
     selectedSekret === 'night'  ? 'Night'  :
-    'Raylene';
+    'Star';
 
   const [input,      setInput]      = useState('');
   const [reply,      setReply]      = useState('');
