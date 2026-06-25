@@ -67,6 +67,7 @@ interface Props {
   BottomNav: React.ReactNode;
   syncStatus?: SyncStatus;
   withSyncWrap?: (fn: () => Promise<void>) => Promise<void>;
+  ownBipId?: string;
 }
 
 export function BipCrewScreen({
@@ -74,7 +75,7 @@ export function BipCrewScreen({
   crewMembers, setCrewMembers,
   crewCheckIns, setCrewCheckIns,
   setScreen, BottomNav,
-  syncStatus, withSyncWrap,
+  syncStatus, withSyncWrap, ownBipId,
 }: Props) {
   const isRylane = selectedSekret === 'rylane';
   const tod = timeOfDay();
@@ -86,6 +87,7 @@ export function BipCrewScreen({
 
   // ── Local form state ───────────────────────────────────────────────────────
   const [showInvite, setShowInvite] = useState(false);
+  const [newBipId, setNewBipId]           = useState('');
   const [newName, setNewName]             = useState('');
   const [newCommit, setNewCommit]         = useState('');
   const [newEmoji, setNewEmoji]           = useState(isRylane ? '\u{1F31F}' : '\u{1F49C}');
@@ -127,13 +129,16 @@ export function BipCrewScreen({
 
   // ── Actions ────────────────────────────────────────────────────────────────
   const addMember = () => {
+    const bipId = newBipId.trim();
     const name = newName.trim();
     const commit = newCommit.trim();
-    if (!name || crewMembers.length >= MAX_CREW) return;
+    if (!bipId || crewMembers.length >= MAX_CREW) return;
     const nextId = crewMembers.length ? Math.max(...crewMembers.map(m => m.id)) + 1 : 1;
     const member: CrewMember = {
       id: nextId,
-      name,
+      name: name || bipId,
+      bipId,
+      connectionStatus: 'pending',
       emoji: newEmoji || '\u{1F49C}',
       commitment: commit || (isRylane ? 'we lock in for each other' : 'we’re here for each other'),
       cadence: newCadence,
@@ -144,6 +149,7 @@ export function BipCrewScreen({
     const sync = () => syncCrewMember(member);
     if (withSyncWrap) void withSyncWrap(async () => sync());
     else sync();
+    setNewBipId('');
     setNewName('');
     setNewCommit('');
     setShowInvite(false);
@@ -234,6 +240,7 @@ export function BipCrewScreen({
           <Text style={[styles.heroTitle, { textShadowColor: glow }]}>{heroTitle}</Text>
           <Text style={styles.heroSub}>{heroSub}</Text>
           <SyncBadge status={syncStatus ?? 'idle'} />
+          {ownBipId ? <Text style={styles.heroSub}>Your Bip ID: {ownBipId} · share it or its QR only with people you trust.</Text> : null}
         </Animated.View>
 
         {/* Crew list */}
@@ -261,10 +268,10 @@ export function BipCrewScreen({
                 <View style={styles.memberHeader}>
                   <Text style={styles.memberEmoji}>{mem.emoji}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.memberName}>{mem.name}</Text>
+                    <Text style={styles.memberName}>{mem.connectionStatus === 'accepted' ? mem.name : (mem.bipId || mem.name)}</Text>
                     <Text style={styles.memberCommit}>{mem.commitment}</Text>
                     <Text style={styles.memberMeta}>
-                      cadence: {mem.cadence} · code: {mem.inviteCode}
+                      {mem.connectionStatus === 'accepted' ? 'trusted crew' : 'pending invite'} · Bip ID: {mem.bipId || mem.inviteCode}
                     </Text>
                   </View>
                   <TouchableOpacity onPress={() => removeMember(mem.id)} style={styles.removeBtn}>
@@ -328,16 +335,28 @@ export function BipCrewScreen({
         {/* Invite form */}
         {showInvite && (
           <Animated.View style={[styles.card, { backgroundColor: cardBg, borderColor: softAccent }, enter(card2Anim)]}>
-            <Text style={[styles.cardKicker, { color: softAccent }]}>invite someone soft</Text>
+            <Text style={[styles.cardKicker, { color: softAccent }]}>invite by Bip ID</Text>
+            <Text style={styles.empty}>No name search. Ask for their Bip ID or QR code, then real first names unlock only after both people accept.</Text>
 
-            <Text style={styles.label}>their name (or nickname)</Text>
+            <Text style={styles.label}>their Bip ID</Text>
             <TextInput
               style={styles.input}
-              placeholder={isRylane ? 'big mike, m-dot, whatever' : 'soft name only \u{1F49C}'}
+              placeholder={isRylane ? '@nightvibes27 or BIP-8Q4L2M' : '@ray-cloud or BIP-8Q4L2M'}
+              placeholderTextColor="rgba(255,255,255,0.45)"
+              value={newBipId}
+              onChangeText={setNewBipId}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>first name after they accept (optional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={isRylane ? 'shows only after trusted' : 'private crew name after accept'}
               placeholderTextColor="rgba(255,255,255,0.45)"
               value={newName}
               onChangeText={setNewName}
             />
+
 
             <Text style={styles.label}>their emoji</Text>
             <View style={styles.emojiRow}>
@@ -382,9 +401,9 @@ export function BipCrewScreen({
             </View>
 
             <TouchableOpacity
-              style={[styles.cta, { backgroundColor: accent, opacity: newName.trim() ? 1 : 0.5 }]}
+              style={[styles.cta, { backgroundColor: accent, opacity: newBipId.trim() ? 1 : 0.5 }]}
               onPress={addMember}
-              disabled={!newName.trim()}
+              disabled={!newBipId.trim()}
             >
               <Text style={styles.ctaText}>
                 {isRylane ? 'add to crew →' : 'add to crew \u{1F49C}'}
@@ -393,8 +412,8 @@ export function BipCrewScreen({
 
             <Text style={styles.cardSub}>
               {isRylane
-                ? 'local only for now. when supabase lands, the code becomes a real invite.'
-                : 'local only for now. when supabase lands the code becomes a real invite \u{1F49C}'}
+                ? 'local only for now. Supabase lookup should use Bip ID/QR, never real-name search.'
+                : 'local only for now. Supabase lookup should use Bip ID/QR, never real-name search \u{1F49C}'}
             </Text>
           </Animated.View>
         )}
