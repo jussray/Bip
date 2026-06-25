@@ -23,7 +23,9 @@ import {
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
-import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
+import { isSupabaseConfigured } from '@/utils/supabase';
+import { getAuthenticatedProfile, signOutAndClearLocalState } from '@/utils/account';
+import type { PrivateAccountProfile } from '@/utils/account';
 
 /**
  * Returns the number of consecutive days ending today that have a journal entry.
@@ -57,20 +59,17 @@ const MOOD_LABELS: Record<string, string> = {
 export default function ProfileScreen() {
   const { entries, moodHistory } = useAppContext();
   const streak = calcStreak(entries);
-  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const [accountProfile, setAccountProfile] = useState<PrivateAccountProfile | null>(null);
   const [isAnon, setIsAnon] = useState(false);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
-    const sb = getSupabase();
-    if (!sb) return;
-    sb.auth.getSession().then(({ data }) => {
-      const user = data.session?.user;
-      if (!user) return;
-      if (user.is_anonymous) {
-        setIsAnon(true);
+    getAuthenticatedProfile().then(profile => {
+      if (profile) {
+        setAccountProfile(profile);
       } else {
-        setAccountEmail(user.email ?? null);
+        // No private profile — likely anonymous session
+        setIsAnon(true);
       }
     });
   }, []);
@@ -82,8 +81,7 @@ export default function ProfileScreen() {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
-          const sb = getSupabase();
-          if (sb) await sb.auth.signOut();
+          await signOutAndClearLocalState().catch(() => {});
           router.replace('/(auth)/login');
         },
       },
@@ -159,9 +157,11 @@ export default function ProfileScreen() {
         {isSupabaseConfigured && (
           <>
             <Text style={[styles.sectionLabel, { marginTop: 28 }]}>Account</Text>
-            {accountEmail ? (
+            {accountProfile ? (
               <View style={styles.accountCard}>
-                <Text style={styles.accountEmail}>{accountEmail}</Text>
+                <Text style={styles.accountHandle}>@{accountProfile.anonymous_handle}</Text>
+                <Text style={styles.bipId}>Bip ID: {accountProfile.bip_id}</Text>
+                <Text style={styles.accountEmail}>{accountProfile.email}</Text>
                 <TouchableOpacity onPress={handleSignOut} style={styles.signOutBtn}>
                   <Text style={styles.signOutText}>Sign Out</Text>
                 </TouchableOpacity>
@@ -222,7 +222,9 @@ const styles = StyleSheet.create({
   settingsBtn:      { marginTop: 32, alignItems: 'center', padding: 14 },
   settingsBtnText:  { color: '#555', fontSize: 14 },
   accountCard:      { backgroundColor: '#111827', borderRadius: 14, padding: 16, marginBottom: 10 },
-  accountEmail:     { color: '#D1D5DB', fontSize: 14, marginBottom: 12 },
+  accountHandle:    { color: '#c4b5fd', fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  bipId:            { color: '#6d28d9', fontSize: 12, marginBottom: 8 },
+  accountEmail:     { color: '#555', fontSize: 12, marginBottom: 12 },
   signOutBtn:       { backgroundColor: 'rgba(248,113,113,0.15)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(248,113,113,0.4)' },
   signOutText:      { color: '#f87171', fontSize: 14, fontWeight: '700' },
   anonNote:         { color: '#666', fontSize: 13, marginBottom: 12 },

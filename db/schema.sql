@@ -152,3 +152,98 @@ create table if not exists public.room_memory (
 alter table public.room_memory enable row level security;
 create policy "room_memory_self" on public.room_memory
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ── accounts ─────────────────────────────────────────────────────────────────
+-- Private identity record — one row per authenticated user.
+-- real identity (email, first_name) is separated from public Bip identity
+-- (anonymous_handle, bip_id) which is safe to surface in social contexts.
+create table if not exists public.accounts (
+  id                uuid          primary key references auth.users(id) on delete cascade,
+  email             text          not null,
+  first_name        text          not null,
+  side              text          not null check (side in ('teen', 'guardian')),
+  age_gate_status   text          not null check (age_gate_status in ('teen', 'guardian')),
+  anonymous_handle  text          not null,
+  bip_id            text          not null unique,
+  avatar_key        text          not null default 'soft',
+  created_at        timestamptz   not null default now(),
+  updated_at        timestamptz   not null default now()
+);
+alter table public.accounts enable row level security;
+create policy "accounts_select" on public.accounts
+  for select using (auth.uid() = id);
+create policy "accounts_insert" on public.accounts
+  for insert with check (auth.uid() = id);
+create policy "accounts_update" on public.accounts
+  for update using (auth.uid() = id) with check (auth.uid() = id);
+
+-- ── parent_teen_invites ───────────────────────────────────────────────────────
+-- Teen-generated invite codes used to initiate guardian linking.
+-- Codes are single-use; expires_at enforces time bounds.
+create table if not exists public.parent_teen_invites (
+  id          uuid          primary key default gen_random_uuid(),
+  teen_id     uuid          not null references auth.users(id) on delete cascade,
+  invite_code text          not null unique,
+  used        boolean       not null default false,
+  expires_at  timestamptz   not null default (now() + interval '48 hours'),
+  created_at  timestamptz   not null default now()
+);
+alter table public.parent_teen_invites enable row level security;
+create policy "parent_teen_invites_teen_select" on public.parent_teen_invites
+  for select using (auth.uid() = teen_id);
+create policy "parent_teen_invites_teen_insert" on public.parent_teen_invites
+  for insert with check (auth.uid() = teen_id);
+-- Guardians need to look up an invite by code to claim it
+create policy "parent_teen_invites_guardian_claim" on public.parent_teen_invites
+  for select using (used = false and expires_at > now());
+
+-- ── parent_teen_links ─────────────────────────────────────────────────────────
+-- Approved guardian-teen relationships. Guardian requests start pending;
+-- teen must approve. permissions[] controls what the guardian can see.
+create table if not exists public.parent_teen_links (
+  id           uuid          primary key default gen_random_uuid(),
+  teen_id      uuid          not null references auth.users(id) on delete cascade,
+  guardian_id  uuid          not null references auth.users(id) on delete cascade,
+  invite_code  text          not null,
+  status       text          not null default 'pending' check (status in ('pending', 'approved', 'blocked', 'removed')),
+  permissions  text[]        not null default '{}',
+  created_at   timestamptz   not null default now(),
+  updated_at   timestamptz   not null default now(),
+  unique (teen_id, guardian_id)
+);
+alter table public.parent_teen_links enable row level security;
+create policy "parent_teen_links_teen_select" on public.parent_teen_links
+  for select using (auth.uid() = teen_id);
+create policy "parent_teen_links_guardian_select" on public.parent_teen_links
+  for select using (auth.uid() = guardian_id);
+create policy "parent_teen_links_teen_manage" on public.parent_teen_links
+  for all using (auth.uid() = teen_id) with check (auth.uid() = teen_id);
+create policy "parent_teen_links_guardian_request" on public.parent_teen_links
+  for insert with check (auth.uid() = guardian_id);
+
+-- ── teen_guardian_shares ──────────────────────────────────────────────────────
+-- Specific content a teen has explicitly shared with an approved guardian.
+-- Reads are scoped: teen sees their own shares; guardian sees only approved links.
+create table if not exists public.teen_guardian_shares (
+  id           uuid          primary key default gen_random_uuid(),
+  link_id      uuid          not null references public.parent_teen_links(id) on delete cascade,
+  teen_id      uuid          not null references auth.users(id) on delete cascade,
+  guardian_id  uuid          not null references auth.users(id) on delete cascade,
+  share_kind   text          not null,
+  summary      text          not null,
+  source_id    text,
+  created_at   timestamptz   not null default now()
+);
+alter table public.teen_guardian_shares enable row level security;
+create policy "teen_guardian_shares_teen_select" on public.teen_guardian_shares
+  for select using (auth.uid() = teen_id);
+create policy "teen_guardian_shares_linked_guardian_select" on public.teen_guardian_shares
+  for select using (
+    auth.uid() = guardian_id
+    and exists (
+      select 1 from public.parent_teen_links l
+      where l.id = link_id and l.status = 'approved' and auth.uid() = l.guardian_id
+    )
+  );
+create policy "teen_guardian_shares_teen_insert" on public.teen_guardian_shares
+  for insert with check (auth.uid() = teen_id);

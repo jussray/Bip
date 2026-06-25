@@ -37,7 +37,8 @@ export default function SignupScreen() {
     // Supabase may require email confirmation — if so, session won't exist yet.
     const { data } = await sb.auth.getSession();
     if (data.session) {
-      router.replace('/');
+      // Session exists — send to profile setup before entering the app.
+      router.replace('/(auth)/profile-setup');
     } else {
       setSuccess(true);
     }

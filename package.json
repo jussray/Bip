@@ -19,6 +19,7 @@
     "verify:prepush": "npm run audit:runtime-assets && npm run type-check && npm run lint && npm run verify:bundle && npm run verify:room-archives",
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
     "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
+    "test:device-sync": "node scripts/test-device-sync.mjs",
     "deploy": "npm run vercel-build && wrangler deploy",
     "preview": "npm run vercel-build && wrangler dev"
   },

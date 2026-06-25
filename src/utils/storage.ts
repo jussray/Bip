@@ -29,6 +29,9 @@ const STORAGE_KEYS = {
   crewMembers: 'crewMembers', crewCheckIns: 'crewCheckIns',
   parentCrewMembers: 'parentCrewMembers', parentCrewCheckIns: 'parentCrewCheckIns',
   roomMemory: 'roomMemory',
+  accountProfile: 'accountProfile',
+  parentTeenLinks: 'parentTeenLinks',
+  teenGuardianShares: 'teenGuardianShares',
 };
 
 const JSON_KEYS = new Set([
@@ -39,7 +42,20 @@ const JSON_KEYS = new Set([
   'comfortSessions', 'crewMembers', 'crewCheckIns',
   'parentCrewMembers', 'parentCrewCheckIns',
   'roomMemory', 'periodDays',
+  'accountProfile', 'parentTeenLinks', 'teenGuardianShares',
 ]);
+
+const PRIVATE_ACCOUNT_KEYS = [
+  'accountProfile', 'parentTeenLinks', 'teenGuardianShares',
+];
+
+export const clearPrivateLocalState = async (): Promise<void> => {
+  try {
+    await AsyncStorage.multiRemove(PRIVATE_ACCOUNT_KEYS);
+  } catch (error) {
+    console.error('clearPrivateLocalState error:', error);
+  }
+};
 
 export const loadState = async (): Promise<Record<string, any>> => {
   try {
