@@ -29,6 +29,9 @@ export interface CirclePost {
   mediaKind?: 'text' | 'struggle' | 'relatable' | 'growth';
   mediaUri?: string;
   anonymousName?: string;
+  avatarKey?: string;
+  visibility?: 'public_circle' | 'friends_only';
+  identityContext?: 'public_circle' | 'trusted_friend';
   circleTag?: string;
   postMood?: string;
   quietRepliesCount?: number;
@@ -89,6 +92,8 @@ export interface ComfortSession {
 export interface CrewMember {
   id: number;
   name: string;
+  bipId?: string;
+  connectionStatus?: 'pending' | 'accepted' | 'blocked' | 'removed';
   emoji: string;            // soft picker, no profile pics
   commitment: string;       // "text me when you spiral", "daily check-in", etc.
   cadence: 'daily' | 'weekly' | 'whenever';
@@ -107,6 +112,8 @@ export interface CrewCheckIn {
 
 export interface Theme {
   name: string;
+  bipId?: string;
+  connectionStatus?: 'pending' | 'accepted' | 'blocked' | 'removed';
   emoji: string;
   background: string;
   card: string;
@@ -116,6 +123,8 @@ export interface Theme {
 
 export interface SekretProfile {
   name: string;
+  bipId?: string;
+  connectionStatus?: 'pending' | 'accepted' | 'blocked' | 'removed';
   emoji: string;
   title: string;
   vibe: string;

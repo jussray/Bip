@@ -3,12 +3,12 @@
  *
  * Guardrail 6 — Age boundary guardrail.
  *
- * The branded splash (children) always renders first and stays visible —
- * the age question rides on top of it as a sheet rather than replacing it,
- * so a brand-new user's first impression is "entering a space" (per
- * docs/VISION.md's Opening Screen brief) rather than a bare form. Only
- * the 'blocked' (under-13) outcome takes over the full screen, since that
- * one has to be a hard stop rather than an ambient overlay.
+ * The branded splash stays visible while age-gate storage resolves or while
+ * a first-launch user answers the age question. The routed app children are
+ * held back until an allowed status is known, so new users cannot see app
+ * content underneath the translucent age prompt. Only the 'blocked'
+ * (under-13) outcome takes over the full screen, since that one has to be a
+ * hard stop rather than an ambient overlay.
  *
  * Confirms the person opening the app is in an allowed age range before
  * letting them continue — under-13 visitors are guided toward a parent/
@@ -19,6 +19,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { SplashScreen } from '../screens/SplashScreen';
 
 const AGE_GATE_KEY = 'age_gate_status';
 export type AgeGateStatus = 'teen' | 'guardian' | 'blocked';
@@ -34,7 +35,14 @@ export function AgeGate({ children, onResolved }: Props) {
   useEffect(() => {
     let mounted = true;
     AsyncStorage.getItem(AGE_GATE_KEY)
-      .then(val => { if (mounted) setStatus((val as AgeGateStatus) || 'unset'); })
+      .then(val => {
+        const next = (val as AgeGateStatus) || 'unset';
+        if (!mounted) return;
+        setStatus(next);
+        if (next === 'teen' || next === 'guardian') {
+          onResolved?.(next);
+        }
+      })
       .catch(() => { if (mounted) setStatus('unset'); });
     return () => { mounted = false; };
   }, []);
@@ -45,8 +53,12 @@ export function AgeGate({ children, onResolved }: Props) {
     onResolved?.(next);
   };
 
-  if (status === 'loading' || status === 'teen' || status === 'guardian') {
+  if (status === 'teen' || status === 'guardian') {
     return <>{children}</>;
+  }
+
+  if (status === 'loading') {
+    return <SplashScreen setScreen={() => {}} interactive={false} />;
   }
 
   if (status === 'blocked') {
@@ -66,12 +78,12 @@ export function AgeGate({ children, onResolved }: Props) {
     );
   }
 
-  // status === 'unset' — first launch ever. Keep the branded splash
-  // visible underneath; the question rides on top of it as a sheet so
-  // the very first thing a new user sees is the room, not a form.
+  // status === 'unset' — first launch ever. Keep only the branded splash
+  // visible underneath; the routed app children stay unmounted until the
+  // person chooses an allowed status.
   return (
     <View style={styles.unsetRoot}>
-      {children}
+      <SplashScreen setScreen={() => {}} interactive={false} />
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <Text style={styles.emoji}>👋</Text>

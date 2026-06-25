@@ -5,6 +5,30 @@
 -- ── Enable UUID extension ───────────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
 
+-- ── accounts ────────────────────────────────────────────────────────────────
+-- One private account/profile row per Supabase auth user. Real identity stays
+-- here for login, recovery, billing, and connected guardian/family contexts;
+-- public/community UI must use anonymous_handle + avatar_key instead.
+create table if not exists public.accounts (
+  id                uuid        primary key references auth.users(id) on delete cascade,
+  email             text        not null,
+  first_name        text        not null,
+  side              text        not null check (side in ('teen', 'guardian')),
+  age_gate_status   text        not null check (age_gate_status in ('teen', 'guardian')),
+  anonymous_handle  text        not null,
+  avatar_key        text        not null default 'soft',
+  bip_id            text        not null unique,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+alter table public.accounts enable row level security;
+create policy "accounts_self_select" on public.accounts
+  for select using (auth.uid() = id);
+create policy "accounts_self_insert" on public.accounts
+  for insert with check (auth.uid() = id);
+create policy "accounts_self_update" on public.accounts
+  for update using (auth.uid() = id) with check (auth.uid() = id);
+
 -- ── mood_history ────────────────────────────────────────────────────────────
 create table if not exists public.mood_history (
   id          bigint        primary key,
@@ -44,6 +68,10 @@ create table if not exists public.circle_posts (
   circle_tag  text,
   post_mood   text,
   media_kind  text,
+  anonymous_name text,
+  avatar_key text,
+  visibility text not null default 'public_circle' check (visibility in ('public_circle', 'friends_only')),
+  identity_context text not null default 'public_circle' check (identity_context in ('public_circle', 'trusted_friend')),
   created_at  timestamptz   not null default now()
 );
 alter table public.circle_posts enable row level security;
@@ -105,6 +133,8 @@ create table if not exists public.crew_members (
   commitment   text          not null,
   cadence      text          not null,
   invite_code  text          not null,
+  bip_id       text,
+  connection_status text not null default 'pending' check (connection_status in ('pending', 'accepted', 'blocked', 'removed')),
   added_at     timestamptz   not null,
   created_at   timestamptz   not null default now()
 );
@@ -152,3 +182,10 @@ create table if not exists public.room_memory (
 alter table public.room_memory enable row level security;
 create policy "room_memory_self" on public.room_memory
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+
+-- Privacy note: accounts has owner-only RLS and no policy that permits querying
+-- profiles by email, first_name, anonymous_handle, or bip_id. Friend discovery
+-- should be implemented through a security-definer invite/QR exchange that
+-- returns only the minimum public Bip ID/handle data needed to create a pending
+-- request; it must never expose real names or emails to global search.

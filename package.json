@@ -20,7 +20,8 @@
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
     "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
     "deploy": "npm run vercel-build && wrangler deploy",
-    "preview": "npm run vercel-build && wrangler dev"
+    "preview": "npm run vercel-build && wrangler dev",
+    "test:device-sync": "node --test scripts/test-device-sync.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
