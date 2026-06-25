@@ -8,6 +8,13 @@ on:
       - 'wrangler.toml'
   workflow_dispatch:
 
+concurrency:
+  group: deploy-worker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy to Cloudflare Workers
@@ -24,7 +31,7 @@ jobs:
       - run: npm ci
 
       - name: Deploy worker
-        run: npx wrangler deploy
+        run: npx wrangler@4.100.0 deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
