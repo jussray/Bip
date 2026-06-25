@@ -65,7 +65,7 @@ export interface VoiceBipAvatarDefinition {
 export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefinition> = {
   raylene: {
     key: 'raylene',
-    displayName: 'Raylene',
+    displayName: 'Star',
     emoji: '💜',
     role: 'Big sister',
     energy: 'Come here. Talk to me.',
@@ -87,10 +87,10 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
       'I listen without judgment, always',
     ],
     greeting: 'Come here. Talk to me.',
-    presence: 'Raylene’s here · warm and listening',
-    listening: 'Raylene is listening… 💜',
-    responseLabel: 'Raylene replied 💜',
-    archiveTitle: 'Voice Bips with Raylene',
+    presence: 'Star’s here · warm and listening',
+    listening: 'Star is listening… 💜',
+    responseLabel: 'Star replied 💜',
+    archiveTitle: 'Voice Bips with Star',
   },
   rylane: {
     key: 'rylane',
