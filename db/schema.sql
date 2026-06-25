@@ -5,6 +5,29 @@
 -- ── Enable UUID extension ───────────────────────────────────────────────────
 create extension if not exists "uuid-ossp";
 
+-- ── accounts ────────────────────────────────────────────────────────────────
+-- Private profile owned by the signed-in user. Real identity stays owner-only;
+-- public/community surfaces should use anonymous_handle, avatar_key, and bip_id.
+create table if not exists public.accounts (
+  id                uuid        primary key references auth.users(id) on delete cascade,
+  email             text        not null,
+  first_name        text        not null,
+  side              text        not null check (side in ('teen', 'guardian')),
+  age_gate_status   text        not null check (age_gate_status in ('teen', 'guardian')),
+  anonymous_handle  text        not null,
+  avatar_key        text        not null default 'soft',
+  bip_id            text        not null unique,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+alter table public.accounts enable row level security;
+drop policy if exists "accounts_self" on public.accounts;
+create policy "accounts_self" on public.accounts
+  using (auth.uid() = id) with check (auth.uid() = id);
+
+-- Privacy rule: do not add broad select policies for accounts. Friend discovery
+-- should happen by invite/QR/Bip ID flow and must not expose email or first_name.
+
 -- ── mood_history ────────────────────────────────────────────────────────────
 create table if not exists public.mood_history (
   id          bigint        primary key,
@@ -46,8 +69,26 @@ create table if not exists public.circle_posts (
   circle_tag  text,
   post_mood   text,
   media_kind  text,
+  anonymous_name text,
+  avatar_key text,
+  visibility text not null default 'public_circle' check (visibility in ('public_circle', 'friends_only')),
+  identity_context text not null default 'public_circle' check (identity_context in ('public_circle', 'trusted_friend')),
   created_at  timestamptz   not null default now()
 );
+alter table public.circle_posts add column if not exists anonymous_name text;
+alter table public.circle_posts add column if not exists avatar_key text;
+alter table public.circle_posts add column if not exists visibility text not null default 'public_circle';
+alter table public.circle_posts add column if not exists identity_context text not null default 'public_circle';
+do $$ begin
+  alter table public.circle_posts add constraint circle_posts_visibility_check
+    check (visibility in ('public_circle', 'friends_only'));
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  alter table public.circle_posts add constraint circle_posts_identity_context_check
+    check (identity_context in ('public_circle', 'trusted_friend'));
+exception when duplicate_object then null;
+end $$;
 alter table public.circle_posts enable row level security;
 drop policy if exists "circle_posts_self" on public.circle_posts;
 create policy "circle_posts_self" on public.circle_posts
@@ -111,9 +152,18 @@ create table if not exists public.crew_members (
   commitment   text          not null,
   cadence      text          not null,
   invite_code  text          not null,
+  bip_id       text,
+  connection_status text not null default 'pending' check (connection_status in ('pending', 'accepted', 'blocked', 'removed')),
   added_at     timestamptz   not null,
   created_at   timestamptz   not null default now()
 );
+alter table public.crew_members add column if not exists bip_id text;
+alter table public.crew_members add column if not exists connection_status text not null default 'pending';
+do $$ begin
+  alter table public.crew_members add constraint crew_members_connection_status_check
+    check (connection_status in ('pending', 'accepted', 'blocked', 'removed'));
+exception when duplicate_object then null;
+end $$;
 alter table public.crew_members enable row level security;
 drop policy if exists "crew_members_self" on public.crew_members;
 create policy "crew_members_self" on public.crew_members
@@ -162,3 +212,57 @@ alter table public.room_memory enable row level security;
 drop policy if exists "room_memory_self" on public.room_memory;
 create policy "room_memory_self" on public.room_memory
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ── Parent ↔ Teen linking ──────────────────────────────────────────────────
+-- Parents/guardians cannot search teen profiles by real name or email. A teen
+-- generates an invite/QR code; a guardian can create only a pending request;
+-- the teen must approve before any shared teen content is visible.
+create table if not exists public.parent_teen_invites (
+  id          uuid        primary key default uuid_generate_v4(),
+  teen_id     uuid        not null references auth.users(id) on delete cascade,
+  invite_code text        not null unique,
+  status      text        not null default 'pending' check (status in ('pending', 'approved', 'blocked', 'removed')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (teen_id, invite_code)
+);
+alter table public.parent_teen_invites enable row level security;
+drop policy if exists "parent_teen_invites_teen_self" on public.parent_teen_invites;
+create policy "parent_teen_invites_teen_self" on public.parent_teen_invites
+  using (auth.uid() = teen_id) with check (auth.uid() = teen_id);
+drop policy if exists "parent_teen_invites_guardian_code_lookup" on public.parent_teen_invites;
+create policy "parent_teen_invites_guardian_code_lookup" on public.parent_teen_invites
+  for select using (status = 'pending');
+
+create table if not exists public.parent_teen_links (
+  id          uuid        primary key default uuid_generate_v4(),
+  teen_id     uuid        not null references auth.users(id) on delete cascade,
+  guardian_id uuid        not null references auth.users(id) on delete cascade,
+  invite_id   uuid        references public.parent_teen_invites(id) on delete set null,
+  status      text        not null default 'pending' check (status in ('pending', 'approved', 'blocked', 'removed')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (teen_id, guardian_id)
+);
+alter table public.parent_teen_links enable row level security;
+drop policy if exists "parent_teen_links_self" on public.parent_teen_links;
+create policy "parent_teen_links_self" on public.parent_teen_links
+  using (auth.uid() = teen_id or auth.uid() = guardian_id)
+  with check (auth.uid() = teen_id or auth.uid() = guardian_id);
+
+create table if not exists public.teen_guardian_shares (
+  id          uuid        primary key default uuid_generate_v4(),
+  teen_id     uuid        not null references auth.users(id) on delete cascade,
+  guardian_id uuid        not null references auth.users(id) on delete cascade,
+  link_id     uuid        references public.parent_teen_links(id) on delete cascade,
+  share_key   text        not null,
+  allowed     boolean     not null default false,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now(),
+  unique (teen_id, guardian_id, share_key)
+);
+alter table public.teen_guardian_shares enable row level security;
+drop policy if exists "teen_guardian_shares_self" on public.teen_guardian_shares;
+create policy "teen_guardian_shares_self" on public.teen_guardian_shares
+  using (auth.uid() = teen_id or auth.uid() = guardian_id)
+  with check (auth.uid() = teen_id or auth.uid() = guardian_id);
