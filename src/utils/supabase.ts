@@ -67,6 +67,13 @@ export const TABLES = {
   friendships:         'friendships',
   // ── Oracle tables (0003_oracle_parentlinks_period_safety.sql) ───────────
   oracleSessions:      'oracle_sessions',
+  // ── Circle V1 social layer ───────────────────────────────────────────────
+  circleComments:       'circle_comments',
+  circleFriendRequests: 'circle_friend_requests',
+  blockedUsers:         'blocked_users',
+  reportedPosts:        'reported_posts',
+  // ── User Room ────────────────────────────────────────────────────────────
+  userRooms:            'user_rooms',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

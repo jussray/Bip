@@ -260,6 +260,111 @@ export async function syncCircleReaction(
   }
 }
 
+// ── Circle V1: Load my circle profile ─────────────────────────────────────────
+export async function loadMyCircleProfile(): Promise<{ userId: string; nickname: string; avatar_emoji: string } | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data } = await sb
+      .from(TABLES.circleProfiles)
+      .select('nickname, avatar_emoji')
+      .eq('user_id', uid)
+      .maybeSingle();
+    return {
+      userId:       uid,
+      nickname:     (data as any)?.nickname     ?? '',
+      avatar_emoji: (data as any)?.avatar_emoji ?? '💜',
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] loadMyCircleProfile failed', e);
+    return null;
+  }
+}
+
+// ── Circle V1: Write comment ───────────────────────────────────────────────────
+export async function writeCircleComment(
+  postId: number,
+  postType: string,
+  text: string,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.circleComments).insert({
+      post_id:   postId,
+      post_type: postType,
+      user_id:   uid,
+      text,
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] writeCircleComment failed', e);
+  }
+}
+
+// ── Circle V1: Block a user ────────────────────────────────────────────────────
+export async function writeBlockedUser(blockedId: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.blockedUsers).insert({ user_id: uid, blocked_id: blockedId });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] writeBlockedUser failed', e);
+  }
+}
+
+// ── Circle V1: Report a post ──────────────────────────────────────────────────
+export async function writeReportedPost(
+  postId: number,
+  postType: string,
+  reason: string,
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.reportedPosts).insert({
+      reporter_id: uid,
+      post_id:     postId,
+      post_type:   postType,
+      reason,
+    });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] writeReportedPost failed', e);
+  }
+}
+
+// ── Circle V1: Send friend request by nickname ────────────────────────────────
+// Looks up circle_profiles by nickname then inserts into circle_friend_requests.
+// Returns true if the request was sent, false if the nickname wasn't found.
+export async function sendFriendRequest(nickname: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const uid = await currentUserId();
+  if (!uid) return false;
+  try {
+    const { data: profile } = await sb
+      .from(TABLES.circleProfiles)
+      .select('user_id')
+      .eq('nickname', nickname.trim())
+      .maybeSingle();
+    if (!profile) return false;
+    const toUserId = (profile as any).user_id as string;
+    if (toUserId === uid) return false; // can't friend yourself
+    await sb.from(TABLES.circleFriendRequests).insert({ from_user: uid, to_user: toUserId });
+    return true;
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] sendFriendRequest failed', e);
+    return false;
+  }
+}
+
 // ── Circle V1: Post write ───────────────────────────────────────────────
 export async function writeCirclePost(
   tab: CircleTab,
