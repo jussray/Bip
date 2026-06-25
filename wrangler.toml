@@ -1,11 +1,19 @@
 # wrangler.toml
 # Replaces wrangler.jsonc — TOML avoids JSON comment-parsing failures in CF builds.
 #
-# Secrets (never commit values — use `wrangler secret put`):
-#   OPENAI_API_KEY
-#
-# Deploy:
+# ── Secrets (NEVER commit values — run `wrangler secret put <NAME>`) ────────
 #   wrangler secret put OPENAI_API_KEY
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put SAFETY_SCAN_SECRET
+#
+# ── Local development ──────────────────────────────────────────────────
+#   Copy .dev.vars.example → .dev.vars and fill in real values.
+#   .dev.vars is gitignored and is used by `wrangler dev` automatically.
+#
+# ── Deploy ──────────────────────────────────────────────────────────
+#   wrangler secret put OPENAI_API_KEY
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+#   wrangler secret put SAFETY_SCAN_SECRET
 #   wrangler deploy
 
 name               = "bip"
@@ -16,7 +24,20 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
-# routes block commented out for beta — using auto-assigned *.workers.dev URL.
+# ── Non-secret config vars (safe to commit) ──────────────────────────────
+# Override these per environment using [env.staging] or [env.production] blocks.
+[vars]
+# OpenAI model names — rotate without code changes by updating this file.
+# For production overrides: `wrangler deploy --var OPENAI_CHAT_MODEL:gpt-4o`
+OPENAI_CHAT_MODEL      = "gpt-4o-mini"
+OPENAI_TTS_MODEL       = "gpt-4o-mini-tts"
+OPENAI_STT_MODEL       = "whisper-1"
+
+# Audio upload limit in bytes (base64 decoded size cap).
+# 512 KB ≈ ~30s of compressed voice at typical Expo AudioRecording settings.
+AUDIO_MAX_BYTES        = "524288"
+
+# Routes block commented out for beta — using auto-assigned *.workers.dev URL.
 # Un-comment and set EXPO_PUBLIC_BACKEND_URL to your custom domain once live.
 #
 # [[routes]]
