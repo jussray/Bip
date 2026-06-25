@@ -36,6 +36,11 @@ import {
   loadCircleFeed,
   syncCircleReaction,
   writeCirclePost,
+  loadMyCircleProfile,
+  writeCircleComment,
+  writeBlockedUser,
+  writeReportedPost,
+  sendFriendRequest,
 } from '../utils/sync';
 import { SOFT_CONTENT_FLAGS, CRISIS_NUDGE, TONE } from '../constants/guardrails';
 
@@ -263,7 +268,10 @@ function PublicFeed({ onOptimisticInsert }: {
 }
 
 // ─── Friends feed ────────────────────────────────────────────────────────────
-function FriendsFeed({ myUserId }: { myUserId: string }) {
+function FriendsFeed({ myUserId, myProfile }: {
+  myUserId: string;
+  myProfile: { nickname: string; avatar_emoji: string };
+}) {
   const [posts, setPosts, loading] = useFeed<FriendsCirclePost>('friends', MOCK_FRIENDS);
   const [commentTarget, setCommentTarget] = useState<number | null>(null);
   const [commentText,   setCommentText]   = useState('');
@@ -288,21 +296,25 @@ function FriendsFeed({ myUserId }: { myUserId: string }) {
       post_id: postId,
       post_type: 'friends',
       user_id: myUserId,
-      nickname: 'Me',
-      avatar_emoji: '💜',
+      nickname: myProfile.nickname || 'Me',
+      avatar_emoji: myProfile.avatar_emoji || '💜',
       text,
       created_at: new Date().toISOString(),
     };
     setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
     setCommentTarget(null);
     setCommentText('');
+    void writeCircleComment(postId, 'friends', text);
   };
 
-  const handleBlock  = () => Alert.alert('Blocked', 'This account has been blocked.');
+  const handleBlock  = (userId: string) => {
+    Alert.alert('Blocked', 'This account has been blocked.');
+    void writeBlockedUser(userId);
+  };
   const handleReport = (postId: number) =>
     Alert.alert('Report Bip', 'Why are you reporting this?', [
-      { text: 'Harmful content', onPress: () => {} },
-      { text: 'Spam',           onPress: () => {} },
+      { text: 'Harmful content', onPress: () => void writeReportedPost(postId, 'friends', 'harmful_content') },
+      { text: 'Spam',           onPress: () => void writeReportedPost(postId, 'friends', 'spam') },
       { text: 'Cancel', style: 'cancel' },
     ]);
 
@@ -325,7 +337,7 @@ function FriendsFeed({ myUserId }: { myUserId: string }) {
             </View>
             <PostMenu
               isOwnPost={item.user_id === myUserId}
-              onBlock={handleBlock}
+              onBlock={() => handleBlock(item.user_id)}
               onReport={() => handleReport(item.id)}
             />
           </View>
@@ -371,7 +383,10 @@ function FriendsFeed({ myUserId }: { myUserId: string }) {
 }
 
 // ─── Crew feed ───────────────────────────────────────────────────────────────
-function CrewFeed({ myUserId }: { myUserId: string }) {
+function CrewFeed({ myUserId, myProfile }: {
+  myUserId: string;
+  myProfile: { nickname: string; avatar_emoji: string };
+}) {
   const [posts, setPosts, loading] = useFeed<CrewCirclePost>('crew', MOCK_CREW);
   const [commentTarget, setCommentTarget] = useState<number | null>(null);
   const [commentText,   setCommentText]   = useState('');
@@ -396,21 +411,25 @@ function CrewFeed({ myUserId }: { myUserId: string }) {
       post_id: postId,
       post_type: 'crew',
       user_id: myUserId,
-      nickname: 'Me',
-      avatar_emoji: '💜',
+      nickname: myProfile.nickname || 'Me',
+      avatar_emoji: myProfile.avatar_emoji || '💜',
       text,
       created_at: new Date().toISOString(),
     };
     setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
     setCommentTarget(null);
     setCommentText('');
+    void writeCircleComment(postId, 'crew', text);
   };
 
-  const handleBlock  = () => Alert.alert('Blocked', 'This account has been blocked.');
+  const handleBlock  = (userId: string) => {
+    Alert.alert('Blocked', 'This account has been blocked.');
+    void writeBlockedUser(userId);
+  };
   const handleReport = (postId: number) =>
     Alert.alert('Report Bip', 'Why are you reporting this?', [
-      { text: 'Harmful content', onPress: () => {} },
-      { text: 'Spam',           onPress: () => {} },
+      { text: 'Harmful content', onPress: () => void writeReportedPost(postId, 'crew', 'harmful_content') },
+      { text: 'Spam',           onPress: () => void writeReportedPost(postId, 'crew', 'spam') },
       { text: 'Cancel', style: 'cancel' },
     ]);
 
@@ -433,7 +452,7 @@ function CrewFeed({ myUserId }: { myUserId: string }) {
             </View>
             <PostMenu
               isOwnPost={item.user_id === myUserId}
-              onBlock={handleBlock}
+              onBlock={() => handleBlock(item.user_id)}
               onReport={() => handleReport(item.id)}
             />
           </View>
@@ -479,7 +498,10 @@ function CrewFeed({ myUserId }: { myUserId: string }) {
 }
 
 // ─── Parent feed ─────────────────────────────────────────────────────────────
-function ParentFeed({ myUserId }: { myUserId: string }) {
+function ParentFeed({ myUserId, myProfile }: {
+  myUserId: string;
+  myProfile: { nickname: string; avatar_emoji: string };
+}) {
   const [posts, setPosts, loading] = useFeed<ParentCirclePost>('parent', MOCK_PARENT);
   const [commentTarget, setCommentTarget] = useState<number | null>(null);
   const [commentText,   setCommentText]   = useState('');
@@ -504,21 +526,25 @@ function ParentFeed({ myUserId }: { myUserId: string }) {
       post_id: postId,
       post_type: 'parent',
       user_id: myUserId,
-      nickname: 'Parent',
-      avatar_emoji: '🌿',
+      nickname: myProfile.nickname || 'Parent',
+      avatar_emoji: myProfile.avatar_emoji || '🌿',
       text,
       created_at: new Date().toISOString(),
     };
     setComments(prev => ({ ...prev, [postId]: [...(prev[postId] ?? []), newComment] }));
     setCommentTarget(null);
     setCommentText('');
+    void writeCircleComment(postId, 'parent', text);
   };
 
-  const handleBlock  = () => Alert.alert('Blocked', 'This account has been blocked.');
+  const handleBlock  = (userId: string) => {
+    Alert.alert('Blocked', 'This account has been blocked.');
+    void writeBlockedUser(userId);
+  };
   const handleReport = (postId: number) =>
     Alert.alert('Report Bip', 'Why are you reporting this?', [
-      { text: 'Harmful content', onPress: () => {} },
-      { text: 'Spam',           onPress: () => {} },
+      { text: 'Harmful content', onPress: () => void writeReportedPost(postId, 'parent', 'harmful_content') },
+      { text: 'Spam',           onPress: () => void writeReportedPost(postId, 'parent', 'spam') },
       { text: 'Cancel', style: 'cancel' },
     ]);
 
@@ -543,7 +569,7 @@ function ParentFeed({ myUserId }: { myUserId: string }) {
             <Text style={styles.anonLabel}>{item.identity_revealed ? 'Parent' : 'Anonymous Parent'}</Text>
             <PostMenu
               isOwnPost={item.user_id === myUserId}
-              onBlock={handleBlock}
+              onBlock={() => handleBlock(item.user_id)}
               onReport={() => handleReport(item.id)}
             />
           </View>
@@ -717,10 +743,16 @@ function AddToCircleModal({ onClose }: { onClose: () => void }) {
   const [search, setSearch]   = useState('');
   const [sent,   setSent]     = useState(false);
 
-  const handleSend = () => {
-    if (!search.trim()) return;
-    setSent(true);
-    setTimeout(onClose, 1200);
+  const handleSend = async () => {
+    const nick = search.trim();
+    if (!nick) return;
+    const ok = await sendFriendRequest(nick);
+    if (ok) {
+      setSent(true);
+      setTimeout(onClose, 1200);
+    } else {
+      Alert.alert('Not found', 'No Bip crew member found with that nickname.');
+    }
   };
 
   return (
@@ -758,8 +790,8 @@ function AddToCircleModal({ onClose }: { onClose: () => void }) {
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function CircleScreen(_props: Record<string, unknown> = {}) {
-  const myUserId   = 'current-user-id';
-  const myNickname = 'MoonGirl_17';
+  const [myUserId,  setMyUserId]  = useState('');
+  const [myProfile, setMyProfile] = useState<{ nickname: string; avatar_emoji: string }>({ nickname: '', avatar_emoji: '💜' });
 
   const [activeTab,     setActiveTab]     = useState<CircleTab>('public');
   const [composerOpen,  setComposerOpen]  = useState(false);
@@ -767,6 +799,14 @@ export default function CircleScreen(_props: Record<string, unknown> = {}) {
 
   const breath = useRef(new Animated.Value(0)).current;
   const publicInsertRef = useRef<((text: string) => void) | null>(null);
+
+  useEffect(() => {
+    loadMyCircleProfile().then(p => {
+      if (!p) return;
+      setMyUserId(p.userId);
+      setMyProfile({ nickname: p.nickname, avatar_emoji: p.avatar_emoji });
+    });
+  }, []);
 
   useEffect(() => {
     Animated.loop(
@@ -844,15 +884,15 @@ export default function CircleScreen(_props: Record<string, unknown> = {}) {
       {/* ── Feed ───────────────────────────────────────────────────────────── */}
       <View style={styles.feedWrap}>
         {activeTab === 'public'  && <PublicFeed onOptimisticInsert={fn => { publicInsertRef.current = fn; }} />}
-        {activeTab === 'friends' && <FriendsFeed myUserId={myUserId} />}
-        {activeTab === 'crew'    && <CrewFeed    myUserId={myUserId} />}
-        {activeTab === 'parent'  && <ParentFeed  myUserId={myUserId} />}
+        {activeTab === 'friends' && <FriendsFeed myUserId={myUserId} myProfile={myProfile} />}
+        {activeTab === 'crew'    && <CrewFeed    myUserId={myUserId} myProfile={myProfile} />}
+        {activeTab === 'parent'  && <ParentFeed  myUserId={myUserId} myProfile={myProfile} />}
       </View>
 
       {composerOpen && (
         <Composer
           activeTab={activeTab}
-          nickname={myNickname}
+          nickname={myProfile.nickname || 'you'}
           onClose={() => setComposerOpen(false)}
           onPost={handlePost}
         />
