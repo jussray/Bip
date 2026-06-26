@@ -1,5 +1,8 @@
-// DELETED — this file is intentionally empty.
-// @/utils/* resolves to src/utils/* via tsconfig paths.
-// All real implementations live in src/utils/.
-// This stub will be removed in the next cleanup pass.
-export {};
+/**
+ * Compatibility re-export for legacy screen imports.
+ *
+ * Canonical API helpers live in src/utils/api.ts. Some older screens still
+ * import from ../utils/api, so this file forwards those exports until the
+ * route cleanup removes the legacy path.
+ */
+export * from '../src/utils/api';
