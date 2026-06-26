@@ -13,6 +13,7 @@
 // because the cloud is down. Errors are logged and swallowed.
 
 import { getSupabase, TABLES } from './supabase';
+import { loadState } from './storage';
 import type {
   JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
@@ -195,7 +196,6 @@ export async function loadCircleFeed(
         .limit(limit);
       if (error) throw error;
       const rows = posts ?? [];
-      // Fetch display names for each author (two-step; no FK from post→circle_profiles)
       let profileMap: Record<string, { nickname: string; avatar_emoji: string }> = {};
       const userIds = [...new Set(rows.map((r: any) => r.user_id as string))];
       if (userIds.length > 0) {
@@ -241,8 +241,6 @@ export async function loadCircleFeed(
 }
 
 // ── Circle V1: Reaction sync ──────────────────────────────────────────────────
-// Call signature: syncCircleReaction(postId, postType, emoji)
-// Back-compat 2-arg form: syncCircleReaction(postId, emoji) — defaults postType to 'public'.
 export async function syncCircleReaction(
   postId: string | number,
   tabOrReaction: string,
@@ -450,10 +448,6 @@ export async function loadPeriodDays(): Promise<string[]> {
 
 // ── Oracle / companion memory ───────────────────────────────────────────────
 
-/**
- * Upsert the full oracle memory snapshot for a personality.
- * personality_id: 'teen' | 'parent'
- */
 export async function syncOracleSession(
   personalityId: string,
   memory: Record<string, unknown>,
@@ -482,10 +476,6 @@ export async function syncOracleSession(
   }
 }
 
-/**
- * Load the latest oracle memory snapshot for a personality.
- * Returns null if not found or Supabase not configured.
- */
 export async function loadOracleSession(
   personalityId: string,
 ): Promise<{ memory: Record<string, unknown>; sessionCount: number } | null> {
@@ -522,6 +512,67 @@ export interface TeenActivitySummary {
   points_tier: string;
 }
 
+/** Derive points_tier from session_count. Matches t0–t4 labels in the DB. */
+function deriveTier(sessionCount: number): string {
+  if (sessionCount >= 50) return 't4';
+  if (sessionCount >= 25) return 't3';
+  if (sessionCount >= 10) return 't2';
+  if (sessionCount >= 3)  return 't1';
+  return 't0';
+}
+
+/**
+ * Write the teen's activity summary to cloud from local AsyncStorage state.
+ * Call this on app mount (teen side) and after any comfort session completes.
+ * Safe no-op if Supabase isn't configured or user isn't signed in.
+ */
+export async function syncTeenActivitySummary(): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    const state = await loadState();
+    const streakDays: number = parseInt(state.streakDays ?? '0', 10) || 0;
+    const comfortSessions: ComfortSession[] = Array.isArray(state.comfortSessions)
+      ? state.comfortSessions
+      : [];
+    const sessionCount = comfortSessions.length;
+    const pointsTier = deriveTier(sessionCount);
+
+    const { error } = await sb.from('teen_activity_summary').upsert(
+      {
+        user_id:       uid,
+        streak_days:   streakDays,
+        session_count: sessionCount,
+        points_tier:   pointsTier,
+        last_active_at: new Date().toISOString(),
+        updated_at:    new Date().toISOString(),
+      },
+      { onConflict: 'user_id' },
+    );
+    if (error) {
+      console.warn('[sync] syncTeenActivitySummary failed:', error.message, error.code);
+    }
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncTeenActivitySummary failed', e);
+  }
+}
+
+/**
+ * Call once on app mount for teen-side users.
+ * Writes an initial snapshot immediately, then refreshes every 10 minutes.
+ * Returns a cleanup function — call it on unmount to stop the interval.
+ */
+export function initTeenActivitySync(): () => void {
+  void syncTeenActivitySummary();
+  const interval = setInterval(() => {
+    void syncTeenActivitySummary();
+  }, 10 * 60 * 1000); // 10 min
+  return () => clearInterval(interval);
+}
+
+/** Parent reads from the view — never the raw table. */
 export async function fetchTeenActivitySummary(
   teenId: string,
 ): Promise<TeenActivitySummary | null> {
@@ -547,6 +598,7 @@ export async function fetchTeenActivitySummary(
 }
 
 // ── Bulk pull ──────────────────────────────────────────────────────────────
+
 export async function pullAll(): Promise<{
   moodHistory:       MoodEntry[];
   journalEntries:    JournalEntry[];
@@ -565,8 +617,98 @@ export async function pullAll(): Promise<{
   if (!sb) return null;
   const uid = await currentUserId();
   if (!uid) return null;
+
   try {
-    return null; // placeholder — implement bulk pull per table as needed
+    const [
+      moodRes,
+      journalRes,
+      circleRes,
+      voiceRes,
+      comfortRes,
+      crewMemberRes,
+      crewCheckInRes,
+      parentCircleRes,
+      roomRes,
+    ] = await Promise.allSettled([
+      sb.from(TABLES.moodHistory).select('id, mood, date, time').eq('user_id', uid).order('id'),
+      sb.from(TABLES.journalEntries).select('id, text, mood, date, time, sekret_reply').eq('user_id', uid).order('id'),
+      sb.from(TABLES.circlePosts).select('id, text, date, time, reactions, circle_tag, post_mood, media_kind').eq('user_id', uid).order('id'),
+      sb.from(TABLES.voiceNotes).select('id, title, date, time, duration').eq('user_id', uid).order('id'),
+      sb.from(TABLES.comfortSessions).select('id, type, mood, date, time').eq('user_id', uid).order('id'),
+      sb.from(TABLES.crewMembers).select('id, name, emoji, commitment, cadence, invite_code, added_at').eq('user_id', uid),
+      sb.from(TABLES.crewCheckIns).select('id, member_id, note, mood, date, time').eq('user_id', uid).order('id'),
+      sb.from(TABLES.parentCirclePosts).select('id, text, date, time, reactions, circle_tag').eq('user_id', uid).order('id'),
+      sb.from(TABLES.roomMemory).select('character, last_visit, last_hotspot, last_summon, visit_count').eq('user_id', uid).maybeSingle(),
+    ]);
+
+    function settled<T>(res: PromiseSettledResult<{ data: T | null; error: any }>): T | null {
+      if (res.status === 'rejected') return null;
+      if (res.value.error) { console.warn('[sync] pullAll partial error:', res.value.error.message); return null; }
+      return res.value.data;
+    }
+
+    const moods       = settled<any[]>(moodRes as any)         ?? [];
+    const journals    = settled<any[]>(journalRes as any)      ?? [];
+    const circles     = settled<any[]>(circleRes as any)       ?? [];
+    const voices      = settled<any[]>(voiceRes as any)        ?? [];
+    const comforts    = settled<any[]>(comfortRes as any)      ?? [];
+    const crewMs      = settled<any[]>(crewMemberRes as any)   ?? [];
+    const crewCIs     = settled<any[]>(crewCheckInRes as any)  ?? [];
+    const parentPosts = settled<any[]>(parentCircleRes as any) ?? [];
+    const room        = settled<any>(roomRes as any);
+
+    return {
+      moodHistory: moods.map(r => ({
+        id: r.id, mood: r.mood, date: r.date, time: r.time,
+      })) as MoodEntry[],
+
+      journalEntries: journals.map(r => ({
+        id: r.id, text: r.text, mood: r.mood, date: r.date, time: r.time,
+        sekretReply: r.sekret_reply ?? undefined,
+      })) as JournalEntry[],
+
+      circlePosts: circles.map(r => ({
+        id: r.id, text: r.text, date: r.date, time: r.time,
+        reactions: r.reactions ?? {},
+        circleTag: r.circle_tag ?? undefined,
+        postMood:  r.post_mood  ?? undefined,
+        mediaKind: r.media_kind ?? undefined,
+      })) as CirclePost[],
+
+      voiceNotes: voices.map(r => ({
+        id: r.id, title: r.title, date: r.date, time: r.time, duration: r.duration,
+      })) as VoiceNote[],
+
+      comfortSessions: comforts.map(r => ({
+        id: r.id, type: r.type, mood: r.mood ?? undefined, date: r.date, time: r.time,
+      })) as ComfortSession[],
+
+      crewMembers: crewMs.map(r => ({
+        id: r.id, name: r.name, emoji: r.emoji,
+        commitment: r.commitment, cadence: r.cadence,
+        inviteCode: r.invite_code,
+        addedAt: r.added_at ? new Date(r.added_at).getTime() : undefined,
+      })) as CrewMember[],
+
+      crewCheckIns: crewCIs.map(r => ({
+        id: r.id, memberId: r.member_id, note: r.note,
+        mood: r.mood ?? undefined, date: r.date, time: r.time,
+      })) as CrewCheckIn[],
+
+      parentCirclePosts: parentPosts.map(r => ({
+        id: r.id, text: r.text, date: r.date, time: r.time,
+        reactions: r.reactions ?? {},
+        circleTag: r.circle_tag ?? undefined,
+      })) as ParentCirclePost[],
+
+      roomMemory: room ? {
+        character:   room.character,
+        lastVisit:   room.last_visit   ?? '',
+        lastHotspot: room.last_hotspot ?? '',
+        lastSummon:  room.last_summon  ?? '',
+        visitCount:  room.visit_count  ?? 0,
+      } : null,
+    };
   } catch (e) {
     if (__DEV__) console.warn('[sync] pullAll failed', e);
     return null;
