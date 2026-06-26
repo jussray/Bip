@@ -3,6 +3,7 @@ import appJson from './app.json';
 
 type AppVariant = 'teen' | 'parent';
 
+const EXPO_OWNER = 'sekret-bip';
 const TEEN_EAS_PROJECT_ID = '3f2f2425-7119-43dd-bd7d-5bc752dabead';
 const PARENT_EAS_PROJECT_ID = process.env.EXPO_PUBLIC_PARENT_EAS_PROJECT_ID;
 
@@ -30,6 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     ...base,
+    owner: EXPO_OWNER,
     name: isParent ? "Se'kret Bip Parent" : "Se'kret Bip",
     slug: isParent ? 'sekret-bip-parent' : 'sekret-bip',
     scheme: isParent ? 'sekretbipparent' : 'sekretbip',
