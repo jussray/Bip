@@ -48,6 +48,51 @@ const SIGNAL_LABELS: Record<string, string> = {
   'proud':         'felt proud',
 };
 
+function connectionJourney(input: {
+  engagement: ParentEngagement;
+  signals: BridgeSignal[];
+  strengthScore: number;
+}): { icon: string; label: string; detail: string; color: string } {
+  const { engagement, signals, strengthScore } = input;
+  const sharedSignals = signals.length;
+  const parentReplies = engagement.notesSent;
+  const sharedEffort = sharedSignals + parentReplies + (engagement.bridgeUsed ? 1 : 0);
+
+  if (sharedEffort >= 6 || strengthScore >= 70) {
+    return {
+      icon: '📈',
+      label: 'connection growing',
+      detail: `Bridge moments ${sharedSignals} · replies ${parentReplies}`,
+      color: P.green,
+    };
+  }
+
+  if (sharedEffort >= 2 || strengthScore >= 40) {
+    return {
+      icon: '↗️',
+      label: 'connection building',
+      detail: `small moments are adding up — ${sharedSignals} shared signal${sharedSignals === 1 ? '' : 's'}`,
+      color: P.accent,
+    };
+  }
+
+  if (sharedSignals === 0 && parentReplies === 0) {
+    return {
+      icon: '📉',
+      label: 'bridge has been quiet',
+      detail: 'a small note can help reopen the connection',
+      color: P.amber,
+    };
+  }
+
+  return {
+    icon: '→',
+    label: 'connection steady',
+    detail: 'you are both still finding the rhythm',
+    color: P.amber,
+  };
+}
+
 interface ConnectionHubScreenProps {
   setScreen: (screen: string) => void;
   BottomNav: React.ReactNode;
@@ -120,6 +165,7 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
 
   const strength = connectionStrength(engagement);
   const linked   = !!teenId;
+  const journey  = connectionJourney({ engagement, signals, strengthScore: strength.score });
 
   return (
     <View style={st.root}>
@@ -130,37 +176,24 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
 
         <Animated.View style={slide(fade1)}>
           <Text style={[st.title, { color: P.accent }]}>Connection Hub 🤝</Text>
-          <Text style={[st.sub, { color: P.soft }]}>
-            your connection with your teen. built one small moment at a time.
-          </Text>
+          <Text style={[st.sub, { color: P.soft }]}>your connection with your teen. built one small moment at a time.</Text>
         </Animated.View>
 
-        {/* Link status */}
         <Animated.View style={[slide(fade1), st.linkCard, { borderColor: linked ? P.green + '88' : P.amber + '88' }]}>
-          <Animated.Text style={[st.linkDot, { transform: [{ scale: pulse }] }]}>
-            {linked ? '🟢' : '🟡'}
-          </Animated.Text>
+          <Animated.Text style={[st.linkDot, { transform: [{ scale: pulse }] }]}>{linked ? '🟢' : '🟡'}</Animated.Text>
           <View style={{ flex: 1 }}>
-            <Text style={[st.linkStatus, { color: linked ? P.green : P.amber }]}>
-              {linked ? 'Linked & Connected' : 'Not Linked Yet'}
-            </Text>
+            <Text style={[st.linkStatus, { color: linked ? P.green : P.amber }]}>{linked ? 'Linked & Connected' : 'Not Linked Yet'}</Text>
             <Text style={[st.linkSub, { color: P.soft + 'aa' }]}>
-              {linked
-                ? 'Your teen is in Bip. You are with them.'
-                : 'Go to Settings to link your teen account.'}
+              {linked ? 'Your teen is in Bip. You are with them.' : 'Go to Settings to link your teen account.'}
             </Text>
           </View>
           {!linked && (
-            <TouchableOpacity
-              style={[st.linkBtn, { backgroundColor: P.amber }]}
-              onPress={() => setScreen('settings')}
-            >
+            <TouchableOpacity style={[st.linkBtn, { backgroundColor: P.amber }]} onPress={() => setScreen('settings')}>
               <Text style={st.linkBtnText}>Link</Text>
             </TouchableOpacity>
           )}
         </Animated.View>
 
-        {/* ── Bridge signals — centerpiece ── */}
         <Animated.View style={[slide(fade1), st.signalsCard]}>
           <View style={st.signalsHeader}>
             <Text style={[st.signalsTitle, { color: P.accent }]}>what your teen sent you 🌉</Text>
@@ -168,15 +201,11 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
               <Text style={[st.signalsOpen, { color: P.accent + 'cc' }]}>open bridge →</Text>
             </TouchableOpacity>
           </View>
-          <Text style={[st.cardSub, { color: P.soft + '88' }]}>
-            feelings your teen chose to share. they sent these to you.
-          </Text>
+          <Text style={[st.cardSub, { color: P.soft + '88' }]}>feelings your teen chose to share. they sent these to you.</Text>
           {loading ? (
             <Text style={[st.emptyText, { color: P.soft + '66' }]}>loading…</Text>
           ) : signals.length === 0 ? (
-            <Text style={[st.emptyText, { color: P.soft + '66' }]}>
-              nothing yet. when your teen uses Bridge, their signals will appear here.
-            </Text>
+            <Text style={[st.emptyText, { color: P.soft + '66' }]}>nothing yet. when your teen uses Bridge, their signals will appear here.</Text>
           ) : (
             signals.map((sig, i) => (
               <View key={i} style={[st.signalRow, { borderColor: P.accent + '33' }]}>
@@ -189,26 +218,28 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
                    sig.share_type === 'need-support' ? '🙏' : '💜'}
                 </Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[st.signalLabel, { color: P.soft }]}>
-                    {SIGNAL_LABELS[sig.share_type] ?? 'sent a signal'}
-                  </Text>
-                  <Text style={[st.signalTime, { color: P.soft + '66' }]}>
-                    {new Date(sig.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                  </Text>
+                  <Text style={[st.signalLabel, { color: P.soft }]}>{SIGNAL_LABELS[sig.share_type] ?? 'sent a signal'}</Text>
+                  <Text style={[st.signalTime, { color: P.soft + '66' }]}>{new Date(sig.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</Text>
                 </View>
               </View>
             ))
           )}
         </Animated.View>
 
-        {/* ── Teen snapshot (streak / tier from parent_teen_activity_snapshot view) ── */}
         {linked && (
-          <Animated.View style={[slide(fade1), st.card, { borderColor: P.green + '44' }]}>
+          <Animated.View style={[slide(fade1), st.card, { borderColor: journey.color + '55' }]}>
+            <View style={st.journeyTopRow}>
+              <View style={[st.journeyBadge, { borderColor: journey.color + '66', backgroundColor: journey.color + '18' }]}>
+                <Text style={st.journeyIcon}>{journey.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.journeyLabel, { color: journey.color }]}>{journey.label}</Text>
+                  <Text style={[st.journeyDetail, { color: P.soft + '88' }]}>{journey.detail}</Text>
+                </View>
+              </View>
+            </View>
             <Text style={[st.cardTitle, { color: P.green }]}>your teen's wellbeing snapshot 🌿</Text>
             {loading || !summary ? (
-              <Text style={[st.emptyText, { color: P.soft + '66' }]}>
-                {loading ? 'loading…' : 'no snapshot yet — your teen hasn\'t synced.'}
-              </Text>
+              <Text style={[st.emptyText, { color: P.soft + '66' }]}>{loading ? 'loading…' : 'no snapshot yet — your teen hasn\'t synced.'}</Text>
             ) : (
               <View style={st.snapRow}>
                 <View style={[st.snapStat, { borderColor: P.green + '55' }]}>
@@ -221,27 +252,18 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
                 </View>
                 <View style={[st.snapStat, { borderColor: P.amber + '55' }]}>
                   <Text style={[st.snapNum, { color: P.amber }]}>
-                    {summary.points_tier === 't0' ? '🌱' :
-                     summary.points_tier === 't1' ? '🌿' :
-                     summary.points_tier === 't2' ? '🌸' :
-                     summary.points_tier === 't3' ? '⭐' : '✨'}
+                    {summary.points_tier === 't0' ? '🌱' : summary.points_tier === 't1' ? '🌿' : summary.points_tier === 't2' ? '🌸' : summary.points_tier === 't3' ? '⭐' : '✨'}
                   </Text>
                   <Text style={[st.snapLabel, { color: P.soft + 'aa' }]}>
-                    {summary.points_tier === 't0' ? 'seed'    :
-                     summary.points_tier === 't1' ? 'bloom'   :
-                     summary.points_tier === 't2' ? 'flow'    :
-                     summary.points_tier === 't3' ? 'radiant' : 'luminary'}
+                    {summary.points_tier === 't0' ? 'seed' : summary.points_tier === 't1' ? 'bloom' : summary.points_tier === 't2' ? 'flow' : summary.points_tier === 't3' ? 'radiant' : 'luminary'}
                   </Text>
                 </View>
               </View>
             )}
-            <Text style={[st.cardSub, { color: P.soft + '66', marginBottom: 0, marginTop: 8 }]}>
-              A private progress snapshot. No journals, messages, voice recordings, or personal entries are shared.
-            </Text>
+            <Text style={[st.cardSub, { color: P.soft + '66', marginBottom: 0, marginTop: 8 }]}>A private progress snapshot. No journals, messages, voice recordings, or personal entries are shared.</Text>
           </Animated.View>
         )}
 
-        {/* ── Connection strength ── */}
         <Animated.View style={[slide(fade2), st.card, { borderColor: P.accent + '44' }]}>
           <Text style={[st.cardTitle, { color: P.accent }]}>your connection strength</Text>
           <View style={st.barOuter}>
@@ -254,40 +276,28 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
             <Text style={[st.strengthLabel, { color: strength.color }]}>{strength.label}</Text>
             <Text style={[st.strengthScore, { color: P.soft + '88' }]}>{strength.score}%</Text>
           </View>
-          <Text style={[st.cardSub, { color: P.soft + '88' }]}>
-            grows with notes, Bridge, and staying present
-          </Text>
+          <Text style={[st.cardSub, { color: P.soft + '88' }]}>grows with notes, Bridge, and staying present</Text>
         </Animated.View>
 
-        {/* ── Engagement summary ── */}
         <Animated.View style={[slide(fade2), st.statsRow]}>
           {[
-            { emoji: '✉️', num: engagement.notesSent,           label: 'notes sent',  color: P.accent },
-            { emoji: '🌿', num: engagement.daysActive,           label: 'days active', color: P.green  },
-            { emoji: '🌉', num: engagement.bridgeUsed ? 1 : 0,  label: 'bridge used', color: P.amber  },
+            { emoji: '✉️', num: engagement.notesSent,          label: 'notes sent',  color: P.accent },
+            { emoji: '🌿', num: engagement.daysActive,          label: 'days active', color: P.green  },
+            { emoji: '🌉', num: engagement.bridgeUsed ? 1 : 0, label: 'bridge used', color: P.amber  },
           ].map(s => (
             <View key={s.label} style={[st.statCard, { borderColor: s.color + '55' }]}>
               <Text style={{ fontSize: 20, marginBottom: 4 }}>{s.emoji}</Text>
-              <Animated.Text style={[st.statNum, { color: s.color, transform: [{ scale: breathScale }] }]}>
-                {s.num}
-              </Animated.Text>
+              <Animated.Text style={[st.statNum, { color: s.color, transform: [{ scale: breathScale }] }]}>{s.num}</Animated.Text>
               <Text style={[st.statLabel, { color: P.soft + 'aa' }]}>{s.label}</Text>
             </View>
           ))}
         </Animated.View>
 
-        {/* Quick actions */}
         <Animated.View style={[slide(fade2), st.actionsRow]}>
-          <TouchableOpacity
-            style={[st.actionBtn, { backgroundColor: P.accent }]}
-            onPress={() => setScreen('parent-growth')}
-          >
+          <TouchableOpacity style={[st.actionBtn, { backgroundColor: P.accent }]} onPress={() => setScreen('parent-growth')}>
             <Text style={st.actionBtnText}>💜 send a note</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[st.actionBtn, { backgroundColor: 'rgba(40,20,70,0.85)', borderWidth: 1, borderColor: P.accent + '66' }]}
-            onPress={() => setScreen('parent-bridge')}
-          >
+          <TouchableOpacity style={[st.actionBtn, { backgroundColor: 'rgba(40,20,70,0.85)', borderWidth: 1, borderColor: P.accent + '66' }]} onPress={() => setScreen('parent-bridge')}>
             <Text style={[st.actionBtnText, { color: P.accent }]}>🌉 open bridge</Text>
           </TouchableOpacity>
         </Animated.View>
@@ -334,6 +344,11 @@ const st = StyleSheet.create({
   signalLabel:   { fontSize: 14, fontWeight: '600', marginBottom: 2 },
   signalTime:    { fontSize: 11 },
   emptyText:     { fontSize: 13, lineHeight: 20, fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
+  journeyTopRow: { marginBottom: 12 },
+  journeyBadge:  { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 16, padding: 12 },
+  journeyIcon:   { fontSize: 22 },
+  journeyLabel:  { fontSize: 13, fontWeight: '800', marginBottom: 2 },
+  journeyDetail: { fontSize: 11, lineHeight: 15 },
   snapRow:       { flexDirection: 'row', gap: 10 },
   snapStat:      { flex: 1, backgroundColor: 'rgba(20,10,40,0.6)', borderWidth: 1, borderRadius: 14, padding: 12, alignItems: 'center' },
   snapNum:       { fontSize: 22, fontWeight: '800', marginBottom: 2 },
