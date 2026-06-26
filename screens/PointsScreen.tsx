@@ -137,15 +137,13 @@ export function PointsScreen({
     fetchPointsHistory(30).then(setPointsHistory).catch(() => {});
   }, []);
 
-  // Sync wellbeing summary for parent dashboard (privacy-safe aggregates only)
+  // Sync wellbeing summary for parent dashboard (privacy-safe aggregates only).
+  // pointsCompat reads streakDays / sessionCount / pointsTier from stored state
+  // internally — no args needed here.
   useEffect(() => {
     if (breakdown.total === 0) return;
-    void syncTeenActivitySummary({
-      streakDays,
-      sessionCount: comfortSessions?.length || 0,
-      pointsTier: tierFor(breakdown.total).key,
-    });
-  }, [breakdown.total, streakDays, comfortSessions]);
+    void syncTeenActivitySummary();
+  }, [breakdown.total]);
 
   const tier = tierFor(breakdown.total);
   const tierIdx = TIERS.findIndex(t2 => t2.key === tier.key);
