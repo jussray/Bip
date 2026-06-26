@@ -44,6 +44,8 @@ const SLEEP_OPTIONS: Array<{ label: string; value: SleepWindow | null }> = [
   { label: '11pm – 8am',  value: { start: '23:00', end: '08:00' } },
 ];
 
+type RedeemStatus = 'idle' | 'ok' | 'not_found' | 'error';
+
 export default function SettingsScreen() {
   const {
     theme, setTheme,
@@ -60,7 +62,7 @@ export default function SettingsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [codeInput,    setCodeInput]    = useState('');
   const [isRedeeming,  setIsRedeeming]  = useState(false);
-  const [redeemStatus, setRedeemStatus] = useState<'idle' | 'ok' | 'not_found' | 'error'>('idle');
+  const [redeemStatus, setRedeemStatus] = useState<RedeemStatus>('idle');
 
   async function handleNotificationToggle(enabled: boolean) {
     if (enabled) {
@@ -119,8 +121,10 @@ export default function SettingsScreen() {
   const handleRedeemCode = useCallback(async () => {
     if (!codeInput.trim()) return;
     setIsRedeeming(true);
-    const result = await redeemParentLink(codeInput);
+    const raw = await redeemParentLink(codeInput);
     setIsRedeeming(false);
+    const VALID: RedeemStatus[] = ['idle', 'ok', 'not_found', 'error'];
+    const result = VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error';
     setRedeemStatus(result);
   }, [codeInput]);
 
@@ -194,7 +198,7 @@ export default function SettingsScreen() {
           <Text style={styles.buttonText}>{isRedeeming ? 'Connecting…' : 'Redeem code'}</Text>
         </TouchableOpacity>
         {redeemStatus !== 'idle' && (
-          <Text style={styles.hint}>Status: {String(redeemStatus)}</Text>
+          <Text style={styles.hint}>Status: {redeemStatus}</Text>
         )}
 
         <Text style={styles.sectionTitle}>Danger zone</Text>

@@ -137,14 +137,10 @@ export function PointsScreen({
   }, []);
 
   // Sync wellbeing summary for parent dashboard (privacy-safe aggregates only)
+  // syncTeenActivitySummary reads state internally — no args needed
   useEffect(() => {
     if (breakdown.total === 0) return;
-    const tierKey = tierFor(breakdown.total).key;
-    void syncTeenActivitySummary({
-      streakDays,
-      sessionCount: comfortSessions?.length ?? 0,
-      pointsTier: tierKey,
-    });
+    void syncTeenActivitySummary();
   }, [breakdown.total, streakDays, comfortSessions]);
 
   const tier = tierFor(breakdown.total);
@@ -247,7 +243,7 @@ export function PointsScreen({
         : 'top tier reached \u{1F49C} you are the whole night sky');
 
   const stickyAffirmation = isRylane
-    ? '“the points are receipts, not a leaderboard.”'
+    ? '"the points are receipts, not a leaderboard."'
     : '"these aren\'t scores. they\'re soft proof you\'re you-ing well."';
 
   // ── Render ─────────────────────────────────────────────────────────────────
