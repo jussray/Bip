@@ -46,6 +46,11 @@ const SLEEP_OPTIONS: Array<{ label: string; value: SleepWindow | null }> = [
 
 type RedeemStatus = 'idle' | 'ok' | 'not_found' | 'error';
 
+function themeLabel(key: keyof typeof THEME_PACKS): string {
+  const label = (THEME_PACKS[key] as { label?: unknown }).label;
+  return typeof label === 'string' ? label : String(key);
+}
+
 export default function SettingsScreen() {
   const {
     theme, setTheme,
@@ -140,8 +145,8 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>Theme</Text>
         {THEME_ORDER.map((key) => (
-          <TouchableOpacity key={key} style={styles.option} onPress={() => setTheme(key)}>
-            <Text style={styles.optionText}>{THEME_PACKS[key].label}</Text>
+          <TouchableOpacity key={String(key)} style={styles.option} onPress={() => setTheme(key)}>
+            <Text style={styles.optionText}>{themeLabel(key)}</Text>
             {theme === key && <Text style={styles.check}>✓</Text>}
           </TouchableOpacity>
         ))}
