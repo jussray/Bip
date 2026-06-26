@@ -232,7 +232,39 @@ create policy "pms_teen_update" on public.parent_mood_summaries
 drop policy if exists "pms_read" on public.parent_mood_summaries;
 create policy "pms_read" on public.parent_mood_summaries
   for select using (auth.uid() = teen_user_id or auth.uid() = parent_user_id);
-create index if not exists idx_pms_teen_week on public.parent_mood_summaries (teen_user_id, week_start desc);
+
+-- Compatibility: current schema uses week_start; older bootstrap schema uses period_start/period_end.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'parent_mood_summaries'
+      and column_name = 'week_start'
+  ) then
+    execute 'create index if not exists idx_pms_teen_week
+      on public.parent_mood_summaries (teen_user_id, week_start desc)';
+  elsif exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'parent_mood_summaries'
+      and column_name = 'period_end'
+  ) then
+    execute 'create index if not exists idx_pms_teen_week
+      on public.parent_mood_summaries (teen_user_id, period_end desc)';
+  elsif exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'parent_mood_summaries'
+      and column_name = 'period_start'
+  ) then
+    execute 'create index if not exists idx_pms_teen_week
+      on public.parent_mood_summaries (teen_user_id, period_start desc)';
+  else
+    raise exception 'parent_mood_summaries requires week_start, period_end, or period_start for date indexing';
+  end if;
+end
+$$;
 
 -- ── 11. safety_alerts ────────────────────────────────────────────────────────
 -- Canonical safety_alerts is created in 0003_oracle_parentlinks_period_safety.sql
