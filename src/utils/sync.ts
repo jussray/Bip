@@ -308,6 +308,65 @@ export async function writeCirclePost(
   }
 }
 
+// ── Circle replies ────────────────────────────────────────────────────
+export async function writeCircleReply(
+  postId: number,
+  postType: 'public' | 'friends' | 'crew' | 'parent',
+  replyMode: 'comfort' | 'voice' | 'support' | 'stay',
+  opts: { text?: string; voiceUrl?: string; durationSecs?: number } = {},
+): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    const { error } = await sb.from(TABLES.circleReplies).insert({
+      post_id:      postId,
+      post_type:    postType,
+      user_id:      uid,
+      reply_mode:   replyMode,
+      text:         opts.text        ?? null,
+      voice_url:    opts.voiceUrl    ?? null,
+      duration_secs: opts.durationSecs ?? null,
+      created_at:   new Date().toISOString(),
+    });
+    if (error) console.warn('[sync] writeCircleReply failed:', error.message, error.code);
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] writeCircleReply failed', e);
+  }
+}
+
+import type { CirclePostReply } from '../types/index';
+
+export async function loadCircleReplies(
+  postId: number,
+  postType: string,
+): Promise<CirclePostReply[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  try {
+    const { data, error } = await sb
+      .from(TABLES.circleReplies)
+      .select('id, post_id, post_type, reply_mode, text, voice_url, duration_secs, created_at')
+      .eq('post_id', postId)
+      .eq('post_type', postType)
+      .order('created_at', { ascending: true });
+    if (error) { console.warn('[sync] loadCircleReplies failed:', error.message); return []; }
+    return (data ?? []).map(r => ({
+      id:           r.id,
+      postId:       r.post_id,
+      postType:     r.post_type,
+      replyMode:    r.reply_mode as CirclePostReply['replyMode'],
+      text:         r.text         ?? undefined,
+      voiceUrl:     r.voice_url    ?? undefined,
+      durationSecs: r.duration_secs ?? undefined,
+      createdAt:    r.created_at,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // ── Voice ─────────────────────────────────────────────────────────────
 export function syncVoiceNote(note: VoiceNote): void {
   void safeUpsert(TABLES.voiceNotes, {

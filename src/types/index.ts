@@ -166,6 +166,17 @@ export interface SavePageInput {
   imageUri?: string;
 }
 
+export interface CirclePostReply {
+  id: number;
+  postId: number;
+  postType: string;
+  replyMode: 'comfort' | 'voice' | 'support' | 'stay';
+  text?: string;
+  voiceUrl?: string;
+  durationSecs?: number;
+  createdAt: string;
+}
+
 export interface BridgePayload {
   type: string;
   payload: unknown;
