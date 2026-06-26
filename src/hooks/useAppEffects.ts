@@ -19,6 +19,7 @@ import {
   pullAll,
   loadPeriodDays,
   loadOracleSession,
+  initTeenActivitySync,
 } from '@/utils/sync';
 import { mergeById } from '../utils/mergeById';
 import { normalizeVibeKey } from '../../constants/theme';
@@ -160,6 +161,13 @@ export function useAppEffects(state: AppState, setState: SetState) {
     })();
     return () => { cancelled = true; };
   }, [isLoading]); // intentional: only re-run when loading state changes
+
+  // 3b. Teen activity summary: keep parent-facing snapshot fresh.
+  // Runs only for teen-side users and writes only aggregated streak/session/tier data.
+  useEffect(() => {
+    if (!isSupabaseConfigured || isLoading || userSide !== 'teen') return;
+    return initTeenActivitySync();
+  }, [isLoading, userSide]);
 
   // 4. Persist state on change
   useEffect(() => {
