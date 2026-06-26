@@ -2,14 +2,14 @@
 // Se'kret Bip — Cloud sync layer (Phase 2 + Phase 3 backend)
 //
 // All cloud writes go through here. Every helper is a SAFE NO-OP when
-// Supabase isn’t configured — the app keeps working off AsyncStorage, no
+// Supabase isn't configured — the app keeps working off AsyncStorage, no
 // errors thrown. This lets us ship the UI now and add credentials later.
 //
-// Auth model: each row is scoped to auth.uid() via RLS. If there’s no
+// Auth model: each row is scoped to auth.uid() via RLS. If there's no
 // signed-in user yet, writes are silently skipped (kept locally only).
 // ensureAnonymousSession() is called from useAppEffects on mount.
 //
-// IMPORTANT: never throw. The user’s local experience must never break
+// IMPORTANT: never throw. The user's local experience must never break
 // because the cloud is down. Errors are logged and swallowed.
 
 import { getSupabase, TABLES } from './supabase';
@@ -393,7 +393,7 @@ export async function snapshotPoints(total: number): Promise<void> {
 
 // ── Period calendar ──────────────────────────────────────────────────────
 
-/** Upsert a single period day (ISO date string, e.g. ‘2026-06-17’). */
+/** Upsert a single period day (ISO date string, e.g. '2026-06-17'). */
 export async function syncPeriodDay(day: string, note?: string): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -452,7 +452,7 @@ export async function loadPeriodDays(): Promise<string[]> {
 
 /**
  * Upsert the full oracle memory snapshot for a personality.
- * personality_id: ‘teen’ | ‘parent’
+ * personality_id: 'teen' | 'parent'
  */
 export async function syncOracleSession(
   personalityId: string,
@@ -881,11 +881,9 @@ export async function syncTeenActivitySummary(params: {
 }
 
 export interface TeenActivitySummary {
-  streak_days:    number;
-  session_count:  number;
-  points_tier:    string;
-  last_active_at: string | null;
-  updated_at:     string;
+  streak_days:   number;
+  session_count: number;
+  points_tier:   string;
 }
 
 /** Parent reads their linked teen's aggregated activity summary. */
@@ -895,7 +893,7 @@ export async function fetchTeenActivitySummary(teenId: string): Promise<TeenActi
   try {
     const { data } = await sb
       .from(TABLES.teenActivitySummary)
-      .select('streak_days, session_count, points_tier, last_active_at, updated_at')
+      .select('streak_days, session_count, points_tier')
       .eq('user_id', teenId)
       .maybeSingle();
     return data as TeenActivitySummary | null;
