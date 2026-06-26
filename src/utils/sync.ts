@@ -853,3 +853,82 @@ export async function subscribeToBridgeSignals(
 
   return () => { sb.removeChannel(channel); };
 }
+
+// ── Teen activity summary ─────────────────────────────────────────────────────
+
+/** Teen writes non-identifying aggregated stats that their linked parent can read. */
+export async function syncTeenActivitySummary(params: {
+  streakDays: number;
+  sessionCount: number;
+  pointsTier: string;
+}): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const uid = await currentUserId();
+  if (!uid) return;
+  try {
+    await sb.from(TABLES.teenActivitySummary).upsert({
+      user_id:        uid,
+      streak_days:    params.streakDays,
+      session_count:  params.sessionCount,
+      points_tier:    params.pointsTier,
+      last_active_at: new Date().toISOString(),
+      updated_at:     new Date().toISOString(),
+    }, { onConflict: 'user_id' });
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] syncTeenActivitySummary failed', e);
+  }
+}
+
+export interface TeenActivitySummary {
+  streak_days:    number;
+  session_count:  number;
+  points_tier:    string;
+  last_active_at: string | null;
+  updated_at:     string;
+}
+
+/** Parent reads their linked teen's aggregated activity summary. */
+export async function fetchTeenActivitySummary(teenId: string): Promise<TeenActivitySummary | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data } = await sb
+      .from(TABLES.teenActivitySummary)
+      .select('streak_days, session_count, points_tier, last_active_at, updated_at')
+      .eq('user_id', teenId)
+      .maybeSingle();
+    return data as TeenActivitySummary | null;
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchTeenActivitySummary failed', e);
+    return null;
+  }
+}
+
+// ── Points history ────────────────────────────────────────────────────────────
+
+export interface PointsHistoryEntry {
+  captured_at: string;
+  total: number;
+}
+
+/** Read the last N days of bip_points snapshots for the history chart. */
+export async function fetchPointsHistory(days = 30): Promise<PointsHistoryEntry[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const uid = await currentUserId();
+  if (!uid) return [];
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    const { data } = await sb
+      .from(TABLES.bipPoints)
+      .select('captured_at, total')
+      .eq('user_id', uid)
+      .gte('captured_at', since)
+      .order('captured_at', { ascending: true });
+    return (data ?? []) as PointsHistoryEntry[];
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchPointsHistory failed', e);
+    return [];
+  }
+}

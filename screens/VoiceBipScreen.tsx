@@ -135,8 +135,10 @@ export function VoiceBipScreen({
   const [isThinking,       setIsThinking]        = useState(false);
   const [recordingTime,    setRecordingTime]     = useState(0);
   const [selectedBipType,  setSelectedBipType]   = useState<string | null>(null);
+  const [transcriptFailed, setTranscriptFailed]  = useState(false);
 
-  const recordingRef = useRef<Audio.Recording | null>(null);
+  const recordingRef    = useRef<Audio.Recording | null>(null);
+  const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
 
   // Animations
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -234,6 +236,7 @@ export function VoiceBipScreen({
     setSekretReply('');
     setReplyAudioUri('');
     setRecordingTime(0);
+    setTranscriptFailed(false);
     setShowBipMenu(false);
     prepareVoiceSession('voice');
     presence.beginListening();
@@ -324,7 +327,7 @@ export function VoiceBipScreen({
           });
           transcript = await fetchSekretTranscribe({ audioBase64: base64, contentType: blob.type || 'audio/m4a' });
         } catch {
-          // transcription failed; companion will respond to a generic prompt
+          setTranscriptFailed(true);
         }
       }
     }
@@ -372,6 +375,15 @@ export function VoiceBipScreen({
     presence.markResponseReady();
     setSelectedBipType(null);
   };
+
+  stopRecordingRef.current = stopRecording;
+
+  useEffect(() => {
+    if (!isRecording) return;
+    if (recordingTime >= 300) {
+      stopRecordingRef.current();
+    }
+  }, [recordingTime, isRecording]);
 
   const startVideoRecording = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -610,6 +622,9 @@ export function VoiceBipScreen({
             <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseAnim }], borderColor: '#a855f7' }]} />
             <Text style={styles.recordingLabel}>Recording… 🔴</Text>
             <Text style={styles.recordingTimer}>{formatTime(recordingTime)}</Text>
+            {recordingTime >= 270 && (
+              <Text style={styles.recordingWarn}>almost at limit — wrapping up soon</Text>
+            )}
             <View style={styles.waveform}>
               {waveAnims.map((anim, i) => (
                 <Animated.View
@@ -635,6 +650,15 @@ export function VoiceBipScreen({
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)' }]}>
             <Text style={[styles.savedLabel, { color: theme.soft }]}>
               Saved to your journal {avatar.emoji}
+            </Text>
+          </View>
+        )}
+
+        {/* ── Transcript failed badge ── */}
+        {recorded && transcriptFailed && !isThinking && (
+          <View style={[styles.floatCard, { borderColor: '#f59e0b88', backgroundColor: 'rgba(13,9,20,0.88)' }]}>
+            <Text style={{ fontSize: 13, color: '#fcd34d', fontStyle: 'italic', textAlign: 'center', lineHeight: 19 }}>
+              couldn't catch that clearly — replied from the vibe anyway 💜
             </Text>
           </View>
         )}
@@ -842,7 +866,8 @@ const styles = StyleSheet.create({
   },
   pulseRing:          { width: 80, height: 80, borderRadius: 40, borderWidth: 3, position: 'absolute', top: 14 },
   recordingLabel:     { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 6, marginTop: 8 },
-  recordingTimer:     { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 16 },
+  recordingTimer:     { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 8 },
+  recordingWarn:      { color: '#fcd34d', fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
   waveform:           { flexDirection: 'row', alignItems: 'center', gap: 3, height: 44, marginBottom: 20 },
   waveBar:            { width: 4, borderRadius: 2 },
   stopBtn:            { backgroundColor: '#ef4444', borderRadius: 18, paddingHorizontal: 24, paddingVertical: 12 },
