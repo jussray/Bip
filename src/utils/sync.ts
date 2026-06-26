@@ -503,8 +503,6 @@ export async function loadOracleSession(
 }
 
 // ── Teen activity summary — parent-facing snapshot ─────────────────────────
-// Reads from the parent_teen_activity_snapshot VIEW, not the raw table.
-// The view only exposes streak_days, session_count, points_tier — no timestamps.
 
 export interface TeenActivitySummary {
   streak_days: number;
@@ -512,7 +510,6 @@ export interface TeenActivitySummary {
   points_tier: string;
 }
 
-/** Derive points_tier from session_count. Matches t0–t4 labels in the DB. */
 function deriveTier(sessionCount: number): string {
   if (sessionCount >= 50) return 't4';
   if (sessionCount >= 25) return 't3';
@@ -521,11 +518,6 @@ function deriveTier(sessionCount: number): string {
   return 't0';
 }
 
-/**
- * Write the teen's activity summary to cloud from local AsyncStorage state.
- * Call this on app mount (teen side) and after any comfort session completes.
- * Safe no-op if Supabase isn't configured or user isn't signed in.
- */
 export async function syncTeenActivitySummary(): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -559,20 +551,14 @@ export async function syncTeenActivitySummary(): Promise<void> {
   }
 }
 
-/**
- * Call once on app mount for teen-side users.
- * Writes an initial snapshot immediately, then refreshes every 10 minutes.
- * Returns a cleanup function — call it on unmount to stop the interval.
- */
 export function initTeenActivitySync(): () => void {
   void syncTeenActivitySummary();
   const interval = setInterval(() => {
     void syncTeenActivitySummary();
-  }, 10 * 60 * 1000); // 10 min
+  }, 10 * 60 * 1000);
   return () => clearInterval(interval);
 }
 
-/** Parent reads from the view — never the raw table. */
 export async function fetchTeenActivitySummary(
   teenId: string,
 ): Promise<TeenActivitySummary | null> {
@@ -620,15 +606,8 @@ export async function pullAll(): Promise<{
 
   try {
     const [
-      moodRes,
-      journalRes,
-      circleRes,
-      voiceRes,
-      comfortRes,
-      crewMemberRes,
-      crewCheckInRes,
-      parentCircleRes,
-      roomRes,
+      moodRes, journalRes, circleRes, voiceRes, comfortRes,
+      crewMemberRes, crewCheckInRes, parentCircleRes, roomRes,
     ] = await Promise.allSettled([
       sb.from(TABLES.moodHistory).select('id, mood, date, time').eq('user_id', uid).order('id'),
       sb.from(TABLES.journalEntries).select('id, text, mood, date, time, sekret_reply').eq('user_id', uid).order('id'),
@@ -658,56 +637,15 @@ export async function pullAll(): Promise<{
     const room        = settled<any>(roomRes as any);
 
     return {
-      moodHistory: moods.map(r => ({
-        id: r.id, mood: r.mood, date: r.date, time: r.time,
-      })) as MoodEntry[],
-
-      journalEntries: journals.map(r => ({
-        id: r.id, text: r.text, mood: r.mood, date: r.date, time: r.time,
-        sekretReply: r.sekret_reply ?? undefined,
-      })) as JournalEntry[],
-
-      circlePosts: circles.map(r => ({
-        id: r.id, text: r.text, date: r.date, time: r.time,
-        reactions: r.reactions ?? {},
-        circleTag: r.circle_tag ?? undefined,
-        postMood:  r.post_mood  ?? undefined,
-        mediaKind: r.media_kind ?? undefined,
-      })) as CirclePost[],
-
-      voiceNotes: voices.map(r => ({
-        id: r.id, title: r.title, date: r.date, time: r.time, duration: r.duration,
-      })) as VoiceNote[],
-
-      comfortSessions: comforts.map(r => ({
-        id: r.id, type: r.type, mood: r.mood ?? undefined, date: r.date, time: r.time,
-      })) as ComfortSession[],
-
-      crewMembers: crewMs.map(r => ({
-        id: r.id, name: r.name, emoji: r.emoji,
-        commitment: r.commitment, cadence: r.cadence,
-        inviteCode: r.invite_code,
-        addedAt: r.added_at ? new Date(r.added_at).getTime() : undefined,
-      })) as CrewMember[],
-
-      crewCheckIns: crewCIs.map(r => ({
-        id: r.id, memberId: r.member_id, note: r.note,
-        mood: r.mood ?? undefined, date: r.date, time: r.time,
-      })) as CrewCheckIn[],
-
-      parentCirclePosts: parentPosts.map(r => ({
-        id: r.id, text: r.text, date: r.date, time: r.time,
-        reactions: r.reactions ?? {},
-        circleTag: r.circle_tag ?? undefined,
-      })) as ParentCirclePost[],
-
-      roomMemory: room ? {
-        character:   room.character,
-        lastVisit:   room.last_visit   ?? '',
-        lastHotspot: room.last_hotspot ?? '',
-        lastSummon:  room.last_summon  ?? '',
-        visitCount:  room.visit_count  ?? 0,
-      } : null,
+      moodHistory: moods.map(r => ({ id: r.id, mood: r.mood, date: r.date, time: r.time })) as MoodEntry[],
+      journalEntries: journals.map(r => ({ id: r.id, text: r.text, mood: r.mood, date: r.date, time: r.time, sekretReply: r.sekret_reply ?? undefined })) as JournalEntry[],
+      circlePosts: circles.map(r => ({ id: r.id, text: r.text, date: r.date, time: r.time, reactions: r.reactions ?? {}, circleTag: r.circle_tag ?? undefined, postMood: r.post_mood ?? undefined, mediaKind: r.media_kind ?? undefined })) as CirclePost[],
+      voiceNotes: voices.map(r => ({ id: r.id, title: r.title, date: r.date, time: r.time, duration: r.duration })) as VoiceNote[],
+      comfortSessions: comforts.map(r => ({ id: r.id, type: r.type, mood: r.mood ?? undefined, date: r.date, time: r.time })) as ComfortSession[],
+      crewMembers: crewMs.map(r => ({ id: r.id, name: r.name, emoji: r.emoji, commitment: r.commitment, cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at ? new Date(r.added_at).getTime() : undefined })) as CrewMember[],
+      crewCheckIns: crewCIs.map(r => ({ id: r.id, memberId: r.member_id, note: r.note, mood: r.mood ?? undefined, date: r.date, time: r.time })) as CrewCheckIn[],
+      parentCirclePosts: parentPosts.map(r => ({ id: r.id, text: r.text, date: r.date, time: r.time, reactions: r.reactions ?? {}, circleTag: r.circle_tag ?? undefined })) as ParentCirclePost[],
+      roomMemory: room ? { character: room.character, lastVisit: room.last_visit ?? '', lastHotspot: room.last_hotspot ?? '', lastSummon: room.last_summon ?? '', visitCount: room.visit_count ?? 0 } : null,
     };
   } catch (e) {
     if (__DEV__) console.warn('[sync] pullAll failed', e);
@@ -715,300 +653,6 @@ export async function pullAll(): Promise<{
   }
 }
 
-// ── Parent–Teen linking ──────────────────────────────────────────────────────
-
-export interface ParentNote {
-  id: string;
-  from_user_id: string;
-  to_user_id: string;
-  text: string;
-  seen: boolean;
-  created_at: string;
-}
-
-export interface BridgeSignal {
-  id: string;
-  from_user_id: string;
-  to_user_id: string;
-  kind: string;
-  created_at: string;
-}
-
-export interface ParentEngagement {
-  parent_user_id: string;
-  linked_teen_id: string;
-  last_active_at: string | null;
-  notes_sent: number;
-  signals_sent: number;
-}
-
-export interface PointsHistoryEntry {
-  id: string;
-  user_id: string;
-  total: number;
-  captured_at: string;
-}
-
-/** Generate a one-time link code that lets a parent connect to this teen. */
-export async function createParentLink(): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const code = Math.random().toString(36).slice(2, 10).toUpperCase();
-    const { error } = await sb
-      .from('parent_links')
-      .upsert({ user_id: uid, code, created_at: new Date().toISOString() }, { onConflict: 'user_id' });
-    if (error) { console.warn('[sync] createParentLink failed:', error.message); return null; }
-    return code;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] createParentLink threw', e);
-    return null;
-  }
-}
-
-/** Parent calls this with the teen's code to establish the link. */
-export async function redeemParentLink(code: string): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const { data, error } = await sb
-      .from('parent_links')
-      .select('user_id')
-      .eq('code', code.toUpperCase())
-      .maybeSingle();
-    if (error || !data) { console.warn('[sync] redeemParentLink: code not found'); return null; }
-    const teenId = data.user_id as string;
-    const { error: linkErr } = await sb.from('parent_teen_links').upsert(
-      { parent_user_id: uid, teen_user_id: teenId },
-      { onConflict: 'parent_user_id,teen_user_id' },
-    );
-    if (linkErr) { console.warn('[sync] redeemParentLink upsert failed:', linkErr.message); return null; }
-    return teenId;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] redeemParentLink threw', e);
-    return null;
-  }
-}
-
-/** Return the teen's user_id linked to this parent (or null). */
-export async function fetchLinkedTeenId(): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const { data, error } = await sb
-      .from('parent_teen_links')
-      .select('teen_user_id')
-      .eq('parent_user_id', uid)
-      .maybeSingle();
-    if (error || !data) return null;
-    return data.teen_user_id as string;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchLinkedTeenId threw', e);
-    return null;
-  }
-}
-
-/** Parent sends a note to the linked teen. */
-export async function sendParentNote(text: string, toUserId: string): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) return;
-  const uid = await currentUserId();
-  if (!uid) return;
-  try {
-    const { error } = await sb.from('parent_notes').insert({
-      from_user_id: uid,
-      to_user_id: toUserId,
-      text,
-      seen: false,
-      created_at: new Date().toISOString(),
-    });
-    if (error) console.warn('[sync] sendParentNote failed:', error.message);
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] sendParentNote threw', e);
-  }
-}
-
-/** Teen fetches notes sent by their parent. */
-export async function fetchParentNotes(): Promise<ParentNote[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const uid = await currentUserId();
-  if (!uid) return [];
-  try {
-    const { data, error } = await sb
-      .from('parent_notes')
-      .select('id, from_user_id, to_user_id, text, seen, created_at')
-      .eq('to_user_id', uid)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as ParentNote[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchParentNotes threw', e);
-    return [];
-  }
-}
-
-/** Parent fetches notes they have sent. */
-export async function fetchParentSentNotes(toUserId: string): Promise<ParentNote[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const uid = await currentUserId();
-  if (!uid) return [];
-  try {
-    const { data, error } = await sb
-      .from('parent_notes')
-      .select('id, from_user_id, to_user_id, text, seen, created_at')
-      .eq('from_user_id', uid)
-      .eq('to_user_id', toUserId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as ParentNote[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchParentSentNotes threw', e);
-    return [];
-  }
-}
-
-/** Teen marks a parent note as seen. */
-export async function markParentNoteSeen(noteId: string): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) return;
-  try {
-    const { error } = await sb.from('parent_notes').update({ seen: true }).eq('id', noteId);
-    if (error) console.warn('[sync] markParentNoteSeen failed:', error.message);
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] markParentNoteSeen threw', e);
-  }
-}
-
-/** Subscribe to real-time parent notes for the current teen. */
-export function subscribeToParentNotes(
-  onNote: (note: ParentNote) => void,
-): () => void {
-  const sb = getSupabase();
-  if (!sb) return () => {};
-  let userId: string | null = null;
-  void currentUserId().then(id => { userId = id; });
-
-  const channel = sb
-    .channel('parent_notes_sub')
-    .on(
-      'postgres_changes' as any,
-      { event: 'INSERT', schema: 'public', table: 'parent_notes' },
-      (payload: any) => {
-        const note = payload.new as ParentNote;
-        if (note.to_user_id === userId) onNote(note);
-      },
-    )
-    .subscribe();
-
-  return () => { void sb.removeChannel(channel); };
-}
-
-/** Teen sends a bridge signal (wave, check-in, etc.) to their parent. */
-export async function sendBridgeSignal(kind: string, toUserId: string): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) return;
-  const uid = await currentUserId();
-  if (!uid) return;
-  try {
-    const { error } = await sb.from('bridge_signals').insert({
-      from_user_id: uid,
-      to_user_id: toUserId,
-      kind,
-      created_at: new Date().toISOString(),
-    });
-    if (error) console.warn('[sync] sendBridgeSignal failed:', error.message);
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] sendBridgeSignal threw', e);
-  }
-}
-
-/** Parent fetches bridge signals sent by linked teen. */
-export async function fetchBridgeSignals(fromUserId: string): Promise<BridgeSignal[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  try {
-    const { data, error } = await sb
-      .from('bridge_signals')
-      .select('id, from_user_id, to_user_id, kind, created_at')
-      .eq('from_user_id', fromUserId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as BridgeSignal[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchBridgeSignals threw', e);
-    return [];
-  }
-}
-
-/** Subscribe to real-time bridge signals for the current parent. */
-export function subscribeToBridgeSignals(
-  onSignal: (sig: BridgeSignal) => void,
-): () => void {
-  const sb = getSupabase();
-  if (!sb) return () => {};
-  let userId: string | null = null;
-  void currentUserId().then(id => { userId = id; });
-
-  const channel = sb
-    .channel('bridge_signals_sub')
-    .on(
-      'postgres_changes' as any,
-      { event: 'INSERT', schema: 'public', table: 'bridge_signals' },
-      (payload: any) => {
-        const sig = payload.new as BridgeSignal;
-        if (sig.to_user_id === userId) onSignal(sig);
-      },
-    )
-    .subscribe();
-
-  return () => { void sb.removeChannel(channel); };
-}
-
-/** Parent reads a summary of their engagement with the linked teen. */
-export async function fetchParentEngagement(teenId: string): Promise<ParentEngagement | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const { data, error } = await sb
-      .from('parent_engagement')
-      .select('parent_user_id, linked_teen_id, last_active_at, notes_sent, signals_sent')
-      .eq('parent_user_id', uid)
-      .eq('linked_teen_id', teenId)
-      .maybeSingle();
-    if (error || !data) return null;
-    return data as ParentEngagement;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchParentEngagement threw', e);
-    return null;
-  }
-}
-
-/** Fetch historical points snapshots for the current user. */
-export async function fetchPointsHistory(userId?: string): Promise<PointsHistoryEntry[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const uid = userId ?? (await currentUserId());
-  if (!uid) return [];
-  try {
-    const { data, error } = await sb
-      .from(TABLES.bipPoints)
-      .select('id, user_id, total, captured_at')
-      .eq('user_id', uid)
-      .order('captured_at', { ascending: true });
-    if (error) throw error;
-    return (data ?? []) as PointsHistoryEntry[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchPointsHistory threw', e);
-    return [];
-  }
-}
+// ── Re-export compat modules so all @/utils/sync imports keep working ────────
+export * from './parentBridgeCompat';
+export * from './pointsCompat';
