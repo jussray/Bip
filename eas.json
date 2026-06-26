@@ -13,7 +13,8 @@
         "EXPO_PUBLIC_BACKEND_URL": "https://bip.mcgill-raylene.workers.dev"
       },
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "image": "latest"
       }
     },
     "parent-development": {
@@ -25,11 +26,15 @@
         "EXPO_PUBLIC_BACKEND_URL": "https://bip.mcgill-raylene.workers.dev"
       },
       "ios": {
-        "simulator": true
+        "simulator": true,
+        "image": "latest"
       }
     },
     "preview": {
       "distribution": "internal",
+      "ios": {
+        "image": "latest"
+      },
       "env": {
         "APP_VARIANT": "teen",
         "EXPO_PUBLIC_APP_VARIANT": "teen",
@@ -38,6 +43,9 @@
     },
     "parent-preview": {
       "distribution": "internal",
+      "ios": {
+        "image": "latest"
+      },
       "env": {
         "APP_VARIANT": "parent",
         "EXPO_PUBLIC_APP_VARIANT": "parent",
@@ -46,6 +54,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "ios": {
+        "image": "latest"
+      },
       "env": {
         "APP_VARIANT": "teen",
         "EXPO_PUBLIC_APP_VARIANT": "teen",
@@ -54,6 +65,9 @@
     },
     "parent-production": {
       "autoIncrement": true,
+      "ios": {
+        "image": "latest"
+      },
       "env": {
         "APP_VARIANT": "parent",
         "EXPO_PUBLIC_APP_VARIANT": "parent",
