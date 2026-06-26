@@ -4,6 +4,7 @@ import { Analytics } from '@/components/shared/Analytics';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
+import { registerAndSavePushToken } from '@/utils/notifications';
 
 void validateEnv();
 
@@ -11,19 +12,20 @@ function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
   const segments = useSegments();
 
-  // Auth guard at root so all routes are protected, not just the index.
-  // Listens for sign-out events too (e.g. session expiry).
+  // Auth guard + push token registration on every session start.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const sb = getSupabase();
     if (!sb) return;
 
     void sb.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace('/(auth)/login');
+      if (!data.session) { router.replace('/(auth)/login'); return; }
+      void registerAndSavePushToken(data.session.user.id);
     });
 
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace('/(auth)/login');
+      if (!session) { router.replace('/(auth)/login'); return; }
+      void registerAndSavePushToken(session.user.id);
     });
     return () => subscription.unsubscribe();
   }, []);

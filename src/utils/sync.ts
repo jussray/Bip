@@ -273,7 +273,7 @@ export async function syncCircleReaction(
 export async function writeCirclePost(
   tab: CircleTab,
   text: string,
-  opts: { postMood?: string; circleTag?: string; mediaKind?: string; revealIdentity?: boolean } = {},
+  opts: { postMood?: string; circleTag?: string; mediaKind?: string; mediaUrl?: string; revealIdentity?: boolean } = {},
 ): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
@@ -295,6 +295,7 @@ export async function writeCirclePost(
       text,
       post_mood:  opts.postMood  ?? null,
       media_kind: opts.mediaKind ?? null,
+      media_url:  opts.mediaUrl  ?? null,
       circle_tag: opts.circleTag ?? null,
       reactions:  defaultReactions,
       created_at: new Date().toISOString(),

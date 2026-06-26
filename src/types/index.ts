@@ -36,6 +36,7 @@ export interface CirclePost {
   };
   bipType?: string;
   mediaKind?: string;
+  voiceUrl?: string;
   circleTag?: string;
   postMood?: string;
 }

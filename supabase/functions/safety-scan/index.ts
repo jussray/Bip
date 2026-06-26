@@ -191,14 +191,43 @@ async function notifyParentIfLinked(
     .update({ parent_notified_at: new Date().toISOString() })
     .eq('id', alert_id);
 
-  // TODO: wire to Expo push token lookup + expo-server-sdk when push ships.
-  // Payload shape when ready:
-  //   { to: <parent_expo_token>, title: 'Wellness Check',
-  //     body: 'Someone you care about may need support',
-  //     data: { alert_id, severity } }   ← NO content, NO source text
-  console.log(
-    `[safety-scan] parent notify queued alert_id=${String(alert_id)} severity=${severity}`,
-  );
+  // Look up the parent's Expo push token (service_role bypasses RLS)
+  const { data: tokenRow } = await supabase
+    .from('push_tokens')
+    .select('token')
+    .eq('user_id', link.parent_user_id)
+    .maybeSingle();
+
+  if (!tokenRow?.token) {
+    console.log(
+      `[safety-scan] no push token for parent — alert_id=${String(alert_id)}`,
+    );
+    return;
+  }
+
+  // Send via Expo Push API — payload contains NO content, only alert_id + severity
+  try {
+    const res = await fetch('https://exp.host/--/api/v2/push/send', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        to:    tokenRow.token,
+        title: 'Wellness Check',
+        body:  'Someone you care about may need support right now.',
+        data:  { alert_id, severity },
+        sound: 'default',
+      }),
+    });
+    if (res.ok) {
+      console.log(
+        `[safety-scan] push sent — alert_id=${String(alert_id)} severity=${severity}`,
+      );
+    } else {
+      console.warn(`[safety-scan] push service returned ${String(res.status)}`);
+    }
+  } catch (err) {
+    console.error('[safety-scan] push send failed:', err);
+  }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
