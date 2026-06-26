@@ -1,0 +1,76 @@
+name: EAS Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: App target to build
+        required: true
+        default: teen
+        type: choice
+        options:
+          - teen
+          - parent
+      platform:
+        description: Platform to build
+        required: true
+        default: ios
+        type: choice
+        options:
+          - ios
+          - android
+      channel:
+        description: Build channel
+        required: true
+        default: preview
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+
+concurrency:
+  group: eas-build-${{ github.ref }}-${{ inputs.app }}-${{ inputs.platform }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ inputs.app }} ${{ inputs.platform }}
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve EAS profile
+        id: profile
+        shell: bash
+        run: |
+          if [ "${{ inputs.app }}" = "parent" ]; then
+            echo "name=parent-${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify Expo token
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "Missing EXPO_TOKEN GitHub Actions secret."
+            echo "Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Queue EAS build
+        run: npx eas-cli@latest build --profile "${{ steps.profile.outputs.name }}" --platform "${{ inputs.platform }}" --non-interactive --no-wait
