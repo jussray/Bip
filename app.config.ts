@@ -31,7 +31,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ...base,
     owner: EXPO_OWNER,
     name: isParent ? "Se'kret Bip Parent" : "Se'kret Bip",
-    slug: isParent ? 'sekret-bip-parent' : 'sekret-bip',
+    slug: isParent ? 'sekret-bip-parents-' : 'sekret-bip',
     scheme: isParent ? 'sekretbipparent' : 'sekretbip',
     icon: isParent
       ? './assets/images/parent-icon.png'
