@@ -5,7 +5,7 @@ type AppVariant = 'teen' | 'parent';
 
 const EXPO_OWNER = 'sekret-bip';
 const TEEN_EAS_PROJECT_ID = '3f2f2425-7119-43dd-bd7d-5bc752dabead';
-const PARENT_EAS_PROJECT_ID = process.env.EXPO_PUBLIC_PARENT_EAS_PROJECT_ID;
+const PARENT_EAS_PROJECT_ID = '40fc6484-b1e6-4668-b9bc-c7515684f817';
 
 type ExpoExtra = NonNullable<ExpoConfig['extra']>;
 
@@ -24,9 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const base = appJson.expo as ExpoConfig;
   const baseExtra = getBaseExtra(base);
 
-  const easProjectId = isParent
-    ? PARENT_EAS_PROJECT_ID ?? TEEN_EAS_PROJECT_ID
-    : TEEN_EAS_PROJECT_ID;
+  const easProjectId = isParent ? PARENT_EAS_PROJECT_ID : TEEN_EAS_PROJECT_ID;
 
   return {
     ...config,
@@ -49,6 +47,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     ios: {
       ...base.ios,
       bundleIdentifier: isParent ? 'com.sekretbip.parent' : 'com.sekretbip.app',
+      infoPlist: {
+        ...base.ios?.infoPlist,
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       ...base.android,
