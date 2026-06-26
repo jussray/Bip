@@ -8,7 +8,7 @@
 --   4. circle_members — tracks circle membership (supplement to circle_friendships)
 --   5. circles — generic named circle containers (V2 model, forward-compat)
 --   6. posts — generic post rows keyed to a circle (V2 model, forward-compat)
---   7. post_reactions — one reaction per user per post (V2 model, forward-compat)
+--   7. post_reactions — one reaction per user per post (V2 generic model)
 --   8. post_comments — threaded comments on posts (forward-compat)
 --   9. moods — reference table for mood taxonomy
 --  10. parent_mood_summaries — weekly mood digest visible to linked parent
@@ -164,8 +164,32 @@ create table if not exists public.post_comments (
 );
 alter table public.post_comments enable row level security;
 drop policy if exists "post_comments_self_write" on public.post_comments;
-create policy "post_comments_self_write" on public.post_comments
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- Compatibility: older bootstrap databases use author_user_id instead of user_id.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'post_comments'
+      and column_name = 'user_id'
+  ) then
+    execute 'create policy "post_comments_self_write" on public.post_comments
+      using (auth.uid() = user_id) with check (auth.uid() = user_id)';
+  elsif exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'post_comments'
+      and column_name = 'author_user_id'
+  ) then
+    execute 'create policy "post_comments_self_write" on public.post_comments
+      using (auth.uid() = author_user_id) with check (auth.uid() = author_user_id)';
+  else
+    raise exception 'post_comments requires user_id or author_user_id for owner RLS';
+  end if;
+end
+$$;
+
 drop policy if exists "post_comments_read" on public.post_comments;
 create policy "post_comments_read" on public.post_comments
   for select using (auth.uid() is not null);
