@@ -35,12 +35,12 @@ OPENAI_STT_MODEL       = "whisper-1"
 
 # Supabase — public/non-secret values only.
 # SUPABASE_SERVICE_ROLE_KEY must be set via `wrangler secret put`.
-SUPABASE_URL           = "https://your-project-id.supabase.co"
-SUPABASE_ANON_KEY      = "your-public-anon-key"
+SUPABASE_URL      = "https://tbsevonvegdnlyjgplmm.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRic2V2b252ZWdkbmx5amdwbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTg3MjIsImV4cCI6MjA5NjkzNDcyMn0.MKJK6FJNlrsfvIn-sFnzxHxTcXG_KOuddZkM2h0yY2c"
 
 # Audio upload limit in bytes (base64 decoded size cap).
 # 512 KB ≈ ~30s of compressed voice at typical Expo AudioRecording settings.
-AUDIO_MAX_BYTES        = "524288"
+AUDIO_MAX_BYTES   = "524288"
 
 # Routes block commented out for beta — using auto-assigned *.workers.dev URL.
 # Un-comment and set EXPO_PUBLIC_BACKEND_URL to your custom domain once live.
