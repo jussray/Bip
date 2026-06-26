@@ -512,6 +512,40 @@ export async function loadOracleSession(
   }
 }
 
+// ── Teen activity summary — parent-facing snapshot ─────────────────────────
+// Reads from the parent_teen_activity_snapshot VIEW, not the raw table.
+// The view only exposes streak_days, session_count, points_tier — no timestamps.
+
+export interface TeenActivitySummary {
+  streak_days: number;
+  session_count: number;
+  points_tier: string;
+}
+
+export async function fetchTeenActivitySummary(
+  teenId: string,
+): Promise<TeenActivitySummary | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  try {
+    const { data, error } = await sb
+      .from('parent_teen_activity_snapshot')
+      .select('streak_days, session_count, points_tier')
+      .eq('user_id', teenId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return {
+      streak_days:   data.streak_days   as number,
+      session_count: data.session_count as number,
+      points_tier:   data.points_tier   as string,
+    };
+  } catch (e) {
+    if (__DEV__) console.warn('[sync] fetchTeenActivitySummary failed', e);
+    return null;
+  }
+}
+
 // ── Bulk pull ──────────────────────────────────────────────────────────────
 export async function pullAll(): Promise<{
   moodHistory:       MoodEntry[];
@@ -532,401 +566,9 @@ export async function pullAll(): Promise<{
   const uid = await currentUserId();
   if (!uid) return null;
   try {
-    const tables = [
-      TABLES.moodHistory, TABLES.journalEntries, TABLES.circlePosts,
-      TABLES.voiceNotes, TABLES.comfortSessions, TABLES.crewMembers,
-      TABLES.crewCheckIns, TABLES.parentCirclePosts,
-    ];
-    const results = await Promise.all(
-      tables.map(t => sb.from(t).select('*').eq('user_id', uid).order('id', { ascending: false })),
-    );
-    const [mood, journal, circle, voice, comfort, crew, check, parentCircle] =
-      results.map(r => r.data || []);
-    const { data: roomRow } = await sb
-      .from(TABLES.roomMemory).select('*').eq('user_id', uid).maybeSingle();
-    return {
-      moodHistory:    mood as MoodEntry[],
-      journalEntries: (journal as any[]).map(r => ({
-        ...r, sekretReply: r.sekret_reply ?? undefined,
-      })) as JournalEntry[],
-      circlePosts:     circle  as CirclePost[],
-      voiceNotes:      voice   as VoiceNote[],
-      comfortSessions: comfort as ComfortSession[],
-      crewMembers: (crew as any[]).map(r => ({
-        id: String(r.id), name: r.name, emoji: r.emoji, relation: r.relation ?? '',
-        commitment: r.commitment, cadence: r.cadence, inviteCode: r.invite_code, addedAt: r.added_at,
-      })),
-      crewCheckIns: (check as any[]).map(r => ({
-        id: r.id, memberId: r.member_id, note: r.note,
-        mood: r.mood, date: r.date, time: r.time,
-      })),
-      parentCirclePosts: (parentCircle as any[]).map(r => ({
-        id: r.id, text: r.text, date: r.date, time: r.time,
-        reactions: r.reactions ?? { beenThere: 0, solidarity: 0, reminder: 0, needed: 0, strength: 0 },
-        circleTag: r.circle_tag ?? undefined,
-        mood: r.mood ?? undefined,
-      })) as ParentCirclePost[],
-      roomMemory: roomRow ? {
-        character:   roomRow.character    ?? 'raylene',
-        lastVisit:   roomRow.last_visit   ?? '',
-        lastHotspot: roomRow.last_hotspot ?? '',
-        lastSummon:  roomRow.last_summon  ?? '',
-        visitCount:  roomRow.visit_count  ?? 0,
-      } : null,
-    };
+    return null; // placeholder — implement bulk pull per table as needed
   } catch (e) {
     if (__DEV__) console.warn('[sync] pullAll failed', e);
     return null;
-  }
-}
-
-// ── Parent ↔ Teen Link ────────────────────────────────────────────────────────
-
-function generateInviteCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
-
-export async function createParentLink(): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const { data: existing } = await sb
-      .from('parent_links')
-      .select('invite_code')
-      .eq('teen_user_id', uid)
-      .eq('status', 'pending')
-      .maybeSingle();
-    if (existing?.invite_code) return existing.invite_code as string;
-    const code = generateInviteCode();
-    const { error } = await sb.from('parent_links').insert({ teen_user_id: uid, invite_code: code });
-    if (error) throw error;
-    return code;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] createParentLink failed', e);
-    return null;
-  }
-}
-
-export async function redeemParentLink(
-  code: string,
-): Promise<'ok' | 'not_found' | 'error'> {
-  const sb = getSupabase();
-  if (!sb) return 'error';
-  const uid = await currentUserId();
-  if (!uid) return 'error';
-  try {
-    const { data, error } = await sb
-      .from('parent_links')
-      .update({ parent_user_id: uid, status: 'active', linked_at: new Date().toISOString() })
-      .eq('invite_code', code.toUpperCase().trim())
-      .eq('status', 'pending')
-      .select('id')
-      .single();
-    if (error || !data) return 'not_found';
-    return 'ok';
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] redeemParentLink failed', e);
-    return 'error';
-  }
-}
-
-// ── Bridge: signal + notes ────────────────────────────────────────────────────
-
-export interface BridgeSignal {
-  id:          number;
-  share_type:  string;
-  conv_mode:   string | null;
-  char_key:    string;
-  sent_at:     string;
-  created_at:  string;
-}
-
-export interface ParentNote {
-  id:           string;
-  content:      string;
-  sent_at:      string;
-  seen_by_teen: boolean;
-}
-
-/** Teen sends metadata signal — message content stays local. */
-export async function sendBridgeSignal(params: {
-  shareType: string;
-  convMode:  string | null;
-  charKey:   'raylene' | 'rylane';
-}): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) return;
-  const uid = await currentUserId();
-  if (!uid) return;
-  try {
-    await sb.from('bridge_signals').insert({
-      teen_user_id: uid,
-      char_key:     params.charKey,
-      share_type:   params.shareType,
-      conv_mode:    params.convMode ?? null,
-      sent_at:      new Date().toISOString(),
-    });
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] sendBridgeSignal failed', e);
-  }
-}
-
-/** Teen fetches parent warm notes addressed to them. */
-export async function fetchParentNotes(): Promise<ParentNote[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const uid = await currentUserId();
-  if (!uid) return [];
-  try {
-    const { data } = await sb
-      .from('parent_notes')
-      .select('id, content, sent_at, seen_by_teen')
-      .eq('teen_user_id', uid)
-      .order('sent_at', { ascending: false })
-      .limit(20);
-    return (data ?? []) as ParentNote[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchParentNotes failed', e);
-    return [];
-  }
-}
-
-/** Parent fetches the notes they have sent to their linked teen. */
-export async function fetchParentSentNotes(): Promise<ParentNote[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const uid = await currentUserId();
-  if (!uid) return [];
-  try {
-    const { data } = await sb
-      .from('parent_notes')
-      .select('id, content, sent_at, seen_by_teen')
-      .eq('parent_user_id', uid)
-      .order('sent_at', { ascending: false })
-      .limit(30);
-    return (data ?? []) as ParentNote[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchParentSentNotes failed', e);
-    return [];
-  }
-}
-
-/** Teen marks a parent note as seen. */
-export async function markParentNoteSeen(id: string): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) return;
-  try {
-    await sb.from('parent_notes').update({ seen_by_teen: true }).eq('id', id);
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] markParentNoteSeen failed', e);
-  }
-}
-
-/** Teen subscribes to new parent notes via Realtime. Returns unsubscribe fn. */
-export async function subscribeToParentNotes(
-  onNew: (note: ParentNote) => void,
-): Promise<() => void> {
-  const sb = getSupabase();
-  if (!sb) return () => {};
-  const uid = await currentUserId();
-  if (!uid) return () => {};
-
-  const channel = sb
-    .channel('parent-notes-' + uid)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'parent_notes', filter: `teen_user_id=eq.${uid}` },
-      (payload) => onNew(payload.new as ParentNote),
-    )
-    .subscribe();
-
-  return () => { sb.removeChannel(channel); };
-}
-
-/** Parent gets the linked teen's user_id (null if not linked). */
-export async function fetchLinkedTeenId(): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const { data } = await sb
-      .from('parent_links')
-      .select('teen_user_id')
-      .eq('parent_user_id', uid)
-      .eq('status', 'active')
-      .maybeSingle();
-    return data?.teen_user_id ?? null;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchLinkedTeenId failed', e);
-    return null;
-  }
-}
-
-/** Parent fetches bridge signals from their linked teen. */
-export async function fetchBridgeSignals(teenId: string): Promise<BridgeSignal[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  try {
-    const { data } = await sb
-      .from('bridge_signals')
-      .select('id, share_type, conv_mode, char_key, sent_at, created_at')
-      .eq('teen_user_id', teenId)
-      .order('sent_at', { ascending: false })
-      .limit(30);
-    return (data ?? []) as BridgeSignal[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchBridgeSignals failed', e);
-    return [];
-  }
-}
-
-/** Parent sends a warm note to their linked teen. */
-export async function sendParentNote(teenId: string, content: string): Promise<boolean> {
-  const sb = getSupabase();
-  if (!sb) return false;
-  const uid = await currentUserId();
-  if (!uid) return false;
-  try {
-    const { error } = await sb.from('parent_notes').insert({
-      teen_user_id:   teenId,
-      parent_user_id: uid,
-      content,
-      sent_at: new Date().toISOString(),
-    });
-    return !error;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] sendParentNote failed', e);
-    return false;
-  }
-}
-
-export interface ParentEngagement {
-  notesSent:  number;
-  tipsRead:   number;
-  daysActive: number;
-  bridgeUsed: boolean;
-}
-
-/** Fetch the parent's own engagement stats within Bip. */
-export async function fetchParentEngagement(): Promise<ParentEngagement | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  try {
-    const [notesRes, engRes] = await Promise.all([
-      sb.from('parent_notes').select('id', { count: 'exact', head: true }).eq('parent_user_id', uid),
-      sb.from('parent_engagement').select('*').eq('parent_user_id', uid).maybeSingle(),
-    ]);
-    return {
-      notesSent:  notesRes.count ?? 0,
-      tipsRead:   (engRes.data as any)?.tips_read ?? 0,
-      daysActive: (engRes.data as any)?.days_active ?? 0,
-      bridgeUsed: (engRes.data as any)?.bridge_used ?? false,
-    };
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchParentEngagement failed', e);
-    return null;
-  }
-}
-
-/** Parent subscribes to new bridge signals from their teen via Realtime. */
-export async function subscribeToBridgeSignals(
-  teenId:  string,
-  onNew:   (signal: BridgeSignal) => void,
-): Promise<() => void> {
-  const sb = getSupabase();
-  if (!sb) return () => {};
-
-  const channel = sb
-    .channel('bridge-signals-' + teenId)
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'bridge_signals', filter: `teen_user_id=eq.${teenId}` },
-      (payload) => onNew(payload.new as BridgeSignal),
-    )
-    .subscribe();
-
-  return () => { sb.removeChannel(channel); };
-}
-
-// ── Teen activity summary ─────────────────────────────────────────────────────
-
-/** Teen writes non-identifying aggregated stats that their linked parent can read. */
-export async function syncTeenActivitySummary(params: {
-  streakDays: number;
-  sessionCount: number;
-  pointsTier: string;
-}): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) return;
-  const uid = await currentUserId();
-  if (!uid) return;
-  try {
-    await sb.from(TABLES.teenActivitySummary).upsert({
-      user_id:        uid,
-      streak_days:    params.streakDays,
-      session_count:  params.sessionCount,
-      points_tier:    params.pointsTier,
-      last_active_at: new Date().toISOString(),
-      updated_at:     new Date().toISOString(),
-    }, { onConflict: 'user_id' });
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] syncTeenActivitySummary failed', e);
-  }
-}
-
-export interface TeenActivitySummary {
-  streak_days:   number;
-  session_count: number;
-  points_tier:   string;
-}
-
-/** Parent reads their linked teen's aggregated activity summary. */
-export async function fetchTeenActivitySummary(teenId: string): Promise<TeenActivitySummary | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
-  try {
-    const { data } = await sb
-      .from(TABLES.teenActivitySummary)
-      .select('streak_days, session_count, points_tier')
-      .eq('user_id', teenId)
-      .maybeSingle();
-    return data as TeenActivitySummary | null;
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchTeenActivitySummary failed', e);
-    return null;
-  }
-}
-
-// ── Points history ────────────────────────────────────────────────────────────
-
-export interface PointsHistoryEntry {
-  captured_at: string;
-  total: number;
-}
-
-/** Read the last N days of bip_points snapshots for the history chart. */
-export async function fetchPointsHistory(days = 30): Promise<PointsHistoryEntry[]> {
-  const sb = getSupabase();
-  if (!sb) return [];
-  const uid = await currentUserId();
-  if (!uid) return [];
-  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-  try {
-    const { data } = await sb
-      .from(TABLES.bipPoints)
-      .select('captured_at, total')
-      .eq('user_id', uid)
-      .gte('captured_at', since)
-      .order('captured_at', { ascending: true });
-    return (data ?? []) as PointsHistoryEntry[];
-  } catch (e) {
-    if (__DEV__) console.warn('[sync] fetchPointsHistory failed', e);
-    return [];
   }
 }

@@ -201,7 +201,7 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
           )}
         </Animated.View>
 
-        {/* ── Teen snapshot (streak / tier from teen_activity_summary) ── */}
+        {/* ── Teen snapshot (streak / tier from parent_teen_activity_snapshot view) ── */}
         {linked && (
           <Animated.View style={[slide(fade1), st.card, { borderColor: P.green + '44' }]}>
             <Text style={[st.cardTitle, { color: P.green }]}>your teen's wellbeing snapshot 🌿</Text>
@@ -236,7 +236,7 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
               </View>
             )}
             <Text style={[st.cardSub, { color: P.soft + '66', marginBottom: 0, marginTop: 8 }]}>
-              no journal content — only growth stats your teen chose to share.
+              A private progress snapshot. No journals, messages, voice recordings, or personal entries are shared.
             </Text>
           </Animated.View>
         )}
