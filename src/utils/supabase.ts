@@ -70,6 +70,8 @@ export const TABLES = {
   // ── Bridge tables (20260618 + 20260621 migrations) ───────────────────────
   bridgeSignals:       'bridge_signals',
   parentNotes:         'parent_notes',
+  // ── Teen activity summary (20260626) ─────────────────────────────────────────
+  teenActivitySummary: 'teen_activity_summary',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

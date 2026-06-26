@@ -17,8 +17,8 @@
 //   • full moon energy     (350–749)
 //   • whole night sky      (750+)
 
-import React, { useEffect, useMemo, useRef } from 'react';
-import { snapshotPoints } from '@/utils/sync';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { snapshotPoints, fetchPointsHistory, syncTeenActivitySummary, type PointsHistoryEntry } from '@/utils/sync';
 import {
   Text, TouchableOpacity, ScrollView, View,
   ImageBackground, Animated, Easing, StyleSheet, Platform,
@@ -124,10 +124,28 @@ export function PointsScreen({
     };
   }, [moodHistory, journalEntries, voiceNotes, circlePosts, comfortSessions, crewCheckIns, streakDays]);
 
+  const [pointsHistory, setPointsHistory] = useState<PointsHistoryEntry[]>([]);
+
   // Snapshot current points total to Supabase for cross-device history
   useEffect(() => {
     if (breakdown.total > 0) void snapshotPoints(breakdown.total);
   }, [breakdown.total]);
+
+  // Load 30-day history for chart
+  useEffect(() => {
+    fetchPointsHistory(30).then(setPointsHistory).catch(() => {});
+  }, []);
+
+  // Sync wellbeing summary for parent dashboard (privacy-safe aggregates only)
+  useEffect(() => {
+    if (breakdown.total === 0) return;
+    const tierKey = tierFor(breakdown.total).key;
+    void syncTeenActivitySummary({
+      streakDays,
+      sessionCount: comfortSessions?.length ?? 0,
+      pointsTier: tierKey,
+    });
+  }, [breakdown.total, streakDays, comfortSessions]);
 
   const tier = tierFor(breakdown.total);
   const tierIdx = TIERS.findIndex(t2 => t2.key === tier.key);
@@ -177,6 +195,7 @@ export function PointsScreen({
   const card2Anim = useRef(new Animated.Value(0)).current;
   const card3Anim = useRef(new Animated.Value(0)).current;
   const card4Anim = useRef(new Animated.Value(0)).current;
+  const histAnim  = useRef(new Animated.Value(0)).current;
   const noteAnim  = useRef(new Animated.Value(0)).current;
   const breath    = useRef(new Animated.Value(0)).current;
   const progAnim  = useRef(new Animated.Value(0)).current;
@@ -188,6 +207,7 @@ export function PointsScreen({
       Animated.timing(card2Anim, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(card3Anim, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(card4Anim, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(histAnim,  { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.timing(noteAnim,  { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
     ]).start();
 
@@ -199,7 +219,7 @@ export function PointsScreen({
     ).start();
 
     Animated.timing(progAnim, { toValue: progress, duration: 900, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
-  }, [breath, heroAnim, card1Anim, card2Anim, card3Anim, card4Anim, noteAnim, progAnim, progress]);
+  }, [breath, heroAnim, card1Anim, card2Anim, card3Anim, card4Anim, histAnim, noteAnim, progAnim, progress]);
 
   const enter = (a: Animated.Value) => ({
     opacity: a,
@@ -367,6 +387,48 @@ export function PointsScreen({
           </View>
         </Animated.View>
 
+        {/* 30-day points history */}
+        <Animated.View style={[styles.card, { backgroundColor: cardBg, borderColor: softAccent }, enter(histAnim)]}>
+          <Text style={[styles.cardKicker, { color: softAccent }]}>30-day history</Text>
+          {pointsHistory.length === 0 ? (
+            <Text style={styles.empty}>
+              {isRylane ? 'no history yet. start and it tracks.' : 'no history yet. every day you show up it grows \u{1F49C}'}
+            </Text>
+          ) : (
+            <>
+              <View style={styles.histChart}>
+                {(() => {
+                  const maxVal = Math.max(...pointsHistory.map(e => e.total), 1);
+                  return pointsHistory.map((e, i) => (
+                    <View key={i} style={styles.histBarWrap}>
+                      <View
+                        style={[
+                          styles.histBar,
+                          {
+                            height: Math.max(4, Math.round((e.total / maxVal) * 56)),
+                            backgroundColor: i === pointsHistory.length - 1 ? tier.color : softAccent + '88',
+                          },
+                        ]}
+                      />
+                    </View>
+                  ));
+                })()}
+              </View>
+              <View style={styles.histLabels}>
+                <Text style={styles.histLabel}>
+                  {new Date(pointsHistory[0].captured_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </Text>
+                <Text style={styles.histLabel}>
+                  {new Date(pointsHistory[pointsHistory.length - 1].captured_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </Text>
+              </View>
+              <Text style={[styles.histSub, { color: softAccent }]}>
+                {breakdown.total} total · {pointsHistory.length} snapshots
+              </Text>
+            </>
+          )}
+        </Animated.View>
+
         {/* Scrapbook sticky note */}
         <Animated.View style={[styles.sticky, enter(noteAnim)]}>
           <Text style={styles.stickyText}>{stickyAffirmation}</Text>
@@ -434,6 +496,13 @@ const styles = StyleSheet.create({
   ctaRow:    { flexDirection: 'row', gap: 10, marginTop: 16 },
   cta:       { borderRadius: 14, paddingVertical: 12, alignItems: 'center' },
   ctaText:   { color: '#fff', fontWeight: '700', fontSize: 13, letterSpacing: 0.3 },
+
+  histChart:  { flexDirection: 'row', alignItems: 'flex-end', height: 64, gap: 2, marginTop: 10, marginBottom: 4 },
+  histBarWrap:{ flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
+  histBar:    { width: '100%', borderRadius: 2 },
+  histLabels: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  histLabel:  { color: '#9ea0c0', fontSize: 10 },
+  histSub:    { fontSize: 11, fontStyle: 'italic', textAlign: 'center' },
 
   sticky: {
     backgroundColor: '#fff8e7',

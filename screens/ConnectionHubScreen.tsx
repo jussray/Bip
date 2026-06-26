@@ -12,7 +12,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import {
   fetchLinkedTeenId, fetchParentEngagement, fetchBridgeSignals,
-  ParentEngagement, BridgeSignal,
+  fetchTeenActivitySummary,
+  ParentEngagement, BridgeSignal, TeenActivitySummary,
 } from '@/utils/sync';
 
 const P = {
@@ -58,6 +59,7 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
     notesSent: 0, tipsRead: 0, daysActive: 0, bridgeUsed: false,
   });
   const [signals,    setSignals]    = useState<BridgeSignal[]>([]);
+  const [summary,    setSummary]    = useState<TeenActivitySummary | null>(null);
   const [loading,    setLoading]    = useState(true);
 
   const fade1  = useRef(new Animated.Value(0)).current;
@@ -98,6 +100,10 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
         }).start();
         const sigs = await fetchBridgeSignals(id ?? '');
         setSignals(sigs.slice(0, 6));
+      }
+      if (id) {
+        const snap = await fetchTeenActivitySummary(id);
+        if (snap) setSummary(snap);
       }
       setLoading(false);
     }
@@ -154,9 +160,90 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
           )}
         </Animated.View>
 
-        {/* Connection strength */}
-        <Animated.View style={[slide(fade1), st.card, { borderColor: P.accent + '44' }]}>
-          <Text style={[st.cardTitle, { color: P.accent }]}>connection strength</Text>
+        {/* ── Bridge signals — centerpiece ── */}
+        <Animated.View style={[slide(fade1), st.signalsCard]}>
+          <View style={st.signalsHeader}>
+            <Text style={[st.signalsTitle, { color: P.accent }]}>what your teen sent you 🌉</Text>
+            <TouchableOpacity onPress={() => setScreen('parent-bridge')}>
+              <Text style={[st.signalsOpen, { color: P.accent + 'cc' }]}>open bridge →</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[st.cardSub, { color: P.soft + '88' }]}>
+            feelings your teen chose to share. they sent these to you.
+          </Text>
+          {loading ? (
+            <Text style={[st.emptyText, { color: P.soft + '66' }]}>loading…</Text>
+          ) : signals.length === 0 ? (
+            <Text style={[st.emptyText, { color: P.soft + '66' }]}>
+              nothing yet. when your teen uses Bridge, their signals will appear here.
+            </Text>
+          ) : (
+            signals.map((sig, i) => (
+              <View key={i} style={[st.signalRow, { borderColor: P.accent + '33' }]}>
+                <Text style={{ fontSize: 22 }}>
+                  {sig.share_type === 'happy'        ? '😊' :
+                   sig.share_type === 'overwhelmed'  ? '🌊' :
+                   sig.share_type === 'stressed'     ? '🤯' :
+                   sig.share_type === 'calm'         ? '😌' :
+                   sig.share_type === 'proud'        ? '💪' :
+                   sig.share_type === 'need-support' ? '🙏' : '💜'}
+                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[st.signalLabel, { color: P.soft }]}>
+                    {SIGNAL_LABELS[sig.share_type] ?? 'sent a signal'}
+                  </Text>
+                  <Text style={[st.signalTime, { color: P.soft + '66' }]}>
+                    {new Date(sig.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </Text>
+                </View>
+              </View>
+            ))
+          )}
+        </Animated.View>
+
+        {/* ── Teen snapshot (streak / tier from teen_activity_summary) ── */}
+        {linked && (
+          <Animated.View style={[slide(fade1), st.card, { borderColor: P.green + '44' }]}>
+            <Text style={[st.cardTitle, { color: P.green }]}>your teen's wellbeing snapshot 🌿</Text>
+            {loading || !summary ? (
+              <Text style={[st.emptyText, { color: P.soft + '66' }]}>
+                {loading ? 'loading…' : 'no snapshot yet — your teen hasn\'t synced.'}
+              </Text>
+            ) : (
+              <View style={st.snapRow}>
+                <View style={[st.snapStat, { borderColor: P.green + '55' }]}>
+                  <Text style={[st.snapNum, { color: P.green }]}>{summary.streak_days}</Text>
+                  <Text style={[st.snapLabel, { color: P.soft + 'aa' }]}>day streak</Text>
+                </View>
+                <View style={[st.snapStat, { borderColor: P.accent + '55' }]}>
+                  <Text style={[st.snapNum, { color: P.accent }]}>{summary.session_count}</Text>
+                  <Text style={[st.snapLabel, { color: P.soft + 'aa' }]}>sessions</Text>
+                </View>
+                <View style={[st.snapStat, { borderColor: P.amber + '55' }]}>
+                  <Text style={[st.snapNum, { color: P.amber }]}>
+                    {summary.points_tier === 't0' ? '🌱' :
+                     summary.points_tier === 't1' ? '🌿' :
+                     summary.points_tier === 't2' ? '🌸' :
+                     summary.points_tier === 't3' ? '⭐' : '✨'}
+                  </Text>
+                  <Text style={[st.snapLabel, { color: P.soft + 'aa' }]}>
+                    {summary.points_tier === 't0' ? 'seed'    :
+                     summary.points_tier === 't1' ? 'bloom'   :
+                     summary.points_tier === 't2' ? 'flow'    :
+                     summary.points_tier === 't3' ? 'radiant' : 'luminary'}
+                  </Text>
+                </View>
+              </View>
+            )}
+            <Text style={[st.cardSub, { color: P.soft + '66', marginBottom: 0, marginTop: 8 }]}>
+              no journal content — only growth stats your teen chose to share.
+            </Text>
+          </Animated.View>
+        )}
+
+        {/* ── Connection strength ── */}
+        <Animated.View style={[slide(fade2), st.card, { borderColor: P.accent + '44' }]}>
+          <Text style={[st.cardTitle, { color: P.accent }]}>your connection strength</Text>
           <View style={st.barOuter}>
             <Animated.View style={[st.barInner, {
               width: bar.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
@@ -172,12 +259,12 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
           </Text>
         </Animated.View>
 
-        {/* Engagement summary */}
-        <Animated.View style={[slide(fade1), st.statsRow]}>
+        {/* ── Engagement summary ── */}
+        <Animated.View style={[slide(fade2), st.statsRow]}>
           {[
-            { emoji: '✉️', num: engagement.notesSent,  label: 'notes sent',  color: P.accent },
-            { emoji: '🌿', num: engagement.daysActive,  label: 'days active', color: P.green  },
-            { emoji: '🌉', num: engagement.bridgeUsed ? 1 : 0, label: 'bridge used', color: P.amber },
+            { emoji: '✉️', num: engagement.notesSent,           label: 'notes sent',  color: P.accent },
+            { emoji: '🌿', num: engagement.daysActive,           label: 'days active', color: P.green  },
+            { emoji: '🌉', num: engagement.bridgeUsed ? 1 : 0,  label: 'bridge used', color: P.amber  },
           ].map(s => (
             <View key={s.label} style={[st.statCard, { borderColor: s.color + '55' }]}>
               <Text style={{ fontSize: 20, marginBottom: 4 }}>{s.emoji}</Text>
@@ -187,41 +274,6 @@ export function ConnectionHubScreen({ setScreen, BottomNav }: ConnectionHubScree
               <Text style={[st.statLabel, { color: P.soft + 'aa' }]}>{s.label}</Text>
             </View>
           ))}
-        </Animated.View>
-
-        {/* Bridge signals */}
-        <Animated.View style={[slide(fade2), st.card, { borderColor: P.accent + '44' }]}>
-          <Text style={[st.cardTitle, { color: P.accent }]}>signals from your teen 🌉</Text>
-          <Text style={[st.cardSub, { color: P.soft + '88' }]}>
-            anonymous feelings your teen shared via Bridge. no details, just signals.
-          </Text>
-          {loading ? (
-            <Text style={[st.emptyText, { color: P.soft + '66' }]}>loading...</Text>
-          ) : signals.length === 0 ? (
-            <Text style={[st.emptyText, { color: P.soft + '66' }]}>
-              no signals yet. when your teen uses Bridge, you'll see them here.
-            </Text>
-          ) : (
-            signals.map((sig, i) => (
-              <View key={i} style={[st.signalRow, { borderColor: P.accent + '33' }]}>
-                <Text style={{ fontSize: 18 }}>
-                  {sig.share_type === 'happy' ? '😊' :
-                   sig.share_type === 'overwhelmed' ? '🌊' :
-                   sig.share_type === 'stressed' ? '🤯' :
-                   sig.share_type === 'calm' ? '😌' :
-                   sig.share_type === 'proud' ? '💪' : '💜'}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[st.signalLabel, { color: P.soft }]}>
-                    {SIGNAL_LABELS[sig.share_type] ?? 'sent a signal'}
-                  </Text>
-                  <Text style={[st.signalTime, { color: P.soft + '66' }]}>
-                    {new Date(sig.sent_at).toLocaleDateString()}
-                  </Text>
-                </View>
-              </View>
-            ))
-          )}
         </Animated.View>
 
         {/* Quick actions */}
@@ -274,10 +326,18 @@ const st = StyleSheet.create({
   statCard:     { flex: 1, backgroundColor: 'rgba(40,20,70,0.82)', borderWidth: 1, borderRadius: 16, padding: 14, alignItems: 'center' },
   statNum:      { fontSize: 24, fontWeight: '800', marginBottom: 2 },
   statLabel:    { fontSize: 10, fontWeight: '600', textAlign: 'center' },
-  signalRow:    { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, paddingVertical: 10 },
-  signalLabel:  { fontSize: 13, fontWeight: '600', marginBottom: 2 },
-  signalTime:   { fontSize: 11 },
-  emptyText:    { fontSize: 13, lineHeight: 20, fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
+  signalsCard:   { backgroundColor: 'rgba(40,20,70,0.88)', borderWidth: 1.5, borderColor: '#a78bfa66', borderRadius: 22, padding: 18, marginBottom: 14 },
+  signalsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  signalsTitle:  { fontSize: 15, fontWeight: '800' },
+  signalsOpen:   { fontSize: 12, fontWeight: '600' },
+  signalRow:     { flexDirection: 'row', alignItems: 'center', gap: 12, borderTopWidth: 1, paddingVertical: 11 },
+  signalLabel:   { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  signalTime:    { fontSize: 11 },
+  emptyText:     { fontSize: 13, lineHeight: 20, fontStyle: 'italic', textAlign: 'center', paddingVertical: 10 },
+  snapRow:       { flexDirection: 'row', gap: 10 },
+  snapStat:      { flex: 1, backgroundColor: 'rgba(20,10,40,0.6)', borderWidth: 1, borderRadius: 14, padding: 12, alignItems: 'center' },
+  snapNum:       { fontSize: 22, fontWeight: '800', marginBottom: 2 },
+  snapLabel:     { fontSize: 10, fontWeight: '600', textAlign: 'center' },
   actionsRow:   { flexDirection: 'row', gap: 10, marginBottom: 14 },
   actionBtn:    { flex: 1, padding: 14, borderRadius: 18, alignItems: 'center' },
   actionBtnText:{ fontSize: 14, fontWeight: '700', color: '#1e0f3a' },
