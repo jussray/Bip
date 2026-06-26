@@ -42,6 +42,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      APP_VARIANT: ${{ inputs.app }}
+      EXPO_PUBLIC_APP_VARIANT: ${{ inputs.app }}
+      EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -63,14 +67,51 @@ jobs:
             echo "name=${{ inputs.channel }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Verify Expo token
+      - name: Verify required build secrets
         shell: bash
         run: |
+          missing=0
+
           if [ -z "$EXPO_TOKEN" ]; then
             echo "Missing EXPO_TOKEN GitHub Actions secret."
-            echo "Add it under Settings > Secrets and variables > Actions."
+            missing=1
+          fi
+
+          if [ -z "$EXPO_PUBLIC_SUPABASE_URL" ]; then
+            echo "Missing EXPO_PUBLIC_SUPABASE_URL GitHub Actions secret."
+            missing=1
+          fi
+
+          if [ -z "$EXPO_PUBLIC_SUPABASE_ANON_KEY" ]; then
+            echo "Missing EXPO_PUBLIC_SUPABASE_ANON_KEY GitHub Actions secret."
+            missing=1
+          fi
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Add the missing values under Settings > Secrets and variables > Actions."
             exit 1
           fi
+
+      - name: Sync Supabase variables to EAS environment
+        shell: bash
+        run: |
+          npx eas-cli@latest env:create \
+            --environment "${{ inputs.channel }}" \
+            --name EXPO_PUBLIC_SUPABASE_URL \
+            --value "$EXPO_PUBLIC_SUPABASE_URL" \
+            --visibility plaintext \
+            --scope project \
+            --force \
+            --non-interactive
+
+          npx eas-cli@latest env:create \
+            --environment "${{ inputs.channel }}" \
+            --name EXPO_PUBLIC_SUPABASE_ANON_KEY \
+            --value "$EXPO_PUBLIC_SUPABASE_ANON_KEY" \
+            --visibility sensitive \
+            --scope project \
+            --force \
+            --non-interactive
 
       - name: Queue EAS build
         run: npx eas-cli@latest build --profile "${{ steps.profile.outputs.name }}" --platform "${{ inputs.platform }}" --non-interactive --no-wait
