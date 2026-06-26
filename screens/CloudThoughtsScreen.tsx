@@ -14,6 +14,7 @@ import { glowForMood as glowFor } from '../constants/moodGlow';
 import { fetchSekretReply } from '../utils/api';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
+import type { VoiceNote } from '../src/types/index';
 import {
   Text,
   TouchableOpacity,
@@ -100,6 +101,7 @@ interface CloudThoughtsScreenProps {
   character?:    MiniStickerCharacter;
   privateProfile?: OracleProfile;
   profileSide?: OracleSide;
+  onSave?:       (note: VoiceNote) => void;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -114,6 +116,7 @@ export function CloudThoughtsScreen({
   character,
   privateProfile,
   profileSide = 'teen',
+  onSave,
 }: CloudThoughtsScreenProps) {
 
   // Character-aware display name
@@ -166,6 +169,22 @@ export function CloudThoughtsScreen({
     setInput('');
     setSent(true);
     setIsThinking(true);
+
+    // Persist as a cloud-type voice note before the async API call
+    if (onSave) {
+      const now = new Date();
+      const note = {
+        id:        Date.now(),
+        title:     text.slice(0, 60),
+        date:      now.toLocaleDateString(),
+        time:      now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        duration:  '0:00',
+        type:      'cloud' as const,
+        cloudText: text,
+      } as VoiceNote;
+      onSave(note);
+    }
+
     // Fix C5: pass activeMode as context so the API can tune its tone
     const r = await fetchSekretReply(text, activeMode, mood, selectedSekret, undefined, privateProfile, profileSide);
     setReply(r);

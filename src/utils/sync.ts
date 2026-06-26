@@ -370,12 +370,14 @@ export async function loadCircleReplies(
 // ── Voice ─────────────────────────────────────────────────────────────
 export function syncVoiceNote(note: VoiceNote): void {
   void safeUpsert(TABLES.voiceNotes, {
-    id:        note.id,
-    title:     note.title,
-    date:      note.date,
-    time:      note.time,
-    duration:  note.duration,
-    video_url: (note.videoUrl as string | undefined) ?? null,
+    id:         note.id,
+    title:      note.title,
+    date:       note.date,
+    time:       note.time,
+    duration:   note.duration,
+    video_url:  (note.videoUrl  as string | undefined) ?? null,
+    type:       (note.type      as string | undefined) ?? null,
+    cloud_text: (note.cloudText as string | undefined) ?? null,
   });
 }
 
