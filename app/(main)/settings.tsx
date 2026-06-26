@@ -193,7 +193,9 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.button} onPress={handleRedeemCode} disabled={isRedeeming}>
           <Text style={styles.buttonText}>{isRedeeming ? 'Connecting…' : 'Redeem code'}</Text>
         </TouchableOpacity>
-        {redeemStatus !== 'idle' && <Text style={styles.hint}>Status: {redeemStatus}</Text>}
+        {redeemStatus !== 'idle' && (
+          <Text style={styles.hint}>Status: {String(redeemStatus)}</Text>
+        )}
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
         <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleDeleteData}>
