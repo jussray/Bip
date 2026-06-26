@@ -16,6 +16,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   return {
     ...config,
     ...base,
+    owner: 'sekret-bip',
     name: isParent ? "Se'kret Bip Parent" : "Se'kret Bip",
     slug: isParent ? 'sekret-bip-parent' : 'sekret-bip',
     scheme: isParent ? 'sekretbipparent' : 'sekretbip',
