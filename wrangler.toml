@@ -25,13 +25,18 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 
 # ── Non-secret config vars (safe to commit) ──────────────────────────────
-# Override these per environment using [env.staging] or [env.production] blocks.
+# Secrets (OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SAFETY_SCAN_SECRET)
+# must be set via `wrangler secret put` — never in this file.
 [vars]
 # OpenAI model names — rotate without code changes by updating this file.
-# For production overrides: `wrangler deploy --var OPENAI_CHAT_MODEL:gpt-4o`
 OPENAI_CHAT_MODEL      = "gpt-4o-mini"
 OPENAI_TTS_MODEL       = "gpt-4o-mini-tts"
 OPENAI_STT_MODEL       = "whisper-1"
+
+# Supabase — public/non-secret values only.
+# SUPABASE_SERVICE_ROLE_KEY must be set via `wrangler secret put`.
+SUPABASE_URL           = "https://your-project-id.supabase.co"
+SUPABASE_ANON_KEY      = "your-public-anon-key"
 
 # Audio upload limit in bytes (base64 decoded size cap).
 # 512 KB ≈ ~30s of compressed voice at typical Expo AudioRecording settings.
