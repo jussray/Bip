@@ -11,6 +11,9 @@
       "android",
       "web"
     ],
+    "updates": {
+      "enabled": false
+    },
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#160028"
