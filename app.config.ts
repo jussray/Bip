@@ -3,6 +3,9 @@ import appJson from './app.json';
 
 type AppVariant = 'teen' | 'parent';
 
+const TEEN_EAS_PROJECT_ID = '3f2f2425-7119-43dd-bd7d-5bc752dabead';
+const PARENT_EAS_PROJECT_ID = process.env.EXPO_PUBLIC_PARENT_EAS_PROJECT_ID;
+
 function getAppVariant(): AppVariant {
   const value = process.env.APP_VARIANT ?? process.env.EXPO_PUBLIC_APP_VARIANT;
   return value === 'parent' ? 'parent' : 'teen';
@@ -12,6 +15,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = getAppVariant();
   const isParent = variant === 'parent';
   const base = appJson.expo as ExpoConfig;
+
+  const easProjectId = isParent
+    ? PARENT_EAS_PROJECT_ID ?? TEEN_EAS_PROJECT_ID
+    : TEEN_EAS_PROJECT_ID;
 
   return {
     ...config,
@@ -47,6 +54,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...base.extra,
       appVariant: variant,
+      eas: {
+        ...(base.extra as Record<string, unknown> | undefined)?.eas,
+        projectId: easProjectId,
+      },
     },
   };
 };
