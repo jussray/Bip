@@ -11,7 +11,7 @@
 #   .dev.vars is gitignored and is used by `wrangler dev` automatically.
 #
 # ── Deploy ──────────────────────────────────────────────────────────
-#   wrangler secret put OPENAI_API_KEY
+#   wrangler secret put OPENAI_API_KEY          ✓ set 2026-06-26
 #   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 #   wrangler secret put SAFETY_SCAN_SECRET
 #   wrangler deploy
