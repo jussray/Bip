@@ -11,12 +11,21 @@ Notifications.setNotificationHandler({
 
 const DAILY_REMINDER_ID = 'bip-daily-checkin';
 
+function notificationsAllowed(
+  permissions: Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>,
+): boolean {
+  return (
+    permissions.granted ||
+    permissions.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+  );
+}
+
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const existing = await Notifications.getPermissionsAsync();
-  if (existing.granted) return true;
+  if (notificationsAllowed(existing)) return true;
   const result = await Notifications.requestPermissionsAsync();
-  return result.granted;
+  return notificationsAllowed(result);
 }
 
 export async function scheduleDailyReminder(): Promise<void> {
@@ -28,9 +37,9 @@ export async function scheduleDailyReminder(): Promise<void> {
       body: "Check in with your Se'kret. \u{1F49C}",
     },
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: 20,
       minute: 0,
-      repeats: true,
     },
   });
 }
