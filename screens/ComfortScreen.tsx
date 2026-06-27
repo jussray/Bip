@@ -216,7 +216,7 @@ export function ComfortScreen({
         {/* Heavy purple wash */}
         <LinearGradient
           colors={['rgba(13,0,20,0.65)', 'rgba(13,0,20,0.55)', 'rgba(13,0,20,0.85)']}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         {/* Rain streaks */}
@@ -350,9 +350,9 @@ export function ComfortScreen({
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:          { flex: 1 },
-  bgWrap:        { ...StyleSheet.absoluteFillObject },
+  bgWrap:        StyleSheet.absoluteFill,
   bgImage:       { width: '100%', height: '100%' },
-  bgMoodScrim:   { ...StyleSheet.absoluteFillObject },
+  bgMoodScrim:   StyleSheet.absoluteFill,
   rainStreak:    {
     position: 'absolute', top: 0, width: 1.5, height: 22,
     backgroundColor: 'rgba(180,210,255,0.55)', borderRadius: 1,

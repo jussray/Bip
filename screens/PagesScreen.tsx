@@ -1162,7 +1162,7 @@ const styles = StyleSheet.create({
     width: 1,
     backgroundColor: 'rgba(219, 116, 129, 0.38)',
   },
-  paperLines: { ...StyleSheet.absoluteFillObject, paddingTop: 26 },
+  paperLines: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, paddingTop: 26 },
   paperLine: {
     height: 29,
     borderBottomWidth: StyleSheet.hairlineWidth,
