@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
 
   tagline:        { color: '#c084fc', fontSize: 11, textAlign: 'center', paddingBottom: 8 },
 
-  pickerOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: '#0d0015', zIndex: 10 },
+  pickerOverlay:  { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#0d0015', zIndex: 10 },
   pickerContent:  { padding: 24, paddingTop: 16, paddingBottom: 40 },
   pickerHeader:   {
     flexDirection: 'row', justifyContent: 'space-between',

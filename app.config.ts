@@ -1,6 +1,8 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import appJson from './app.json';
 
+type LegacyExpoConfig = ExpoConfig & { splash?: Record<string, unknown> };
+
 type AppVariant = 'teen' | 'parent';
 
 const EXPO_OWNER = 'sekret-bip';
@@ -21,12 +23,12 @@ function getBaseExtra(base: ExpoConfig): ExpoExtra {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = getAppVariant();
   const isParent = variant === 'parent';
-  const base = appJson.expo as ExpoConfig;
+  const base = appJson.expo as LegacyExpoConfig;
   const baseExtra = getBaseExtra(base);
 
   const easProjectId = isParent ? PARENT_EAS_PROJECT_ID : TEEN_EAS_PROJECT_ID;
 
-  return {
+  return ({
     ...config,
     ...base,
     owner: EXPO_OWNER,
@@ -69,5 +71,5 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: easProjectId,
       },
     },
-  };
+  }) as unknown as ExpoConfig;
 };

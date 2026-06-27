@@ -813,7 +813,7 @@ export function UserRoomScreen({
       <AmbientWeatherOverlay phase={roomPhase} />
 
       {/* ── LAYER 0: Bare room shell (walls, floor, window, atmosphere) ── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
         <BareRoomRenderer
           character={userRoom.baseRoomId}
           lightingMode={roomPhase}
@@ -862,7 +862,7 @@ export function UserRoomScreen({
       })()}
 
       {/* ── LAYER 2: Hotspots ─────────────────────────────────────────── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
         {hotspots.map(spot => {
           const isHinted = hintSpot === spot.id;
           return (
@@ -941,7 +941,7 @@ export function UserRoomScreen({
         ]}
       >
         <TouchableOpacity
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           onPress={handleCompanionTap}
           activeOpacity={0.88}
           accessibilityRole="button"
@@ -1045,12 +1045,12 @@ export function UserRoomScreen({
 const s = StyleSheet.create({
   root:              { flex: 1, backgroundColor: '#0d0014' },
   bg:                { width, height },
-  overlay:           { ...StyleSheet.absoluteFillObject },
+  overlay:           StyleSheet.absoluteFill,
 
   companionWrap:     { position: 'absolute', zIndex: 10 },
   companionImage:    { width: '100%', height: '100%' },
   companionGlow:     {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
     borderRadius: 120,
     backgroundColor: '#c084fc',
   },
@@ -1157,7 +1157,7 @@ const s = StyleSheet.create({
 
 const vl = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.54)',
   },
   sheet: {
@@ -1201,7 +1201,7 @@ const vl = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 }, elevation: 6,
   },
   selectedOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(192,132,252,0.15)',
   },
   cardEmoji: { color: '#e9d5ff', fontSize: 18, textAlign: 'center', marginTop: 8 },

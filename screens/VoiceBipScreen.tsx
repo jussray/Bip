@@ -834,7 +834,7 @@ const styles = StyleSheet.create({
   bottomScrim:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
   cloudWrap:          { position: 'absolute', top: 36, right: 24 },
   cloudImg:           { width: 64, height: 64 },
-  recordingOverlay:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(124,58,237,0.25)' },
+  recordingOverlay:   { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(124,58,237,0.25)' },
   timeBadge:          { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   timeBadgeText:      { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
   presencePill:       {
@@ -890,7 +890,7 @@ const styles = StyleSheet.create({
 
   // Bip menu overlay
   overlayWrap:        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
-  overlayBackdrop:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  overlayBackdrop:    { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
   bipMenuCard:        { margin: 16, borderRadius: 28, borderWidth: 1, padding: 24, zIndex: 10 },
   bipMenuTitle:       { fontSize: 20, fontWeight: '900', marginBottom: 4 },
   bipMenuSub:         { fontSize: 12, marginBottom: 20 },

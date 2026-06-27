@@ -552,7 +552,7 @@ export function RoomScreen({
       {/* ── Hotspot layer — invisible CTAs behind the bg image ─────────── */}
       {/* Rendered first so it sits below the bg in z-order.              */}
       {/* The bg uses pointerEvents="none", letting taps fall through.    */}
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
         {hotspots.map((spot) => (
           <TouchableOpacity
             key={spot.id}
@@ -578,7 +578,7 @@ export function RoomScreen({
       <AmbientWeatherOverlay phase={roomPhase} />
 
       {/* ── Room background — visual only; taps pass through to hotspot layer ── */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: fadeAnim }]} pointerEvents="none">
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]} pointerEvents="none">
         <SafeAsset
           source={roomImage}
           style={styles.bg}
@@ -805,7 +805,7 @@ export function RoomScreen({
 const styles = StyleSheet.create({
   root:                  { flex: 1, backgroundColor: '#0d0014' },
   bg:                    { width, height },
-  overlay:               { ...StyleSheet.absoluteFillObject },
+  overlay:               StyleSheet.absoluteFill,
   cloudPresence:         { position: 'absolute', top: Platform.OS === 'ios' ? 116 : 94, right: 18, width: 76, height: 76, borderRadius: 24, borderWidth: 1, backgroundColor: 'rgba(22,12,42,0.58)', alignItems: 'center', justifyContent: 'center', zIndex: 8 },
   cloudPresenceImage:    { width: 47, height: 40 },
   cloudPresenceText:     { color: '#f3edff', fontSize: 9, fontWeight: '700', marginTop: -2 },
