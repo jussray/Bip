@@ -22,6 +22,7 @@ import type { ChatMessage } from '@/services/ai';
 import type { PersonalityId } from '@/types';
 import { useAppContext } from '@/context/AppContext';
 import { syncOracleSession, loadOracleSession } from '@/utils/sync';
+import { emitEvent } from '@/features/activity/events';
 
 const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
 
@@ -94,6 +95,7 @@ export default function PersonalityChatScreen() {
     if (!text || loading) return;
 
     hadActivity.current = true;
+    emitEvent('companion_message', { personalityId: id, messageIndex: messages.length });
     const userMsg = makeUserMessage(text);
     const previousMessages = messages;
     setMessages(prev => [...prev, userMsg]);

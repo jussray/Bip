@@ -14,6 +14,7 @@
 
 import { getSupabase, TABLES } from './supabase';
 import { loadState } from './storage';
+import { emitEvent } from '@/features/activity/events';
 import type {
   JournalEntry, MoodEntry, CirclePost, ParentCirclePost, VoiceNote,
   ComfortSession, CrewMember, CrewCheckIn,
@@ -91,6 +92,7 @@ export async function ensureAnonymousSession(): Promise<string | null> {
 
 // ── Mood ───────────────────────────────────────────────────────────
 export function syncMood(entry: MoodEntry): void {
+  emitEvent('mood_logged', { mood: entry.mood });
   void safeUpsert(TABLES.moodHistory, {
     id:   entry.id,
     mood: entry.mood,
@@ -101,6 +103,10 @@ export function syncMood(entry: MoodEntry): void {
 
 // ── Journal ─────────────────────────────────────────────────────────
 export function syncJournal(entry: JournalEntry): void {
+  emitEvent('journal_saved', {
+    mood:      entry.mood,
+    wordCount: entry.text ? entry.text.trim().split(/\s+/).filter(Boolean).length : 0,
+  });
   void safeUpsert(TABLES.journalEntries, {
     id:           entry.id,
     text:         entry.text,
@@ -248,6 +254,7 @@ export async function syncCircleReaction(
 ): Promise<void> {
   const postType = reaction != null ? tabOrReaction : 'public';
   const emoji    = reaction ?? tabOrReaction;
+  emitEvent('circle_reaction', { reactionKey: emoji });
   const sb = getSupabase();
   if (!sb) return;
   const uid = await currentUserId();
@@ -273,6 +280,7 @@ export async function writeCirclePost(
   text: string,
   opts: { postMood?: string; circleTag?: string; mediaKind?: string; revealIdentity?: boolean } = {},
 ): Promise<void> {
+  emitEvent('circle_post');
   const sb = getSupabase();
   if (!sb) return;
   const uid = await currentUserId();
@@ -307,6 +315,7 @@ export async function writeCirclePost(
 
 // ── Voice ─────────────────────────────────────────────────────────────
 export function syncVoiceNote(note: VoiceNote): void {
+  emitEvent('voice_completed', { durationSecs: note.duration ? Number(note.duration) : undefined });
   void safeUpsert(TABLES.voiceNotes, {
     id: note.id, title: note.title, date: note.date,
     time: note.time, duration: note.duration,
@@ -315,6 +324,7 @@ export function syncVoiceNote(note: VoiceNote): void {
 
 // ── Comfort sessions ─────────────────────────────────────────────────────
 export function syncComfortSession(session: ComfortSession): void {
+  emitEvent(session.type === 'breathe' ? 'breathe_completed' : 'comfort_completed');
   void safeUpsert(TABLES.comfortSessions, {
     id: session.id, type: session.type,
     mood: session.mood ?? null, date: session.date, time: session.time,
@@ -335,6 +345,7 @@ export function deleteCrewMember(id: number | string): void {
 }
 
 export function syncCrewCheckIn(c: CrewCheckIn): void {
+  emitEvent('crew_checkin');
   void safeUpsert(TABLES.crewCheckIns, {
     id: c.id, member_id: c.memberId, note: c.note,
     mood: c.mood ?? null, date: c.date, time: c.time,
