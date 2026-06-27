@@ -44,7 +44,7 @@ export async function listLocalRecordings(): Promise<string[]> {
  * Returns file size in bytes for a given URI, or null if not found.
  */
 export async function getRecordingSize(uri: string): Promise<number | null> {
-  const info = await FileSystem.getInfoAsync(uri, { size: true });
+  const info = await FileSystem.getInfoAsync(uri);
   if (!info.exists) return null;
   return info.size ?? null;
 }
