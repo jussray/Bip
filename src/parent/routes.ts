@@ -12,6 +12,8 @@ export const PARENT_ROUTES = {
   voiceReflect:   '/(parent)/voicereflect',
   periodCalendar: '/(parent)/period-calendar',
   sekret:         '/(parent)/sekret',
+  profile:        '/(parent)/profile',
+  growth:         '/(parent)/growth',
 } as const;
 
 export type ParentRouteKey = keyof typeof PARENT_ROUTES;
