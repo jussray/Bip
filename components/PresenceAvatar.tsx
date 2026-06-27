@@ -156,6 +156,6 @@ export function PresenceAvatar(props: PresenceAvatarProps) {
 
 const styles = StyleSheet.create({
   root:  { position: 'relative', width: '100%', height: '100%' },
-  layer: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
-  tint:  { ...StyleSheet.absoluteFillObject },
+  layer: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  tint:  StyleSheet.absoluteFill,
 });

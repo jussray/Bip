@@ -1,6 +1,8 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import appJson from './app.json';
 
+type LegacyExpoConfig = ExpoConfig & { splash?: Record<string, unknown> };
+
 type AppVariant = 'teen' | 'parent';
 
 const EXPO_OWNER = 'sekret-bip';
@@ -27,7 +29,7 @@ function isSplashPlugin(plugin: ExpoPlugin): boolean {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = getAppVariant();
   const isParent = variant === 'parent';
-  const base = appJson.expo as ExpoConfig;
+  const base = appJson.expo as LegacyExpoConfig;
   const baseExtra = getBaseExtra(base);
   const splashImage = isParent
     ? './assets/images/parent-space-splash.png'
@@ -36,7 +38,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const easProjectId = isParent ? PARENT_EAS_PROJECT_ID : TEEN_EAS_PROJECT_ID;
   const plugins = (base.plugins ?? []).filter((plugin) => !isSplashPlugin(plugin));
 
-  return {
+  return ({
     ...config,
     ...base,
     owner: EXPO_OWNER,
@@ -82,5 +84,5 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         projectId: easProjectId,
       },
     },
-  };
+  }) as unknown as ExpoConfig;
 };

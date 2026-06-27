@@ -192,7 +192,7 @@ export function BareRoomRenderer({ character, lightingMode }: BareRoomRendererPr
         <LinearGradient
           colors={[atm.skyTop, atm.skyBot]}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         {/* City skyline silhouette — bottom-aligned buildings */}
@@ -227,7 +227,7 @@ export function BareRoomRenderer({ character, lightingMode }: BareRoomRendererPr
         <LinearGradient
           colors={['rgba(255,255,255,0.14)', 'transparent', 'rgba(255,255,255,0.05)']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
       </View>
@@ -324,7 +324,7 @@ export function BareRoomRenderer({ character, lightingMode }: BareRoomRendererPr
           colors={[p.floorLight, p.floorMid, p.floorDark]}
           locations={[0, 0.5, 1]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
 
         {/* Floorboard plank lines (horizontal perspective) */}
@@ -336,14 +336,14 @@ export function BareRoomRenderer({ character, lightingMode }: BareRoomRendererPr
         <LinearGradient
           colors={[atm.floorTint, 'transparent']}
           start={{ x: 0, y: 0.3 }} end={{ x: 0.7, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
       </View>
 
       {/* ── 8: Global atmosphere tint over whole room ──────────────────── */}
       <View
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: atm.wallTint }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: atm.wallTint }]}
         pointerEvents="none"
       />
 
@@ -383,7 +383,7 @@ function NightAtmosphere({ atm }: { atm: LightAtmosphere }) {
         <LinearGradient
           colors={['rgba(200,210,255,0.35)', 'transparent']}
           start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
         />
       </View>
     </>
@@ -398,7 +398,7 @@ function CloudAtmosphere({ palette }: { palette: RoomPalette }) {
       <LinearGradient
         colors={[palette.accent + '18', 'transparent']}
         start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
     </View>
   );
@@ -413,7 +413,7 @@ function RylaneAtmosphere({ atm, isNight }: { atm: LightAtmosphere; isNight: boo
       <LinearGradient
         colors={['rgba(99,102,241,0.10)', 'transparent']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
     </View>
   );
@@ -423,7 +423,7 @@ function RylaneAtmosphere({ atm, isNight }: { atm: LightAtmosphere; isNight: boo
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: '#f0edf7',
     overflow: 'hidden',
   },
@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 2,
   },
   cityLights: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
   },
   cityLight: {
     position: 'absolute',
