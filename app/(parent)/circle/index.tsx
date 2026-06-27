@@ -5,7 +5,7 @@ import { useAppContext } from '@/context/AppContext';
 import { BipCrewScreen } from '@screens/BipCrewScreen';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
-import ParentCircle from '../../(main)/parent-circle';
+import ParentCircle from './feed';
 
 type Tab = 'circle' | 'crew';
 
