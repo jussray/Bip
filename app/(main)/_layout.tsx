@@ -98,6 +98,14 @@ export default function MainLayout() {
         }}
       />
       <Tabs.Screen
+        name="parent-calm"
+        options={{
+          title: 'Calm',
+          tabBarIcon: () => <TabIcon emoji="🌙" />,
+          href: isTeen ? null : undefined,
+        }}
+      />
+      <Tabs.Screen
         name="parent-circle"
         options={{
           title: 'Circle',

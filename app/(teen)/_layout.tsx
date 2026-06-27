@@ -53,6 +53,12 @@ export default function TeenLayout() {
         <Tabs.Screen name="bippin2/manhood" options={{ href: null }} />
         <Tabs.Screen name="growth" options={{ href: null }} />
         <Tabs.Screen name="mind-body-reset" options={{ href: null }} />
+        <Tabs.Screen name="companion-chat" options={{ href: null }} />
+        <Tabs.Screen name="pages/[id]" options={{ href: null }} />
+        <Tabs.Screen name="pages/history" options={{ href: null }} />
+        <Tabs.Screen name="pages/new" options={{ href: null }} />
+        <Tabs.Screen name="circle/[id]" options={{ href: null }} />
+        <Tabs.Screen name="circle/weather" options={{ href: null }} />
       </Tabs>
       <SideSafeBackButton side="teen" />
       <GlobalMoodButton />
