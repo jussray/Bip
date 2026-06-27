@@ -32,9 +32,10 @@ import { CompanionTypingIndicator } from '../../components/chat/CompanionTypingI
 import { ChatBubble } from '../../components/chat/ChatBubble';
 import { ChatInput } from '../../components/chat/ChatInput';
 import {
-  fetchSekretReply,
-  type SekretSurface,
-} from '../../src/utils/api';
+  sendCompanionMessage,
+  toCompanionId,
+  type CompanionSurface,
+} from '../../src/features/sekret/companionEngine';
 import {
   AVATARS,
   getRoomBg,
@@ -90,7 +91,7 @@ export default function CompanionChatScreen() {
   }>();
 
   const companionKey = params.companion ?? 'raylene';
-  const surface = (params.surface ?? 'journal') as SekretSurface;
+  const surface = (params.surface ?? 'journal') as CompanionSurface;
 
   // Resolve profile — fall back to 'soft' (Raylene) for legacy 'soft' key
   const profileKey = companionKey in SEKRET_PROFILES ? companionKey : 'soft';
@@ -153,14 +154,12 @@ export default function CompanionChatScreen() {
     await persistHistory(storageKey, withUser);
 
     try {
-      // Pass companion key so the character answers in their own voice.
-      // fetchSekretReply returns Promise<string> — no unwrapping needed.
-      const replyText = await fetchSekretReply(
-        userMsg.text,
+      const result = await sendCompanionMessage({
+        companionId: toCompanionId(profileKey),
         surface,
-        undefined,    // mood — wire from global state later if needed
-        profileKey,   // avatarKey → raylene | rylane | cloud | night
-      );
+        text: userMsg.text,
+      });
+      const replyText = result.reply;
 
       if (!replyText.trim()) throw new Error('Empty reply');
 
