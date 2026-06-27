@@ -8,6 +8,7 @@ const TEEN_EAS_PROJECT_ID = '3f2f2425-7119-43dd-bd7d-5bc752dabead';
 const PARENT_EAS_PROJECT_ID = '40fc6484-b1e6-4668-b9bc-c7515684f817';
 
 type ExpoExtra = NonNullable<ExpoConfig['extra']>;
+type ExpoPlugin = NonNullable<ExpoConfig['plugins']>[number];
 
 function getAppVariant(): AppVariant {
   const value = process.env.APP_VARIANT ?? process.env.EXPO_PUBLIC_APP_VARIANT;
@@ -18,13 +19,22 @@ function getBaseExtra(base: ExpoConfig): ExpoExtra {
   return base.extra && typeof base.extra === 'object' ? base.extra : {};
 }
 
+function isSplashPlugin(plugin: ExpoPlugin): boolean {
+  return plugin === 'expo-splash-screen' ||
+    (Array.isArray(plugin) && plugin[0] === 'expo-splash-screen');
+}
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = getAppVariant();
   const isParent = variant === 'parent';
   const base = appJson.expo as ExpoConfig;
   const baseExtra = getBaseExtra(base);
+  const splashImage = isParent
+    ? './assets/images/parent-space-splash.png'
+    : './assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png';
 
   const easProjectId = isParent ? PARENT_EAS_PROJECT_ID : TEEN_EAS_PROJECT_ID;
+  const plugins = (base.plugins ?? []).filter((plugin) => !isSplashPlugin(plugin));
 
   return {
     ...config,
@@ -36,14 +46,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: isParent
       ? './assets/images/parent-icon.png'
       : './assets/images/icon.png',
-    splash: {
-      ...base.splash,
-      image: isParent
-        ? './assets/images/parent-space-splash.png'
-        : './assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png',
-      resizeMode: 'contain',
-      backgroundColor: '#160028',
-    },
+    plugins: [
+      ...plugins,
+      [
+        'expo-splash-screen',
+        {
+          image: splashImage,
+          resizeMode: 'contain',
+          backgroundColor: '#160028',
+        },
+      ],
+    ],
     ios: {
       ...base.ios,
       bundleIdentifier: isParent ? 'com.sekretbip.parent' : 'com.sekretbip.app',
