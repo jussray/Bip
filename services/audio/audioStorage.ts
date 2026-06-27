@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const RECORDINGS_DIR = `${FileSystem.documentDirectory}bip_recordings/`;
 
@@ -46,5 +46,5 @@ export async function listLocalRecordings(): Promise<string[]> {
 export async function getRecordingSize(uri: string): Promise<number | null> {
   const info = await FileSystem.getInfoAsync(uri, { size: true });
   if (!info.exists) return null;
-  return (info as any).size ?? null;
+  return info.size ?? null;
 }
