@@ -5,7 +5,10 @@ import { PointsScreen } from '@screens/PointsScreen';
 import { navigateTo } from '@/utils/navigation';
 
 export default function PointsRoute() {
-  const { theme, mood, selectedSekret, moodHistory, entries, circlePosts } = useAppContext();
+  const {
+    theme, mood, selectedSekret,
+    moodHistory, entries, voiceNotes, circlePosts, crewCheckIns,
+  } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
   return (
     <PointsScreen
@@ -14,10 +17,10 @@ export default function PointsRoute() {
       selectedSekret={selectedSekret}
       moodHistory={moodHistory}
       journalEntries={entries}
-      voiceNotes={[]}
+      voiceNotes={voiceNotes}
       circlePosts={circlePosts}
       comfortSessions={[]}
-      crewCheckIns={[]}
+      crewCheckIns={crewCheckIns}
       streakDays={0}
       setScreen={(screen: string) => navigateTo(screen, 'teen')}
       BottomNav={null}
