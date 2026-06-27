@@ -3,10 +3,10 @@
  * Route wrapper for HistoryScreen.
  */
 import React from 'react';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { HistoryScreen } from '@screens/HistoryScreen';
+import { navigateTo } from '@/utils/navigation';
 
 export default function HistoryRoute() {
   const { theme, mood, selectedSekret, moodHistory, entries, circlePosts } = useAppContext();
@@ -21,7 +21,7 @@ export default function HistoryRoute() {
       voiceNotes={[]}
       circlePosts={circlePosts}
       streakDays={0}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={(screen: string) => navigateTo(screen, 'teen')}
       BottomNav={null}
     />
   );

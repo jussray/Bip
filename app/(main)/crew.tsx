@@ -1,8 +1,8 @@
 import React from 'react';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { BipCrewScreen } from '@screens/BipCrewScreen';
 import { THEME_PACKS } from '@constants/theme';
+import { navigateTo } from '@/utils/navigation';
 
 export default function CrewRoute() {
   const {
@@ -26,7 +26,7 @@ export default function CrewRoute() {
       syncStatus={syncStatus}
       withSyncWrap={withSyncWrap}
       BottomNav={null}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={(screen: string) => navigateTo(screen, 'teen')}
     />
   );
 }

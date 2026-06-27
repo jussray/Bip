@@ -3,10 +3,10 @@
  * Route wrapper for CloudThoughtsScreen.
  */
 import React from 'react';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { CloudThoughtsScreen } from '@screens/CloudThoughtsScreen';
+import { navigateTo } from '@/utils/navigation';
 
 export default function CloudRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
@@ -17,7 +17,7 @@ export default function CloudRoute() {
       mood={mood}
       selectedSekret={selectedSekret}
       BottomNav={null}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={(screen: string) => navigateTo(screen, 'teen')}
     />
   );
 }

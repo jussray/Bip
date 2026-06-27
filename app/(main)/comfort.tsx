@@ -3,10 +3,10 @@
  * Route wrapper for ComfortScreen.
  */
 import React from 'react';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { ComfortScreen } from '@screens/ComfortScreen';
+import { navigateTo } from '@/utils/navigation';
 
 export default function ComfortRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
@@ -17,7 +17,7 @@ export default function ComfortRoute() {
       mood={mood}
       selectedSekret={selectedSekret}
       BottomNav={null}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={(screen: string) => navigateTo(screen, 'teen')}
     />
   );
 }

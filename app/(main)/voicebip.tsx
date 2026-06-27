@@ -40,7 +40,7 @@ export default function VoiceBipRoute() {
       onSelectAvatar={setSelectedSekret}
       voiceNotes={notes}
       setVoiceNotes={setNotes}
-      setScreen={navigateTo}
+      setScreen={(screen: string) => navigateTo(screen, userSide ?? 'teen')}
       BottomNav={null}
       onSave={(note: VoiceNote) => {
         setNotes(prev => [note, ...prev]);

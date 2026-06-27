@@ -1,12 +1,12 @@
 import React from 'react';
-import { router } from 'expo-router';
 import { InsightsScreen } from '@screens/InsightsScreen';
+import { parentNavigateTo } from '@/parent/navigation';
 
 export default function ParentInsightsRoute() {
   return (
     <InsightsScreen
       side="parent"
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={parentNavigateTo}
       BottomNav={null}
     />
   );

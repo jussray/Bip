@@ -2,10 +2,10 @@
  * app/(main)/s2tell.tsx
  */
 import React from 'react';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { S2TellScreen } from '@screens/S2TellScreen';
+import { navigateTo } from '@/utils/navigation';
 
 export default function S2TellRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
@@ -15,7 +15,7 @@ export default function S2TellRoute() {
       t={t}
       mood={mood}
       selectedSekret={selectedSekret}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={(screen: string) => navigateTo(screen, 'teen')}
       BottomNav={null}
     />
   );

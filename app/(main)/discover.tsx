@@ -15,12 +15,12 @@ import { PERSONALITY_CONFIG } from '@/services/ai';
 const COMPANIONS = ['raylene', 'rylane', 'cloud', 'night'] as const;
 
 const TOOLS = [
-  { emoji: '🌊', title: 'Breathe',       desc: 'Two minutes of calm.',      route: '/(main)/calm'     },
-  { emoji: '📝', title: 'Write It Out',  desc: 'No prompts. Just you.',     route: '/(main)/pages'    },
-  { emoji: '🌙', title: 'Night Journal', desc: 'Close your day softly.',    route: '/(main)/pages'    },
-  { emoji: '🎙️', title: 'Voice Bip',    desc: 'Say it out loud.',           route: '/(main)/voicebip' },
-  { emoji: '🌐', title: 'Circle',        desc: 'See what others feel.',     route: '/(main)/circle'   },
-  { emoji: '☁️', title: 'Cloud Thoughts',desc: 'Let something float away.', route: '/(main)/cloud'    },
+  { emoji: '🌊', title: 'Breathe',       desc: 'Two minutes of calm.',      route: '/(teen)/calm'     },
+  { emoji: '📝', title: 'Write It Out',  desc: 'No prompts. Just you.',     route: '/(teen)/pages'    },
+  { emoji: '🌙', title: 'Night Journal', desc: 'Close your day softly.',    route: '/(teen)/pages'    },
+  { emoji: '🎙️', title: 'Voice Bip',    desc: 'Say it out loud.',           route: '/(teen)/voicebip' },
+  { emoji: '🌐', title: 'Circle',        desc: 'See what others feel.',     route: '/(teen)/circle'   },
+  { emoji: '☁️', title: 'Cloud Thoughts',desc: 'Let something float away.', route: '/(teen)/cloud'    },
 ] as const;
 
 export default function DiscoverScreen() {
@@ -65,7 +65,7 @@ export default function DiscoverScreen() {
                 <TouchableOpacity
                   key={id}
                   style={[styles.companionCard, { borderColor: p.accentColor + '55' }]}
-                  onPress={() => router.push(`/(main)/chat/${id}` as any)}
+                  onPress={() => router.push(`/(teen)/chat/${id}` as any)}
                   activeOpacity={0.8}
                 >
                   <View style={[styles.companionGlow, { backgroundColor: p.accentColor + '1a' }]} />

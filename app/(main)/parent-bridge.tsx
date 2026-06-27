@@ -3,10 +3,10 @@
  * Route wrapper for ParentBridgeScreen.
  */
 import React from 'react';
-import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { ParentBridgeScreen } from '@screens/ParentBridgeScreen';
+import { parentNavigateTo } from '@/parent/navigation';
 
 export default function ParentBridgeRoute() {
   const { theme } = useAppContext();
@@ -15,7 +15,7 @@ export default function ParentBridgeRoute() {
     <ParentBridgeScreen
       t={t}
       BottomNav={null}
-      setScreen={(screen: string) => router.push(`/(main)/${screen}` as any)}
+      setScreen={parentNavigateTo}
     />
   );
 }

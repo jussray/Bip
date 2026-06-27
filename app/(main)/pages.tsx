@@ -8,7 +8,7 @@
  * PHASE 5 SAFETY:
  *   Se'kret companion interaction is NOT removed.
  *   It lives under the "Se'kret Replies" section of PagesScreen.
- *   router.push('/(main)/chat/[personalityId]') fires when a companion is tapped.
+ *   router.push('/(teen)/chat/[personalityId]') fires when a companion is tapped.
  *
  * S2TELL → BRIDGE:
  *   S2Tell is the compose action for Bridge (teen → parent channel).
@@ -63,15 +63,15 @@ export default function PagesTab() {
    * Removing it makes Se'kret Replies unreachable → Phase 5 fails.
    */
   function handleOpenCompanion(personalityId: PersonalityId) {
-    router.push(`/(main)/chat/${personalityId}` as any);
+    router.push(`/(teen)/chat/${personalityId}` as any);
   }
 
   function handleOpenVoiceBip() {
-    router.push('/(main)/voicebip');
+    router.push('/(teen)/voicebip' as any);
   }
 
   function handleOpenCloudThoughts() {
-    router.push('/(main)/cloud');
+    router.push('/(teen)/cloud' as any);
   }
 
   /**
@@ -80,27 +80,27 @@ export default function PagesTab() {
    * the write area — S2Tell and Bridge are one continuous gesture.
    */
   function handleOpenS2Tell() {
-    router.push('/(main)/bridge?compose=true' as any);
+    router.push('/(teen)/bridge?compose=true' as any);
   }
 
   function handleOpenPeriodCalendar() {
-    router.push('/(main)/period-calendar');
+    router.push('/(teen)/period-calendar' as any);
   }
 
   function handleOpenHistory() {
-    router.push('/(main)/history');
+    router.push('/(teen)/history' as any);
   }
 
   function handleSetScreen(screen: string) {
     // Legacy setScreen bridge — map old screen names to router paths.
     const routeMap: Record<string, string> = {
-      voiceBip:       '/(main)/voicebip',
-      cloud:          '/(main)/cloud',
+      voiceBip:       '/(teen)/voicebip',
+      cloud:          '/(teen)/cloud',
       // s2tell → bridge compose mode (S2Tell IS the bridge compose action)
-      s2tell:         '/(main)/bridge?compose=true',
-      periodCalendar: '/(main)/period-calendar',
-      history:        '/(main)/history',
-      sekret:         '/(main)/sekret',
+      s2tell:         '/(teen)/bridge?compose=true',
+      periodCalendar: '/(teen)/period-calendar',
+      history:        '/(teen)/history',
+      sekret:         '/(teen)/sekret',
     };
     const target = routeMap[screen];
     if (target) router.push(target as any);

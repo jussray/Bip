@@ -28,7 +28,7 @@ export default function ChatHubScreen() {
             <TouchableOpacity
               key={id}
               style={[styles.card, { borderColor: p.accentColor + '55', backgroundColor: p.cardColor }]}
-              onPress={() => router.push(`/(main)/chat/${id}` as any)}
+              onPress={() => router.push(`/(teen)/chat/${id}` as any)}
               activeOpacity={0.86}
             >
               <Text style={styles.emoji}>{p.emoji}</Text>
