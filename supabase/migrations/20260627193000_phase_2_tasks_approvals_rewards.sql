@@ -46,6 +46,8 @@ with check (
   auth.uid() = teen_id
   and auth.uid() = created_by
   and created_by_role = 'teen'
+  and point_value = 0
+  and requires_approval = false
 );
 
 drop policy if exists bip_tasks_parent_insert on public.bip_tasks;
@@ -63,10 +65,41 @@ with check (
 );
 
 drop policy if exists bip_tasks_creator_update on public.bip_tasks;
-create policy bip_tasks_creator_update on public.bip_tasks
+drop policy if exists bip_tasks_teen_update on public.bip_tasks;
+create policy bip_tasks_teen_update on public.bip_tasks
 for update to authenticated
-using (auth.uid() = created_by)
-with check (auth.uid() = created_by);
+using (auth.uid() = created_by and created_by_role = 'teen')
+with check (
+  auth.uid() = created_by
+  and created_by_role = 'teen'
+  and teen_id = auth.uid()
+  and point_value = 0
+  and requires_approval = false
+);
+
+drop policy if exists bip_tasks_parent_update on public.bip_tasks;
+create policy bip_tasks_parent_update on public.bip_tasks
+for update to authenticated
+using (
+  auth.uid() = created_by
+  and created_by_role = 'parent'
+  and exists (
+    select 1 from public.parent_links pl
+    where pl.teen_user_id = bip_tasks.teen_id
+      and pl.parent_user_id = auth.uid()
+      and pl.status = 'active'
+  )
+)
+with check (
+  auth.uid() = created_by
+  and created_by_role = 'parent'
+  and exists (
+    select 1 from public.parent_links pl
+    where pl.teen_user_id = bip_tasks.teen_id
+      and pl.parent_user_id = auth.uid()
+      and pl.status = 'active'
+  )
+);
 
 create table if not exists public.task_submissions (
   id uuid primary key default gen_random_uuid(),
@@ -203,21 +236,45 @@ begin
   returning id into v_submission_id;
 
   if v_task.requires_approval then
-    update public.bip_tasks set status = 'submitted', updated_at = now() where id = p_task_id;
+    update public.bip_tasks
+    set status = 'submitted', updated_at = now()
+    where id = p_task_id;
   else
-    update public.bip_tasks set status = 'completed', updated_at = now() where id = p_task_id;
-    insert into public.activity_events(user_id,event_type,source_type,source_id,metadata)
-    values (v_user_id,'task_completed','bip_task',p_task_id::text,jsonb_build_object('submission_id',v_submission_id))
-    on conflict do nothing;
-    insert into public.point_transactions(user_id,amount,reason,transaction_type,source_type,source_id,metadata)
-    values (v_user_id,v_task.point_value,'Completed a Bip task','earn','bip_task',p_task_id::text,jsonb_build_object('submission_id',v_submission_id))
-    on conflict do nothing;
+    update public.bip_tasks
+    set status = 'completed', updated_at = now()
+    where id = p_task_id;
+
+    insert into public.bip_events(user_id,event_type,metadata)
+    values (
+      v_user_id,
+      'task_completed',
+      jsonb_build_object(
+        'task_id', p_task_id,
+        'submission_id', v_submission_id,
+        'source', 'bip_task'
+      )
+    );
+
+    if v_task.point_value > 0 then
+      insert into public.point_transactions(user_id,amount,reason,transaction_type,source_type,source_id,metadata)
+      values (
+        v_user_id,
+        v_task.point_value,
+        'Completed a Bip task',
+        'earn',
+        'bip_task',
+        p_task_id::text,
+        jsonb_build_object('submission_id',v_submission_id)
+      )
+      on conflict do nothing;
+    end if;
   end if;
 
   return v_submission_id;
 end;
 $$;
 
+revoke all on function public.submit_bip_task(uuid,text,text) from public, anon;
 grant execute on function public.submit_bip_task(uuid,text,text) to authenticated;
 
 create or replace function public.review_task_submission(
@@ -241,9 +298,13 @@ begin
   from public.task_submissions
   where id = p_submission_id and status = 'pending'
   for update;
+
   if not found then raise exception 'submission not pending'; end if;
 
-  select * into v_task from public.bip_tasks where id = v_submission.task_id for update;
+  select * into v_task
+  from public.bip_tasks
+  where id = v_submission.task_id
+  for update;
 
   if not exists (
     select 1 from public.parent_links pl
@@ -265,21 +326,42 @@ begin
   where id = v_task.id;
 
   if p_approve then
-    insert into public.activity_events(user_id,event_type,source_type,source_id,metadata)
-    values (v_submission.teen_id,'task_completed','bip_task',v_task.id::text,
-      jsonb_build_object('submission_id',p_submission_id,'approved_by',v_parent))
-    on conflict do nothing;
+    insert into public.bip_events(user_id,event_type,metadata)
+    values (
+      v_submission.teen_id,
+      'task_completed',
+      jsonb_build_object(
+        'task_id', v_task.id,
+        'submission_id', p_submission_id,
+        'approved_by', v_parent,
+        'source', 'bip_task'
+      )
+    );
 
-    insert into public.point_transactions(user_id,amount,reason,transaction_type,source_type,source_id,metadata)
-    values (v_submission.teen_id,v_task.point_value,'Completed an approved Bip task','earn','bip_task',v_task.id::text,
-      jsonb_build_object('submission_id',p_submission_id,'approved_by',v_parent))
-    on conflict do nothing;
+    if v_task.point_value > 0 then
+      insert into public.point_transactions(user_id,amount,reason,transaction_type,source_type,source_id,metadata)
+      values (
+        v_submission.teen_id,
+        v_task.point_value,
+        'Completed an approved Bip task',
+        'earn',
+        'bip_task',
+        v_task.id::text,
+        jsonb_build_object('submission_id',p_submission_id,'approved_by',v_parent)
+      )
+      on conflict do nothing;
+    end if;
   end if;
 
-  return jsonb_build_object('approved',p_approve,'task_id',v_task.id,'submission_id',p_submission_id);
+  return jsonb_build_object(
+    'approved', p_approve,
+    'task_id', v_task.id,
+    'submission_id', p_submission_id
+  );
 end;
 $$;
 
+revoke all on function public.review_task_submission(uuid,boolean,text) from public, anon;
 grant execute on function public.review_task_submission(uuid,boolean,text) to authenticated;
 
 create or replace function public.request_reward_redemption(p_reward_id uuid)
@@ -299,8 +381,11 @@ begin
 
   select * into v_reward
   from public.reward_catalog
-  where id = p_reward_id and active = true
+  where id = p_reward_id
+    and active = true
+    and (inventory_count is null or inventory_count > 0)
   for update;
+
   if not found then raise exception 'reward unavailable'; end if;
 
   select available into v_balance
@@ -312,20 +397,31 @@ begin
     raise exception 'insufficient points';
   end if;
 
-  v_status := case when v_reward.requires_parent_approval then 'pending_parent' else 'approved' end;
+  v_status := case
+    when v_reward.requires_parent_approval then 'pending_parent'
+    else 'approved'
+  end;
 
   insert into public.reward_redemptions(teen_id,reward_id,point_cost,status)
   values (v_user,v_reward.id,v_reward.point_cost,v_status)
   returning id into v_redemption;
 
   insert into public.point_transactions(user_id,amount,reason,transaction_type,source_type,source_id,metadata)
-  values (v_user,-v_reward.point_cost,'Reward redemption reserved','reserve','reward_redemption',v_redemption::text,
-    jsonb_build_object('reward_id',v_reward.id));
+  values (
+    v_user,
+    -v_reward.point_cost,
+    'Reward redemption reserved',
+    'reserve',
+    'reward_redemption',
+    v_redemption::text,
+    jsonb_build_object('reward_id',v_reward.id)
+  );
 
   return v_redemption;
 end;
 $$;
 
+revoke all on function public.request_reward_redemption(uuid) from public, anon;
 grant execute on function public.request_reward_redemption(uuid) to authenticated;
 
 create or replace function public.review_reward_redemption(
@@ -348,6 +444,7 @@ begin
   from public.reward_redemptions
   where id = p_redemption_id and status = 'pending_parent'
   for update;
+
   if not found then raise exception 'redemption not pending'; end if;
 
   if not exists (
@@ -366,14 +463,25 @@ begin
 
   if not p_approve then
     insert into public.point_transactions(user_id,amount,reason,transaction_type,source_type,source_id,metadata)
-    values (v_redemption.teen_id,v_redemption.point_cost,'Reward reservation released','release',
-      'reward_redemption',p_redemption_id::text || ':release',jsonb_build_object('redemption_id',p_redemption_id));
+    values (
+      v_redemption.teen_id,
+      v_redemption.point_cost,
+      'Reward reservation released',
+      'release',
+      'reward_redemption',
+      p_redemption_id::text || ':release',
+      jsonb_build_object('redemption_id',p_redemption_id)
+    );
   end if;
 
-  return jsonb_build_object('approved',p_approve,'redemption_id',p_redemption_id);
+  return jsonb_build_object(
+    'approved', p_approve,
+    'redemption_id', p_redemption_id
+  );
 end;
 $$;
 
+revoke all on function public.review_reward_redemption(uuid,boolean,text) from public, anon;
 grant execute on function public.review_reward_redemption(uuid,boolean,text) to authenticated;
 
 commit;
