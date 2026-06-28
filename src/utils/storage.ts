@@ -9,7 +9,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEYS = {
-  // ── Plain strings ──────────────────────────────────────────────────────────
   theme: 'theme', mood: 'mood', userSide: 'userSide',
   selectedSekret: 'selectedSekret', sekretMode: 'sekretMode',
   growthPath: 'growthPath', journalText: 'journalText',
@@ -17,7 +16,6 @@ const STORAGE_KEYS = {
   parentMood: 'parentMood', parentMoodDate: 'parentMoodDate',
   parentRoomStyle: 'parentRoomStyle', streakDays: 'streakDays',
   periodDays: 'periodDays', lastPeriodStart: 'lastPeriodStart',
-  // ── JSON-serialised objects / arrays ──────────────────────────────────────
   entries: 'entries', moodHistory: 'moodHistory',
   circlePosts: 'circlePosts', parentCirclePosts: 'parentCirclePosts',
   voiceNotes: 'voiceNotes', parentVoiceNotes: 'parentVoiceNotes',
@@ -41,13 +39,6 @@ const JSON_KEYS = new Set([
   'roomMemory', 'periodDays',
 ]);
 
-/**
- * Private account-scoped values that must never survive a sign-out.
- *
- * Preference-only values such as theme are intentionally preserved. The next
- * account may reuse the device appearance, but must not inherit journals,
- * voice activity, relationship data, period data, or companion memory.
- */
 const PRIVATE_ACCOUNT_KEYS = [
   STORAGE_KEYS.mood,
   STORAGE_KEYS.userSide,
@@ -126,6 +117,5 @@ export async function clearPrivateAccountCache(): Promise<void> {
     await AsyncStorage.multiRemove([...PRIVATE_ACCOUNT_KEYS]);
   } catch (error) {
     console.error('clearPrivateAccountCache error:', error);
-    throw error;
   }
 }
