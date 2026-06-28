@@ -1,4 +1,4 @@
-import { getSupabase } from '@/utils/supabase';
+import { getSupabase } from '../src/utils/supabase';
 
 export type OracleSide = 'teen' | 'parent';
 

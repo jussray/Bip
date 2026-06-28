@@ -11,7 +11,7 @@
 import 'react-native-url-polyfill/auto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SUPABASE_URL, SUPABASE_ANON, isSupabaseReady } from '@/utils/env';
+import { SUPABASE_URL, SUPABASE_ANON, isSupabaseReady } from './env';
 
 export const isSupabaseConfigured = isSupabaseReady;
 
