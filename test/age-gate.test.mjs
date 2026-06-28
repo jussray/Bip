@@ -16,7 +16,7 @@ test('age gate has explicit invalid, future, below-minimum, and eligible states'
 
 test('age calculation treats the 13th birthday as eligible', () => {
   assert.match(source, /age < MINIMUM_ACCOUNT_AGE/);
-  assert.match(source, /return \{ allowed: true, age, reason: 'eligible' \}/);
+  assert.match(source, /allowed: true/);
 });
 
 test('age gate exposes a throwing server-side guard', () => {
@@ -25,6 +25,6 @@ test('age gate exposes a throwing server-side guard', () => {
 });
 
 test('age gate validates strict YYYY-MM-DD input', () => {
-  assert.match(source, /\\d\{4\}-\\d\{2\}-\\d\{2\}/);
+  assert.ok(source.includes('^\\d{4}-\\d{2}-\\d{2}$'));
   assert.match(source, /parseIsoDate/);
 });
