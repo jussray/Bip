@@ -1,20 +1,21 @@
 # wrangler.toml
 # Replaces wrangler.jsonc — TOML avoids JSON comment-parsing failures in CF builds.
 #
-# ── Secrets (NEVER commit values — run `wrangler secret put <NAME>`) ────────
-#   wrangler secret put OPENAI_API_KEY
-#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-#   wrangler secret put SAFETY_SCAN_SECRET
+# ── Cloudflare Worker secrets ─────────────────────────────────────────
+#   This Worker currently needs only:
+#     wrangler secret put OPENAI_API_KEY --name bip
+#
+#   Do NOT put Supabase service-role or safety-scan secrets in Cloudflare
+#   unless Worker code starts using them. The safety scanner is a Supabase
+#   Edge Function and its secrets are set with `supabase secrets set`.
 #
 # ── Local development ──────────────────────────────────────────────────
 #   Copy .dev.vars.example → .dev.vars and fill in real values.
 #   .dev.vars is gitignored and is used by `wrangler dev` automatically.
 #
 # ── Deploy ──────────────────────────────────────────────────────────
-#   wrangler secret put OPENAI_API_KEY          ✓ set 2026-06-26
-#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-#   wrangler secret put SAFETY_SCAN_SECRET
-#   wrangler deploy
+#   wrangler secret put OPENAI_API_KEY --name bip
+#   wrangler deploy --name bip
 
 name               = "bip"
 main               = "worker/index.ts"
@@ -25,18 +26,16 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 
 # ── Non-secret config vars (safe to commit) ──────────────────────────────
-# Secrets (OPENAI_API_KEY, SUPABASE_SERVICE_ROLE_KEY, SAFETY_SCAN_SECRET)
-# must be set via `wrangler secret put` — never in this file.
+# OPENAI_API_KEY must be set via `wrangler secret put` — never in this file.
 [vars]
 # OpenAI model names — rotate without code changes by updating this file.
 OPENAI_CHAT_MODEL      = "gpt-4o-mini"
 OPENAI_TTS_MODEL       = "gpt-4o-mini-tts"
 OPENAI_STT_MODEL       = "whisper-1"
 
-# Supabase — public/non-secret values only.
-# SUPABASE_SERVICE_ROLE_KEY must be set via `wrangler secret put`.
+# Supabase public values only. Do not add service_role here.
 SUPABASE_URL      = "https://tbsevonvegdnlyjgplmm.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRic2V2b252ZWdkbmx5amdwbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTg3MjIsImV4cCI6MjA5NjkzNDcyMn0.MKJK6FJNlrsfvIn-sFnzxHxTcXG_KOuddZkM2h0yY2c"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6InRic2V2b252ZWdkbmx5amdwbG1tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTg3MjIsImV4cCI6MjA5NjkzNDcyMn0.MKJK6FJNlrsfvIn-sFnzxHxTcXG_KOuddZkM2h0yY2c"
 
 # Audio upload limit in bytes (base64 decoded size cap).
 # 512 KB ≈ ~30s of compressed voice at typical Expo AudioRecording settings.
