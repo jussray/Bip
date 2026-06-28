@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -27,11 +27,27 @@ const ALL_OPTIONS = [
 
 type OptionId = (typeof ALL_OPTIONS)[number]['id'];
 
+function sekretToChoice(s: string): OptionId {
+  if (s === 'soft') return 'raylene';
+  const valid: OptionId[] = ['raylene', 'rylane', 'cloud', 'night'];
+  return valid.includes(s as OptionId) ? (s as OptionId) : 'raylene';
+}
+
 export default function TeenProfile() {
-  const { setSelectedSekret } = useAppContext();
+  const { setSelectedSekret, selectedSekret } = useAppContext();
   const [name, setName] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
-  const [choice, setChoice] = useState<OptionId>('raylene');
+  const [choice, setChoice] = useState<OptionId>(() => sekretToChoice(selectedSekret));
+
+  useEffect(() => {
+    AsyncStorage.getItem('teen_profile_data').then(raw => {
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.name) setName(data.name);
+      if (data.gender) setGender(data.gender as Gender);
+      if (data.choice) setChoice(data.choice as OptionId);
+    }).catch(() => {});
+  }, []);
 
   function pickGender(g: Gender) {
     setGender(g);

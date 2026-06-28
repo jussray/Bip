@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { IMAGES } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
+import { useAppContext } from '@/context/AppContext';
 
 const LINKS = [
   { emoji: '🎙️', label: 'Parent Voice Bip', route: 'voicebip' },
@@ -18,6 +19,8 @@ const LINKS = [
 ];
 
 export default function ParentMoreRoute() {
+  const { setUserSide } = useAppContext();
+
   function open(route: string) {
     router.push(routeForSide('parent', route) as any);
   }
@@ -46,7 +49,10 @@ export default function ParentMoreRoute() {
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={styles.switchButton} onPress={() => router.push('/(teen)/room' as any)}>
+        <TouchableOpacity
+          style={styles.switchButton}
+          onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}
+        >
           <Text style={styles.buttonText}>💜 Go to Teen Room</Text>
         </TouchableOpacity>
       </ScrollView>
