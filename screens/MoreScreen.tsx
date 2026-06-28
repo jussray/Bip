@@ -98,9 +98,6 @@ export function MoreScreen({
         <TouchableOpacity style={btn()} onPress={() => setScreen('settings')}>
           <Text style={styles.buttonText}>⚙️ Vibe Lab</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={btn()} onPress={() => setScreen('points')}>
-          <Text style={styles.buttonText}>⭐ Bip Points</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('profile')}>
           <Text style={styles.buttonText}>👤 Profile</Text>
         </TouchableOpacity>
@@ -125,17 +122,8 @@ export function MoreScreen({
             <Text style={styles.buttonText}>🤝 Connection Hub</Text>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={btn()} onPress={() => setScreen(userSide === 'parent' ? 'parent-insights' : 'insights')}>
-          <Text style={styles.buttonText}>🔍 Insights</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={btn()} onPress={() => setScreen('messages')}>
-          <Text style={styles.buttonText}>{userSide === 'parent' ? '💜 Warm Notes' : '💜 Messages'}</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={btn()} onPress={() => setScreen('resources')}>
           <Text style={styles.buttonText}>📚 Resources</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={btn()} onPress={() => setScreen('comfort')}>
-          <Text style={styles.buttonText}>✨ Comfort</Text>
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />

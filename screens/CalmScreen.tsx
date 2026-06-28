@@ -77,6 +77,7 @@ const MOOD_CHIPS = [
 const CALM_TOOLS = [
   { emoji: '💜', label: 'Breathe\nwith me', sub: '1–5 min',         action: 'breathe' },
   { emoji: '🌿', label: 'Ground\nYourself',  sub: '3–7 min',         action: 'mindReset' },
+  { emoji: '☁️', label: 'Cloud\nThoughts',  sub: 'say what\'s heavy',    action: 'cloud' },
   { emoji: '📝', label: 'Release\nIt Out',   sub: 'write + let go',       action: 'pages' },
   { emoji: '🌙', label: 'Sleep\nBetter',     sub: 'stories + sounds',     action: null },
   { emoji: '🚨', label: 'SOS\nCalm Now',     sub: '30 sec reset',         action: 'comfort' },
