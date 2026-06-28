@@ -53,3 +53,25 @@ test('parent bridge remains a dedicated parent route', () => {
   const bridge = read('app/(parent)/bridge.tsx');
   assert.match(bridge, /ParentBridgeScreen/);
 });
+
+test('parent More exposes parent-safe mirrored support destinations', () => {
+  const more = read('app/(parent)/more.tsx');
+  for (const label of [
+    'Parent Voice Bip',
+    'Parent Bridge',
+    'Bippin 2',
+    'Connection Hub',
+    'Parent Pages',
+    'Calm Before Replying',
+    'Parent Circle',
+  ]) {
+    assert.match(more, new RegExp(label));
+  }
+});
+
+test('parent route aliases resolve mirror-only destinations instead of falling back to room', () => {
+  const routes = read('src/shared/routes.ts');
+  assert.match(routes, /'parent-voicebip':\s*PARENT_ROUTES\.voiceBip/);
+  assert.match(routes, /'parent-connection':\s*PARENT_ROUTES\.bridge/);
+  assert.match(routes, /'parent-insights':\s*PARENT_ROUTES\.more/);
+});
