@@ -1,4 +1,3 @@
-import { getSupabase } from '../src/utils/supabase';
 
 export type OracleSide = 'teen' | 'parent';
 
@@ -430,6 +429,7 @@ export function buildOracleContext(profileValue: OracleProfile | null | undefine
 
 export async function syncOracleDiscovery(profile: OracleProfile, session: OracleSessionSummary): Promise<void> {
   try {
+    const { getSupabase } = await import('../src/utils/supabase');
     const db = getSupabase();
     if (!db) return;
     const { data: authData } = await db.auth.getUser();
@@ -461,6 +461,7 @@ export async function syncOracleDiscovery(profile: OracleProfile, session: Oracl
 
 export async function restoreOracleDiscovery(side: OracleSide): Promise<OracleProfile | null> {
   try {
+    const { getSupabase } = await import('../src/utils/supabase');
     const db = getSupabase();
     if (!db) return null;
     const { data: authData } = await db.auth.getUser();
