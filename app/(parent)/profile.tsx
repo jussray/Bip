@@ -88,7 +88,8 @@ export default function ParentProfile() {
         <>
           <View style={styles.identityCard}>
             <Text style={styles.identityLabel}>Support Memories</Text>
-            <Text style={styles.identityHelp}>Every parent space can create memories. Profile collects safe markers of how you showed up.</Text>
+            <Text style={styles.identityHelp}>Every parent space can create memories. Profile collects safe markers of how you showed up, without opening teen private data.</Text>
+            <Text style={styles.identityHelp}>Parent Circle sees your community identity, not your teen’s private world.</Text>
           </View>
           {[
             ['📝', 'Parent Pages', 'Your reflections live in Pages.', '/(parent)/pages'],

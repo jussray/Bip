@@ -35,6 +35,7 @@ export interface SendMessageOptions {
   profileName?: string;
   surface?: 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery' | 'parentCoach';
   parentSharingEnabled?: boolean;
+  oracleContext?: string[];
 }
 
 export interface WorkerReplyMeta {
@@ -137,7 +138,7 @@ export async function sendMessage(
     ? moodOrOptions
     : { mood: moodOrOptions as string | undefined, history: legacyHistory };
 
-  const { mood, history = [], userName, displayName, profileName, surface, parentSharingEnabled } = options;
+  const { mood, history = [], userName, displayName, profileName, surface, parentSharingEnabled, oracleContext } = options;
   const historyLength = history.length;
 
   const currentRelationship = await loadTeenRelationshipProfile();
@@ -194,6 +195,7 @@ export async function sendMessage(
         phaseInstruction,
         memory: {
           relationshipStyle: relationshipProfileToOracleNote(learnedRelationship),
+          ...(oracleContext && oracleContext.length > 0 ? { oracleContext } : {}),
         },
       }),
     });
