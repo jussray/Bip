@@ -21,8 +21,7 @@ export const BACKEND_URL   = env.EXPO_PUBLIC_BACKEND_URL       ?? '';
 export const isSupabaseReady = Boolean(SUPABASE_URL && SUPABASE_ANON);
 export const isBackendReady  = Boolean(BACKEND_URL);
 
-// Safe __DEV__ guard — RN global is undefined in Node/Vercel SSG context
-const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'development';
 
 /**
  * validateEnv()
