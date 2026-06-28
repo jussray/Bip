@@ -9,7 +9,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEYS = {
-  // ── Plain strings ──────────────────────────────────────────────────────────
   theme: 'theme', mood: 'mood', userSide: 'userSide',
   selectedSekret: 'selectedSekret', sekretMode: 'sekretMode',
   growthPath: 'growthPath', journalText: 'journalText',
@@ -17,7 +16,6 @@ const STORAGE_KEYS = {
   parentMood: 'parentMood', parentMoodDate: 'parentMoodDate',
   parentRoomStyle: 'parentRoomStyle', streakDays: 'streakDays',
   periodDays: 'periodDays', lastPeriodStart: 'lastPeriodStart',
-  // ── JSON-serialised objects / arrays ──────────────────────────────────────
   entries: 'entries', moodHistory: 'moodHistory',
   circlePosts: 'circlePosts', parentCirclePosts: 'parentCirclePosts',
   voiceNotes: 'voiceNotes', parentVoiceNotes: 'parentVoiceNotes',
@@ -40,6 +38,46 @@ const JSON_KEYS = new Set([
   'parentCrewMembers', 'parentCrewCheckIns',
   'roomMemory', 'periodDays',
 ]);
+
+const PRIVATE_ACCOUNT_KEYS = [
+  STORAGE_KEYS.mood,
+  STORAGE_KEYS.userSide,
+  STORAGE_KEYS.selectedSekret,
+  STORAGE_KEYS.sekretMode,
+  STORAGE_KEYS.growthPath,
+  STORAGE_KEYS.journalText,
+  STORAGE_KEYS.parentPagesDraft,
+  STORAGE_KEYS.lastOpenDate,
+  STORAGE_KEYS.parentMood,
+  STORAGE_KEYS.parentMoodDate,
+  STORAGE_KEYS.parentRoomStyle,
+  STORAGE_KEYS.streakDays,
+  STORAGE_KEYS.periodDays,
+  STORAGE_KEYS.lastPeriodStart,
+  STORAGE_KEYS.entries,
+  STORAGE_KEYS.moodHistory,
+  STORAGE_KEYS.circlePosts,
+  STORAGE_KEYS.parentCirclePosts,
+  STORAGE_KEYS.voiceNotes,
+  STORAGE_KEYS.parentVoiceNotes,
+  STORAGE_KEYS.parentPagesEntries,
+  STORAGE_KEYS.oracleJournalEntries,
+  STORAGE_KEYS.oracleProfile,
+  STORAGE_KEYS.parentOracleProfile,
+  STORAGE_KEYS.oracleSessions,
+  STORAGE_KEYS.parentOracleSessions,
+  STORAGE_KEYS.comfortSessions,
+  STORAGE_KEYS.crewMembers,
+  STORAGE_KEYS.crewCheckIns,
+  STORAGE_KEYS.parentCrewMembers,
+  STORAGE_KEYS.parentCrewCheckIns,
+  STORAGE_KEYS.roomMemory,
+  'sekretbip_first_visit_done',
+  'parent_bridge_pending',
+  'sekret_self_discovery_profile',
+  'bip_onboarding_reflection',
+  'teen_profile_data',
+] as const;
 
 export const loadState = async (): Promise<Record<string, any>> => {
   try {
@@ -73,3 +111,11 @@ export const saveState = async (stateUpdates: Record<string, any>): Promise<void
     console.error('saveState error:', error);
   }
 };
+
+export async function clearPrivateAccountCache(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([...PRIVATE_ACCOUNT_KEYS]);
+  } catch (error) {
+    console.error('clearPrivateAccountCache error:', error);
+  }
+}
