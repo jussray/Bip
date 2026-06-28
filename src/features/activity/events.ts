@@ -19,6 +19,7 @@
  */
 
 import { getSupabase } from '@/utils/supabase';
+import { bumpStreak } from '../../../services/sekretMemory';
 
 // ── Event type registry ──────────────────────────────────────────────────────
 
@@ -109,6 +110,7 @@ export function emitEvent(type: ActivityEventType, meta?: ActivityEventMeta): vo
   };
 
   notifySubscribers(event);
+  void bumpStreak();
 
   void (async () => {
     const sb = getSupabase();

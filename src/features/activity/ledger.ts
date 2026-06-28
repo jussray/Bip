@@ -27,6 +27,7 @@ export const POINTS_PER_EVENT: Partial<Record<ActivityEventType, number>> = {
   comfort_completed:  3,
   breathe_completed:  3,
   crew_checkin:       6,
+  goal_completed:     4,
   streak_milestone:   3,
 };
 
@@ -79,6 +80,7 @@ const BREAKDOWN_TEMPLATE: Omit<BreakdownRow, 'count' | 'pts'>[] = [
   { key: 'circle',  label: 'circle drops',     each: POINTS_PER_EVENT.circle_post!,       emoji: '🌫️' },
   { key: 'comfort', label: 'comfort sessions', each: POINTS_PER_EVENT.comfort_completed!, emoji: '🤍' },
   { key: 'crew',    label: 'crew check-ins',   each: POINTS_PER_EVENT.crew_checkin!,      emoji: '🤝' },
+  { key: 'growth',  label: 'growth tracks',     each: POINTS_PER_EVENT.goal_completed!,    emoji: '🌱' },
   { key: 'streak',  label: 'streak days',      each: POINTS_PER_EVENT.streak_milestone!,  emoji: '🌙' },
 ];
 
@@ -90,6 +92,7 @@ const KEY_TO_EVENTS: Record<string, ActivityEventType[]> = {
   circle:  ['circle_post'],
   comfort: ['comfort_completed', 'breathe_completed'],
   crew:    ['crew_checkin'],
+  growth:  ['goal_completed'],
   streak:  ['streak_milestone'],
 };
 

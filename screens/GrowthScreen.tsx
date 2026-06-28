@@ -19,11 +19,14 @@
 // to onMilestone() so progress can count toward streaks once Supabase lands.
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   Text, TouchableOpacity, ScrollView, View,
   ImageBackground, Animated, Easing, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
+const GROWTH_COMPLETED_KEY = 'bip_growth_completed';
 import { getRoomBg, TimeOfDay } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
 
@@ -181,6 +184,20 @@ export function GrowthScreen({
     money: false, school: false, social: false, habits: false,
   });
 
+  useEffect(() => {
+    AsyncStorage.getItem(GROWTH_COMPLETED_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const keys = JSON.parse(raw) as TrackKey[];
+        setCompleted(prev => {
+          const next = { ...prev };
+          keys.forEach(k => { if (k in next) next[k] = true; });
+          return next;
+        });
+      } catch {}
+    });
+  }, []);
+
   // ── Animations ──────────────────────────────────────────────────────────
   const fadeHero   = useRef(new Animated.Value(0)).current;
   const fadeStreak = useRef(new Animated.Value(0)).current;
@@ -217,7 +234,12 @@ export function GrowthScreen({
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1   ] });
 
   const markComplete = (key: TrackKey) => {
-    setCompleted(prev => ({ ...prev, [key]: true }));
+    setCompleted(prev => {
+      const next = { ...prev, [key]: true };
+      const done = (Object.keys(next) as TrackKey[]).filter(k => next[k]);
+      AsyncStorage.setItem(GROWTH_COMPLETED_KEY, JSON.stringify(done)).catch(() => {});
+      return next;
+    });
     onMilestone?.();
   };
 

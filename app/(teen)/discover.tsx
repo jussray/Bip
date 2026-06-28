@@ -11,6 +11,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { PERSONALITY_CONFIG } from '@/services/ai';
+import { usePoints } from '@/features/activity/ledger';
+
+const COMPANION_UNLOCK_PTS: Record<string, number> = {
+  raylene: 0, rylane: 50, cloud: 150, night: 350,
+};
 
 const COMPANIONS = ['raylene', 'rylane', 'cloud', 'night'] as const;
 
@@ -24,6 +29,7 @@ const TOOLS = [
 ] as const;
 
 export default function DiscoverScreen() {
+  const { total: totalPoints } = usePoints();
   const fade = useRef(new Animated.Value(0)).current;
   const rise = useRef(new Animated.Value(18)).current;
 
@@ -59,17 +65,22 @@ export default function DiscoverScreen() {
           >
             {COMPANIONS.map(id => {
               const p = PERSONALITY_CONFIG[id];
+              const unlocked = totalPoints >= (COMPANION_UNLOCK_PTS[id] ?? 0);
               return (
                 <TouchableOpacity
                   key={id}
-                  style={[styles.companionCard, { borderColor: p.accentColor + '55' }]}
-                  onPress={() => router.push(`/(teen)/chat/${id}` as any)}
-                  activeOpacity={0.8}
+                  style={[styles.companionCard, { borderColor: p.accentColor + '55', opacity: unlocked ? 1 : 0.45 }]}
+                  onPress={() => unlocked ? router.push(`/(teen)/chat/${id}` as any) : undefined}
+                  activeOpacity={unlocked ? 0.8 : 1}
                 >
                   <View style={[styles.companionGlow, { backgroundColor: p.accentColor + '1a' }]} />
                   <Text style={styles.companionEmoji}>{p.emoji}</Text>
                   <Text style={[styles.companionName, { color: p.accentColor }]}>{p.name}</Text>
-                  <Text style={styles.companionTitle}>{p.title}</Text>
+                  {unlocked ? (
+                    <Text style={styles.companionTitle}>{p.title}</Text>
+                  ) : (
+                    <Text style={styles.companionTitle}>{COMPANION_UNLOCK_PTS[id]} pts to unlock</Text>
+                  )}
                   <Text style={styles.companionGreeting} numberOfLines={2}>
                     "{p.greeting}"
                   </Text>
