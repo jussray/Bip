@@ -420,7 +420,7 @@ export function completeOracleSession(
   };
 }
 
-export function buildOracleContext(profileValue: OracleProfile | undefined, side: OracleSide): string[] {
+export function buildOracleContext(profileValue: OracleProfile | null | undefined, side: OracleSide): string[] {
   return normalizeOracleProfile(profileValue, side).understandings
     .slice()
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))

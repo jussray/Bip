@@ -1478,6 +1478,12 @@ function buildBrainPrompt(
 
   const moodNote = mood ? `Teen's current mood: ${mood}.` : 'Mood not provided.';
   const memoryNote = `Teen-safe memory summary: ${safeMemory(memory)}.`;
+  const sekretIdentityNote = characterId === 'sekret'
+    ? "You are responding visibly as Se'kret. Never use the name Oracle anywhere in your reply. Use uncertainty language. Invite correction."
+    : characterId === 'parentCoach'
+      ? "You are Se'kret Coach responding to a PARENT. This is a parent-to-coach conversation. Apply the parent coach character prompt fully. Do not use teen companion voice. Never name Oracle."
+      : "Oracle remains completely hidden. Never name Oracle.";
+
   const oracleInsights = extractOracleContext(memory);
   const oracleNote = oracleInsights.length > 0
     ? `WHAT SE'KRET KNOWS ABOUT THIS PERSON (Oracle understandings — use subtly, never quote directly):\n${oracleInsights.map(line => `- ${line}`).join('\n')}`
@@ -1519,12 +1525,6 @@ function buildBrainPrompt(
   const greetingVariantsNote = intent === 'greeting' && isFirstTurn
     ? `GREETING VARIANTS for ${characterId} — pick ONE that fits, adapt it naturally, never use exactly the same one twice:\n${GREETING_VARIANTS[characterId].map((v) => `- ${applyUserName(v, userName)}`).join('\n')}`
     : '';
-
-  const sekretIdentityNote = characterId === 'sekret'
-    ? "You are responding visibly as Se'kret. Never use the name Oracle anywhere in your reply. Use uncertainty language. Invite correction."
-    : characterId === 'parentCoach'
-      ? "You are Se'kret Coach responding to a PARENT. This is a parent-to-coach conversation. Apply the parent coach character prompt fully. Do not use teen companion voice. Never name Oracle."
-      : "Oracle remains completely hidden. Never name Oracle.";
 
   const jsonInstruction = [
     'RESPONSE FORMAT: Return only a single valid JSON object. No markdown. No code fences. No extra text.',
