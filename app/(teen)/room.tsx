@@ -1,20 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { router } from 'expo-router';
 import { RoomScreen } from '@screens/RoomScreen';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
-import { loadSekretMemory } from '../../services/sekretMemory';
+import { useStreak } from '@/hooks/useStreak';
 
 export default function TeenRoomRoute() {
   const { mood, selectedSekret, setSelectedSekret, theme, entries, moodHistory } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
-
-  const [streakDays, setStreakDays] = useState(0);
-
-  useEffect(() => {
-    loadSekretMemory().then(mem => setStreakDays(mem.streaks.current));
-  }, []);
+  const { streakDays } = useStreak();
 
   const lastActivity = useMemo(() => {
     const lastEntry = entries?.[entries.length - 1];

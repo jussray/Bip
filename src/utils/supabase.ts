@@ -72,6 +72,10 @@ export const TABLES = {
   parentNotes:         'parent_notes',
   // ── Teen activity summary (20260626) ─────────────────────────────────────────
   teenActivitySummary: 'teen_activity_summary',
+  // ── Activity event ledger (20260627) ─────────────────────────────────────────
+  bipEvents:           'bip_events',
+  // ── Point transaction ledger (20260627) ──────────────────────────────────────
+  pointTransactions:   'point_transactions',
 } as const;
 
 export type TableName = (typeof TABLES)[keyof typeof TABLES];

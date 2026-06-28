@@ -1,16 +1,3 @@
-/**
- * app/(main)/parent-circle.tsx
- *
- * Parent Circle — wires ParentCircleScreen to AppContext + cloud sync.
- *
- * Mount flow:
- *   1. Screen renders immediately with local state (AsyncStorage, instant).
- *   2. loadParentCircleFeed() runs in the background.
- *   3. Cloud posts are merged additively: any id not already in local state
- *      is prepended so nothing the user wrote offline is lost.
- *
- * Pull-to-refresh repeats the same merge.
- */
 import React, { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
@@ -32,12 +19,6 @@ export default function ParentCircleRoute() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  /**
-   * mergeCloudPosts
-   * Pulls parent_circle_posts from Supabase and prepends any rows whose id
-   * is not already present in local state. Additive only — never removes
-   * local posts that haven't synced yet.
-   */
   const mergeCloudPosts = useCallback(async () => {
     const cloud = await loadParentCircleFeed();
     if (!cloud.length) return;
@@ -49,7 +30,6 @@ export default function ParentCircleRoute() {
     });
   }, [setParentCirclePosts]);
 
-  // On mount: push any unsaved local posts, then pull cloud posts.
   useEffect(() => {
     parentCirclePosts.forEach(post => {
       void syncParentCirclePost({
@@ -61,7 +41,7 @@ export default function ParentCircleRoute() {
       });
     });
     void mergeCloudPosts();
-    }, []);
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

@@ -26,12 +26,9 @@ import {
   type ParentSekretResponse,
 } from '../constants/parentSekret';
 import {
-  fetchLinkedTeenId,
-  fetchBridgeSignals,
   sendParentNote,
-  subscribeToBridgeSignals,
-  type BridgeSignal,
 } from '@/utils/sync';
+import type { LinkedTeenData } from '@/hooks/useLinkedTeen';
 
 const { width: W } = Dimensions.get('window');
 
@@ -57,38 +54,21 @@ const STARTER_PROMPTS = [
 ];
 
 interface ParentBridgeScreenProps {
-  t:         Record<string, any>;
-  setScreen: (screen: string) => void;
-  BottomNav: React.ReactNode;
+  t:          Record<string, any>;
+  setScreen:  (screen: string) => void;
+  BottomNav:  React.ReactNode;
+  linkedTeen: LinkedTeenData;
 }
 
-export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScreenProps) {
-  const [tab,        setTab]        = useState<'advice' | 'bridge'>('advice');
+export function ParentBridgeScreen({ t, setScreen, BottomNav, linkedTeen }: ParentBridgeScreenProps) {
+  const { linkedTeenId: teenId, isLinked: linked, activitySummary, sharedJournal, sharedMoods, signals } = linkedTeen;
+
+  const [tab,        setTab]        = useState<'advice' | 'bridge' | 'shared'>('advice');
   const [topic,      setTopic]      = useState<ParentTopicId | null>(null);
   const [message,    setMessage]    = useState('');
   const [sent,       setSent]       = useState(false);
   const [sending,    setSending]    = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [teenId,     setTeenId]     = useState<string | null>(null);
-  const [signals,    setSignals]    = useState<BridgeSignal[]>([]);
-  const [linked,     setLinked]     = useState(false);
-
-  // Load linked teen ID + their signals, then subscribe to Realtime
-  useEffect(() => {
-    let unsub = () => {};
-    (async () => {
-      const id = await fetchLinkedTeenId();
-      if (!id) return;
-      setTeenId(id);
-      setLinked(true);
-      const existing = await fetchBridgeSignals(id);
-      setSignals(existing);
-      subscribeToBridgeSignals(id, (sig) => {
-        setSignals(prev => [sig, ...prev]);
-      }).then(fn => { unsub = fn; });
-    })();
-    return () => { unsub(); };
-  }, []);
 
   const fade1 = useRef(new Animated.Value(0)).current;
   const fade2 = useRef(new Animated.Value(0)).current;
@@ -176,7 +156,7 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
           </View>
         </Animated.View>
 
-        {/* ─── LINK STATUS / TEEN SIGNALS ─────────────────────────────────────── */}
+        {/* ─── LINK STATUS ─────────────────────────────────────────────────────── */}
         {!linked && (
           <Animated.View style={cardSlide(fade2)}>
             <View style={[styles.pendingBanner, { borderColor: P.accent + '44', backgroundColor: P.accent + '0e' }]}>
@@ -187,28 +167,30 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
           </Animated.View>
         )}
 
-        {linked && signals.length > 0 && (
+        {/* ─── ACTIVITY PULSE (when linked) ───────────────────────────────────── */}
+        {linked && activitySummary && (
           <Animated.View style={cardSlide(fade2)}>
-            <Text style={[styles.sectionTitle, { color: P.soft, marginBottom: 10 }]}>
-              What they chose to share
-            </Text>
-            {signals.slice(0, 5).map(sig => (
-              <View key={sig.id} style={[styles.signalCard, { borderColor: P.accent + '44' }]}>
-                <Text style={styles.signalEmoji}>
-                  {sig.share_type === 'mood' ? '💜' : sig.share_type === 'thought' ? '💭' : sig.share_type === 'need' ? '🌿' : '⚡'}
-                </Text>
-                <View style={styles.signalBody}>
-                  <Text style={[styles.signalType, { color: P.accent }]}>
-                    {sig.share_type === 'mood' ? 'My Mood' : sig.share_type === 'thought' ? 'A Thought' : sig.share_type === 'need' ? 'Something I Need' : 'A Win'}
-                    {sig.conv_mode ? ` · ${sig.conv_mode}` : ''}
-                  </Text>
-                  <Text style={[styles.signalTime, { color: P.soft + '77' }]}>
-                    {new Date(sig.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    {' · via '}{sig.char_key}
-                  </Text>
+            <View style={[styles.pulseCard, { borderColor: P.accent + '44' }]}>
+              <Text style={[styles.pulseLine, { color: P.soft + 'aa' }]}>
+                Activity Pulse · your teen is showing up 💪
+              </Text>
+              <View style={styles.pulseRow}>
+                <View style={styles.pulseStat}>
+                  <Text style={[styles.pulseValue, { color: P.accent }]}>{activitySummary.streakDays}</Text>
+                  <Text style={[styles.pulseLabel, { color: P.soft + '88' }]}>day streak</Text>
+                </View>
+                <View style={[styles.pulseDivider, { backgroundColor: P.accent + '33' }]} />
+                <View style={styles.pulseStat}>
+                  <Text style={[styles.pulseValue, { color: P.accent }]}>{activitySummary.sessionCount}</Text>
+                  <Text style={[styles.pulseLabel, { color: P.soft + '88' }]}>sessions</Text>
+                </View>
+                <View style={[styles.pulseDivider, { backgroundColor: P.accent + '33' }]} />
+                <View style={styles.pulseStat}>
+                  <Text style={[styles.pulseValue, { color: P.accent }]}>{activitySummary.pointsTier.toUpperCase()}</Text>
+                  <Text style={[styles.pulseLabel, { color: P.soft + '88' }]}>tier</Text>
                 </View>
               </View>
-            ))}
+            </View>
           </Animated.View>
         )}
 
@@ -219,7 +201,15 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
             onPress={() => setTab('advice')}
           >
             <Text style={[styles.tabLabel, { color: tab === 'advice' ? P.accent : P.soft + '99' }]}>
-              Se'kret Advice
+              Advice
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, tab === 'shared' && { backgroundColor: P.accent + '33', borderColor: P.accent }]}
+            onPress={() => setTab('shared')}
+          >
+            <Text style={[styles.tabLabel, { color: tab === 'shared' ? P.accent : P.soft + '99' }]}>
+              Shared
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -227,7 +217,7 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
             onPress={() => setTab('bridge')}
           >
             <Text style={[styles.tabLabel, { color: tab === 'bridge' ? P.accent : P.soft + '99' }]}>
-              Send a Note
+              Send Note
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -347,6 +337,102 @@ export function ParentBridgeScreen({ t, setScreen, BottomNav }: ParentBridgeScre
                 <Text style={styles.emptyEmoji}>☝️</Text>
                 <Text style={[styles.emptyText, { color: P.soft + '99' }]}>
                   Pick a situation above.{'\n'}Parent Se'kret will keep it real.
+                </Text>
+              </View>
+            )}
+
+          </Animated.View>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/*  TAB: SHARED — WHAT TEEN CHOSE TO SHARE                             */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {tab === 'shared' && (
+          <Animated.View style={cardSlide(fade3)}>
+
+            <View style={[styles.card, { marginBottom: 16 }]}>
+              <Text style={styles.cardTitle}>What your teen shared</Text>
+              <Text style={[styles.bodyText, { color: P.soft }]}>
+                These are moments your teen chose to let you see. You can read them,
+                but you can't reply here — reply through a warm note instead.
+              </Text>
+              <View style={[styles.badge, { borderColor: P.accent }]}>
+                <Text style={[styles.badgeText, { color: P.accent }]}>
+                  teen-controlled · they decide what you see
+                </Text>
+              </View>
+            </View>
+
+            {/* Bridge signals */}
+            {signals.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { color: P.soft }]}>Moments they signaled</Text>
+                {signals.slice(0, 5).map(sig => (
+                  <View key={sig.id} style={[styles.signalCard, { borderColor: P.accent + '44' }]}>
+                    <Text style={styles.signalEmoji}>
+                      {sig.share_type === 'mood' ? '💜' : sig.share_type === 'thought' ? '💭' : sig.share_type === 'need' ? '🌿' : '⚡'}
+                    </Text>
+                    <View style={styles.signalBody}>
+                      <Text style={[styles.signalType, { color: P.accent }]}>
+                        {sig.share_type === 'mood' ? 'My Mood' : sig.share_type === 'thought' ? 'A Thought' : sig.share_type === 'need' ? 'Something I Need' : 'A Win'}
+                        {sig.conv_mode ? ` · ${sig.conv_mode}` : ''}
+                      </Text>
+                      <Text style={[styles.signalTime, { color: P.soft + '77' }]}>
+                        {new Date(sig.sent_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {' · via '}{sig.char_key}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {/* Shared journal entries */}
+            {sharedJournal.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { color: P.soft, marginTop: 12 }]}>Pages they shared</Text>
+                {sharedJournal.slice(0, 8).map(entry => (
+                  <View key={entry.id} style={[styles.sharedEntryCard, { borderColor: P.accent + '33' }]}>
+                    {entry.mood_tag && (
+                      <Text style={[styles.sharedMoodTag, { color: P.accent }]}>#{entry.mood_tag}</Text>
+                    )}
+                    {entry.text ? (
+                      <Text style={[styles.sharedEntryText, { color: P.soft }]} numberOfLines={4}>
+                        {entry.text}
+                      </Text>
+                    ) : null}
+                    <Text style={[styles.signalTime, { color: P.soft + '55', marginTop: 6 }]}>
+                      {new Date(entry.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {/* Shared moods */}
+            {sharedMoods.length > 0 && (
+              <>
+                <Text style={[styles.sectionTitle, { color: P.soft, marginTop: 12 }]}>Moods they shared</Text>
+                <View style={styles.moodRow}>
+                  {sharedMoods.slice(0, 10).map(m => (
+                    <View key={m.id} style={[styles.moodChip, { borderColor: P.accent + '44' }]}>
+                      <Text style={[styles.moodChipText, { color: P.soft }]}>{m.mood}</Text>
+                      <Text style={[styles.moodChipDate, { color: P.soft + '66' }]}>
+                        {new Date(m.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Empty state */}
+            {signals.length === 0 && sharedJournal.length === 0 && sharedMoods.length === 0 && (
+              <View style={[styles.emptyState, { borderColor: P.accent + '33' }]}>
+                <Text style={styles.emptyEmoji}>🌱</Text>
+                <Text style={[styles.emptyText, { color: P.soft + '88' }]}>
+                  Nothing shared yet.{'\n'}
+                  Your teen can share moments from their Pages or mood check-ins — they're in control of what you see.
                 </Text>
               </View>
             )}
@@ -504,6 +590,24 @@ const styles = StyleSheet.create({
   signalBody:    { flex: 1 },
   signalType:    { fontSize: 13, fontWeight: '700', marginBottom: 2 },
   signalTime:    { fontSize: 11 },
+
+  // Activity pulse
+  pulseCard:    { backgroundColor: 'rgba(46,26,16,0.75)', borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 14 },
+  pulseLine:    { fontSize: 12, fontWeight: '600', marginBottom: 10 },
+  pulseRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  pulseStat:    { alignItems: 'center', flex: 1 },
+  pulseValue:   { fontSize: 24, fontWeight: '900' },
+  pulseLabel:   { fontSize: 10, fontWeight: '600', marginTop: 2 },
+  pulseDivider: { width: 1, height: 32 },
+
+  // Shared tab
+  sharedEntryCard: { backgroundColor: 'rgba(46,26,16,0.75)', borderWidth: 1, borderRadius: 14, padding: 14, marginBottom: 10 },
+  sharedMoodTag:   { fontSize: 11, fontWeight: '700', marginBottom: 6 },
+  sharedEntryText: { fontSize: 14, lineHeight: 21 },
+  moodRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  moodChip:        { backgroundColor: 'rgba(46,26,16,0.75)', borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  moodChipText:    { fontSize: 12, fontWeight: '700' },
+  moodChipDate:    { fontSize: 10, marginTop: 2 },
 
   // Header
   header:        { alignItems: 'center', marginBottom: 20 },

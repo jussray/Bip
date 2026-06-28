@@ -21,6 +21,8 @@ import {
   loadOracleSession,
   initTeenActivitySync,
 } from '@/utils/sync';
+import { emitEvent } from '@/features/activity/events';
+import { initPointLedger } from '@/features/activity/ledger';
 import { mergeById } from '../utils/mergeById';
 import { normalizeVibeKey } from '../../constants/theme';
 import {
@@ -169,6 +171,21 @@ export function useAppEffects(state: AppState, setState: SetState) {
     return initTeenActivitySync();
   }, [isLoading, userSide]);
 
+  // 3c. Point ledger: subscribe to activity events and record transactions.
+  // Backfills existing local data on first run so the total is accurate immediately.
+  useEffect(() => {
+    if (isLoading || userSide !== 'teen') return;
+    return initPointLedger({
+      moodCount:    state.moodHistory.length,
+      journalCount: state.journalEntries.length,
+      voiceCount:   state.voiceNotes.length,
+      circleCount:  state.circlePosts.length,
+      comfortCount: state.comfortSessions.length,
+      crewCount:    state.crewCheckIns.length,
+      streakDays:   state.streakDays,
+    });
+  }, [isLoading, userSide]);
+
   // 4. Persist state on change
   useEffect(() => {
     if (isLoading) return;
@@ -226,6 +243,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
+      emitEvent('streak_milestone');
       setState(prev => {
         const nextDays = wasYesterday ? prev.streakDays + 1 : 1;
         return {

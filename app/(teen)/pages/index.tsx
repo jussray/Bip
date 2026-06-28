@@ -2,7 +2,9 @@
 // SE'KRET PAGES — Continuous Companion Journal
 //
 // PROTECTED DATA CONTRACT (must not be removed or bypassed):
-//   ✓ fetchSekretBrainReply  — sole AI call for companion replies
+//   ✓ sendCompanionMessage   — sole AI call for companion replies
+//                              (wraps fetchSekretBrainReply, emits companion_message event,
+//                               runs safety flag detection)
 //   ✓ Raylene / Rylane / Cloud / Night companion tabs
 //   ✓ mood tags via AppContext.mood
 //   ✓ companion-specific prompts with rotation
@@ -45,14 +47,29 @@ import { IMAGES } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
 import { updateSekretMemory } from '../../../services/sekretMemory';
 import {
-  fetchSekretBrainReply,
   fetchSekretVoice,
   type SekretAvatarState,
   type SekretCharacterId,
   type SekretHistoryTurn,
-  type SekretSurface,
 } from '@/utils/api';
 import type { JournalEntry } from '@/types';
+import {
+  sendCompanionMessage,
+  toCompanionId,
+} from '../../../src/features/sekret/companionEngine';
+import {
+  checkTextBeforePost,
+  checkForFlaggedItems,
+  type SafetyExperience,
+} from '../../../src/features/safety/safetyCoordinator';
+import { SafetyExperienceSheet } from '../../../components/safety/SafetyExperienceSheet';
+import {
+  setItemVisibility,
+  revokeShare,
+  getTeenSharedItems,
+} from '../../../src/features/consent/consentLayer';
+import { usePoints } from '@/features/activity/ledger';
+import { syncJournal } from '@/utils/sync';
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
@@ -139,6 +156,12 @@ function inferState(state: SekretAvatarState, mood?: string, tone?: string): Sek
   return 'responding';
 }
 
+// ─── Companion unlock thresholds (points required, matches TIERS) ─────────────
+const COMPANION_UNLOCK_PTS: Record<CompanionId, number> = {
+  raylene: 0, me: 0, oracle: 0,
+  rylane: 50, cloud: 150, night: 350,
+};
+
 // ─── Mood tag palette ─────────────────────────────────────────────────────────
 const MOOD_TAGS = [
   { label: '😌 okay',    value: 'okay'    },
@@ -162,6 +185,7 @@ export default function TeenPagesRoute() {
     selectedSekret,
     setSelectedSekret,
     patchJournalEntry,
+    teenGender,
   } = useAppContext();
 
   // ── Companion state ────────────────────────────────────────────────────────
@@ -169,6 +193,7 @@ export default function TeenPagesRoute() {
     (COMPANIONS.some(c => c.id === selectedSekret) ? selectedSekret : 'raylene') as CompanionId,
   );
   const [avatarState, setAvatarState] = useState<SekretAvatarState>('neutral');
+  const { total: totalPoints } = usePoints();
 
   // ── Composer state ─────────────────────────────────────────────────────────
   const [locked, setLocked]     = useState(false);
@@ -177,10 +202,15 @@ export default function TeenPagesRoute() {
   const [toolbarOpen, setToolbarOpen] = useState(false);
 
   // ── Saving / reply state ───────────────────────────────────────────────────
-  const [saving, setSaving]           = useState(false);
-  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [saving, setSaving]                         = useState(false);
+  const [voiceLoading, setVoiceLoading]             = useState(false);
+  const [safetyExperience, setSafetyExperience]     = useState<SafetyExperience | null>(null);
+  const [comfortNudge, setComfortNudge]             = useState<string | null>(null);
   // audioCache: entryId → data-URI — avoids re-fetching voice for same entry
   const audioCache = useRef<Record<string, string>>({});
+
+  // ── Parent share state ────────────────────────────────────────────────────
+  const [sharedEntryIds, setSharedEntryIds] = useState<Set<number>>(new Set());
 
   // ── Prompt rotation ────────────────────────────────────────────────────────
   const promptPool = PROMPTS[activeTab] ?? PROMPTS.raylene;
@@ -203,6 +233,13 @@ export default function TeenPagesRoute() {
     loop.start();
     return () => loop.stop();
   }, [breathe]);
+
+  // Load which entries the teen has already shared with parent
+  useEffect(() => {
+    getTeenSharedItems('journal_entries').then(items => {
+      setSharedEntryIds(new Set(items.map(i => i.id)));
+    });
+  }, []);
 
   const flatListRef = useRef<FlatList<JournalEntry>>(null);
 
@@ -273,6 +310,12 @@ export default function TeenPagesRoute() {
     const text = journalText.trim();
     if ((!text && !mediaUri) || saving) return;
 
+    // Pre-flight: synchronous client-side safety check before saving
+    if (text && aiCompanion) {
+      const preflight = checkTextBeforePost(text, toCompanionId(activeTab));
+      if (preflight) setSafetyExperience(preflight);
+    }
+
     const id = Date.now();
     const entry: JournalEntry = {
       id,
@@ -290,6 +333,7 @@ export default function TeenPagesRoute() {
     };
 
     setEntries(prev => [...prev, entry]);
+    syncJournal(entry);
     setJournalText('');
     setMediaUri(undefined);
     setMediaType(undefined);
@@ -308,18 +352,28 @@ export default function TeenPagesRoute() {
     setAvatarState('thinking');
 
     try {
-      const surface: SekretSurface = 'journal';
-
-      const result = await fetchSekretBrainReply({
-        characterId: companionAvatarId,
-        surface,
-        userText: text,
+      const result = await sendCompanionMessage({
+        companionId: toCompanionId(activeTab),
+        surface:     'journal',
+        text,
         mood,
-        parentSharingEnabled: false,
-        history: recentHistory,
+        history:     recentHistory,
+        teenGender,
       });
-      patchJournalEntry(id, { sekretReply: result.reply });
-      setAvatarState(inferState(result.avatarState, mood, result.tone));
+      const resolvedState = inferState(result.avatarState, mood, result.tone);
+      patchJournalEntry(id, { sekretReply: result.reply, sekretAvatarState: resolvedState });
+      setAvatarState(resolvedState);
+
+      // Post-reply: surface safety experience if backend flagged this entry
+      if (result.safetyFlag) {
+        const flagged = await checkForFlaggedItems(toCompanionId(activeTab));
+        if (flagged) setSafetyExperience(flagged);
+      }
+
+      // Post-reply: comfort nudge if companion suggested a tool
+      if (result.suggestedComfortTool) {
+        setComfortNudge(result.suggestedComfortTool);
+      }
     } catch {
       setAvatarState('neutral');
     } finally {
@@ -347,6 +401,18 @@ export default function TeenPagesRoute() {
       setVoiceLoading(false);
     }
   }
+
+  // ── Share-with-parent toggle ──────────────────────────────────────────────
+  const toggleShare = useCallback(async (entryId: number) => {
+    const isShared = sharedEntryIds.has(entryId);
+    if (isShared) {
+      await revokeShare('journal_entries', entryId);
+      setSharedEntryIds(prev => { const next = new Set(prev); next.delete(entryId); return next; });
+    } else {
+      await setItemVisibility('journal_entries', entryId, 'shared_with_parent');
+      setSharedEntryIds(prev => new Set([...prev, entryId]));
+    }
+  }, [sharedEntryIds]);
 
   // ── Render each journal entry as a chat exchange ───────────────────────────
   const renderEntry = useCallback(({ item: entry }: { item: JournalEntry }) => {
@@ -379,6 +445,18 @@ export default function TeenPagesRoute() {
               ) : null}
               {entry.locked ? <Text style={s.metaLock}>🔒</Text> : null}
               {entry.pinned ? <Text style={s.metaPin}>📌</Text> : null}
+              {!entry.locked && (
+                <TouchableOpacity
+                  onPress={() => toggleShare(entry.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={sharedEntryIds.has(entry.id) ? 'Shared with parent — tap to revoke' : 'Share with parent'}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={s.shareIcon}>
+                    {sharedEntryIds.has(entry.id) ? '💜' : '👁️'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -387,7 +465,7 @@ export default function TeenPagesRoute() {
         {entry.sekretReply ? (
           <View style={s.replyRow}>
             <Image
-              source={avatarImage(companionAvatarId, 'neutral')}
+              source={avatarImage(companionAvatarId, (entry.sekretAvatarState ?? 'neutral') as SekretAvatarState)}
               style={s.replyAvatar}
             />
             <View style={s.replyBubble}>
@@ -409,28 +487,34 @@ export default function TeenPagesRoute() {
         ) : null}
       </View>
     );
-  }, [companion, companionAvatarId, voiceLoading]);
+  }, [companion, companionAvatarId, voiceLoading, sharedEntryIds, toggleShare]);
 
   // ── Top avatar strip ───────────────────────────────────────────────────────
   const renderAvatarStrip = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabRail}>
       {COMPANIONS.map(c => {
         const active = c.id === activeTab;
+        const unlocked = totalPoints >= COMPANION_UNLOCK_PTS[c.id as CompanionId];
         return (
           <TouchableOpacity
             key={c.id}
-            onPress={() => chooseTab(c.id as CompanionId)}
-            style={[s.tab, active && { borderColor: c.accent, backgroundColor: `${c.accent}18` }]}
+            onPress={() => unlocked ? chooseTab(c.id as CompanionId) : undefined}
+            activeOpacity={unlocked ? 0.7 : 1}
+            style={[s.tab, active && { borderColor: c.accent, backgroundColor: `${c.accent}18` }, !unlocked && s.tabLocked]}
           >
             {c.id !== 'me' && c.id !== 'oracle' ? (
               <Image
                 source={avatarImage(c.id as SekretCharacterId, active ? avatarState : 'neutral')}
-                style={s.tabImg}
+                style={[s.tabImg, !unlocked && { opacity: 0.3 }]}
               />
             ) : (
-              <Text style={s.tabEmoji}>{c.id === 'me' ? '🪞' : '🔮'}</Text>
+              <Text style={[s.tabEmoji, !unlocked && { opacity: 0.3 }]}>{c.id === 'me' ? '🪞' : '🔮'}</Text>
             )}
-            <Text style={[s.tabName, active && { color: c.accent }]}>{c.name}</Text>
+            {unlocked ? (
+              <Text style={[s.tabName, active && { color: c.accent }]}>{c.name}</Text>
+            ) : (
+              <Text style={s.tabLockBadge}>{COMPANION_UNLOCK_PTS[c.id as CompanionId]} pts</Text>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -601,6 +685,37 @@ export default function TeenPagesRoute() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
+        {/* Loop nudge: companion suggested Comfort after heavy reply */}
+        {comfortNudge && !saving && (
+          <View style={s.nudgeWrap}>
+            <Text style={[s.nudgeText, { color: companion.accent }]}>
+              {companion.name} thinks Comfort might help right now
+            </Text>
+            <View style={s.nudgeRow}>
+              <TouchableOpacity
+                style={[s.nudgeBtn, { borderColor: `${companion.accent}66` }]}
+                onPress={() => {
+                  setComfortNudge(null);
+                  router.push('/(teen)/comfort' as any);
+                }}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Open Comfort"
+              >
+                <Text style={s.nudgeBtnText}>open Comfort</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setComfortNudge(null)}
+                style={s.nudgeDismiss}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss nudge"
+              >
+                <Text style={s.nudgeDismissText}>I'm okay</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Composer */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -635,6 +750,12 @@ export default function TeenPagesRoute() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Safety experience sheet — rendered above all page content */}
+      <SafetyExperienceSheet
+        experience={safetyExperience}
+        onDismiss={() => setSafetyExperience(null)}
+      />
     </View>
   );
 }
@@ -659,6 +780,8 @@ const s = StyleSheet.create({
   tabImg: { width: 38, height: 38, resizeMode: 'contain' },
   tabEmoji: { fontSize: 24 },
   tabName: { color: '#a99fb2', fontSize: 9, fontWeight: '800', marginTop: 3 },
+  tabLocked: { opacity: 0.55 },
+  tabLockBadge: { color: '#6b6175', fontSize: 8, fontWeight: '800', marginTop: 3 },
 
   thread: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 20 },
 
@@ -673,8 +796,9 @@ const s = StyleSheet.create({
   entryMeta: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' },
   metaTime: { color: '#7a7086', fontSize: 9 },
   metaMood: { fontSize: 9, fontWeight: '800' },
-  metaLock: { fontSize: 10 },
-  metaPin: { fontSize: 10 },
+  metaLock:  { fontSize: 10 },
+  metaPin:   { fontSize: 10 },
+  shareIcon: { fontSize: 10, opacity: 0.6 },
 
   replyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginLeft: 6 },
   replyAvatar: { width: 34, height: 34, resizeMode: 'contain', marginTop: 2 },
@@ -711,6 +835,14 @@ const s = StyleSheet.create({
   mediaPreviewWrap: { marginBottom: 8, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   mediaPreview: { width: '100%', height: 120, borderRadius: 12, resizeMode: 'cover' },
   mediaRemove: { position: 'absolute', top: 6, right: 8, color: '#fff', fontSize: 13, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+
+  nudgeWrap:        { marginHorizontal: 12, marginBottom: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', borderRadius: 16, padding: 12 },
+  nudgeText:        { fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  nudgeRow:         { flexDirection: 'row', gap: 10 },
+  nudgeBtn:         { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  nudgeBtnText:     { color: '#f0eaf4', fontSize: 12, fontWeight: '700' },
+  nudgeDismiss:     { justifyContent: 'center', paddingHorizontal: 12 },
+  nudgeDismissText: { color: '#64748b', fontSize: 11 },
 
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 20, borderTopWidth: 1 },
   composerInput: { flex: 1, color: '#f0eaf4', fontSize: 15, lineHeight: 23, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', maxHeight: 120 },

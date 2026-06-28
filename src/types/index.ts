@@ -17,6 +17,7 @@ export interface JournalEntry {
   imageUri?: string;
   mediaType?: 'photo' | 'video';
   sekretReply?: string;
+  sekretAvatarState?: string;
   locked?: boolean;
   pinned?: boolean;
   activeTab?: string;

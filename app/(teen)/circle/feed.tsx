@@ -137,7 +137,6 @@ export function CircleFeed() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={PURPLE} colors={[PURPLE]} />
       }
     >
-      {/* Compose */}
       <View style={s.composeCard}>
         <Text style={s.composeLabel}>put something into the circle</Text>
         <View style={s.moodRow}>
@@ -176,7 +175,6 @@ export function CircleFeed() {
         </View>
       </View>
 
-      {/* Feed tabs */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -196,7 +194,6 @@ export function CircleFeed() {
         })}
       </ScrollView>
 
-      {/* Feed */}
       {circlePosts.length === 0 && !refreshing && (
         <View style={s.empty}>
           <Text style={s.emptyEmoji}>🌙</Text>
@@ -269,7 +266,6 @@ export default function CircleScreen() {
 
 const s = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: '#0d0518' },
-
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -289,8 +285,6 @@ const s = StyleSheet.create({
     borderColor: '#3d1a5e',
   },
   anonPillText: { color: '#7c5a9e', fontSize: 11, fontWeight: '600' },
-
-  // Compose card
   composeCard: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -331,8 +325,6 @@ const s = StyleSheet.create({
   postBtn:         { backgroundColor: '#7c3aed', borderRadius: 20, paddingHorizontal: 20, paddingVertical: 9 },
   postBtnDisabled: { opacity: 0.35 },
   postBtnText:     { color: '#fff', fontWeight: '800', fontSize: 13 },
-
-  // Feed cards
   card: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -354,8 +346,6 @@ const s = StyleSheet.create({
   anonLabel:     { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
   cardTime:      { color: '#3d2258', fontSize: 10 },
   cardText:      { color: '#e8dff5', fontSize: 15, lineHeight: 23, marginBottom: 12 },
-
-  // Reactions
   reactions:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   reactionBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#1e0a30', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#2e1250' },
   reactionBtnActive:   { backgroundColor: '#3d1a5e', borderColor: '#7c3aed' },
@@ -363,15 +353,11 @@ const s = StyleSheet.create({
   reactionLabel:       { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
   reactionLabelActive: { color: '#c4b5fd' },
   reactionCount:       { color: '#a855f7', fontSize: 11, fontWeight: '800', marginLeft: 2 },
-
-  // Feed tabs
   feedTabRail:     { gap: 6, paddingHorizontal: 16, paddingBottom: 12, paddingTop: 4 },
   feedTab:         { borderRadius: 999, borderWidth: 1, borderColor: '#2d1450', backgroundColor: 'rgba(255,255,255,0.03)', paddingHorizontal: 14, paddingVertical: 6 },
   feedTabActive:   { borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.15)' },
   feedTabText:     { color: '#5a3a78', fontSize: 11, fontWeight: '700' },
   feedTabTextActive: { color: '#c4b5fd' },
-
-  // Empty state
   empty:      { alignItems: 'center', paddingTop: 60, paddingBottom: 20 },
   emptyEmoji: { fontSize: 36, marginBottom: 12 },
   emptyText:  { color: '#4a2e60', fontSize: 14, textAlign: 'center' },
