@@ -1299,7 +1299,15 @@ function normalizeSurface(value: unknown): Surface {
 
 function safeMemory(value: unknown): string {
   if (!value || typeof value !== 'object') return 'none';
-  return JSON.stringify(value).slice(0, 1200);
+  const { oracleContext: _, ...rest } = value as Record<string, unknown>;
+  return JSON.stringify(rest).slice(0, 1200);
+}
+
+function extractOracleContext(memory: unknown): string[] {
+  if (!memory || typeof memory !== 'object') return [];
+  const raw = (memory as Record<string, unknown>).oracleContext;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is string => typeof item === 'string').slice(0, 8);
 }
 
 function normalizeHistory(value: unknown): ConversationTurn[] {
@@ -1470,6 +1478,10 @@ function buildBrainPrompt(
 
   const moodNote = mood ? `Teen's current mood: ${mood}.` : 'Mood not provided.';
   const memoryNote = `Teen-safe memory summary: ${safeMemory(memory)}.`;
+  const oracleInsights = extractOracleContext(memory);
+  const oracleNote = oracleInsights.length > 0
+    ? `WHAT SE'KRET KNOWS ABOUT THIS PERSON (Oracle understandings — use subtly, never quote directly):\n${oracleInsights.map(line => `- ${line}`).join('\n')}`
+    : '';
   const parentNote = `Parent sharing enabled: ${parentSharingEnabled}. Never expose private journal text verbatim in parentShareSummary.`;
   const nameNote = userName
     ? `Teen's name: ${userName}. Use it naturally and occasionally — not in every message.`
@@ -1548,6 +1560,7 @@ function buildBrainPrompt(
     firstTurnNote,
     phaseNote,
     sekretIdentityNote,
+    ...(oracleNote ? [oracleNote] : []),
   ];
 
   if (greetingVariantsNote) sections.push('---', greetingVariantsNote);

@@ -18,7 +18,6 @@ import {
   ensureAnonymousSession,
   pullAll,
   loadPeriodDays,
-  loadOracleSession,
   initTeenActivitySync,
 } from '@/utils/sync';
 import { emitEvent } from '@/features/activity/events';
@@ -28,6 +27,7 @@ import { normalizeVibeKey } from '../../constants/theme';
 import {
   normalizeOracleProfile,
   normalizeOracleSessions,
+  restoreOracleDiscovery,
 } from '../../services/oracleDiscovery';
 import { normalizeOracleJournalEntries } from '../../services/voiceBipIntelligence';
 import { HOME_MESSAGES } from '../constants/homeMessages';
@@ -146,17 +146,17 @@ export function useAppEffects(state: AppState, setState: SetState) {
         }
       }
 
-      // Oracle sessions — cloud wins for the memory snapshot (richer context)
+      // Oracle discovery profiles — restore full structured profiles from oracle_records
       if (!cancelled) {
-        const [teenOracle, parentOracle] = await Promise.all([
-          loadOracleSession('teen'),
-          loadOracleSession('parent'),
+        const [teenProfile, parentProfile] = await Promise.all([
+          restoreOracleDiscovery('teen'),
+          restoreOracleDiscovery('parent'),
         ]);
-        if (teenOracle || parentOracle) {
+        if (teenProfile || parentProfile) {
           setState(prev => ({
             ...prev,
-            ...(teenOracle   ? { oracleProfile:       { ...prev.oracleProfile,       ...teenOracle.memory   } } : {}),
-            ...(parentOracle ? { parentOracleProfile: { ...prev.parentOracleProfile, ...parentOracle.memory } } : {}),
+            ...(teenProfile   ? { oracleProfile:       teenProfile   } : {}),
+            ...(parentProfile ? { parentOracleProfile: parentProfile } : {}),
           }));
         }
       }

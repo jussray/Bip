@@ -22,6 +22,7 @@ import type { ChatMessage } from '@/services/ai';
 import type { PersonalityId } from '@/types';
 import { useAppContext } from '@/context/AppContext';
 import { syncOracleSession, loadOracleSession } from '@/utils/sync';
+import { buildOracleContext } from '@/services/oracleDiscovery';
 import { emitEvent } from '@/features/activity/events';
 
 const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
@@ -31,7 +32,7 @@ const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
 
 export default function PersonalityChatScreen() {
   const { personalityId } = useLocalSearchParams<{ personalityId: string }>();
-  const { mood } = useAppContext();
+  const { mood, oracleProfile } = useAppContext();
 
   const id = VALID_IDS.includes(personalityId as PersonalityId)
     ? (personalityId as PersonalityId)
@@ -103,13 +104,14 @@ export default function PersonalityChatScreen() {
     setLoading(true);
     scrollRef.current?.scrollToEnd({ animated: true });
 
-    const reply     = await sendMessage(id, text, 'chat', mood, previousMessages);
+    const oracleContext = buildOracleContext(oracleProfile, 'teen');
+    const reply     = await sendMessage(id, text, 'chat', { mood, history: previousMessages, oracleContext });
     const assistMsg = makeAssistantMessage(reply);
 
     setMessages(m => [...m, assistMsg]);
     setLoading(false);
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-  }, [id, input, loading, mood, messages]);
+  }, [id, input, loading, mood, messages, oracleProfile]);
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: config.cardColor }]}>
