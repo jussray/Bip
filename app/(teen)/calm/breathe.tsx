@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAudioPlayer } from '../../../hooks/useAudioPlayer';
+import { emitEvent } from '../../../src/features/activity/events';
 
 // ── Breathing patterns ────────────────────────────────────────────────────────
 type BreathPhase = 'in' | 'hold' | 'out';
@@ -92,6 +93,9 @@ export default function BreatheScreen() {
   const [running,    setRunning]      = useState(false);
   const [activeSong, setActiveSong]   = useState<string | null>(null);
   const [reminderSet, setReminderSet] = useState(false);
+  const [showNudge,   setShowNudge]   = useState(false);
+  const hasStartedRef  = useRef(false);
+  const startTimeRef   = useRef<number>(0);
 
   const circleScale  = useRef(new Animated.Value(1)).current;
   const glowOpacity  = useRef(new Animated.Value(0.4)).current;
@@ -167,12 +171,20 @@ export default function BreatheScreen() {
 
   function toggleRunning() {
     if (!running) {
+      hasStartedRef.current = true;
+      startTimeRef.current  = Date.now();
+      setShowNudge(false);
       setStepIdx(0);
       setCounter(PATTERNS[patternKey].steps[0].count);
       circleScale.setValue(1);
       glowScale.setValue(1);
     } else {
       animRef.current?.stop();
+      if (hasStartedRef.current) {
+        const durationSecs = Math.round((Date.now() - startTimeRef.current) / 1000);
+        emitEvent('breathe_completed', { durationSecs });
+        setShowNudge(true);
+      }
     }
     setRunning(r => !r);
   }
@@ -180,6 +192,8 @@ export default function BreatheScreen() {
   function switchPattern(key: string) {
     animRef.current?.stop();
     setRunning(false);
+    setShowNudge(false);
+    hasStartedRef.current = false;
     setPatternKey(key);
     setStepIdx(0);
     setCounter(PATTERNS[key].steps[0].count);
@@ -328,6 +342,32 @@ export default function BreatheScreen() {
             <Text style={s.startBtnText}>{running ? '⏸  pause' : '▶  start'}</Text>
           </TouchableOpacity>
 
+          {/* Loop nudge — shown after a breathing session ends */}
+          {showNudge && !running && (
+            <View style={s.nudgeWrap}>
+              <Text style={s.nudgeText}>nice work. want to capture how you feel?</Text>
+              <View style={s.nudgeRow}>
+                <TouchableOpacity
+                  style={s.nudgeBtn}
+                  onPress={() => { setShowNudge(false); router.push('/(teen)/pages' as any); }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Pages journal"
+                >
+                  <Text style={s.nudgeBtnText}>write in Pages</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowNudge(false)}
+                  style={s.nudgeDismiss}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss"
+                >
+                  <Text style={s.nudgeDismissText}>not now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           {/* Calm Playlist */}
           <Text style={s.sectionTitle}>Calm Playlist ✦</Text>
           <Text style={s.sectionSub}>let the sound hold you</Text>
@@ -461,4 +501,12 @@ const s = StyleSheet.create({
   quoteStrip: { margin: 16, borderWidth: 1, borderColor: 'rgba(168,85,247,0.2)', borderRadius: 14, padding: 18 },
   quoteOpen: { color: '#4a2e6a', fontSize: 32, lineHeight: 28, marginBottom: 4 },
   quoteText: { color: '#c4b5fd', fontSize: 14, lineHeight: 22, textAlign: 'center' },
+
+  nudgeWrap:        { marginHorizontal: 16, marginBottom: 20, backgroundColor: 'rgba(168,85,247,0.10)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.28)', borderRadius: 16, padding: 14 },
+  nudgeText:        { color: '#c4b5fd', fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  nudgeRow:         { flexDirection: 'row', gap: 10 },
+  nudgeBtn:         { flex: 1, backgroundColor: 'rgba(168,85,247,0.20)', borderRadius: 12, paddingVertical: 9, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(168,85,247,0.45)' },
+  nudgeBtnText:     { color: '#f0ebff', fontSize: 13, fontWeight: '700' },
+  nudgeDismiss:     { justifyContent: 'center', paddingHorizontal: 12 },
+  nudgeDismissText: { color: '#5a3e72', fontSize: 12 },
 });
