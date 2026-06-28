@@ -54,3 +54,26 @@ test('profile memories point back to owning spaces instead of exposing private c
   assert.match(profile, /Pages protects the full story/);
   assert.match(profile, /Profile only remembers/);
 });
+
+test('parent profile mirrors identity, Circle identity, and support memories', () => {
+  const profile = read('app/(parent)/profile.tsx');
+  assert.match(profile, /My Profile/);
+  assert.match(profile, /Circle Identity/);
+  assert.match(profile, /Memories/);
+  assert.match(profile, /Support Memories/);
+  assert.match(profile, /parent_profile_data/);
+  assert.match(profile, /parent_circle_identity/);
+});
+
+test('parent memories are support markers, not teen surveillance', () => {
+  const profile = read('app/(parent)/profile.tsx');
+  assert.match(profile, /Profile collects safe markers of how you showed up/);
+  assert.match(profile, /without opening teen private data/);
+  assert.match(profile, /Parent Circle sees your community identity, not your teen’s private world/);
+});
+
+test('memories aliases point to Profile Hub on both sides', () => {
+  const routes = read('src/shared/routes.ts');
+  assert.match(routes, /memories:\s*PARENT_ROUTES\.profile/);
+  assert.match(routes, /memories:\s*TEEN_ROUTES\.profile/);
+});
