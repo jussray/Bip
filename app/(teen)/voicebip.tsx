@@ -5,7 +5,6 @@ import { THEME_PACKS } from '@constants/theme';
 import { VoiceBipScreen } from '@screens/VoiceBipScreen';
 import type { VoiceNote } from '@/types';
 import { syncVoiceNote } from '@/utils/sync';
-import { emitEvent } from '@/features/activity/events';
 
 export default function VoiceBipRoute() {
   const {
@@ -32,7 +31,6 @@ export default function VoiceBipRoute() {
       onSave={(note: VoiceNote) => {
         setVoiceNotes(prev => [note, ...prev]);
         syncVoiceNote(note);
-        emitEvent('voice_completed');
       }}
     />
   );

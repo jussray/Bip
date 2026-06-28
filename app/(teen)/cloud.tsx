@@ -14,6 +14,7 @@ export default function CloudRoute() {
       selectedSekret={selectedSekret}
       BottomNav={null}
       setScreen={(screen: string) => navigateTo(screen, 'teen')}
+      backTarget="calm"
     />
   );
 }

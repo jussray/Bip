@@ -25,9 +25,13 @@
 ALTER TABLE public.journal_entries
   ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'private';
 
-ALTER TABLE public.journal_entries
-  ADD CONSTRAINT IF NOT EXISTS journal_entries_visibility_check
-  CHECK (visibility IN ('private', 'shared_with_parent', 'crew', 'circle'));
+DO $$
+BEGIN
+  ALTER TABLE public.journal_entries
+    ADD CONSTRAINT journal_entries_visibility_check
+    CHECK (visibility IN ('private', 'shared_with_parent', 'crew', 'circle'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Parent-read: linked parent may read entries the teen explicitly shared.
 DROP POLICY IF EXISTS "journal_entries: linked_parent_read_shared" ON public.journal_entries;
@@ -56,9 +60,13 @@ CREATE INDEX IF NOT EXISTS idx_journal_visibility
 ALTER TABLE public.mood_history
   ADD COLUMN IF NOT EXISTS visibility text NOT NULL DEFAULT 'private';
 
-ALTER TABLE public.mood_history
-  ADD CONSTRAINT IF NOT EXISTS mood_history_visibility_check
-  CHECK (visibility IN ('private', 'shared_with_parent', 'crew', 'circle'));
+DO $$
+BEGIN
+  ALTER TABLE public.mood_history
+    ADD CONSTRAINT mood_history_visibility_check
+    CHECK (visibility IN ('private', 'shared_with_parent', 'crew', 'circle'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Parent-read: linked parent may read mood check-ins the teen explicitly shared.
 DROP POLICY IF EXISTS "mood_history: linked_parent_read_shared" ON public.mood_history;

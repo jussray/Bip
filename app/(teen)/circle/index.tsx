@@ -3,11 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { BipCrewScreen } from '@screens/BipCrewScreen';
+import { MessagesScreen } from '@screens/MessagesScreen';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
 import AnonymousCircle from './feed';
 
-type Tab = 'circle' | 'crew';
+type Tab = 'circle' | 'crew' | 'messages';
 
 export default function TeenCircleRoute() {
   const {
@@ -17,6 +18,8 @@ export default function TeenCircleRoute() {
   } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
   const [tab, setTab] = useState<Tab>('circle');
+
+  const goTo = (screen: string) => router.push(routeForSide('teen', screen) as any);
 
   return (
     <View style={s.root}>
@@ -34,10 +37,16 @@ export default function TeenCircleRoute() {
           <Text style={[s.tabText, tab === 'crew' && s.tabTextActive]}>🤝 Crew</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[s.tab, tab === 'messages' && s.tabActive]}
+          onPress={() => setTab('messages')}
+        >
+          <Text style={[s.tabText, tab === 'messages' && s.tabTextActive]}>💜 Messages</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={s.weatherBtn}
           onPress={() => router.push('/(teen)/circle/weather' as any)}
         >
-          <Text style={s.weatherBtnText}>🌧️ Weather</Text>
+          <Text style={s.weatherBtnText}>🌧️</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={s.profileBtn}
@@ -56,7 +65,7 @@ export default function TeenCircleRoute() {
       <View style={s.content}>
         {tab === 'circle' ? (
           <AnonymousCircle />
-        ) : (
+        ) : tab === 'crew' ? (
           <BipCrewScreen
             t={t}
             mood={mood}
@@ -65,7 +74,13 @@ export default function TeenCircleRoute() {
             setCrewMembers={setCrewMembers}
             crewCheckIns={crewCheckIns}
             setCrewCheckIns={setCrewCheckIns}
-            setScreen={(screen: string) => router.push(routeForSide('teen', screen) as any)}
+            setScreen={goTo}
+            BottomNav={null}
+          />
+        ) : (
+          <MessagesScreen
+            side="teen"
+            setScreen={goTo}
             BottomNav={null}
           />
         )}

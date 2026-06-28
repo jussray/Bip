@@ -18,6 +18,7 @@ import React, {
 } from 'react';
 import { Animated } from 'react-native';
 import { useSekretState } from '@/hooks/useSekretState';
+import { useStreak } from '@/hooks/useStreak';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { HOME_MESSAGES } from '@constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -152,6 +153,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
+  const { streakDays } = useStreak();
   const { syncStatus, withSyncWrap } = useSyncStatus();
 
   useEffect(() => {
@@ -192,9 +194,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       circleCount:  s.circlePosts.length,
       comfortCount: 0,
       crewCount:    s.crewCheckIns.length,
-      streakDays:   0,
+      streakDays,
     });
-  }, [s.isLoading, s.userSide]);
+  }, [s.isLoading, s.userSide, streakDays]);
 
   function selectMood(m: string) {
     const entry: MoodEntry = { id: Date.now(), mood: m, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() };
