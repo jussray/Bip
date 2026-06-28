@@ -2,8 +2,7 @@ import React from 'react';
 import { ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useAppContext } from '@/context/AppContext';
-import { getRoomBg } from '@constants/theme';
+import { IMAGES } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
 
 const LINKS = [
@@ -19,18 +18,12 @@ const LINKS = [
 ];
 
 export default function ParentMoreRoute() {
-  const { selectedSekret } = useAppContext();
-  const character = selectedSekret === 'rylane' || selectedSekret === 'cloud' || selectedSekret === 'night'
-    ? selectedSekret
-    : 'raylene';
-  const roomBg = getRoomBg(character, 'night');
-
   function open(route: string) {
     router.push(routeForSide('parent', route) as any);
   }
 
   return (
-    <ImageBackground source={roomBg} style={styles.root} resizeMode="cover">
+    <ImageBackground source={IMAGES.parentHomeBg} style={styles.root} resizeMode="cover">
       <LinearGradient
         colors={['rgba(36,16,56,0.68)', 'rgba(22,11,43,0.84)', 'rgba(13,9,20,0.95)']}
         style={StyleSheet.absoluteFill}
@@ -53,6 +46,9 @@ export default function ParentMoreRoute() {
           </TouchableOpacity>
         ))}
 
+        <TouchableOpacity style={styles.switchButton} onPress={() => router.push('/(teen)/room' as any)}>
+          <Text style={styles.buttonText}>💜 Go to Teen Room</Text>
+        </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
   );
@@ -87,5 +83,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#7C3AED',
   },
-buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+  switchButton: {
+    padding: 16,
+    borderRadius: 18,
+    marginTop: 4,
+    marginBottom: 12,
+    alignItems: 'center',
+    backgroundColor: '#4338CA',
+  },
+  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
 });
