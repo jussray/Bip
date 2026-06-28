@@ -53,9 +53,6 @@ export default function ParentMoreRoute() {
           </TouchableOpacity>
         ))}
 
-        <TouchableOpacity style={styles.switchButton} onPress={() => router.push('/(teen)/room' as any)}>
-          <Text style={styles.buttonText}>💜 Go to Teen Room</Text>
-        </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
   );
@@ -90,13 +87,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#7C3AED',
   },
-  switchButton: {
-    padding: 16,
-    borderRadius: 18,
-    marginTop: 4,
-    marginBottom: 12,
-    alignItems: 'center',
-    backgroundColor: '#4338CA',
-  },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
+buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
 });
