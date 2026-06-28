@@ -16,13 +16,13 @@ test('profile links growth and support to their owning spaces instead of duplica
   const profile = read('app/(teen)/profile.tsx');
   assert.match(profile, /Growth lives in Bippin 2/);
   assert.match(profile, /Support lives in Bridge/);
-  assert.match(profile, /\/(teen)\/bippin2|\/\(teen\)\/bippin2/);
+  assert.match(profile, /\/\(teen\)\/bippin2/);
   assert.match(profile, /\/\(teen\)\/bridge/);
 });
 
 test('Circle exposes a direct doorway to social identity', () => {
   const circle = read('app/(teen)/circle/index.tsx');
-  assert.match(circle, /\/(teen)\/profile|\/\(teen\)\/profile/);
+  assert.match(circle, /\/\(teen\)\/profile/);
   assert.match(circle, /Your Circle identity is separate from your private account/);
 });
 
@@ -30,4 +30,27 @@ test('Circle identity copy preserves privacy boundaries', () => {
   const profile = read('app/(teen)/profile.tsx');
   assert.match(profile, /separate from your private account identity/);
   assert.match(profile, /Crew sees only what you choose to share/);
+});
+
+test('profile includes Memories as a safe scrapbook layer', () => {
+  const profile = read('app/(teen)/profile.tsx');
+  assert.match(profile, /Memories/);
+  assert.match(profile, /Profile Memories/);
+  assert.match(profile, /Every space creates memories/);
+  assert.match(profile, /safe scrapbook markers/);
+});
+
+test('profile memories point back to owning spaces instead of exposing private content', () => {
+  const profile = read('app/(teen)/profile.tsx');
+  for (const route of [
+    '/(teen)/pages',
+    '/(teen)/circle',
+    '/(teen)/bippin2',
+    '/(teen)/calm',
+    '/(teen)/room',
+  ]) {
+    assert.match(profile, new RegExp(route.replace(/[()]/g, '\\$&')));
+  }
+  assert.match(profile, /Pages protects the full story/);
+  assert.match(profile, /Profile only remembers/);
 });
