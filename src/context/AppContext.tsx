@@ -20,6 +20,7 @@ import { Animated } from 'react-native';
 import { useSekretState } from '@/hooks/useSekretState';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { HOME_MESSAGES } from '@constants/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { syncMood } from '@/utils/sync';
 import { initPointLedger } from '@/features/activity/ledger';
 import type {
@@ -126,6 +127,9 @@ interface AppContextValue {
   reactToParentPost: (postId: number, reaction: string) => void;
   completeParentOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 
+  // Teen profile
+  teenGender: 'girl' | 'boy' | 'other' | null;
+
   // Reset
   resetApp: () => void;
 }
@@ -144,10 +148,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [circlePosts, setCirclePosts] = useState<CirclePost[]>([]);
   const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [teenGender, setTeenGender] = useState<'girl' | 'boy' | 'other' | null>(null);
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const s = useSekretState();
   const { syncStatus, withSyncWrap } = useSyncStatus();
+
+  useEffect(() => {
+    AsyncStorage.getItem('teen_profile_data').then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw) as { gender?: string };
+        if (data.gender === 'girl' || data.gender === 'boy' || data.gender === 'other') {
+          setTeenGender(data.gender);
+        }
+      } catch { /* ignore corrupt data */ }
+    });
+  }, []);
 
   useEffect(() => {
     Animated.loop(
@@ -330,6 +347,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     saveParentCirclePost,
     reactToParentPost,
     completeParentOracleSession,
+    teenGender,
     resetApp,
   };
 

@@ -130,7 +130,21 @@ export default function CompanionChatScreen() {
   const [loading, setLoading]                     = useState(false);
   const [safetyExperience, setSafetyExperience]   = useState<SafetyExperience | null>(null);
   const [comfortNudge, setComfortNudge]           = useState<string | null>(null);
+  const [teenGender, setTeenGender]               = useState<'girl' | 'boy' | 'other' | null>(null);
   const listRef = useRef<FlatList<ChatMsg>>(null);
+
+  // Load teen gender from profile so companions can tailor their responses
+  useEffect(() => {
+    AsyncStorage.getItem('teen_profile_data').then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw) as { gender?: string };
+        if (data.gender === 'girl' || data.gender === 'boy' || data.gender === 'other') {
+          setTeenGender(data.gender as 'girl' | 'boy' | 'other');
+        }
+      } catch { /* ignore */ }
+    });
+  }, []);
 
   // Load history on mount; show companion greeting if empty
   useEffect(() => {
@@ -181,6 +195,7 @@ export default function CompanionChatScreen() {
         companionId,
         surface,
         text: userMsg.text,
+        teenGender,
       });
       const replyText = result.reply;
 

@@ -185,6 +185,7 @@ export default function TeenPagesRoute() {
     selectedSekret,
     setSelectedSekret,
     patchJournalEntry,
+    teenGender,
   } = useAppContext();
 
   // ── Companion state ────────────────────────────────────────────────────────
@@ -357,6 +358,7 @@ export default function TeenPagesRoute() {
         text,
         mood,
         history:     recentHistory,
+        teenGender,
       });
       const resolvedState = inferState(result.avatarState, mood, result.tone);
       patchJournalEntry(id, { sekretReply: result.reply, sekretAvatarState: resolvedState });

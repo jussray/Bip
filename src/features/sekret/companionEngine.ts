@@ -54,6 +54,7 @@ export interface CompanionReplyInput {
   mood?: string;
   history?: SekretHistoryTurn[];
   parentSharingEnabled?: boolean;
+  teenGender?: 'girl' | 'boy' | 'other' | null;
 }
 
 export interface CompanionReplyResult {
@@ -174,6 +175,9 @@ export async function sendCompanionMessage(
 ): Promise<CompanionReplyResult> {
   emitEvent('companion_message', { personalityId: input.companionId });
 
+  const memory: Record<string, unknown> = {};
+  if (input.teenGender) memory.teenGender = input.teenGender;
+
   const result = await fetchSekretBrainReply({
     characterId:          normalizeSekretCharacter(input.companionId),
     surface:              toBackendSurface(input.surface),
@@ -181,6 +185,7 @@ export async function sendCompanionMessage(
     mood:                 input.mood,
     history:              input.history,
     parentSharingEnabled: input.parentSharingEnabled,
+    memory:               Object.keys(memory).length > 0 ? memory : undefined,
   });
 
   return {
