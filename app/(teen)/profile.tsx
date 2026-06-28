@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -8,8 +8,16 @@ const PROFILE_KEY = 'teen_profile_data';
 const CIRCLE_IDENTITY_KEY = 'teen_circle_identity';
 
 type Gender = 'girl' | 'boy' | 'other';
-type ProfileTab = 'identity' | 'circle';
+type ProfileTab = 'identity' | 'circle' | 'memories';
 type ChatMode = 'open' | 'quiet';
+
+type MemoryCard = {
+  id: string;
+  emoji: string;
+  title: string;
+  body: string;
+  route: string;
+};
 
 const GENDER_OPTIONS: { id: Gender; label: string; desc: string }[] = [
   { id: 'girl', label: '🌸 Girl', desc: 'Start with Raylene' },
@@ -37,7 +45,15 @@ function makeBipId() {
 }
 
 export default function TeenProfile() {
-  const { setSelectedSekret } = useAppContext();
+  const {
+    setSelectedSekret,
+    entries,
+    circlePosts,
+    crewMembers,
+    comfortSessions,
+    streakDays,
+    selectedSekret,
+  } = useAppContext();
   const [tab, setTab] = useState<ProfileTab>('identity');
   const [name, setName] = useState('');
   const [pronouns, setPronouns] = useState('');
@@ -73,6 +89,71 @@ export default function TeenProfile() {
       }
     })();
   }, []);
+
+  const memories = useMemo<MemoryCard[]>(() => {
+    const cards: MemoryCard[] = [];
+    const companionName = selectedSekret === 'rylane' ? 'Rylane' : selectedSekret === 'cloud' ? 'Cloud' : selectedSekret === 'night' ? 'Night' : 'Raylene';
+
+    if (entries.length > 0) {
+      cards.push({
+        id: 'pages',
+        emoji: '📖',
+        title: `${entries.length} private Page${entries.length === 1 ? '' : 's'} written`,
+        body: 'Pages protects the full story. Profile only remembers that this part of your life exists.',
+        route: '/(teen)/pages',
+      });
+    }
+
+    if (circlePosts.length > 0) {
+      cards.push({
+        id: 'circle',
+        emoji: '🌐',
+        title: `${circlePosts.length} Circle moment${circlePosts.length === 1 ? '' : 's'}`,
+        body: 'Circle keeps the community context. Profile keeps the scrapbook marker.',
+        route: '/(teen)/circle',
+      });
+    }
+
+    if (crewMembers.length > 0) {
+      cards.push({
+        id: 'crew',
+        emoji: '🤝',
+        title: `${crewMembers.length} Crew connection${crewMembers.length === 1 ? '' : 's'}`,
+        body: 'Your people live in Circle. Your profile remembers that you built support.',
+        route: '/(teen)/circle',
+      });
+    }
+
+    if (streakDays > 0) {
+      cards.push({
+        id: 'streak',
+        emoji: '🌱',
+        title: `${streakDays}-day growth streak`,
+        body: 'Bippin 2 owns the full growth path. Profile keeps the milestone memory.',
+        route: '/(teen)/bippin2',
+      });
+    }
+
+    if (comfortSessions.length > 0) {
+      cards.push({
+        id: 'calm',
+        emoji: '🌙',
+        title: `${comfortSessions.length} calm reset${comfortSessions.length === 1 ? '' : 's'}`,
+        body: 'Calm owns the tools. Profile remembers the moments you got through.',
+        route: '/(teen)/calm',
+      });
+    }
+
+    cards.push({
+      id: 'companion',
+      emoji: '✨',
+      title: `${companionName} is your current Se'kret`,
+      body: 'Your companion is part of how Bip recognizes you across rooms, pages, and voice.',
+      route: '/(teen)/room',
+    });
+
+    return cards;
+  }, [entries.length, circlePosts.length, crewMembers.length, comfortSessions.length, streakDays, selectedSekret]);
 
   function pickGender(g: Gender) {
     setGender(g);
@@ -115,6 +196,9 @@ export default function TeenProfile() {
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tab, tab === 'circle' && styles.tabActive]} onPress={() => setTab('circle')}>
           <Text style={[styles.tabText, tab === 'circle' && styles.tabTextActive]}>Circle Identity</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tab, tab === 'memories' && styles.tabActive]} onPress={() => setTab('memories')}>
+          <Text style={[styles.tabText, tab === 'memories' && styles.tabTextActive]}>Memories</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,7 +247,7 @@ export default function TeenProfile() {
             </TouchableOpacity>
           </View>
         </>
-      ) : (
+      ) : tab === 'circle' ? (
         <>
           <View style={styles.identityCard}>
             <Text style={styles.identityLabel}>How Circle sees you</Text>
@@ -200,6 +284,22 @@ export default function TeenProfile() {
             <Text style={styles.ownerText}>Your Crew sees only what you choose to share.</Text>
           </TouchableOpacity>
         </>
+      ) : (
+        <>
+          <View style={styles.identityCard}>
+            <Text style={styles.identityLabel}>Profile Memories</Text>
+            <Text style={styles.identityHelp}>Every space creates memories. Profile collects safe scrapbook markers without exposing private content.</Text>
+          </View>
+          {memories.map(memory => (
+            <TouchableOpacity key={memory.id} style={styles.memoryCard} onPress={() => router.push(memory.route as any)}>
+              <Text style={styles.memoryEmoji}>{memory.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ownerTitle}>{memory.title}</Text>
+                <Text style={styles.ownerText}>{memory.body}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </>
       )}
 
       <TouchableOpacity disabled={!ready} onPress={saveProfile} style={[styles.button, !ready && styles.disabled]}>
@@ -217,7 +317,7 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   tab: { flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)' },
   tabActive: { backgroundColor: 'rgba(196,181,253,0.18)', borderWidth: 1, borderColor: '#c4b5fd' },
-  tabText: { color: '#7f7487', fontWeight: '800' },
+  tabText: { color: '#7f7487', fontWeight: '800', fontSize: 12 },
   tabTextActive: { color: '#eee7f2' },
   identityCard: { padding: 16, borderRadius: 18, backgroundColor: 'rgba(196,181,253,0.10)', borderWidth: 1, borderColor: '#c4b5fd44', marginBottom: 12 },
   identityLabel: { color: '#c4b5fd', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
@@ -238,6 +338,8 @@ const styles = StyleSheet.create({
   ownerCard: { padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: '#ffffff18', marginTop: 12 },
   ownerTitle: { color: '#fff', fontSize: 14, fontWeight: '900' },
   ownerText: { color: '#a99fb1', fontSize: 12, lineHeight: 18, marginTop: 5 },
+  memoryCard: { flexDirection: 'row', gap: 12, padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: '#ffffff18', marginBottom: 10 },
+  memoryEmoji: { fontSize: 24, width: 34, textAlign: 'center' },
   button: { minHeight: 54, borderRadius: 18, backgroundColor: '#c4b5fd', alignItems: 'center', justifyContent: 'center', marginTop: 30 },
   disabled: { opacity: 0.4 },
   buttonText: { color: '#160b24', fontSize: 15, fontWeight: '900' },
