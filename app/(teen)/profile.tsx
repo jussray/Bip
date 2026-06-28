@@ -1,185 +1,64 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 
-const PROFILE_KEY = 'teen_profile_data';
-const CIRCLE_IDENTITY_KEY = 'teen_circle_identity';
-
 type Gender = 'girl' | 'boy' | 'other';
-type ProfileTab = 'identity' | 'circle' | 'memories';
-type ChatMode = 'open' | 'quiet';
-
-type MemoryCard = {
-  id: string;
-  emoji: string;
-  title: string;
-  body: string;
-  route: string;
-};
 
 const GENDER_OPTIONS: { id: Gender; label: string; desc: string }[] = [
-  { id: 'girl', label: '🌸 Girl', desc: 'Start with Raylene' },
-  { id: 'boy', label: '⚡ Boy', desc: 'Start with Rylane' },
-  { id: 'other', label: '✨ My own way', desc: 'You choose first' },
+  { id: 'girl', label: '🌸 Girl',      desc: 'Start with Raylene' },
+  { id: 'boy',  label: '⚡ Boy',       desc: 'Start with Rylane'  },
+  { id: 'other', label: '✨ My own way', desc: 'You choose first'  },
 ];
 
 const COMPANION_FOR_GENDER: Record<Gender, 'raylene' | 'rylane'> = {
-  girl: 'raylene',
-  boy: 'rylane',
+  girl:  'raylene',
+  boy:   'rylane',
   other: 'raylene',
 };
 
 const ALL_OPTIONS = [
   { id: 'raylene', label: 'Raylene', desc: 'Warm + protective' },
-  { id: 'rylane', label: 'Rylane', desc: 'Direct + loyal' },
-  { id: 'cloud', label: 'Cloud', desc: 'Soft + no pressure' },
-  { id: 'night', label: 'Night', desc: 'Quiet + steady' },
+  { id: 'rylane',  label: 'Rylane',  desc: 'Direct + loyal'    },
+  { id: 'cloud',   label: 'Cloud',   desc: 'Soft + no pressure' },
+  { id: 'night',   label: 'Night',   desc: 'Quiet + steady'    },
 ] as const;
 
 type OptionId = (typeof ALL_OPTIONS)[number]['id'];
 
-function makeBipId() {
-  return `BIP-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+function sekretToChoice(s: string): OptionId {
+  if (s === 'soft') return 'raylene';
+  const valid: OptionId[] = ['raylene', 'rylane', 'cloud', 'night'];
+  return valid.includes(s as OptionId) ? (s as OptionId) : 'raylene';
 }
 
 export default function TeenProfile() {
-  const {
-    setSelectedSekret,
-    entries,
-    circlePosts,
-    crewMembers,
-    crewCheckIns,
-    moodHistory,
-    selectedSekret,
-  } = useAppContext();
-  const [tab, setTab] = useState<ProfileTab>('identity');
+  const { setSelectedSekret, selectedSekret } = useAppContext();
   const [name, setName] = useState('');
-  const [pronouns, setPronouns] = useState('');
   const [gender, setGender] = useState<Gender | null>(null);
-  const [choice, setChoice] = useState<OptionId>('raylene');
-  const [bipId, setBipId] = useState(makeBipId);
-  const [circleName, setCircleName] = useState('');
-  const [circleAvatar, setCircleAvatar] = useState('💜');
-  const [supportPreference, setSupportPreference] = useState('just listen');
-  const [chatMode, setChatMode] = useState<ChatMode>('quiet');
-  const [saved, setSaved] = useState(false);
+  const [choice, setChoice] = useState<OptionId>(() => sekretToChoice(selectedSekret));
 
   useEffect(() => {
-    void (async () => {
-      const [profileRaw, circleRaw] = await Promise.all([
-        AsyncStorage.getItem(PROFILE_KEY),
-        AsyncStorage.getItem(CIRCLE_IDENTITY_KEY),
-      ]);
-      if (profileRaw) {
-        const profile = JSON.parse(profileRaw);
-        setName(profile.name ?? '');
-        setPronouns(profile.pronouns ?? '');
-        setGender(profile.gender ?? null);
-        setChoice(profile.choice ?? 'raylene');
-        setBipId(profile.bipId ?? makeBipId());
-      }
-      if (circleRaw) {
-        const circle = JSON.parse(circleRaw);
-        setCircleName(circle.circleName ?? '');
-        setCircleAvatar(circle.circleAvatar ?? '💜');
-        setSupportPreference(circle.supportPreference ?? 'just listen');
-        setChatMode(circle.chatMode === 'open' ? 'open' : 'quiet');
-      }
-    })();
+    AsyncStorage.getItem('teen_profile_data').then(raw => {
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data.name) setName(data.name);
+      if (data.gender) setGender(data.gender as Gender);
+      if (data.choice) setChoice(data.choice as OptionId);
+    }).catch(() => {});
   }, []);
-
-  const memories = useMemo<MemoryCard[]>(() => {
-    const cards: MemoryCard[] = [];
-    const companionName = selectedSekret === 'rylane' ? 'Rylane' : selectedSekret === 'cloud' ? 'Cloud' : selectedSekret === 'night' ? 'Night' : 'Raylene';
-
-    if (entries.length > 0) {
-      cards.push({
-        id: 'pages',
-        emoji: '📖',
-        title: `${entries.length} private Page${entries.length === 1 ? '' : 's'} written`,
-        body: 'Pages protects the full story. Profile only remembers that this part of your life exists.',
-        route: '/(teen)/pages',
-      });
-    }
-
-    if (circlePosts.length > 0) {
-      cards.push({
-        id: 'circle',
-        emoji: '🌐',
-        title: `${circlePosts.length} Circle moment${circlePosts.length === 1 ? '' : 's'}`,
-        body: 'Circle keeps the community context. Profile keeps the scrapbook marker.',
-        route: '/(teen)/circle',
-      });
-    }
-
-    if (crewMembers.length > 0) {
-      cards.push({
-        id: 'crew',
-        emoji: '🤝',
-        title: `${crewMembers.length} Crew connection${crewMembers.length === 1 ? '' : 's'}`,
-        body: 'Your people live in Circle. Your profile remembers that you built support.',
-        route: '/(teen)/circle',
-      });
-    }
-
-    if (crewCheckIns.length > 0) {
-      cards.push({
-        id: 'crew-checkins',
-        emoji: '🫶',
-        title: `${crewCheckIns.length} Crew check-in${crewCheckIns.length === 1 ? '' : 's'}`,
-        body: 'Circle owns the accountability flow. Profile remembers the care you practiced.',
-        route: '/(teen)/circle',
-      });
-    }
-
-    if (moodHistory.length > 0) {
-      cards.push({
-        id: 'calm',
-        emoji: '🌙',
-        title: `${moodHistory.length} mood check-in${moodHistory.length === 1 ? '' : 's'}`,
-        body: 'Calm owns regulation. Profile remembers the moments you noticed what you felt.',
-        route: '/(teen)/calm',
-      });
-    }
-
-    cards.push({
-      id: 'companion',
-      emoji: '✨',
-      title: `${companionName} is your current Se'kret`,
-      body: 'Your companion is part of how Bip recognizes you across rooms, pages, and voice.',
-      route: '/(teen)/room',
-    });
-
-    return cards;
-  }, [entries.length, circlePosts.length, crewMembers.length, crewCheckIns.length, moodHistory.length, selectedSekret]);
 
   function pickGender(g: Gender) {
     setGender(g);
     setChoice(COMPANION_FOR_GENDER[g]);
   }
 
-  async function saveProfile() {
-    if (!name.trim() || !gender) return;
-    await Promise.all([
-      AsyncStorage.setItem('teen_profile_done', 'true'),
-      AsyncStorage.setItem(PROFILE_KEY, JSON.stringify({
-        name: name.trim(),
-        pronouns: pronouns.trim(),
-        choice,
-        gender,
-        bipId,
-      })),
-      AsyncStorage.setItem(CIRCLE_IDENTITY_KEY, JSON.stringify({
-        circleName: circleName.trim() || name.trim(),
-        circleAvatar,
-        supportPreference: supportPreference.trim(),
-        chatMode,
-      })),
-    ]);
+  async function finish() {
+    await AsyncStorage.setItem('teen_profile_done', 'true');
+    await AsyncStorage.setItem('teen_profile_data', JSON.stringify({ name: name.trim(), choice, gender }));
     setSelectedSekret(choice === 'raylene' ? 'soft' : choice);
-    setSaved(true);
+    router.replace('/(teen)/room');
   }
 
   const ready = name.trim().length > 0 && gender !== null;
@@ -187,160 +66,71 @@ export default function TeenProfile() {
   return (
     <ScrollView contentContainerStyle={styles.root} showsVerticalScrollIndicator={false}>
       <Text style={styles.kicker}>PROFILE</Text>
-      <Text style={styles.title}>Your identity across Bip</Text>
-      <Text style={styles.sub}>One identity, expressed differently in each space.</Text>
+      <Text style={styles.title}>Make this side yours</Text>
+      <Text style={styles.sub}>Pick what this space should remember for you.</Text>
 
-      <View style={styles.tabs}>
-        <TouchableOpacity style={[styles.tab, tab === 'identity' && styles.tabActive]} onPress={() => setTab('identity')}>
-          <Text style={[styles.tabText, tab === 'identity' && styles.tabTextActive]}>My Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, tab === 'circle' && styles.tabActive]} onPress={() => setTab('circle')}>
-          <Text style={[styles.tabText, tab === 'circle' && styles.tabTextActive]}>Circle Identity</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, tab === 'memories' && styles.tabActive]} onPress={() => setTab('memories')}>
-          <Text style={[styles.tabText, tab === 'memories' && styles.tabTextActive]}>Memories</Text>
-        </TouchableOpacity>
+      <Text style={styles.label}>Name or nickname</Text>
+      <TextInput
+        value={name}
+        onChangeText={setName}
+        placeholder="nickname"
+        placeholderTextColor="#7f7487"
+        style={styles.input}
+      />
+
+      <Text style={styles.label}>You are</Text>
+      <View style={styles.grid}>
+        {GENDER_OPTIONS.map(g => (
+          <TouchableOpacity
+            key={g.id}
+            onPress={() => pickGender(g.id)}
+            style={[styles.card, gender === g.id && styles.active]}
+          >
+            <Text style={styles.cardText}>{g.label}</Text>
+            <Text style={styles.cardDesc}>{g.desc}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      {tab === 'identity' ? (
-        <>
-          <View style={styles.identityCard}>
-            <Text style={styles.identityLabel}>Your Bip ID</Text>
-            <Text style={styles.bipId}>{bipId}</Text>
-            <Text style={styles.identityHelp}>Use this to connect safely without exposing your real name.</Text>
-          </View>
-
-          <Text style={styles.label}>Name or nickname</Text>
-          <TextInput value={name} onChangeText={setName} placeholder="nickname" placeholderTextColor="#7f7487" style={styles.input} />
-
-          <Text style={styles.label}>Pronouns</Text>
-          <TextInput value={pronouns} onChangeText={setPronouns} placeholder="optional" placeholderTextColor="#7f7487" style={styles.input} />
-
-          <Text style={styles.label}>You are</Text>
-          <View style={styles.grid}>
-            {GENDER_OPTIONS.map(g => (
-              <TouchableOpacity key={g.id} onPress={() => pickGender(g.id)} style={[styles.card, gender === g.id && styles.active]}>
-                <Text style={styles.cardText}>{g.label}</Text>
-                <Text style={styles.cardDesc}>{g.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={[styles.label, styles.labelSpaced]}>First Se'kret</Text>
-          <View style={styles.grid}>
-            {ALL_OPTIONS.map(item => (
-              <TouchableOpacity key={item.id} onPress={() => setChoice(item.id)} style={[styles.card, choice === item.id && styles.active]}>
-                <Text style={styles.cardText}>{item.label}</Text>
-                <Text style={styles.cardDesc}>{item.desc}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.ownerLinks}>
-            <TouchableOpacity style={styles.ownerCard} onPress={() => router.push('/(teen)/bippin2' as any)}>
-              <Text style={styles.ownerTitle}>🌱 Growth lives in Bippin 2</Text>
-              <Text style={styles.ownerText}>Streaks, rewards, milestones, achievements, and growth history.</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.ownerCard} onPress={() => router.push('/(teen)/bridge' as any)}>
-              <Text style={styles.ownerTitle}>🌉 Support lives in Bridge</Text>
-              <Text style={styles.ownerText}>Parent connection, sharing permissions, and support history.</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      ) : tab === 'circle' ? (
-        <>
-          <View style={styles.identityCard}>
-            <Text style={styles.identityLabel}>How Circle sees you</Text>
-            <Text style={styles.identityHelp}>This is separate from your private account identity.</Text>
-          </View>
-
-          <Text style={styles.label}>Circle name</Text>
-          <TextInput value={circleName} onChangeText={setCircleName} placeholder="anonymous display name" placeholderTextColor="#7f7487" style={styles.input} />
-
-          <Text style={styles.label}>Circle avatar</Text>
-          <View style={styles.emojiRow}>
-            {['💜', '🌙', '☁️', '🌟', '🍃', '🫶'].map(emoji => (
-              <TouchableOpacity key={emoji} onPress={() => setCircleAvatar(emoji)} style={[styles.emoji, circleAvatar === emoji && styles.active]}>
-                <Text style={styles.emojiText}>{emoji}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={styles.label}>How should Crew support you?</Text>
-          <TextInput value={supportPreference} onChangeText={setSupportPreference} placeholder="just listen, send memes, check in tomorrow..." placeholderTextColor="#7f7487" style={styles.input} />
-
-          <Text style={styles.label}>Availability</Text>
-          <View style={styles.grid}>
-            {(['open', 'quiet'] as ChatMode[]).map(mode => (
-              <TouchableOpacity key={mode} onPress={() => setChatMode(mode)} style={[styles.card, chatMode === mode && styles.active]}>
-                <Text style={styles.cardText}>{mode === 'open' ? '💬 Open to chats' : '🌙 Quiet mode'}</Text>
-                <Text style={styles.cardDesc}>{mode === 'open' ? 'Crew can check in' : 'Low-pressure presence'}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.ownerCard} onPress={() => router.push('/(teen)/circle' as any)}>
-            <Text style={styles.ownerTitle}>👥 View this identity in Circle</Text>
-            <Text style={styles.ownerText}>Your Crew sees only what you choose to share.</Text>
+      <Text style={[styles.label, styles.labelSpaced]}>First Se'kret</Text>
+      <View style={styles.grid}>
+        {ALL_OPTIONS.map(item => (
+          <TouchableOpacity
+            key={item.id}
+            onPress={() => setChoice(item.id)}
+            style={[styles.card, choice === item.id && styles.active]}
+          >
+            <Text style={styles.cardText}>{item.label}</Text>
+            <Text style={styles.cardDesc}>{item.desc}</Text>
           </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <View style={styles.identityCard}>
-            <Text style={styles.identityLabel}>Profile Memories</Text>
-            <Text style={styles.identityHelp}>Every space creates memories. Profile collects safe scrapbook markers without exposing private content.</Text>
-          </View>
-          {memories.map(memory => (
-            <TouchableOpacity key={memory.id} style={styles.memoryCard} onPress={() => router.push(memory.route as any)}>
-              <Text style={styles.memoryEmoji}>{memory.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ownerTitle}>{memory.title}</Text>
-                <Text style={styles.ownerText}>{memory.body}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </>
-      )}
+        ))}
+      </View>
 
-      <TouchableOpacity disabled={!ready} onPress={saveProfile} style={[styles.button, !ready && styles.disabled]}>
-        <Text style={styles.buttonText}>{saved ? 'Saved ✓' : 'Save my Bip identity'}</Text>
+      <TouchableOpacity
+        disabled={!ready}
+        onPress={finish}
+        style={[styles.button, !ready && styles.disabled]}
+      >
+        <Text style={styles.buttonText}>Enter my room</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flexGrow: 1, backgroundColor: '#0d0820', padding: 22, paddingTop: 60, paddingBottom: 40 },
-  kicker: { color: '#c4b5fd', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
-  title: { color: '#fff', fontSize: 30, fontWeight: '900', marginTop: 8 },
-  sub: { color: '#a99fb1', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 20 },
-  tabs: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  tab: { flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)' },
-  tabActive: { backgroundColor: 'rgba(196,181,253,0.18)', borderWidth: 1, borderColor: '#c4b5fd' },
-  tabText: { color: '#7f7487', fontWeight: '800', fontSize: 12 },
-  tabTextActive: { color: '#eee7f2' },
-  identityCard: { padding: 16, borderRadius: 18, backgroundColor: 'rgba(196,181,253,0.10)', borderWidth: 1, borderColor: '#c4b5fd44', marginBottom: 12 },
-  identityLabel: { color: '#c4b5fd', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
-  bipId: { color: '#fff', fontSize: 24, fontWeight: '900', marginTop: 6 },
-  identityHelp: { color: '#a99fb1', fontSize: 12, lineHeight: 18, marginTop: 6 },
-  label: { color: '#eee7f2', fontSize: 12, fontWeight: '900', marginBottom: 8, marginTop: 16 },
-  labelSpaced: { marginTop: 24 },
-  input: { minHeight: 52, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff18', backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', paddingHorizontal: 14 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  card: { width: '48%', minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff14', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)', padding: 10 },
-  active: { borderColor: '#c4b5fd', backgroundColor: 'rgba(196,181,253,0.16)' },
-  cardText: { color: '#eee7f2', fontSize: 13, fontWeight: '800', textAlign: 'center' },
-  cardDesc: { color: '#7f7487', fontSize: 10, marginTop: 3, textAlign: 'center' },
-  emojiRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  emoji: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)' },
-  emojiText: { fontSize: 22 },
-  ownerLinks: { gap: 10, marginTop: 22 },
-  ownerCard: { padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: '#ffffff18', marginTop: 12 },
-  ownerTitle: { color: '#fff', fontSize: 14, fontWeight: '900' },
-  ownerText: { color: '#a99fb1', fontSize: 12, lineHeight: 18, marginTop: 5 },
-  memoryCard: { flexDirection: 'row', gap: 12, padding: 16, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: '#ffffff18', marginBottom: 10 },
-  memoryEmoji: { fontSize: 24, width: 34, textAlign: 'center' },
-  button: { minHeight: 54, borderRadius: 18, backgroundColor: '#c4b5fd', alignItems: 'center', justifyContent: 'center', marginTop: 30 },
-  disabled: { opacity: 0.4 },
-  buttonText: { color: '#160b24', fontSize: 15, fontWeight: '900' },
+  root:         { flexGrow: 1, backgroundColor: '#0d0820', padding: 22, paddingTop: 60, paddingBottom: 40 },
+  kicker:       { color: '#c4b5fd', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
+  title:        { color: '#fff', fontSize: 30, fontWeight: '900', marginTop: 8 },
+  sub:          { color: '#a99fb1', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 28 },
+  label:        { color: '#eee7f2', fontSize: 12, fontWeight: '900', marginBottom: 8, marginTop: 16 },
+  labelSpaced:  { marginTop: 24 },
+  input:        { height: 52, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff18', backgroundColor: 'rgba(255,255,255,0.05)', color: '#fff', paddingHorizontal: 14 },
+  grid:         { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  card:         { width: '48%', minHeight: 64, borderRadius: 16, borderWidth: 1, borderColor: '#ffffff14', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.04)', padding: 10 },
+  active:       { borderColor: '#c4b5fd', backgroundColor: 'rgba(196,181,253,0.16)' },
+  cardText:     { color: '#eee7f2', fontSize: 13, fontWeight: '800' },
+  cardDesc:     { color: '#7f7487', fontSize: 10, marginTop: 3 },
+  button:       { height: 54, borderRadius: 18, backgroundColor: '#c4b5fd', alignItems: 'center', justifyContent: 'center', marginTop: 30 },
+  disabled:     { opacity: 0.4 },
+  buttonText:   { color: '#160b24', fontSize: 15, fontWeight: '900' },
 });
