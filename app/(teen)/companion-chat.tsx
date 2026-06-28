@@ -12,6 +12,11 @@
 //
 // History is keyed per companion + surface so conversations never bleed:
 //   sekret:chat:history:{companionKey}:{surface}
+//
+// Safety integration (Phase 3):
+//   - Pre-flight: checkTextBeforePost before every send
+//   - Post-reply: if safetyFlag, surface SafetyExperienceSheet
+//   - Post-reply: if suggestedComfortTool, show LoopNudge → Comfort
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -20,6 +25,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -31,11 +38,17 @@ import { CompanionChatHeader } from '../../components/chat/CompanionChatHeader';
 import { CompanionTypingIndicator } from '../../components/chat/CompanionTypingIndicator';
 import { ChatBubble } from '../../components/chat/ChatBubble';
 import { ChatInput } from '../../components/chat/ChatInput';
+import { SafetyExperienceSheet } from '../../components/safety/SafetyExperienceSheet';
 import {
   sendCompanionMessage,
   toCompanionId,
   type CompanionSurface,
 } from '../../src/features/sekret/companionEngine';
+import {
+  checkTextBeforePost,
+  checkForFlaggedItems,
+  type SafetyExperience,
+} from '../../src/features/safety/safetyCoordinator';
 import {
   AVATARS,
   getRoomBg,
@@ -45,7 +58,7 @@ import {
   type Character,
 } from '../../constants/theme';
 
-// ── Types ────────────────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 export type ChatMsg = {
   id: string;
   from: 'companion' | 'user';
@@ -53,7 +66,7 @@ export type ChatMsg = {
   time: string;
 };
 
-// ── Helpers ───────────────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function nowTime(): string {
   return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -81,7 +94,7 @@ async function persistHistory(key: string, msgs: ChatMsg[]): Promise<void> {
   }
 }
 
-// ── Route ────────────────────────────────────────────────────────────────────────────────
+// ── Route ─────────────────────────────────────────────────────────────────────
 export default function CompanionChatScreen() {
   const router = useRouter();
 
@@ -95,12 +108,13 @@ export default function CompanionChatScreen() {
 
   // Resolve profile — fall back to 'soft' (Raylene) for legacy 'soft' key
   const profileKey = companionKey in SEKRET_PROFILES ? companionKey : 'soft';
-  const profile = SEKRET_PROFILES[profileKey];
+  const profile    = SEKRET_PROFILES[profileKey];
   const charKey: Character = normalizeCharacterKey(profileKey);
+  const companionId = toCompanionId(profileKey);
 
   // Room background, time-of-day aware
   const roomPhase = useMemo(() => getRoomPhase(), []);
-  const bgSource = useMemo(() => getRoomBg(charKey, roomPhase), [charKey, roomPhase]);
+  const bgSource  = useMemo(() => getRoomBg(charKey, roomPhase), [charKey, roomPhase]);
 
   // Companion portrait for header
   const portrait = AVATARS[charKey]?.neutral ?? AVATARS[charKey]?.fullbody ?? null;
@@ -111,9 +125,11 @@ export default function CompanionChatScreen() {
     [profileKey, surface],
   );
 
-  // ── State ────────────────────────────────────────────────────────────────────────────
-  const [msgs, setMsgs] = useState<ChatMsg[]>([]);
-  const [loading, setLoading] = useState(false);
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [msgs, setMsgs]                           = useState<ChatMsg[]>([]);
+  const [loading, setLoading]                     = useState(false);
+  const [safetyExperience, setSafetyExperience]   = useState<SafetyExperience | null>(null);
+  const [comfortNudge, setComfortNudge]           = useState<string | null>(null);
   const listRef = useRef<FlatList<ChatMsg>>(null);
 
   // Load history on mount; show companion greeting if empty
@@ -121,7 +137,7 @@ export default function CompanionChatScreen() {
     loadHistory(storageKey).then((saved) => {
       if (saved.length === 0) {
         const welcome: ChatMsg = {
-          id: 'welcome',
+          id:   'welcome',
           from: 'companion',
           text: profile.greeting,
           time: nowTime(),
@@ -134,12 +150,19 @@ export default function CompanionChatScreen() {
     });
   }, [storageKey]);
 
-  // ── Send ─────────────────────────────────────────────────────────────────────────────
+  // ── Send ──────────────────────────────────────────────────────────────────
   const handleSend = async (text: string) => {
     if (!text.trim() || loading) return;
 
+    // Pre-flight: client-side safety check before any network call
+    const preflight = checkTextBeforePost(text.trim(), companionId);
+    if (preflight) {
+      setSafetyExperience(preflight);
+      // Still proceed — the teen chose to send; backend scan runs independently
+    }
+
     const userMsg: ChatMsg = {
-      id: String(Date.now()),
+      id:   String(Date.now()),
       from: 'user',
       text: text.trim(),
       time: nowTime(),
@@ -155,7 +178,7 @@ export default function CompanionChatScreen() {
 
     try {
       const result = await sendCompanionMessage({
-        companionId: toCompanionId(profileKey),
+        companionId,
         surface,
         text: userMsg.text,
       });
@@ -164,7 +187,7 @@ export default function CompanionChatScreen() {
       if (!replyText.trim()) throw new Error('Empty reply');
 
       const companionMsg: ChatMsg = {
-        id: String(Date.now() + 1),
+        id:   String(Date.now() + 1),
         from: 'companion',
         text: replyText,
         time: nowTime(),
@@ -172,9 +195,20 @@ export default function CompanionChatScreen() {
       const final = [...withUser, companionMsg];
       setMsgs(final);
       await persistHistory(storageKey, final);
+
+      // Post-reply: if backend flagged this, surface the safety experience
+      if (result.safetyFlag && !preflight) {
+        const flagged = await checkForFlaggedItems(companionId);
+        if (flagged) setSafetyExperience(flagged);
+      }
+
+      // Post-reply: comfort nudge if companion suggested it
+      if (result.suggestedComfortTool && !preflight) {
+        setComfortNudge(result.suggestedComfortTool);
+      }
     } catch {
       const errMsg: ChatMsg = {
-        id: String(Date.now() + 1),
+        id:   String(Date.now() + 1),
         from: 'companion',
         text: `${profile.name} is still here — the connection was shaky but your message was saved 💜`,
         time: nowTime(),
@@ -188,7 +222,7 @@ export default function CompanionChatScreen() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <ImageBackground source={bgSource} style={s.root} resizeMode="cover">
       <LinearGradient
@@ -228,6 +262,37 @@ export default function CompanionChatScreen() {
             <CompanionTypingIndicator name={profile.name} emoji={profile.emoji} />
           )}
 
+          {/* Loop nudge: companion suggested Comfort after heavy reply */}
+          {comfortNudge && !loading && (
+            <View style={s.nudgeWrap}>
+              <Text style={s.nudgeText}>
+                {profile.name} thinks Comfort might help right now
+              </Text>
+              <View style={s.nudgeRow}>
+                <TouchableOpacity
+                  style={s.nudgeBtn}
+                  onPress={() => {
+                    setComfortNudge(null);
+                    router.push('/(teen)/comfort' as any);
+                  }}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Comfort"
+                >
+                  <Text style={s.nudgeBtnText}>open Comfort</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setComfortNudge(null)}
+                  style={s.nudgeDismiss}
+                  accessibilityRole="button"
+                  accessibilityLabel="Dismiss"
+                >
+                  <Text style={s.nudgeDismissText}>I'm okay</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
           <ChatInput
             onSend={handleSend}
             disabled={loading}
@@ -235,6 +300,12 @@ export default function CompanionChatScreen() {
           />
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Safety experience sheet — rendered above everything */}
+      <SafetyExperienceSheet
+        experience={safetyExperience}
+        onDismiss={() => setSafetyExperience(null)}
+      />
     </ImageBackground>
   );
 }
@@ -245,7 +316,35 @@ const s = StyleSheet.create({
   flex: { flex: 1 },
   msgList: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop:        12,
+    paddingBottom:     16,
   },
+  nudgeWrap: {
+    marginHorizontal: 16,
+    marginBottom:      8,
+    backgroundColor:  'rgba(196,181,253,0.10)',
+    borderWidth:       1,
+    borderColor:      'rgba(196,181,253,0.25)',
+    borderRadius:      16,
+    padding:           14,
+  },
+  nudgeText: {
+    color:        '#c4b5fd',
+    fontSize:      13,
+    fontWeight:   '600',
+    marginBottom:  10,
+  },
+  nudgeRow:        { flexDirection: 'row', gap: 10 },
+  nudgeBtn: {
+    flex:             1,
+    backgroundColor:  'rgba(196,181,253,0.18)',
+    borderRadius:      12,
+    paddingVertical:   9,
+    alignItems:       'center',
+    borderWidth:       1,
+    borderColor:      'rgba(196,181,253,0.4)',
+  },
+  nudgeBtnText:     { color: '#f0ebff', fontSize: 13, fontWeight: '700' },
+  nudgeDismiss:     { justifyContent: 'center', paddingHorizontal: 12 },
+  nudgeDismissText: { color: '#64748b', fontSize: 12 },
 });

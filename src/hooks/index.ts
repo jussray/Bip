@@ -4,4 +4,5 @@
  * Canonical hooks barrel.
  * Import via: import { useSekretState } from '@/hooks';
  */
-export { useSekretState } from './useSekretState';
+export { useSekretState }  from './useSekretState';
+export { useSafetyCheck } from './useSafetyCheck';
