@@ -22,7 +22,7 @@ export function calculateAge(birthdate: string, now = new Date()): number | null
   const parsed = parseIsoDate(birthdate);
   if (!parsed) return null;
 
-  let age = now.getUTCFullYear() - parsed.getUTCFullYear();
+  const age = now.getUTCFullYear() - parsed.getUTCFullYear();
   const hasHadBirthdayThisYear =
     now.getUTCMonth() > parsed.getUTCMonth() ||
     (now.getUTCMonth() === parsed.getUTCMonth() && now.getUTCDate() >= parsed.getUTCDate());
@@ -45,7 +45,7 @@ export function evaluateAgeGate(birthdate: string, now = new Date()): AgeGateDec
 export function requireAgeEligibility(birthdate: string, now = new Date()): AgeGateDecision {
   const decision = evaluateAgeGate(birthdate, now);
   if (!decision.allowed) {
-    throw new Error(`Account eligibility requires age ${MINIMUM_ACCOUNT_AGE}+ (${decision.reason})`);
+    throw new Error(`Minimum age check failed: ${decision.reason}`);
   }
   return decision;
 }
