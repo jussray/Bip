@@ -145,7 +145,7 @@ export async function getTeenSharedItems(
  * Returns an empty array if the link is inactive, Supabase is down, or
  * the teen has not shared anything.
  */
-export async function pullSharedWithParent<T extends Record<string, unknown>>(
+export async function pullSharedWithParent<T extends object>(
   table: ConsentableTable,
   teenUserId: string,
 ): Promise<T[]> {
