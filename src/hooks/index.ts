@@ -6,3 +6,5 @@
  */
 export { useSekretState }  from './useSekretState';
 export { useSafetyCheck } from './useSafetyCheck';
+export { useLinkedTeen }  from './useLinkedTeen';
+export type { LinkedTeenData, TeenActivitySummary, SharedJournalEntry, SharedMoodEntry, BridgeSignal } from './useLinkedTeen';

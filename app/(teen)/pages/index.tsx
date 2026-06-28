@@ -63,6 +63,11 @@ import {
   type SafetyExperience,
 } from '../../../src/features/safety/safetyCoordinator';
 import { SafetyExperienceSheet } from '../../../components/safety/SafetyExperienceSheet';
+import {
+  setItemVisibility,
+  revokeShare,
+  getTeenSharedItems,
+} from '../../../src/features/consent/consentLayer';
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
@@ -194,6 +199,9 @@ export default function TeenPagesRoute() {
   // audioCache: entryId → data-URI — avoids re-fetching voice for same entry
   const audioCache = useRef<Record<string, string>>({});
 
+  // ── Parent share state ────────────────────────────────────────────────────
+  const [sharedEntryIds, setSharedEntryIds] = useState<Set<number>>(new Set());
+
   // ── Prompt rotation ────────────────────────────────────────────────────────
   const promptPool = PROMPTS[activeTab] ?? PROMPTS.raylene;
   const [promptIdx, setPromptIdx] = useState(0);
@@ -215,6 +223,13 @@ export default function TeenPagesRoute() {
     loop.start();
     return () => loop.stop();
   }, [breathe]);
+
+  // Load which entries the teen has already shared with parent
+  useEffect(() => {
+    getTeenSharedItems('journal_entries').then(items => {
+      setSharedEntryIds(new Set(items.map(i => i.id)));
+    });
+  }, []);
 
   const flatListRef = useRef<FlatList<JournalEntry>>(null);
 
@@ -374,6 +389,18 @@ export default function TeenPagesRoute() {
     }
   }
 
+  // ── Share-with-parent toggle ──────────────────────────────────────────────
+  const toggleShare = useCallback(async (entryId: number) => {
+    const isShared = sharedEntryIds.has(entryId);
+    if (isShared) {
+      await revokeShare('journal_entries', entryId);
+      setSharedEntryIds(prev => { const next = new Set(prev); next.delete(entryId); return next; });
+    } else {
+      await setItemVisibility('journal_entries', entryId, 'shared_with_parent');
+      setSharedEntryIds(prev => new Set([...prev, entryId]));
+    }
+  }, [sharedEntryIds]);
+
   // ── Render each journal entry as a chat exchange ───────────────────────────
   const renderEntry = useCallback(({ item: entry }: { item: JournalEntry }) => {
     const entryKey = String(entry.id);
@@ -405,6 +432,18 @@ export default function TeenPagesRoute() {
               ) : null}
               {entry.locked ? <Text style={s.metaLock}>🔒</Text> : null}
               {entry.pinned ? <Text style={s.metaPin}>📌</Text> : null}
+              {!entry.locked && (
+                <TouchableOpacity
+                  onPress={() => toggleShare(entry.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={sharedEntryIds.has(entry.id) ? 'Shared with parent — tap to revoke' : 'Share with parent'}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={s.shareIcon}>
+                    {sharedEntryIds.has(entry.id) ? '💜' : '👁️'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </TouchableOpacity>
         </View>
@@ -435,7 +474,7 @@ export default function TeenPagesRoute() {
         ) : null}
       </View>
     );
-  }, [companion, companionAvatarId, voiceLoading]);
+  }, [companion, companionAvatarId, voiceLoading, sharedEntryIds, toggleShare]);
 
   // ── Top avatar strip ───────────────────────────────────────────────────────
   const renderAvatarStrip = () => (
@@ -736,8 +775,9 @@ const s = StyleSheet.create({
   entryMeta: { flexDirection: 'row', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' },
   metaTime: { color: '#7a7086', fontSize: 9 },
   metaMood: { fontSize: 9, fontWeight: '800' },
-  metaLock: { fontSize: 10 },
-  metaPin: { fontSize: 10 },
+  metaLock:  { fontSize: 10 },
+  metaPin:   { fontSize: 10 },
+  shareIcon: { fontSize: 10, opacity: 0.6 },
 
   replyRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginLeft: 6 },
   replyAvatar: { width: 34, height: 34, resizeMode: 'contain', marginTop: 2 },
