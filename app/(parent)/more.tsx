@@ -3,7 +3,7 @@ import { ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpaci
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { getRoomBg } from '@constants/theme';
+import { getRoomBg } from '../../constants/theme';
 import { routeForSide } from '@/shared/routes';
 
 const LINKS = [
