@@ -2,7 +2,9 @@
 // SE'KRET PAGES — Continuous Companion Journal
 //
 // PROTECTED DATA CONTRACT (must not be removed or bypassed):
-//   ✓ fetchSekretBrainReply  — sole AI call for companion replies
+//   ✓ sendCompanionMessage   — sole AI call for companion replies
+//                              (wraps fetchSekretBrainReply, emits companion_message event,
+//                               runs safety flag detection)
 //   ✓ Raylene / Rylane / Cloud / Night companion tabs
 //   ✓ mood tags via AppContext.mood
 //   ✓ companion-specific prompts with rotation
@@ -45,14 +47,22 @@ import { IMAGES } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
 import { updateSekretMemory } from '../../../services/sekretMemory';
 import {
-  fetchSekretBrainReply,
   fetchSekretVoice,
   type SekretAvatarState,
   type SekretCharacterId,
   type SekretHistoryTurn,
-  type SekretSurface,
 } from '@/utils/api';
 import type { JournalEntry } from '@/types';
+import {
+  sendCompanionMessage,
+  toCompanionId,
+} from '../../../src/features/sekret/companionEngine';
+import {
+  checkTextBeforePost,
+  checkForFlaggedItems,
+  type SafetyExperience,
+} from '../../../src/features/safety/safetyCoordinator';
+import { SafetyExperienceSheet } from '../../../components/safety/SafetyExperienceSheet';
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
@@ -177,8 +187,10 @@ export default function TeenPagesRoute() {
   const [toolbarOpen, setToolbarOpen] = useState(false);
 
   // ── Saving / reply state ───────────────────────────────────────────────────
-  const [saving, setSaving]           = useState(false);
-  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [saving, setSaving]                         = useState(false);
+  const [voiceLoading, setVoiceLoading]             = useState(false);
+  const [safetyExperience, setSafetyExperience]     = useState<SafetyExperience | null>(null);
+  const [comfortNudge, setComfortNudge]             = useState<string | null>(null);
   // audioCache: entryId → data-URI — avoids re-fetching voice for same entry
   const audioCache = useRef<Record<string, string>>({});
 
@@ -273,6 +285,12 @@ export default function TeenPagesRoute() {
     const text = journalText.trim();
     if ((!text && !mediaUri) || saving) return;
 
+    // Pre-flight: synchronous client-side safety check before saving
+    if (text && aiCompanion) {
+      const preflight = checkTextBeforePost(text, toCompanionId(activeTab));
+      if (preflight) setSafetyExperience(preflight);
+    }
+
     const id = Date.now();
     const entry: JournalEntry = {
       id,
@@ -308,18 +326,26 @@ export default function TeenPagesRoute() {
     setAvatarState('thinking');
 
     try {
-      const surface: SekretSurface = 'journal';
-
-      const result = await fetchSekretBrainReply({
-        characterId: companionAvatarId,
-        surface,
-        userText: text,
+      const result = await sendCompanionMessage({
+        companionId: toCompanionId(activeTab),
+        surface:     'journal',
+        text,
         mood,
-        parentSharingEnabled: false,
-        history: recentHistory,
+        history:     recentHistory,
       });
       patchJournalEntry(id, { sekretReply: result.reply });
       setAvatarState(inferState(result.avatarState, mood, result.tone));
+
+      // Post-reply: surface safety experience if backend flagged this entry
+      if (result.safetyFlag) {
+        const flagged = await checkForFlaggedItems(toCompanionId(activeTab));
+        if (flagged) setSafetyExperience(flagged);
+      }
+
+      // Post-reply: comfort nudge if companion suggested a tool
+      if (result.suggestedComfortTool) {
+        setComfortNudge(result.suggestedComfortTool);
+      }
     } catch {
       setAvatarState('neutral');
     } finally {
@@ -601,6 +627,37 @@ export default function TeenPagesRoute() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
         />
 
+        {/* Loop nudge: companion suggested Comfort after heavy reply */}
+        {comfortNudge && !saving && (
+          <View style={s.nudgeWrap}>
+            <Text style={[s.nudgeText, { color: companion.accent }]}>
+              {companion.name} thinks Comfort might help right now
+            </Text>
+            <View style={s.nudgeRow}>
+              <TouchableOpacity
+                style={[s.nudgeBtn, { borderColor: `${companion.accent}66` }]}
+                onPress={() => {
+                  setComfortNudge(null);
+                  router.push('/(teen)/comfort' as any);
+                }}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel="Open Comfort"
+              >
+                <Text style={s.nudgeBtnText}>open Comfort</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setComfortNudge(null)}
+                style={s.nudgeDismiss}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss nudge"
+              >
+                <Text style={s.nudgeDismissText}>I'm okay</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Composer */}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -635,6 +692,12 @@ export default function TeenPagesRoute() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+
+      {/* Safety experience sheet — rendered above all page content */}
+      <SafetyExperienceSheet
+        experience={safetyExperience}
+        onDismiss={() => setSafetyExperience(null)}
+      />
     </View>
   );
 }
@@ -711,6 +774,14 @@ const s = StyleSheet.create({
   mediaPreviewWrap: { marginBottom: 8, borderRadius: 12, overflow: 'hidden', position: 'relative' },
   mediaPreview: { width: '100%', height: 120, borderRadius: 12, resizeMode: 'cover' },
   mediaRemove: { position: 'absolute', top: 6, right: 8, color: '#fff', fontSize: 13, fontWeight: '900', backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+
+  nudgeWrap:        { marginHorizontal: 12, marginBottom: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', borderRadius: 16, padding: 12 },
+  nudgeText:        { fontSize: 12, fontWeight: '700', marginBottom: 8 },
+  nudgeRow:         { flexDirection: 'row', gap: 10 },
+  nudgeBtn:         { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 8, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
+  nudgeBtnText:     { color: '#f0eaf4', fontSize: 12, fontWeight: '700' },
+  nudgeDismiss:     { justifyContent: 'center', paddingHorizontal: 12 },
+  nudgeDismissText: { color: '#64748b', fontSize: 11 },
 
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 20, borderTopWidth: 1 },
   composerInput: { flex: 1, color: '#f0eaf4', fontSize: 15, lineHeight: 23, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)', maxHeight: 120 },
