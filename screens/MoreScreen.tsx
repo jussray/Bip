@@ -41,9 +41,15 @@ export function MoreScreen({
   const roomBg = getRoomBg(character, timeOfDay as any);
 
   function handleSideSwitch() {
-    setUserSide('parent');
-    onSideChanged?.();
-    setScreen('parent-room');
+    if (userSide === 'parent') {
+      setUserSide('teen');
+      onSideChanged?.();
+      setScreen('home');
+    } else {
+      setUserSide('parent');
+      onSideChanged?.();
+      setScreen('parent-room');
+    }
   }
 
   return (
@@ -56,16 +62,18 @@ export function MoreScreen({
         <Text style={styles.logo}>More ✨</Text>
         <Text style={styles.subtitle}>Settings, growth tools, and extra Bip spaces.</Text>
 
-        {/* ── Side switch card (teen side only) ── */}
-        {userSide !== 'parent' && (
-          <View style={card()}>
-            <Text style={styles.cardEmoji}>🏡</Text>
-            <Text style={styles.cardText}>Teen Mode</Text>
-            <TouchableOpacity style={btn()} onPress={handleSideSwitch}>
-              <Text style={styles.buttonText}>Switch to Parent Side 🏡</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+        {/* ── Side switch card ── */}
+        <View style={card()}>
+          <Text style={styles.cardEmoji}>{userSide === 'parent' ? '🏡' : '💜'}</Text>
+          <Text style={styles.cardText}>
+            {userSide === 'parent' ? 'Parent Mode' : 'Teen Mode'}
+          </Text>
+          <TouchableOpacity style={btn()} onPress={handleSideSwitch}>
+            <Text style={styles.buttonText}>
+              Switch to {userSide === 'parent' ? 'Teen Side 💜' : 'Parent Side 🏡'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Parent family plan info */}
         {userSide === 'parent' ? (
