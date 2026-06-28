@@ -10,8 +10,8 @@ const onboarding = fs.readFileSync(new URL('../app/(onboarding)/reflection.tsx',
 
 for (const id of ['raylene', 'rylane', 'cloud', 'night', 'sekret']) {
   test(`client and worker recognize ${id}`, () => {
-    assert.match(api, new RegExp(`['\"]${id}['\"]`));
-    assert.match(worker, new RegExp(`['\"]${id}['\"]`));
+    assert.match(api, new RegExp(`['"]${id}['"]`));
+    assert.match(worker, new RegExp(`['"]${id}['"]`));
     assert.match(curriculum, new RegExp(`(?:^|\\s)${id}:`));
   });
 }
