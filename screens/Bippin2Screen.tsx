@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { sendParentNote, fetchLinkedTeenId, fetchParentEngagement, ParentEngagement } from '@/utils/sync';
+import { usePoints, TIERS, tierFor, type Tier } from '@/features/activity/ledger';
 
 const ART: Record<string, Record<string, any>> = {
   raylene: {
@@ -130,6 +131,14 @@ const PARENT_STARTERS = [
   "I see you working on yourself. That matters.",
 ];
 
+// ─── Compact mood history for progress card (top moods shown inline) ──────────
+const BIP2_MOOD_HISTORY = [
+  { label: 'calm',   emoji: '😌' },
+  { label: 'happy',  emoji: '😊' },
+  { label: 'tired',  emoji: '😴' },
+  { label: 'okay',   emoji: '🤍' },
+];
+
 const getTimeOfDay = (): TimeOfDay => {
   const h = new Date().getHours();
   if (h >= 5 && h < 11) return 'morning';
@@ -205,6 +214,16 @@ export function Bippin2Screen({
   const idAccent   = isManhoodChar ? '#4DA3FF' : t.accent;
   const idSoft     = isManhoodChar ? '#B6DCFF' : t.soft;
   const glow       = useMemo(() => moodGlow(mood), [mood]);
+
+  // ─── Bip Points ledger (live, teen-only) ──────────────────────────────────
+  const ledger     = usePoints();
+  const bipTier: Tier   = ledger.isLoaded ? ledger.tier : tierFor(0);
+  const bipTierIdx      = TIERS.findIndex(t2 => t2.key === bipTier.key);
+  const bipNextTier     = TIERS[bipTierIdx + 1];
+  const bipTotal        = ledger.isLoaded ? ledger.total : 0;
+  const bipProgress     = bipNextTier
+    ? Math.min(1, Math.max(0, (bipTotal - bipTier.min) / (bipNextTier.min - bipTier.min)))
+    : 1;
 
   // ─── Animations ───────────────────────────────────────────────────────────
   const fadeIn   = useRef(new Animated.Value(0)).current;
@@ -760,6 +779,38 @@ export function Bippin2Screen({
         </Animated.View>
 
         <Animated.View style={cardStyle(card4)}>
+          {/* ── Bip Progress + Insights ──────────────────────────────────────── */}
+          <View style={scrapCard()}>
+            <Text style={[styles.cardLabel, { color: idAccent }]}>bip progress ✨</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <Animated.Text style={[{ fontSize: 30 }, { transform: [{ scale: breathScale }] }]}>
+                {bipTier.emoji}
+              </Animated.Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: -0.5 }}>{bipTotal}</Text>
+                <Text style={{ color: bipTier.color, fontSize: 13, fontWeight: '800' }}>{bipTier.label}</Text>
+              </View>
+              <View style={{ backgroundColor: idAccent + '22', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
+                <Text style={{ color: idAccent, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 }}>pts</Text>
+              </View>
+            </View>
+            <View style={{ height: 8, width: '100%', borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.12)', overflow: 'hidden', marginBottom: 6 }}>
+              <View style={{ height: '100%', width: `${bipProgress * 100}%` as any, backgroundColor: bipTier.color, borderRadius: 999 }} />
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.52)', fontSize: 11, fontWeight: '600', marginBottom: 14 }}>
+              {bipNextTier ? `${Math.max(0, bipNextTier.min - bipTotal)} until ${bipNextTier.label}` : 'you filled the whole sky ✨'}
+            </Text>
+            <Text style={[styles.cardBodySmall, { marginBottom: 8 }]}>your recent moods</Text>
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              {BIP2_MOOD_HISTORY.map(m => (
+                <View key={m.label} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(20,12,40,0.65)', borderWidth: 1, borderColor: idAccent + '44', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
+                  <Text style={{ fontSize: 14 }}>{m.emoji}</Text>
+                  <Text style={{ color: idSoft, fontSize: 11, fontWeight: '600' }}>{m.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
           <View style={scrapCard()}>
             <Text style={[styles.cardLabel, { color: idAccent }]}>
               BIP FLOW {isManhoodChar ? (isRylane ? '🪱' : '🌙') : '🫶'}
