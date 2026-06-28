@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -11,6 +11,16 @@ export default function ParentProfile() {
   const [focus, setFocus] = useState('support');
   const [circleName, setCircleName] = useState('');
   const [supportStyle, setSupportStyle] = useState('listen first');
+
+  useEffect(() => {
+    AsyncStorage.multiGet(['parent_profile_data', 'parent_circle_identity']).then(pairs => {
+      const [profile, circle] = pairs.map(([, v]) => (v ? JSON.parse(v) : null));
+      if (profile?.name) setName(profile.name);
+      if (profile?.focus) setFocus(profile.focus);
+      if (circle?.circleName) setCircleName(circle.circleName);
+      if (circle?.supportStyle) setSupportStyle(circle.supportStyle);
+    }).catch(() => {});
+  }, []);
 
   async function finish() {
     if (!name.trim()) return;

@@ -21,6 +21,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
       'parent-bridge':  PARENT_ROUTES.bridge,
       voiceBip:         PARENT_ROUTES.voiceBip,
       voicebip:         PARENT_ROUTES.voiceBip,
+      'parent-voicebip': PARENT_ROUTES.voiceBip,
       settings:         PARENT_ROUTES.settings,
       more:             PARENT_ROUTES.more,
       calm:             PARENT_ROUTES.calm,
@@ -34,6 +35,17 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
       profile:          PARENT_ROUTES.profile,
       growth:           PARENT_ROUTES.growth,
       'parent-growth':  PARENT_ROUTES.growth,
+      connection:       PARENT_ROUTES.bridge,
+      parentConnection: PARENT_ROUTES.bridge,
+      'parent-connection': PARENT_ROUTES.bridge,
+      messages:         PARENT_ROUTES.bridge,
+      resources:        PARENT_ROUTES.more,
+      insights:         PARENT_ROUTES.more,
+      'parent-insights': PARENT_ROUTES.more,
+      points:           PARENT_ROUTES.more,
+      memories:         PARENT_ROUTES.profile,
+      cloud:            PARENT_ROUTES.calm,
+      comfort:          PARENT_ROUTES.calm,
     };
     return parentMap[key] ?? PARENT_ROUTES.room;
   }
@@ -66,7 +78,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     // Avatar Room hotspot targets
     write:    TEEN_ROUTES.pages,
     goals:    TEEN_ROUTES.points,
-    memories: TEEN_ROUTES.circle,
+    memories: TEEN_ROUTES.profile,
     music:    TEEN_ROUTES.calm,
     rewards:  TEEN_ROUTES.points,
     vibeLab:   TEEN_ROUTES.userRoom,

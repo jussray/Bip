@@ -48,6 +48,18 @@ export default function TeenCircleRoute() {
         >
           <Text style={s.weatherBtnText}>🌧️</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={s.profileBtn}
+          onPress={() => router.push('/(teen)/profile' as any)}
+        >
+          <Text style={s.profileBtnText}>🪪 Me</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.identityNote}>
+        <Text style={s.identityNoteText}>
+          Your Circle identity is separate from your private account. Crew only sees what you choose to share.
+        </Text>
       </View>
 
       <View style={s.content}>
@@ -78,18 +90,22 @@ export default function TeenCircleRoute() {
 }
 
 const s = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: '#0d0518' },
-  tabs:          {
+  root: { flex: 1, backgroundColor: '#0d0518' },
+  tabs: {
     flexDirection: 'row',
     backgroundColor: '#130828',
     borderBottomWidth: 1,
     borderBottomColor: '#2e1250',
   },
-  tab:           { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabActive:     { borderBottomWidth: 2, borderBottomColor: '#a855f7' },
-  tabText:       { color: '#5a3a78', fontSize: 13, fontWeight: '700' },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: '#a855f7' },
+  tabText: { color: '#5a3a78', fontSize: 13, fontWeight: '700' },
   tabTextActive: { color: '#e8dff5' },
-  weatherBtn:    { paddingHorizontal: 12, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  weatherBtn: { paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   weatherBtnText: { color: '#7c5a9e', fontSize: 11, fontWeight: '700' },
-  content:       { flex: 1 },
+  profileBtn: { paddingHorizontal: 10, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
+  profileBtnText: { color: '#c4b5fd', fontSize: 11, fontWeight: '800' },
+  identityNote: { paddingHorizontal: 14, paddingVertical: 9, backgroundColor: '#120823', borderBottomWidth: 1, borderBottomColor: '#2e1250' },
+  identityNoteText: { color: '#8f7aa6', fontSize: 10, lineHeight: 15, textAlign: 'center' },
+  content: { flex: 1 },
 });
