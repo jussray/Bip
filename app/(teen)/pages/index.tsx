@@ -68,6 +68,7 @@ import {
   revokeShare,
   getTeenSharedItems,
 } from '../../../src/features/consent/consentLayer';
+import { usePoints } from '@/features/activity/ledger';
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
@@ -154,6 +155,12 @@ function inferState(state: SekretAvatarState, mood?: string, tone?: string): Sek
   return 'responding';
 }
 
+// ─── Companion unlock thresholds (points required, matches TIERS) ─────────────
+const COMPANION_UNLOCK_PTS: Record<CompanionId, number> = {
+  raylene: 0, me: 0, oracle: 0,
+  rylane: 50, cloud: 150, night: 350,
+};
+
 // ─── Mood tag palette ─────────────────────────────────────────────────────────
 const MOOD_TAGS = [
   { label: '😌 okay',    value: 'okay'    },
@@ -184,6 +191,7 @@ export default function TeenPagesRoute() {
     (COMPANIONS.some(c => c.id === selectedSekret) ? selectedSekret : 'raylene') as CompanionId,
   );
   const [avatarState, setAvatarState] = useState<SekretAvatarState>('neutral');
+  const { total: totalPoints } = usePoints();
 
   // ── Composer state ─────────────────────────────────────────────────────────
   const [locked, setLocked]     = useState(false);
@@ -348,8 +356,9 @@ export default function TeenPagesRoute() {
         mood,
         history:     recentHistory,
       });
-      patchJournalEntry(id, { sekretReply: result.reply });
-      setAvatarState(inferState(result.avatarState, mood, result.tone));
+      const resolvedState = inferState(result.avatarState, mood, result.tone);
+      patchJournalEntry(id, { sekretReply: result.reply, sekretAvatarState: resolvedState });
+      setAvatarState(resolvedState);
 
       // Post-reply: surface safety experience if backend flagged this entry
       if (result.safetyFlag) {
@@ -452,7 +461,7 @@ export default function TeenPagesRoute() {
         {entry.sekretReply ? (
           <View style={s.replyRow}>
             <Image
-              source={avatarImage(companionAvatarId, 'neutral')}
+              source={avatarImage(companionAvatarId, (entry.sekretAvatarState ?? 'neutral') as SekretAvatarState)}
               style={s.replyAvatar}
             />
             <View style={s.replyBubble}>
@@ -481,21 +490,27 @@ export default function TeenPagesRoute() {
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabRail}>
       {COMPANIONS.map(c => {
         const active = c.id === activeTab;
+        const unlocked = totalPoints >= COMPANION_UNLOCK_PTS[c.id as CompanionId];
         return (
           <TouchableOpacity
             key={c.id}
-            onPress={() => chooseTab(c.id as CompanionId)}
-            style={[s.tab, active && { borderColor: c.accent, backgroundColor: `${c.accent}18` }]}
+            onPress={() => unlocked ? chooseTab(c.id as CompanionId) : undefined}
+            activeOpacity={unlocked ? 0.7 : 1}
+            style={[s.tab, active && { borderColor: c.accent, backgroundColor: `${c.accent}18` }, !unlocked && s.tabLocked]}
           >
             {c.id !== 'me' && c.id !== 'oracle' ? (
               <Image
                 source={avatarImage(c.id as SekretCharacterId, active ? avatarState : 'neutral')}
-                style={s.tabImg}
+                style={[s.tabImg, !unlocked && { opacity: 0.3 }]}
               />
             ) : (
-              <Text style={s.tabEmoji}>{c.id === 'me' ? '🪞' : '🔮'}</Text>
+              <Text style={[s.tabEmoji, !unlocked && { opacity: 0.3 }]}>{c.id === 'me' ? '🪞' : '🔮'}</Text>
             )}
-            <Text style={[s.tabName, active && { color: c.accent }]}>{c.name}</Text>
+            {unlocked ? (
+              <Text style={[s.tabName, active && { color: c.accent }]}>{c.name}</Text>
+            ) : (
+              <Text style={s.tabLockBadge}>{COMPANION_UNLOCK_PTS[c.id as CompanionId]} pts</Text>
+            )}
           </TouchableOpacity>
         );
       })}
@@ -761,6 +776,8 @@ const s = StyleSheet.create({
   tabImg: { width: 38, height: 38, resizeMode: 'contain' },
   tabEmoji: { fontSize: 24 },
   tabName: { color: '#a99fb2', fontSize: 9, fontWeight: '800', marginTop: 3 },
+  tabLocked: { opacity: 0.55 },
+  tabLockBadge: { color: '#6b6175', fontSize: 8, fontWeight: '800', marginTop: 3 },
 
   thread: { paddingHorizontal: 14, paddingTop: 6, paddingBottom: 20 },
 
