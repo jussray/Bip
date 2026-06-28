@@ -41,7 +41,7 @@ export default function ParentCircleRoute() {
           style={[s.tab, tab === 'messages' && s.tabActive]}
           onPress={() => setTab('messages')}
         >
-          <Text style={[s.tabText, tab === 'messages' && s.tabTextActive]}>💜 Notes</Text>
+          <Text style={[s.tabText, tab === 'messages' && s.tabTextActive]}>💜 Messages</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={s.weatherBtn}
