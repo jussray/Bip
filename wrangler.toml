@@ -33,8 +33,8 @@ OPENAI_CHAT_MODEL      = "gpt-4o-mini"
 OPENAI_TTS_MODEL       = "gpt-4o-mini-tts"
 OPENAI_STT_MODEL       = "whisper-1"
 
-# Supabase public project URL only. The Worker currently does not use the anon key.
-SUPABASE_URL      = "https://tbsevonvegdnlyjgplmm.supabase.co"
+# Connected Supabase project. The Worker currently does not use the anon key.
+SUPABASE_URL      = "https://jvmbhralyktmdlvglrxk.supabase.co"
 
 # Audio upload limit in bytes (base64 decoded size cap).
 # 512 KB ≈ ~30s of compressed voice at typical Expo AudioRecording settings.
