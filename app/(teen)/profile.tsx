@@ -50,8 +50,8 @@ export default function TeenProfile() {
     entries,
     circlePosts,
     crewMembers,
-    comfortSessions,
-    streakDays,
+    crewCheckIns,
+    moodHistory,
     selectedSekret,
   } = useAppContext();
   const [tab, setTab] = useState<ProfileTab>('identity');
@@ -124,22 +124,22 @@ export default function TeenProfile() {
       });
     }
 
-    if (streakDays > 0) {
+    if (crewCheckIns.length > 0) {
       cards.push({
-        id: 'streak',
-        emoji: '🌱',
-        title: `${streakDays}-day growth streak`,
-        body: 'Bippin 2 owns the full growth path. Profile keeps the milestone memory.',
-        route: '/(teen)/bippin2',
+        id: 'crew-checkins',
+        emoji: '🫶',
+        title: `${crewCheckIns.length} Crew check-in${crewCheckIns.length === 1 ? '' : 's'}`,
+        body: 'Circle owns the accountability flow. Profile remembers the care you practiced.',
+        route: '/(teen)/circle',
       });
     }
 
-    if (comfortSessions.length > 0) {
+    if (moodHistory.length > 0) {
       cards.push({
         id: 'calm',
         emoji: '🌙',
-        title: `${comfortSessions.length} calm reset${comfortSessions.length === 1 ? '' : 's'}`,
-        body: 'Calm owns the tools. Profile remembers the moments you got through.',
+        title: `${moodHistory.length} mood check-in${moodHistory.length === 1 ? '' : 's'}`,
+        body: 'Calm owns regulation. Profile remembers the moments you noticed what you felt.',
         route: '/(teen)/calm',
       });
     }
@@ -153,7 +153,7 @@ export default function TeenProfile() {
     });
 
     return cards;
-  }, [entries.length, circlePosts.length, crewMembers.length, comfortSessions.length, streakDays, selectedSekret]);
+  }, [entries.length, circlePosts.length, crewMembers.length, crewCheckIns.length, moodHistory.length, selectedSekret]);
 
   function pickGender(g: Gender) {
     setGender(g);
