@@ -24,6 +24,7 @@ import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
+import { clearPrivateAccountCache } from '@/utils/storage';
 
 /**
  * Returns the number of consecutive days ending today that have a journal entry.
@@ -76,15 +77,19 @@ export default function ProfileScreen() {
   }, []);
 
   async function handleSignOut() {
-    Alert.alert('Sign out?', 'You\'ll need to sign back in to access your account.', [
+    Alert.alert('Sign out?', 'Private data saved on this device will be cleared.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Sign Out',
         style: 'destructive',
         onPress: async () => {
           const sb = getSupabase();
-          if (sb) await sb.auth.signOut();
-          router.replace('/(auth)/login');
+          try {
+            if (sb) await sb.auth.signOut();
+          } finally {
+            await clearPrivateAccountCache();
+            router.replace('/(auth)/login');
+          }
         },
       },
     ]);
@@ -155,7 +160,7 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {/* Account section \u2014 only shown when Supabase is configured */}
+        {/* Account section — only shown when Supabase is configured */}
         {isSupabaseConfigured && (
           <>
             <Text style={[styles.sectionLabel, { marginTop: 28 }]}>Account</Text>
@@ -219,13 +224,13 @@ const styles = StyleSheet.create({
   moodEmoji:       { fontSize: 18, marginRight: 10 },
   moodLabel:       { color: '#D1D5DB', fontSize: 14, flex: 1 },
   moodDate:        { color: '#555', fontSize: 11 },
-  settingsBtn:      { marginTop: 32, alignItems: 'center', padding: 14 },
-  settingsBtnText:  { color: '#555', fontSize: 14 },
-  accountCard:      { backgroundColor: '#111827', borderRadius: 14, padding: 16, marginBottom: 10 },
-  accountEmail:     { color: '#D1D5DB', fontSize: 14, marginBottom: 12 },
-  signOutBtn:       { backgroundColor: 'rgba(248,113,113,0.15)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(248,113,113,0.4)' },
-  signOutText:      { color: '#f87171', fontSize: 14, fontWeight: '700' },
-  anonNote:         { color: '#666', fontSize: 13, marginBottom: 12 },
-  createAccountBtn: { backgroundColor: 'rgba(109,40,217,0.2)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(109,40,217,0.5)' },
-  createAccountText:{ color: '#c4b5fd', fontSize: 14, fontWeight: '700' },
+  accountCard:     { backgroundColor: '#111827', borderRadius: 14, padding: 14, marginBottom: 20 },
+  accountEmail:    { color: '#D1D5DB', fontSize: 14, marginBottom: 12 },
+  signOutBtn:      { borderWidth: 1, borderColor: '#7F1D1D', borderRadius: 10, paddingVertical: 9, alignItems: 'center' },
+  signOutText:     { color: '#F87171', fontWeight: '700', fontSize: 13 },
+  anonNote:        { color: '#9CA3AF', fontSize: 13, marginBottom: 12 },
+  createAccountBtn:{ backgroundColor: '#6D28D9', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  createAccountText:{ color: '#fff', fontWeight: '700', fontSize: 13 },
+  settingsBtn:     { backgroundColor: '#1F2937', borderRadius: 14, padding: 15, alignItems: 'center', marginTop: 28 },
+  settingsBtnText: { color: '#D1D5DB', fontWeight: '700', fontSize: 14 },
 });
