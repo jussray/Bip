@@ -43,7 +43,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
       insights:         PARENT_ROUTES.more,
       'parent-insights': PARENT_ROUTES.more,
       points:           PARENT_ROUTES.more,
-      memories:         PARENT_ROUTES.pages,
+      memories:         PARENT_ROUTES.profile,
       cloud:            PARENT_ROUTES.calm,
       comfort:          PARENT_ROUTES.calm,
     };
@@ -78,7 +78,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     // Avatar Room hotspot targets
     write:    TEEN_ROUTES.pages,
     goals:    TEEN_ROUTES.points,
-    memories: TEEN_ROUTES.circle,
+    memories: TEEN_ROUTES.profile,
     music:    TEEN_ROUTES.calm,
     rewards:  TEEN_ROUTES.points,
     vibeLab:   TEEN_ROUTES.userRoom,
