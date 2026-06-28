@@ -20,6 +20,8 @@ import { Animated } from 'react-native';
 import { useSekretState } from '@/hooks/useSekretState';
 import { useSyncStatus } from '../../hooks/useSyncStatus';
 import { HOME_MESSAGES } from '@constants/theme';
+import { syncMood } from '@/utils/sync';
+import { initPointLedger } from '@/features/activity/ledger';
 import type {
   JournalEntry,
   CirclePost,
@@ -164,12 +166,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(id);
   }, []);
 
+  useEffect(() => {
+    if (s.isLoading || s.userSide !== 'teen') return;
+    return initPointLedger({
+      moodCount:    s.moodHistory.length,
+      journalCount: s.entries.length,
+      voiceCount:   voiceNotes.length,
+      circleCount:  s.circlePosts.length,
+      comfortCount: 0,
+      crewCount:    s.crewCheckIns.length,
+      streakDays:   0,
+    });
+  }, [s.isLoading, s.userSide]);
+
   function selectMood(m: string) {
+    const entry: MoodEntry = { id: Date.now(), mood: m, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() };
     s.setMood(m);
-    s.setMoodHistory((h: MoodEntry[]) => [
-      { id: Date.now(), mood: m, date: new Date().toLocaleDateString(), time: new Date().toLocaleTimeString() },
-      ...h,
-    ]);
+    s.setMoodHistory((h: MoodEntry[]) => [entry, ...h]);
+    syncMood(entry);
   }
 
   function saveEntry() {

@@ -69,6 +69,7 @@ import {
   getTeenSharedItems,
 } from '../../../src/features/consent/consentLayer';
 import { usePoints } from '@/features/activity/ledger';
+import { syncJournal } from '@/utils/sync';
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
@@ -331,6 +332,7 @@ export default function TeenPagesRoute() {
     };
 
     setEntries(prev => [...prev, entry]);
+    syncJournal(entry);
     setJournalText('');
     setMediaUri(undefined);
     setMediaType(undefined);
