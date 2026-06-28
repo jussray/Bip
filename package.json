@@ -10,7 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "vercel-build": "expo export -p web",
-    "test": "node --test",
+    "test": "node --test \"test/**/*.test.mjs\"",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",

@@ -4,6 +4,7 @@ import { Analytics } from '@/components/shared/Analytics';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
+import { clearPrivateAccountCache } from '@/utils/storage';
 
 void validateEnv();
 
@@ -22,8 +23,15 @@ function RouteBoundary() {
       if (!data.session) router.replace('/(auth)/login');
     });
 
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace('/(auth)/login');
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+      if (session) return;
+      if (event === 'SIGNED_OUT') {
+        void clearPrivateAccountCache().finally(() => {
+          router.replace('/(auth)/login');
+        });
+        return;
+      }
+      router.replace('/(auth)/login');
     });
     return () => subscription.unsubscribe();
   }, []);
