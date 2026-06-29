@@ -5,6 +5,14 @@ import type {
   VerificationState,
 } from '@/types/verification';
 
+export type VerificationRouteTarget =
+  | '/(auth)/welcome'
+  | '/(auth)/parent-link-verify'
+  | '/(auth)/limited-mode'
+  | '/(teen)/home'
+  | '/(safety)/manual-review'
+  | '/(auth)/suspended';
+
 export const INITIAL_VERIFICATION_SNAPSHOT: VerificationSnapshot = {
   state: 'UNVERIFIED',
   parentLinkState: 'none',
@@ -101,4 +109,31 @@ export function isLimitedMode(state: VerificationState): boolean {
     || state === 'PENDING_TRUSTED_ADULT'
     || state === 'LIMITED_MODE'
     || state === 'EXPIRED';
+}
+
+export function canUnlockSocial(state: VerificationState): boolean {
+  return state === 'VERIFIED_TEEN';
+}
+
+export function shouldShowLimitedMode(state: VerificationState): boolean {
+  return isLimitedMode(state);
+}
+
+export function getVerificationRouteTarget(state: VerificationState): VerificationRouteTarget {
+  switch (state) {
+    case 'UNVERIFIED':
+      return '/(auth)/welcome';
+    case 'PENDING_PARENT':
+    case 'PENDING_TRUSTED_ADULT':
+      return '/(auth)/parent-link-verify';
+    case 'LIMITED_MODE':
+    case 'EXPIRED':
+      return '/(auth)/limited-mode';
+    case 'VERIFIED_TEEN':
+      return '/(teen)/home';
+    case 'MANUAL_REVIEW':
+      return '/(safety)/manual-review';
+    case 'SUSPENDED':
+      return '/(auth)/suspended';
+  }
 }
