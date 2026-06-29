@@ -17,6 +17,17 @@ export type ParentLinkState =
   | 'declined';
 
 export type VerificationEvent =
+  | 'SUBMIT_SIGNUP'
+  | 'PARENT_APPROVED'
+  | 'PARENT_TIMEOUT'
+  | 'TRUSTED_ADULT_APPROVED'
+  | 'PARENT_LATE_APPROVED'
+  | 'TOKEN_EXPIRED'
+  | 'REVERIFY'
+  | 'SAFETY_FLAG_TRIGGERED'
+  | 'ADMIN_RESTORED'
+  | 'ADMIN_SUSPENDED'
+  | 'EMERGENCY_SHUTOFF'
   | 'START_PARENT_LINK'
   | 'START_TRUSTED_ADULT_LINK'
   | 'INVITE_SENT'
