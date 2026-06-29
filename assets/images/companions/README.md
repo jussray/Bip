@@ -1,17 +1,13 @@
-# Companion asset migration
+# Companion assets
 
-This folder is the new home for production companion sprites.
+Production companion sprites are organized by app area.
 
-Current scope:
+## Teen companions
 
-- `raylene/` — new full-body companion assets
-- `night/` — new full-body companion assets
-- `rylane/` — new full-body companion assets
-- Cloud remains on the existing asset system for now and is intentionally not migrated in this pass.
+- `teen/raylene/`
+- `teen/night/`
+- `teen/rylane/`
 
-Migration rules:
+Cloud stays on the existing asset system for now.
 
-1. Add and verify replacement assets before removing legacy files.
-2. Keep existing room backgrounds and scene composites.
-3. Update image registries and screen references before deleting old sprites.
-4. Archive legacy Raylene, Night, and Rylane assets only after the app type-checks and exports successfully.
+Add replacement assets before removing legacy files. Keep room backgrounds and scene composites unchanged until the new sprites are wired and tested.
