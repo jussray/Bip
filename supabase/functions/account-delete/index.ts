@@ -1,15 +1,15 @@
 // supabase/functions/account-delete/index.ts
-// Se'kret Bip — delayed account deletion processor
+// Se'kret Bip — delayed account deletion processor for project tbsevonvegdnlyjgplmm.
 //
-// This endpoint is intentionally NOT user-callable. It is invoked by a trusted
-// admin job after the user's seven-day grace period has expired.
+// This endpoint is intentionally not user-callable. It is invoked by a trusted
+// admin job after the seven-day grace period has expired.
 //
 // Required secrets:
 //   ACCOUNT_DELETION_PROCESS_SECRET
 //   SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY
 //
-// Deploy with JWT verification disabled because the processor authenticates
+// Deploy with JWT verification disabled because this processor authenticates
 // with x-account-deletion-secret instead of a user session.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -59,7 +59,11 @@ async function listFilesRecursively(
         .from(bucket)
         .list(current, { limit: 100, offset, sortBy: { column: 'name', order: 'asc' } });
 
-      if (error) throw new Error(`storage_list_failed:${bucket}`);
+      // Missing optional buckets should not prevent deletion.
+      if (error) {
+        if (String(error.message).toLowerCase().includes('bucket not found')) break;
+        throw new Error(`storage_list_failed:${bucket}`);
+      }
       if (!data || data.length === 0) break;
 
       for (const item of data) {
@@ -142,7 +146,6 @@ Deno.serve(async (req: Request) => {
   if (!Number.isFinite(scheduledAt)) return json({ error: 'invalid_schedule' }, 500);
   if (scheduledAt > Date.now()) return json({ error: 'grace_period_active' }, 409);
 
-  // Claim this request. Only one processor can move it from pending to processing.
   const { data: claimed, error: claimError } = await admin
     .from('account_deletion_requests')
     .update({ status: 'processing', failure_reason: null })
@@ -157,24 +160,17 @@ Deno.serve(async (req: Request) => {
   const userId = deletionRequest.user_id;
 
   try {
-    // Supabase Auth cannot delete a user while they still own Storage objects.
     await removePrivateFiles(admin, userId);
 
-    // These relationships intentionally use SET NULL, so remove the user's own
-    // authored/parent link records before deleting the Auth user.
-    const { error: replyError } = await admin
-      .from('circle_replies')
+    // The live schema uses SET NULL for crew_members.member_user_id. Remove the
+    // accepted display row so a deleted person's real name is not retained.
+    const { error: crewError } = await admin
+      .from('crew_members')
       .delete()
-      .eq('user_id', userId);
-    if (replyError) throw new Error('circle_reply_delete_failed');
+      .eq('member_user_id', userId);
+    if (crewError) throw new Error('crew_member_cleanup_failed');
 
-    const { error: parentLinkError } = await admin
-      .from('parent_links')
-      .delete()
-      .eq('parent_user_id', userId);
-    if (parentLinkError) throw new Error('parent_link_delete_failed');
-
-    // The remaining account-owned rows cascade from auth.users.
+    // Remaining account-owned rows cascade from auth.users in the live project.
     const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
     if (deleteError) throw new Error(`auth_delete_failed:${deleteError.message}`);
 
