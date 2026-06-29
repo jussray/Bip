@@ -1,121 +1,249 @@
 # Se'kret Bip 💜
 
-A private emotional wellness and self-expression app built with React Native and Expo.
+Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built with React Native, Expo Router, TypeScript, Supabase, and Cloudflare Workers.
 
-> Cool cousin, teen-safe, private, soft, scrapbook, purple-night.
-> Raylene / Rylane / Cloud / Night companion energy.
+> Cool cousin energy: warm, slightly nosy, funny, soft, never clinical.
+>
+> Dark-night scrapbook visuals, private rooms, taped notes, stickers, clouds, moonlight, and companion-led support.
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/jussray/Bip?quickstart=1)
 
-## Features
+## Product Promise
 
-- **Room (home)** — your personalized space; companion + day/night background
-- **Journal** — private pages for your thoughts
-- **Calm** — breathing / grounding space
-- **Sekret** — chat-style talk with your chosen companion
-- **Comfort** — soft messages and presence
-- **MindBody Reset** — quick reset flow
-- **Bippin2** — secondary expressive space
-- **Voice Bip** — record 30–60s voice notes
-- **Cloud Thoughts** — thought-cloud space (Cloud mascot)
-- **Circle** — anonymous community posts with soft reactions
+Se'kret Bip is designed around four rules:
+
+- **Privacy by default** — private journals, Voice Bip, AI companion chats, and private memories stay private.
+- **Support by choice** — teens decide what they explicitly share through Bridge, Parent Pages, and other supported surfaces.
+- **Protection by architecture** — identity, verification, permissions, safety events, and parent visibility are modeled centrally rather than patched into individual screens.
+- **Parents verify safety, not thoughts** — parent access is event-based and consent-based, never surveillance-based.
+
+## Core Product Areas
+
+### Teen experience
+
+- **Room / User Room** — personal emotional home with companion and time-of-day room scenes
+- **Pages** — private journal and scrapbook creation
+- **Voice Bip** — voice-first reflection and companion response flows
+- **Se'kret companions** — Raylene, Rylane, Cloud, Night, and Oracle experiences
+- **Calm / Comfort / MindBody Reset** — grounding and coping tools
+- **Cloud Thoughts** — quiet thought space
+- **Bippin 2** — growth, development, and identity support; Manhood/Womanhood concepts are being folded into this system
+- **Growth / Insights / History / Memories** — private progress and reflection systems
 - **Period Calendar** — private cycle tracking
-- **Bridge** — teen ↔ trusted adult soft-share (no full explanation required)
-- **Parent Bridge** — adult-side view of incoming bridge shares
-- **Five theme packs** — Night Purple, Golden Moon, Soft Pink, Rain Blue, Galaxy Night
+- **Points / Rewards** — positive habit and participation rewards
 
-## Roadmap
+### Social and trusted connection
 
-1. **Phase 1 — Polish.** Tighten each screen one by one (Room → Journal → Calm → Sekret → …). Replace placeholder image fallbacks in `constants/theme.ts` with real PNGs as they land.
-2. **Phase 2 — Wire Supabase.** Move journal entries, mood history, circle posts, bridge shares, voice notes, and room memory off AsyncStorage onto the real backend. Scaffold lives in [`utils/supabase.ts`](utils/supabase.ts) — it's a safe no-op while env vars are unset so Phase 1 isn't blocked.
+- **Circle** — anonymous or circle-safe community posting
+- **Bip Crew** — trusted mutual accountability relationships
+- **Connection Hub** — managed relationship and connection surfaces
+- **Bridge / Parent Bridge** — teen-controlled support sharing
+- **Parent Circle** — parent-to-parent support space
+- **Messages** — bounded app communication; the product does not support open stranger DMs
+
+### Safety
+
+- **Age gate and trusted-adult verification**
+- **Limited Mode** before verification
+- **Report and block flows**
+- **Emergency shutoff and safety check-ins**
+- **Suspicious-behavior detection architecture**
+- **Parent Doorbell events** — safety and verification summaries without private teen content
+- **Account deletion request and grace-period flow**
+- **Row Level Security and private storage policies in Supabase**
+
+## Identity and Privacy Model
+
+Bip keeps different identity contexts separate:
+
+- **Account identity** — private authenticated account facts
+- **Circle identity** — safe social display name and avatar per circle
+- **Crew identity** — trusted relationship presentation and support preferences
+- **Parent connection identity** — relationship and verification metadata only
+
+Public Circle surfaces must never fall back to a teen's real account name.
+
+Parent-visible data must never include:
+
+- raw journal text
+- Voice Bip transcripts
+- AI companion chat content
+- private memories
+- private notes
+- private message bodies
+
+## Current Architecture
+
+- **Frontend:** React Native + Expo Router + TypeScript
+- **State:** local React state and AsyncStorage for offline/local experiences, with Supabase-backed sync for supported account data
+- **Backend:** Supabase Auth, Postgres, Row Level Security, Storage, migrations, and Edge Functions
+- **Worker/API layer:** Cloudflare Worker services for selected AI and app integrations
+- **Navigation:** Expo Router with ongoing migration toward domain route groups
+- **Styling:** React Native StyleSheet, design tokens, scrapbook/night visual system
+- **Assets:** companion art, room scenes, splash screens, stickers, and design references under `assets/` and `design-references/`
+
+## Architecture Roadmap
+
+The current roadmap is architecture-first so every new screen inherits the same privacy and trust rules.
+
+1. **Identity foundation**
+   - `AccountIdentity`
+   - `CircleIdentity`
+   - `CrewIdentity`
+   - `ProfileMemory`
+
+2. **Verification state machine**
+   - unverified
+   - pending parent/trusted adult
+   - limited mode
+   - verified teen
+   - expired
+   - manual review
+   - suspended
+
+3. **Domain route groups**
+   - `(auth)`
+   - `(teen)`
+   - `(parent)`
+   - `(profile)`
+   - `(safety)`
+   - `(social)`
+
+4. **Front door and onboarding**
+   - Welcome
+   - Sign up / Login
+   - Teen onboarding
+   - Parent onboarding
+   - Parent link verification
+   - Limited Mode
+
+5. **Shared safety services**
+   - Doorbell events
+   - report/block services
+   - emergency flow
+   - suspicious behavior signals
+   - parent-safe payload redaction
+
+6. **Profile and identity platform**
+   - profile
+   - Circle identity management
+   - avatar customization
+   - room themes
+   - privacy settings
+
+7. **Figma-led screen expansion**
+   - onboarding and verification screens first
+   - safety and Parent Doorbell screens next
+   - profile and parent platform screens after trust architecture is stable
+   - search, discover, post detail, and reply threads later
 
 ## Project Structure
 
-```
-sekret-bip/
-├── app/                    # Expo Router screens
-│   ├── _layout.tsx
-│   ├── index.tsx           # IMAGES re-export lives near the top
-│   └── ...                 # route entry points per screen
-├── components/             # Reusable UI (BackgroundLayer, BottomNav)
-├── screens/                # Full-page screens
-├── hooks/                  # useSekretState etc.
-├── constants/              # theme.ts (IMAGES map + design tokens), styles.ts, bip_voice.ts
-├── utils/                  # api.ts, storage.ts, moodEngine.js, supabase.ts (Phase 2 scaffold)
-├── types/                  # index.ts (BridgePayload + entry types), bridge.ts (re-export shim)
-├── assets/images/          # All companion + room + screen artwork
-├── .devcontainer/          # Codespaces config — auto-installs deps on first boot
-├── .env.example            # Environment template — copy to .env.local
-└── app.json                # Expo config
+```text
+Bip/
+├── app/                       # Expo Router route entry points
+├── screens/                   # Full-page screen implementations
+├── src/
+│   ├── components/            # Shared UI and safety components
+│   ├── context/               # App context
+│   ├── features/              # Domain feature logic
+│   ├── hooks/                 # App hooks
+│   ├── services/              # AI, permissions, verification, safety, sync helpers
+│   ├── types/                 # Canonical TypeScript domain models
+│   └── utils/                 # Shared utilities and sync helpers
+├── components/                # Legacy/shared UI still being migrated
+├── constants/                 # Theme, images, voice, and design constants
+├── hooks/                     # Existing shared hooks
+├── utils/                     # Storage, API, Supabase, and compatibility utilities
+├── supabase/
+│   ├── functions/             # Edge Functions
+│   └── migrations/            # Database migrations and RLS changes
+├── assets/images/             # Companion, room, splash, and screen artwork
+├── design-references/         # Visual reference assets
+├── docs/                      # Implementation and asset guardrails
+├── .github/workflows/         # CI, regression, and deployment workflows
+├── .env.example               # Environment template
+└── app.json                   # Expo configuration
 ```
 
 ## Setup
 
-### Option A — GitHub Codespaces (recommended)
+### GitHub Codespaces
 
-1. Click **Open in GitHub Codespaces** above (or [open directly](https://codespaces.new/jussray/Bip?quickstart=1)).
-2. Wait ~1 min — the devcontainer auto-installs deps and seeds `.env.local`.
-3. Run:
-   ```bash
-   npx expo start --web -c
-   ```
-4. The forwarded port 8081 opens automatically in the browser preview.
+1. Open the repository in Codespaces.
+2. Allow the devcontainer to install dependencies.
+3. Copy `.env.example` to `.env.local` when needed.
+4. Run:
 
-### Option B — Local machine
+```bash
+npx expo start --web -c
+```
 
-Prerequisites: Node 20+, npm.
+### Local development
+
+Prerequisites: Node.js and npm.
 
 ```bash
 gh repo clone jussray/Bip
 cd Bip
 npm install --legacy-peer-deps
-cp .env.example .env.local            # fill in keys when ready
-npx expo start --web -c               # web
-npm run ios                           # iOS simulator
-npm run android                       # Android emulator
+cp .env.example .env.local
+npx expo start --web -c
 ```
 
-## Environment Variables
+Other targets:
 
-Create `.env.local` from `.env.example`. Only `EXPO_PUBLIC_*` vars ship to the client.
-
-```
-EXPO_PUBLIC_BACKEND_URL=http://YOUR_LOCAL_IP:8001
-EXPO_PUBLIC_APP_ENV=development
-
-# Phase 2 — fill in when wiring Supabase:
-EXPO_PUBLIC_SUPABASE_URL=
-EXPO_PUBLIC_SUPABASE_ANON_KEY=
+```bash
+npm run ios
+npm run android
 ```
 
-**Never commit `.env.local`. Never put a Supabase `service_role` key on the device.**
+## Environment and Secret Safety
 
-## Architecture
+Only `EXPO_PUBLIC_*` variables may be exposed to the client bundle.
 
-- **State (Phase 1)**: AsyncStorage via `utils/storage.ts`, React hooks for local state
-- **State (Phase 2)**: Supabase via `utils/supabase.ts`, AsyncStorage as offline cache
-- **Navigation**: Expo Router (file-based)
-- **Styling**: React Native StyleSheet + theme packs in `constants/theme.ts`
-- **Voice / personality**: `constants/bip_voice.ts` + `SEKRET_PROFILES`
+Never commit:
 
-## Tech Stack
+- `.env.local`
+- Supabase `service_role` keys
+- Cloudflare API tokens
+- account deletion processing secrets
+- AI provider secret keys
+- webhook secrets
 
-- React Native 0.74
-- Expo 56
-- TypeScript 5
-- Expo Router
-- AsyncStorage + Supabase (scaffold)
+Use the active Supabase project configured for this repository. Do not copy project references or keys from older Bip environments.
+
+## Validation
+
+Use the repository scripts and CI workflows before merging meaningful implementation changes.
+
+Typical checks include:
+
+```bash
+npm run type-check
+npm test
+npm run test:oracle
+npm run test:voice-intelligence
+npm run test:device-sync
+```
+
+When available, run:
+
+```bash
+npm run verify:prepush
+```
+
+Do not claim tests passed unless they were actually executed by a shell or CI run.
 
 ## Guides
 
-- [Codespaces setup](docs/CODESPACES.md) — running the app in GitHub Codespaces
-- [Dependency audit](docs/DEPENDENCY_AUDIT.md) — version pins and how they're enforced
-- [Room art guide](docs/ROOM_ART_GUIDE.md) — naming, format, and fallback rules for room backgrounds
-- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md) — the gate before Phase 2 touches room art
-- [Asset backup rules](docs/ASSET_BACKUP_RULES.md) — backup requirements for room background PNGs
+- [Codespaces setup](docs/CODESPACES.md)
+- [Dependency audit](docs/DEPENDENCY_AUDIT.md)
+- [Room art guide](docs/ROOM_ART_GUIDE.md)
+- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md)
+- [Asset backup rules](docs/ASSET_BACKUP_RULES.md)
 
-Run `npm run verify:prepush` before pushing — it runs the asset audit,
-type-check, lint, bundle export, and room-archive verification together.
+Additional vision, privacy, safety, and Figma documentation should live under `docs/` and be treated as implementation guardrails rather than disposable planning notes.
 
 ## License
 
