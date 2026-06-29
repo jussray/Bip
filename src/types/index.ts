@@ -5,6 +5,12 @@
  * Import via: import type { JournalEntry } from '@/types';
  */
 
+export * from './identity';
+export * from './verification';
+export * from './safety';
+export * from './doorbell';
+export * from './notifications';
+
 export interface JournalEntry {
   id: number;
   text: string;
