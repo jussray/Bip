@@ -8,13 +8,14 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "@/*":           ["./src/*"],
-      "@hooks/*":      ["./src/hooks/*"],
-      "@utils/*":      ["./src/utils/*"],
-      "@components/*": ["./src/components/*"],
-      "@constants/*":  ["./src/constants/*", "./constants/*"],
-      "@screens/*":    ["./screens/*"],
-      "@types/*":      ["./src/types/*"]
+      "@/*":                 ["./src/*"],
+      "@hooks/*":            ["./src/hooks/*"],
+      "@utils/*":            ["./src/utils/*"],
+      "@components/*":       ["./src/components/*"],
+      "@constants/theme":    ["./src/constants/theme.ts"],
+      "@constants/*":        ["./src/constants/*", "./constants/*"],
+      "@screens/*":          ["./screens/*"],
+      "@types/*":            ["./src/types/*"]
     }
   },
   "exclude": ["supabase/functions/**"]
