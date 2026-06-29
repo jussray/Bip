@@ -5,6 +5,7 @@ import { AppProvider, useAppContext } from '@/context/AppContext';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import { clearPrivateAccountCache } from '@/utils/storage';
+import { clearProfileIdentityCache } from '@/features/identity/clearProfileIdentityCache';
 
 void validateEnv();
 
@@ -26,9 +27,14 @@ function RouteBoundary() {
     const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
       if (session) return;
       if (event === 'SIGNED_OUT') {
-        void clearPrivateAccountCache().finally(() => {
-          router.replace('/(auth)/login');
-        });
+        void (async () => {
+          try {
+            await clearPrivateAccountCache();
+            await clearProfileIdentityCache();
+          } finally {
+            router.replace('/(auth)/login');
+          }
+        })();
         return;
       }
       router.replace('/(auth)/login');

@@ -10,11 +10,18 @@ export const getTeenCompanionAsset = <C extends TeenCompanion>(
   companion: C,
   pose: TeenCompanionPose<C>,
 ): ImageSourcePropType | null => {
-  const images = TEEN_COMPANION_IMAGES[companion];
-  return images[pose] ?? images.neutral ?? null;
+  const images = TEEN_COMPANION_IMAGES[companion] as Partial<
+    Record<string, ImageSourcePropType>
+  >;
+  return images[String(pose)] ?? images.neutral ?? null;
 };
 
 export const hasTeenCompanionAsset = <C extends TeenCompanion>(
   companion: C,
   pose: TeenCompanionPose<C>,
-): boolean => Boolean(TEEN_COMPANION_IMAGES[companion][pose]);
+): boolean => {
+  const images = TEEN_COMPANION_IMAGES[companion] as Partial<
+    Record<string, ImageSourcePropType>
+  >;
+  return Boolean(images[String(pose)]);
+};
