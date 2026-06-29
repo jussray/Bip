@@ -2,6 +2,17 @@
 
 Local Figma plugin that creates the six canonical 390×844 Bip vibe frames without a personal access token.
 
+## Canonical Figma target
+
+Open this file in the Figma desktop app before running the plugin:
+
+`https://www.figma.com/design/ETppMmGn15qigJnHPHghTs/Se-kret-Bip?node-id=18-2&m=dev`
+
+- File key: `ETppMmGn15qigJnHPHghTs`
+- Starting node: `18:2`
+- The plugin does not use the REST API or store a personal access token.
+- It runs only inside whichever Figma file is currently open, so make sure the file above is active.
+
 ## What it builds
 
 - Raylene's Room
@@ -27,13 +38,14 @@ The values mirror `constants/vibeDesignTokens.ts` and `constants/vibeColors.ts`.
 
 ## Install locally in Figma
 
-1. Open the Bip Figma file in the Figma desktop app.
-2. Open **Plugins → Development → Import plugin from manifest…**
-3. Select:
+1. Clone or download the `jussray/Bip` repository to your computer.
+2. Open the canonical Bip Figma file above in the Figma desktop app.
+3. Open **Plugins → Development → Import plugin from manifest…**
+4. Select:
 
    `tools/figma-vibe-builder/manifest.json`
 
-4. Run **Plugins → Development → Bip Vibe Frame Builder**.
+5. Run **Plugins → Development → Bip Vibe Frame Builder**.
 
 The plugin creates or reuses a page called `Bip Vibe Frames`, removes only prior frames whose names begin with `Vibe —`, and rebuilds all six frames.
 
