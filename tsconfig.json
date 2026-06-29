@@ -12,7 +12,7 @@
       "@hooks/*":      ["./src/hooks/*"],
       "@utils/*":      ["./src/utils/*"],
       "@components/*": ["./src/components/*"],
-      "@constants/*":  ["./constants/*", "./src/constants/*"],
+      "@constants/*":  ["./src/constants/*", "./constants/*"],
       "@screens/*":    ["./screens/*"],
       "@types/*":      ["./src/types/*"]
     }
