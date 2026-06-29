@@ -1,4 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { GlobalMoodButton } from '@/components/GlobalMoodButton';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
@@ -11,7 +13,6 @@ function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
 }
 
-// Inner component — only mounted after auth/side checks pass, so hooks are safe.
 function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
   const companionId = toCompanionId(selectedSekret ?? 'raylene');
   const { experience, clear } = useSafetyCheck(companionId, true);
@@ -71,8 +72,26 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
 
 export default function TeenLayout() {
   const { userSide, isLoading, selectedSekret } = useAppContext();
-  if (isLoading) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [profileDone, setProfileDone] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('teen_profile_done')
+      .then(value => {
+        if (active) setProfileDone(value === 'true');
+      })
+      .finally(() => {
+        if (active) setProfileChecked(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (isLoading || !profileChecked) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
   if (userSide === 'parent') return <Redirect href="/(parent)/room" />;
   if (userSide !== 'teen') return <Redirect href="/" />;
+  if (!profileDone) return <Redirect href="/(onboarding)/welcome" />;
   return <TeenTabs selectedSekret={selectedSekret ?? 'raylene'} />;
 }
