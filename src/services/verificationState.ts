@@ -13,74 +13,143 @@ export type VerificationRouteTarget =
   | '/(safety)/manual-review'
   | '/(auth)/suspended';
 
+export interface VerificationTransitionResult {
+  previous: VerificationSnapshot;
+  current: VerificationSnapshot;
+  changed: boolean;
+}
+
+type Transition = {
+  to: VerificationState;
+  parentLinkState?: ParentLinkState;
+};
+
 export const INITIAL_VERIFICATION_SNAPSHOT: VerificationSnapshot = {
   state: 'UNVERIFIED',
   parentLinkState: 'none',
   updatedAt: new Date(0).toISOString(),
 };
 
-const transitionTable: Record<VerificationState, Partial<Record<VerificationEvent, VerificationState>>> = {
+const TRANSITIONS: Partial<
+  Record<VerificationState, Partial<Record<VerificationEvent, Transition>>>
+> = {
   UNVERIFIED: {
-    START_PARENT_LINK: 'PENDING_PARENT',
-    START_TRUSTED_ADULT_LINK: 'PENDING_TRUSTED_ADULT',
-    RESET: 'UNVERIFIED',
+    SUBMIT_SIGNUP: { to: 'PENDING_PARENT', parentLinkState: 'pending' },
+    START_PARENT_LINK: { to: 'PENDING_PARENT', parentLinkState: 'pending' },
+    START_TRUSTED_ADULT_LINK: {
+      to: 'PENDING_TRUSTED_ADULT',
+      parentLinkState: 'pending',
+    },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   PENDING_PARENT: {
-    INVITE_SENT: 'LIMITED_MODE',
-    VERIFICATION_CONFIRMED: 'VERIFIED_TEEN',
-    RESET: 'UNVERIFIED',
+    PARENT_APPROVED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    VERIFICATION_CONFIRMED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    PARENT_TIMEOUT: {
+      to: 'PENDING_TRUSTED_ADULT',
+      parentLinkState: 'pending',
+    },
+    START_TRUSTED_ADULT_LINK: {
+      to: 'PENDING_TRUSTED_ADULT',
+      parentLinkState: 'pending',
+    },
+    INVITE_SENT: { to: 'LIMITED_MODE', parentLinkState: 'pending' },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   PENDING_TRUSTED_ADULT: {
-    INVITE_SENT: 'LIMITED_MODE',
-    VERIFICATION_CONFIRMED: 'VERIFIED_TEEN',
-    RESET: 'UNVERIFIED',
+    TRUSTED_ADULT_APPROVED: { to: 'LIMITED_MODE', parentLinkState: 'pending' },
+    PARENT_APPROVED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    VERIFICATION_CONFIRMED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    INVITE_SENT: { to: 'LIMITED_MODE', parentLinkState: 'pending' },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   LIMITED_MODE: {
-    VERIFICATION_CONFIRMED: 'VERIFIED_TEEN',
-    VERIFICATION_EXPIRED: 'EXPIRED',
-    SAFETY_REVIEW_OPENED: 'MANUAL_REVIEW',
-    SUSPEND_ACCOUNT: 'SUSPENDED',
-    RESET: 'UNVERIFIED',
+    PARENT_LATE_APPROVED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    PARENT_APPROVED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    VERIFICATION_CONFIRMED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    TOKEN_EXPIRED: { to: 'EXPIRED', parentLinkState: 'expired' },
+    VERIFICATION_EXPIRED: { to: 'EXPIRED', parentLinkState: 'expired' },
+    SAFETY_FLAG_TRIGGERED: { to: 'MANUAL_REVIEW' },
+    SAFETY_REVIEW_OPENED: { to: 'MANUAL_REVIEW' },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   VERIFIED_TEEN: {
-    VERIFICATION_EXPIRED: 'EXPIRED',
-    SAFETY_REVIEW_OPENED: 'MANUAL_REVIEW',
-    SUSPEND_ACCOUNT: 'SUSPENDED',
-    RESET: 'UNVERIFIED',
+    TOKEN_EXPIRED: { to: 'EXPIRED', parentLinkState: 'expired' },
+    VERIFICATION_EXPIRED: { to: 'EXPIRED', parentLinkState: 'expired' },
+    SAFETY_FLAG_TRIGGERED: { to: 'MANUAL_REVIEW' },
+    SAFETY_REVIEW_OPENED: { to: 'MANUAL_REVIEW' },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   EXPIRED: {
-    START_PARENT_LINK: 'PENDING_PARENT',
-    START_TRUSTED_ADULT_LINK: 'PENDING_TRUSTED_ADULT',
-    SAFETY_REVIEW_OPENED: 'MANUAL_REVIEW',
-    SUSPEND_ACCOUNT: 'SUSPENDED',
-    RESET: 'UNVERIFIED',
+    REVERIFY: { to: 'PENDING_PARENT', parentLinkState: 'pending' },
+    START_PARENT_LINK: { to: 'PENDING_PARENT', parentLinkState: 'pending' },
+    START_TRUSTED_ADULT_LINK: {
+      to: 'PENDING_TRUSTED_ADULT',
+      parentLinkState: 'pending',
+    },
+    SAFETY_REVIEW_OPENED: { to: 'MANUAL_REVIEW' },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   MANUAL_REVIEW: {
-    VERIFICATION_CONFIRMED: 'VERIFIED_TEEN',
-    SUSPEND_ACCOUNT: 'SUSPENDED',
-    RESET: 'UNVERIFIED',
+    ADMIN_RESTORED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    VERIFICATION_CONFIRMED: { to: 'VERIFIED_TEEN', parentLinkState: 'active' },
+    ADMIN_SUSPENDED: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    EMERGENCY_SHUTOFF: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    SUSPEND_ACCOUNT: { to: 'SUSPENDED', parentLinkState: 'revoked' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
   SUSPENDED: {
-    APPEAL_OPENED: 'MANUAL_REVIEW',
-    RESET: 'UNVERIFIED',
+    APPEAL_OPENED: { to: 'MANUAL_REVIEW' },
+    RESET: { to: 'UNVERIFIED', parentLinkState: 'none' },
   },
 };
 
-function nextParentLinkState(event: VerificationEvent, current: ParentLinkState): ParentLinkState {
-  switch (event) {
-    case 'START_PARENT_LINK':
-    case 'START_TRUSTED_ADULT_LINK':
-    case 'INVITE_SENT':
-      return 'pending';
-    case 'VERIFICATION_CONFIRMED':
-      return 'active';
-    case 'VERIFICATION_EXPIRED':
-      return 'expired';
-    case 'RESET':
-      return 'none';
-    default:
-      return current;
+export function canTransitionVerification(
+  state: VerificationState,
+  event: VerificationEvent,
+): boolean {
+  return Boolean(TRANSITIONS[state]?.[event]);
+}
+
+export function transitionVerification(
+  snapshot: VerificationSnapshot,
+  event: VerificationEvent,
+  options?: { now?: string; reason?: string },
+): VerificationTransitionResult {
+  const transition = TRANSITIONS[snapshot.state]?.[event];
+
+  if (!transition) {
+    return {
+      previous: snapshot,
+      current: snapshot,
+      changed: false,
+    };
   }
+
+  const current: VerificationSnapshot = {
+    state: transition.to,
+    parentLinkState: transition.parentLinkState ?? snapshot.parentLinkState,
+    updatedAt: options?.now ?? new Date().toISOString(),
+    reason: options?.reason,
+  };
+
+  return {
+    previous: snapshot,
+    current,
+    changed: true,
+  };
 }
 
 export function transitionVerificationState(
@@ -88,13 +157,15 @@ export function transitionVerificationState(
   event: VerificationEvent,
   now = new Date().toISOString(),
 ): VerificationSnapshot {
-  const nextState = transitionTable[snapshot.state][event];
-  if (!nextState) return snapshot;
+  return transitionVerification(snapshot, event, { now }).current;
+}
 
+export function createInitialVerificationSnapshot(
+  now = new Date().toISOString(),
+): VerificationSnapshot {
   return {
-    ...snapshot,
-    state: nextState,
-    parentLinkState: nextParentLinkState(event, snapshot.parentLinkState),
+    state: 'UNVERIFIED',
+    parentLinkState: 'none',
     updatedAt: now,
   };
 }
@@ -119,7 +190,9 @@ export function shouldShowLimitedMode(state: VerificationState): boolean {
   return isLimitedMode(state);
 }
 
-export function getVerificationRouteTarget(state: VerificationState): VerificationRouteTarget {
+export function getVerificationRouteTarget(
+  state: VerificationState,
+): VerificationRouteTarget {
   switch (state) {
     case 'UNVERIFIED':
       return '/(auth)/welcome';
