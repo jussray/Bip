@@ -14,7 +14,7 @@ Canonical teen-side production sprites live here.
 
 ### Night
 
-`neutral.png`, `headphones.png`, `thinking.png`, `writing.png`, `comfort.png`, `window.png`, `rain.png`
+`neutral.png`, `happy.png`, `headphones.png`, `thinking.png`, `listening.png`, `writing.png`, `comfort.png`, `window.png`, `rain.png`
 
 ## Production rules
 

@@ -11,7 +11,13 @@ import type { TeenCompanion, TeenCompanionPose } from '@/types/companions';
 export const TEEN_COMPANION_IMAGES: {
   [C in TeenCompanion]: Partial<Record<TeenCompanionPose<C>, ImageSourcePropType>>;
 } = {
-  raylene: {},
-  rylane: {},
-  night: {},
+  raylene: {
+    neutral: require('../../assets/images/companions/teen/raylene/neutral.png'),
+  },
+  rylane: {
+    neutral: require('../../assets/images/companions/teen/rylane/neutral.png'),
+  },
+  night: {
+    neutral: require('../../assets/images/companions/teen/night/neutral.png'),
+  },
 };

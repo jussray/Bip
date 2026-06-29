@@ -13,19 +13,20 @@ const assetPath = <C extends TeenCompanion>(
 
 const buildEntries = <C extends TeenCompanion>(
   companion: C,
-  status: CompanionAssetStatus = 'missing',
+  overrides: Partial<Record<TeenCompanionPose<C>, CompanionAssetStatus>> = {},
 ): TeenCompanionAssetEntry<C>[] =>
   TEEN_COMPANION_POSES[companion].map((pose) => ({
     companion,
     pose,
-    status,
+    status: overrides[pose] ?? 'missing',
     relativePath: assetPath(companion, pose),
   }));
 
 export const TEEN_COMPANION_MANIFEST = {
-  raylene: buildEntries('raylene'),
-  rylane: buildEntries('rylane'),
-  night: buildEntries('night'),
+  // Batch 0 — Identity Lock: neutral references are live (sourced from Canva canon).
+  raylene: buildEntries('raylene', { neutral: 'production' }),
+  rylane: buildEntries('rylane', { neutral: 'production' }),
+  night: buildEntries('night', { neutral: 'production' }),
 } as const;
 
 export const getTeenCompanionAssetStatus = <C extends TeenCompanion>(
