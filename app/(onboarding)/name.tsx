@@ -22,7 +22,7 @@ export default function NameScreen() {
     if (!ready) return;
     Keyboard.dismiss();
     await AsyncStorage.setItem('bip_onboarding_name', name.trim());
-    router.push('/(onboarding)/reflection');
+    router.push('/(onboarding)/identity');
   }
 
   return (
@@ -37,7 +37,7 @@ export default function NameScreen() {
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={styles.step}>2 OF 3</Text>
+        <Text style={styles.step}>2 OF 4</Text>
         <Text style={styles.title}>What should{'\n'}Se'kret call you?</Text>
         <Text style={styles.sub}>A nickname, your name — whatever feels like you.</Text>
 
