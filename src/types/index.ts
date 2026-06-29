@@ -10,6 +10,7 @@ export * from './verification';
 export * from './safety';
 export * from './doorbell';
 export * from './notifications';
+export * from './companions';
 
 export interface JournalEntry {
   id: number;
