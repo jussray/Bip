@@ -44,6 +44,14 @@ export {
   getDesignToolTokenTable,
 } from './vibeColors';
 
+// ── Figma/Tokens Studio contract (June 2026) ──────────────────────────────
+export type { VibeDesignTokenSet } from './vibeDesignTokens';
+export {
+  GLOBAL_VIBE_TOKENS,
+  VIBE_DESIGN_TOKENS,
+  getVibeDesignTokens,
+} from './vibeDesignTokens';
+
 // ── Runtime hook + provider ───────────────────────────────────────────────
 export { useVibeTheme, VibeThemeProvider } from '../context/VibeThemeContext';
 export type { VibeThemeContextValue } from '../context/VibeThemeContext';
