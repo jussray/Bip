@@ -44,3 +44,5 @@ test('sign out clears teen and parent profile identities', () => {
   assert.equal(layout.includes('await clearPrivateAccountCache()'), true);
   assert.equal(layout.includes('await clearProfileIdentityCache()'), true);
 });
+
+// Keep this suite attached to the rebased PR head so CI validates current main.
