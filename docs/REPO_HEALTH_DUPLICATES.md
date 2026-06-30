@@ -1,37 +1,16 @@
-# Exact Duplicate Source Files
+# Repository Duplicate Audit
 
-## Group 1
-- `supabase/migrations/20260626013453_push_tokens.sql`
-- `supabase/migrations/20260626013458_media_columns.sql`
-- `supabase/migrations/20260626014141_circle_replies.sql`
-- `supabase/migrations/20260626020337_voice_notes_video_url.sql`
-- `supabase/migrations/20260626021250_voice_notes_metadata.sql`
+Six unused root utility placeholders were removed:
 
-## Group 2
-- `supabase/migrations/20260622190420_remote_history.sql`
-- `supabase/migrations/20260622230350_remote_history.sql`
-- `supabase/migrations/20260622230409_remote_history.sql`
-- `supabase/migrations/20260625075233_remote_history.sql`
+- `utils/sekretCompanion.ts`
+- `utils/sekretReply.ts`
+- `utils/storage.ts`
+- `utils/supabase.ts`
+- `utils/sync.ts`
+- `utils/voiceCompanion.ts`
 
-## Group 3
-- `src/parent/index.ts`
-- `src/shared/index.ts`
-- `src/teen/index.ts`
+The real implementations remain under `src/utils/`.
 
-## Group 4
-- `src/parent/services/index.ts`
-- `src/shared/ai/index.ts`
-- `src/teen/services/index.ts`
+Identical Supabase migration marker files were retained because their timestamped filenames preserve migration history. Matching `index.ts` files under parent, shared, and teen domains were also retained because they are intentional module barrels, not competing implementations.
 
-## Group 5
-- `src/parent/components/index.ts`
-- `src/teen/components/index.ts`
-
-## Group 6
-- `src/parent/hooks/index.ts`
-- `src/teen/hooks/index.ts`
-
-## Group 7
-- `supabase/migrations/20260625182804_applied.sql`
-- `supabase/migrations/20260625182819_applied.sql`
-
+No other exact duplicate text or source implementations were found by the checksum audit. Binary and media assets were excluded and require a separate reference-aware audit before deletion.
