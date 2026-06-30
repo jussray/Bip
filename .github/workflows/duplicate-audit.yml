@@ -41,3 +41,5 @@ jobs:
           git add docs/REPO_HEALTH_DUPLICATES.md
           git commit -m "docs: record exact duplicate source audit"
           git push
+
+# Triggered after workflow creation.
