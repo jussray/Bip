@@ -1,0 +1,80 @@
+name: Finalize Journal Fix And Audit
+
+on:
+  push:
+    branches: [fix-journal-avatar-presentation]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-journal-avatar-presentation
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git fetch origin main
+          git merge --no-edit origin/main
+      - name: Generate exact duplicate report
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from collections import defaultdict
+          import hashlib
+
+          root = Path('.')
+          ignored_dirs = {'.git', 'node_modules', '.expo', 'dist', 'coverage'}
+          ignored_suffixes = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp3', '.wav', '.mp4', '.mov', '.zip', '.pdf'}
+          groups = defaultdict(list)
+          for path in root.rglob('*'):
+              if not path.is_file():
+                  continue
+              if any(part in ignored_dirs for part in path.parts):
+                  continue
+              if path.suffix.lower() in ignored_suffixes:
+                  continue
+              data = path.read_bytes()
+              if not data.strip():
+                  continue
+              groups[hashlib.sha256(data).hexdigest()].append(path.as_posix())
+
+          dupes = [sorted(paths) for paths in groups.values() if len(paths) > 1]
+          dupes.sort(key=lambda paths: (-len(paths), paths))
+          lines = [
+              '# Repository Health: Exact Duplicate Files',
+              '',
+              'Generated automatically from the current branch after merging latest `main`.',
+              'Binary/media assets, build output, dependencies, and empty files are excluded.',
+              '',
+          ]
+          if not dupes:
+              lines.append('No exact duplicate text/source files were found.')
+          else:
+              lines.append(f'Found {len(dupes)} exact duplicate groups:')
+              lines.append('')
+              for i, paths in enumerate(dupes, 1):
+                  lines.append(f'## Group {i}')
+                  for path in paths:
+                      lines.append(f'- `{path}`')
+                  lines.append('')
+          Path('docs/REPO_HEALTH_DUPLICATES.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+      - run: npm ci
+      - run: npm test
+      - run: npm run type-check
+      - run: |
+          rm .github/workflows/finalize-journal-and-audit.yml
+          git add app/'(teen)'/pages/index.tsx test/journal-avatar-presentation.test.mjs docs/REPO_HEALTH_DUPLICATES.md .github/workflows/finalize-journal-and-audit.yml
+          git commit -m "chore: refresh journal fix and audit exact duplicates"
+          git push
