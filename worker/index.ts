@@ -2,29 +2,33 @@ import worker from './sekret-reply';
 import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './piper-tts';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
+type ProtectedRoute = 'reply' | 'voice' | 'transcribe';
+
+interface RateLimitBinding {
+  limit(input: { key: string }): Promise<{ success: boolean }>;
+}
 
 interface Env extends PiperTtsEnv {
   OPENAI_API_KEY?: string;
+  BIP_CLIENT_TOKEN?: string;
+  CORS_ALLOWED_ORIGINS?: string;
+  REPLY_RATE_LIMITER: RateLimitBinding;
+  VOICE_RATE_LIMITER: RateLimitBinding;
+  TRANSCRIBE_RATE_LIMITER: RateLimitBinding;
 }
-
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
 
 const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
   raylene: [
-    "Hey! Random or did something actually happen?",
+    'Hey! Random or did something actually happen?',
     "That's valid. We can be random, nosy, calm, or chaotic.",
-    "See, now I need to know what was funny 😭",
-    "Okay what happened, break it down.",
-    "Girl, okay. What really happened?",
+    'See, now I need to know what was funny 😭',
+    'Okay what happened, break it down.',
+    'Girl, okay. What really happened?',
   ],
   rylane: [
     "Aight, I'm here. Talk.",
-    "Bet. Nothing days count too. You tryna chill or find something to get into?",
-    "Right lol. But for real though.",
+    'Bet. Nothing days count too. You tryna chill or find something to get into?',
+    'Right lol. But for real though.',
     "What's going on? All of it.",
     "Say the real version. What's going on?",
   ],
@@ -32,19 +36,19 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
     "Hey. No pressure — what's on your mind or nothing at all?",
     "That's okay. We can just vibe.",
     "Yeah. What's the kind of vibe today?",
-    "No rush. Start wherever feels okay.",
+    'No rush. Start wherever feels okay.',
     "We don't have to fix anything. Just talk.",
   ],
   night: [
-    "Hey. You trying to talk, plan, or just sit in it?",
-    "Nothing-nothing or something on your mind?",
+    'Hey. You trying to talk, plan, or just sit in it?',
+    'Nothing-nothing or something on your mind?',
     "Right. But for real — what's actually going on?",
     "Okay, I'm here. What you bringing?",
     "Say more. What's the actual thing?",
   ],
   sekret: [
-    "Something brought you here — what is it?",
-    "Sometimes you show up before the words do. We can start anywhere.",
+    'Something brought you here — what is it?',
+    'Sometimes you show up before the words do. We can start anywhere.',
     "I'm here. No agenda. Where do you want to start?",
     "You showed up. That means something. What's the thing?",
     "There's something circling. What is it?",
@@ -72,11 +76,96 @@ function stableHash(value: string): number {
   return Math.abs(hash);
 }
 
-function json(data: unknown, status = 200): Response {
+function allowedOrigins(env: Env): Set<string> {
+  return new Set(
+    (env.CORS_ALLOWED_ORIGINS ?? '')
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean),
+  );
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+  const origin = request.headers.get('Origin');
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+    Vary: 'Origin',
+  };
+
+  if (origin && allowedOrigins(env).has(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+
+  return headers;
+}
+
+function json(request: Request, env: Env, data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: {
+      ...corsHeaders(request, env),
+      ...extraHeaders,
+      'Content-Type': 'application/json',
+    },
   });
+}
+
+function withCors(response: Response, request: Request, env: Env): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders(request, env))) headers.set(key, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+function constantTimeEqual(actual: string, expected: string): boolean {
+  const actualBytes = new TextEncoder().encode(actual);
+  const expectedBytes = new TextEncoder().encode(expected);
+  const length = Math.max(actualBytes.length, expectedBytes.length);
+  let mismatch = actualBytes.length ^ expectedBytes.length;
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (actualBytes[index] ?? 0) ^ (expectedBytes[index] ?? 0);
+  }
+  return mismatch === 0;
+}
+
+function hasValidClientToken(request: Request, env: Env): boolean {
+  const expected = env.BIP_CLIENT_TOKEN?.trim();
+  if (!expected) return false;
+  const authorization = request.headers.get('Authorization') ?? '';
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  return Boolean(match && constantTimeEqual(match[1].trim(), expected));
+}
+
+function protectedRoute(path: string): ProtectedRoute | null {
+  if (path.endsWith('/api/sekret/reply')) return 'reply';
+  if (path.endsWith('/api/sekret/voice')) return 'voice';
+  if (path.endsWith('/api/sekret/transcribe')) return 'transcribe';
+  return null;
+}
+
+function clientKey(request: Request, route: ProtectedRoute): string {
+  const ip = request.headers.get('CF-Connecting-IP')?.trim() || 'unknown';
+  return `${route}:${ip}`;
+}
+
+async function enforceRateLimit(request: Request, env: Env, route: ProtectedRoute): Promise<Response | null> {
+  const limiter = route === 'reply'
+    ? env.REPLY_RATE_LIMITER
+    : route === 'voice'
+      ? env.VOICE_RATE_LIMITER
+      : env.TRANSCRIBE_RATE_LIMITER;
+
+  const result = await limiter.limit({ key: clientKey(request, route) });
+  if (result.success) return null;
+
+  return json(
+    request,
+    env,
+    { error: 'rate_limit_exceeded', route, retryAfterSeconds: 60 },
+    429,
+    { 'Retry-After': '60' },
+  );
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -87,16 +176,32 @@ function toBase64(bytes: Uint8Array): string {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
-
     const path = new URL(request.url).pathname;
+    const route = protectedRoute(path);
+
+    if (request.method === 'OPTIONS') {
+      const origin = request.headers.get('Origin');
+      if (origin && !allowedOrigins(env).has(origin)) {
+        return json(request, env, { error: 'origin_not_allowed' }, 403);
+      }
+      return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+    }
+
+    if (request.method === 'POST' && route) {
+      if (!hasValidClientToken(request, env)) {
+        return json(request, env, { error: 'unauthorized' }, 401);
+      }
+
+      const limited = await enforceRateLimit(request, env, route);
+      if (limited) return limited;
+    }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL?.trim()) {
       let body: Record<string, unknown>;
       try {
         body = await request.clone().json() as Record<string, unknown>;
       } catch {
-        return json({ error: 'Invalid JSON' }, 400);
+        return json(request, env, { error: 'Invalid JSON' }, 400);
       }
 
       const text = (
@@ -104,13 +209,13 @@ export default {
           : typeof body.text === 'string' ? body.text
             : ''
       ).trim();
-      if (!text) return json({ error: 'reply is required' }, 400);
+      if (!text) return json(request, env, { error: 'reply is required' }, 400);
 
       const characterId = normalizePiperCharacter(body.characterId);
       try {
         const audio = await synthesizeWithPiper({ text, characterId, env });
         if (audio) {
-          return json({
+          return json(request, env, {
             audioBase64: toBase64(audio.bytes),
             contentType: audio.contentType,
             characterId,
@@ -121,7 +226,7 @@ export default {
         }
       } catch (error) {
         console.error('[sekret/voice:piper]', error);
-        if (!env.OPENAI_API_KEY) return json({ error: 'piper tts failed' }, 502);
+        if (!env.OPENAI_API_KEY) return json(request, env, { error: 'piper tts failed' }, 502);
       }
     }
 
@@ -130,7 +235,7 @@ export default {
       try {
         body = await request.clone().json() as Record<string, unknown>;
       } catch {
-        return json({ error: 'Invalid JSON' }, 400);
+        return json(request, env, { error: 'Invalid JSON' }, 400);
       }
 
       const userText = (
@@ -139,7 +244,7 @@ export default {
             : ''
       ).trim();
 
-      if (!userText) return json({ error: 'userText is required' }, 400);
+      if (!userText) return json(request, env, { error: 'userText is required' }, 400);
 
       const characterId = normalizeCharacter(body.characterId ?? body.personality);
       const options = CHARACTER_FALLBACKS[characterId];
@@ -147,7 +252,7 @@ export default {
 
       console.error('[sekret/reply] OPENAI_API_KEY is not configured — serving fallback');
 
-      return json({
+      return json(request, env, {
         reply: options[start],
         tone: 'casual',
         safetyFlag: false,
@@ -159,6 +264,6 @@ export default {
       });
     }
 
-    return worker.fetch(request, env as { OPENAI_API_KEY: string });
+    return withCors(await worker.fetch(request, env as { OPENAI_API_KEY: string }), request, env);
   },
 };
