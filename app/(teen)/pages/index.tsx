@@ -247,7 +247,7 @@ export default function TeenPagesRoute() {
   const companion = COMPANIONS.find(c => c.id === activeTab) ?? COMPANIONS[0];
 
   const aiCompanion = isAiTab(activeTab);
-  const companionAvatarId: SekretCharacterId = aiCompanion ? activeTab : 'raylene';
+  const companionAvatarId: AiCompanionId | null = aiCompanion ? activeTab : null;
 
   // Entries for current tab, chronological (oldest first for chat timeline)
   const threadEntries = useMemo(
@@ -273,9 +273,9 @@ export default function TeenPagesRoute() {
   // ── Companion tab switch ───────────────────────────────────────────────────
   function chooseTab(id: CompanionId) {
     setActiveTab(id);
+    setAvatarState(isAiTab(id) ? 'listening' : 'neutral');
     if (isAiTab(id)) {
       setSelectedSekret(id);
-      setAvatarState('listening');
     }
   }
 
@@ -384,7 +384,7 @@ export default function TeenPagesRoute() {
 
   // ── Voice playback (protected: per entry, cached) ─────────────────────────
   async function hearReply(entryId: number | string, replyText: string) {
-    if (!replyText || voiceLoading) return;
+    if (!replyText || voiceLoading || !companionAvatarId) return;
     setVoiceLoading(true);
     try {
       const key = String(entryId);
@@ -464,10 +464,12 @@ export default function TeenPagesRoute() {
         {/* Companion reply bubble */}
         {entry.sekretReply ? (
           <View style={s.replyRow}>
-            <Image
-              source={avatarImage(companionAvatarId, (entry.sekretAvatarState ?? 'neutral') as SekretAvatarState)}
-              style={s.replyAvatar}
-            />
+            {companionAvatarId ? (
+              <Image
+                source={avatarImage(companionAvatarId, (entry.sekretAvatarState ?? 'neutral') as SekretAvatarState)}
+                style={s.replyAvatar}
+              />
+            ) : null}
             <View style={s.replyBubble}>
               <Text style={[s.replyName, { color: companion.accent }]}>
                 {companion.name}
@@ -621,7 +623,7 @@ export default function TeenPagesRoute() {
 
   // ── Typing indicator ───────────────────────────────────────────────────────
   const renderTypingIndicator = () =>
-    saving ? (
+    saving && companionAvatarId ? (
       <View style={s.typingRow}>
         <Image source={avatarImage(companionAvatarId, 'thinking')} style={s.typingAvatar} />
         <View style={s.typingBubble}>
@@ -653,11 +655,15 @@ export default function TeenPagesRoute() {
               <Text style={s.libraryBtnText}>📚</Text>
               <Text style={s.libraryBtnLabel}>all entries</Text>
             </TouchableOpacity>
-            <Animated.Image
-              source={avatarImage(companionAvatarId, avatarState)}
-              style={[s.headerAvatar, { transform: [{ scale: breathe }] }]}
-              resizeMode="contain"
-            />
+            {companionAvatarId ? (
+              <Animated.Image
+                source={avatarImage(companionAvatarId, avatarState)}
+                style={[s.headerAvatar, { transform: [{ scale: breathe }] }]}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={s.headerModeIcon}>{activeTab === 'me' ? '🪞' : '🔮'}</Text>
+            )}
           </View>
         </View>
 
@@ -729,7 +735,7 @@ export default function TeenPagesRoute() {
               multiline
               value={journalText}
               onChangeText={setJournalText}
-              onFocus={() => setAvatarState('listening')}
+              onFocus={() => setAvatarState(aiCompanion ? 'listening' : 'neutral')}
               placeholder={promptPool[promptIdx]}
               placeholderTextColor="#7a6e83"
               style={s.composerInput}
@@ -770,6 +776,7 @@ const s = StyleSheet.create({
   title: { color: '#fff', fontSize: 22, fontWeight: '800', marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatar: { width: 54, height: 54 },
+  headerModeIcon: { width: 54, textAlign: 'center', fontSize: 34 },
 
   libraryBtn: { alignItems: 'center', justifyContent: 'center', borderRadius: 12, borderWidth: 1, borderColor: '#ffffff18', backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 10, paddingVertical: 6 },
   libraryBtnText: { fontSize: 16 },
