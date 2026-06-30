@@ -55,17 +55,23 @@ test('parent bridge remains a dedicated parent route', () => {
 });
 
 test('parent More exposes parent-safe mirrored support destinations', () => {
-  const more = read('app/(parent)/more.tsx');
+  // ParentMoreRoute renders items dynamically from PARENT_MORE_GROUPS.
+  // Scan screenPurpose.ts where the drawer contract is defined.
+  // NOTE: 'Parent Bridge', 'Parent Pages', and 'Calm Before Replying' are
+  // architectural concepts but not current drawer entries. Add them here
+  // only after they have routes and screens wired up.
+  const screenPurpose = read('src/constants/screenPurpose.ts');
   for (const label of [
+    'Bridge',
     'Parent Voice Bip',
-    'Parent Bridge',
     'Bippin 2',
     'Connection Hub',
-    'Parent Pages',
-    'Calm Before Replying',
     'Parent Circle',
+    'Parent Profile',
+    'Parent Link',
+    'Resources',
   ]) {
-    assert.match(more, new RegExp(label));
+    assert.match(screenPurpose, new RegExp(label), `PARENT_MORE_GROUPS must include "${label}"`);
   }
 });
 
