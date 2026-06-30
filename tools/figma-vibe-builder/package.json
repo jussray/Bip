@@ -5,8 +5,7 @@
   "description": "Local Figma plugin that builds the six canonical 390x844 Bip vibe frames from the shared design tokens.",
   "main": "code.js",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint code.js"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.100.0",
