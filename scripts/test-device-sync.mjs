@@ -4,13 +4,21 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(path, 'utf8');
 
-test('root router protects authenticated areas and keeps teen and parent sides separated', () => {
+test('root router protects authenticated areas through centralized route access', () => {
   const layout = read('app/_layout.tsx');
+  const routeAccess = read('src/services/routeAccess.ts');
+
   assert.match(layout, /auth\.getSession\(\)/, 'root layout should resolve the current Supabase session');
   assert.match(layout, /onAuthStateChange/, 'root layout should react to sign-out and session changes');
   assert.match(layout, /router\.replace\('\/\(auth\)\/login'\)/, 'signed-out users should be sent to login');
-  assert.match(layout, /userSide === 'teen'[\s\S]*\/\(teen\)\/room/, 'teen users should stay on teen routes');
-  assert.match(layout, /userSide === 'parent'[\s\S]*\/\(parent\)\/room/, 'parent users should stay on parent routes');
+  assert.match(layout, /decideRouteAccess/, 'root layout should delegate route policy centrally');
+  assert.match(layout, /router\.replace\(decision\.redirectTo\)/, 'denied routes should use the centralized redirect');
+
+  assert.match(routeAccess, /options\.userSide === 'parent'[\s\S]*redirectTo: '\/\(parent\)\/room'/s);
+  assert.match(routeAccess, /area === '\(parent\)'[\s\S]*redirectTo: '\/\(teen\)\/room'/s);
+  assert.match(routeAccess, /verification_required/);
+  assert.match(routeAccess, /manual_review/);
+  assert.match(routeAccess, /suspended/);
 });
 
 test('teen and parent bottom navigation use the same five destinations', () => {
@@ -38,8 +46,8 @@ test('account and privacy schema exists and can be safely rerun', () => {
   assert.match(schema, /anonymous_name\s+text/);
   assert.match(schema, /identity_context\s+text/);
   assert.match(schema, /connection_status\s+text/);
-  assert.match(schema, /drop policy if exists "accounts_self"/, 'policy setup must be rerunnable');
-  assert.match(schema, /drop policy if exists "mood_history_self"/, 'existing table policies must be rerunnable');
+  assert.match(schema, /drop policy if exists "accounts_self"/);
+  assert.match(schema, /drop policy if exists "mood_history_self"/);
 });
 
 test('legacy API imports resolve to the canonical src implementation', () => {
@@ -47,6 +55,6 @@ test('legacy API imports resolve to the canonical src implementation', () => {
   const canonical = read('src/utils/api.ts');
   assert.match(bridge, /export \* from '\.\.\/src\/utils\/api'/);
   for (const name of ['fetchSekretReply', 'fetchSekretVoice', 'fetchSekretTranscribe']) {
-    assert.match(canonical, new RegExp(`export async function ${name}`), `${name} must be exported by src/utils/api.ts`);
+    assert.match(canonical, new RegExp(`export async function ${name}`));
   }
 });
