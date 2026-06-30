@@ -1,11 +1,8 @@
 /**
- * src/utils/api.ts
- *
- * Canonical backend API helpers. OpenAI is called only by the secure backend;
- * the Expo app sends teen-safe request context and never receives or stores an
- * OPENAI_API_KEY.
+ * Canonical backend API helpers. OpenAI is called only by the secure backend.
  */
 const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+const IS_DEV = typeof __DEV__ !== 'undefined' && __DEV__;
 
 export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
@@ -26,6 +23,9 @@ export interface SekretBrainResponse {
   parentShareSummary: string | null;
   suggestedComfortTool: string | null;
   replySource: SekretReplySource;
+  fallbackUsed: boolean;
+  fallbackReason: string | null;
+  backendStatus: number | null;
 }
 
 export interface SekretVoiceResponse {
@@ -57,10 +57,6 @@ function normalizeAvatarState(value?: unknown): SekretAvatarState {
   return 'neutral';
 }
 
-function normalizeReplySource(value?: unknown): SekretReplySource {
-  return value === 'openai' ? 'openai' : 'fallback';
-}
-
 function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
   if (!Array.isArray(value)) return [];
   const turns: SekretHistoryTurn[] = [];
@@ -86,19 +82,26 @@ function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
   return turns.slice(-10);
 }
 
-function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrainResponse {
+function debugReply(event: string, details: Record<string, unknown>) {
+  if (IS_DEV) console.info(`[sekret-reply] ${event}`, details);
+}
+
+function fallbackReply(
+  characterId: SekretCharacterId,
+  text: string,
+  fallbackReason: string,
+  backendStatus: number | null = null,
+): SekretBrainResponse {
   const crisis = /\b(kill myself|end my life|want to die|suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
   if (crisis) {
     return {
       reply: "I'm an AI companion, not emergency help. If you're in danger or might hurt yourself, tell a trusted adult now, call 911, call/text 988, or text HOME to 741741.",
-      tone: 'supportive-safety',
-      avatarState: 'concerned',
-      safetyFlag: true,
-      parentShareSummary: null,
-      suggestedComfortTool: 'safety-plan',
-      replySource: 'fallback',
+      tone: 'supportive-safety', avatarState: 'concerned', safetyFlag: true,
+      parentShareSummary: null, suggestedComfortTool: 'safety-plan',
+      replySource: 'fallback', fallbackUsed: true, fallbackReason, backendStatus,
     };
   }
+
   const replies: Record<SekretCharacterId, string[]> = {
     raylene: [
       'Okay, I hear you. Which part feels the loudest right now?',
@@ -121,21 +124,19 @@ function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrai
       'Let us not rush past it. What is underneath the first thing you said?',
     ],
     sekret: [
-      "I’m noticing a pattern in what you shared: part of you wants to be understood without having to explain every detail. I could be reading that wrong, but does that feel close?",
-      "Here’s what I’m hearing underneath it: you may be carrying more than you let people see. I’m not treating that like a fact—what part fits, and what part doesn’t?",
-      "Your answers seem to point toward wanting both privacy and real connection. That can exist together. Which side feels harder to ask for right now?",
+      "I’m noticing a pattern in what you shared: part of you wants to be understood without having to explain every detail. Does that feel close?",
+      "You may be carrying more than you let people see. What part fits, and what part doesn’t?",
+      'Your answers seem to point toward wanting both privacy and real connection. Which side feels harder to ask for right now?',
     ],
   };
   const options = replies[characterId];
   const index = Math.abs([...text].reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) | 0, 0)) % options.length;
   return {
-    reply: options[index],
-    tone: characterId,
+    reply: options[index], tone: characterId,
     avatarState: characterId === 'cloud' || characterId === 'night' || characterId === 'sekret' ? 'comforting' : 'responding',
-    safetyFlag: false,
-    parentShareSummary: null,
+    safetyFlag: false, parentShareSummary: null,
     suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
-    replySource: 'fallback',
+    replySource: 'fallback', fallbackUsed: true, fallbackReason, backendStatus,
   };
 }
 
@@ -147,69 +148,115 @@ export async function fetchSekretBrainReply(input: {
   memory?: Record<string, unknown>;
   parentSharingEnabled?: boolean;
   history?: SekretHistoryTurn[];
+  conversationPhase?: string;
+  phaseInstruction?: string;
 }): Promise<SekretBrainResponse> {
-  if (!BASE_URL) return fallbackReply(input.characterId, input.userText);
+  const request = { ...input, userText: input.userText.trim(), history: normalizeHistory(input.history) };
+
+  debugReply('request', {
+    characterId: request.characterId,
+    userText: request.userText,
+    surface: request.surface,
+    backendUrl: BASE_URL || '(missing)',
+    historyLength: request.history.length,
+  });
+
+  if (!BASE_URL) {
+    const fallback = fallbackReply(request.characterId, request.userText, 'missing_backend_url');
+    debugReply('fallback', fallback);
+    return fallback;
+  }
+
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify(request),
     });
-    if (!res.ok) throw new Error(`api error ${res.status}`);
-    const data = await res.json() as Partial<SekretBrainResponse>;
-    const fallback = fallbackReply(input.characterId, input.userText);
-    return {
-      reply: data.reply || fallback.reply,
-      tone: data.tone || input.characterId,
+
+    debugReply('response-status', { status: res.status, ok: res.ok });
+    if (!res.ok) {
+      const fallback = fallbackReply(request.characterId, request.userText, `http_${res.status}`, res.status);
+      debugReply('fallback', fallback);
+      return fallback;
+    }
+
+    let data: Partial<SekretBrainResponse>;
+    try {
+      data = await res.json() as Partial<SekretBrainResponse>;
+    } catch {
+      const fallback = fallbackReply(request.characterId, request.userText, 'invalid_json', res.status);
+      debugReply('fallback', fallback);
+      return fallback;
+    }
+
+    const reply = typeof data.reply === 'string' ? data.reply.trim() : '';
+    if (!reply || data.replySource === 'fallback') {
+      const reason = !reply ? 'empty_reply' : (data.fallbackReason || 'worker_fallback');
+      const fallback = reply
+        ? {
+            ...fallbackReply(request.characterId, request.userText, reason, res.status),
+            reply,
+            tone: data.tone || request.characterId,
+            avatarState: normalizeAvatarState(data.avatarState),
+            safetyFlag: Boolean(data.safetyFlag),
+            parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
+            suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
+          }
+        : fallbackReply(request.characterId, request.userText, reason, res.status);
+      debugReply('fallback', fallback);
+      return fallback;
+    }
+
+    const live: SekretBrainResponse = {
+      reply,
+      tone: data.tone || request.characterId,
       avatarState: normalizeAvatarState(data.avatarState),
       safetyFlag: Boolean(data.safetyFlag),
       parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
       suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
-      replySource: normalizeReplySource(data.replySource),
+      replySource: 'openai',
+      fallbackUsed: false,
+      fallbackReason: null,
+      backendStatus: res.status,
     };
-  } catch {
-    return fallbackReply(input.characterId, input.userText);
+    debugReply('live', { replySource: live.replySource, fallbackUsed: false, characterId: request.characterId });
+    return live;
+  } catch (error) {
+    const fallback = fallbackReply(
+      request.characterId,
+      request.userText,
+      error instanceof Error ? `network:${error.message}` : 'network_error',
+    );
+    debugReply('fallback', fallback);
+    return fallback;
   }
 }
 
-export async function fetchSekretVoice(input: {
-  reply: string;
-  characterId: SekretCharacterId;
-}): Promise<SekretVoiceResponse | null> {
+export async function fetchSekretVoice(input: { reply: string; characterId: SekretCharacterId }): Promise<SekretVoiceResponse | null> {
   if (!BASE_URL || !input.reply.trim()) return null;
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/voice`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });
     if (!res.ok) throw new Error(`voice api error ${res.status}`);
     const data = await res.json() as Partial<SekretVoiceResponse>;
     if (!data.audioBase64 || !data.contentType) return null;
     return { audioBase64: data.audioBase64, contentType: data.contentType, characterId: normalizeSekretCharacter(data.characterId, input.characterId) };
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
-export async function fetchSekretTranscribe(input: {
-  audioBase64: string;
-  contentType: string;
-}): Promise<string | null> {
+export async function fetchSekretTranscribe(input: { audioBase64: string; contentType: string }): Promise<string | null> {
   if (!BASE_URL || !input.audioBase64) return null;
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/transcribe`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
     });
     if (!res.ok) return null;
     const data = await res.json() as { transcript?: string };
     const transcript = typeof data.transcript === 'string' ? data.transcript.trim() : '';
     return transcript || null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 export async function fetchSekretReply(
@@ -225,13 +272,8 @@ export async function fetchSekretReply(
   const surface: SekretSurface = context === 'voiceBip' || context === 'comfort' || context === 'circle' || context === 'parentBridge' || context === 'selfDiscovery' ? context : 'journal';
   const memory = privateProfile && typeof privateProfile === 'object' ? privateProfile as Record<string, unknown> : undefined;
   const response = await fetchSekretBrainReply({
-    characterId: normalizeSekretCharacter(avatarKey),
-    surface,
-    mood,
-    userText: text,
-    memory,
-    parentSharingEnabled: profileSide === 'parent',
-    history: normalizeHistory(history),
+    characterId: normalizeSekretCharacter(avatarKey), surface, mood, userText: text, memory,
+    parentSharingEnabled: profileSide === 'parent', history: normalizeHistory(history),
   });
   return response.reply;
 }
