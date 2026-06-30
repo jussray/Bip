@@ -70,6 +70,7 @@ function parseColor(input) {
   };
 }
 
+/** @returns {SolidPaint[]} */
 function solid(input) {
   const parsed = parseColor(input);
   return [{ type: 'SOLID', color: parsed.color, opacity: parsed.opacity }];
