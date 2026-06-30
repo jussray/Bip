@@ -28,3 +28,5 @@ jobs:
           git add test-output.txt
           git commit -m "chore: capture failing test output"
           git push
+
+# Triggered after workflow creation.
