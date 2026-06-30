@@ -6,6 +6,8 @@ export type FigmaScreenKey =
   | 'parentLinkVerify'
   | 'emergencyAlert'
   | 'parentDoorbell'
+  | 'manualReview'
+  | 'suspended'
   | 'profile';
 
 export interface FigmaFrameSpec {
@@ -97,6 +99,28 @@ export const FIGMA_FRAME_SPECS: readonly FigmaFrameSpec[] = [
     privacyRules: ['No private teen content', 'No raw journals', 'No transcripts', 'No message bodies'],
     navigationIn: ['Parent dashboard', 'Parent notifications'],
     navigationOut: ['Event guidance', 'Support resources'],
+  },
+  {
+    key: 'manualReview',
+    frameName: 'Bip / Safety / Manual Review / Night',
+    route: '/(safety)/manual-review',
+    userType: 'teen',
+    purpose: 'Hold the account in a calm safety review while keeping private support reachable.',
+    sections: ['Status art', 'What is happening', 'What stays open', 'Estimated timing', 'Reach support'],
+    privacyRules: ['Private reflection stays private', 'Review covers safety only, not thoughts', 'Comfort and support remain available'],
+    navigationIn: ['Any gated route', 'Safety flag'],
+    navigationOut: ['Comfort', 'Resources', 'Verified home'],
+  },
+  {
+    key: 'suspended',
+    frameName: 'Bip / Auth / Suspended / Night',
+    route: '/(auth)/suspended',
+    userType: 'teen',
+    purpose: 'Pause access with care and offer a clear, humane appeal path.',
+    sections: ['Status art', 'What this means', 'How to appeal', 'Support contact', 'Grounding footer'],
+    privacyRules: ['No private content shown', 'Appeal is reviewed by a person', 'No punishment-first framing'],
+    navigationIn: ['Any gated route', 'Emergency shutoff'],
+    navigationOut: ['Appeal', 'Support resources'],
   },
   {
     key: 'profile',

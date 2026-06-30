@@ -38,6 +38,16 @@ test('Figma foundation contains required first screens', async () => {
   }
 });
 
+test('Figma foundation covers the terminal verification states the guard routes to', async () => {
+  const source = await read('src/constants/figmaFrames.ts');
+  // decideRouteAccess redirects MANUAL_REVIEW and SUSPENDED to these routes,
+  // so the design contract must define a frame for each.
+  assert.match(source, /key: 'manualReview'/);
+  assert.match(source, /route: '\/\(safety\)\/manual-review'/);
+  assert.match(source, /key: 'suspended'/);
+  assert.match(source, /route: '\/\(auth\)\/suspended'/);
+});
+
 test('design system documents privacy boundaries', async () => {
   const source = await read('docs/FIGMA_SCREEN_SYSTEM.md');
   assert.match(source, /No open stranger DMs/);
