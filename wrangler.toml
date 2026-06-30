@@ -1,65 +1,27 @@
-# wrangler.toml
-# Replaces wrangler.jsonc — TOML avoids JSON comment-parsing failures in CF builds.
-#
-# ── Cloudflare Worker secrets ─────────────────────────────────────────
-#   wrangler secret put OPENAI_API_KEY --name bip
-#   wrangler secret put BIP_CLIENT_TOKEN --name bip
-#
-#   BIP_CLIENT_TOKEN is an interim shared client token. It is intentionally
-#   separate from PIPER_API_TOKEN and should be replaced by Supabase JWT auth.
-#
-# ── Local development ──────────────────────────────────────────────────
-#   Copy .dev.vars.example → .dev.vars and fill in real values.
-#   .dev.vars is gitignored and is used by `wrangler dev` automatically.
-#
-# ── Deploy ─────────────────────────────────────────────────────────────
-#   wrangler deploy --name bip
-
-name               = "bip"
-main               = "worker/index.ts"
+name = "bip"
+main = "worker/index.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
 
-# ── Native Workers Rate Limiting bindings ──────────────────────────────
-# Namespace IDs are account-local positive integers. Keep each unique so
-# reply, voice, and transcription counters do not share state.
-[[ratelimits]]
-name = "REPLY_RATE_LIMITER"
-namespace_id = "7301"
-  [ratelimits.simple]
-  limit = 30
-  period = 60
-
-[[ratelimits]]
-name = "VOICE_RATE_LIMITER"
-namespace_id = "7302"
-  [ratelimits.simple]
-  limit = 12
-  period = 60
-
-[[ratelimits]]
-name = "TRANSCRIBE_RATE_LIMITER"
-namespace_id = "7303"
-  [ratelimits.simple]
-  limit = 8
-  period = 60
-
-# ── Non-secret config vars (safe to commit) ────────────────────────────
 [vars]
-OPENAI_CHAT_MODEL      = "gpt-4o-mini"
-OPENAI_TTS_MODEL       = "gpt-4o-mini-tts"
-OPENAI_STT_MODEL       = "whisper-1"
-SUPABASE_URL           = "https://tbsevonvegdnlyjgplmm.supabase.co"
-AUDIO_MAX_BYTES        = "524288"
+OPENAI_CHAT_MODEL = "gpt-4o-mini"
+OPENAI_TTS_MODEL = "gpt-4o-mini-tts"
+OPENAI_STT_MODEL = "whisper-1"
+SUPABASE_URL = "https://tbsevonvegdnlyjgplmm.supabase.co"
+AUDIO_MAX_BYTES = "524288"
+CORS_ALLOWED_ORIGINS = "http://localhost:8081,http://localhost:19006"
 
-# Comma-separated browser origins. Native Expo requests do not send Origin.
-# Add the exact production and preview web origins before enabling web builds.
-CORS_ALLOWED_ORIGINS   = "http://localhost:8081,http://localhost:19006"
+[[unsafe.bindings]]
+name = "RATE_LIMIT_REPLY"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 60, period = 60 }
 
-# Routes block commented out for beta — using auto-assigned *.workers.dev URL.
-# [[routes]]
-# pattern   = "api.bipapp.com/api/sekret/reply"
-# zone_name = "bipapp.com"
+[[unsafe.bindings]]
+name = "RATE_LIMIT_VOICE"
+type = "ratelimit"
+namespace_id = "1002"
+simple = { limit = 20, period = 60 }
