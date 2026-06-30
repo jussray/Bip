@@ -1,0 +1,13 @@
+{
+  "name": "@sekret-bip/figma-vibe-builder",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local, networkless Figma workspace builder for Se'kret Bip.",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p jsconfig.json"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "latest",
+    "typescript": "latest"
+  }
+}
