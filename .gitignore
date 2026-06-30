@@ -24,6 +24,10 @@ ios/
 # ── Wrangler local state ──────────────────────────────────────────────────
 .wrangler/
 
+# ── Supabase CLI local state ──────────────────────────────────────────────
+supabase/.temp/
+supabase/.branches/
+
 # ── macOS ─────────────────────────────────────────────────────────────────
 .DS_Store
 *.pem
