@@ -46,3 +46,5 @@ jobs:
           git diff --cached --quiet && exit 0
           git commit -m "fix(companions): polish production reply behavior"
           git push
+
+# Trigger after workflow creation.
