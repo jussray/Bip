@@ -2,6 +2,7 @@ import { getSupabase } from '@/utils/supabase';
 import { fetchLinkedTeenId } from '@/utils/parentLink';
 
 export type BridgeMessageKind = 's2tell' | 'note' | 'reply' | 'shared_moment';
+export type BridgeSignalType = 'mood' | 'thought' | 'need' | 'win' | 'talk' | 'space';
 
 export interface BridgeMessage {
   id: string;
@@ -13,6 +14,14 @@ export interface BridgeMessage {
   tone: string | null;
   createdAt: string;
   readAt: string | null;
+}
+
+export interface BridgeSignal {
+  id: number;
+  teenUserId: string;
+  type: BridgeSignalType;
+  mode: string | null;
+  createdAt: string;
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -34,6 +43,52 @@ async function fetchActiveParentForTeen(teenUserId: string): Promise<string | nu
     .maybeSingle();
   if (error) return null;
   return typeof data?.parent_user_id === 'string' ? data.parent_user_id : null;
+}
+
+export async function sendTeenBridgeSignal(
+  type: BridgeSignalType,
+  mode?: string,
+): Promise<boolean> {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+  const teenUserId = await currentUserId();
+  if (!teenUserId) return false;
+  const parentUserId = await fetchActiveParentForTeen(teenUserId);
+  if (!parentUserId) return false;
+
+  const { error } = await supabase.from('bridge_signals').insert({
+    teen_user_id: teenUserId,
+    char_key: 'raylene',
+    share_type: type,
+    conv_mode: mode ?? null,
+    sent_at: new Date().toISOString(),
+  });
+  return !error;
+}
+
+export async function fetchBridgeSignals(limit = 30): Promise<BridgeSignal[]> {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+  const userId = await currentUserId();
+  if (!userId) return [];
+  const linkedTeenId = await fetchLinkedTeenId();
+  const teenUserId = linkedTeenId ?? userId;
+
+  const { data, error } = await supabase
+    .from('bridge_signals')
+    .select('id,teen_user_id,share_type,conv_mode,sent_at')
+    .eq('teen_user_id', teenUserId)
+    .order('sent_at', { ascending: false })
+    .limit(limit);
+  if (error) return [];
+
+  return (data ?? []).map(row => ({
+    id: Number(row.id),
+    teenUserId: String(row.teen_user_id),
+    type: String(row.share_type) as BridgeSignalType,
+    mode: row.conv_mode ? String(row.conv_mode) : null,
+    createdAt: String(row.sent_at),
+  }));
 }
 
 export async function sendTeenBridgeMessage(
