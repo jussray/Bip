@@ -1,4 +1,4 @@
-name: Apply Companion Fix
+name: Finalize Companion Fix
 
 on:
   push:
@@ -9,42 +9,28 @@ permissions:
   contents: write
 
 jobs:
-  apply:
+  finalize:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix-companion-replies-clean
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = 'worker/sekret-reply.ts';
-          let s = fs.readFileSync(path, 'utf8');
-          s = s.replaceAll('Cloud mirrors very rarely and only mild words. Star, Rylane, and Night', 'Cloud mirrors very rarely and only mild words. Raylene, Rylane, and Night');
-          s = s.replaceAll('CHARACTER: Star', 'CHARACTER: Raylene');
-          s = s.replaceAll('Star is a warm, expressive Black teen girl.', 'Raylene is a warm, expressive Black teen girl.');
-          s = s.replaceAll('FEW-SHOT EXAMPLES — Star', 'FEW-SHOT EXAMPLES — Raylene');
-          s = s.replaceAll('Star:', 'Raylene:');
-          s = s.replaceAll('after Star asked', 'after Raylene asked');
-          s = s.replaceAll('after Star said', 'after Raylene said');
-          s = s.replaceAll('Star or Rylane', 'Raylene or Rylane');
-          s = s.replaceAll('Hey Vic', 'Hey');
-          s = s.replaceAll('Yo Vic', 'Yo');
-          const anchor = "- Mirror the teen's language, vocabulary, and energy. Short and punchy → reply short and punchy. Casual and wild → match that.\n";
-          const rules = anchor + "- Use the teen's actual words and the recent conversation so the reply feels specific, not reusable.\n- Do not repeat the same opener, question pattern, reassurance, or catchphrase across nearby turns.\n- Do not invent or reuse a name from examples. Use a name only when the request includes one.\n- A short message does not automatically require a deeper question. Sometimes react, joke, or simply stay with it.\n- Questions must move the actual conversation forward. Never interrogate one-word replies just to keep talking.\n";
-          if (!s.includes("Use the teen's actual words and the recent conversation")) s = s.replace(anchor, rules);
-          fs.writeFileSync(path, s);
-          NODE
+          cache: npm
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add worker/sekret-reply.ts
-          git diff --cached --quiet && exit 0
-          git commit -m "fix(companions): polish production reply behavior"
+          git fetch origin main
+          git merge --no-edit origin/main
+      - run: npm ci
+      - run: npm test
+      - run: npm run type-check
+      - run: |
+          rm .github/workflows/apply-companion-fix.yml
+          git add worker/sekret-reply.ts test/parent-linking.test.mjs .github/workflows/apply-companion-fix.yml
+          git commit -m "chore: finalize companion reply fix on current main"
           git push
-
-# Trigger after workflow creation.
