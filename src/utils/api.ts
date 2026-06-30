@@ -6,6 +6,7 @@
  * OPENAI_API_KEY.
  */
 const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+const BIP_CLIENT_TOKEN = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BIP_CLIENT_TOKEN ?? '';
 
 export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
@@ -32,6 +33,12 @@ export interface SekretVoiceResponse {
   audioBase64: string;
   contentType: string;
   characterId: SekretCharacterId;
+}
+
+function workerHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (BIP_CLIENT_TOKEN) headers.Authorization = `Bearer ${BIP_CLIENT_TOKEN}`;
+  return headers;
 }
 
 export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'raylene'): SekretCharacterId {
@@ -152,7 +159,7 @@ export async function fetchSekretBrainReply(input: {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: workerHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) throw new Error(`api error ${res.status}`);
@@ -180,7 +187,7 @@ export async function fetchSekretVoice(input: {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/voice`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: workerHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) throw new Error(`voice api error ${res.status}`);
@@ -200,7 +207,7 @@ export async function fetchSekretTranscribe(input: {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/transcribe`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: workerHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) return null;
