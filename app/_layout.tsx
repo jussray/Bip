@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Stack, router, useSegments } from 'expo-router';
 import { Analytics } from '@/components/shared/Analytics';
 import { AppProvider, useAppContext } from '@/context/AppContext';
+import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
+import { decideRouteAccess } from '@/services/routeAccess';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import { clearPrivateAccountCache } from '@/utils/storage';
@@ -9,12 +11,13 @@ import { clearProfileIdentityCache } from '@/features/identity/clearProfileIdent
 
 void validateEnv();
 
+const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew']);
+
 function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
+  const { verificationState, isVerificationLoading } = useVerificationContext();
   const segments = useSegments();
 
-  // Auth guard at root so all routes are protected, not just the index.
-  // Listens for sign-out events too (e.g. session expiry).
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const sb = getSupabase();
@@ -43,25 +46,33 @@ function RouteBoundary() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || !userSide) return;
-    const area = String(segments[0] ?? '');
-    if (userSide === 'teen' && (area === '(parent)' || area === 'parent')) {
-      router.replace('/(teen)/room');
+    if (isLoading || isVerificationLoading || !userSide) return;
+
+    const first = String(segments[0] ?? '');
+    const second = String(segments[1] ?? '');
+    const firstSegment = SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
+    const decision = decideRouteAccess({
+      firstSegment,
+      userSide,
+      verificationState,
+    });
+
+    if (!decision.allowed && decision.redirectTo) {
+      router.replace(decision.redirectTo);
     }
-    if (userSide === 'parent' && (area === '(teen)' || area === 'teen')) {
-      router.replace('/(parent)/room');
-    }
-  }, [isLoading, segments, userSide]);
+  }, [isLoading, isVerificationLoading, segments, userSide, verificationState]);
 
   return null;
 }
 
 export default function RootLayout() {
   return (
-    <AppProvider>
-      <RouteBoundary />
-      <Analytics />
-      <Stack screenOptions={{ headerShown: false }} />
-    </AppProvider>
+    <VerificationProvider>
+      <AppProvider>
+        <RouteBoundary />
+        <Analytics />
+        <Stack screenOptions={{ headerShown: false }} />
+      </AppProvider>
+    </VerificationProvider>
   );
 }
