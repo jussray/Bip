@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
@@ -36,14 +36,11 @@ def resolve_model(voice: str) -> Path:
 
 @app.get("/health")
 def health() -> dict[str, object]:
-    return {
-        "ok": True,
-        "voices": sorted(path.stem for path in VOICE_DIR.glob("*.onnx")),
-    }
+    return {"ok": True, "voices": sorted(path.stem for path in VOICE_DIR.glob("*.onnx"))}
 
 
 @app.post("/synthesize")
-def synthesize(payload: SynthesisRequest, authorization: str | None = Header(default=None)):
+def synthesize(payload: SynthesisRequest, background_tasks: BackgroundTasks, authorization: str | None = Header(default=None)):
     require_token(authorization)
     if payload.format != "wav":
         raise HTTPException(status_code=400, detail="Piper service currently returns WAV only")
@@ -60,12 +57,8 @@ def synthesize(payload: SynthesisRequest, authorization: str | None = Header(def
             check=True,
             timeout=45,
         )
-        return FileResponse(
-            output.name,
-            media_type="audio/wav",
-            filename=f"{payload.voice}.wav",
-            background=None,
-        )
+        background_tasks.add_task(Path(output.name).unlink, missing_ok=True)
+        return FileResponse(output.name, media_type="audio/wav", filename=f"{payload.voice}.wav")
     except subprocess.TimeoutExpired as exc:
         Path(output.name).unlink(missing_ok=True)
         raise HTTPException(status_code=504, detail="Synthesis timed out") from exc
