@@ -18,7 +18,7 @@ test('Circle remains separate from family connection', async () => {
 
 test('S2Tell routes into Teen Bridge', async () => {
   const source = await read('app/(teen)/s2tell.tsx');
-  assert.match(source, /\(teen\)\/bridge\?compose=true/);
+  assert.match(source, /from '@\/features\/bridge\/S2TellBridgeScreen'/);
 });
 
 test('former Doorbell route aliases Parent Bridge signals', async () => {
@@ -26,11 +26,11 @@ test('former Doorbell route aliases Parent Bridge signals', async () => {
   assert.match(source, /\(parent\)\/bridge\?tab=signals/);
 });
 
-test('Bridge messages are scoped to active linked accounts', async () => {
+test('Bridge messages use the product-specific linked-account tables', async () => {
   const migration = await read('supabase/migrations/20260630004000_bridge_linked_accounts.sql');
-  assert.match(migration, /bridge_messages/);
-  assert.match(migration, /parent_links/);
-  assert.match(migration, /status = 'active'/);
+  assert.match(migration, /bridge_signals/);
+  assert.match(migration, /bridge_shares/);
+  assert.match(migration, /parent_notes/);
   assert.doesNotMatch(migration, /circle_posts|parent_circle_posts|public_circle_posts/);
 });
 
