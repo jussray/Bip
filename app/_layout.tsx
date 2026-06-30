@@ -48,8 +48,9 @@ function RouteBoundary() {
   useEffect(() => {
     if (isLoading || isVerificationLoading || !userSide) return;
 
-    const first = String(segments[0] ?? '');
-    const second = String(segments[1] ?? '');
+    const routeSegments = Array.from(segments) as string[];
+    const first = String(routeSegments[0] ?? '');
+    const second = String(routeSegments[1] ?? '');
     const firstSegment = SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
     const decision = decideRouteAccess({
       firstSegment,
