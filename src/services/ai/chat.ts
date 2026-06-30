@@ -19,6 +19,7 @@ import {
   buildConversationPhaseInstruction,
   type ConversationPhase,
 } from '../../../services/sekretVoice';
+import { backendHeaders } from '../../utils/env';
 
 export interface ChatMessage {
   id: string;
@@ -180,7 +181,7 @@ export async function sendMessage(
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: backendHeaders(),
       body: JSON.stringify({
         userText: text,
         characterId: personalityId,
