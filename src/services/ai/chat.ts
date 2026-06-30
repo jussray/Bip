@@ -48,22 +48,37 @@ export interface WorkerReplyMeta {
   parentShareSummary?: string | null;
 }
 
+/**
+ * The structured result returned by sendMessage.
+ * All callers that previously received a bare string can access `.reply`.
+ */
+export interface SendMessageResult {
+  reply: string;
+  /** Where the reply actually came from. */
+  replySource: 'worker' | 'local-fallback' | 'safety';
+  /** True whenever we did NOT get a usable Worker response. */
+  fallbackUsed: boolean;
+  /** Human-readable reason a fallback was used, or null when Worker succeeded. */
+  fallbackReason: string | null;
+}
+
 const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
 
 function mayMirrorProfanity(profile: TeenRelationshipProfile): boolean {
   return profile.profanityPreference === 'light-mirroring';
 }
 
+/**
+ * Local fallback reply — used ONLY when the Worker is unreachable or returns
+ * a non-OK status. The arrival-greeting branch has been removed: greeting
+ * messages now travel to the Worker like any other message so the Worker can
+ * shape the opening tone with full phaseInstruction context.
+ */
 function localFallback(
   personalityId: PersonalityId,
   text: string,
   relationship: TeenRelationshipProfile,
-  historyLength = 0,
 ): string {
-  if (personalityId !== 'parentCoach' && isArrivalMessage(text, historyLength)) {
-    return getArrivalReply(personalityId);
-  }
-
   const lower = text.toLowerCase();
   const isShortContinuation = /^(idk|nothing|lol|lmao|ok|okay|yeah|nah|sure|random|fine|k+)\s*[!?.]*$/i.test(lower);
   const sad = /\b(sad|cry|lonely|alone|hurt|heavy|depressed|overwhelmed)\b/.test(lower);
@@ -114,26 +129,31 @@ function localFallback(
     : "Girl, okay. What really happened?";
 }
 
+// ── Overload signatures (keep public API backward-compatible) ─────────────
+
 export async function sendMessage(
   personalityId: PersonalityId,
   text: string,
   context: string,
   options: SendMessageOptions,
-): Promise<string>;
+): Promise<SendMessageResult>;
 export async function sendMessage(
   personalityId: PersonalityId,
   text: string,
   context: string,
   mood?: string,
   history?: ChatMessage[],
-): Promise<string>;
+): Promise<SendMessageResult>;
+
+// ── Implementation ────────────────────────────────────────────────────────
+
 export async function sendMessage(
   personalityId: PersonalityId,
   text: string,
   context: string = 'chat',
   moodOrOptions?: string | SendMessageOptions,
   legacyHistory?: ChatMessage[],
-): Promise<string> {
+): Promise<SendMessageResult> {
   const options: SendMessageOptions = typeof moodOrOptions === 'object' && moodOrOptions !== null
     ? moodOrOptions
     : { mood: moodOrOptions as string | undefined, history: legacyHistory };
@@ -145,21 +165,14 @@ export async function sendMessage(
   const learnedRelationship = learnTeenRelationshipStyle(text, currentRelationship);
   await saveTeenRelationshipProfile(learnedRelationship);
 
-  // Pure greeting on first touch: return immediately with no Worker latency.
-  if (personalityId !== 'parentCoach' && isArrivalMessage(text, historyLength)) {
-    return getArrivalReply(personalityId);
-  }
-
-  if (!BASE_URL && personalityId !== 'parentCoach') {
-    return localFallback(personalityId, text, learnedRelationship, historyLength);
-  }
-
-  if (!BASE_URL) {
-    return "Hey. Glad you're here. What's going on at home?";
-  }
+  // isArrivalMessage is still used to inform phaseInstruction sent to the
+  // Worker — but we NO LONGER short-circuit here and skip the Worker call.
+  // Greeting messages now reach the Worker so it can shape the opening tone
+  // with full context. The pre-Worker arrival return has been removed.
 
   const phase: ConversationPhase = getConversationPhase(historyLength);
   const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, personalityId);
+  const isArrival = isArrivalMessage(text, historyLength);
 
   const normalizedSurface: SendMessageOptions['surface'] =
     surface ??
@@ -172,52 +185,134 @@ export async function sendMessage(
                 : context === 'parentCoach' ? 'parentCoach'
                   : 'journal');
 
+  // ── No backend URL ───────────────────────────────────────────────────────
+  if (!BASE_URL) {
+    const fallbackText = personalityId === 'parentCoach'
+      ? "Hey. Glad you're here. What's going on at home?"
+      : localFallback(personalityId, text, learnedRelationship);
+    if (__DEV__) {
+      console.warn(
+        '[sendMessage] No EXPO_PUBLIC_BACKEND_URL set — using local fallback.',
+        { companion: personalityId, surface: normalizedSurface, userText: text },
+      );
+    }
+    return {
+      reply: fallbackText,
+      replySource: 'local-fallback',
+      fallbackUsed: true,
+      fallbackReason: 'EXPO_PUBLIC_BACKEND_URL is not configured',
+    };
+  }
+
   const workerHistory = history.map((m) => ({
     role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
     content: m.text,
   }));
 
+  const payload = {
+    userText: text,
+    characterId: personalityId,
+    surface: normalizedSurface,
+    mood,
+    history: workerHistory,
+    parentSharingEnabled: parentSharingEnabled ?? false,
+    userName,
+    displayName,
+    profileName,
+    conversationPhase: phase,
+    phaseInstruction,
+    isArrival,
+    memory: {
+      relationshipStyle: relationshipProfileToOracleNote(learnedRelationship),
+      ...(oracleContext && oracleContext.length > 0 ? { oracleContext } : {}),
+    },
+  };
+
+  if (__DEV__) {
+    console.log('[sendMessage] → Worker', {
+      companion: personalityId,
+      surface: normalizedSurface,
+      url: `${BASE_URL}/api/sekret/reply`,
+      isArrival,
+      phase,
+      payloadBytes: JSON.stringify(payload).length,
+      historyLength,
+      hasMood: Boolean(mood),
+      hasOracleContext: Boolean(oracleContext?.length),
+    });
+  }
+
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userText: text,
-        characterId: personalityId,
-        surface: normalizedSurface,
-        mood,
-        history: workerHistory,
-        parentSharingEnabled: parentSharingEnabled ?? false,
-        userName,
-        displayName,
-        profileName,
-        conversationPhase: phase,
-        phaseInstruction,
-        memory: {
-          relationshipStyle: relationshipProfileToOracleNote(learnedRelationship),
-          ...(oracleContext && oracleContext.length > 0 ? { oracleContext } : {}),
-        },
-      }),
+      body: JSON.stringify(payload),
     });
 
+    if (__DEV__) {
+      console.log('[sendMessage] ← Worker', {
+        companion: personalityId,
+        surface: normalizedSurface,
+        status: res.status,
+        ok: res.ok,
+      });
+    }
+
     if (!res.ok) {
-      console.error(`[sendMessage] Worker responded ${res.status}`);
-      return localFallback(personalityId, text, learnedRelationship, historyLength);
+      const reason = `Worker responded ${res.status}`;
+      console.error(`[sendMessage] ${reason}`);
+      const fallbackText = localFallback(personalityId, text, learnedRelationship);
+      return {
+        reply: fallbackText,
+        replySource: 'local-fallback',
+        fallbackUsed: true,
+        fallbackReason: reason,
+      };
     }
 
     const data = await res.json() as { reply?: string; replySource?: string; detectedIntent?: string };
     const rawReply = data.reply ?? '';
 
     if (!rawReply) {
-      console.error('[sendMessage] Worker returned empty reply, using fallback');
-      return localFallback(personalityId, text, learnedRelationship, historyLength);
+      const reason = 'Worker returned empty reply';
+      console.error(`[sendMessage] ${reason}, using fallback`);
+      const fallbackText = localFallback(personalityId, text, learnedRelationship);
+      return {
+        reply: fallbackText,
+        replySource: 'local-fallback',
+        fallbackUsed: true,
+        fallbackReason: reason,
+      };
     }
 
-    const fallback = getSekretFallback(personalityId, text);
-    return keepSekretReply(rawReply, fallback);
+    const sekretFallback = getSekretFallback(personalityId, text);
+    const guardedReply = keepSekretReply(rawReply, sekretFallback);
+    const guardBlocked = guardedReply !== rawReply.trim();
+
+    if (__DEV__ && guardBlocked) {
+      console.warn('[sendMessage] keepSekretReply blocked Worker reply — substituted character fallback.', {
+        companion: personalityId,
+        blocked: rawReply.slice(0, 80),
+        substituted: guardedReply.slice(0, 80),
+      });
+    }
+
+    return {
+      reply: guardedReply,
+      replySource: 'worker',
+      fallbackUsed: false,
+      fallbackReason: null,
+    };
   } catch (err) {
-    console.error('[sendMessage] Worker fetch failed:', err);
-    return localFallback(personalityId, text, learnedRelationship, historyLength);
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error('[sendMessage] Worker fetch failed:', reason);
+    const fallbackText = localFallback(personalityId, text, learnedRelationship);
+    return {
+      reply: fallbackText,
+      replySource: 'local-fallback',
+      fallbackUsed: true,
+      fallbackReason: `fetch error: ${reason}`,
+    };
   }
 }
 
