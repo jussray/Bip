@@ -23,3 +23,5 @@ if (!source.includes("Use the teen's actual words and the recent conversation"))
 
 source = source.replaceAll('Raylenet', 'Start');
 fs.writeFileSync(path, source);
+
+// Trigger workflow after workflow file exists.
