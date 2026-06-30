@@ -33,40 +33,28 @@ jobs:
           from collections import defaultdict
           import hashlib
 
-          root = Path('.')
           ignored_dirs = {'.git', 'node_modules', '.expo', 'dist', 'coverage'}
           ignored_suffixes = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.mp3', '.wav', '.mp4', '.mov', '.zip', '.pdf'}
           groups = defaultdict(list)
-          for path in root.rglob('*'):
-              if not path.is_file():
-                  continue
-              if any(part in ignored_dirs for part in path.parts):
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or any(part in ignored_dirs for part in path.parts):
                   continue
               if path.suffix.lower() in ignored_suffixes:
                   continue
               data = path.read_bytes()
-              if not data.strip():
-                  continue
-              groups[hashlib.sha256(data).hexdigest()].append(path.as_posix())
+              if data.strip():
+                  groups[hashlib.sha256(data).hexdigest()].append(path.as_posix())
 
           dupes = [sorted(paths) for paths in groups.values() if len(paths) > 1]
           dupes.sort(key=lambda paths: (-len(paths), paths))
-          lines = [
-              '# Repository Health: Exact Duplicate Files',
-              '',
-              'Generated automatically from the current branch after merging latest `main`.',
-              'Binary/media assets, build output, dependencies, and empty files are excluded.',
-              '',
-          ]
+          lines = ['# Repository Health: Exact Duplicate Files', '', 'Generated after merging latest `main`.', 'Binary/media assets, build output, dependencies, and empty files are excluded.', '']
           if not dupes:
               lines.append('No exact duplicate text/source files were found.')
           else:
-              lines.append(f'Found {len(dupes)} exact duplicate groups:')
-              lines.append('')
+              lines.extend([f'Found {len(dupes)} exact duplicate groups:', ''])
               for i, paths in enumerate(dupes, 1):
                   lines.append(f'## Group {i}')
-                  for path in paths:
-                      lines.append(f'- `{path}`')
+                  lines.extend(f'- `{path}`' for path in paths)
                   lines.append('')
           Path('docs/REPO_HEALTH_DUPLICATES.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
           PY
@@ -78,3 +66,5 @@ jobs:
           git add app/'(teen)'/pages/index.tsx test/journal-avatar-presentation.test.mjs docs/REPO_HEALTH_DUPLICATES.md .github/workflows/finalize-journal-and-audit.yml
           git commit -m "chore: refresh journal fix and audit exact duplicates"
           git push
+
+# Triggered after workflow creation.
