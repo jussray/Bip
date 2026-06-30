@@ -7,6 +7,7 @@ import { routeForSide } from '@/shared/routes';
 import { useAppContext } from '@/context/AppContext';
 
 const LINKS = [
+  { emoji: '🔔', label: 'The Doorbell', route: 'dashboard' },
   { emoji: '🎙️', label: 'Parent Voice Bip', route: 'voicebip' },
   { emoji: '🌉', label: 'Parent Bridge', route: 'parent-bridge' },
   { emoji: '🌱', label: 'Bippin 2', route: 'parent-growth' },
@@ -22,6 +23,10 @@ export default function ParentMoreRoute() {
   const { setUserSide } = useAppContext();
 
   function open(route: string) {
+    if (route === 'dashboard') {
+      router.push('/(parent)/dashboard');
+      return;
+    }
     router.push(routeForSide('parent', route) as any);
   }
 

@@ -26,6 +26,7 @@ export default function ParentLayout() {
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
 
         {/* Everything else stays off the bottom nav and is reached from More or in-flow navigation. */}
+        <Tabs.Screen name="dashboard" options={{ href: null }} />
         <Tabs.Screen name="circle/[id]" options={{ href: null }} />
         <Tabs.Screen name="circle/weather" options={{ href: null }} />
         <Tabs.Screen name="bridge" options={{ href: null }} />
