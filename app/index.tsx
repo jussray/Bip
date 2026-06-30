@@ -3,6 +3,7 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 
@@ -16,20 +17,19 @@ function getBuildSide(): AppSide | null {
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
+  const { verificationState, isVerificationLoading } = useVerificationContext();
   const [authChecked, setAuthChecked] = useState(!isSupabaseConfigured);
   const [splashEntered, setSplashEntered] = useState(false);
   const [routed, setRouted] = useState(false);
   const buildSide = useMemo(getBuildSide, []);
   const effectiveSide: AppSide = buildSide ?? userSide ?? 'teen';
 
-  // A dedicated Teen or Parent native build must stay on its own side.
   useEffect(() => {
     if (buildSide && userSide !== buildSide) {
       setUserSide(buildSide);
     }
   }, [buildSide, setUserSide, userSide]);
 
-  // Auth gate — only when Supabase is configured
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const sb = getSupabase();
@@ -46,9 +46,8 @@ export default function Index() {
     });
   }, []);
 
-  // Onboarding / room routing — once auth and context are ready
   useEffect(() => {
-    if (isLoading || !authChecked || !splashEntered || routed) return;
+    if (isLoading || isVerificationLoading || !authChecked || !splashEntered || routed) return;
 
     async function route() {
       setRouted(true);
@@ -59,14 +58,30 @@ export default function Index() {
       }
 
       const done = await AsyncStorage.getItem('teen_profile_done');
-      router.replace(done === 'true' ? '/(teen)/room' : '/(onboarding)/welcome');
+      if (done !== 'true') {
+        router.replace('/(onboarding)/welcome');
+        return;
+      }
+
+      router.replace(
+        verificationState === 'VERIFIED_TEEN'
+          ? '/(teen)/room'
+          : '/(auth)/limited-mode',
+      );
     }
 
     void route();
-  }, [isLoading, authChecked, splashEntered, routed, effectiveSide]);
+  }, [
+    isLoading,
+    isVerificationLoading,
+    authChecked,
+    splashEntered,
+    routed,
+    effectiveSide,
+    verificationState,
+  ]);
 
-  // Show the app-specific splash first; tapping the artwork CTA unlocks routing.
-  if (!isLoading && authChecked && !splashEntered) {
+  if (!isLoading && !isVerificationLoading && authChecked && !splashEntered) {
     return (
       <SplashScreen
         userSide={effectiveSide}
