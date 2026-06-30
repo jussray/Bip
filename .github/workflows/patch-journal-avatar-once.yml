@@ -1,0 +1,30 @@
+name: Patch Journal Avatar Once
+
+on:
+  push:
+    branches:
+      - fix-journal-avatar-presentation
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix-journal-avatar-presentation
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/patch-journal-avatar-once.mjs
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/'(teen)'/pages/index.tsx test/journal-avatar-presentation.test.mjs scripts/patch-journal-avatar-once.mjs .github/workflows/patch-journal-avatar-once.yml
+          git commit -m "fix(journal): correct companion avatar presentation"
+          git push origin HEAD:fix-journal-avatar-presentation
