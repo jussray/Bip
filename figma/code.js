@@ -1,6 +1,6 @@
 // =============================================================================
-// BIP VIBE SYSTEM — Figma Plugin  v1.0
-// Creates 6 × 390×844 mobile frames with all spec components
+// BIP VIBE SYSTEM — Figma Plugin  v1.1
+// Creates 6 × 390×844 vibe frames + 2 verification screens (Manual Review, Suspended)
 // Install: Figma → Plugins → Development → Import plugin from manifest…
 //          Select figma/manifest.json, then Run
 // =============================================================================
@@ -180,6 +180,72 @@ async function buildFrame(v, offsetX) {
   return mf;
 }
 
+// ── Verification terminal-state screens ──────────────────────────────────────
+// Dark-first ("/ Night") screens for the two states the route guard redirects to:
+// MANUAL_REVIEW → /(safety)/manual-review and SUSPENDED → /(auth)/suspended.
+// Frame names match FIGMA_FRAME_SPECS in src/constants/figmaFrames.ts.
+const SAFETY = { bg:"#FFF3F3", text:"#8B1A3A", border:"#E07A9F" };
+const VERIFY = [
+  {
+    frameName:"Bip / Safety / Manual Review / Night", stateKey:"MANUAL_REVIEW",
+    route:"/(safety)/manual-review", glyph:"🛟", chip:"Under review",
+    title:"We're taking a closer look",
+    body:"Your account is in a short safety review. You're safe here — comfort and support stay open the whole time.",
+    sections:["What is happening","What stays open","Estimated timing","Reach support"],
+    primary:"Talk to support", secondary:"Open Comfort",
+  },
+  {
+    frameName:"Bip / Auth / Suspended / Night", stateKey:"SUSPENDED",
+    route:"/(auth)/suspended", glyph:"⏸️", chip:"Suspended",
+    title:"Access is paused",
+    body:"This account is paused for now. You can open an appeal and a real person will review it with care.",
+    sections:["What this means","How to appeal","Support contact","Grounding footer"],
+    primary:"Open an appeal", secondary:"Contact support",
+  },
+];
+
+async function buildVerifyFrame(cfg, offsetX) {
+  const v=VIBES.night;
+  const mf=mkFrame(cfg.frameName,offsetX,0,390,844,v.bg);
+
+  const nb=mkFrame("Nav Bar",0,0,390,56,v.bg); nb.fills=solid(v.bg,0.94);
+  const logo=await mkText("bip",20,18,60,20,"Bold",v.accentA,"Logo"); nb.appendChild(logo);
+  const sk=await mkText(cfg.stateKey,0,20,220,12,"Medium",v.textLow,"State Key","RIGHT");
+  sk.x=390-sk.width-20; nb.appendChild(sk);
+  mf.appendChild(nb);
+
+  const art=mkRect("Status Art",20,96,350,150,v.card,1,20);
+  art.strokes=[{type:"SOLID",color:h(v.accentA),opacity:0.18}]; art.strokeWeight=1;
+  mf.appendChild(art);
+  const glyph=await mkText(cfg.glyph,0,148,390,56,"Regular",v.textHigh,"Glyph","CENTER");
+  mf.appendChild(glyph);
+
+  await badge(mf,cfg.chip,20,268,SAFETY.bg,SAFETY.text,SAFETY.border,"Status Chip");
+
+  const title=await mkText(cfg.title,20,314,350,24,"SemiBold",v.textHigh,"Title");
+  mf.appendChild(title);
+  const body=await mkText(cfg.body,20,352,350,15,"Regular",v.textMid,"Body");
+  mf.appendChild(body);
+
+  const cardH=24+cfg.sections.length*30;
+  const sc=mkFrame("Sections",20,430,350,cardH,v.card); sc.cornerRadius=16;
+  sc.strokes=[{type:"SOLID",color:h(v.textHigh),opacity:0.07}]; sc.strokeWeight=1;
+  let sy=14;
+  for(const s of cfg.sections){
+    const row=await mkText("•  "+s,16,sy,318,14,"Regular",v.textMid,"Section "+s);
+    sc.appendChild(row); sy+=30;
+  }
+  mf.appendChild(sc);
+
+  await button(mf,cfg.primary,672,v.accentA,v.bg,null,"Primary Button");
+  await button(mf,cfg.secondary,728,v.card,v.textHigh,v.accentA,"Secondary Button");
+  const rt=await mkText("route → "+cfg.route,0,792,390,11,"Regular",v.textLow,"Route","CENTER");
+  mf.appendChild(rt);
+
+  figma.currentPage.appendChild(mf);
+  return mf;
+}
+
 (async () => {
   try {
     const order=["raylene","rylane","cloud","night","rain","sunset"];
@@ -187,8 +253,11 @@ async function buildFrame(v, offsetX) {
     for(let i=0;i<order.length;i++){
       frames.push(await buildFrame(VIBES[order[i]],i*440));
     }
+    for(let i=0;i<VERIFY.length;i++){
+      frames.push(await buildVerifyFrame(VERIFY[i],(order.length+i)*440));
+    }
     figma.viewport.scrollAndZoomIntoView(frames);
-    figma.notify("✅ 6 Bip Vibe frames created!",{timeout:4000});
+    figma.notify("✅ 6 vibe + 2 verification frames created!",{timeout:4000});
   } catch(e) {
     figma.notify("❌ "+e.message,{timeout:8000,error:true});
     console.error(e);
