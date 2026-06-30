@@ -1,0 +1,800 @@
+
+> sekret-bip@1.0.0 test
+> node --test "test/**/*.test.mjs"
+
+✔ age gate defines a 13+ minimum account age (1.252621ms)
+✔ age gate has explicit invalid, future, below-minimum, and eligible states (0.234674ms)
+✔ age calculation treats the 13th birthday as eligible (0.221975ms)
+✔ age gate exposes a throwing server-side guard (0.207634ms)
+✔ age gate validates strict YYYY-MM-DD input (1.747527ms)
+✔ Night uses the hybrid pose set (keeps headphones, adds happy + listening) (1.514356ms)
+✔ all three companions lock neutral as Batch 0 production (0.4835ms)
+✔ every production pose is wired and present on disk (1.043305ms)
+✔ the three Batch 0 neutral PNGs exist and are valid PNGs (1.995772ms)
+✔ Figma plugin is local-only and networkless (8.801755ms)
+✔ Figma builder creates six 390x844 canonical frames (2.758855ms)
+✔ generated frames include privacy, verification, Circle, and parent boundaries (2.361034ms)
+✔ normalizeCharacter returns raylene for "raylene" (1.528527ms)
+✔ normalizeCharacter returns rylane for "rylane" (0.222707ms)
+✔ normalizeCharacter returns cloud for "cloud" (0.200112ms)
+✔ normalizeCharacter returns night for "night" (0.189506ms)
+✔ normalizeCharacter returns sekret for "sekret" (0.199812ms)
+✔ normalizeCharacter maps "oracle" → "sekret" (legacy alias) (0.590962ms)
+✔ normalizeCharacter maps "secret" → "sekret" (common misspelling) (0.335366ms)
+✔ normalizeCharacter maps "parentCoach" → "parentCoach" (0.219542ms)
+✔ normalizeCharacter maps "parent_coach" → "parentCoach" (0.747108ms)
+✔ normalizeCharacter maps "parent-coach" → "parentCoach" (0.310178ms)
+✔ normalizeCharacter is case-insensitive (1.469718ms)
+✔ normalizeCharacter strips smart quotes from input (0.237188ms)
+✔ normalizeCharacter returns null for completely unknown input (0.156296ms)
+✔ Worker renames Oracle to Se'kret in replies so the hidden identity stays hidden (0.526946ms)
+✔ Client API also routes oracle → sekret for consistency (0.198279ms)
+✔ Worker defines all six CharacterIds in the type (0.869452ms)
+✔ parentCoach surface never generates a parentShareSummary (0.165741ms)
+✔ parentCoach has its own surface constant in Surface type (0.287964ms)
+✔ useAppStore defines userSide as teen or parent (2.141112ms)
+✔ userSide is persisted to AsyncStorage via the storage keys map (0.205841ms)
+✔ character utils map the legacy "soft" key to raylene (0.18517ms)
+✔ profile separates account identity from Circle identity (1.275916ms)
+✔ profile links growth and support to their owning spaces instead of duplicating them (1.068062ms)
+✔ Circle exposes a direct doorway to social identity (0.227854ms)
+✔ Circle identity copy preserves privacy boundaries (0.207914ms)
+✔ profile includes Memories as a safe scrapbook layer (0.261945ms)
+✔ profile memories point back to owning spaces instead of exposing private content (0.31813ms)
+✔ parent profile mirrors identity, Circle identity, and support memories (0.433644ms)
+✔ parent memories are support markers, not teen surveillance (0.256888ms)
+✔ memories aliases point to Profile Hub on both sides (0.378821ms)
+✔ completed teen onboarding routes unverified accounts into limited mode (10.941214ms)
+✔ limited mode keeps private tools open and social tools locked (3.468836ms)
+✔ parent invite creation uses a protected server transition (3.33942ms)
+✔ circle crew and discovery are treated as verification-gated routes (4.157054ms)
+✔ first launch collects identity before reflection (1.348686ms)
+✔ onboarding completion writes one complete private profile (0.285591ms)
+✔ unfinished teen routes redirect to onboarding (0.262457ms)
+✔ editing identity does not silently replace the chosen companion (0.374385ms)
+✔ Circle identity remains separate from private profile data (0.309417ms)
+✔ Oracle builds a bounded companion context from structured understandings (1.756431ms)
+✔ every teen companion chat uses the same Oracle context path (0.29163ms)
+✔ chat transport sends Oracle context only inside the Worker memory payload (0.24526ms)
+✔ Worker limits and validates Oracle context before prompt use (0.244159ms)
+✔ Worker removes Oracle context from generic memory serialization (0.224399ms)
+✔ companion prompt treats Oracle knowledge as hidden guidance, not quoted content (0.29173ms)
+✔ Oracle context is omitted when there are no understandings (0.151809ms)
+✔ parent doorbell reads only approved Bridge metadata (8.078453ms)
+✔ parent dashboard states the privacy boundary (2.136195ms)
+✔ parent more links to the doorbell dashboard (6.204815ms)
+✔ parent setup continues to invite-code redemption (6.76491ms)
+✔ parent link screen redeems code and completes onboarding only after success (1.965446ms)
+✖ randomCode returns a string (2.214452ms)
+✖ randomCode is 6 characters long (0.161473ms)
+✖ randomCode is uppercase (0.121624ms)
+✖ randomCode contains only alphanumeric characters (0.323769ms)
+✖ randomCode produces unique values across calls (8.635093ms)
+✖ generateInviteCode sets expires_at to 48 hours from now (1.161243ms)
+✖ generateInviteCode inserts with status="pending" (0.733707ms)
+✖ generateInviteCode revokes existing pending invite before inserting a new one (0.56321ms)
+✔ redeemInviteCode uses the protected server-authoritative RPC (0.572544ms)
+✔ redemption RPC requires a pending invite (0.568398ms)
+✔ redemption RPC rejects expired invites (0.325521ms)
+✔ redemption RPC activates the parent link (0.159851ms)
+✔ redemption RPC verifies the linked teen atomically (0.177418ms)
+✔ fetchLinkedTeenId queries only status="active" links (0.190287ms)
+✔ revokeParentLink updates only the teen's active link (0.191729ms)
+✔ revokeParentLink sets status="revoked" not "pending" (0.521437ms)
+✔ generateInviteCode returns null when Supabase is not configured (0.173422ms)
+✔ redeemInviteCode returns null when Supabase is not configured (0.720577ms)
+✔ revokeParentLink returns false when Supabase is not configured (0.147172ms)
+✔ safety-scan notifies parent only if parent_links.status is active (0.129025ms)
+✔ safety-scan notification payload contains no content (0.309207ms)
+✔ safety-scan notifies parent only for high-severity events (0.196887ms)
+✔ safety-scan keyword scan includes high-severity self-harm patterns (0.290067ms)
+✔ safety-scan keyword scan includes high-severity abuse patterns (0.228585ms)
+✔ safety-scan keyword scan includes medium-severity distress patterns (0.222185ms)
+✔ safety-scan keyword scan includes runaway signals (0.174163ms)
+✔ safety-scan runs keyword scan even without OPENAI_API_KEY (0.120172ms)
+✔ safety-scan does not log or store content text (0.162095ms)
+✔ ScanMetadata has no content field (0.34424ms)
+✔ parent side includes a room route (1.194533ms)
+✔ parent side includes a pages route (0.247484ms)
+✔ parent side includes a calm route (0.179451ms)
+✔ parent side includes a circle route (0.203958ms)
+✔ parent side includes a bridge route (0.132009ms)
+✔ parent side includes a voicebip route (0.162555ms)
+✔ parent side includes a more route (0.116185ms)
+✔ parent side includes a settings route (0.279612ms)
+✔ parent bottom navigation mirrors the five primary teen destinations (0.574797ms)
+✔ parent routes do not directly read private teen storage collections (1.086039ms)
+✔ parent pages use parent-owned reflection state (0.58324ms)
+✔ parent bridge remains a dedicated parent route (0.196677ms)
+✔ parent More exposes parent-safe mirrored support destinations (0.275296ms)
+✔ parent route aliases resolve mirror-only destinations instead of falling back to room (0.31176ms)
+✔ parent splash stays locked briefly before accepting entry (0.9142ms)
+✔ parent invite redemption uses the protected RPC (5.634214ms)
+✔ approval migration atomically activates the link and verifies the teen (1.800217ms)
+✔ privacy.ts declares ParentAllowedSource with all six allowed types (1.790793ms)
+✔ privacy.ts declares ParentBlockedSource with all eight blocked types (0.271901ms)
+✔ privacy.ts exports isParentSafeSource type guard (0.19201ms)
+✔ privacy.ts exports assertParentSafeSource assertion (0.1786ms)
+✔ isParentSafeSource returns true for every allowed source (0.429017ms)
+✔ isParentSafeSource returns false for every blocked source (0.207713ms)
+✔ isParentSafeSource returns false for arbitrary unknown strings (0.156556ms)
+✔ assertParentSafeSource does not throw for allowed sources (0.299252ms)
+✔ assertParentSafeSource throws for every blocked source (0.57662ms)
+✔ assertParentSafeSource error message names the offending source (0.41694ms)
+✔ BRIDGE_RULES.teenInitiatesOnly is true (0.19897ms)
+✔ BRIDGE_RULES.parentCannotPullTeenData is true (0.165419ms)
+✔ BRIDGE_RULES.teenCanRevokeShare is true (0.406544ms)
+✔ BridgeMessage.fromSide is always teen (0.186111ms)
+✔ BridgeMessage.toSide is always parent (0.611453ms)
+✔ BridgeMessageType includes all four message kinds (1.081382ms)
+✔ S2TellMessage payload type contains a text field (the rewrite shown to parent) (0.143307ms)
+✔ Parent S2Tell inbox filters by shared===true before rendering (0.389708ms)
+✔ Parent S2Tell inbox does not reference the raw field (0.342317ms)
+✔ Worker brain prompt forbids verbatim journal text in parentShareSummary (0.174884ms)
+✔ Worker parentBridge surface rules state parentShareSummary must not betray teen trust (0.126851ms)
+✔ parentShareSummary is null when parentSharingEnabled is false (0.45008ms)
+✔ privacy.ts defines all four TeenShareVisibility levels (0.08626ms)
+✔ SafeMoodAggregate.visibility is locked to safe_aggregate (0.055714ms)
+✔ SharedMoment.visibility is locked to shared_with_parent (0.050146ms)
+✔ identity readers keep private profile and Circle identity separate (1.254443ms)
+✔ Circle route reads only the Circle identity helper (0.277719ms)
+✔ Circle shows the scoped Circle name without exposing the private name (0.266803ms)
+✔ sign out clears teen and parent profile identities (0.361987ms)
+✔ safety routes remain globally accessible (6.08197ms)
+✔ social routes require verified teen access (1.658734ms)
+✔ manual review and suspended states redirect centrally (1.803682ms)
+✔ Se'kret brain keeps Oracle context below safety and privacy rules (2.138568ms)
+✔ Se'kret brain explicitly prevents quoting hidden Oracle understandings (0.325822ms)
+✔ Se'kret brain preserves private parent-share boundaries while using Oracle context (0.270479ms)
+✔ Oracle context cannot replace generic safety memory serialization (0.340203ms)
+✔ Oracle context enters the shared brain through memory only, not as user text (0.631203ms)
+✔ Oracle context is bounded before the shared brain sees it (0.249617ms)
+✔ Se'kret brain keeps companion identity separate from Oracle knowledge (0.47717ms)
+✔ client and worker recognize raylene (2.645643ms)
+✔ client and worker recognize rylane (0.24546ms)
+✔ client and worker recognize cloud (0.259862ms)
+✔ client and worker recognize night (0.209796ms)
+✔ client and worker recognize sekret (0.272601ms)
+✔ legacy Oracle routes to visible Se'kret identity (0.313253ms)
+✔ Se'kret synthesis uses uncertainty and correction language (0.282626ms)
+✔ Voice Bip persists companion selection through app context (0.190577ms)
+✔ onboarding reflection stays local and is not attributed to Raylene memory (0.493505ms)
+✔ STORAGE_KEYS exports all required teen state keys (3.006387ms)
+✔ STORAGE_KEYS exports all required parent state keys (0.207233ms)
+✔ userSide key is present (determines the entire app experience on restore) (0.751494ms)
+✔ all JSON_KEYS are also in STORAGE_KEYS (no orphan JSON keys) (0.250899ms)
+✔ array/object state fields are in JSON_KEYS (0.252641ms)
+✔ plain string fields are NOT in JSON_KEYS (0.17881ms)
+✔ loadState catches errors and returns empty object (never throws) (0.322847ms)
+✔ saveState catches errors silently (never throws) (0.286122ms)
+✔ loadState loads via multiGet (single round-trip for all keys) (0.216657ms)
+✔ saveState persists via multiSet (single round-trip for all updates) (0.273823ms)
+✔ loadState uses JSON_KEYS to decide parse vs. raw string (0.176607ms)
+✔ saveState serializes non-string values to JSON (0.168004ms)
+✔ safeUpsert is a no-op when Supabase is not configured (0.120161ms)
+✔ safeUpsert is a no-op when no user session exists (0.123096ms)
+✔ safeUpsert always attaches user_id to every row before upsert (0.128254ms)
+✔ safeUpsert catches all exceptions (never throws to caller) (0.17263ms)
+✔ safeDelete matches on both id AND user_id (cannot delete another user's row) (0.122185ms)
+✔ safeDelete catches all exceptions (never throws to caller) (0.163076ms)
+✔ syncMood calls void safeUpsert (non-blocking) (0.150257ms)
+✔ syncJournal calls void safeUpsert (non-blocking) (0.148824ms)
+✔ syncVoiceNote calls void safeUpsert (non-blocking) (0.156176ms)
+✔ syncComfortSession calls void safeUpsert (non-blocking) (0.189466ms)
+✔ deleteCrewMember calls void safeDelete (non-blocking) (0.161564ms)
+✔ pullAll returns null when Supabase is not configured (0.118268ms)
+✔ pullAll returns null when no user session exists (0.112119ms)
+✔ pullAll uses Promise.allSettled so a single table failure does not abort restore (0.278841ms)
+✔ pullAll catches overall errors and returns null instead of throwing (0.194504ms)
+✔ pullAll maps sekret_reply column → sekretReply app field on restore (0.120242ms)
+✔ syncJournal maps sekretReply app field → sekret_reply column on write (0.088624ms)
+✔ pullAll maps circle_tag column → circleTag app field on restore (0.127312ms)
+✔ pullAll maps room memory columns to camelCase on restore (0.208094ms)
+✔ syncCrewMember maps inviteCode → invite_code on write (0.119541ms)
+✔ pullAll maps member_id column → memberId app field on restore (0.142896ms)
+✔ pullAll return shape includes all eight collection types (0.184168ms)
+✔ pullAll includes roomMemory in restore payload (0.117598ms)
+✔ deriveTier returns t0 for 0 sessions (0.130967ms)
+✔ deriveTier returns t0 for 1-2 sessions (below threshold) (0.111448ms)
+✔ deriveTier returns t1 at exactly 3 sessions (0.269907ms)
+✔ deriveTier returns t1 for 3-9 sessions (0.113011ms)
+✔ deriveTier returns t2 at exactly 10 sessions (0.096987ms)
+✔ deriveTier returns t2 for 10-24 sessions (0.507646ms)
+✔ deriveTier returns t3 at exactly 25 sessions (0.132359ms)
+✔ deriveTier returns t3 for 25-49 sessions (0.11962ms)
+✔ deriveTier returns t4 at exactly 50 sessions (0.103677ms)
+✔ deriveTier returns t4 for any count 50+ (0.096956ms)
+✔ syncTeenActivitySummary only syncs aggregates (streak_days, session_count, points_tier) (0.24551ms)
+✔ syncTeenActivitySummary derives session count from comfortSessions array length (0.129135ms)
+✔ TeenActivitySummary interface has no private content fields (0.254063ms)
+✔ fetchTeenActivitySummary reads from parent_teen_activity_snapshot view, not raw user table (0.141964ms)
+✔ fetchTeenActivitySummary takes teenId as a parameter (parent fetches teen data by ID) (0.155755ms)
+✔ initTeenActivitySync syncs every 10 minutes (0.114132ms)
+✔ syncOracleSession upserts on user_id AND personality_id (one row per character) (0.102956ms)
+✔ loadOracleSession queries by both user_id and personality_id (0.239502ms)
+✔ loadOracleSession returns null when Supabase is not configured (0.128474ms)
+✔ loadOracleSession returns null (not throws) when session not found (0.114373ms)
+✔ getSupabase returns null when Supabase is not configured (0.099631ms)
+✔ Supabase session is persisted via AsyncStorage (survives app restart) (0.164208ms)
+✔ Supabase client uses autoRefreshToken (0.134062ms)
+✔ service_role key is never used in client code (comment warnings are fine) (0.259692ms)
+✔ TABLES map includes all critical data tables (0.141303ms)
+✔ all TABLES values use snake_case (database convention) (0.248074ms)
+✔ TABLES has a teen activity summary entry (0.109866ms)
+✔ ensureAnonymousSession returns null when Supabase is not configured (0.113391ms)
+✔ ensureAnonymousSession reuses existing session if one exists (0.560476ms)
+✔ ensureAnonymousSession catches errors and returns null (never throws) (0.153782ms)
+✔ parent circle posts use a separate table from teen circle posts (0.142345ms)
+✔ STORAGE_KEYS uses parent-prefixed names for all parent state (0.219812ms)
+✔ loadParentCircleFeed queries parentCirclePosts table (not teen circle tables) (0.193522ms)
+✔ syncTeenActivitySummary sync comment says never throw (0.286182ms)
+✔ verification context reads the server-authoritative account row (7.213768ms)
+✔ root layout waits for verification hydration before enforcing routes (2.255825ms)
+✔ verification states and route targets remain explicit (5.788177ms)
+✔ Figma foundation contains required first screens (1.300583ms)
+✔ design system documents privacy boundaries (1.998797ms)
+✔ six canonical vibe token sets remain present (4.852434ms)
+✔ global privacy, verification, safety, and parent boundaries remain invariant (1.288265ms)
+✔ night remains the only dark-surface token set (1.793667ms)
+✔ CRISIS_RE matches direct self-harm phrases (1.392282ms)
+✔ CRISIS_RE matches abuse and danger phrases (0.149776ms)
+✔ CRISIS_RE matches case-insensitively (0.113111ms)
+✔ CRISIS_RE does not false-positive on safe phrases (0.111037ms)
+✔ crisisReply always sets safetyFlag=true (0.311881ms)
+✔ crisisReply sets parentShareSummary=null when parentSharingEnabled=false (0.275306ms)
+✔ crisisReply parentShareSummary mentions "Safety concern" when sharing enabled (0.209827ms)
+✔ crisisReply parentShareSummary contains no verbatim-text prompt (0.219982ms)
+✔ crisisReply reply includes 988 crisis line (0.226933ms)
+✔ crisisReply reply includes Crisis Text Line 741741 (0.29185ms)
+✔ crisisReply reply includes 911 for immediate danger (0.177448ms)
+✔ crisisReply tone is supportive-safety (0.219771ms)
+✔ crisisReply suggestedComfortTool is safety-plan (0.17251ms)
+✔ safety_crisis intent returns crisis reply before any OpenAI call (0.232962ms)
+✔ CRISIS_RE.test() is also called as a guard independent of detectIntent (0.203527ms)
+✔ normalizeCharacter handles all valid CharacterIds (0.380034ms)
+✔ normalizeCharacter returns null for unknown input (0.341946ms)
+✔ detectIntent checks CRISIS_RE first before any other intent (0.175445ms)
+✔ parentCoach surface always sets parentShareSummary to null (0.19196ms)
+✔ CompanionReply interface defines safetyFlag and parentShareSummary (0.173362ms)
+ℹ tests 254
+ℹ suites 0
+ℹ pass 246
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 672.201138
+
+✖ failing tests:
+
+test at test/parent-linking.test.mjs:20:1
+✖ randomCode returns a string (2.214452ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+  
+  + 'undefined'
+  - 'string'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:20:50)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.start (node:internal/test_runner/test:1177:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'undefined',
+    expected: 'string',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/parent-linking.test.mjs:21:1
+✖ randomCode is 6 characters long (0.161473ms)
+  TypeError: Cannot read properties of undefined (reading 'length')
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:22:57)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:385:3)
+
+test at test/parent-linking.test.mjs:24:1
+✖ randomCode is uppercase (0.121624ms)
+  TypeError: Cannot read properties of undefined (reading 'toUpperCase')
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:25:85)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7)
+
+test at test/parent-linking.test.mjs:27:1
+✖ randomCode contains only alphanumeric characters (0.323769ms)
+  AssertionError [ERR_ASSERTION]: The "string" argument must be of type string. Received type undefined (undefined)
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:28:39)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: /^[A-Z0-9]+$/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test/parent-linking.test.mjs:30:1
+✖ randomCode produces unique values across calls (8.635093ms)
+  AssertionError [ERR_ASSERTION]: The expression evaluated to a falsy value:
+  
+    assert.ok(codes.size > 40)
+  
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:32:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }
+
+test at test/parent-linking.test.mjs:35:1
+✖ generateInviteCode sets expires_at to 48 hours from now (1.161243ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /48 \* 60 \* 60 \* 1000/. Input:
+  
+  '// src/utils/parentLink.ts\n' +
+    "// Se'kret Bip — Parent ↔ Teen linking helpers\n" +
+    '//\n' +
+    '// Flow:\n' +
+    '//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state\n' +
+    '//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen\n' +
+    "//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads\n" +
+    "//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access\n" +
+    '//\n' +
+    "// All operations are safe no-ops when Supabase isn't configured.\n" +
+    '// RLS and protected verification transitions are enforced server-side.\n' +
+    '\n' +
+    "import { getSupabase } from './supabase';\n" +
+    '\n' +
+    'async function currentUserId(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '  try {\n' +
+    '    const { data } = await sb.auth.getUser();\n' +
+    '    return data?.user?.id ?? null;\n' +
+    '  } catch {\n' +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * (Teen) Create a pending parent invite through the protected RPC.\n' +
+    ' * The database atomically creates the code and moves account_verification\n' +
+    ' * into PENDING_PARENT. The client never writes verification state directly.\n' +
+    ' */\n' +
+    'export async function generateInviteCode(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    "    const { data, error } = await sb.rpc('create_parent_link_invite');\n" +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] generateInviteCode failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    "    return typeof data === 'string' ? data : null;\n" +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * (Parent) Redeem an invite code through the server-authoritative RPC.\n' +
+    ' * The database atomically activates the parent link and moves the teen to\n' +
+    ' * VERIFIED_TEEN. The client never writes account_verification directly.\n' +
+    ' */\n' +
+    'export async function redeemInviteCode(code: string): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '\n' +
+    '  const normalized = code.toUpperCase().trim();\n' +
+    '  if (!normalized) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    "    const { data, error } = await sb.rpc('redeem_parent_link_invite', {\n" +
+    '      p_invite_code: normalized,\n' +
+    '    });\n' +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] redeemInviteCode failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    '\n' +
+    "    return typeof data === 'string' ? data : null;\n" +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/** Return the teen_user_id for the active link belonging to this parent. */\n' +
+    'export async function fetchLinkedTeenId(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '  const uid = await currentUserId();\n' +
+    '  if (!uid) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    '    const { data, error } = await sb\n' +
+    "      .from('parent_links')\n" +
+    "      .select('teen_user_id')\n" +
+    "      .eq('parent_user_id', uid)\n" +
+    "      .eq('status', 'active')\n" +
+    "      .order('updated_at', { ascending: false })\n" +
+    '      .limit(1)\n' +
+    '      .maybeSingle();\n' +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    '\n' +
+    '    return (data?.teen_user_id as string) ?? null;\n' +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/** Teen revokes the active parent link. */\n' +
+    'export async function revokeParentLink(): Promise<boolean> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return false;\n' +
+    '  const uid = await currentUserId();\n' +
+    '  if (!uid) return false;\n' +
+    '\n' +
+    '  try {\n' +
+    '    const { error } = await sb\n' +
+    "      .from('parent_links')\n" +
+    "      .update({ status: 'revoked' })\n" +
+    "      .eq('teen_user_id', uid)\n" +
+    "      .eq('status', 'active');\n" +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] revokeParentLink failed:', error.message);\n" +
+    '      return false;\n' +
+    '    }\n' +
+    '\n' +
+    '    return true;\n' +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);\n" +
+    '    return false;\n' +
+    '  }\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:35:78)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "// src/utils/parentLink.ts\n// Se'kret Bip — Parent ↔ Teen linking helpers\n//\n// Flow:\n//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state\n//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen\n//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads\n//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access\n//\n// All operations are safe no-ops when Supabase isn't configured.\n// RLS and protected verification transitions are enforced server-side.\n\nimport { getSupabase } from './supabase';\n\nasync function currentUserId(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n  try {\n    const { data } = await sb.auth.getUser();\n    return data?.user?.id ?? null;\n  } catch {\n    return null;\n  }\n}\n\n/**\n * (Teen) Create a pending parent invite through the protected RPC.\n * The database atomically creates the code and moves account_verification\n * into PENDING_PARENT. The client never writes verification state directly.\n */\nexport async function generateInviteCode(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n\n  try {\n    const { data, error } = await sb.rpc('create_parent_link_invite');\n    if (error) {\n      console.warn('[parentLink] generateInviteCode failed:', error.message);\n      return null;\n    }\n    return typeof data === 'string' ? data : null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);\n    return null;\n  }\n}\n\n/**\n * (Parent) Redeem an invite code through the server-authoritative RPC.\n * The database atomically activates the parent link and moves the teen to\n * VERIFIED_TEEN. The client never writes account_verification directly.\n */\nexport async function redeemInviteCode(code: string): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n\n  const normalized = code.toUpperCase().trim();\n  if (!normalized) return null;\n\n  try {\n    const { data, error } = await sb.rpc('redeem_parent_link_invite', {\n      p_invite_code: normalized,\n    });\n\n    if (error) {\n      console.warn('[parentLink] redeemInviteCode failed:', error.message);\n      return null;\n    }\n\n    return typeof data === 'string' ? data : null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);\n    return null;\n  }\n}\n\n/** Return the teen_user_id for the active link belonging to this parent. */\nexport async function fetchLinkedTeenId(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n  const uid = await currentUserId();\n  if (!uid) return null;\n\n  try {\n    const { data, error } = await sb\n      .from('parent_links')\n      .select('teen_user_id')\n      .eq('parent_user_id', uid)\n      .eq('status', 'active')\n      .order('updated_at', { ascending: false })\n      .limit(1)\n      .maybeSingle();\n\n    if (error) {\n      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);\n      return null;\n    }\n\n    return (data?.teen_user_id as string) ?? null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);\n    return null;\n  }\n}\n\n/** Teen revokes the active parent link. */\nexport async function revokeParentLink(): Promise<boolean> {\n  const sb = getSupabase();\n  if (!sb) return false;\n  const uid = await currentUserId();\n  if (!uid) return false;\n\n  try {\n    const { error } = await sb\n      .from('parent_links')\n      .update({ status: 'revoked' })\n      .eq('teen_user_id', uid)\n      .eq('status', 'active');\n\n    if (error) {\n      console.warn('[parentLink] revokeParentLink failed:', error.message);\n      return false;\n    }\n\n    return true;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);\n    return false;\n  }\n}\n",
+    expected: /48 \* 60 \* 60 \* 1000/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test/parent-linking.test.mjs:36:1
+✖ generateInviteCode inserts with status="pending" (0.733707ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /status:\s*'pending'/. Input:
+  
+  '// src/utils/parentLink.ts\n' +
+    "// Se'kret Bip — Parent ↔ Teen linking helpers\n" +
+    '//\n' +
+    '// Flow:\n' +
+    '//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state\n' +
+    '//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen\n' +
+    "//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads\n" +
+    "//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access\n" +
+    '//\n' +
+    "// All operations are safe no-ops when Supabase isn't configured.\n" +
+    '// RLS and protected verification transitions are enforced server-side.\n' +
+    '\n' +
+    "import { getSupabase } from './supabase';\n" +
+    '\n' +
+    'async function currentUserId(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '  try {\n' +
+    '    const { data } = await sb.auth.getUser();\n' +
+    '    return data?.user?.id ?? null;\n' +
+    '  } catch {\n' +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * (Teen) Create a pending parent invite through the protected RPC.\n' +
+    ' * The database atomically creates the code and moves account_verification\n' +
+    ' * into PENDING_PARENT. The client never writes verification state directly.\n' +
+    ' */\n' +
+    'export async function generateInviteCode(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    "    const { data, error } = await sb.rpc('create_parent_link_invite');\n" +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] generateInviteCode failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    "    return typeof data === 'string' ? data : null;\n" +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * (Parent) Redeem an invite code through the server-authoritative RPC.\n' +
+    ' * The database atomically activates the parent link and moves the teen to\n' +
+    ' * VERIFIED_TEEN. The client never writes account_verification directly.\n' +
+    ' */\n' +
+    'export async function redeemInviteCode(code: string): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '\n' +
+    '  const normalized = code.toUpperCase().trim();\n' +
+    '  if (!normalized) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    "    const { data, error } = await sb.rpc('redeem_parent_link_invite', {\n" +
+    '      p_invite_code: normalized,\n' +
+    '    });\n' +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] redeemInviteCode failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    '\n' +
+    "    return typeof data === 'string' ? data : null;\n" +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/** Return the teen_user_id for the active link belonging to this parent. */\n' +
+    'export async function fetchLinkedTeenId(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '  const uid = await currentUserId();\n' +
+    '  if (!uid) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    '    const { data, error } = await sb\n' +
+    "      .from('parent_links')\n" +
+    "      .select('teen_user_id')\n" +
+    "      .eq('parent_user_id', uid)\n" +
+    "      .eq('status', 'active')\n" +
+    "      .order('updated_at', { ascending: false })\n" +
+    '      .limit(1)\n' +
+    '      .maybeSingle();\n' +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    '\n' +
+    '    return (data?.teen_user_id as string) ?? null;\n' +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/** Teen revokes the active parent link. */\n' +
+    'export async function revokeParentLink(): Promise<boolean> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return false;\n' +
+    '  const uid = await currentUserId();\n' +
+    '  if (!uid) return false;\n' +
+    '\n' +
+    '  try {\n' +
+    '    const { error } = await sb\n' +
+    "      .from('parent_links')\n" +
+    "      .update({ status: 'revoked' })\n" +
+    "      .eq('teen_user_id', uid)\n" +
+    "      .eq('status', 'active');\n" +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] revokeParentLink failed:', error.message);\n" +
+    '      return false;\n' +
+    '    }\n' +
+    '\n' +
+    '    return true;\n' +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);\n" +
+    '    return false;\n' +
+    '  }\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:36:71)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "// src/utils/parentLink.ts\n// Se'kret Bip — Parent ↔ Teen linking helpers\n//\n// Flow:\n//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state\n//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen\n//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads\n//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access\n//\n// All operations are safe no-ops when Supabase isn't configured.\n// RLS and protected verification transitions are enforced server-side.\n\nimport { getSupabase } from './supabase';\n\nasync function currentUserId(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n  try {\n    const { data } = await sb.auth.getUser();\n    return data?.user?.id ?? null;\n  } catch {\n    return null;\n  }\n}\n\n/**\n * (Teen) Create a pending parent invite through the protected RPC.\n * The database atomically creates the code and moves account_verification\n * into PENDING_PARENT. The client never writes verification state directly.\n */\nexport async function generateInviteCode(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n\n  try {\n    const { data, error } = await sb.rpc('create_parent_link_invite');\n    if (error) {\n      console.warn('[parentLink] generateInviteCode failed:', error.message);\n      return null;\n    }\n    return typeof data === 'string' ? data : null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);\n    return null;\n  }\n}\n\n/**\n * (Parent) Redeem an invite code through the server-authoritative RPC.\n * The database atomically activates the parent link and moves the teen to\n * VERIFIED_TEEN. The client never writes account_verification directly.\n */\nexport async function redeemInviteCode(code: string): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n\n  const normalized = code.toUpperCase().trim();\n  if (!normalized) return null;\n\n  try {\n    const { data, error } = await sb.rpc('redeem_parent_link_invite', {\n      p_invite_code: normalized,\n    });\n\n    if (error) {\n      console.warn('[parentLink] redeemInviteCode failed:', error.message);\n      return null;\n    }\n\n    return typeof data === 'string' ? data : null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);\n    return null;\n  }\n}\n\n/** Return the teen_user_id for the active link belonging to this parent. */\nexport async function fetchLinkedTeenId(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n  const uid = await currentUserId();\n  if (!uid) return null;\n\n  try {\n    const { data, error } = await sb\n      .from('parent_links')\n      .select('teen_user_id')\n      .eq('parent_user_id', uid)\n      .eq('status', 'active')\n      .order('updated_at', { ascending: false })\n      .limit(1)\n      .maybeSingle();\n\n    if (error) {\n      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);\n      return null;\n    }\n\n    return (data?.teen_user_id as string) ?? null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);\n    return null;\n  }\n}\n\n/** Teen revokes the active parent link. */\nexport async function revokeParentLink(): Promise<boolean> {\n  const sb = getSupabase();\n  if (!sb) return false;\n  const uid = await currentUserId();\n  if (!uid) return false;\n\n  try {\n    const { error } = await sb\n      .from('parent_links')\n      .update({ status: 'revoked' })\n      .eq('teen_user_id', uid)\n      .eq('status', 'active');\n\n    if (error) {\n      console.warn('[parentLink] revokeParentLink failed:', error.message);\n      return false;\n    }\n\n    return true;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);\n    return false;\n  }\n}\n",
+    expected: /status:\s*'pending'/,
+    operator: 'match',
+    diff: 'simple'
+  }
+
+test at test/parent-linking.test.mjs:37:1
+✖ generateInviteCode revokes existing pending invite before inserting a new one (0.56321ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /update\(.*status.*'revoked'[\s\S]*?\.eq\('status', 'pending'\)/s. Input:
+  
+  '// src/utils/parentLink.ts\n' +
+    "// Se'kret Bip — Parent ↔ Teen linking helpers\n" +
+    '//\n' +
+    '// Flow:\n' +
+    '//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state\n' +
+    '//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen\n' +
+    "//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads\n" +
+    "//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access\n" +
+    '//\n' +
+    "// All operations are safe no-ops when Supabase isn't configured.\n" +
+    '// RLS and protected verification transitions are enforced server-side.\n' +
+    '\n' +
+    "import { getSupabase } from './supabase';\n" +
+    '\n' +
+    'async function currentUserId(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '  try {\n' +
+    '    const { data } = await sb.auth.getUser();\n' +
+    '    return data?.user?.id ?? null;\n' +
+    '  } catch {\n' +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * (Teen) Create a pending parent invite through the protected RPC.\n' +
+    ' * The database atomically creates the code and moves account_verification\n' +
+    ' * into PENDING_PARENT. The client never writes verification state directly.\n' +
+    ' */\n' +
+    'export async function generateInviteCode(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    "    const { data, error } = await sb.rpc('create_parent_link_invite');\n" +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] generateInviteCode failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    "    return typeof data === 'string' ? data : null;\n" +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/**\n' +
+    ' * (Parent) Redeem an invite code through the server-authoritative RPC.\n' +
+    ' * The database atomically activates the parent link and moves the teen to\n' +
+    ' * VERIFIED_TEEN. The client never writes account_verification directly.\n' +
+    ' */\n' +
+    'export async function redeemInviteCode(code: string): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '\n' +
+    '  const normalized = code.toUpperCase().trim();\n' +
+    '  if (!normalized) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    "    const { data, error } = await sb.rpc('redeem_parent_link_invite', {\n" +
+    '      p_invite_code: normalized,\n' +
+    '    });\n' +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] redeemInviteCode failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    '\n' +
+    "    return typeof data === 'string' ? data : null;\n" +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/** Return the teen_user_id for the active link belonging to this parent. */\n' +
+    'export async function fetchLinkedTeenId(): Promise<string | null> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return null;\n' +
+    '  const uid = await currentUserId();\n' +
+    '  if (!uid) return null;\n' +
+    '\n' +
+    '  try {\n' +
+    '    const { data, error } = await sb\n' +
+    "      .from('parent_links')\n" +
+    "      .select('teen_user_id')\n" +
+    "      .eq('parent_user_id', uid)\n" +
+    "      .eq('status', 'active')\n" +
+    "      .order('updated_at', { ascending: false })\n" +
+    '      .limit(1)\n' +
+    '      .maybeSingle();\n' +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);\n" +
+    '      return null;\n' +
+    '    }\n' +
+    '\n' +
+    '    return (data?.teen_user_id as string) ?? null;\n' +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);\n" +
+    '    return null;\n' +
+    '  }\n' +
+    '}\n' +
+    '\n' +
+    '/** Teen revokes the active parent link. */\n' +
+    'export async function revokeParentLink(): Promise<boolean> {\n' +
+    '  const sb = getSupabase();\n' +
+    '  if (!sb) return false;\n' +
+    '  const uid = await currentUserId();\n' +
+    '  if (!uid) return false;\n' +
+    '\n' +
+    '  try {\n' +
+    '    const { error } = await sb\n' +
+    "      .from('parent_links')\n" +
+    "      .update({ status: 'revoked' })\n" +
+    "      .eq('teen_user_id', uid)\n" +
+    "      .eq('status', 'active');\n" +
+    '\n' +
+    '    if (error) {\n' +
+    "      console.warn('[parentLink] revokeParentLink failed:', error.message);\n" +
+    '      return false;\n' +
+    '    }\n' +
+    '\n' +
+    '    return true;\n' +
+    '  } catch (error) {\n' +
+    "    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);\n" +
+    '    return false;\n' +
+    '  }\n' +
+    '}\n'
+  
+      at TestContext.<anonymous> (file:///home/runner/work/Bip/Bip/test/parent-linking.test.mjs:38:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:897:18)
+      at Test.postRun (node:internal/test_runner/test:1447:19)
+      at Test.run (node:internal/test_runner/test:1372:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:897:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: "// src/utils/parentLink.ts\n// Se'kret Bip — Parent ↔ Teen linking helpers\n//\n// Flow:\n//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state\n//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen\n//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads\n//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access\n//\n// All operations are safe no-ops when Supabase isn't configured.\n// RLS and protected verification transitions are enforced server-side.\n\nimport { getSupabase } from './supabase';\n\nasync function currentUserId(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n  try {\n    const { data } = await sb.auth.getUser();\n    return data?.user?.id ?? null;\n  } catch {\n    return null;\n  }\n}\n\n/**\n * (Teen) Create a pending parent invite through the protected RPC.\n * The database atomically creates the code and moves account_verification\n * into PENDING_PARENT. The client never writes verification state directly.\n */\nexport async function generateInviteCode(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n\n  try {\n    const { data, error } = await sb.rpc('create_parent_link_invite');\n    if (error) {\n      console.warn('[parentLink] generateInviteCode failed:', error.message);\n      return null;\n    }\n    return typeof data === 'string' ? data : null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);\n    return null;\n  }\n}\n\n/**\n * (Parent) Redeem an invite code through the server-authoritative RPC.\n * The database atomically activates the parent link and moves the teen to\n * VERIFIED_TEEN. The client never writes account_verification directly.\n */\nexport async function redeemInviteCode(code: string): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n\n  const normalized = code.toUpperCase().trim();\n  if (!normalized) return null;\n\n  try {\n    const { data, error } = await sb.rpc('redeem_parent_link_invite', {\n      p_invite_code: normalized,\n    });\n\n    if (error) {\n      console.warn('[parentLink] redeemInviteCode failed:', error.message);\n      return null;\n    }\n\n    return typeof data === 'string' ? data : null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);\n    return null;\n  }\n}\n\n/** Return the teen_user_id for the active link belonging to this parent. */\nexport async function fetchLinkedTeenId(): Promise<string | null> {\n  const sb = getSupabase();\n  if (!sb) return null;\n  const uid = await currentUserId();\n  if (!uid) return null;\n\n  try {\n    const { data, error } = await sb\n      .from('parent_links')\n      .select('teen_user_id')\n      .eq('parent_user_id', uid)\n      .eq('status', 'active')\n      .order('updated_at', { ascending: false })\n      .limit(1)\n      .maybeSingle();\n\n    if (error) {\n      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);\n      return null;\n    }\n\n    return (data?.teen_user_id as string) ?? null;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);\n    return null;\n  }\n}\n\n/** Teen revokes the active parent link. */\nexport async function revokeParentLink(): Promise<boolean> {\n  const sb = getSupabase();\n  if (!sb) return false;\n  const uid = await currentUserId();\n  if (!uid) return false;\n\n  try {\n    const { error } = await sb\n      .from('parent_links')\n      .update({ status: 'revoked' })\n      .eq('teen_user_id', uid)\n      .eq('status', 'active');\n\n    if (error) {\n      console.warn('[parentLink] revokeParentLink failed:', error.message);\n      return false;\n    }\n\n    return true;\n  } catch (error) {\n    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);\n    return false;\n  }\n}\n",
+    expected: /update\(.*status.*'revoked'[\s\S]*?\.eq\('status', 'pending'\)/s,
+    operator: 'match',
+    diff: 'simple'
+  }
