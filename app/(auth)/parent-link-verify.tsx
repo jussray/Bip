@@ -12,9 +12,7 @@ export default function ParentLinkVerifyScreen() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (verificationState === 'VERIFIED_TEEN') {
-      router.replace('/(teen)/room');
-    }
+    if (verificationState === 'VERIFIED_TEEN') router.replace('/(teen)/room');
   }, [verificationState]);
 
   async function createCode() {
@@ -44,12 +42,12 @@ export default function ParentLinkVerifyScreen() {
         <Text style={styles.kicker}>ACCOUNT VERIFICATION</Text>
         <Text style={styles.title}>Bring in a parent or trusted adult.</Text>
         <Text style={styles.body}>
-          Share one private code. After they approve it, Circle, Crew, and community spaces unlock automatically.
+          Share one private eight-character code. After approval, Circle, Crew, and community spaces unlock automatically.
         </Text>
 
         <View style={styles.codeCard}>
           <Text style={styles.codeLabel}>{code ? 'YOUR PRIVATE CODE' : 'READY WHEN YOU ARE'}</Text>
-          <Text style={styles.code}>{code ?? '••••••'}</Text>
+          <Text style={styles.code}>{code ?? '••••••••'}</Text>
           <Text style={styles.codeNote}>Codes expire after 48 hours. Only share yours with the adult you trust.</Text>
         </View>
 
@@ -79,7 +77,7 @@ const styles = StyleSheet.create({
   body: { color: '#c7bdd1', fontSize: 15, lineHeight: 23, marginBottom: 28 },
   codeCard: { backgroundColor: '#ffffff0b', borderWidth: 1, borderColor: '#ffffff16', borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 18 },
   codeLabel: { color: '#8f82a0', fontSize: 10, fontWeight: '900', letterSpacing: 1.8 },
-  code: { color: '#fff', fontSize: 38, fontWeight: '900', letterSpacing: 8, marginVertical: 16 },
+  code: { color: '#fff', fontSize: 32, fontWeight: '900', letterSpacing: 6, marginVertical: 16 },
   codeNote: { color: '#807487', fontSize: 11, lineHeight: 17, textAlign: 'center' },
   error: { color: '#fca5a5', fontSize: 13, textAlign: 'center', marginBottom: 12 },
   primary: { height: 58, borderRadius: 18, backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
