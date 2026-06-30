@@ -38,3 +38,5 @@ if (!source.includes("path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL"))
 }
 
 fs.writeFileSync(file, source);
+
+// Workflow trigger after the workflow file exists.
