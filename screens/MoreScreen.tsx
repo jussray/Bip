@@ -37,6 +37,7 @@ export function MoreScreen({
   onSideChanged,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
+  const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true';
   const character = (
     selectedSekret === 'rylane' ? 'rylane' :
     selectedSekret === 'cloud' ? 'cloud' :
@@ -85,10 +86,10 @@ export function MoreScreen({
           </View>
         ))}
 
-        {userSide !== 'parent' ? (
+        {allowSideSwitch && userSide !== 'parent' ? (
           <View style={styles.sideCard}>
-            <Text style={styles.sideTitle}>Parent side</Text>
-            <Text style={styles.sideBody}>Open the separate parent experience without turning Teen More into a parent dashboard.</Text>
+            <Text style={styles.sideTitle}>Internal side switch</Text>
+            <Text style={styles.sideBody}>Development-only shortcut. Linked teen and parent accounts use Bridge instead.</Text>
             <TouchableOpacity style={[styles.sideButton, { backgroundColor: glow }]} onPress={handleSideSwitch}>
               <Text style={styles.sideButtonText}>Go to Parent Side</Text>
             </TouchableOpacity>
