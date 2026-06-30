@@ -1,4 +1,4 @@
-name: Finalize Companion Fix
+name: Diagnose Companion Fix
 
 on:
   push:
@@ -9,28 +9,22 @@ permissions:
   contents: write
 
 jobs:
-  finalize:
+  diagnose:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: fix-companion-replies-clean
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+      - run: npm ci
+      - run: npm test > companion-test-output.txt 2>&1 || true
       - run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git fetch origin main
-          git merge --no-edit origin/main
-      - run: npm ci
-      - run: npm test
-      - run: npm run type-check
-      - run: |
-          rm .github/workflows/apply-companion-fix.yml
-          git add worker/sekret-reply.ts test/parent-linking.test.mjs .github/workflows/apply-companion-fix.yml
-          git commit -m "chore: finalize companion reply fix on current main"
+          git add companion-test-output.txt
+          git commit -m "chore: capture companion test failure"
           git push
