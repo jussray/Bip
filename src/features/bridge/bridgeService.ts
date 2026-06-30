@@ -1,94 +1,19 @@
-import { getSupabase } from '@/utils/supabase';
+import { fetchParentNotes, sendParentNote } from '@/utils/parentBridgeCompat';
+import {
+  fetchBridgeShares,
+  sendS2TellShare,
+  type BridgeShare,
+} from '@/features/bridge/bridgeShareCompat';
 import { fetchLinkedTeenId } from '@/utils/parentLink';
 
-export type BridgeMessageKind = 's2tell' | 'note' | 'reply' | 'shared_moment';
-export type BridgeSignalType = 'mood' | 'thought' | 'need' | 'win' | 'talk' | 'space';
+export type BridgeMessageKind = 's2tell' | 'reply';
 
 export interface BridgeMessage {
   id: string;
-  teenUserId: string;
-  parentUserId: string;
-  senderUserId: string;
   kind: BridgeMessageKind;
   body: string;
-  tone: string | null;
   createdAt: string;
-  readAt: string | null;
-}
-
-export interface BridgeSignal {
-  id: number;
-  teenUserId: string;
-  type: BridgeSignalType;
-  mode: string | null;
-  createdAt: string;
-}
-
-async function currentUserId(): Promise<string | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-  const { data } = await supabase.auth.getUser();
-  return data.user?.id ?? null;
-}
-
-async function fetchActiveParentForTeen(teenUserId: string): Promise<string | null> {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-  const { data, error } = await supabase
-    .from('parent_links')
-    .select('parent_user_id')
-    .eq('teen_user_id', teenUserId)
-    .eq('status', 'active')
-    .eq('is_active', true)
-    .maybeSingle();
-  if (error) return null;
-  return typeof data?.parent_user_id === 'string' ? data.parent_user_id : null;
-}
-
-export async function sendTeenBridgeSignal(
-  type: BridgeSignalType,
-  mode?: string,
-): Promise<boolean> {
-  const supabase = getSupabase();
-  if (!supabase) return false;
-  const teenUserId = await currentUserId();
-  if (!teenUserId) return false;
-  const parentUserId = await fetchActiveParentForTeen(teenUserId);
-  if (!parentUserId) return false;
-
-  const { error } = await supabase.from('bridge_signals').insert({
-    teen_user_id: teenUserId,
-    char_key: 'raylene',
-    share_type: type,
-    conv_mode: mode ?? null,
-    sent_at: new Date().toISOString(),
-  });
-  return !error;
-}
-
-export async function fetchBridgeSignals(limit = 30): Promise<BridgeSignal[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-  const userId = await currentUserId();
-  if (!userId) return [];
-  const linkedTeenId = await fetchLinkedTeenId();
-  const teenUserId = linkedTeenId ?? userId;
-
-  const { data, error } = await supabase
-    .from('bridge_signals')
-    .select('id,teen_user_id,share_type,conv_mode,sent_at')
-    .eq('teen_user_id', teenUserId)
-    .order('sent_at', { ascending: false })
-    .limit(limit);
-  if (error) return [];
-
-  return (data ?? []).map(row => ({
-    id: Number(row.id),
-    teenUserId: String(row.teen_user_id),
-    type: String(row.share_type) as BridgeSignalType,
-    mode: row.conv_mode ? String(row.conv_mode) : null,
-    createdAt: String(row.sent_at),
-  }));
+  from: 'teen' | 'parent';
 }
 
 export async function sendTeenBridgeMessage(
@@ -96,22 +21,8 @@ export async function sendTeenBridgeMessage(
   kind: BridgeMessageKind = 's2tell',
   tone?: string,
 ): Promise<boolean> {
-  const supabase = getSupabase();
-  if (!supabase) return false;
-  const teenUserId = await currentUserId();
-  if (!teenUserId) return false;
-  const parentUserId = await fetchActiveParentForTeen(teenUserId);
-  if (!parentUserId) return false;
-
-  const { error } = await supabase.from('bridge_messages').insert({
-    teen_user_id: teenUserId,
-    parent_user_id: parentUserId,
-    sender_user_id: teenUserId,
-    kind,
-    body: body.trim(),
-    tone: tone ?? null,
-  });
-  return !error;
+  if (kind !== 's2tell') return false;
+  return sendS2TellShare({ text: body, tone });
 }
 
 export async function sendParentBridgeMessage(
@@ -119,46 +30,30 @@ export async function sendParentBridgeMessage(
   body: string,
   kind: BridgeMessageKind = 'reply',
 ): Promise<boolean> {
-  const supabase = getSupabase();
-  if (!supabase) return false;
-  const parentUserId = await currentUserId();
-  if (!parentUserId) return false;
-
-  const { error } = await supabase.from('bridge_messages').insert({
-    teen_user_id: teenUserId,
-    parent_user_id: parentUserId,
-    sender_user_id: parentUserId,
-    kind,
-    body: body.trim(),
-  });
-  return !error;
+  if (kind !== 'reply') return false;
+  return sendParentNote(teenUserId, body);
 }
 
-export async function fetchBridgeThread(limit = 100): Promise<BridgeMessage[]> {
-  const supabase = getSupabase();
-  if (!supabase) return [];
-  const userId = await currentUserId();
-  if (!userId) return [];
+export async function fetchTeenBridgeThread(): Promise<BridgeMessage[]> {
+  const notes = await fetchParentNotes();
+  return notes.map(note => ({
+    id: note.id,
+    kind: 'reply' as const,
+    body: note.content,
+    createdAt: note.sent_at,
+    from: 'parent' as const,
+  }));
+}
 
-  const linkedTeenId = await fetchLinkedTeenId();
-  const filterColumn = linkedTeenId ? 'parent_user_id' : 'teen_user_id';
-  const { data, error } = await supabase
-    .from('bridge_messages')
-    .select('id,teen_user_id,parent_user_id,sender_user_id,kind,body,tone,created_at,read_at')
-    .eq(filterColumn, userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) return [];
-
-  return (data ?? []).map(row => ({
-    id: String(row.id),
-    teenUserId: String(row.teen_user_id),
-    parentUserId: String(row.parent_user_id),
-    senderUserId: String(row.sender_user_id),
-    kind: row.kind as BridgeMessageKind,
-    body: String(row.body),
-    tone: row.tone ? String(row.tone) : null,
-    createdAt: String(row.created_at),
-    readAt: row.read_at ? String(row.read_at) : null,
+export async function fetchParentBridgeThread(): Promise<BridgeMessage[]> {
+  const teenId = await fetchLinkedTeenId();
+  if (!teenId) return [];
+  const shares: BridgeShare[] = await fetchBridgeShares(teenId);
+  return shares.map(share => ({
+    id: String(share.id),
+    kind: 's2tell' as const,
+    body: share.payload.rewrite ?? share.payload.text ?? '',
+    createdAt: share.shared_at,
+    from: 'teen' as const,
   }));
 }
