@@ -12,6 +12,32 @@
 
 import { getSupabase } from './supabase';
 
+export const PARENT_INVITE_CODE_LENGTH = 8;
+
+interface RedeemParentLinkRow {
+  link_id?: unknown;
+  teen_user_id?: unknown;
+  parent_user_id?: unknown;
+  status?: unknown;
+  activated_at?: unknown;
+}
+
+export function normalizeParentInviteCode(value: string): string {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, PARENT_INVITE_CODE_LENGTH);
+}
+
+function extractRedeemedTeenId(data: unknown): string | null {
+  const row: RedeemParentLinkRow | null = Array.isArray(data)
+    ? ((data[0] as RedeemParentLinkRow | undefined) ?? null)
+    : data && typeof data === 'object'
+      ? (data as RedeemParentLinkRow)
+      : null;
+
+  return typeof row?.teen_user_id === 'string' && row.teen_user_id.length > 0
+    ? row.teen_user_id
+    : null;
+}
+
 async function currentUserId(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -38,7 +64,9 @@ export async function generateInviteCode(): Promise<string | null> {
       console.warn('[parentLink] generateInviteCode failed:', error.message);
       return null;
     }
-    return typeof data === 'string' ? data : null;
+
+    const code = typeof data === 'string' ? normalizeParentInviteCode(data) : '';
+    return code.length === PARENT_INVITE_CODE_LENGTH ? code : null;
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);
     return null;
@@ -47,15 +75,14 @@ export async function generateInviteCode(): Promise<string | null> {
 
 /**
  * (Parent) Redeem an invite code through the server-authoritative RPC.
- * The database atomically activates the parent link and moves the teen to
- * VERIFIED_TEEN. The client never writes account_verification directly.
+ * The database returns a row containing teen_user_id after activating the link.
  */
 export async function redeemInviteCode(code: string): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
 
-  const normalized = code.toUpperCase().trim();
-  if (!normalized) return null;
+  const normalized = normalizeParentInviteCode(code);
+  if (normalized.length !== PARENT_INVITE_CODE_LENGTH) return null;
 
   try {
     const { data, error } = await sb.rpc('redeem_parent_link_invite', {
@@ -67,7 +94,7 @@ export async function redeemInviteCode(code: string): Promise<string | null> {
       return null;
     }
 
-    return typeof data === 'string' ? data : null;
+    return extractRedeemedTeenId(data);
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);
     return null;
@@ -113,7 +140,7 @@ export async function revokeParentLink(): Promise<boolean> {
   try {
     const { error } = await sb
       .from('parent_links')
-      .update({ status: 'revoked' })
+      .update({ status: 'revoked', is_active: false })
       .eq('teen_user_id', uid)
       .eq('status', 'active');
 
