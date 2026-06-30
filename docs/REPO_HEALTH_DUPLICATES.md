@@ -1,19 +1,18 @@
 # Exact Duplicate Source Files
 
 ## Group 1
-- `utils/sekretCompanion.ts`
-- `utils/sekretReply.ts`
-- `utils/storage.ts`
-- `utils/supabase.ts`
-- `utils/sync.ts`
-- `utils/voiceCompanion.ts`
-
-## Group 2
 - `supabase/migrations/20260626013453_push_tokens.sql`
 - `supabase/migrations/20260626013458_media_columns.sql`
 - `supabase/migrations/20260626014141_circle_replies.sql`
 - `supabase/migrations/20260626020337_voice_notes_video_url.sql`
 - `supabase/migrations/20260626021250_voice_notes_metadata.sql`
+
+## Group 2
+- `utils/sekretReply.ts`
+- `utils/storage.ts`
+- `utils/supabase.ts`
+- `utils/sync.ts`
+- `utils/voiceCompanion.ts`
 
 ## Group 3
 - `supabase/migrations/20260622190420_remote_history.sql`
