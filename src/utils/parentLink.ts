@@ -2,7 +2,7 @@
 // Se'kret Bip — Parent ↔ Teen linking helpers
 //
 // Flow:
-//   Teen:   generateInviteCode()   → share 6-char code with parent
+//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state
 //   Parent: redeemInviteCode(code) → atomically activates link + verifies teen
 //   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads
 //   Teen:   revokeParentLink()     → sets status='revoked', parent loses access
@@ -23,42 +23,22 @@ async function currentUserId(): Promise<string | null> {
   }
 }
 
-/** Generate a random 6-char alphanumeric invite code (uppercase). */
-function randomCode(): string {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
 /**
- * (Teen) Create a pending invite link and return the 6-char code.
- * Existing pending invite for this teen is replaced.
+ * (Teen) Create a pending parent invite through the protected RPC.
+ * The database atomically creates the code and moves account_verification
+ * into PENDING_PARENT. The client never writes verification state directly.
  */
 export async function generateInviteCode(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
-  const uid = await currentUserId();
-  if (!uid) return null;
-  const code = randomCode();
 
   try {
-    await sb
-      .from('parent_links')
-      .update({ status: 'revoked' })
-      .eq('teen_user_id', uid)
-      .eq('status', 'pending');
-
-    const { error } = await sb.from('parent_links').insert({
-      teen_user_id: uid,
-      invite_code: code,
-      status: 'pending',
-      expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-    });
-
+    const { data, error } = await sb.rpc('create_parent_link_invite');
     if (error) {
       console.warn('[parentLink] generateInviteCode failed:', error.message);
       return null;
     }
-
-    return code;
+    return typeof data === 'string' ? data : null;
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);
     return null;
