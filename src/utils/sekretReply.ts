@@ -1,14 +1,9 @@
 import { IMAGES } from '../../constants/theme';
-import { fetchSekretBrainReply, type SekretAvatarState } from './api';
+import { fetchSekretBrainReply, type SekretAvatarState, type SekretReplySource } from './api';
 import {
-  getSekretFallback,
   getConversationPhase,
   buildConversationPhaseInstruction,
-  isArrivalMessage,
-  getArrivalReply,
-  keepSekretReply,
 } from '../../services/sekretVoice';
-import { normalizeSekretPersonality } from '../../services/sekretPresence';
 import type { PagesTab } from '../../screens/PagesScreen';
 import type { ChatMessage } from '../../src/services/ai/chat';
 
@@ -105,6 +100,9 @@ export type PagesReplyResult = {
   reply: string;
   tone: string;
   avatarState: SekretAvatarState;
+  replySource: SekretReplySource;
+  fallbackUsed: boolean;
+  fallbackReason: string | null;
 };
 
 export async function fetchPagesReplyDetails(input: {
@@ -115,64 +113,52 @@ export async function fetchPagesReplyDetails(input: {
 }): Promise<PagesReplyResult> {
   const avatarKey = tabToAvatarKey(input.tab);
   if (!avatarKey || !input.text.trim()) {
-    return { reply: '', tone: 'neutral', avatarState: 'neutral' };
+    return {
+      reply: '',
+      tone: 'neutral',
+      avatarState: 'neutral',
+      replySource: 'fallback',
+      fallbackUsed: true,
+      fallbackReason: 'empty_input',
+    };
   }
 
   const history = input.history ?? [];
   const historyLength = history.length;
   const phase = getConversationPhase(historyLength);
-  const personality = normalizeSekretPersonality(avatarKey);
-  const fallback = getSekretFallback(personality, input.text);
-
-  if (isArrivalMessage(input.text, historyLength)) {
-    const arrivalReply = getArrivalReply(avatarKey);
-    const arrivalState: SekretAvatarState = avatarKey === 'cloud' || avatarKey === 'night'
-      ? 'comforting'
-      : 'happy';
-    setAvatarState(avatarKey, arrivalState);
-    return { reply: arrivalReply, tone: 'warm', avatarState: arrivalState };
-  }
+  const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, avatarKey);
+  const workerHistory = history.map((message) => ({
+    role: message.role === 'assistant' ? 'assistant' as const : 'user' as const,
+    content: message.text,
+  }));
 
   setAvatarState(avatarKey, 'thinking');
 
-  const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, avatarKey);
-  const workerHistory = history.map((m) => ({
-    role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
-    content: m.text,
-  }));
+  const response = await fetchSekretBrainReply({
+    characterId: avatarKey,
+    surface: 'journal',
+    userText: input.text,
+    mood: input.mood,
+    history: workerHistory,
+    conversationPhase: phase,
+    phaseInstruction,
+  });
 
-  try {
-    const request = {
-      characterId: avatarKey,
-      surface: 'journal' as const,
-      userText: input.text,
-      mood: input.mood,
-      history: workerHistory,
-      conversationPhase: phase,
-      phaseInstruction,
-    };
+  const nextState = inferAvatarState({
+    state: response.avatarState,
+    mood: input.mood,
+    tone: response.tone,
+  });
 
-    const response = await fetchSekretBrainReply(request as Parameters<typeof fetchSekretBrainReply>[0]);
-
-    const nextState = inferAvatarState({
-      state: response.avatarState,
-      mood: input.mood,
-      tone: response.tone,
-    });
-
-    setAvatarState(avatarKey, nextState);
-    return {
-      reply: keepSekretReply(response.reply, fallback),
-      tone: response.tone,
-      avatarState: nextState,
-    };
-  } catch {
-    const nextState: SekretAvatarState = avatarKey === 'cloud' || avatarKey === 'night'
-      ? 'comforting'
-      : 'responding';
-    setAvatarState(avatarKey, nextState);
-    return { reply: fallback, tone: avatarKey, avatarState: nextState };
-  }
+  setAvatarState(avatarKey, nextState);
+  return {
+    reply: response.reply,
+    tone: response.tone,
+    avatarState: nextState,
+    replySource: response.replySource,
+    fallbackUsed: response.fallbackUsed,
+    fallbackReason: response.fallbackReason,
+  };
 }
 
 export async function fetchPagesReply(input: {
