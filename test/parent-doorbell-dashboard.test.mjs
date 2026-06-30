@@ -11,15 +11,21 @@ test('parent doorbell reads only approved Bridge metadata', async () => {
   assert.doesNotMatch(source, /journal_entries|voice_notes|message_text|content/);
 });
 
-test('parent dashboard states the privacy boundary', async () => {
+test('parent dashboard is a redirect alias into Bridge signals tab', async () => {
+  // app/(parent)/dashboard.tsx was converted from a full dashboard screen
+  // to a thin Redirect alias pointing at the Bridge signals tab.
+  // Privacy copy now lives in the Bridge screen itself.
   const source = await read('app/(parent)/dashboard.tsx');
-  assert.match(source, /Only what your teen chooses to share/);
-  assert.match(source, /No private journals, voice notes, or companion conversations/);
-  assert.match(source, /The doorbell/);
+  assert.match(source, /\(parent\)\/bridge\?tab=signals/);
 });
 
-test('parent more links to the doorbell dashboard', async () => {
+test('parent more screen links to Bridge as the connection hub', async () => {
+  // The More screen routes Bridge via routeForSide('parent', 'parent-bridge').
+  // PARENT_MORE_GROUPS in screenPurpose.ts defines the Bridge item with
+  // route: 'parent-bridge' and a description mentioning Doorbell signals.
   const source = await read('app/(parent)/more.tsx');
-  assert.match(source, /The Doorbell/);
-  assert.match(source, /\(parent\)\/dashboard/);
+  assert.match(source, /Doorbell signals/);
+  assert.match(source, /Bridge carries/);
+  // The more screen subtitle names all three Bridge connection types.
+  assert.match(source, /S2Tell/);
 });
