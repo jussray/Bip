@@ -1,20 +1,13 @@
 import worker from './sekret-reply';
+import { authenticateRequest, type AuthEnv } from './auth';
+import { checkRateLimit, type ProtectedRoute, type RateLimitEnv } from './rate-limit';
 import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './piper-tts';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
-type ProtectedRoute = 'reply' | 'voice' | 'transcribe';
 
-interface RateLimitBinding {
-  limit(input: { key: string }): Promise<{ success: boolean }>;
-}
-
-interface Env extends PiperTtsEnv {
+interface Env extends PiperTtsEnv, AuthEnv, RateLimitEnv {
   OPENAI_API_KEY?: string;
-  BIP_CLIENT_TOKEN?: string;
   CORS_ALLOWED_ORIGINS?: string;
-  REPLY_RATE_LIMITER: RateLimitBinding;
-  VOICE_RATE_LIMITER: RateLimitBinding;
-  TRANSCRIBE_RATE_LIMITER: RateLimitBinding;
 }
 
 const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
@@ -101,7 +94,13 @@ function corsHeaders(request: Request, env: Env): Record<string, string> {
   return headers;
 }
 
-function json(request: Request, env: Env, data: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
+function json(
+  request: Request,
+  env: Env,
+  data: unknown,
+  status = 200,
+  extraHeaders: Record<string, string> = {},
+): Response {
   return new Response(JSON.stringify(data), {
     status,
     headers: {
@@ -115,26 +114,11 @@ function json(request: Request, env: Env, data: unknown, status = 200, extraHead
 function withCors(response: Response, request: Request, env: Env): Response {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(corsHeaders(request, env))) headers.set(key, value);
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-}
-
-function constantTimeEqual(actual: string, expected: string): boolean {
-  const actualBytes = new TextEncoder().encode(actual);
-  const expectedBytes = new TextEncoder().encode(expected);
-  const length = Math.max(actualBytes.length, expectedBytes.length);
-  let mismatch = actualBytes.length ^ expectedBytes.length;
-  for (let index = 0; index < length; index += 1) {
-    mismatch |= (actualBytes[index] ?? 0) ^ (expectedBytes[index] ?? 0);
-  }
-  return mismatch === 0;
-}
-
-function hasValidClientToken(request: Request, env: Env): boolean {
-  const expected = env.BIP_CLIENT_TOKEN?.trim();
-  if (!expected) return false;
-  const authorization = request.headers.get('Authorization') ?? '';
-  const match = authorization.match(/^Bearer\s+(.+)$/i);
-  return Boolean(match && constantTimeEqual(match[1].trim(), expected));
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function protectedRoute(path: string): ProtectedRoute | null {
@@ -142,30 +126,6 @@ function protectedRoute(path: string): ProtectedRoute | null {
   if (path.endsWith('/api/sekret/voice')) return 'voice';
   if (path.endsWith('/api/sekret/transcribe')) return 'transcribe';
   return null;
-}
-
-function clientKey(request: Request, route: ProtectedRoute): string {
-  const ip = request.headers.get('CF-Connecting-IP')?.trim() || 'unknown';
-  return `${route}:${ip}`;
-}
-
-async function enforceRateLimit(request: Request, env: Env, route: ProtectedRoute): Promise<Response | null> {
-  const limiter = route === 'reply'
-    ? env.REPLY_RATE_LIMITER
-    : route === 'voice'
-      ? env.VOICE_RATE_LIMITER
-      : env.TRANSCRIBE_RATE_LIMITER;
-
-  const result = await limiter.limit({ key: clientKey(request, route) });
-  if (result.success) return null;
-
-  return json(
-    request,
-    env,
-    { error: 'rate_limit_exceeded', route, retryAfterSeconds: 60 },
-    429,
-    { 'Retry-After': '60' },
-  );
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -188,12 +148,25 @@ export default {
     }
 
     if (request.method === 'POST' && route) {
-      if (!hasValidClientToken(request, env)) {
-        return json(request, env, { error: 'unauthorized' }, 401);
+      const auth = authenticateRequest(request, env);
+      if (!auth.ok) {
+        return json(request, env, { error: auth.error }, auth.status);
       }
 
-      const limited = await enforceRateLimit(request, env, route);
-      if (limited) return limited;
+      const rateLimit = await checkRateLimit(request, env, route);
+      if (!rateLimit.allowed) {
+        return json(
+          request,
+          env,
+          {
+            error: 'rate_limit_exceeded',
+            route,
+            retryAfterSeconds: rateLimit.retryAfterSeconds,
+          },
+          429,
+          { 'Retry-After': String(rateLimit.retryAfterSeconds) },
+        );
+      }
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL?.trim()) {
@@ -264,6 +237,10 @@ export default {
       });
     }
 
-    return withCors(await worker.fetch(request, env as { OPENAI_API_KEY: string }), request, env);
+    return withCors(
+      await worker.fetch(request, env as { OPENAI_API_KEY: string }),
+      request,
+      env,
+    );
   },
 };
