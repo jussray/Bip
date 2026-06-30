@@ -55,17 +55,16 @@ test('parent bridge remains a dedicated parent route', () => {
 });
 
 test('parent More exposes parent-safe mirrored support destinations', () => {
-  const more = read('app/(parent)/more.tsx');
+  // ParentMoreRoute renders items dynamically from PARENT_MORE_GROUPS, so
+  // literal labels only exist in screenPurpose.ts — scan the contract there.
+  const screenPurpose = read('src/constants/screenPurpose.ts');
   for (const label of [
     'Parent Voice Bip',
-    'Parent Bridge',
     'Bippin 2',
     'Connection Hub',
-    'Parent Pages',
-    'Calm Before Replying',
     'Parent Circle',
   ]) {
-    assert.match(more, new RegExp(label));
+    assert.match(screenPurpose, new RegExp(label), `PARENT_MORE_GROUPS must include "${label}"`);
   }
 });
 
