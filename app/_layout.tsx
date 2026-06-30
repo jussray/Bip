@@ -11,7 +11,7 @@ import { clearProfileIdentityCache } from '@/features/identity/clearProfileIdent
 
 void validateEnv();
 
-const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew']);
+const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew', 'discover']);
 
 function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
