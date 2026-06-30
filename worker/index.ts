@@ -1,8 +1,9 @@
 import worker from './sekret-reply';
+import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './piper-tts';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
 
-interface Env {
+interface Env extends PiperTtsEnv {
   OPENAI_API_KEY?: string;
 }
 
@@ -51,12 +52,18 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
 };
 
 function normalizeCharacter(value: unknown): CharacterId {
-  const raw = typeof value === 'string' ? value.toLowerCase().replace(/['']/g, '') : '';
+  const raw = typeof value === 'string' ? value.toLowerCase().replace(/[’']/g, '') : '';
   if (raw.includes('rylane')) return 'rylane';
   if (raw.includes('cloud')) return 'cloud';
   if (raw.includes('night')) return 'night';
   if (raw.includes('sekret') || raw === 'secret' || raw === 'oracle') return 'sekret';
   return 'raylene';
+}
+
+function normalizePiperCharacter(value: unknown): PiperCharacterId {
+  const raw = typeof value === 'string' ? value.toLowerCase().replace(/[’']/g, '') : '';
+  if (raw.includes('parentcoach') || raw.includes('parent_coach') || raw.includes('parent-coach')) return 'parentCoach';
+  return normalizeCharacter(value);
 }
 
 function stableHash(value: string): number {
@@ -72,11 +79,51 @@ function json(data: unknown, status = 200): Response {
   });
 }
 
+function toBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
 
     const path = new URL(request.url).pathname;
+
+    if (request.method === 'POST' && path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL?.trim()) {
+      let body: Record<string, unknown>;
+      try {
+        body = await request.clone().json() as Record<string, unknown>;
+      } catch {
+        return json({ error: 'Invalid JSON' }, 400);
+      }
+
+      const text = (
+        typeof body.reply === 'string' ? body.reply
+          : typeof body.text === 'string' ? body.text
+            : ''
+      ).trim();
+      if (!text) return json({ error: 'reply is required' }, 400);
+
+      const characterId = normalizePiperCharacter(body.characterId);
+      try {
+        const audio = await synthesizeWithPiper({ text, characterId, env });
+        if (audio) {
+          return json({
+            audioBase64: toBase64(audio.bytes),
+            contentType: audio.contentType,
+            characterId,
+            voiceSource: 'piper',
+            voiceId: audio.voice,
+            aiGenerated: true,
+          });
+        }
+      } catch (error) {
+        console.error('[sekret/voice:piper]', error);
+        if (!env.OPENAI_API_KEY) return json({ error: 'piper tts failed' }, 502);
+      }
+    }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/reply') && !env.OPENAI_API_KEY) {
       let body: Record<string, unknown>;
