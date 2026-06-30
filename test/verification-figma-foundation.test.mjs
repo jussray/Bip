@@ -38,6 +38,26 @@ test('Figma foundation contains required first screens', async () => {
   }
 });
 
+test('Figma foundation covers the terminal verification states the guard routes to', async () => {
+  const source = await read('src/constants/figmaFrames.ts');
+  // decideRouteAccess redirects MANUAL_REVIEW and SUSPENDED to these routes,
+  // so the design contract must define a frame for each.
+  assert.match(source, /key: 'manualReview'/);
+  assert.match(source, /route: '\/\(safety\)\/manual-review'/);
+  assert.match(source, /key: 'suspended'/);
+  assert.match(source, /route: '\/\(auth\)\/suspended'/);
+});
+
+test('local Figma plugin builds the terminal-state frames matching the contract', async () => {
+  const plugin = await read('figma/code.js');
+  // Frame names mirror FIGMA_FRAME_SPECS so design output maps to the contract.
+  assert.match(plugin, /Bip \/ Safety \/ Manual Review \/ Night/);
+  assert.match(plugin, /Bip \/ Auth \/ Suspended \/ Night/);
+  assert.match(plugin, /\/\(safety\)\/manual-review/);
+  assert.match(plugin, /\/\(auth\)\/suspended/);
+  assert.match(plugin, /buildVerifyFrame/);
+});
+
 test('design system documents privacy boundaries', async () => {
   const source = await read('docs/FIGMA_SCREEN_SYSTEM.md');
   assert.match(source, /No open stranger DMs/);
