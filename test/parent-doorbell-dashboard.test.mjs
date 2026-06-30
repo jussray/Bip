@@ -11,15 +11,13 @@ test('parent doorbell reads only approved Bridge metadata', async () => {
   assert.doesNotMatch(source, /journal_entries|voice_notes|message_text|content/);
 });
 
-test('parent dashboard states the privacy boundary', async () => {
+test('parent dashboard aliases the Bridge signals tab', async () => {
   const source = await read('app/(parent)/dashboard.tsx');
-  assert.match(source, /Only what your teen chooses to share/);
-  assert.match(source, /No private journals, voice notes, or companion conversations/);
-  assert.match(source, /The doorbell/);
+  assert.match(source, /\(parent\)\/bridge\?tab=signals/);
 });
 
-test('parent more links to the doorbell dashboard', async () => {
+test('parent more links Doorbell signals through Bridge', async () => {
   const source = await read('app/(parent)/more.tsx');
-  assert.match(source, /The Doorbell/);
-  assert.match(source, /\(parent\)\/dashboard/);
+  assert.match(source, /Doorbell signals/);
+  assert.match(source, /PARENT_MORE_GROUPS/);
 });
