@@ -195,7 +195,7 @@ export function getVerificationRouteTarget(
 ): VerificationRouteTarget {
   switch (state) {
     case 'UNVERIFIED':
-      return '/(auth)/welcome';
+      return '/(auth)/limited-mode';
     case 'PENDING_PARENT':
     case 'PENDING_TRUSTED_ADULT':
       return '/(auth)/parent-link-verify';

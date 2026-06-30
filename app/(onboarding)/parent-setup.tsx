@@ -17,18 +17,18 @@ import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 
 const FOCUS_OPTIONS = [
-  { id: 'support', label: 'Support',  emoji: '🤝' },
-  { id: 'listen',  label: 'Listen',   emoji: '👂' },
-  { id: 'repair',  label: 'Repair',   emoji: '🌱' },
-  { id: 'learn',   label: 'Learn',    emoji: '📖' },
+  { id: 'support', label: 'Support', emoji: '🤝' },
+  { id: 'listen', label: 'Listen', emoji: '👂' },
+  { id: 'repair', label: 'Repair', emoji: '🌱' },
+  { id: 'learn', label: 'Learn', emoji: '📖' },
 ];
 
 export default function ParentSetup() {
   const { setUserSide } = useAppContext();
-  const [name,    setName]    = useState('');
-  const [focus,   setFocus]   = useState<string | null>(null);
-  const [saving,  setSaving]  = useState(false);
-  const inputRef  = useRef<TextInput>(null);
+  const [name, setName] = useState('');
+  const [focus, setFocus] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const underline = useRef(new Animated.Value(0)).current;
 
   function handleNameChange(text: string) {
@@ -48,11 +48,12 @@ export default function ParentSetup() {
     Keyboard.dismiss();
     try {
       setUserSide('parent');
-      await AsyncStorage.multiSet([
-        ['parent_profile_done', 'true'],
-        ['parent_profile_data', JSON.stringify({ name: name.trim(), focus })],
-      ]);
-      router.replace('/(parent)/room');
+      await AsyncStorage.setItem(
+        'parent_profile_data',
+        JSON.stringify({ name: name.trim(), focus }),
+      );
+      await AsyncStorage.removeItem('parent_profile_done');
+      router.replace('/(onboarding)/parent-link');
     } finally {
       setSaving(false);
     }
@@ -77,9 +78,8 @@ export default function ParentSetup() {
         </TouchableOpacity>
 
         <Text style={styles.step}>PARENT SETUP</Text>
-        <Text style={styles.title}>Quick intro,{'\n'}then you're in.</Text>
+        <Text style={styles.title}>Quick intro,{`\n`}then connect.</Text>
 
-        {/* Name */}
         <Text style={styles.label}>What should your teen call you?</Text>
         <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={styles.inputWrap}>
           <TextInput
@@ -98,7 +98,6 @@ export default function ParentSetup() {
           <Animated.View style={[styles.inputUnderline, { backgroundColor: underlineColor }]} />
         </TouchableOpacity>
 
-        {/* Focus */}
         <Text style={styles.label}>What's your main intention here?</Text>
         <View style={styles.grid}>
           {FOCUS_OPTIONS.map(opt => (
@@ -124,7 +123,7 @@ export default function ParentSetup() {
           style={[styles.btn, !ready && styles.btnDisabled]}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnText}>{saving ? 'entering…' : "Enter your side →"}</Text>
+          <Text style={styles.btnText}>{saving ? 'saving…' : 'Continue to private code →'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -132,24 +131,24 @@ export default function ParentSetup() {
 }
 
 const styles = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: '#08140f' },
-  scroll:        { paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingHorizontal: 28, paddingBottom: 24 },
-  back:          { marginBottom: 28 },
-  backText:      { color: '#789082', fontSize: 22 },
-  step:          { color: '#6ee7b7', fontSize: 10, fontWeight: '900', letterSpacing: 2.5, marginBottom: 10 },
-  title:         { color: '#fff', fontSize: 32, fontWeight: '900', lineHeight: 40, marginBottom: 36 },
-  label:         { color: '#8aaf9c', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 14 },
-  inputWrap:     { marginBottom: 36, paddingBottom: 8 },
-  input:         { color: '#fff', fontSize: 28, fontWeight: '800', paddingBottom: 8 },
-  inputUnderline:{ height: 2, borderRadius: 1 },
-  grid:          { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  card:          { width: '47%', height: 72, borderRadius: 20, borderWidth: 1.5, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  cardActive:    { borderColor: '#a7f3d0', backgroundColor: 'rgba(167,243,208,0.12)' },
-  cardEmoji:     { fontSize: 20 },
-  cardText:      { color: '#789082', fontSize: 13, fontWeight: '800' },
-  cardTextActive:{ color: '#a7f3d0' },
-  footer:        { paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 52 : 36 },
-  btn:           { height: 58, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
-  btnDisabled:   { opacity: 0.35 },
-  btnText:       { color: '#062015', fontSize: 17, fontWeight: '900' },
+  root: { flex: 1, backgroundColor: '#08140f' },
+  scroll: { paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingHorizontal: 28, paddingBottom: 24 },
+  back: { marginBottom: 28 },
+  backText: { color: '#789082', fontSize: 22 },
+  step: { color: '#6ee7b7', fontSize: 10, fontWeight: '900', letterSpacing: 2.5, marginBottom: 10 },
+  title: { color: '#fff', fontSize: 32, fontWeight: '900', lineHeight: 40, marginBottom: 36 },
+  label: { color: '#8aaf9c', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 14 },
+  inputWrap: { marginBottom: 36, paddingBottom: 8 },
+  input: { color: '#fff', fontSize: 28, fontWeight: '800', paddingBottom: 8 },
+  inputUnderline: { height: 2, borderRadius: 1 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  card: { width: '47%', height: 72, borderRadius: 20, borderWidth: 1.5, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.03)', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  cardActive: { borderColor: '#a7f3d0', backgroundColor: 'rgba(167,243,208,0.12)' },
+  cardEmoji: { fontSize: 20 },
+  cardText: { color: '#789082', fontSize: 13, fontWeight: '800' },
+  cardTextActive: { color: '#a7f3d0' },
+  footer: { paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 52 : 36 },
+  btn: { height: 58, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
+  btnDisabled: { opacity: 0.35 },
+  btnText: { color: '#062015', fontSize: 17, fontWeight: '900' },
 });
