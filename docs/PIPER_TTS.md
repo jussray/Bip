@@ -1,10 +1,10 @@
 # Piper TTS for Voice Bip
 
-Voice Bip now prefers a self-hosted Piper service. If Piper is unavailable and `OPENAI_API_KEY` is configured, the Worker keeps the existing OpenAI TTS fallback.
+Voice Bip prefers a self-hosted Piper service when `PIPER_TTS_URL` is configured. If Piper is unavailable and `OPENAI_API_KEY` exists, the Worker keeps the existing OpenAI TTS fallback.
 
 ## Voice files
 
-Mount one `.onnx` model and matching `.onnx.json` file per voice. Filenames become voice IDs, for example:
+Mount one `.onnx` model and matching `.onnx.json` file per installed voice. Filenames become voice IDs:
 
 ```text
 voices/raylene.onnx
@@ -17,7 +17,9 @@ voices/night.onnx
 voices/night.onnx.json
 ```
 
-Use only voice models whose licenses permit your intended use. Do not imitate a real person's voice without permission.
+Use only models whose licenses permit the intended deployment. Voice-model licenses are separate from the Piper software license. Do not clone or imitate a real person's voice without permission.
+
+Piper's current upstream implementation is GPL-3.0 licensed. Review the software and model license obligations before distributing or offering the service publicly.
 
 ## Run locally
 
@@ -33,7 +35,7 @@ Check the service with `curl http://localhost:8080/health`.
 
 ## Configure Cloudflare
 
-Set `PIPER_TTS_URL` to the deployed service URL and store the matching token securely:
+Deploy Piper on a host that can run the container. Set `PIPER_TTS_URL` on the Bip Worker to that HTTPS service URL and store the matching token securely:
 
 ```bash
 wrangler secret put PIPER_TTS_TOKEN --name bip
@@ -50,4 +52,4 @@ PIPER_SEKRET_VOICE=sekret
 PIPER_PARENT_COACH_VOICE=parentCoach
 ```
 
-Piper has no per-character API charge, though the machine hosting it may still have compute and bandwidth costs.
+Piper does not charge per generated character or request. The server, storage, and bandwidth used to host it can still cost money.
