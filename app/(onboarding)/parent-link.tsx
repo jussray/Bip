@@ -12,7 +12,11 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { redeemInviteCode } from '@/utils/parentLink';
+import {
+  PARENT_INVITE_CODE_LENGTH,
+  normalizeParentInviteCode,
+  redeemInviteCode,
+} from '@/utils/parentLink';
 import { useAppContext } from '@/context/AppContext';
 
 export default function ParentLinkOnboarding() {
@@ -21,8 +25,8 @@ export default function ParentLinkOnboarding() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const normalized = code.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
-  const ready = normalized.length === 6 && !loading;
+  const normalized = normalizeParentInviteCode(code);
+  const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
 
   async function handleLink() {
     if (!ready) return;
@@ -32,7 +36,7 @@ export default function ParentLinkOnboarding() {
     try {
       const teenId = await redeemInviteCode(normalized);
       if (!teenId) {
-        setError('That code is invalid or expired. Ask your teen for a new one.');
+        setError('That code is invalid, expired, or already used. Ask your teen for a new one.');
         return;
       }
 
@@ -62,7 +66,7 @@ export default function ParentLinkOnboarding() {
         <Text style={styles.kicker}>LINK YOUR TEEN</Text>
         <Text style={styles.title}>Enter their private code.</Text>
         <Text style={styles.body}>
-          Your teen creates a six-character code from Limited Mode. Enter it here to connect your sides and finish verification.
+          Your teen creates an eight-character code from Limited Mode. Enter it here to connect your sides and finish verification.
         </Text>
 
         <View style={styles.codeWrap}>
@@ -72,11 +76,11 @@ export default function ParentLinkOnboarding() {
               setCode(text);
               setError('');
             }}
-            placeholder="ABC123"
+            placeholder="AB12CD34"
             placeholderTextColor="#355246"
             autoCapitalize="characters"
             autoCorrect={false}
-            maxLength={6}
+            maxLength={PARENT_INVITE_CODE_LENGTH}
             returnKeyType="go"
             onSubmitEditing={handleLink}
             style={styles.codeInput}
@@ -98,7 +102,7 @@ export default function ParentLinkOnboarding() {
           {loading ? (
             <ActivityIndicator color="#062015" />
           ) : (
-            <Text style={styles.primaryText}>Approve and connect →</Text>
+            <Text style={styles.primaryText}>Approve and connect</Text>
           )}
         </TouchableOpacity>
 
@@ -119,7 +123,7 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontSize: 36, lineHeight: 42, fontWeight: '900', marginBottom: 14 },
   body: { color: '#b7c9bf', fontSize: 15, lineHeight: 23, marginBottom: 32 },
   codeWrap: { borderRadius: 22, borderWidth: 1.5, borderColor: '#a7f3d044', backgroundColor: '#ffffff08', paddingHorizontal: 20, marginBottom: 18 },
-  codeInput: { height: 86, color: '#fff', fontSize: 34, fontWeight: '900', letterSpacing: 9, textAlign: 'center' },
+  codeInput: { height: 86, color: '#fff', fontSize: 30, fontWeight: '900', letterSpacing: 6, textAlign: 'center' },
   privacy: { color: '#789082', fontSize: 12, lineHeight: 18, marginBottom: 18 },
   error: { color: '#fca5a5', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 14 },
   primary: { height: 60, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
