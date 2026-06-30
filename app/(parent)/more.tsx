@@ -9,12 +9,9 @@ import { PARENT_MORE_GROUPS } from '@/constants/screenPurpose';
 
 export default function ParentMoreRoute() {
   const { setUserSide } = useAppContext();
+  const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true';
 
   function open(route: string) {
-    if (route === 'dashboard') {
-      router.push('/(parent)/dashboard');
-      return;
-    }
     if (route === 'parent-link') {
       router.push('/(onboarding)/parent-link');
       return;
@@ -32,7 +29,7 @@ export default function ParentMoreRoute() {
         <Text style={styles.kicker}>FEATURE DRAWER</Text>
         <Text style={styles.logo}>Parent More</Text>
         <Text style={styles.subtitle}>
-          Extra tools, connection management, and support resources. Parent Room, Pages, Calm, Circle, Doorbell, and Bridge keep separate jobs.
+          Extra tools, connection management, and support resources. Bridge carries Doorbell signals, S2Tell shares, and replies.
         </Text>
 
         {PARENT_MORE_GROUPS.map(group => (
@@ -54,16 +51,18 @@ export default function ParentMoreRoute() {
         <View style={styles.promiseCard}>
           <Text style={styles.promiseTitle}>Support without surveillance</Text>
           <Text style={styles.promiseBody}>
-            Doorbell shows only teen-shared signals. Parent Pages stays yours. Teen journals, voice notes, and companion conversations stay private.
+            Bridge contains only intentional teen-parent connection. Circle stays completely separate. Teen journals, voice notes, and companion conversations stay private.
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.switchButton}
-          onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}
-        >
-          <Text style={styles.switchText}>Go to Teen Side</Text>
-        </TouchableOpacity>
+        {allowSideSwitch ? (
+          <TouchableOpacity
+            style={styles.switchButton}
+            onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}
+          >
+            <Text style={styles.switchText}>Internal: Go to Teen Side</Text>
+          </TouchableOpacity>
+        ) : null}
       </ScrollView>
     </ImageBackground>
   );
