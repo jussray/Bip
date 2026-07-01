@@ -66,7 +66,7 @@ export interface NormalizedIssue {
   title: string;
   summary: string;
   suggested_fix: string | null;
-  affected_surface: string | null;
+  affected_surface: string | undefined;
   affected_users: number;
   occurrence_count: number;
   first_seen_at: string;
@@ -319,7 +319,10 @@ export async function listNormalizedIssues(
     console.warn('[issueNormalizer] listNormalizedIssues error:', error.message);
     return [];
   }
-  return (data ?? []) as NormalizedIssue[];
+  return (data ?? []).map((issue) => ({
+    ...(issue as NormalizedIssue),
+    affected_surface: (issue as { affected_surface?: string | null }).affected_surface ?? undefined,
+  }));
 }
 
 /**
@@ -477,8 +480,12 @@ export async function getLinkedEvents(
     return [];
   }
 
-  return ((data ?? []) as Array<{ audit_events: AuditEvent }>)
-    .map((row) => row.audit_events)
+  type LinkedEventRow = { audit_events: AuditEvent | AuditEvent[] | null };
+  return ((data ?? []) as unknown as LinkedEventRow[])
+    .flatMap((row) => {
+      if (Array.isArray(row.audit_events)) return row.audit_events;
+      return row.audit_events ? [row.audit_events] : [];
+    })
     .filter(Boolean);
 }
 
