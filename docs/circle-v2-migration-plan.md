@@ -131,7 +131,7 @@ None of these are edited in this step.
 
 ## 8. Phase 0 checklist
 
-1. **Repo-vs-live schema reconciliation** — still blocked. `list_projects` and a direct `execute_sql` against `tbsevonvegdnlyjgplmm` both fail with a permission error (not "not found") from this session, on two separate attempts. That error shape suggests the project exists at the org level but this session's connector account isn't yet a collaborator on it — likely needs a check in the Supabase dashboard (Project Settings → collaborators/access) rather than something that resolves on its own.
+1. **Repo-vs-live schema reconciliation** — still blocked, confirmed on a third attempt. `list_organizations` shows this connector *is* a member of the right org ("Se'kret Bip", `xqztwjziupbtzmvdakkt`), so it's not a wrong-account/wrong-org problem. But `list_projects` still only returns `jvmbhralyktmdlvglrxk`, and both `get_project('tbsevonvegdnlyjgplmm')` and `execute_sql` against it fail with a permission error, not "not found." Diagnosis: **project-scoped access**, not org membership — this connector's account needs to be granted access to `tbsevonvegdnlyjgplmm` specifically (Project Settings → Team/Access for that project, not the org-wide members list). A draft migration built from the reported (unverified) live audit is at `docs/circle-v2-phase0-draft-migration.sql` — explicitly marked do-not-apply, ready to be corrected the moment real access lands.
 2. **Final Circle model** — locked, §1.
 3. **Parent community model** — locked, §1.1: standalone `VERIFIED_GUARDIAN` state, independent of `parent_links`.
 4. **Identity visibility rules** — drafted in §4.
