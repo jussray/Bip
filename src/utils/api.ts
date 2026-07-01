@@ -149,6 +149,12 @@ export async function fetchSekretBrainReply(input: {
   memory?: Record<string, unknown>;
   parentSharingEnabled?: boolean;
   history?: SekretHistoryTurn[];
+  userName?: string;
+  displayName?: string;
+  profileName?: string;
+  conversationPhase?: string;
+  phaseInstruction?: string;
+  isArrival?: boolean;
 }): Promise<SekretBrainResponse> {
   if (!BASE_URL) return fallbackReply(input.characterId, input.userText);
   try {

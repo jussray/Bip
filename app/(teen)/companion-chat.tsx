@@ -196,6 +196,10 @@ export default function CompanionChatScreen() {
         surface,
         text: userMsg.text,
         teenGender,
+        history: msgs.map((m) => ({
+          role: m.from === 'user' ? ('user' as const) : ('assistant' as const),
+          content: m.text,
+        })),
       });
       const replyText = result.reply;
 

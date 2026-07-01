@@ -24,8 +24,10 @@ import {
   fetchSekretBrainReply,
   fetchSekretVoice,
   type SekretCharacterId,
-  type SekretSurface,
+  type SekretHistoryTurn,
 } from '@/utils/api';
+import { buildReplyRequest } from '@/services/ai/buildReplyRequest';
+import { buildOracleContext } from '@/services/oracleDiscovery';
 
 const COMPANION_META: Record<string, { label: string; accent: string; emoji: string; avatarId: SekretCharacterId }> = {
   raylene: { label: 'Raylene', accent: '#f08bc5', emoji: '💜', avatarId: 'raylene' },
@@ -67,7 +69,7 @@ function getSekretTip(moodTag?: string): string {
 
 export default function EntryDetailRoute() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { entries, setEntries, patchJournalEntry } = useAppContext();
+  const { entries, setEntries, patchJournalEntry, oracleProfile } = useAppContext();
 
   const entry = entries.find(e => String(e.id) === id);
   const companion = entry
@@ -136,14 +138,26 @@ export default function EntryDetailRoute() {
 
     if (AI_COMPANIONS.has(companionKey ?? '')) {
       try {
-        const result = await fetchSekretBrainReply({
+        // Reconstruct the companion thread so the reply has memory of this
+        // conversation instead of answering the latest line in a vacuum.
+        const history: SekretHistoryTurn[] = [];
+        for (const e of entries
+          .filter(e => (e.activeTab || e.source) === companionKey)
+          .sort((a, b) => Number(a.id) - Number(b.id))) {
+          if (e.text) history.push({ role: 'user', content: e.text });
+          if (e.sekretReply) history.push({ role: 'assistant', content: e.sekretReply });
+        }
+
+        const { request } = await buildReplyRequest({
           characterId: companion.avatarId,
-          surface: 'journal' as SekretSurface,
-          userText: text,
+          surface: 'journal',
+          text,
           mood: entry.moodTag ?? '',
           parentSharingEnabled: false,
-          history: [],
+          history,
+          oracleContext: buildOracleContext(oracleProfile, 'teen'),
         });
+        const result = await fetchSekretBrainReply(request);
         patchJournalEntry(newId, { sekretReply: result.reply });
       } catch {
         // silent — companion thread will show entry without reply
