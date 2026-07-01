@@ -12,4 +12,5 @@ export * from './controlRoomIssues';
 export * from './runtimeAudit';
 export * from './runtimeFingerprints';
 export * from './runtimeFingerprintLogger';
+export * from './runtimeOperationFailures';
 export * from './safeNavigation';
