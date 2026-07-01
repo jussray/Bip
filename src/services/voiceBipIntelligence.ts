@@ -1,3 +1,5 @@
+export * from '../../services/voiceBipIntelligence';
+
 import { logRuntimeAuditEvent } from '@/services/runtimeAudit';
 
 export async function reportVoiceRequestFailure(input: {
