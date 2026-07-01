@@ -1,18 +1,20 @@
 // src/utils/parentLink.ts
 // Se'kret Bip — Parent ↔ Teen linking helpers
-//
-// Flow:
-//   Teen:   generateInviteCode()   → server creates code + PENDING_PARENT state
-//   Parent: redeemInviteCode(code) → atomically activates link + verifies teen
-//   Parent: fetchLinkedTeenId()    → returns teen's user_id for snapshot reads
-//   Teen:   revokeParentLink()     → sets status='revoked', parent loses access
-//
-// All operations are safe no-ops when Supabase isn't configured.
-// RLS and protected verification transitions are enforced server-side.
 
 import { getSupabase } from './supabase';
 
 export const PARENT_INVITE_CODE_LENGTH = 8;
+
+export type ParentLinkErrorCode =
+  | 'not_configured'
+  | 'not_authenticated'
+  | 'invalid_code'
+  | 'expired_or_used'
+  | 'server_error';
+
+export type ParentLinkResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; code: ParentLinkErrorCode; message: string };
 
 interface RedeemParentLinkRow {
   link_id?: unknown;
@@ -49,40 +51,83 @@ async function currentUserId(): Promise<string | null> {
   }
 }
 
-/**
- * (Teen) Create a pending parent invite through the protected RPC.
- * The database atomically creates the code and moves account_verification
- * into PENDING_PARENT. The client never writes verification state directly.
- */
-export async function generateInviteCode(): Promise<string | null> {
+export async function generateInviteCodeResult(): Promise<ParentLinkResult<string>> {
   const sb = getSupabase();
-  if (!sb) return null;
+  if (!sb) {
+    return { ok: false, code: 'not_configured', message: 'The secure connection service is not configured.' };
+  }
+
+  const userId = await currentUserId();
+  if (!userId) {
+    return { ok: false, code: 'not_authenticated', message: 'Sign in to create a parent invite code.' };
+  }
 
   try {
     const { data, error } = await sb.rpc('create_parent_link_invite');
     if (error) {
       console.warn('[parentLink] generateInviteCode failed:', error.message);
-      return null;
+      return { ok: false, code: 'server_error', message: error.message || 'Could not create an invite code.' };
     }
 
     const code = typeof data === 'string' ? normalizeParentInviteCode(data) : '';
-    return code.length === PARENT_INVITE_CODE_LENGTH ? code : null;
+    if (code.length !== PARENT_INVITE_CODE_LENGTH) {
+      return { ok: false, code: 'server_error', message: 'The server returned an invalid invite code.' };
+    }
+
+    return { ok: true, value: code };
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);
+    return { ok: false, code: 'server_error', message: 'Could not create an invite code. Check your connection and try again.' };
+  }
+}
+
+export async function generateInviteCode(): Promise<string | null> {
+  const result = await generateInviteCodeResult();
+  return result.ok ? result.value : null;
+}
+
+export async function fetchPendingInviteCode(): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
+
+  try {
+    const { data, error } = await sb
+      .from('parent_links')
+      .select('invite_code,expires_at,status,is_active')
+      .eq('teen_user_id', userId)
+      .eq('status', 'pending')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data?.invite_code) return null;
+    if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) return null;
+
+    const code = normalizeParentInviteCode(String(data.invite_code));
+    return code.length === PARENT_INVITE_CODE_LENGTH ? code : null;
+  } catch {
     return null;
   }
 }
 
-/**
- * (Parent) Redeem an invite code through the server-authoritative RPC.
- * The database returns a row containing teen_user_id after activating the link.
- */
-export async function redeemInviteCode(code: string): Promise<string | null> {
+export async function redeemInviteCodeResult(code: string): Promise<ParentLinkResult<string>> {
   const sb = getSupabase();
-  if (!sb) return null;
+  if (!sb) {
+    return { ok: false, code: 'not_configured', message: 'The secure connection service is not configured.' };
+  }
 
   const normalized = normalizeParentInviteCode(code);
-  if (normalized.length !== PARENT_INVITE_CODE_LENGTH) return null;
+  if (normalized.length !== PARENT_INVITE_CODE_LENGTH) {
+    return { ok: false, code: 'invalid_code', message: 'Enter the full eight-character code.' };
+  }
+
+  const userId = await currentUserId();
+  if (!userId) {
+    return { ok: false, code: 'not_authenticated', message: 'Sign in as the parent or trusted adult before connecting.' };
+  }
 
   try {
     const { data, error } = await sb.rpc('redeem_parent_link_invite', {
@@ -91,17 +136,34 @@ export async function redeemInviteCode(code: string): Promise<string | null> {
 
     if (error) {
       console.warn('[parentLink] redeemInviteCode failed:', error.message);
-      return null;
+      return {
+        ok: false,
+        code: 'expired_or_used',
+        message: 'That code is invalid, expired, or already used. Ask your teen for a new one.',
+      };
     }
 
-    return extractRedeemedTeenId(data);
+    const teenId = extractRedeemedTeenId(data);
+    if (!teenId) {
+      return {
+        ok: false,
+        code: 'expired_or_used',
+        message: 'That code could not be connected. Ask your teen for a new one.',
+      };
+    }
+
+    return { ok: true, value: teenId };
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);
-    return null;
+    return { ok: false, code: 'server_error', message: 'Could not connect right now. Check your connection and try again.' };
   }
 }
 
-/** Return the teen_user_id for the active link belonging to this parent. */
+export async function redeemInviteCode(code: string): Promise<string | null> {
+  const result = await redeemInviteCodeResult(code);
+  return result.ok ? result.value : null;
+}
+
 export async function fetchLinkedTeenId(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -114,6 +176,7 @@ export async function fetchLinkedTeenId(): Promise<string | null> {
       .select('teen_user_id')
       .eq('parent_user_id', uid)
       .eq('status', 'active')
+      .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -130,7 +193,6 @@ export async function fetchLinkedTeenId(): Promise<string | null> {
   }
 }
 
-/** Teen revokes the active parent link. */
 export async function revokeParentLink(): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;
