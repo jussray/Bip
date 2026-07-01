@@ -26,14 +26,15 @@ export const BACKEND_URL   = env.EXPO_PUBLIC_BACKEND_URL       ?? '';
 export const BACKEND_TOKEN = env.EXPO_PUBLIC_BACKEND_TOKEN     ?? '';
 
 /**
- * Canonical headers for Worker backend calls. Always JSON; adds the bearer
- * token when configured. Centralized so every call site authenticates the
- * same way — if this later becomes a per-user Supabase JWT, only this
- * function changes.
+ * Canonical headers for Worker backend calls. Always JSON; attaches `token` as
+ * a bearer credential when non-empty. Defaults to the shared BACKEND_TOKEN, but
+ * callers pass the user's Supabase access token when signed in — see
+ * backendAuthHeaders() in ./backendAuth. Kept synchronous and token-agnostic so
+ * the token-resolution policy lives in one place.
  */
-export function backendHeaders(extra?: Record<string, string>): Record<string, string> {
+export function backendHeaders(token: string = BACKEND_TOKEN, extra?: Record<string, string>): Record<string, string> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
-  if (BACKEND_TOKEN) headers.Authorization = `Bearer ${BACKEND_TOKEN}`;
+  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 

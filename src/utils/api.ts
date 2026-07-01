@@ -5,7 +5,7 @@
  * the Expo app sends teen-safe request context and never receives or stores an
  * OPENAI_API_KEY.
  */
-import { backendHeaders } from './env';
+import { backendAuthHeaders } from './backendAuth';
 
 const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
 
@@ -154,7 +154,7 @@ export async function fetchSekretBrainReply(input: {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
-      headers: backendHeaders(),
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) throw new Error(`api error ${res.status}`);
@@ -182,7 +182,7 @@ export async function fetchSekretVoice(input: {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/voice`, {
       method: 'POST',
-      headers: backendHeaders(),
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) throw new Error(`voice api error ${res.status}`);
@@ -202,7 +202,7 @@ export async function fetchSekretTranscribe(input: {
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/transcribe`, {
       method: 'POST',
-      headers: backendHeaders(),
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(input),
     });
     if (!res.ok) return null;

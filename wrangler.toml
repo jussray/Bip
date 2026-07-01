@@ -11,7 +11,15 @@
 #   While the secret is unset, auth is disabled (fail-open) so existing builds
 #   keep working — set it on Cloudflare AND in the app build to turn enforcement
 #   on. It is a coarse abuse speed-bump; Workers rate limiting (below) is what
-#   actually bounds cost. Long-term this upgrades to per-user Supabase JWT.
+#   actually bounds cost.
+#
+#   Per-user auth: signed-in clients send their Supabase access token instead of
+#   the shared token. The Worker verifies it against the project JWKS derived
+#   from SUPABASE_URL (below) — no secret needed for asymmetric-JWT projects
+#   (the default). For legacy HS256 projects, set the signing secret:
+#     wrangler secret put SUPABASE_JWT_SECRET --name bip
+#   Enforcement is still gated on SEKRET_CLIENT_TOKEN; a valid JWT is always
+#   accepted as a per-user identity and used as the rate-limit key.
 #
 #   Do NOT put Supabase service-role or safety-scan secrets in Cloudflare
 #   unless Worker code starts using them. The safety scanner is a Supabase
