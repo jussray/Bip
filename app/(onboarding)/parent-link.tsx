@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 import {
   PARENT_INVITE_CODE_LENGTH,
   normalizeParentInviteCode,
-  redeemInviteCodeResult,
+  redeemInviteCodeResult as redeemInviteCode,
 } from '@/utils/parentLink';
 import { useAppContext } from '@/context/AppContext';
 
@@ -38,7 +38,7 @@ export default function ParentLinkOnboarding() {
     setError('');
 
     try {
-      const result = await redeemInviteCodeResult(normalized);
+      const result = await redeemInviteCode(normalized);
       if (!result.ok) {
         setError(result.message);
         return;
