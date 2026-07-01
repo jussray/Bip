@@ -7,6 +7,8 @@
  * All AI calls go through src/services/ai/chat.ts instead.
  * This file handles non-AI Worker routes (health, moderation, etc.).
  */
+import { backendHeaders } from '../../utils/env';
+
 const BASE_URL = (process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '';
 
 /** Check that the Cloudflare Worker is reachable */
@@ -27,7 +29,7 @@ export async function moderateContent(text: string): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/api/moderate`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: backendHeaders(),
       body:    JSON.stringify({ text }),
     });
     if (!res.ok) return true; // fail open on network error

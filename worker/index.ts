@@ -1,17 +1,63 @@
 import worker from './sekret-reply';
 import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './piper-tts';
+import { authenticate, type AuthEnv, type Principal } from './auth';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
 
-interface Env extends PiperTtsEnv {
-  OPENAI_API_KEY?: string;
+/** Cloudflare Workers Rate Limiting binding (GA). See wrangler.toml [[ratelimits]]. */
+interface RateLimit {
+  limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
-};
+interface Env extends PiperTtsEnv, AuthEnv {
+  OPENAI_API_KEY?: string;
+  /** Per-key request limiter; when unbound, rate limiting is skipped. */
+  SEKRET_RATE_LIMITER?: RateLimit;
+  /**
+   * Comma-separated browser origins allowed via CORS. When unset (or '*'),
+   * the permissive wildcard is preserved. Native mobile sends no Origin and
+   * is unaffected either way; this gates cross-origin browser callers.
+   */
+  ALLOWED_ORIGINS?: string;
+}
+
+/** Parsed ALLOWED_ORIGINS allowlist, or null when unset/'*' (wildcard). */
+function allowedOriginList(env: Env): string[] | null {
+  const configured = env.ALLOWED_ORIGINS?.trim();
+  if (!configured || configured === '*') return null;
+  return configured.split(',').map((o) => o.trim()).filter(Boolean);
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+  const allowed = allowedOriginList(env);
+  let allowOrigin = '*';
+  if (allowed) {
+    const origin = request.headers.get('Origin');
+    allowOrigin = origin && allowed.includes(origin) ? origin : (allowed[0] ?? 'null');
+  }
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    Vary: 'Origin',
+  };
+}
+
+/**
+ * Reject disallowed browser origins BEFORE any auth/delegation. This closes the
+ * CORS bypass where a "simple" cross-origin POST (e.g. Content-Type: text/plain)
+ * skips the preflight and would otherwise reach the delegated handler and read
+ * its wildcard-CORS response. Requests with no Origin (native apps, same-origin,
+ * server-to-server) are not browser-CORS threats and pass through to auth +
+ * rate limiting. Only enforced when ALLOWED_ORIGINS is configured.
+ */
+function originRejected(request: Request, env: Env, cors: Record<string, string>): Response | null {
+  const allowed = allowedOriginList(env);
+  if (!allowed) return null;
+  const origin = request.headers.get('Origin');
+  if (!origin || allowed.includes(origin)) return null;
+  return json({ error: 'origin not allowed' }, 403, cors);
+}
 
 const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
   raylene: [
@@ -72,11 +118,37 @@ function stableHash(value: string): number {
   return Math.abs(hash);
 }
 
-function json(data: unknown, status = 200): Response {
+function json(data: unknown, status: number, cors: Record<string, string>): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    headers: { ...cors, 'Content-Type': 'application/json' },
   });
+}
+
+/**
+ * Enforce the per-key rate limit. Keys by authenticated user when available,
+ * otherwise by client IP. Returns a 429 Response when over the limit, or null
+ * to proceed. Fails open (logs, proceeds) if the limiter errors, and is a
+ * no-op when the binding is not configured.
+ */
+async function enforceRateLimit(
+  request: Request,
+  env: Env,
+  principal: Principal,
+  cors: Record<string, string>,
+): Promise<Response | null> {
+  const limiter = env.SEKRET_RATE_LIMITER;
+  if (!limiter) return null;
+
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const key = principal.kind === 'user' ? `user:${principal.userId}` : `ip:${ip}`;
+  try {
+    const { success } = await limiter.limit({ key });
+    if (!success) return json({ error: 'rate limit exceeded' }, 429, cors);
+  } catch (error) {
+    console.error('[rate-limit]', error);
+  }
+  return null;
 }
 
 function toBase64(bytes: Uint8Array): string {
@@ -87,16 +159,33 @@ function toBase64(bytes: Uint8Array): string {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
+    const cors = corsHeaders(request, env);
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+
+    // Block disallowed browser origins up front — even simple (non-preflighted)
+    // requests — so they never reach the delegated wildcard-CORS handler.
+    const blocked = originRejected(request, env, cors);
+    if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
+
+    // Gate every authenticated API route behind shared-token auth + rate
+    // limiting. Non-/api routes (e.g. GET /health reachability checks) pass
+    // through untouched.
+    if (request.method === 'POST' && path.includes('/api/')) {
+      const auth = await authenticate(request, env);
+      if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
+
+      const limited = await enforceRateLimit(request, env, auth.principal, cors);
+      if (limited) return limited;
+    }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL?.trim()) {
       let body: Record<string, unknown>;
       try {
         body = await request.clone().json() as Record<string, unknown>;
       } catch {
-        return json({ error: 'Invalid JSON' }, 400);
+        return json({ error: 'Invalid JSON' }, 400, cors);
       }
 
       const text = (
@@ -104,7 +193,7 @@ export default {
           : typeof body.text === 'string' ? body.text
             : ''
       ).trim();
-      if (!text) return json({ error: 'reply is required' }, 400);
+      if (!text) return json({ error: 'reply is required' }, 400, cors);
 
       const characterId = normalizePiperCharacter(body.characterId);
       try {
@@ -117,11 +206,11 @@ export default {
             voiceSource: 'piper',
             voiceId: audio.voice,
             aiGenerated: true,
-          });
+          }, 200, cors);
         }
       } catch (error) {
         console.error('[sekret/voice:piper]', error);
-        if (!env.OPENAI_API_KEY) return json({ error: 'piper tts failed' }, 502);
+        if (!env.OPENAI_API_KEY) return json({ error: 'piper tts failed' }, 502, cors);
       }
     }
 
@@ -130,7 +219,7 @@ export default {
       try {
         body = await request.clone().json() as Record<string, unknown>;
       } catch {
-        return json({ error: 'Invalid JSON' }, 400);
+        return json({ error: 'Invalid JSON' }, 400, cors);
       }
 
       const userText = (
@@ -139,7 +228,7 @@ export default {
             : ''
       ).trim();
 
-      if (!userText) return json({ error: 'userText is required' }, 400);
+      if (!userText) return json({ error: 'userText is required' }, 400, cors);
 
       const characterId = normalizeCharacter(body.characterId ?? body.personality);
       const options = CHARACTER_FALLBACKS[characterId];
@@ -156,7 +245,7 @@ export default {
         replySource: 'fallback',
         detectedIntent: 'greeting',
         usedGreetingVariant: false,
-      });
+      }, 200, cors);
     }
 
     return worker.fetch(request, env as { OPENAI_API_KEY: string });

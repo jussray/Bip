@@ -2,8 +2,16 @@
 # Replaces wrangler.jsonc — TOML avoids JSON comment-parsing failures in CF builds.
 #
 # ── Cloudflare Worker secrets ─────────────────────────────────────────
-#   This Worker currently needs only:
+#   This Worker needs:
 #     wrangler secret put OPENAI_API_KEY --name bip
+#     wrangler secret put SEKRET_CLIENT_TOKEN --name bip   # shared client auth
+#
+#   SEKRET_CLIENT_TOKEN gates /api/* routes: the app must send a matching
+#   `Authorization: Bearer <token>` (EXPO_PUBLIC_BACKEND_TOKEN on the client).
+#   While the secret is unset, auth is disabled (fail-open) so existing builds
+#   keep working — set it on Cloudflare AND in the app build to turn enforcement
+#   on. It is a coarse abuse speed-bump; Workers rate limiting (below) is what
+#   actually bounds cost. Long-term this upgrades to per-user Supabase JWT.
 #
 #   Do NOT put Supabase service-role or safety-scan secrets in Cloudflare
 #   unless Worker code starts using them. The safety scanner is a Supabase
@@ -39,6 +47,20 @@ SUPABASE_URL      = "https://tbsevonvegdnlyjgplmm.supabase.co"
 # Audio upload limit in bytes (base64 decoded size cap).
 # 512 KB ≈ ~30s of compressed voice at typical Expo AudioRecording settings.
 AUDIO_MAX_BYTES   = "524288"
+
+# Comma-separated browser origins allowed via CORS. Leave commented (or "*")
+# to keep the permissive wildcard. Native mobile sends no Origin and is
+# unaffected; this restricts cross-origin browser callers (the preflight gate).
+# ALLOWED_ORIGINS = "https://bip.example.com,https://app.bipapp.com"
+
+# ── Rate limiting (Cloudflare Workers Rate Limiting binding, GA) ──────────
+# Caps requests per key (authenticated user when available, else client IP).
+# period must be 10 or 60 seconds. namespace_id is an account-unique integer
+# string you choose. Bound as env.SEKRET_RATE_LIMITER in worker/index.ts.
+[[ratelimits]]
+name         = "SEKRET_RATE_LIMITER"
+namespace_id = "1001"
+simple       = { limit = 60, period = 60 }
 
 # Routes block commented out for beta — using auto-assigned *.workers.dev URL.
 # Un-comment and set EXPO_PUBLIC_BACKEND_URL to your custom domain once live.

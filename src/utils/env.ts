@@ -16,6 +16,26 @@ const env = process.env as Record<string, string | undefined>;
 export const SUPABASE_URL  = env.EXPO_PUBLIC_SUPABASE_URL      ?? '';
 export const SUPABASE_ANON = env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 export const BACKEND_URL   = env.EXPO_PUBLIC_BACKEND_URL       ?? '';
+/**
+ * Shared client token for the Cloudflare Worker backend. Sent as
+ * `Authorization: Bearer <token>` by backendHeaders(). Safe to ship in the
+ * client bundle (it is a coarse abuse speed-bump, not a per-user credential);
+ * the Worker enforces it only when its matching SEKRET_CLIENT_TOKEN secret is
+ * set. Leave unset and the app calls the backend unauthenticated as before.
+ */
+export const BACKEND_TOKEN = env.EXPO_PUBLIC_BACKEND_TOKEN     ?? '';
+
+/**
+ * Canonical headers for Worker backend calls. Always JSON; adds the bearer
+ * token when configured. Centralized so every call site authenticates the
+ * same way — if this later becomes a per-user Supabase JWT, only this
+ * function changes.
+ */
+export function backendHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...extra };
+  if (BACKEND_TOKEN) headers.Authorization = `Bearer ${BACKEND_TOKEN}`;
+  return headers;
+}
 
 // ── Flags ────────────────────────────────────────────────────────────────────
 export const isSupabaseReady = Boolean(SUPABASE_URL && SUPABASE_ANON);
