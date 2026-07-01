@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -34,8 +33,6 @@ import {
   type IssueStatus,
 } from '@/services/controlRoomIssues';
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
 type ModuleTab =
   | 'overview'
   | 'fix-queue'
@@ -48,7 +45,26 @@ type ModuleTab =
   | 'infra';
 
 type FilterSeverity = 'all' | AuditSeverity;
-type FilterStatus = 'all' | 'open' | 'resolved';
+type FilterStatus = 'all' | IssueStatus | 'raw';
+type IssueSource = 'normalized-issue' | 'raw-audit-event' | 'founder-playbook';
+
+interface ControlRoomCard {
+  id: string;
+  category: string;
+  module: ModuleTab;
+  severity: AuditSeverity;
+  status: IssueStatus;
+  title: string;
+  summary: string;
+  fix: string;
+  source: IssueSource;
+  affectedSurface?: string;
+  affectedUsers?: number;
+  occurrenceCount?: number;
+  firstSeenAt?: string;
+  lastSeenAt?: string;
+  metadata?: Record<string, unknown> | null;
+}
 
 const MODULE_TABS: { id: ModuleTab; label: string; emoji: string }[] = [
   { id: 'overview',     label: 'Overview',   emoji: '🏠' },
@@ -61,17 +77,6 @@ const MODULE_TABS: { id: ModuleTab; label: string; emoji: string }[] = [
   { id: 'ideas',        label: 'Ideas',      emoji: '💡' },
   { id: 'infra',        label: 'Infra',      emoji: '⚙️' },
 ];
-
-const CATEGORY_TO_MODULE: Record<FounderAuditCard['category'], ModuleTab> = {
-  structure: 'fix-queue',
-  runtime:   'fix-queue',
-  voice:     'voice',
-  memory:    'memory',
-  safety:    'security',
-  behavior:  'user-signals',
-  rewards:   'fix-queue',
-  product:   'ideas',
-};
 
 const SEVERITY_WEIGHT: Record<AuditSeverity, number> = {
   critical: 4,
@@ -98,11 +103,89 @@ const IDEA_STATUS_COLOR: Record<IdeaStatus, string> = {
   rejected:    '#6b7280',
 };
 
+function normalizeSeverity(severity?: string): AuditSeverity {
+  if (severity === 'critical' || severity === 'error' || severity === 'warning' || severity === 'info') {
+    return severity;
+  }
+  return 'info';
+}
+
+function moduleFromCategory(category?: string): ModuleTab {
+  const normalized = String(category ?? '').toLowerCase().replace(/\s+/g, '-').replace(/_/g, '-');
+  if (normalized.includes('voice')) return 'voice';
+  if (normalized.includes('companion') || normalized.includes('ai') || normalized.includes('persona')) return 'companion';
+  if (normalized.includes('memory')) return 'memory';
+  if (normalized.includes('security') || normalized.includes('safety') || normalized.includes('rls')) return 'security';
+  if (normalized.includes('signal') || normalized.includes('behavior') || normalized.includes('analytics')) return 'user-signals';
+  if (normalized.includes('idea') || normalized.includes('product')) return 'ideas';
+  if (normalized.includes('infra') || normalized.includes('worker') || normalized.includes('supabase') || normalized.includes('cloudflare') || normalized.includes('cost')) return 'infra';
+  return 'fix-queue';
+}
+
+function playbookCardToControlRoomCard(item: FounderAuditCard): ControlRoomCard {
+  return {
+    id: item.id,
+    category: item.category,
+    module: moduleFromCategory(item.category),
+    severity: item.severity,
+    status: 'open',
+    title: item.title,
+    summary: item.summary,
+    fix: item.fix,
+    source: 'founder-playbook',
+  };
+}
+
+function auditEventToControlRoomCard(event: AuditEvent): ControlRoomCard {
+  const card = auditEventToCard(event);
+  return {
+    id: event.id,
+    category: card.category,
+    module: moduleFromCategory(card.category),
+    severity: card.severity,
+    status: event.resolved ? 'resolved' : 'open',
+    title: card.title,
+    summary: card.summary,
+    fix: card.fix,
+    source: 'raw-audit-event',
+    firstSeenAt: event.created_at,
+    lastSeenAt: event.created_at,
+    metadata: event.metadata,
+  };
+}
+
+function normalizedIssueToControlRoomCard(issue: ControlRoomIssue): ControlRoomCard {
+  return {
+    id: issue.id,
+    category: issue.category,
+    module: moduleFromCategory(issue.category),
+    severity: normalizeSeverity(issue.severity),
+    status: issue.status,
+    title: issue.title,
+    summary: issue.summary || 'No summary has been recorded for this normalized Control Room issue yet.',
+    fix: issue.suggested_fix || 'Review the linked raw events, reproduce the issue, patch the affected surface, then move this issue through the Control Room workflow.',
+    source: 'normalized-issue',
+    affectedSurface: issue.affected_surface,
+    affectedUsers: issue.affected_users,
+    occurrenceCount: issue.occurrence_count,
+    firstSeenAt: issue.first_seen_at,
+    lastSeenAt: issue.last_seen_at,
+    metadata: issue.metadata,
+  };
+}
+
+function sourceLabel(source: IssueSource) {
+  switch (source) {
+    case 'normalized-issue': return 'Grouped issue';
+    case 'raw-audit-event': return 'Raw audit event';
+    case 'founder-playbook': return 'Founder playbook';
+    default: return 'Control Room';
+  }
+}
+
 function severityEmoji(s: AuditSeverity) {
   return s === 'critical' ? '🔴' : s === 'error' ? '🟠' : s === 'warning' ? '🟡' : '🔵';
 }
-
-// ─── Sub-components ─────────────────────────────────────────────────────────
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -138,13 +221,7 @@ function Pill({
   );
 }
 
-function IssueCard({
-  item,
-  onPress,
-}: {
-  item: FounderAuditCard;
-  onPress: () => void;
-}) {
+function IssueCard({ item, onPress }: { item: ControlRoomCard; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.82}>
       <View style={styles.cardTop}>
@@ -157,9 +234,7 @@ function IssueCard({
       <Text style={styles.cardTitle}>{item.title}</Text>
       <Text style={styles.cardText} numberOfLines={2}>{item.summary}</Text>
       <View style={styles.cardFooter}>
-        <Text style={styles.cardSource}>
-          {item.source === 'live-audit-event' ? '⚡ Live' : '📋 Playbook'}
-        </Text>
+        <Text style={styles.cardSource}>{sourceLabel(item.source)}</Text>
         <Text style={styles.cardChevron}>›</Text>
       </View>
     </TouchableOpacity>
@@ -175,10 +250,10 @@ function IdeaCard({
 }) {
   const NEXT_STATUS: Partial<Record<IdeaStatus, IdeaStatus>> = {
     backlog:     'planned',
+    researching: 'planned',
     planned:     'building',
     building:    'testing',
     testing:     'shipped',
-    researching: 'planned',
   };
   const next = NEXT_STATUS[idea.status];
   return (
@@ -190,9 +265,7 @@ function IdeaCard({
             { backgroundColor: IDEA_STATUS_COLOR[idea.status] + '22', borderColor: IDEA_STATUS_COLOR[idea.status] },
           ]}
         >
-          <Text style={[styles.ideaStatusText, { color: IDEA_STATUS_COLOR[idea.status] }]}>
-            {idea.status}
-          </Text>
+          <Text style={[styles.ideaStatusText, { color: IDEA_STATUS_COLOR[idea.status] }]}> {idea.status} </Text>
         </View>
         {idea.category ? <Text style={styles.ideaCategory}>{idea.category}</Text> : null}
       </View>
@@ -220,47 +293,37 @@ function StatCard({ num, label, color }: { num: number | string; label: string; 
   );
 }
 
-// ─── Issue Detail Sheet ──────────────────────────────────────────────────────
-
 function IssueDetailSheet({
   item,
   visible,
   onClose,
   onResolve,
 }: {
-  item: FounderAuditCard | null;
+  item: ControlRoomCard | null;
   visible: boolean;
   onClose: () => void;
-  onResolve?: (id: string) => void;
+  onResolve?: (card: ControlRoomCard) => void;
 }) {
-  const [note, setNote] = useState('');
-
   if (!item) return null;
+
+  const canResolve = item.status !== 'resolved' && item.source !== 'founder-playbook';
+
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetContent}>
         <View style={styles.sheetHandle} />
         <View style={styles.sheetHeader}>
           <View style={[styles.severityDot, { backgroundColor: SEVERITY_COLOR[item.severity], width: 12, height: 12 }]} />
-          <Text style={[styles.sheetSeverity, { color: SEVERITY_COLOR[item.severity] }]}>
-            {severityEmoji(item.severity)} {item.severity.toUpperCase()}
-          </Text>
+          <Text style={[styles.sheetSeverity, { color: SEVERITY_COLOR[item.severity] }]}> {severityEmoji(item.severity)} {item.severity.toUpperCase()} </Text>
         </View>
 
         <Text style={styles.sheetTitle}>{item.title}</Text>
-        <Text style={styles.sheetMeta}>
-          Category: <Text style={styles.sheetMetaValue}>{item.category}</Text>
-        </Text>
-        <Text style={styles.sheetMeta}>
-          Source: <Text style={styles.sheetMetaValue}>
-            {item.source === 'live-audit-event' ? 'Live Supabase audit event' : 'Founder playbook'}
-          </Text>
-        </Text>
+        <Text style={styles.sheetMeta}>Status: <Text style={styles.sheetMetaValue}>{item.status}</Text></Text>
+        <Text style={styles.sheetMeta}>Category: <Text style={styles.sheetMetaValue}>{item.category}</Text></Text>
+        <Text style={styles.sheetMeta}>Source: <Text style={styles.sheetMetaValue}>{sourceLabel(item.source)}</Text></Text>
+        {item.affectedSurface ? <Text style={styles.sheetMeta}>Surface: <Text style={styles.sheetMetaValue}>{item.affectedSurface}</Text></Text> : null}
+        {typeof item.occurrenceCount === 'number' ? <Text style={styles.sheetMeta}>Occurrences: <Text style={styles.sheetMetaValue}>{item.occurrenceCount}</Text></Text> : null}
+        {typeof item.affectedUsers === 'number' ? <Text style={styles.sheetMeta}>Affected users: <Text style={styles.sheetMetaValue}>{item.affectedUsers}</Text></Text> : null}
 
         <SectionHeader title="Summary" />
         <Text style={styles.sheetBody}>{item.summary}</Text>
@@ -270,21 +333,21 @@ function IssueDetailSheet({
           <Text style={styles.fixText}>{item.fix}</Text>
         </View>
 
-        <SectionHeader title="Founder note" subtitle="Private — not visible to users" />
+        <SectionHeader title="Control Room note" subtitle="Notes persist in PR 3+; this sheet now shows normalized issue metadata first." />
         <TextInput
           style={styles.noteInput}
           placeholderTextColor="#6b7280"
-          placeholder="Add a note or investigation detail…"
+          placeholder="Temporary investigation note…"
           multiline
-          value={note}
-          onChangeText={setNote}
+          editable={false}
+          value={item.source === 'normalized-issue' ? 'This card is backed by control_room_issues.' : 'This card is fallback/playbook context.'}
         />
 
         <View style={styles.sheetActions}>
-          {item.source === 'live-audit-event' && onResolve ? (
+          {canResolve && onResolve ? (
             <TouchableOpacity
               style={[styles.actionBtn, styles.resolveBtn]}
-              onPress={() => { onResolve(item.id); onClose(); }}
+              onPress={() => { onResolve(item); onClose(); }}
               activeOpacity={0.8}
             >
               <Text style={styles.actionBtnText}>✓ Mark resolved</Text>
@@ -299,28 +362,27 @@ function IssueDetailSheet({
   );
 }
 
-// ─── Tabs ────────────────────────────────────────────────────────────────────
-
 function OverviewTab({
   profile,
   cards,
   ideas,
+  normalizedCount,
+  rawOpenCount,
   criticalCount,
-  liveCount,
   openIdeas,
 }: {
   profile: FounderProfile;
-  cards: FounderAuditCard[];
+  cards: ControlRoomCard[];
   ideas: FounderIdea[];
+  normalizedCount: number;
+  rawOpenCount: number;
   criticalCount: number;
-  liveCount: number;
   openIdeas: number;
 }) {
   const moduleCounts = useMemo(() => {
     const counts: Partial<Record<ModuleTab, number>> = {};
-    for (const c of cards) {
-      const mod = CATEGORY_TO_MODULE[c.category];
-      counts[mod] = (counts[mod] ?? 0) + 1;
+    for (const card of cards.filter((c) => c.status !== 'resolved')) {
+      counts[card.module] = (counts[card.module] ?? 0) + 1;
     }
     return counts;
   }, [cards]);
@@ -331,143 +393,102 @@ function OverviewTab({
         <Text style={styles.kicker}>🛠 Se'kret Bip</Text>
         <Text style={styles.heroTitle}>Founder Control Room</Text>
         <Text style={styles.heroText}>
-          One place for every issue, idea, and health signal across the full app.
+          Normalized issues are now the primary operating layer. Raw audit events stay available as fallback/live backlog context.
         </Text>
         <View style={styles.profilePill}>
           <Text style={styles.profileText}>Role: {profile.role}</Text>
-          <Text style={[styles.profileText, { color: '#86efac' }]}>
-            Analytics excluded: {profile.exclude_from_analytics ? 'yes' : 'no'}
-          </Text>
+          <Text style={[styles.profileText, { color: '#86efac' }]}>Analytics excluded: {profile.exclude_from_analytics ? 'yes' : 'no'}</Text>
         </View>
       </View>
 
       <View style={styles.statsRow}>
         <StatCard num={criticalCount} label="critical" color="#f87171" />
-        <StatCard num={liveCount} label="live events" color="#fb923c" />
-        <StatCard num={openIdeas} label="ideas" color="#a78bfa" />
+        <StatCard num={normalizedCount} label="normalized" color="#a78bfa" />
+        <StatCard num={rawOpenCount} label="raw backlog" color="#fb923c" />
+      </View>
+      <View style={styles.statsRow}>
+        <StatCard num={openIdeas} label="open ideas" color="#a78bfa" />
+        <StatCard num={ideas.length} label="total ideas" color="#60a5fa" />
+        <StatCard num={cards.length} label="visible cards" color="#34d399" />
       </View>
 
-      <SectionHeader title="Module health" />
-      {MODULE_TABS.filter((t) => t.id !== 'overview').map((tab) => (
-        <View key={tab.id} style={styles.moduleHealthRow}>
-          <Text style={styles.moduleHealthEmoji}>{tab.emoji}</Text>
-          <Text style={styles.moduleHealthLabel}>{tab.label}</Text>
-          <View
-            style={[
-              styles.moduleHealthBadge,
-              (moduleCounts[tab.id] ?? 0) > 0
-                ? styles.moduleHealthBadgeActive
-                : styles.moduleHealthBadgeClear,
-            ]}
-          >
-            <Text
-              style={[
-                styles.moduleHealthBadgeText,
-                (moduleCounts[tab.id] ?? 0) > 0 ? { color: '#fef3c7' } : { color: '#86efac' },
-              ]}
-            >
-              {moduleCounts[tab.id] ?? 0} issues
-            </Text>
+      <SectionHeader title="Module health" subtitle="Counts come from normalized issues first, then raw-event fallback only when no normalized issues exist yet." />
+      {MODULE_TABS.filter((t) => t.id !== 'overview').map((tab) => {
+        const count = moduleCounts[tab.id] ?? 0;
+        return (
+          <View key={tab.id} style={styles.moduleHealthRow}>
+            <Text style={styles.moduleHealthEmoji}>{tab.emoji}</Text>
+            <Text style={styles.moduleHealthLabel}>{tab.label}</Text>
+            <View style={[styles.moduleHealthBadge, count > 0 ? styles.moduleHealthBadgeActive : styles.moduleHealthBadgeClear]}>
+              <Text style={[styles.moduleHealthBadgeText, count > 0 ? { color: '#fef3c7' } : { color: '#86efac' }]}>{count} issues</Text>
+            </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
 
-function FixQueueTab({
-  cards,
-  onCardPress,
-}: {
-  cards: FounderAuditCard[];
-  onCardPress: (card: FounderAuditCard) => void;
-}) {
+function FixQueueTab({ cards, onCardPress }: { cards: ControlRoomCard[]; onCardPress: (card: ControlRoomCard) => void }) {
   const [filterSeverity, setFilterSeverity] = useState<FilterSeverity>('all');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
 
   const filtered = useMemo(() => {
     return cards
-      .filter((c) => filterSeverity === 'all' || c.severity === filterSeverity)
-      .filter((c) => {
-        if (filterStatus === 'open') return c.source === 'live-audit-event';
-        if (filterStatus === 'resolved') return c.source !== 'live-audit-event';
-        return true;
+      .filter((card) => card.source !== 'founder-playbook')
+      .filter((card) => filterSeverity === 'all' || card.severity === filterSeverity)
+      .filter((card) => {
+        if (filterStatus === 'all') return true;
+        if (filterStatus === 'raw') return card.source === 'raw-audit-event';
+        return card.status === filterStatus;
       })
       .sort((a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity]);
   }, [cards, filterSeverity, filterStatus]);
 
   return (
     <View>
-      <SectionHeader
-        title="Fix Queue"
-        subtitle="Live Supabase events and playbook issues, sorted by severity."
-      />
+      <SectionHeader title="Fix Queue" subtitle="Grouped control_room_issues first. Raw events only appear when normalization has not produced issue rows yet." />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {(['all', 'critical', 'error', 'warning', 'info'] as FilterSeverity[]).map((s) => (
-          <Pill
-            key={s}
-            label={s === 'all' ? 'All severities' : s}
-            active={filterSeverity === s}
-            color={s !== 'all' ? SEVERITY_COLOR[s] : undefined}
-            onPress={() => setFilterSeverity(s)}
-          />
+        {(['all', 'critical', 'error', 'warning', 'info'] as FilterSeverity[]).map((severity) => (
+          <Pill key={severity} label={severity === 'all' ? 'All severities' : severity} active={filterSeverity === severity} color={severity !== 'all' ? SEVERITY_COLOR[severity] : undefined} onPress={() => setFilterSeverity(severity)} />
         ))}
       </ScrollView>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {(['all', 'open', 'resolved'] as FilterStatus[]).map((s) => (
-          <Pill
-            key={s}
-            label={s === 'all' ? 'All statuses' : s}
-            active={filterStatus === s}
-            onPress={() => setFilterStatus(s)}
-          />
+        {(['all', 'open', 'investigating', 'planned', 'building', 'testing', 'resolved', 'raw'] as FilterStatus[]).map((status) => (
+          <Pill key={status} label={status === 'all' ? 'All statuses' : status} active={filterStatus === status} onPress={() => setFilterStatus(status)} />
         ))}
       </ScrollView>
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateEmoji}>✅</Text>
-          <Text style={styles.emptyStateText}>No issues match these filters.</Text>
+          <Text style={styles.emptyStateText}>No normalized issues match these filters.</Text>
         </View>
       ) : (
-        filtered.map((card) => (
-          <IssueCard key={`${card.source}-${card.id}`} item={card} onPress={() => onCardPress(card)} />
-        ))
+        filtered.map((card) => <IssueCard key={`${card.source}-${card.id}`} item={card} onPress={() => onCardPress(card)} />)
       )}
     </View>
   );
 }
 
-function ModuleTab({
-  moduleId,
-  cards,
-  onCardPress,
-}: {
-  moduleId: ModuleTab;
-  cards: FounderAuditCard[];
-  onCardPress: (card: FounderAuditCard) => void;
-}) {
-  const relevant = useMemo(
-    () =>
-      cards
-        .filter((c) => CATEGORY_TO_MODULE[c.category] === moduleId)
-        .sort((a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity]),
-    [cards, moduleId],
-  );
+function ModulePanel({ moduleId, cards, onCardPress }: { moduleId: ModuleTab; cards: ControlRoomCard[]; onCardPress: (card: ControlRoomCard) => void }) {
+  const relevant = useMemo(() => {
+    return cards
+      .filter((card) => card.module === moduleId)
+      .filter((card) => card.status !== 'resolved')
+      .sort((a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity]);
+  }, [cards, moduleId]);
 
   const tab = MODULE_TABS.find((t) => t.id === moduleId)!;
-
   return (
     <View>
-      <SectionHeader title={`${tab.emoji} ${tab.label}`} subtitle={`${relevant.length} issues in this module`} />
+      <SectionHeader title={`${tab.emoji} ${tab.label}`} subtitle={`${relevant.length} active cards in this module`} />
       {relevant.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateEmoji}>✅</Text>
-          <Text style={styles.emptyStateText}>No issues flagged for {tab.label}.</Text>
+          <Text style={styles.emptyStateText}>No active cards for {tab.label}.</Text>
         </View>
       ) : (
-        relevant.map((card) => (
-          <IssueCard key={`${card.source}-${card.id}`} item={card} onPress={() => onCardPress(card)} />
-        ))
+        relevant.map((card) => <IssueCard key={`${card.source}-${card.id}`} item={card} onPress={() => onCardPress(card)} />)
       )}
     </View>
   );
@@ -484,23 +505,12 @@ function IdeasTab({
 }) {
   const [newIdea, setNewIdea] = useState('');
   const [filterStatus, setFilterStatus] = useState<IdeaStatus | 'all'>('all');
-
-  const filtered = useMemo(
-    () => ideas.filter((i) => filterStatus === 'all' || i.status === filterStatus),
-    [ideas, filterStatus],
-  );
-
-  const STATUS_OPTIONS: (IdeaStatus | 'all')[] = [
-    'all', 'backlog', 'planned', 'building', 'testing', 'shipped',
-  ];
+  const filtered = useMemo(() => ideas.filter((idea) => filterStatus === 'all' || idea.status === filterStatus), [ideas, filterStatus]);
+  const statusOptions: (IdeaStatus | 'all')[] = ['all', 'backlog', 'planned', 'building', 'testing', 'shipped'];
 
   return (
     <View>
-      <SectionHeader
-        title="💡 Founder Ideas"
-        subtitle="Your product vision tracked through production."
-      />
-
+      <SectionHeader title="💡 Founder Ideas" subtitle="Your product vision tracked through production." />
       <View style={styles.addIdeaRow}>
         <TextInput
           style={styles.addIdeaInput}
@@ -521,56 +531,48 @@ function IdeasTab({
           <Text style={styles.addIdeaBtnText}>+ Add</Text>
         </TouchableOpacity>
       </View>
-
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
-        {STATUS_OPTIONS.map((s) => (
-          <Pill
-            key={s}
-            label={s === 'all' ? 'All' : s}
-            active={filterStatus === s}
-            color={s !== 'all' ? IDEA_STATUS_COLOR[s] : undefined}
-            onPress={() => setFilterStatus(s)}
-          />
+        {statusOptions.map((status) => (
+          <Pill key={status} label={status === 'all' ? 'All' : status} active={filterStatus === status} color={status !== 'all' ? IDEA_STATUS_COLOR[status] : undefined} onPress={() => setFilterStatus(status)} />
         ))}
       </ScrollView>
-
       {filtered.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateEmoji}>💡</Text>
           <Text style={styles.emptyStateText}>No ideas yet. Add your first one above.</Text>
         </View>
       ) : (
-        filtered.map((idea) => (
-          <IdeaCard key={idea.id} idea={idea} onStatusChange={onStatusChange} />
-        ))
+        filtered.map((idea) => <IdeaCard key={idea.id} idea={idea} onStatusChange={onStatusChange} />)
       )}
     </View>
   );
 }
 
-// ─── Root screen ─────────────────────────────────────────────────────────────
-
 export default function FounderControlRoom() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [profile, setProfile] = useState<FounderProfile | null>(null);
+  const [issues, setIssues] = useState<ControlRoomIssue[]>([]);
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [ideas, setIdeas] = useState<FounderIdea[]>([]);
   const [activeTab, setActiveTab] = useState<ModuleTab>('overview');
-  const [selectedCard, setSelectedCard] = useState<FounderAuditCard | null>(null);
+  const [selectedCard, setSelectedCard] = useState<ControlRoomCard | null>(null);
   const [sheetVisible, setSheetVisible] = useState(false);
 
   async function load() {
     const founderProfile = await getCurrentFounderProfile();
     setProfile(founderProfile);
     if (isFounderProfile(founderProfile)) {
-      const [rows, ideaRows] = await Promise.all([
+      const [issueRows, eventRows, ideaRows] = await Promise.all([
+        controlRoomIssuesService.list(),
         listFounderAuditEvents(60),
         founderIdeasService.list(),
       ]);
-      setEvents(rows);
+      setIssues(issueRows);
+      setEvents(eventRows);
       setIdeas(ideaRows);
     } else {
+      setIssues([]);
       setEvents([]);
       setIdeas([]);
     }
@@ -584,33 +586,38 @@ export default function FounderControlRoom() {
     try { await load(); } finally { setRefreshing(false); }
   }
 
-  const handleResolve = useCallback(async (id: string) => {
-    await controlRoomIssuesService.resolveAuditEvent(id);
-    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, resolved: true } : e)));
+  const normalizedCards = useMemo(() => issues.map(normalizedIssueToControlRoomCard), [issues]);
+  const rawCards = useMemo(() => events.filter((event) => !event.resolved).map(auditEventToControlRoomCard), [events]);
+  const playbookCards = useMemo(() => founderAuditPlaybook.map(playbookCardToControlRoomCard), []);
+  const issueCards = useMemo(() => (normalizedCards.length > 0 ? normalizedCards : rawCards), [normalizedCards, rawCards]);
+  const cards = useMemo(() => [...issueCards, ...playbookCards].sort((a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity]), [issueCards, playbookCards]);
+
+  const criticalCount = issueCards.filter((card) => card.severity === 'critical' && card.status !== 'resolved').length;
+  const rawOpenCount = events.filter((event) => !event.resolved).length;
+  const openIdeas = ideas.filter((idea) => !['shipped', 'rejected'].includes(idea.status)).length;
+  const allowed = isFounderProfile(profile);
+
+  const handleResolve = useCallback(async (card: ControlRoomCard) => {
+    if (card.source === 'normalized-issue') {
+      const ok = await controlRoomIssuesService.updateStatus(card.id, 'resolved');
+      if (ok) setIssues((prev) => prev.map((issue) => (issue.id === card.id ? { ...issue, status: 'resolved' } : issue)));
+      return;
+    }
+    if (card.source === 'raw-audit-event') {
+      const ok = await controlRoomIssuesService.resolveAuditEvent(card.id);
+      if (ok) setEvents((prev) => prev.map((event) => (event.id === card.id ? { ...event, resolved: true } : event)));
+    }
   }, []);
 
   const handleIdeaStatus = useCallback(async (id: string, status: IdeaStatus) => {
-    await founderIdeasService.updateStatus(id, status);
-    setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, status } : i)));
+    const ok = await founderIdeasService.updateStatus(id, status);
+    if (ok) setIdeas((prev) => prev.map((idea) => (idea.id === id ? { ...idea, status } : idea)));
   }, []);
 
   const handleAddIdea = useCallback(async (title: string) => {
     const idea = await founderIdeasService.create({ title, status: 'backlog' });
     if (idea) setIdeas((prev) => [idea, ...prev]);
   }, []);
-
-  const cards = useMemo(() => {
-    const liveCards = events.filter((e) => !e.resolved).map(auditEventToCard);
-    return [...liveCards, ...founderAuditPlaybook].sort(
-      (a, b) => SEVERITY_WEIGHT[b.severity] - SEVERITY_WEIGHT[a.severity],
-    );
-  }, [events]);
-
-  const criticalCount = cards.filter((c) => c.severity === 'critical').length;
-  const liveCount = events.filter((e) => !e.resolved).length;
-  const openIdeas = ideas.filter((i) => !['shipped', 'rejected'].includes(i.status)).length;
-
-  const allowed = isFounderProfile(profile);
 
   if (loading) {
     return (
@@ -626,14 +633,17 @@ export default function FounderControlRoom() {
       <View style={styles.center}>
         <Text style={styles.lock}>🔒</Text>
         <Text style={styles.title}>Founder tools locked</Text>
-        <Text style={styles.centerText}>
-          This screen is only available to app_profiles rows with developer, admin, or founder access.
-        </Text>
+        <Text style={styles.centerText}>This screen is only available to app_profiles rows with developer, admin, or founder access.</Text>
         <TouchableOpacity style={styles.button} onPress={() => router.replace('/')}>
           <Text style={styles.buttonText}>Back to Bip</Text>
         </TouchableOpacity>
       </View>
     );
+  }
+
+  function openCard(card: ControlRoomCard) {
+    setSelectedCard(card);
+    setSheetVisible(true);
   }
 
   function renderTab() {
@@ -644,79 +654,38 @@ export default function FounderControlRoom() {
             profile={profile!}
             cards={cards}
             ideas={ideas}
+            normalizedCount={normalizedCards.length}
+            rawOpenCount={rawOpenCount}
             criticalCount={criticalCount}
-            liveCount={liveCount}
             openIdeas={openIdeas}
           />
         );
       case 'fix-queue':
-        return <FixQueueTab cards={cards} onCardPress={(c) => { setSelectedCard(c); setSheetVisible(true); }} />;
+        return <FixQueueTab cards={cards} onCardPress={openCard} />;
       case 'ideas':
-        return (
-          <IdeasTab
-            ideas={ideas}
-            onStatusChange={handleIdeaStatus}
-            onAddIdea={handleAddIdea}
-          />
-        );
+        return <IdeasTab ideas={ideas} onStatusChange={handleIdeaStatus} onAddIdea={handleAddIdea} />;
       default:
-        return (
-          <ModuleTab
-            moduleId={activeTab}
-            cards={cards}
-            onCardPress={(c) => { setSelectedCard(c); setSheetVisible(true); }}
-          />
-        );
+        return <ModulePanel moduleId={activeTab} cards={cards} onCardPress={openCard} />;
     }
   }
 
   return (
     <View style={styles.root}>
-      {/* Module tab bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabBar}
-        contentContainerStyle={styles.tabBarContent}
-      >
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
         {MODULE_TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[styles.tabItem, activeTab === tab.id && styles.tabItemActive]}
-            onPress={() => setActiveTab(tab.id)}
-            activeOpacity={0.75}
-          >
+          <TouchableOpacity key={tab.id} style={[styles.tabItem, activeTab === tab.id && styles.tabItemActive]} onPress={() => setActiveTab(tab.id)} activeOpacity={0.75}>
             <Text style={styles.tabEmoji}>{tab.emoji}</Text>
-            <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>
-              {tab.label}
-            </Text>
+            <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
-
-      {/* Content */}
-      <ScrollView
-        style={styles.scrollArea}
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#a78bfa" />
-        }
-      >
+      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor="#a78bfa" />}>
         {renderTab()}
       </ScrollView>
-
-      {/* Issue detail sheet */}
-      <IssueDetailSheet
-        item={selectedCard}
-        visible={sheetVisible}
-        onClose={() => setSheetVisible(false)}
-        onResolve={handleResolve}
-      />
+      <IssueDetailSheet item={selectedCard} visible={sheetVisible} onClose={() => setSheetVisible(false)} onResolve={handleResolve} />
     </View>
   );
 }
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root:             { flex: 1, backgroundColor: '#080611' },
@@ -728,8 +697,6 @@ const styles = StyleSheet.create({
   title:            { color: '#fff', fontSize: 24, fontWeight: '900', textAlign: 'center' },
   button:           { marginTop: 20, backgroundColor: '#6d28d9', paddingHorizontal: 18, paddingVertical: 12, borderRadius: 18 },
   buttonText:       { color: '#fff', fontWeight: '800' },
-
-  // Tab bar
   tabBar:           { flexGrow: 0, backgroundColor: '#0f0c1f', borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)' },
   tabBarContent:    { paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
   tabItem:          { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)' },
@@ -737,33 +704,23 @@ const styles = StyleSheet.create({
   tabEmoji:         { fontSize: 14 },
   tabLabel:         { color: '#9ca3af', fontSize: 12, fontWeight: '700' },
   tabLabelActive:   { color: '#e9d5ff' },
-
-  // Hero
   hero:             { borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', backgroundColor: '#151029', borderRadius: 24, padding: 20, marginBottom: 14 },
   kicker:           { color: '#a78bfa', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1.1, fontSize: 11, marginBottom: 6 },
   heroTitle:        { color: '#fff', fontSize: 30, lineHeight: 34, fontWeight: '900', marginBottom: 8 },
   heroText:         { color: '#d8b4fe', lineHeight: 21, fontSize: 14 },
   profilePill:      { marginTop: 14, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)', borderRadius: 16, padding: 10, gap: 3 },
   profileText:      { color: '#f5d0fe', fontWeight: '700', fontSize: 13 },
-
-  // Stats
   statsRow:         { flexDirection: 'row', gap: 10, marginBottom: 18 },
   stat:             { flex: 1, backgroundColor: '#111827', borderRadius: 18, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   statNum:          { color: '#fff', fontSize: 26, fontWeight: '900' },
   statLabel:        { color: '#9ca3af', fontWeight: '700', marginTop: 2, fontSize: 12 },
-
-  // Section header
   sectionHeader:    { marginBottom: 10, marginTop: 16 },
   sectionTitle:     { color: '#fff', fontSize: 20, fontWeight: '900' },
   sectionSubtitle:  { color: '#9ca3af', fontSize: 13, marginTop: 3, lineHeight: 18 },
-
-  // Filters
   filterRow:        { marginBottom: 10 },
   pill:             { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', marginRight: 6, backgroundColor: 'transparent' },
   pillText:         { color: '#9ca3af', fontSize: 12, fontWeight: '700' },
   pillTextActive:   { color: '#fff' },
-
-  // Issue card
   card:             { backgroundColor: '#120f24', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', marginBottom: 10 },
   cardTop:          { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   severityDot:      { width: 8, height: 8, borderRadius: 4 },
@@ -774,8 +731,6 @@ const styles = StyleSheet.create({
   cardFooter:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
   cardSource:       { color: '#8b5cf6', fontWeight: '700', fontSize: 11 },
   cardChevron:      { color: '#6b7280', fontSize: 18 },
-
-  // Module health list
   moduleHealthRow:        { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' },
   moduleHealthEmoji:      { fontSize: 18, width: 28 },
   moduleHealthLabel:      { color: '#e5e7eb', fontWeight: '700', flex: 1 },
@@ -783,13 +738,9 @@ const styles = StyleSheet.create({
   moduleHealthBadgeActive:{ backgroundColor: 'rgba(251,191,36,0.12)' },
   moduleHealthBadgeClear: { backgroundColor: 'rgba(52,211,153,0.10)' },
   moduleHealthBadgeText:  { fontWeight: '800', fontSize: 12 },
-
-  // Empty state
   emptyState:       { alignItems: 'center', paddingVertical: 40 },
   emptyStateEmoji:  { fontSize: 36, marginBottom: 10 },
   emptyStateText:   { color: '#9ca3af', textAlign: 'center', lineHeight: 20 },
-
-  // Idea cards
   ideaCard:             { backgroundColor: '#13102a', borderRadius: 20, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)', marginBottom: 10 },
   ideaCardTop:          { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   ideaStatusBadge:      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
@@ -799,18 +750,12 @@ const styles = StyleSheet.create({
   ideaNotes:            { color: '#c4b5fd', fontSize: 13, lineHeight: 19 },
   ideaAdvanceBtn:       { marginTop: 10, alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, backgroundColor: 'rgba(139,92,246,0.15)', borderRadius: 999, borderWidth: 1, borderColor: 'rgba(139,92,246,0.4)' },
   ideaAdvanceBtnText:   { color: '#a78bfa', fontWeight: '800', fontSize: 12 },
-
-  // Add idea
   addIdeaRow:       { flexDirection: 'row', gap: 8, marginBottom: 12 },
   addIdeaInput:     { flex: 1, backgroundColor: '#1a1535', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, color: '#fff', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', fontSize: 14 },
   addIdeaBtn:       { backgroundColor: '#6d28d9', borderRadius: 14, paddingHorizontal: 14, justifyContent: 'center' },
   addIdeaBtnText:   { color: '#fff', fontWeight: '800', fontSize: 13 },
-
-  // Fix box
   fixBox:           { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: 12, marginBottom: 4 },
   fixText:          { color: '#fff', lineHeight: 20, fontSize: 14 },
-
-  // Sheet
   sheet:            { flex: 1, backgroundColor: '#0d0b1e' },
   sheetContent:     { padding: 20, paddingBottom: 48 },
   sheetHandle:      { width: 40, height: 4, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
