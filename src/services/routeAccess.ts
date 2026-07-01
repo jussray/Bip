@@ -8,6 +8,7 @@ export type AppRouteArea =
   | '(profile)'
   | '(safety)'
   | '(social)'
+  | '(dev)'
   | 'unknown';
 
 export interface RouteAccessDecision {
@@ -28,6 +29,7 @@ const routeAreaFromSegment = (segment?: string): AppRouteArea => {
     case '(profile)':
     case '(safety)':
     case '(social)':
+    case '(dev)':
       return segment;
     default:
       return 'unknown';
@@ -39,6 +41,11 @@ const routeAreaFromSegment = (segment?: string): AppRouteArea => {
  *
  * Safety routes are intentionally always reachable, including from
  * UNVERIFIED, LIMITED_MODE, MANUAL_REVIEW, and SUSPENDED states.
+ *
+ * Dev routes are also allowed through this broad app-side gate, then locked
+ * inside the dev screen with app_profiles role checks. That lets the same
+ * founder account inspect teen-side and parent-side behavior without being
+ * blocked by the current userSide.
  */
 export function decideRouteAccess(options: {
   firstSegment?: string;
@@ -47,7 +54,7 @@ export function decideRouteAccess(options: {
 }): RouteAccessDecision {
   const area = routeAreaFromSegment(options.firstSegment);
 
-  if (area === '(safety)' || area === '(auth)' || area === 'unknown') {
+  if (area === '(safety)' || area === '(auth)' || area === '(dev)' || area === 'unknown') {
     return { allowed: true };
   }
 
