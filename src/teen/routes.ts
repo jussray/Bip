@@ -22,6 +22,7 @@ export const TEEN_ROUTES = {
   growth: '/(teen)/growth',
   mindReset: '/(teen)/mind-body-reset?mode=mindReset',
   bodyReset: '/(teen)/mind-body-reset?mode=bodyReset',
+  parentLinkVerify: '/(auth)/parent-link-verify',
 } as const;
 
 export type TeenRouteKey = keyof typeof TEEN_ROUTES;
