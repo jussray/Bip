@@ -8,7 +8,6 @@ const requiredPaths = [
   'src/services/runtimeAudit.ts',
   'src/services/controlRoomIssues.ts',
   'src/services/issueNormalizer.ts',
-  'utils/supabase.ts',
   'supabase/migrations',
 ];
 
@@ -22,6 +21,18 @@ const findings = requiredPaths
     message: `Required path is missing: ${relativePath}`,
     metadata: { relativePath },
   }));
+
+const supabaseCandidates = ['src/utils/supabase.ts', 'utils/supabase'];
+if (!supabaseCandidates.some((relativePath) => fs.existsSync(path.join(root, relativePath)))) {
+  findings.push({
+    source: 'structural_scan',
+    severity: 'error',
+    event_type: 'structural_supabase_module_missing',
+    screen: 'supabase-client',
+    message: 'No supported Supabase client module path was found.',
+    metadata: { candidates: supabaseCandidates },
+  });
+}
 
 const result = {
   scanner: 'control-room-structural-scan',
