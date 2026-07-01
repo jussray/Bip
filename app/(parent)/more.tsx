@@ -6,10 +6,11 @@ import { IMAGES } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
 import { useAppContext } from '@/context/AppContext';
 import { PARENT_MORE_GROUPS } from '@/constants/screenPurpose';
+import { isDevTestFamilyEnabled } from '@/features/testing/devTestFamily';
 
 export default function ParentMoreRoute() {
   const { setUserSide } = useAppContext();
-  const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true';
+  const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true' || isDevTestFamilyEnabled();
 
   function open(route: string) {
     if (route === 'parent-link') {
@@ -60,7 +61,7 @@ export default function ParentMoreRoute() {
             style={styles.switchButton}
             onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}
           >
-            <Text style={styles.switchText}>Internal: Go to Teen Side</Text>
+            <Text style={styles.switchText}>Founder Test: Go to Teen Side</Text>
           </TouchableOpacity>
         ) : null}
       </ScrollView>
