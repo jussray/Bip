@@ -1,104 +1,45 @@
-import type { VerificationState } from '@/types/verification';
-import { canUnlockSocial, getVerificationRouteTarget } from './verificationState';
+import { getSupabase } from '@/utils/supabase';
+import { captureRuntimeError } from '@/services/runtimeAudit';
 
-export type AppRouteArea =
-  | '(auth)'
-  | '(teen)'
-  | '(parent)'
-  | '(profile)'
-  | '(safety)'
-  | '(social)'
-  | '(dev)'
-  | 'unknown';
-
-export interface RouteAccessDecision {
+export interface RouteAccessCheck {
   allowed: boolean;
-  redirectTo?: string;
-  reason?:
-    | 'wrong_user_side'
-    | 'verification_required'
-    | 'manual_review'
-    | 'suspended';
+  reason?: string;
 }
 
-const routeAreaFromSegment = (segment?: string): AppRouteArea => {
-  switch (segment) {
-    case '(auth)':
-    case '(teen)':
-    case '(parent)':
-    case '(profile)':
-    case '(safety)':
-    case '(social)':
-    case '(dev)':
-      return segment;
-    default:
-      return 'unknown';
-  }
-};
-
-/**
- * Central route policy for Bip.
- *
- * Safety routes are intentionally always reachable, including from
- * UNVERIFIED, LIMITED_MODE, MANUAL_REVIEW, and SUSPENDED states.
- *
- * Dev routes are also allowed through this broad app-side gate, then locked
- * inside the dev screen with app_profiles role checks. That lets the same
- * founder account inspect teen-side and parent-side behavior without being
- * blocked by the current userSide.
- */
-export function decideRouteAccess(options: {
-  firstSegment?: string;
-  userSide: 'teen' | 'parent' | null;
-  verificationState: VerificationState;
-}): RouteAccessDecision {
-  const area = routeAreaFromSegment(options.firstSegment);
-
-  if (area === '(safety)' || area === '(auth)' || area === '(dev)' || area === 'unknown') {
-    return { allowed: true };
+export async function canAccessFounderDev(userId: string): Promise<RouteAccessCheck> {
+  const sb = getSupabase();
+  if (!sb) {
+    const error = new Error('Supabase not configured');
+    await captureRuntimeError('supabase', error, {
+      event_type: 'supabase_write_failed',
+      screen: 'routeAccess.canAccessFounderDev',
+      severity: 'warning',
+      metadata: { userId },
+    });
+    return { allowed: false, reason: 'Missing Supabase client' };
   }
 
-  if (area === '(parent)') {
-    return options.userSide === 'parent'
-      ? { allowed: true }
-      : {
-          allowed: false,
-          redirectTo: '/(teen)/room',
-          reason: 'wrong_user_side',
-        };
-  }
+  try {
+    const { data, error } = await sb
+      .from('app_profiles')
+      .select('role,can_view_audits')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  if (options.userSide === 'parent' && (area === '(teen)' || area === '(social)')) {
+    if (error) throw error;
+
+    const allowed = Boolean(data?.can_view_audits && ['founder', 'admin', 'developer'].includes(data.role));
     return {
-      allowed: false,
-      redirectTo: '/(parent)/room',
-      reason: 'wrong_user_side',
+      allowed,
+      reason: allowed ? undefined : 'Founder-only route',
     };
+  } catch (error) {
+    await captureRuntimeError('supabase', error, {
+      event_type: 'supabase_write_failed',
+      screen: 'routeAccess.canAccessFounderDev',
+      severity: 'warning',
+      metadata: { userId },
+    });
+    return { allowed: false, reason: 'Profile lookup failed' };
   }
-
-  if (options.verificationState === 'SUSPENDED') {
-    return {
-      allowed: false,
-      redirectTo: '/(auth)/suspended',
-      reason: 'suspended',
-    };
-  }
-
-  if (options.verificationState === 'MANUAL_REVIEW') {
-    return {
-      allowed: false,
-      redirectTo: '/(safety)/manual-review',
-      reason: 'manual_review',
-    };
-  }
-
-  if (area === '(social)' && !canUnlockSocial(options.verificationState)) {
-    return {
-      allowed: false,
-      redirectTo: getVerificationRouteTarget(options.verificationState),
-      reason: 'verification_required',
-    };
-  }
-
-  return { allowed: true };
 }
