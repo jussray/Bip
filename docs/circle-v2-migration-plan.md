@@ -1,6 +1,6 @@
 # Circle V1 → V2 Migration Plan
 
-**Status: Phase 0 — live schema verified, §1.2 decided, migration drafted and reviewed in-repo. Not yet applied to `tbsevonvegdnlyjgplmm`. No app screens or `sync.ts` changed yet.**
+**Status: Phase 0 — migration applied to `tbsevonvegdnlyjgplmm` and verified. `parent_community` circle kind is live. Two pre-existing bugs found and fixed along the way (§10). One larger pre-existing bug found and left unfixed, out of scope (§10.3). No app screens or `sync.ts` changed yet.**
 
 Work order, per direction: (1) repo plan locked here first, (2) a real Supabase migration applied only after this plan is signed off, (3) app code (`sync.ts`, `CircleScreen.tsx`, `feed.tsx`) updated last. This document is step 1 only.
 
@@ -183,9 +183,38 @@ No SQL drafted for this yet — pending the decision, though (a) is now low-risk
 - Full `supabase/migrations/` reconciliation for pre-existing drift (bigint vs. uuid, missing `crews`/`media_attachments` definitions, etc.) — real but out of scope for this PR, which only adds new objects.
 - The earlier `docs/circle-v2-phase0-draft-migration.sql` is stale (marked as such) and superseded by the two files above.
 
+## 10. Applied and verified against `tbsevonvegdnlyjgplmm`
+
+Both migrations applied, in order, via `apply_migration`. Edge Function deployed as version 2 (`verify_jwt: false` preserved). Verified via a mix of catalog queries and rollback-wrapped behavioral tests (`begin; ...; rollback;`, so nothing persisted) plus one deliberate committed test (inserted, checked, then deleted).
+
+**Confirmed working, exactly as designed:**
+- `circle_kind` enum: `public, friends, crew, parent, parent_community`.
+- `account_verification_verification_state_check` includes all four new guardian states.
+- `circles_kind_shape` correctly **rejects** `kind='parent_community'` with a non-null `parent_link_id` (tested: real error, `circles_kind_shape` violation) and correctly **accepts** it with both null.
+- `enforce_circle_anonymity` trigger correctly **rejects** `is_identity_revealed=true` on a `public`-kind post (tested: real error, exact message).
+- `is_verified_guardian()`, RLS policy updates on `circles`/`posts`, `posts.safety_flagged`, both new triggers — all present exactly as migrated.
+
+### 10.1 Found and fixed: `trigger_safety_scan()` never worked, on any table
+
+Testing surfaced that the function's `CASE _col_name WHEN 'text' THEN NEW.text WHEN 'body' THEN NEW.body END` requires Postgres to resolve **both** branches against `NEW`'s actual columns at plan time — standard SQL CASE semantics, not something argument choice avoids. No table has both `text` and `body`, so every attachment (the original three, plus the new `posts` one) failed with `record "new" has no field ...`. Since `journal_entries`/`circle_posts`/`public_circle_posts` all had 0 rows, this had simply never been exercised with real content before. Because the trigger runs synchronously with no exception handling, this meant the *user's own insert* would fail, not just skip moderation — my new `safety_scan_posts` trigger broke every `posts` insert as a direct, immediate consequence of this PR.
+
+Fixed (approved, applied as `fix_trigger_safety_scan_dynamic_field_access`): rewrote to resolve fields dynamically via `to_jsonb(NEW) ->> _col_name`, which doesn't require the column to exist. Also fixed a second instance of the same bug in the same function: the HTTP payload referenced `NEW.user_id::text` directly, but `posts` has no `user_id` column (only `author_user_id`) — same class of failure, would have surfaced immediately after the first fix. Both resolved in one migration. Re-tested: `posts`, `circle_posts`, and `journal_entries` inserts (including one with real self-harm keyword content) all now succeed cleanly.
+
+### 10.2 Found and fixed: `safety_alerts` CHECK constraints didn't allow the Edge Function's own values
+
+`safety_alerts_alert_type_check` only allowed `('critical_mood','self_harm_keyword','panic_pattern','manual_sos')`; the deployed function writes `'moderation'`/`'keyword'`. `severity_check` didn't allow `'low'`, which the function can also produce. Fixed (approved, applied as `widen_safety_alerts_type_and_severity_check`): widened both constraints to include the function's actual vocabulary, rather than narrowing the function to match an older vocabulary — the function's two-layer (keyword + OpenAI moderation) design is the one actually deployed and running.
+
+### 10.3 Found, NOT fixed — out of scope, needs separate attention
+
+A real end-to-end test (committed insert into `posts` with self-harm-keyword content, confirmed via `net._http_response`) surfaced two more problems, deeper than anything authorized for this session:
+
+1. **Shared-secret mismatch.** The Edge Function returned `401 unauthorized` on the real request. The Vault secret `safety_scan_secret` *is* configured (created 2026-06-23), so either the Edge Function's `SAFETY_SCAN_SECRET` env var was never set, or the two values don't match. Can't diagnose further without being able to read the Edge Function's actual secret value, which Supabase doesn't expose via API for security reasons.
+2. **`safety_alerts`'s real live columns don't match what the Edge Function inserts, at all** — not just the CHECK constraints fixed in §10.2. Live columns: `id, teen_user_id, parent_user_id, source_mood_id, source_post_id, alert_type, severity, title, summary, is_read, created_at, updated_at, scan_metadata`. The function inserts `user_id, alert_type, source_table, source_id, severity, scan_metadata` — `user_id` doesn't exist (it's `teen_user_id`), `source_table` doesn't exist at all, `source_id` doesn't exist (there's `source_post_id`/`source_mood_id` instead, a typed-per-source design rather than a generic table+id pair). Even with the secret fixed, this insert would fail immediately with "column does not exist." This is evidently why the earlier repo migration comment about `safety_alerts` shape ("owned by 0003_oracle_parentlinks_period_safety.sql... do not create a competing shape") turned out to matter — the live table has been redesigned since the Edge Function was last written against it, and neither side was updated to match the other.
+
+Both are real, both are safety-relevant, both predate this session and this PR, and both are substantially bigger than "apply two migrations and verify" — they need their own scoped fix (likely a real rewrite of the Edge Function's alert-insert logic to match the live `safety_alerts` shape, plus resolving the secret separately). Test artifacts (the test `posts`/`circles` rows) were deleted immediately after — nothing was left in production data.
+
 ## Next steps
 
-1. Review the two migration files and the edge-function diff in this PR.
-2. When ready, apply the two migrations to `tbsevonvegdnlyjgplmm` in order (the enum-value file first, always — same constraint about not using a new enum value in the transaction that created it applies to however they're eventually run, not just how they're written). Deploy the updated `safety-scan` Edge Function alongside.
-3. Verify: a verified-guardian test account can read/write `parent_community` posts anonymously; a teen account cannot; the anonymity guard rejects `is_identity_revealed=true` on `public`/`parent_community` posts; a `posts` insert fires the safety-scan trigger and the Edge Function accepts `source_table='posts'`.
-4. Only after that's applied and verified, update `sync.ts`/screens (step 3) — this will be a larger rewrite than originally scoped, since the real schema (uuid ids, `author_user_id`/`body`, enum types, `crews`, `friendships`-based friend visibility) differs substantially from what the repo's own migrations assume.
+1. `sync.ts`/screens update (step 3) — this will be a larger rewrite than originally scoped, since the real schema (uuid ids, `author_user_id`/`body`, enum types, `crews`, `friendships`-based friend visibility) differs substantially from what the repo's own migrations assume.
+2. Separately: scope and fix §10.3 (safety-alert secret mismatch + column mismatch) — recommend treating this as its own PR, since it's unrelated to the Circle model and touches parent-notification logic for real safety alerts.
+3. §6 reaction vocabulary and Friends/Crew identity-reveal-after-acceptance logic remain open, as before.
