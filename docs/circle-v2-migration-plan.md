@@ -21,20 +21,33 @@ Two prior audit passes in this session ran against Supabase project `jvmbhralykt
 | Circle | Audience | Shows | Identity exposure | Access mechanism |
 |---|---|---|---|---|
 | **Teen Circle** (`kind='public'`) | Every verified teen | All teen public posts | Always anonymous — no real identity, ever | Open read to any account in a teen-verified state; not membership-gated |
-| **Parent Circle** (`kind='parent'`, new) | Every verified parent/guardian | All parent community posts | Anonymous display only | Open read to any verified-guardian account; **must not** be derived from `parent_links`/Bridge — see §1.1, this needs a decision |
+| **Parent Circle** (`kind='parent'`, new) | Every verified guardian account | All parent community posts | Anonymous display only | Open read gated on `account_verification.verification_state = 'VERIFIED_GUARDIAN'` (+ `circle_profiles.account_type = 'guardian'`) — independent of `parent_links`, see §1.1 |
 | **Bip Crew** (`kind='crew'`) | Accepted crew members only | Posts within that trust group | May reveal identity/first name, but only after acceptance | `circle_members`, sourced from accepted-only crew connections |
 | **Friends Circle** (`kind='friends'`) | Accepted friends only | Posts within that trust group | Anonymous or nickname by default; more only if trust allows | `circle_members`, sourced from accepted-only friend connections |
 
-### 1.1 Open decision — there is no "verified parent/guardian" state in the schema today
+### 1.1 Decided — standalone guardian verification, independent of `parent_links`
 
-`account_verification.verification_state` (`supabase/migrations/20260630001000_account_verification_parent_approval.sql:5-9`) only allows: `UNVERIFIED, PENDING_PARENT, PENDING_TRUSTED_ADULT, LIMITED_MODE, VERIFIED_TEEN, EXPIRED, MANUAL_REVIEW, SUSPENDED`. There is no `VERIFIED_PARENT`/`VERIFIED_GUARDIAN` value. The only place "this account is a parent" is established today is `redeem_parent_link_invite()` (same file, `:75-138`), which is inherently scoped to one specific teen's invite code — i.e. today, "being a parent" only exists in the context of one `parent_links` row.
+`parent_links` means "I am linked to this specific teen." Parent Circle needs to mean "I am a verified guardian account." Those are different claims, so Parent Circle access must not be derived from `parent_links` at all.
 
-So "verified parent, not tied to `parent_links`/Bridge" has no schema hook to attach to yet. Two ways to close this, and it needs your call before Phase 0 can be marked done for the Parent Circle row:
+**`account_verification.verification_state` additions** (alongside the existing `UNVERIFIED, PENDING_PARENT, PENDING_TRUSTED_ADULT, LIMITED_MODE, VERIFIED_TEEN, EXPIRED, MANUAL_REVIEW, SUSPENDED` — `supabase/migrations/20260630001000_account_verification_parent_approval.sql:5-9`):
 
-- **(a) Independent parent verification.** Add a parent-side signup/attestation flow that doesn't require redeeming any specific teen's invite code, plus a new state (e.g. `VERIFIED_PARENT`) or a separate table. Most faithful to "not tied to `parent_links`," more product/schema work.
-- **(b) Derive "verified parent" from "has completed at least one `parent_links` redemption, for any teen."** Decoupled from *which* teen/link, but still bootstrapped by the existing `parent_links` mechanism. Faster to ship, arguably still "tied to `parent_links`" in spirit even if not scoped to a specific one.
+- `VERIFIED_GUARDIAN`
+- `PENDING_GUARDIAN_REVIEW`
+- `GUARDIAN_REJECTED`
+- `GUARDIAN_SUSPENDED`
 
-Flagging, not deciding — need your answer before this row of §1 is locked.
+**Parent Circle access requires:**
+- `circle_profiles.account_type = 'guardian'`
+- `account_verification.verification_state = 'VERIFIED_GUARDIAN'`
+
+**Parent Circle access must NOT require:**
+- `parent_links.status = 'active'`
+- a teen invite code
+- being linked to any specific teen
+
+`parent_links` remains scoped to its existing purpose only — Parent Bridge / teen-parent sharing — and is otherwise unrelated to Parent Circle membership.
+
+Open implementation question (not blocking this decision, but real): `circle_profiles` currently has no `CREATE TABLE` anywhere in repo migrations — it's referenced in `TABLES` (`src/utils/supabase.ts`) but only exists live, if at all, with unconfirmed columns. Whether `account_type` belongs on `circle_profiles` specifically, or on some other profiles/account table, is a Phase 0 item 1 question — needs the actual live column list before the migration can reference it correctly. The `VERIFIED_GUARDIAN` verification-state piece is unaffected by this, since it lives on `account_verification`, whose shape is already confirmed from the repo migration.
 
 ---
 
@@ -118,12 +131,12 @@ None of these are edited in this step.
 
 ## 8. Phase 0 checklist
 
-1. **Repo-vs-live schema reconciliation** — blocked on Supabase MCP access to `tbsevonvegdnlyjgplmm` actually reaching this session; access was granted but hasn't propagated yet, tracked separately from this doc.
-2. **Final Circle model** — drafted in §1, one open decision remaining (§1.1).
-3. **Parent community model** — drafted in §1's Parent Circle row + §1.1.
+1. **Repo-vs-live schema reconciliation** — still blocked. `list_projects` and a direct `execute_sql` against `tbsevonvegdnlyjgplmm` both fail with a permission error (not "not found") from this session, on two separate attempts. That error shape suggests the project exists at the org level but this session's connector account isn't yet a collaborator on it — likely needs a check in the Supabase dashboard (Project Settings → collaborators/access) rather than something that resolves on its own.
+2. **Final Circle model** — locked, §1.
+3. **Parent community model** — locked, §1.1: standalone `VERIFIED_GUARDIAN` state, independent of `parent_links`.
 4. **Identity visibility rules** — drafted in §4.
 5. **Safety scan contract** — drafted in §5.
-6. **Reaction vocabulary** — carried in §6, needs live confirmation once item 1 unblocks.
+6. **Reaction vocabulary** — conflict, unresolved: §6 lists `felt/comfort/proud/stay` (teen) and `beenThere/solidarity/reminder/needed/strength` (parent), sourced from the repo's own `*_circle_posts.reactions` jsonb defaults — that part is repo-verifiable independent of which project is live. Separately, a `reaction_kind` enum (`hug, heart, listen, support, spark`) has been reported as the live `post_reactions.reaction` type. These are two different vocabularies for the same field — needs independent confirmation of which (if either) actually exists on `tbsevonvegdnlyjgplmm` before either is adopted, not an assumption either way.
 7. **No destructive SQL** — honored; nothing applied this step.
 8. **No runtime cutover** — honored; no `sync.ts`/screen changes this step.
 
@@ -133,10 +146,12 @@ None of these are edited in this step.
 - No literal migration SQL committed yet — see §3/§4 for why (schema-type-dependent, waiting on confirmed live column types).
 - No app code changes.
 - No RLS changes live.
+- Live-schema facts reported in chat (id types, `post_comments` columns, `reaction_kind` enum values, row counts, trigger-URL correctness) are recorded as **reported, not independently confirmed** — see §8 item 1. The point of catching the earlier wrong-project mixup was to stop treating either side's unverified claims as fact; that standard applies the same way here. Once this session gets real read access, every one of these gets checked directly and this section gets updated with the actual result either way.
 
 ## Next steps
 
-1. Your call on §1.1 (verified-parent definition: option a or b) and §3 (Option A vs B for circle ownership — recommending A).
-2. Resolve Supabase MCP access to `tbsevonvegdnlyjgplmm` so Phase 0 item 1 and the reaction-vocabulary confirmation can run against real data instead of being deferred.
-3. Once §1.1/§3 are decided and item 1's schema facts are in hand, draft the actual migration SQL (step 2 in your ordering) — separate PR, still no cutover.
-4. Only after that migration is applied and verified, update `sync.ts`/screens (step 3).
+1. ~~Your call on §1.1~~ — done: standalone `VERIFIED_GUARDIAN` state, independent of `parent_links`.
+2. Still needed: Supabase MCP access to `tbsevonvegdnlyjgplmm` actually reaching this session — two attempts have failed with a permission error. Worth checking the Supabase dashboard's collaborator list for that project directly, since "grant access" from this side doesn't seem to be enough on its own.
+3. Once access works, run the read-only verification queries (id types, `post_comments` columns, reaction constraint/enum, table inventory, row counts, trigger body) and update §0/§6/§8 with confirmed results.
+4. Only then draft the actual migration SQL (§3/§4's deferred DDL) against confirmed column types and the now-locked §1.1 model — separate PR, still no cutover.
+5. Only after that migration is applied and verified, update `sync.ts`/screens (step 3).
