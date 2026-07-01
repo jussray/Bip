@@ -10,4 +10,6 @@ export * from './founderAudit';
 export * from './founderIdeas';
 export * from './controlRoomIssues';
 export * from './runtimeAudit';
+export * from './runtimeFingerprints';
+export * from './runtimeFingerprintLogger';
 export * from './safeNavigation';
