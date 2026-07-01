@@ -69,19 +69,6 @@ const PROJECT_REGISTRY: RegisteredProject[] = [
     ],
     color: '#a78bfa',
   },
-  {
-    id: 'juss-beautiful-hair',
-    name: 'Juss Beautiful Hair',
-    tagline: 'Public storefront + private vendor/admin layer for jussbeautifulhair.com.',
-    emoji: '✨',
-    status: 'building',
-    tech: ['TypeScript', 'Next.js / React', 'Vercel'],
-    links: [
-      { label: 'Storefront repo', url: 'https://github.com/jussray/jussbeautifulhair-site', emoji: '🛍️' },
-      { label: 'Private admin', url: 'https://github.com/jussray/jbh-private', emoji: '🔒' },
-    ],
-    color: '#f9a8d4',
-  },
 ];
 
 const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
