@@ -1,5 +1,7 @@
 import type { VerificationState } from '@/types/verification';
 import { canUnlockSocial, getVerificationRouteTarget } from './verificationState';
+import { getSupabase } from '@/utils/supabase';
+import { captureRuntimeError } from '@/services/runtimeAudit';
 
 export type AppRouteArea =
   | '(auth)'
@@ -21,6 +23,11 @@ export interface RouteAccessDecision {
     | 'suspended';
 }
 
+export interface RouteAccessCheck {
+  allowed: boolean;
+  reason?: string;
+}
+
 const routeAreaFromSegment = (segment?: string): AppRouteArea => {
   switch (segment) {
     case '(auth)':
@@ -36,17 +43,6 @@ const routeAreaFromSegment = (segment?: string): AppRouteArea => {
   }
 };
 
-/**
- * Central route policy for Bip.
- *
- * Safety routes are intentionally always reachable, including from
- * UNVERIFIED, LIMITED_MODE, MANUAL_REVIEW, and SUSPENDED states.
- *
- * Dev routes are also allowed through this broad app-side gate, then locked
- * inside the dev screen with app_profiles role checks. That lets the same
- * founder account inspect teen-side and parent-side behavior without being
- * blocked by the current userSide.
- */
 export function decideRouteAccess(options: {
   firstSegment?: string;
   userSide: 'teen' | 'parent' | null;
@@ -101,4 +97,41 @@ export function decideRouteAccess(options: {
   }
 
   return { allowed: true };
+}
+
+export async function canAccessFounderDev(userId: string): Promise<RouteAccessCheck> {
+  const sb = getSupabase();
+  if (!sb) {
+    await captureRuntimeError('supabase', new Error('Supabase not configured'), {
+      event_type: 'profile_lookup_failed',
+      screen: 'routeAccess.canAccessFounderDev',
+      severity: 'warning',
+      metadata: { userId },
+    });
+    return { allowed: false, reason: 'Missing Supabase client' };
+  }
+
+  try {
+    const { data, error } = await sb
+      .from('app_profiles')
+      .select('role,can_view_audits')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    const allowed = Boolean(data?.can_view_audits && ['founder', 'admin', 'developer'].includes(data.role));
+    return {
+      allowed,
+      reason: allowed ? undefined : 'Founder-only route',
+    };
+  } catch (error) {
+    await captureRuntimeError('supabase', error, {
+      event_type: 'profile_lookup_failed',
+      screen: 'routeAccess.canAccessFounderDev',
+      severity: 'warning',
+      metadata: { userId },
+    });
+    return { allowed: false, reason: 'Profile lookup failed' };
+  }
 }
