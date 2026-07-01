@@ -1,8 +1,5 @@
-/**
- * src/services/index.ts
- *
- * Service layer barrel.
- * Import via: import { sendMessage, AI_PERSONALITIES } from '@/services';
- */
-export * from './ai';
-export * from './worker';
+export * from '@/services/founderAudit';
+export * from '@/services/founderIdeas';
+export * from '@/services/controlRoomIssues';
+export * from '@/services/runtimeAudit';
+export * from '@/services/safeNavigation';
