@@ -1,157 +1,177 @@
 # Circle V1 → V2 Migration Plan
 
-**Status: Phase 0 — locking the target model in the repo. No Supabase migrations applied. No app screens or `sync.ts` changed yet.**
+**Status: Phase 0 — live schema now independently verified against `tbsevonvegdnlyjgplmm`. One unresolved structural conflict blocks finishing §1's Parent Circle row (§1.2). No Supabase migrations applied. No app screens or `sync.ts` changed yet.**
 
-Work order, per direction: (1) repo plan locked here first, (2) a real Supabase migration applied only after this plan is signed off, (3) app code (`sync.ts`, `CircleScreen.tsx`, `feed.tsx`) updated last, to read/write whatever (2) produces. This document is step 1 only.
-
----
-
-## 0. Correction: earlier "live schema" findings in this doc were checked against the wrong project
-
-Two prior audit passes in this session ran against Supabase project `jvmbhralyktmdlvglrxk` ("jussray's Project"), which does not appear anywhere in this repo. The actual deploy target is `tbsevonvegdnlyjgplmm`, confirmed by `.github/workflows/deploy-supabase-function.yml`, which gates Edge Function deploys behind an operator typing that exact ref as a confirmation string. Consequences:
-
-- The "safety-scan trigger posts to the wrong project" finding from the earlier draft was a **false alarm** — retracted. The trigger correctly targets `tbsevonvegdnlyjgplmm`, which is itself.
-- Every other "live" claim from the earlier draft (bigint vs. UUID ids, `post_comments` column names, which of the 11 undocumented tables exist, the RLS membership-gating gap) was also checked against the wrong project and needs re-confirmation against `tbsevonvegdnlyjgplmm`. That's Phase 0 deliverable #1 below — still blocked on MCP access resolving (access was granted but hasn't propagated to this session as of this writing; retrying separately from this plan update).
-- This doc now treats those facts as **unconfirmed** rather than restating them as verified. Where earlier wording is still useful as a design shape, it's marked as such, not as fact.
+Work order, per direction: (1) repo plan locked here first, (2) a real Supabase migration applied only after this plan is signed off, (3) app code (`sync.ts`, `CircleScreen.tsx`, `feed.tsx`) updated last. This document is step 1 only.
 
 ---
 
-## 1. Target Circle model (product intent — locking this now)
+## 0. Access history (resolved)
+
+Three Supabase identities got tangled in this process before landing on the real one:
+
+1. This session's original connector had project-scoped access to `jvmbhralyktmdlvglrxk` ("jussray's Project") — unrelated to this repo, org `xqztwjziupbtzmvdakkt`.
+2. `tbsevonvegdnlyjgplmm` (confirmed via `.github/workflows/deploy-supabase-function.yml`'s deploy-confirmation gate) is the real target — but belongs to a **different** org, `vercel_icfg_v3CousBaJVAqOT9wXYPLhyR2` (Vercel's Supabase integration), also confusingly named "Se'kret Bip". Being a member of org `xqztwjziupbtzmvdakkt` never implied access to a project in a different org — that's why the earlier diagnosis ("org is right, just need project-level access") was half right: the *access model* diagnosis (project-scoped, not org-wide) was correct, but the org itself also turned out to be different, not just the project-within-org.
+3. Access was ultimately restored through a separate path: a project-scoped `.mcp.json` entry pointed at `mcp.supabase.com?project_ref=tbsevonvegdnlyjgplmm` was added, but its own OAuth approval also required an interactive terminal this session doesn't have. What actually unblocked this session was the original platform connector (`mcp__610720e7-...`) gaining access to `tbsevonvegdnlyjgplmm` directly — confirmed working as of this write-up.
+
+Everything below this line is from live queries run just now against `tbsevonvegdnlyjgplmm`, not from anyone's report.
+
+---
+
+## 1. Target Circle model (product intent, locked in a prior turn) — now checked against real schema
 
 | Circle | Audience | Shows | Identity exposure | Access mechanism |
 |---|---|---|---|---|
-| **Teen Circle** (`kind='public'`) | Every verified teen | All teen public posts | Always anonymous — no real identity, ever | Open read to any account in a teen-verified state; not membership-gated |
-| **Parent Circle** (`kind='parent'`, new) | Every verified guardian account | All parent community posts | Anonymous display only | Open read gated on `account_verification.verification_state = 'VERIFIED_GUARDIAN'` (+ `circle_profiles.account_type = 'guardian'`) — independent of `parent_links`, see §1.1 |
-| **Bip Crew** (`kind='crew'`) | Accepted crew members only | Posts within that trust group | May reveal identity/first name, but only after acceptance | `circle_members`, sourced from accepted-only crew connections |
-| **Friends Circle** (`kind='friends'`) | Accepted friends only | Posts within that trust group | Anonymous or nickname by default; more only if trust allows | `circle_members`, sourced from accepted-only friend connections |
+| **Teen Circle** (`kind='public'`) | Every verified teen | All teen public posts | Always anonymous | **Already works** — confirmed live, §1.1 |
+| **Parent Circle** (`kind='parent'`) | Every verified guardian account | All parent community posts | Anonymous display only | **Structurally blocked** — `kind='parent'` circles require a specific `parent_link_id`, conflicting with the "not tied to `parent_links`" decision. See §1.2, needs your call. |
+| **Bip Crew** (`kind='crew'`) | Accepted crew members only | Posts within that trust group | May reveal identity/first name after acceptance | Real live model found, different from what was drafted — see §1.3 |
+| **Friends Circle** (`kind='friends'`) | Accepted friends only | Posts within that trust group | Anonymous/nickname by default | **Already works**, via a `friendships` table — see §1.4 |
 
-### 1.1 Decided — standalone guardian verification, independent of `parent_links`
+### 1.1 Teen Circle — confirmed already correct, no changes needed
 
-`parent_links` means "I am linked to this specific teen." Parent Circle needs to mean "I am a verified guardian account." Those are different claims, so Parent Circle access must not be derived from `parent_links` at all.
+Live RLS on `circles`:
 
-**`account_verification.verification_state` additions** (alongside the existing `UNVERIFIED, PENDING_PARENT, PENDING_TRUSTED_ADULT, LIMITED_MODE, VERIFIED_TEEN, EXPIRED, MANUAL_REVIEW, SUSPENDED` — `supabase/migrations/20260630001000_account_verification_parent_approval.sql:5-9`):
+```sql
+-- "circles select owner or member"
+(owner_user_id = auth.uid()) OR (id IN (select circle_id from circle_members where user_id = auth.uid())) OR (kind = 'public'::circle_kind)
+```
 
-- `VERIFIED_GUARDIAN`
-- `PENDING_GUARDIAN_REVIEW`
-- `GUARDIAN_REJECTED`
-- `GUARDIAN_SUSPENDED`
+And on `posts` ("posts select by circle visibility"):
 
-**Parent Circle access requires:**
-- `circle_profiles.account_type = 'guardian'`
-- `account_verification.verification_state = 'VERIFIED_GUARDIAN'`
+```sql
+(author_user_id = auth.uid())
+OR (circle_id IN (select id from circles where kind = 'public'))
+OR (circle_id IN (select id from circles where kind = 'friends' and owner_user_id in (mutual friendship via `friendships`)))
+OR (circle_id IN (select circle_id from circle_members where user_id = auth.uid()))
+```
 
-**Parent Circle access must NOT require:**
-- `parent_links.status = 'active'`
-- a teen invite code
-- being linked to any specific teen
+The `kind = 'public'` carve-out already grants open read to every authenticated user, with no membership requirement — this is exactly what the target model needs. The earlier finding (from the wrong project) that public reads were membership-gated does **not** apply here. Nothing to build for Teen Circle reads. Identity anonymity (§4) still needs a DB-level guard — that part is real, see below.
 
-`parent_links` remains scoped to its existing purpose only — Parent Bridge / teen-parent sharing — and is otherwise unrelated to Parent Circle membership.
+### 1.2 Parent Circle — structural conflict, needs a decision before this can be built
 
-Open implementation question (not blocking this decision, but real): `circle_profiles` currently has no `CREATE TABLE` anywhere in repo migrations — it's referenced in `TABLES` (`src/utils/supabase.ts`) but only exists live, if at all, with unconfirmed columns. Whether `account_type` belongs on `circle_profiles` specifically, or on some other profiles/account table, is a Phase 0 item 1 question — needs the actual live column list before the migration can reference it correctly. The `VERIFIED_GUARDIAN` verification-state piece is unaffected by this, since it lives on `account_verification`, whose shape is already confirmed from the repo migration.
+`circles` has a real CHECK constraint enforcing shape by kind:
+
+```sql
+-- circles_kind_shape
+CHECK (
+  (kind = 'crew'   AND crew_id IS NOT NULL AND parent_link_id IS NULL) OR
+  (kind = 'parent' AND parent_link_id IS NOT NULL AND crew_id IS NULL) OR
+  (kind IN ('public','friends') AND crew_id IS NULL AND parent_link_id IS NULL)
+)
+```
+
+Every `kind='parent'` circle **must** reference exactly one `parent_links` row (`circles_parent_link_id_fkey → parent_links(id)`). This is a hard structural requirement, not a policy that can be loosened — a `kind='parent'` circle with no `parent_link_id` is not a representable row under this schema. What's been built for `parent` is a **private space scoped to one specific teen-guardian Bridge link** — closer to "shared family space for this one connection" than "community feed for all verified guardians." (There's also no `kind='public'`-style open-read carve-out for `kind='parent'` in the `circles`/`posts` RLS — consistent with it being a private per-link space, not a community one.)
+
+This directly conflicts with the locked §1 decision that Parent Circle must be a shared community feed, independent of any specific `parent_links` row. Three ways to resolve, genuinely need your call:
+
+- **(a) Add a new `circle_kind` enum value** (e.g. `parent_community`) for the global guardian feed, and leave the existing `kind='parent'` + `parent_link_id` structure alone — it may be serving a real, separate purpose (a private per-family space) that shouldn't be repurposed or removed. Cleanest separation, but means "Parent Circle" in the product sense maps to a differently-named `kind` than the word "parent" suggests.
+- **(b) Relax `circles_kind_shape`** to allow `kind='parent' AND parent_link_id IS NULL` as an additional valid case (a "global" parent circle with no link), keeping per-link parent circles as a second valid shape under the same `kind`. Keeps the enum value name intuitive, but means `kind='parent'` covers two different concepts (global community vs. per-link private space) that then need to be told apart by nullability of `parent_link_id` everywhere they're queried — easy to get wrong in RLS/app code later.
+- **(c) Reuse `kind='public'`** for both Teen and Parent community feeds, distinguished by `circle_profiles.account_type` (`'teen'` vs `'guardian'`) rather than by `circles.kind` at all — then the existing `kind='public'` open-read carve-out already covers both, and the split into two feeds happens by filtering on the author's `account_type` at read time. Reuses working infrastructure with zero constraint changes, but conflates two different-shaped audiences under one `kind` value, and needs the read query (not RLS) to do the teen/guardian split — meaning RLS alone wouldn't stop a teen from seeing a guardian's "public" post unless something else enforces it.
+
+I'd lean toward (a) as the least likely to create confusion later, but this is a real product/architecture call, not something to default into.
+
+### 1.3 Bip Crew — the live model is a third table, not the two drafted earlier
+
+Confirmed: there's a `crews` table (`id, owner_user_id, name, description, max_members [2-15 CHECK], is_archived, created_at, updated_at`) that neither the earlier draft nor the repo migrations mentioned. `circles.crew_id` (real column, confirmed) FKs to `crews(id)`. So the actual live model is:
+
+```
+crews (the named group, 2-15 members, owned by one user)
+  → circles (kind='crew', crew_id = crews.id)   -- one circle per crew
+    → circle_members (who can read/post in that circle)
+```
+
+Live RLS on `crews`: owner can read/write their own; anyone who is a `circle_members` row on the linked `kind='crew'` circle can also read the crew. This is a coherent, already-working model — separate from both `crew_members` (the older accountability/check-in feature, `connection_status` pending/accepted/blocked/removed, `cadence`) and `crew_memberships` (a third, still-unexplained table with just `user_id`/`member_id`). All three (`crews`, `crew_members`, `crew_memberships`) exist live with real constraints; only `crews` is actually wired into the `circles`/RLS model for Bip Crew posts. Recommend: **`crews` + `circle_members` is the canonical model for Bip Crew circles** — this matches what was already decided in principle ("crews + circle_members as canonical"), just with the concrete table now identified. `crew_members`/`crew_memberships` remain a separate legacy question, not blocking Circle work.
+
+### 1.4 Friends Circle — already implemented, via `friendships`, not `circle_members`
+
+Confirmed live: a `friendships` table with `user_id`/`friend_user_id`, checked as a **mutual pair** in the `posts select by circle visibility` policy (`f1.user_id = f2.friend_user_id AND f1.friend_user_id = f2.user_id`). This is the real access model for Friends Circle — not `circle_friendships`/`circle_friend_requests` (which don't appear in the live table inventory at all, and were likely an artifact of the earlier wrong-project audit). Friends Circle visibility is already built; only the identity-reveal-after-trust piece (§4) is unbuilt.
 
 ---
 
-## 2. Enforcement principle
+## 2. Enforcement principle (unchanged)
 
-Supabase (RLS, policies, views/RPCs) is the authority for:
-- **who can see what** — Teen/Parent Circle: gated on verification state + `circles.kind`, not on per-row `circle_members` enrollment. Friends/Crew: gated on `circle_members`, itself sourced only from accepted-state connections.
-- **who can post where** — gated on account ownership + verification state matching the circle kind.
-- **what identity is exposed** — identity fields are omitted/nulled at the query layer (view or RPC), never trusted from a client-supplied flag.
-
-The app UI is presentation only and must not be treated as an access boundary — this was true in the earlier draft and remains the central principle here.
+Supabase (RLS, policies, functions) is the authority for who can see/post/reveal what — the app UI is presentation only. This is already substantially true in the live schema: `assert_can_access_post()` and `can_access_media_attachment()` are real, already-deployed helper functions gating `post_comments`/`post_reactions`/`media_attachments` reads. (Bodies not inspected yet — low risk, since they gate reads consistently with the `posts` policy shape already confirmed above.)
 
 ---
 
-## 3. Schema shape for the model — two options, recommend the smaller one
+## 3. Confirmed schema facts (replaces all earlier "reported"/"unconfirmed" markers)
 
-Earlier in this process (before the wrong-project correction) the assumption was that Public/Parent circles need a single system-owned seeded row, because `circles.owner_user_id` is `NOT NULL` in the repo migration and a genuinely shared circle can't be "owned." Revisiting that:
+All ids on `circles`, `circle_members`, `posts`, `post_reactions`, `post_comments`, `crews`, `media_attachments` are **UUID** — the repo's `0004_supplemental_tables.sql` (bigint/bigserial) does not match live and was never applied to this project as written. `post_comments` uses `author_user_id`/`body`, not `user_id`/`text`. `circles.kind` and `post_reactions.reaction` are real Postgres enum types (`circle_kind`, `reaction_kind`), not free text or CHECK-constrained text as the repo migration has them.
 
-- **Option A (recommended) — keep per-owner circles, add a kind-scoped open-read policy.** Every verified teen still gets their own `public`-kind circle (auto-provisioned on first post, one row per owner per kind, same as the existing repo migration's design). The feed query already aggregates across *all* circles of a kind with no owner filter — the only thing missing is a read policy that doesn't require `circle_members` membership for `kind IN ('public','parent')`. This requires **zero schema changes** to `circles` itself, only new/adjusted RLS policies. Same pattern extends cleanly to Parent Circle once §1.1 is resolved.
-- **Option B — single system-owned seeded circle**, requiring `owner_user_id` to become nullable plus an `is_system` flag and a seed row. More invasive, no clear advantage over A for this use case — only worth it if there's a reason a "circle" needs to exist independent of any owning account, which nothing in §1 currently requires.
+`circle_kind` enum: `public, friends, crew, parent` — `'parent'` already exists, no enum change needed there.
 
-Recommend A. Flagging both so the choice is explicit rather than assumed.
+`reaction_kind` enum: `hug, heart, listen, support, spark` — confirmed real and in the live schema (§6, still an open vocabulary conflict).
 
-Illustrative shape (not final DDL — literal column types depend on Phase 0 item 1, i.e. confirming whether `tbsevonvegdnlyjgplmm` actually matches the repo's bigint-based migration or the UUID-based shape reported from the live dashboard):
+`circle_profiles`: `user_id (PK), nickname (1-40 chars), avatar_emoji (1-16 chars), account_type CHECK IN ('teen','guardian'), created_at, updated_at`. The `account_type` column §1.1 (prior turn) needed already exists — nothing to add.
 
-```
--- circles.kind check gains 'parent'
--- new RLS: circles read open for kind in ('public','parent') when caller's
---   verification state qualifies; circle_members-gated read unchanged for friends/crew
--- new RLS: posts read open for kind in ('public','parent') under the same condition
--- posts: reject insert where kind='public' or 'parent' and is_identity_revealed=true (DB-level guard, not app-level)
-```
+`media_attachments`: fully built — `owner_user_id, post_id, comment_id (exactly one of the two required), bucket_id (CHECK IN ('bip-post-media','bip-scrapbook-media')), object_path (unique with bucket_id), media_type (enum media_kind), mime_type, file_size_bytes (≤50MB), width, height, duration_seconds, alt_text`. No new work needed here — the "media_attachments doesn't exist yet" assumption from earlier drafts was wrong.
 
-Writing literal `CREATE POLICY`/`ALTER TABLE` SQL now, before Phase 0 item 1 confirms real column types and constraint names in `tbsevonvegdnlyjgplmm`, risks producing a migration that's syntactically wrong against the real schema. That SQL gets drafted once access to the correct project is confirmed — this doc intentionally stops at the shape/spec level for anything schema-type-dependent.
+`account_verification.verification_state` CHECK constraint confirmed live, identical to the repo migration: `UNVERIFIED, PENDING_PARENT, PENDING_TRUSTED_ADULT, LIMITED_MODE, VERIFIED_TEEN, EXPIRED, MANUAL_REVIEW, SUSPENDED`. No `VERIFIED_GUARDIAN` yet — confirms §1's Parent Circle decision genuinely requires a real migration (once §1.2 is resolved), not just documentation.
+
+Row counts: `circles`, `posts`, `circle_members`, `post_reactions`, `post_comments`, `crews`, `crew_members`, `crew_memberships`, `parent_links`, `circle_profiles` are all **0 rows**. `account_verification` has exactly 1 row (no `VERIFIED_TEEN` rows). No backfill or data-loss risk for anything in this doc.
+
+Safety-scan trigger: confirmed, independently, pointed at `https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/safety-scan` — this project, correctly. No action needed (already established, now doubly confirmed).
 
 ---
 
 ## 4. Identity visibility rules
 
-- **Teen Circle:** `is_identity_revealed` forced `false` at write time, plus a DB-level constraint/trigger rejecting any row where `kind='public' AND is_identity_revealed=true`. Never trust the client flag alone.
-- **Parent Circle:** same treatment as Teen Circle — "anonymous display only" per §1, so identity is never exposed regardless of any per-post flag.
-- **Bip Crew:** identity (first name) may be shown, but only to viewers who are themselves accepted members of that specific crew circle — i.e. gated by the viewer having an active `circle_members` row on that `circle_id`, not exposed circle-wide by default. Since crew membership itself only exists for accepted connections, "is a member of this circle" and "is an accepted connection with the author" are the same check — no separate trust flag needed beyond membership.
-- **Friends Circle:** nickname by default (source TBD — likely the same profile/display-name table friends screens already use), same membership-gated pattern as Crew for anything beyond nickname.
-
-For Crew/Friends, this likely means feed reads go through a view or RPC that joins `circle_members` to decide what identity fields to return, rather than a flat `select *` — flagging as a design requirement, not committing to exact SQL yet for the same reason as §3.
+- **Teen Circle:** needs a DB-level guard rejecting `is_identity_revealed=true` when the target circle is `kind='public'` — not yet present live. Real, small piece of work.
+- **Parent Circle:** blocked on §1.2.
+- **Bip Crew:** identity reveal after acceptance — gate on `circle_members` membership on the crew's linked circle, consistent with §1.3's confirmed model. Not yet built (no such logic found in the RLS reviewed so far).
+- **Friends Circle:** nickname by default, gated the same way, keyed off the confirmed `friendships` mutual-pair check (§1.4) rather than `circle_members`.
 
 ---
 
-## 5. Safety scan contract
+## 5. Safety scan contract (unchanged, now fully confirmed rather than assumed)
 
-- Extend the existing `trigger_safety_scan()` (generalizes over content column already — supports `'text'` and `'body'`, no function-body change needed) to also fire on `posts` via `AFTER INSERT ... EXECUTE FUNCTION public.trigger_safety_scan('body')`.
+- Extend `trigger_safety_scan()` (already generalizes over `'text'`/`'body'`, confirmed via live function body — no function change needed) to `posts` via a new `AFTER INSERT` trigger with `'body'`.
 - Add `posts` to the Edge Function's allowed source-table list.
-- Keep the existing `journal_entries`/`circle_posts`/`public_circle_posts` triggers as-is during the transition — don't remove until those tables are actually deprecated (Phase 7 in the broader migration, not this step).
-- Do **not** touch the webhook URL — confirmed correct against the real project (§0).
+- Keep existing `journal_entries`/`circle_posts`/`public_circle_posts` triggers during the transition.
+- Webhook URL confirmed correct, independently, twice now — do not touch.
 
 ---
 
-## 6. Reaction vocabulary
+## 6. Reaction vocabulary — confirmed conflict, unresolved
 
-Carried over from the earlier draft, still needs confirmation against the real project once access resolves (Phase 0 item 1):
+`post_reactions.reaction` is a real, deployed `reaction_kind` enum: `hug, heart, listen, support, spark`. The app's actual UI keys (from the legacy `*_circle_posts.reactions` jsonb defaults, repo-verifiable independent of which project is live) are `felt, comfort, proud, stay` (teen) and `beenThere, solidarity, reminder, needed, strength` (parent) — a completely different vocabulary. This is the original pasted document's first blocker, confirmed real once checked against the correct project. Needs a decision:
 
-- Teen: `felt`, `comfort`, `proud`, `stay`
-- Parent: `beenThere`, `solidarity`, `reminder`, `needed`, `strength`
+- **(a)** Alter `reaction_kind` to add the app's real keys (additive `ALTER TYPE ... ADD VALUE`, zero data risk given 0 rows).
+- **(b)** Add an app-layer mapping between UI keys and the DB enum.
 
-These match the legacy `*_circle_posts.reactions` jsonb defaults found in `0001_init.sql`/`0004_supplemental_tables.sql` — that part is repo-verifiable regardless of which live project is authoritative, since it's the same file either way.
+No SQL drafted for this yet — pending the decision, though (a) is now low-risk to execute given the confirmed empty table.
 
 ---
 
-## 7. Files touched (unchanged from earlier draft, for reference — no edits made yet)
+## 7. Files touched (unchanged — no edits made to any of these yet)
 
 | Category | Files |
 |---|---|
 | Runtime | `src/utils/sync.ts`, `src/utils/supabase.ts`, `app/(teen)/circle/feed.tsx`, `screens/CircleScreen.tsx`, `supabase/functions/safety-scan/index.ts` |
-| Schema | `supabase/migrations/*.sql`, `db/schema.sql` |
+| Schema | `supabase/migrations/*.sql`, `db/schema.sql` — confirmed materially out of date vs. live (bigint vs. uuid, missing enums, missing `crews`/`media_attachments`/`circles_kind_shape`) |
 | Tests | `test/sync-restore.test.mjs` |
 | Docs | `docs/circle-v1-spec.md`, `docs/circle-model-v1-spec.md`, `docs/SUPABASE.md`, `docs/WIRING_STATUS.md` |
-
-None of these are edited in this step.
 
 ---
 
 ## 8. Phase 0 checklist
 
-1. **Repo-vs-live schema reconciliation** — still blocked, confirmed on a third attempt. `list_organizations` shows this connector *is* a member of the right org ("Se'kret Bip", `xqztwjziupbtzmvdakkt`), so it's not a wrong-account/wrong-org problem. But `list_projects` still only returns `jvmbhralyktmdlvglrxk`, and both `get_project('tbsevonvegdnlyjgplmm')` and `execute_sql` against it fail with a permission error, not "not found." Diagnosis: **project-scoped access**, not org membership — this connector's account needs to be granted access to `tbsevonvegdnlyjgplmm` specifically (Project Settings → Team/Access for that project, not the org-wide members list). A draft migration built from the reported (unverified) live audit is at `docs/circle-v2-phase0-draft-migration.sql` — explicitly marked do-not-apply, ready to be corrected the moment real access lands.
-2. **Final Circle model** — locked, §1.
-3. **Parent community model** — locked, §1.1: standalone `VERIFIED_GUARDIAN` state, independent of `parent_links`.
-4. **Identity visibility rules** — drafted in §4.
-5. **Safety scan contract** — drafted in §5.
-6. **Reaction vocabulary** — conflict, unresolved: §6 lists `felt/comfort/proud/stay` (teen) and `beenThere/solidarity/reminder/needed/strength` (parent), sourced from the repo's own `*_circle_posts.reactions` jsonb defaults — that part is repo-verifiable independent of which project is live. Separately, a `reaction_kind` enum (`hug, heart, listen, support, spark`) has been reported as the live `post_reactions.reaction` type. These are two different vocabularies for the same field — needs independent confirmation of which (if either) actually exists on `tbsevonvegdnlyjgplmm` before either is adopted, not an assumption either way.
-7. **No destructive SQL** — honored; nothing applied this step.
-8. **No runtime cutover** — honored; no `sync.ts`/screen changes this step.
+1. **Repo-vs-live schema reconciliation** — done, this update. Repo migrations do not match live for the Circle V2 tables at all (id types, enums, `crews`, `media_attachments`, `circles_kind_shape` are all absent from repo). A real reconciliation migration/rewrite of `supabase/migrations/` is separate follow-up work, not blocking this plan.
+2. **Final Circle model** — Teen/Friends/Crew locked and confirmed buildable (mostly already built). **Parent blocked on §1.2.**
+3. **Parent community model** — blocked, §1.2, needs your decision among (a)/(b)/(c).
+4. **Identity visibility rules** — drafted §4, buildable once §1.2 resolves for the Parent piece; Teen/Friends/Crew pieces are unblocked now.
+5. **Safety scan contract** — drafted §5, fully confirmed, ready to build now.
+6. **Reaction vocabulary** — conflict confirmed real, §6, needs decision (a) vs (b).
+7. **No destructive SQL** — honored; every query this session was read-only `SELECT`/`information_schema`/`pg_catalog`.
+8. **No runtime cutover** — honored; no `sync.ts`/screen changes.
 
-## 9. Explicitly not in this step
+## 9. What changed in this update
 
-- No Supabase migrations applied.
-- No literal migration SQL committed yet — see §3/§4 for why (schema-type-dependent, waiting on confirmed live column types).
-- No app code changes.
-- No RLS changes live.
-- Live-schema facts reported in chat (id types, `post_comments` columns, `reaction_kind` enum values, row counts, trigger-URL correctness) are recorded as **reported, not independently confirmed** — see §8 item 1. The point of catching the earlier wrong-project mixup was to stop treating either side's unverified claims as fact; that standard applies the same way here. Once this session gets real read access, every one of these gets checked directly and this section gets updated with the actual result either way.
+Everything previously marked "reported" or "unconfirmed" is now either confirmed-as-stated, confirmed-different, or confirmed-not-applicable, based on live read-only queries against `tbsevonvegdnlyjgplmm`, not on anyone's report. The draft migration at `docs/circle-v2-phase0-draft-migration.sql` is now **stale** in several ways (wrong shape for Teen Circle open-read, which already works; wrong shape for Parent Circle, which needs §1.2 first) and shouldn't be used as-is — it'll be replaced once §1.2 is decided.
 
 ## Next steps
 
-1. ~~Your call on §1.1~~ — done: standalone `VERIFIED_GUARDIAN` state, independent of `parent_links`.
-2. Still needed: Supabase MCP access to `tbsevonvegdnlyjgplmm` actually reaching this session — two attempts have failed with a permission error. Worth checking the Supabase dashboard's collaborator list for that project directly, since "grant access" from this side doesn't seem to be enough on its own.
-3. Once access works, run the read-only verification queries (id types, `post_comments` columns, reaction constraint/enum, table inventory, row counts, trigger body) and update §0/§6/§8 with confirmed results.
-4. Only then draft the actual migration SQL (§3/§4's deferred DDL) against confirmed column types and the now-locked §1.1 model — separate PR, still no cutover.
-5. Only after that migration is applied and verified, update `sync.ts`/screens (step 3).
+1. **Your call on §1.2** (Parent Circle: new enum value / relax the shape constraint / reuse `public` + `account_type` split) — this is the one thing blocking a real migration PR.
+2. Once decided, draft the actual migration: `VERIFIED_GUARDIAN` states, the §1.2 resolution, the anonymity-guard trigger (§4), safety-scan extension (§5), and the reaction vocabulary decision (§6) if resolved by then.
+3. Apply that migration to `tbsevonvegdnlyjgplmm` (step 2 in your ordering) — separate PR, still no cutover.
+4. Only after that's applied and verified, update `sync.ts`/screens (step 3) — and note `sync.ts` will need a larger rewrite than originally scoped, since the real schema (uuid ids, `author_user_id`/`body`, enum types, `crews`, `friendships`-based friend visibility) differs substantially from what the repo's own migrations assume.

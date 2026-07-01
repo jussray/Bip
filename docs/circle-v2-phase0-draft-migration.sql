@@ -1,6 +1,27 @@
 -- ============================================================================
--- DRAFT ONLY — DO NOT APPLY
+-- STALE — DO NOT APPLY — superseded by live verification
 -- ============================================================================
+-- Access to tbsevonvegdnlyjgplmm was resolved after this file was written.
+-- Live queries (see docs/circle-v2-migration-plan.md §1-§3) contradict several
+-- assumptions below:
+--   - Teen Circle open-read already exists live (circles/posts already carve
+--     out `kind = 'public'`) — section 4 below is unnecessary for Teen Circle.
+--   - Parent Circle is structurally blocked by a real `circles_kind_shape`
+--     CHECK constraint tying every kind='parent' row to a specific
+--     parent_link_id — section 4's parent-circle policy below cannot work
+--     as written and is not just "needs real column types," it needs a
+--     genuine design decision first (plan doc §1.2).
+--   - circle_profiles.account_type already exists live with the exact
+--     CHECK ('teen','guardian') this file adds in section 2 — that section
+--     is a no-op against the real schema.
+--   - The reaction vocabulary conflict (section 7) is now confirmed real,
+--     not hypothetical: reaction_kind = hug/heart/listen/support/spark is
+--     live and in use by the schema.
+-- Kept for history only. The real migration will be drafted fresh once
+-- plan doc §1.2 is decided.
+-- ============================================================================
+--
+-- Original header, kept for context (now inaccurate — see above):
 -- This file is a working draft of the Phase 0 migration, built from the
 -- reported live-schema audit of tbsevonvegdnlyjgplmm (Se'kret Bip prod), NOT
 -- from an independently-verified query against that project. This session's
