@@ -19,7 +19,7 @@ import {
   buildConversationPhaseInstruction,
   type ConversationPhase,
 } from '../../../services/sekretVoice';
-import { backendHeaders } from '../../utils/env';
+import { backendAuthHeaders } from '../../utils/backendAuth';
 
 export interface ChatMessage {
   id: string;
@@ -246,7 +246,7 @@ export async function sendMessage(
   try {
     const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
       method: 'POST',
-      headers: backendHeaders(),
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(payload),
     });
 

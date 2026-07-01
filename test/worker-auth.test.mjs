@@ -40,12 +40,25 @@ test('timingSafeEqual matches equal strings and rejects mismatches', () => {
   assert.ok(/mismatch \|=|\^=/.test(slice), 'must XOR-accumulate, not early-return per char');
 });
 
+// ─── Reconstruct looksLikeJwt and verify JWT shape detection ─────────────────
+test('looksLikeJwt matches three base64url segments only', () => {
+  const jwtLine = auth.split('\n').find((l) => l.includes('.test(token)') && l.includes('return'));
+  assert.ok(jwtLine, 'looksLikeJwt must test a JWT-shaped regex');
+  const raw = jwtLine.replace(/^.*return\s*/, '').replace(/\.test\(token\).*$/, '').trim();
+  const JWT_RE = new Function(`return ${raw}`)();
+  assert.equal(JWT_RE.test('aaa.bbb.ccc'), true);
+  assert.equal(JWT_RE.test('eyJhbGciOi.eyJzdWIiOi.sIg-nature_1'), true);
+  assert.equal(JWT_RE.test('shared-client-token'), false, 'shared token is not JWT-shaped');
+  assert.equal(JWT_RE.test('aaa.bbb'), false, 'two segments is not a JWT');
+  assert.equal(JWT_RE.test('aaa.bbb.ccc.ddd'), false, 'four segments is not a JWT');
+});
+
 // ─── Structural contract of authenticate() ───────────────────────────────────
-test('auth is fail-open when SEKRET_CLIENT_TOKEN is unset', () => {
-  assert.ok(
-    /if \(!configured\) return \{ ok: true/.test(auth),
-    'authenticate must return ok:true when no token is configured',
-  );
+test('enforcement is gated on SEKRET_CLIENT_TOKEN (fail-open preserved)', () => {
+  assert.ok(/const enforced = Boolean\(env\.SEKRET_CLIENT_TOKEN\?\.trim\(\)\)/.test(auth),
+    'enforcement flag derives from SEKRET_CLIENT_TOKEN');
+  assert.ok(/if \(!enforced\) return \{ ok: true, principal: \{ kind: 'shared-token' \} \}/.test(auth),
+    'fails open (ok:true) when not enforcing');
 });
 
 test('auth returns 401 for missing token and 403 for invalid token', () => {
@@ -53,8 +66,33 @@ test('auth returns 401 for missing token and 403 for invalid token', () => {
   assert.ok(/status: 403, error: 'invalid token'/.test(auth), '403 on invalid');
 });
 
-test('Principal type reserves a user kind for future JWT auth', () => {
-  assert.ok(/kind: 'user'; userId: string/.test(auth), 'user principal reserved');
+// ─── Supabase JWT verification ───────────────────────────────────────────────
+test('verifies Supabase JWTs via jose against issuer + audience', () => {
+  assert.ok(/from 'jose'/.test(auth), 'uses the jose library');
+  assert.ok(/createRemoteJWKSet\(new URL\(jwksUrl\)\)/.test(auth), 'builds a remote JWKS set');
+  assert.ok(/auth\/v1\/\.well-known\/jwks\.json/.test(auth), 'derives the Supabase JWKS URL');
+  assert.ok(/issuer: `\$\{supabaseUrl\}\/auth\/v1`/.test(auth), 'pins the expected issuer');
+  assert.ok(/audience: 'authenticated'/.test(auth), 'pins the expected audience');
+});
+
+test('a valid JWT yields a per-user principal; jose checks exp/sig', () => {
+  assert.ok(/payload\?\.sub\) return \{ ok: true, principal: \{ kind: 'user', userId: payload\.sub \} \}/.test(auth),
+    'verified JWT maps sub -> user principal');
+  // jwtVerify (jose) enforces signature + exp/nbf; a failed verify returns null.
+  assert.ok(/await jwtVerify\(/.test(auth), 'delegates crypto verification to jose');
+  assert.ok(/} catch \{\s*return null;/.test(auth), 'unverifiable tokens resolve to null (not thrown)');
+});
+
+test('invalid JWT is rejected only when enforcing; supports HS256 fallback', () => {
+  assert.ok(/if \(enforced\) return \{ ok: false, status: 403/.test(auth),
+    'invalid JWT hard-rejects under enforcement');
+  assert.ok(/env\.SUPABASE_JWT_SECRET/.test(auth), 'HS256 legacy secret is supported');
+  assert.ok(/new TextEncoder\(\)\.encode\(env\.SUPABASE_JWT_SECRET\)/.test(auth),
+    'HS256 secret is used as the verification key');
+});
+
+test('Principal type carries the user identity for rate-limit keying', () => {
+  assert.ok(/kind: 'user'; userId: string/.test(auth), 'user principal present');
 });
 
 // ─── Worker wiring: gate runs before delegating; rate limit + CORS ───────────

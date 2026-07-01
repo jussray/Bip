@@ -14,6 +14,10 @@ OPENAI_API_KEY=your-openai-api-key
 # EXPO_PUBLIC_BACKEND_TOKEN. Leave blank to disable auth locally (fail-open).
 SEKRET_CLIENT_TOKEN=
 
+# Optional: only for legacy HS256 Supabase projects. Leave blank for projects
+# using asymmetric JWTs (the Worker verifies via the project JWKS instead).
+SUPABASE_JWT_SECRET=
+
 # Optional voice overrides for local testing only.
 # Leave blank unless you intentionally map characters to custom voice IDs.
 RAYLENE_VOICE_ID=
