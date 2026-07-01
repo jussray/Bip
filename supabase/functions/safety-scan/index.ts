@@ -35,6 +35,7 @@ type SourceTable =
   | 'journal_entries'
   | 'circle_posts'
   | 'public_circle_posts'
+  | 'posts'
   | 's2tell_entries';
 
 type Severity = 'high' | 'medium' | 'low';
@@ -272,17 +273,21 @@ Deno.serve(async (req: Request) => {
   }
 
   // Mark source row safety_flagged = true via service role (bypasses RLS)
-  const FLAGGABLE: SourceTable[] = [
-    'journal_entries',
-    'circle_posts',
-    'public_circle_posts',
-    's2tell_entries',
-  ];
-  if (FLAGGABLE.includes(source_table)) {
+  // Most legacy tables key the author as `user_id`; `posts` (V2 unified
+  // model) uses `author_user_id` instead.
+  const FLAGGABLE_USER_COL: Partial<Record<SourceTable, string>> = {
+    journal_entries:     'user_id',
+    circle_posts:        'user_id',
+    public_circle_posts: 'user_id',
+    posts:                'author_user_id',
+    s2tell_entries:      'user_id',
+  };
+  const userCol = FLAGGABLE_USER_COL[source_table];
+  if (userCol) {
     await supabase
       .from(source_table)
       .update({ safety_flagged: true })
-      .eq('user_id', user_id)
+      .eq(userCol, user_id)
       .eq('id', record_id);
   }
 
