@@ -13,6 +13,7 @@
     "test": "node --test \"test/**/*.test.mjs\"",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
+    "typecheck": "npm run type-check",
     "audit:runtime-assets": "node scripts/audit-runtime-assets.mjs",
     "validate:companions": "node scripts/validate-companion-assets.mjs",
     "verify:room-archives": "node scripts/verify-room-archives.js",

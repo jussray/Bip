@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run lint
 
   type-check:
@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run type-check
 
   test:
@@ -47,7 +47,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm test
       - run: npm run test:oracle
       - run: npm run test:voice-intelligence
@@ -62,7 +62,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run verify:bundle
 
   audit:
@@ -74,6 +74,6 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm install
+      - run: npm ci
       - run: npm run audit:runtime-assets
       - run: npm run verify:room-archives
