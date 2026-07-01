@@ -42,11 +42,23 @@ type ModuleTab =
   | 'security'
   | 'user-signals'
   | 'ideas'
-  | 'infra';
+  | 'infra'
+  | 'screens';
 
 type FilterSeverity = 'all' | AuditSeverity;
 type FilterStatus = 'all' | IssueStatus | 'raw';
 type IssueSource = 'normalized-issue' | 'raw-audit-event' | 'founder-playbook';
+
+type ScreenStatus = 'built' | 'partial' | 'stub' | 'missing';
+type ScreenGroup = 'teen' | 'parent' | 'auth' | 'onboarding' | 'modals';
+
+interface ScreenEntry {
+  route: string;
+  label: string;
+  group: ScreenGroup;
+  status: ScreenStatus;
+  notes?: string;
+}
 
 interface ControlRoomCard {
   id: string;
@@ -69,6 +81,7 @@ interface ControlRoomCard {
 const MODULE_TABS: { id: ModuleTab; label: string; emoji: string }[] = [
   { id: 'overview',     label: 'Overview',   emoji: '🏠' },
   { id: 'fix-queue',    label: 'Fix Queue',  emoji: '🔧' },
+  { id: 'screens',      label: 'Screens',    emoji: '📱' },
   { id: 'voice',        label: 'Voice',      emoji: '🎙️' },
   { id: 'companion',    label: 'Companion',  emoji: '🤖' },
   { id: 'memory',       label: 'Memory',     emoji: '🧠' },
@@ -77,6 +90,87 @@ const MODULE_TABS: { id: ModuleTab; label: string; emoji: string }[] = [
   { id: 'ideas',        label: 'Ideas',      emoji: '💡' },
   { id: 'infra',        label: 'Infra',      emoji: '⚙️' },
 ];
+
+// ─── Repo-wide screen registry ───────────────────────────────────────────────
+// Update `status` as screens are built out:
+//   'built'   → screen is production-ready
+//   'partial' → screen exists but some sections are stubs
+//   'stub'    → file exists, renders placeholder only
+//   'missing' → not yet created
+const SCREEN_REGISTRY: ScreenEntry[] = [
+  // ── (teen) ──────────────────────────────────────────────────────────────
+  { route: '(teen)/companion-chat', label: 'Companion Chat',    group: 'teen',       status: 'built' },
+  { route: '(teen)/discover',       label: 'Discover',          group: 'teen',       status: 'built' },
+  { route: '(teen)/profile',        label: 'Profile',           group: 'teen',       status: 'built' },
+  { route: '(teen)/period-calendar',label: 'Period Calendar',   group: 'teen',       status: 'built' },
+  { route: '(teen)/bridge',         label: 'Bridge',            group: 'teen',       status: 'built' },
+  { route: '(teen)/cloud',          label: 'Cloud',             group: 'teen',       status: 'built' },
+  { route: '(teen)/cloudThoughts',  label: 'Cloud Thoughts',    group: 'teen',       status: 'stub'  },
+  { route: '(teen)/comfort',        label: 'Comfort',           group: 'teen',       status: 'stub'  },
+  { route: '(teen)/crew',           label: 'Crew',              group: 'teen',       status: 'stub'  },
+  { route: '(teen)/growth',         label: 'Growth',            group: 'teen',       status: 'stub'  },
+  { route: '(teen)/history',        label: 'History',           group: 'teen',       status: 'stub'  },
+  { route: '(teen)/mind-body-reset',label: 'Mind Body Reset',   group: 'teen',       status: 'stub'  },
+  { route: '(teen)/more',           label: 'More',              group: 'teen',       status: 'partial'},
+  { route: '(teen)/points',         label: 'Points',            group: 'teen',       status: 'stub'  },
+  { route: '(teen)/room',           label: 'Room',              group: 'teen',       status: 'partial'},
+  { route: '(teen)/calm',           label: 'Calm',              group: 'teen',       status: 'built' },
+  { route: '(teen)/circle',         label: 'Circle',            group: 'teen',       status: 'built' },
+  { route: '(teen)/chat',           label: 'Chat',              group: 'teen',       status: 'built' },
+  { route: '(teen)/bippin2',        label: 'Bippin 2',          group: 'teen',       status: 'partial'},
+  // ── (parent) ────────────────────────────────────────────────────────────
+  { route: '(parent)/dashboard',    label: 'Dashboard',         group: 'parent',     status: 'stub'  },
+  { route: '(parent)/profile',      label: 'Profile',           group: 'parent',     status: 'built' },
+  { route: '(parent)/settings',     label: 'Settings',          group: 'parent',     status: 'built' },
+  { route: '(parent)/voicebip',     label: 'Voice Bip',         group: 'parent',     status: 'built' },
+  { route: '(parent)/voicereflect', label: 'Voice Reflect',     group: 'parent',     status: 'stub'  },
+  { route: '(parent)/bridge',       label: 'Bridge',            group: 'parent',     status: 'stub'  },
+  { route: '(parent)/calm',         label: 'Calm',              group: 'parent',     status: 'stub'  },
+  { route: '(parent)/circle',       label: 'Circle',            group: 'parent',     status: 'partial'},
+  { route: '(parent)/growth',       label: 'Growth',            group: 'parent',     status: 'stub'  },
+  { route: '(parent)/more',         label: 'More',              group: 'parent',     status: 'partial'},
+  { route: '(parent)/pages',        label: 'Pages',             group: 'parent',     status: 'stub'  },
+  { route: '(parent)/period-calendar', label: 'Period Calendar',group: 'parent',     status: 'stub'  },
+  { route: '(parent)/repair',       label: 'Repair',            group: 'parent',     status: 'stub'  },
+  { route: '(parent)/room',         label: 'Room',              group: 'parent',     status: 'stub'  },
+  { route: '(parent)/s2tell',       label: 'S2Tell',            group: 'parent',     status: 'stub'  },
+  { route: '(parent)/sekret',       label: 'Sekret',            group: 'parent',     status: 'stub'  },
+  // ── (auth) ──────────────────────────────────────────────────────────────
+  { route: '(auth)/login',              label: 'Login',              group: 'auth',   status: 'built' },
+  { route: '(auth)/signup',             label: 'Signup',             group: 'auth',   status: 'built' },
+  { route: '(auth)/parent-link-verify', label: 'Parent Link Verify', group: 'auth',   status: 'built' },
+  { route: '(auth)/limited-mode',       label: 'Limited Mode',       group: 'auth',   status: 'built' },
+  // ── (onboarding) ────────────────────────────────────────────────────────
+  { route: '(onboarding)/welcome',        label: 'Welcome',         group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/teen-splash',    label: 'Teen Splash',     group: 'onboarding', status: 'stub'  },
+  { route: '(onboarding)/parent-splash',  label: 'Parent Splash',   group: 'onboarding', status: 'stub'  },
+  { route: '(onboarding)/age',            label: 'Age',             group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/identity',       label: 'Identity',        group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/name',           label: 'Name',            group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/reflection',     label: 'Reflection',      group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/parent-link',    label: 'Parent Link',     group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/parent-setup',   label: 'Parent Setup',    group: 'onboarding', status: 'built' },
+  { route: '(onboarding)/parent-welcome', label: 'Parent Welcome',  group: 'onboarding', status: 'built' },
+  // ── (modals) ────────────────────────────────────────────────────────────
+  { route: '(modals)/*', label: 'Modals (unmapped)', group: 'modals', status: 'missing', notes: 'Scan (modals) dir and add entries here.' },
+];
+
+const SCREEN_STATUS_COLOR: Record<ScreenStatus, string> = {
+  built:   '#34d399',
+  partial: '#fbbf24',
+  stub:    '#fb923c',
+  missing: '#f87171',
+};
+
+const GROUP_EMOJI: Record<ScreenGroup, string> = {
+  teen:       '🧑',
+  parent:     '👨‍👧',
+  auth:       '🔑',
+  onboarding: '🚀',
+  modals:     '🪟',
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const SEVERITY_WEIGHT: Record<AuditSeverity, number> = {
   critical: 4,
@@ -362,6 +456,113 @@ function IssueDetailSheet({
   );
 }
 
+// ─── Screens Tab ─────────────────────────────────────────────────────────────
+
+function ScreensTab() {
+  const [filterGroup, setFilterGroup] = useState<ScreenGroup | 'all'>('all');
+  const [filterStatus, setFilterStatus] = useState<ScreenStatus | 'all'>('all');
+
+  const groups: ScreenGroup[] = ['teen', 'parent', 'auth', 'onboarding', 'modals'];
+  const statuses: ScreenStatus[] = ['built', 'partial', 'stub', 'missing'];
+
+  const filtered = useMemo(() => {
+    return SCREEN_REGISTRY.filter((s) => {
+      if (filterGroup !== 'all' && s.group !== filterGroup) return false;
+      if (filterStatus !== 'all' && s.status !== filterStatus) return false;
+      return true;
+    });
+  }, [filterGroup, filterStatus]);
+
+  const grouped = useMemo(() => {
+    const map: Partial<Record<ScreenGroup, ScreenEntry[]>> = {};
+    for (const entry of filtered) {
+      if (!map[entry.group]) map[entry.group] = [];
+      map[entry.group]!.push(entry);
+    }
+    return map;
+  }, [filtered]);
+
+  const totalBuilt   = SCREEN_REGISTRY.filter((s) => s.status === 'built').length;
+  const totalPartial = SCREEN_REGISTRY.filter((s) => s.status === 'partial').length;
+  const totalStub    = SCREEN_REGISTRY.filter((s) => s.status === 'stub').length;
+  const totalMissing = SCREEN_REGISTRY.filter((s) => s.status === 'missing').length;
+  const total        = SCREEN_REGISTRY.length;
+  const pct          = Math.round((totalBuilt / total) * 100);
+
+  return (
+    <View>
+      <SectionHeader
+        title="📱 Screens"
+        subtitle={`${totalBuilt}/${total} built (${pct}%) · ${totalPartial} partial · ${totalStub} stubs · ${totalMissing} missing`}
+      />
+
+      {/* Coverage bar */}
+      <View style={styles.coverageBarBg}>
+        <View style={[styles.coverageBarFill, { width: `${pct}%` as any }]} />
+      </View>
+
+      {/* Status legend */}
+      <View style={styles.screenLegend}>
+        {statuses.map((s) => (
+          <View key={s} style={styles.screenLegendItem}>
+            <View style={[styles.screenLegendDot, { backgroundColor: SCREEN_STATUS_COLOR[s] }]} />
+            <Text style={styles.screenLegendText}>{s}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Group filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+        <Pill label="All groups" active={filterGroup === 'all'} onPress={() => setFilterGroup('all')} />
+        {groups.map((g) => (
+          <Pill key={g} label={`${GROUP_EMOJI[g]} ${g}`} active={filterGroup === g} color="#7c3aed" onPress={() => setFilterGroup(g)} />
+        ))}
+      </ScrollView>
+
+      {/* Status filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+        <Pill label="All statuses" active={filterStatus === 'all'} onPress={() => setFilterStatus('all')} />
+        {statuses.map((s) => (
+          <Pill key={s} label={s} active={filterStatus === s} color={SCREEN_STATUS_COLOR[s]} onPress={() => setFilterStatus(s)} />
+        ))}
+      </ScrollView>
+
+      {/* Grouped list */}
+      {(filterGroup === 'all' ? groups : [filterGroup]).map((g) => {
+        const entries = grouped[g];
+        if (!entries || entries.length === 0) return null;
+        const builtCount = entries.filter((e) => e.status === 'built').length;
+        return (
+          <View key={g} style={styles.screenGroup}>
+            <View style={styles.screenGroupHeader}>
+              <Text style={styles.screenGroupEmoji}>{GROUP_EMOJI[g]}</Text>
+              <Text style={styles.screenGroupLabel}>({g})</Text>
+              <Text style={styles.screenGroupCount}>{builtCount}/{entries.length} built</Text>
+            </View>
+            {entries.map((entry) => (
+              <View key={entry.route} style={styles.screenRow}>
+                <View style={[styles.screenStatusDot, { backgroundColor: SCREEN_STATUS_COLOR[entry.status] }]} />
+                <View style={styles.screenRowText}>
+                  <Text style={styles.screenLabel}>{entry.label}</Text>
+                  <Text style={styles.screenRoute}>{entry.route}</Text>
+                  {entry.notes ? <Text style={styles.screenNotes}>{entry.notes}</Text> : null}
+                </View>
+                <View style={[styles.screenStatusBadge, { borderColor: SCREEN_STATUS_COLOR[entry.status] }]}>
+                  <Text style={[styles.screenStatusText, { color: SCREEN_STATUS_COLOR[entry.status] }]}>
+                    {entry.status}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+// ─── Overview Tab ─────────────────────────────────────────────────────────────
+
 function OverviewTab({
   profile,
   cards,
@@ -387,6 +588,11 @@ function OverviewTab({
     return counts;
   }, [cards]);
 
+  const screensBuilt   = SCREEN_REGISTRY.filter((s) => s.status === 'built').length;
+  const screensTotal   = SCREEN_REGISTRY.length;
+  const screensPct     = Math.round((screensBuilt / screensTotal) * 100);
+  const screensStubs   = SCREEN_REGISTRY.filter((s) => s.status === 'stub' || s.status === 'missing').length;
+
   return (
     <View>
       <View style={styles.hero}>
@@ -408,12 +614,31 @@ function OverviewTab({
       </View>
       <View style={styles.statsRow}>
         <StatCard num={openIdeas} label="open ideas" color="#a78bfa" />
-        <StatCard num={ideas.length} label="total ideas" color="#60a5fa" />
-        <StatCard num={cards.length} label="visible cards" color="#34d399" />
+        <StatCard num={`${screensBuilt}/${screensTotal}`} label="screens built" color="#34d399" />
+        <StatCard num={`${screensPct}%`} label="coverage" color={screensPct >= 70 ? '#34d399' : '#fbbf24'} />
       </View>
+
+      {screensStubs > 0 && (
+        <View style={styles.screenAlert}>
+          <Text style={styles.screenAlertText}>⚠️  {screensStubs} screens are stubs or missing — check the 📱 Screens tab.</Text>
+        </View>
+      )}
 
       <SectionHeader title="Module health" subtitle="Counts come from normalized issues first, then raw-event fallback only when no normalized issues exist yet." />
       {MODULE_TABS.filter((t) => t.id !== 'overview').map((tab) => {
+        if (tab.id === 'screens') {
+          return (
+            <View key={tab.id} style={styles.moduleHealthRow}>
+              <Text style={styles.moduleHealthEmoji}>{tab.emoji}</Text>
+              <Text style={styles.moduleHealthLabel}>{tab.label}</Text>
+              <View style={[styles.moduleHealthBadge, screensStubs > 0 ? styles.moduleHealthBadgeActive : styles.moduleHealthBadgeClear]}>
+                <Text style={[styles.moduleHealthBadgeText, screensStubs > 0 ? { color: '#fef3c7' } : { color: '#86efac' }]}>
+                  {screensStubs > 0 ? `${screensStubs} need work` : `${screensPct}% built`}
+                </Text>
+              </View>
+            </View>
+          );
+        }
         const count = moduleCounts[tab.id] ?? 0;
         return (
           <View key={tab.id} style={styles.moduleHealthRow}>
@@ -662,6 +887,8 @@ export default function FounderControlRoom() {
         );
       case 'fix-queue':
         return <FixQueueTab cards={cards} onCardPress={openCard} />;
+      case 'screens':
+        return <ScreensTab />;
       case 'ideas':
         return <IdeasTab ideas={ideas} onStatusChange={handleIdeaStatus} onAddIdea={handleAddIdea} />;
       default:
@@ -771,4 +998,26 @@ const styles = StyleSheet.create({
   resolveBtn:       { backgroundColor: '#065f46' },
   closeBtn:         { backgroundColor: '#1f2937' },
   actionBtnText:    { color: '#fff', fontWeight: '900', fontSize: 14 },
+  // ── Screens tab styles ──────────────────────────────────────────────────
+  coverageBarBg:        { height: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 999, marginBottom: 12, overflow: 'hidden' },
+  coverageBarFill:      { height: 8, backgroundColor: '#34d399', borderRadius: 999 },
+  screenLegend:         { flexDirection: 'row', gap: 14, marginBottom: 12 },
+  screenLegendItem:     { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  screenLegendDot:      { width: 8, height: 8, borderRadius: 4 },
+  screenLegendText:     { color: '#9ca3af', fontSize: 11, fontWeight: '700' },
+  screenGroup:          { marginBottom: 18 },
+  screenGroupHeader:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)', marginBottom: 6 },
+  screenGroupEmoji:     { fontSize: 16 },
+  screenGroupLabel:     { color: '#a78bfa', fontWeight: '900', fontSize: 13, flex: 1 },
+  screenGroupCount:     { color: '#9ca3af', fontSize: 12, fontWeight: '700' },
+  screenRow:            { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' },
+  screenStatusDot:      { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  screenRowText:        { flex: 1 },
+  screenLabel:          { color: '#e5e7eb', fontWeight: '700', fontSize: 13 },
+  screenRoute:          { color: '#6b7280', fontSize: 11, marginTop: 1 },
+  screenNotes:          { color: '#fbbf24', fontSize: 11, marginTop: 2 },
+  screenStatusBadge:    { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
+  screenStatusText:     { fontWeight: '800', fontSize: 11, textTransform: 'uppercase' },
+  screenAlert:          { backgroundColor: 'rgba(251,191,36,0.08)', borderRadius: 14, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: 'rgba(251,191,36,0.2)' },
+  screenAlertText:      { color: '#fbbf24', fontWeight: '700', fontSize: 13 },
 });
