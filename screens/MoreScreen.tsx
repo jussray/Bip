@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getRoomBg } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
 import { TEEN_MORE_GROUPS } from '@/constants/screenPurpose';
+import { isDevTestFamilyEnabled } from '@/features/testing/devTestFamily';
 
 interface MoreScreenProps {
   t: Record<string, any>;
@@ -37,7 +38,7 @@ export function MoreScreen({
   onSideChanged,
 }: MoreScreenProps) {
   const glow = glowFor(mood);
-  const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true';
+  const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true' || isDevTestFamilyEnabled();
   const character = (
     selectedSekret === 'rylane' ? 'rylane' :
     selectedSekret === 'cloud' ? 'cloud' :
@@ -88,8 +89,8 @@ export function MoreScreen({
 
         {allowSideSwitch && userSide !== 'parent' ? (
           <View style={styles.sideCard}>
-            <Text style={styles.sideTitle}>Internal side switch</Text>
-            <Text style={styles.sideBody}>Development-only shortcut. Linked teen and parent accounts use Bridge instead.</Text>
+            <Text style={styles.sideTitle}>Founder test switch</Text>
+            <Text style={styles.sideBody}>Development-only shortcut for testing the simulated family. This is never shown in production.</Text>
             <TouchableOpacity style={[styles.sideButton, { backgroundColor: glow }]} onPress={handleSideSwitch}>
               <Text style={styles.sideButtonText}>Go to Parent Side</Text>
             </TouchableOpacity>
