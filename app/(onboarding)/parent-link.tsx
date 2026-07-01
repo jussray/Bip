@@ -15,7 +15,7 @@ import { router } from 'expo-router';
 import {
   PARENT_INVITE_CODE_LENGTH,
   normalizeParentInviteCode,
-  redeemInviteCode,
+  redeemInviteCodeResult,
 } from '@/utils/parentLink';
 import { useAppContext } from '@/context/AppContext';
 
@@ -29,23 +29,29 @@ export default function ParentLinkOnboarding() {
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
 
   async function handleLink() {
-    if (!ready) return;
+    if (!ready) {
+      setError('Enter the full eight-character code from your teen.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const teenId = await redeemInviteCode(normalized);
-      if (!teenId) {
-        setError('That code is invalid, expired, or already used. Ask your teen for a new one.');
+      const result = await redeemInviteCodeResult(normalized);
+      if (!result.ok) {
+        setError(result.message);
         return;
       }
 
       setUserSide('parent');
       await AsyncStorage.multiSet([
         ['parent_profile_done', 'true'],
-        ['linked_teen_id', teenId],
+        ['linked_teen_id', result.value],
       ]);
       router.replace('/(parent)/room');
+    } catch {
+      setError('Could not connect right now. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +72,7 @@ export default function ParentLinkOnboarding() {
         <Text style={styles.kicker}>LINK YOUR TEEN</Text>
         <Text style={styles.title}>Enter their private code.</Text>
         <Text style={styles.body}>
-          Your teen creates an eight-character code from Limited Mode. Enter it here to connect your sides and finish verification.
+          Your teen creates an eight-character code from Limited Mode. Enter it here to connect your accounts and finish verification.
         </Text>
 
         <View style={styles.codeWrap}>
@@ -84,11 +90,12 @@ export default function ParentLinkOnboarding() {
             returnKeyType="go"
             onSubmitEditing={handleLink}
             style={styles.codeInput}
+            accessibilityLabel="Teen private invite code"
           />
         </View>
 
         <Text style={styles.privacy}>
-          You will only see what your teen chooses to share. Their private journals, voice notes, and companion conversations stay private.
+          This code only establishes the trusted teen-parent connection. You will only see what your teen intentionally sends through Bridge.
         </Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
