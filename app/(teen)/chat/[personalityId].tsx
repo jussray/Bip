@@ -105,8 +105,8 @@ export default function PersonalityChatScreen() {
     scrollRef.current?.scrollToEnd({ animated: true });
 
     const oracleContext = buildOracleContext(oracleProfile, 'teen');
-    const reply     = await sendMessage(id, text, 'chat', { mood, history: previousMessages, oracleContext });
-    const assistMsg = makeAssistantMessage(reply);
+    const result    = await sendMessage(id, text, 'chat', { mood, history: previousMessages, oracleContext });
+    const assistMsg = makeAssistantMessage(result.reply);
 
     setMessages(m => [...m, assistMsg]);
     setLoading(false);

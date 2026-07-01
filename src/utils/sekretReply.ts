@@ -5,7 +5,6 @@ import {
   getConversationPhase,
   buildConversationPhaseInstruction,
   isArrivalMessage,
-  getArrivalReply,
   keepSekretReply,
 } from '../../services/sekretVoice';
 import { normalizeSekretPersonality } from '../../services/sekretPresence';
@@ -105,6 +104,12 @@ export type PagesReplyResult = {
   reply: string;
   tone: string;
   avatarState: SekretAvatarState;
+  /** Where the reply actually came from. */
+  replySource: 'worker' | 'local-fallback';
+  /** True whenever the Worker was not used. */
+  fallbackUsed: boolean;
+  /** Human-readable reason a fallback was used, or null when Worker succeeded. */
+  fallbackReason: string | null;
 };
 
 export async function fetchPagesReplyDetails(input: {
@@ -115,7 +120,14 @@ export async function fetchPagesReplyDetails(input: {
 }): Promise<PagesReplyResult> {
   const avatarKey = tabToAvatarKey(input.tab);
   if (!avatarKey || !input.text.trim()) {
-    return { reply: '', tone: 'neutral', avatarState: 'neutral' };
+    return {
+      reply: '',
+      tone: 'neutral',
+      avatarState: 'neutral',
+      replySource: 'local-fallback',
+      fallbackUsed: true,
+      fallbackReason: 'empty input or unrecognised tab',
+    };
   }
 
   const history = input.history ?? [];
@@ -123,15 +135,11 @@ export async function fetchPagesReplyDetails(input: {
   const phase = getConversationPhase(historyLength);
   const personality = normalizeSekretPersonality(avatarKey);
   const fallback = getSekretFallback(personality, input.text);
+  const isArrival = isArrivalMessage(input.text, historyLength);
 
-  if (isArrivalMessage(input.text, historyLength)) {
-    const arrivalReply = getArrivalReply(avatarKey);
-    const arrivalState: SekretAvatarState = avatarKey === 'cloud' || avatarKey === 'night'
-      ? 'comforting'
-      : 'happy';
-    setAvatarState(avatarKey, arrivalState);
-    return { reply: arrivalReply, tone: 'warm', avatarState: arrivalState };
-  }
+  // isArrival is forwarded to the Worker inside phaseInstruction so the Worker
+  // can apply opening-tone rules. We do NOT short-circuit here anymore —
+  // greeting messages reach the Worker like any other message.
 
   setAvatarState(avatarKey, 'thinking');
 
@@ -140,6 +148,18 @@ export async function fetchPagesReplyDetails(input: {
     role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
     content: m.text,
   }));
+
+  if (__DEV__) {
+    console.log('[fetchPagesReplyDetails] → Worker', {
+      companion: avatarKey,
+      surface: 'journal',
+      isArrival,
+      phase,
+      historyLength,
+      hasMood: Boolean(input.mood),
+      userTextLength: input.text.length,
+    });
+  }
 
   try {
     const request = {
@@ -150,9 +170,19 @@ export async function fetchPagesReplyDetails(input: {
       history: workerHistory,
       conversationPhase: phase,
       phaseInstruction,
+      isArrival,
     };
 
     const response = await fetchSekretBrainReply(request as Parameters<typeof fetchSekretBrainReply>[0]);
+
+    if (__DEV__) {
+      console.log('[fetchPagesReplyDetails] ← Worker', {
+        companion: avatarKey,
+        replySource: response.replySource ?? 'worker',
+        tone: response.tone,
+        replyLength: (response.reply ?? '').length,
+      });
+    }
 
     const nextState = inferAvatarState({
       state: response.avatarState,
@@ -161,17 +191,41 @@ export async function fetchPagesReplyDetails(input: {
     });
 
     setAvatarState(avatarKey, nextState);
+
+    const guardedReply = keepSekretReply(response.reply, fallback);
+    const guardBlocked = guardedReply !== (response.reply ?? '').trim();
+
+    if (__DEV__ && guardBlocked) {
+      console.warn('[fetchPagesReplyDetails] keepSekretReply blocked Worker reply.', {
+        companion: avatarKey,
+        blocked: (response.reply ?? '').slice(0, 80),
+        substituted: guardedReply.slice(0, 80),
+      });
+    }
+
     return {
-      reply: keepSekretReply(response.reply, fallback),
+      reply: guardedReply,
       tone: response.tone,
       avatarState: nextState,
+      replySource: 'worker',
+      fallbackUsed: false,
+      fallbackReason: null,
     };
-  } catch {
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.error('[fetchPagesReplyDetails] Worker fetch failed:', reason);
     const nextState: SekretAvatarState = avatarKey === 'cloud' || avatarKey === 'night'
       ? 'comforting'
       : 'responding';
     setAvatarState(avatarKey, nextState);
-    return { reply: fallback, tone: avatarKey, avatarState: nextState };
+    return {
+      reply: fallback,
+      tone: avatarKey,
+      avatarState: nextState,
+      replySource: 'local-fallback',
+      fallbackUsed: true,
+      fallbackReason: `fetch error: ${reason}`,
+    };
   }
 }
 
