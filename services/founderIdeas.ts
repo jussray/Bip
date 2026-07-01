@@ -3,7 +3,7 @@
  * Supabase-backed founder idea management for the Control Room.
  * Ideas live in the `founder_ideas` table, owner-scoped by RLS.
  */
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/utils/supabase/client';
 
 export type IdeaStatus =
   | 'backlog'

@@ -4,7 +4,7 @@
  * PR 2 will add full deduplication + issue normalization logic.
  * This PR exposes only what the UI currently needs: resolving audit events.
  */
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/utils/supabase/client';
 
 export type IssueStatus =
   | 'open'
