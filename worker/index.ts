@@ -21,11 +21,17 @@ interface Env extends PiperTtsEnv, AuthEnv {
   ALLOWED_ORIGINS?: string;
 }
 
-function corsHeaders(request: Request, env: Env): Record<string, string> {
+/** Parsed ALLOWED_ORIGINS allowlist, or null when unset/'*' (wildcard). */
+function allowedOriginList(env: Env): string[] | null {
   const configured = env.ALLOWED_ORIGINS?.trim();
+  if (!configured || configured === '*') return null;
+  return configured.split(',').map((o) => o.trim()).filter(Boolean);
+}
+
+function corsHeaders(request: Request, env: Env): Record<string, string> {
+  const allowed = allowedOriginList(env);
   let allowOrigin = '*';
-  if (configured && configured !== '*') {
-    const allowed = configured.split(',').map((o) => o.trim()).filter(Boolean);
+  if (allowed) {
     const origin = request.headers.get('Origin');
     allowOrigin = origin && allowed.includes(origin) ? origin : (allowed[0] ?? 'null');
   }
@@ -35,6 +41,22 @@ function corsHeaders(request: Request, env: Env): Record<string, string> {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     Vary: 'Origin',
   };
+}
+
+/**
+ * Reject disallowed browser origins BEFORE any auth/delegation. This closes the
+ * CORS bypass where a "simple" cross-origin POST (e.g. Content-Type: text/plain)
+ * skips the preflight and would otherwise reach the delegated handler and read
+ * its wildcard-CORS response. Requests with no Origin (native apps, same-origin,
+ * server-to-server) are not browser-CORS threats and pass through to auth +
+ * rate limiting. Only enforced when ALLOWED_ORIGINS is configured.
+ */
+function originRejected(request: Request, env: Env, cors: Record<string, string>): Response | null {
+  const allowed = allowedOriginList(env);
+  if (!allowed) return null;
+  const origin = request.headers.get('Origin');
+  if (!origin || allowed.includes(origin)) return null;
+  return json({ error: 'origin not allowed' }, 403, cors);
 }
 
 const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
@@ -139,6 +161,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const cors = corsHeaders(request, env);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+
+    // Block disallowed browser origins up front — even simple (non-preflighted)
+    // requests — so they never reach the delegated wildcard-CORS handler.
+    const blocked = originRejected(request, env, cors);
+    if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
 

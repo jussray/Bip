@@ -80,3 +80,18 @@ test('CORS allows the Authorization header and is origin-configurable', () => {
   assert.ok(/OPTIONS'\) return new Response\(null, \{ status: 204, headers: cors \}\)/.test(index),
     'preflight uses computed CORS headers');
 });
+
+test('disallowed origins are rejected before auth/delegation (simple-request bypass)', () => {
+  // The rejection must run BEFORE the auth gate and route delegation, else a
+  // non-preflighted simple POST could read the delegated wildcard response.
+  const rejectAt = index.indexOf('const blocked = originRejected(');
+  const authAt = index.indexOf('await authenticate(request, env)');
+  const delegateAt = index.indexOf('return worker.fetch(request');
+  assert.ok(rejectAt > 0, 'originRejected is wired into fetch');
+  assert.ok(rejectAt < authAt, 'origin check runs before auth');
+  assert.ok(rejectAt < delegateAt, 'origin check runs before delegation');
+  assert.ok(/origin not allowed' \}, 403/.test(index), 'returns 403 for disallowed origin');
+  // No-Origin requests (native apps / same-origin) must pass through.
+  assert.ok(/if \(!origin \|\| allowed\.includes\(origin\)\) return null/.test(index),
+    'requests without an Origin header are not blocked');
+});
