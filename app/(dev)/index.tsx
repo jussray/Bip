@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   RefreshControl,
   ScrollView,
@@ -33,8 +34,68 @@ import {
   type IssueStatus,
 } from '@/services/controlRoomIssues';
 
+// ─── Project Registry ─────────────────────────────────────────────────────────
+
+type ProjectStatus = 'active' | 'building' | 'paused' | 'shipped';
+
+interface ProjectLink {
+  label: string;
+  url: string;
+  emoji: string;
+}
+
+interface RegisteredProject {
+  id: string;
+  name: string;
+  tagline: string;
+  emoji: string;
+  status: ProjectStatus;
+  tech: string[];
+  links: ProjectLink[];
+  color: string;
+}
+
+const PROJECT_REGISTRY: RegisteredProject[] = [
+  {
+    id: 'sekret-bip',
+    name: "Se'kret Bip",
+    tagline: 'Teen emotional wellness & self-expression app. Anonymous posting, mood tracking, AI companion, parent bridge, healing spaces.',
+    emoji: '💜',
+    status: 'active',
+    tech: ['React Native', 'Expo', 'TypeScript', 'Supabase', 'Cloudflare Workers'],
+    links: [
+      { label: 'GitHub (Bip)', url: 'https://github.com/jussray/Bip', emoji: '🐙' },
+      { label: 'Web Demo', url: 'https://github.com/jussray/sekret-bip-demo', emoji: '🌐' },
+    ],
+    color: '#a78bfa',
+  },
+  {
+    id: 'juss-beautiful-hair',
+    name: 'Juss Beautiful Hair',
+    tagline: 'Public storefront + private vendor/admin layer for jussbeautifulhair.com.',
+    emoji: '✨',
+    status: 'building',
+    tech: ['TypeScript', 'Next.js / React', 'Vercel'],
+    links: [
+      { label: 'Storefront repo', url: 'https://github.com/jussray/jussbeautifulhair-site', emoji: '🛍️' },
+      { label: 'Private admin', url: 'https://github.com/jussray/jbh-private', emoji: '🔒' },
+    ],
+    color: '#f9a8d4',
+  },
+];
+
+const PROJECT_STATUS_COLOR: Record<ProjectStatus, string> = {
+  active:   '#34d399',
+  building: '#fbbf24',
+  paused:   '#9ca3af',
+  shipped:  '#60a5fa',
+};
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 type ModuleTab =
   | 'overview'
+  | 'projects'
   | 'fix-queue'
   | 'voice'
   | 'companion'
@@ -68,6 +129,7 @@ interface ControlRoomCard {
 
 const MODULE_TABS: { id: ModuleTab; label: string; emoji: string }[] = [
   { id: 'overview',     label: 'Overview',   emoji: '🏠' },
+  { id: 'projects',     label: 'Projects',   emoji: '🗂️' },
   { id: 'fix-queue',    label: 'Fix Queue',  emoji: '🔧' },
   { id: 'voice',        label: 'Voice',      emoji: '🎙️' },
   { id: 'companion',    label: 'Companion',  emoji: '🤖' },
@@ -102,6 +164,8 @@ const IDEA_STATUS_COLOR: Record<IdeaStatus, string> = {
   paused:      '#9ca3af',
   rejected:    '#6b7280',
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function normalizeSeverity(severity?: string): AuditSeverity {
   if (severity === 'critical' || severity === 'error' || severity === 'warning' || severity === 'info') {
@@ -186,6 +250,8 @@ function sourceLabel(source: IssueSource) {
 function severityEmoji(s: AuditSeverity) {
   return s === 'critical' ? '🔴' : s === 'error' ? '🟠' : s === 'warning' ? '🟡' : '🔵';
 }
+
+// ─── Shared UI components ─────────────────────────────────────────────────────
 
 function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
@@ -293,6 +359,90 @@ function StatCard({ num, label, color }: { num: number | string; label: string; 
   );
 }
 
+// ─── Projects Tab ─────────────────────────────────────────────────────────────
+
+function ProjectCard({ project }: { project: RegisteredProject }) {
+  return (
+    <View style={[styles.projectCard, { borderColor: project.color + '40' }]}>
+      {/* Header */}
+      <View style={styles.projectCardHeader}>
+        <Text style={styles.projectEmoji}>{project.emoji}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.projectName}>{project.name}</Text>
+          <View style={[styles.projectStatusBadge, { backgroundColor: PROJECT_STATUS_COLOR[project.status] + '20', borderColor: PROJECT_STATUS_COLOR[project.status] }]}>
+            <Text style={[styles.projectStatusText, { color: PROJECT_STATUS_COLOR[project.status] }]}>
+              {project.status}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Tagline */}
+      <Text style={styles.projectTagline}>{project.tagline}</Text>
+
+      {/* Tech stack */}
+      <View style={styles.projectTechRow}>
+        {project.tech.map((t) => (
+          <View key={t} style={styles.projectTechChip}>
+            <Text style={styles.projectTechText}>{t}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Links */}
+      <View style={styles.projectLinksRow}>
+        {project.links.map((link) => (
+          <TouchableOpacity
+            key={link.url}
+            style={[styles.projectLinkBtn, { borderColor: project.color + '60' }]}
+            onPress={() => Linking.openURL(link.url)}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.projectLinkText, { color: project.color }]}>
+              {link.emoji} {link.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ProjectsTab() {
+  const activeCount = PROJECT_REGISTRY.filter((p) => p.status === 'active').length;
+  const buildingCount = PROJECT_REGISTRY.filter((p) => p.status === 'building').length;
+
+  return (
+    <View>
+      <SectionHeader
+        title="🗂️ Your Projects"
+        subtitle="All active codebases under the Juss portfolio. Tap any link to open it on GitHub."
+      />
+
+      {/* Summary stats */}
+      <View style={styles.statsRow}>
+        <StatCard num={PROJECT_REGISTRY.length} label="total projects" color="#a78bfa" />
+        <StatCard num={activeCount} label="active" color="#34d399" />
+        <StatCard num={buildingCount} label="building" color="#fbbf24" />
+      </View>
+
+      {/* Project cards */}
+      {PROJECT_REGISTRY.map((project) => (
+        <ProjectCard key={project.id} project={project} />
+      ))}
+
+      {/* Footer hint */}
+      <View style={styles.projectsFooterHint}>
+        <Text style={styles.projectsFooterText}>
+          💡 To add another project, update PROJECT_REGISTRY in app/(dev)/index.tsx
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Issue detail sheet ───────────────────────────────────────────────────────
+
 function IssueDetailSheet({
   item,
   visible,
@@ -362,6 +512,8 @@ function IssueDetailSheet({
   );
 }
 
+// ─── Tab components ───────────────────────────────────────────────────────────
+
 function OverviewTab({
   profile,
   cards,
@@ -408,12 +560,26 @@ function OverviewTab({
       </View>
       <View style={styles.statsRow}>
         <StatCard num={openIdeas} label="open ideas" color="#a78bfa" />
-        <StatCard num={ideas.length} label="total ideas" color="#60a5fa" />
+        <StatCard num={PROJECT_REGISTRY.length} label="projects" color="#f9a8d4" />
         <StatCard num={cards.length} label="visible cards" color="#34d399" />
       </View>
 
+      {/* Projects quick-look */}
+      <SectionHeader title="Projects" subtitle="Tap 🗂️ Projects tab for full details and GitHub links." />
+      {PROJECT_REGISTRY.map((project) => (
+        <View key={project.id} style={styles.moduleHealthRow}>
+          <Text style={styles.moduleHealthEmoji}>{project.emoji}</Text>
+          <Text style={styles.moduleHealthLabel}>{project.name}</Text>
+          <View style={[styles.moduleHealthBadge, { backgroundColor: PROJECT_STATUS_COLOR[project.status] + '18' }]}>
+            <Text style={[styles.moduleHealthBadgeText, { color: PROJECT_STATUS_COLOR[project.status] }]}>
+              {project.status}
+            </Text>
+          </View>
+        </View>
+      ))}
+
       <SectionHeader title="Module health" subtitle="Counts come from normalized issues first, then raw-event fallback only when no normalized issues exist yet." />
-      {MODULE_TABS.filter((t) => t.id !== 'overview').map((tab) => {
+      {MODULE_TABS.filter((t) => t.id !== 'overview' && t.id !== 'projects').map((tab) => {
         const count = moduleCounts[tab.id] ?? 0;
         return (
           <View key={tab.id} style={styles.moduleHealthRow}>
@@ -548,6 +714,8 @@ function IdeasTab({
   );
 }
 
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 export default function FounderControlRoom() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -660,6 +828,8 @@ export default function FounderControlRoom() {
             openIdeas={openIdeas}
           />
         );
+      case 'projects':
+        return <ProjectsTab />;
       case 'fix-queue':
         return <FixQueueTab cards={cards} onCardPress={openCard} />;
       case 'ideas':
@@ -686,6 +856,8 @@ export default function FounderControlRoom() {
     </View>
   );
 }
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   root:             { flex: 1, backgroundColor: '#080611' },
@@ -771,4 +943,21 @@ const styles = StyleSheet.create({
   resolveBtn:       { backgroundColor: '#065f46' },
   closeBtn:         { backgroundColor: '#1f2937' },
   actionBtnText:    { color: '#fff', fontWeight: '900', fontSize: 14 },
+
+  // ── Projects tab styles ──
+  projectCard:          { borderRadius: 20, padding: 16, borderWidth: 1, marginBottom: 14, backgroundColor: '#120f24' },
+  projectCardHeader:    { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10 },
+  projectEmoji:         { fontSize: 28, marginTop: 2 },
+  projectName:          { color: '#fff', fontSize: 17, fontWeight: '900', marginBottom: 6 },
+  projectStatusBadge:   { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, borderWidth: 1 },
+  projectStatusText:    { fontWeight: '800', fontSize: 11, textTransform: 'uppercase' },
+  projectTagline:       { color: '#c4b5fd', fontSize: 13, lineHeight: 19, marginBottom: 12 },
+  projectTechRow:       { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
+  projectTechChip:      { backgroundColor: 'rgba(255,255,255,0.07)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  projectTechText:      { color: '#9ca3af', fontSize: 11, fontWeight: '700' },
+  projectLinksRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  projectLinkBtn:       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.04)' },
+  projectLinkText:      { fontWeight: '800', fontSize: 12 },
+  projectsFooterHint:   { marginTop: 8, padding: 14, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  projectsFooterText:   { color: '#6b7280', fontSize: 12, lineHeight: 17 },
 });
