@@ -1,3 +1,4 @@
+// Shared runtime audit logger for sanitized Control Room telemetry.
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import { ingestAuditEvent } from '@/services/issueNormalizer';
 import type { AuditEvent, AuditSeverity } from '@/services/founderAudit';
