@@ -24,11 +24,23 @@ if (!fs.existsSync(migrationsDir)) {
   let match;
   while ((match = tableRegex.exec(sql))) tables.add(match[1]);
 
+  const dynamicRlsLoop = /execute\s+format\(\s*'alter table public\.%I enable row level security;'/i.test(sql);
+  const dynamicPolicyLoop = /execute\s+format\([\s\S]*?'create policy[\s\S]*?on public\.%I/i.test(sql);
+  const dynamicTableNames = new Set();
+  const arrayRegex = /select\s+unnest\s*\(\s*array\s*\[([\s\S]*?)\]\s*\)/gi;
+  while ((match = arrayRegex.exec(sql))) {
+    const quotedNames = match[1].match(/'([a-zA-Z0-9_]+)'/g) ?? [];
+    for (const quotedName of quotedNames) dynamicTableNames.add(quotedName.slice(1, -1));
+  }
+
   for (const table of tables) {
     const enablePattern = new RegExp(`alter\\s+table\\s+(?:public\\.)?${table}\\s+enable\\s+row\\s+level\\s+security`, 'i');
-    const policyPattern = new RegExp(`create\\s+policy[\\s\\S]*?on\\s+(?:public\\.)?${table}\\b`, 'i');
+    const policyPattern = new RegExp(`create\\s+policy[^;]*?on\\s+(?:public\\.)?${table}\\b`, 'i');
+    const coveredByDynamicLoop = dynamicTableNames.has(table);
+    const rlsEnabled = enablePattern.test(sql) || (dynamicRlsLoop && coveredByDynamicLoop);
+    const policyExists = policyPattern.test(sql) || (dynamicPolicyLoop && coveredByDynamicLoop);
 
-    if (!enablePattern.test(sql)) {
+    if (!rlsEnabled) {
       findings.push({
         source: 'rls_scan',
         severity: 'error',
@@ -37,7 +49,7 @@ if (!fs.existsSync(migrationsDir)) {
         message: `Row-level security is not enabled for ${table}.`,
         metadata: { table },
       });
-    } else if (!policyPattern.test(sql)) {
+    } else if (!policyExists) {
       findings.push({
         source: 'rls_scan',
         severity: 'warning',
