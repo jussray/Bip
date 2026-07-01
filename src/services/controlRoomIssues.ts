@@ -1,14 +1,17 @@
-/**
- * src/services/controlRoomIssues.ts
- *
- * Public API for the Control Room issue layer.
- * PR 2: now delegates to issueNormalizer for the full normalized pipeline.
- * All reads go through listNormalizedIssues (filters, pagination).
- * All writes go through updateIssueStatus / updateIssueNotes / assignIssue.
- *
- * The raw audit_events layer (founderAudit.ts) remains unchanged.
- * No teen or parent flows are affected.
- */
+import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
+import {
+  assignIssue,
+  buildFingerprint,
+  deriveIssueFields,
+  getIssueHistory,
+  getLinkedEvents,
+  ingestAuditEvent,
+  listNormalizedIssues,
+  normalizeRecentEvents,
+  updateIssueNotes,
+  updateIssueStatus,
+} from '@/services/issueNormalizer';
+
 export type {
   NormalizedIssue as ControlRoomIssue,
   IssueStatus,
@@ -30,4 +33,23 @@ export {
   getIssueHistory,
   buildFingerprint,
   deriveIssueFields,
-} from '@/services/issueNormalizer';
+};
+
+export const controlRoomIssuesService = {
+  list: listNormalizedIssues,
+  updateStatus: updateIssueStatus,
+  async resolveAuditEvent(auditEventId: string): Promise<boolean> {
+    if (!isSupabaseConfigured) return false;
+    const sb = getSupabase();
+    if (!sb) return false;
+    const { error } = await sb
+      .from('audit_events')
+      .update({ resolved: true, resolved_at: new Date().toISOString() })
+      .eq('id', auditEventId);
+    if (error) {
+      console.warn('[controlRoomIssues] resolveAuditEvent error:', error.message);
+      return false;
+    }
+    return true;
+  },
+};
