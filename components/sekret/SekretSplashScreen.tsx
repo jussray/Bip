@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useRef } from 'react';
 import {
   View,
@@ -181,12 +180,10 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SCREEN_H * 0.55,
-    // CSS-style gradient approximated with a solid-to-transparent bottom mask
+    // CSS-style gradient approximated with a solid-to-transparent bottom mask.
+    // React Native has no native linearGradient; use expo-linear-gradient if a
+    // real gradient is needed. The artwork already has a dark bottom.
     backgroundColor: 'transparent',
-    // React Native doesn't support linearGradient natively;
-    // use expo-linear-gradient if available, else this dark bg is the fallback.
-    // The artwork already has a dark bottom — this deepens it.
-    backgroundImage: undefined,
   },
   content: {
     position: 'absolute',
