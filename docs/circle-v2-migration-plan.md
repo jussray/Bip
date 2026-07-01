@@ -1,6 +1,6 @@
 # Circle V1 → V2 Migration Plan
 
-**Status: Phase 0 — live schema now independently verified against `tbsevonvegdnlyjgplmm`. One unresolved structural conflict blocks finishing §1's Parent Circle row (§1.2). No Supabase migrations applied. No app screens or `sync.ts` changed yet.**
+**Status: Phase 0 — live schema verified, §1.2 decided, migration drafted and reviewed in-repo. Not yet applied to `tbsevonvegdnlyjgplmm`. No app screens or `sync.ts` changed yet.**
 
 Work order, per direction: (1) repo plan locked here first, (2) a real Supabase migration applied only after this plan is signed off, (3) app code (`sync.ts`, `CircleScreen.tsx`, `feed.tsx`) updated last. This document is step 1 only.
 
@@ -47,7 +47,7 @@ OR (circle_id IN (select circle_id from circle_members where user_id = auth.uid(
 
 The `kind = 'public'` carve-out already grants open read to every authenticated user, with no membership requirement — this is exactly what the target model needs. The earlier finding (from the wrong project) that public reads were membership-gated does **not** apply here. Nothing to build for Teen Circle reads. Identity anonymity (§4) still needs a DB-level guard — that part is real, see below.
 
-### 1.2 Parent Circle — structural conflict, needs a decision before this can be built
+### 1.2 Parent Circle — decided: option (a), new `parent_community` circle kind
 
 `circles` has a real CHECK constraint enforcing shape by kind:
 
@@ -62,13 +62,17 @@ CHECK (
 
 Every `kind='parent'` circle **must** reference exactly one `parent_links` row (`circles_parent_link_id_fkey → parent_links(id)`). This is a hard structural requirement, not a policy that can be loosened — a `kind='parent'` circle with no `parent_link_id` is not a representable row under this schema. What's been built for `parent` is a **private space scoped to one specific teen-guardian Bridge link** — closer to "shared family space for this one connection" than "community feed for all verified guardians." (There's also no `kind='public'`-style open-read carve-out for `kind='parent'` in the `circles`/`posts` RLS — consistent with it being a private per-link space, not a community one.)
 
-This directly conflicts with the locked §1 decision that Parent Circle must be a shared community feed, independent of any specific `parent_links` row. Three ways to resolve, genuinely need your call:
+This directly conflicted with the locked §1 decision that Parent Circle must be a shared community feed, independent of any specific `parent_links` row. **Decided: option (a).** New `circle_kind` value `parent_community` for the guardian community feed. The existing `kind='parent'` + `parent_link_id` structure is left completely alone — it's a real, separate feature (private per-family Bridge-linked space) with its own purpose, not repurposed or touched by this decision.
 
-- **(a) Add a new `circle_kind` enum value** (e.g. `parent_community`) for the global guardian feed, and leave the existing `kind='parent'` + `parent_link_id` structure alone — it may be serving a real, separate purpose (a private per-family space) that shouldn't be repurposed or removed. Cleanest separation, but means "Parent Circle" in the product sense maps to a differently-named `kind` than the word "parent" suggests.
-- **(b) Relax `circles_kind_shape`** to allow `kind='parent' AND parent_link_id IS NULL` as an additional valid case (a "global" parent circle with no link), keeping per-link parent circles as a second valid shape under the same `kind`. Keeps the enum value name intuitive, but means `kind='parent'` covers two different concepts (global community vs. per-link private space) that then need to be told apart by nullability of `parent_link_id` everywhere they're queried — easy to get wrong in RLS/app code later.
-- **(c) Reuse `kind='public'`** for both Teen and Parent community feeds, distinguished by `circle_profiles.account_type` (`'teen'` vs `'guardian'`) rather than by `circles.kind` at all — then the existing `kind='public'` open-read carve-out already covers both, and the split into two feeds happens by filtering on the author's `account_type` at read time. Reuses working infrastructure with zero constraint changes, but conflates two different-shaped audiences under one `kind` value, and needs the read query (not RLS) to do the teen/guardian split — meaning RLS alone wouldn't stop a teen from seeing a guardian's "public" post unless something else enforces it.
+Rules for `parent_community`, as specified:
+- Visible to verified guardians only — gated on `account_verification.verification_state = 'VERIFIED_GUARDIAN'` and `circle_profiles.account_type = 'guardian'`.
+- Not tied to `parent_links` — `circles_kind_shape` puts `parent_community` in the same "simple" bucket as `public`/`friends` (`crew_id IS NULL AND parent_link_id IS NULL`), so a `parent_community` circle structurally cannot reference a `parent_links` row.
+- Anonymous guardian identity only — same DB-level anonymity guard as Teen Circle (§4), extended to also cover `kind='parent_community'`.
+- No teen access — a teen account has `circle_profiles.account_type='teen'`, which fails the guardian gate by construction.
+- No Bridge content — satisfied by construction, since `parent_community` circles can never have a `parent_link_id`.
+- Posts live in `posts` with `circles.kind='parent_community'` — same table, same pattern as every other circle kind.
 
-I'd lean toward (a) as the least likely to create confusion later, but this is a real product/architecture call, not something to default into.
+Migration drafted (not applied): `supabase/migrations/20260701010000_circle_kind_add_parent_community.sql` (adds the enum value — has to be its own transaction, since Postgres won't let a new enum value be referenced in the same transaction it's added in) and `supabase/migrations/20260701020000_circle_v2_parent_community.sql` (everything else: guardian verification states, `circles_kind_shape` update, an `is_verified_guardian()` helper, RLS updates on `circles`/`posts` for the new open-read carve-out, the anonymity guard trigger, and the safety-scan extension to `posts`). Reaction vocabulary (§6) is deliberately not part of this migration — separate, still-open decision.
 
 ### 1.3 Bip Crew — the live model is a third table, not the two drafted earlier
 
@@ -123,12 +127,12 @@ Safety-scan trigger: confirmed, independently, pointed at `https://tbsevonvegdnl
 
 ---
 
-## 5. Safety scan contract (unchanged, now fully confirmed rather than assumed)
+## 5. Safety scan contract — drafted, in this PR
 
-- Extend `trigger_safety_scan()` (already generalizes over `'text'`/`'body'`, confirmed via live function body — no function change needed) to `posts` via a new `AFTER INSERT` trigger with `'body'`.
-- Add `posts` to the Edge Function's allowed source-table list.
-- Keep existing `journal_entries`/`circle_posts`/`public_circle_posts` triggers during the transition.
-- Webhook URL confirmed correct, independently, twice now — do not touch.
+- `trigger_safety_scan()` already generalizes over `'text'`/`'body'` (confirmed via live function body) — extended to `posts` via a new `AFTER INSERT` trigger in `20260701020000_circle_v2_parent_community.sql`.
+- `posts` added to the Edge Function's `SourceTable` allowlist in `supabase/functions/safety-scan/index.ts` — done, this PR. Also fixed the flag-update to use `author_user_id` for `posts` instead of `user_id` (every other flaggable table uses `user_id`; `posts` doesn't have that column, so the old code would have silently no-op'd for `posts` rows).
+- Existing `journal_entries`/`circle_posts`/`public_circle_posts` triggers kept as-is during the transition.
+- Webhook URL confirmed correct, independently, twice now — not touched.
 
 ---
 
@@ -147,7 +151,7 @@ No SQL drafted for this yet — pending the decision, though (a) is now low-risk
 
 | Category | Files |
 |---|---|
-| Runtime | `src/utils/sync.ts`, `src/utils/supabase.ts`, `app/(teen)/circle/feed.tsx`, `screens/CircleScreen.tsx`, `supabase/functions/safety-scan/index.ts` |
+| Runtime | `src/utils/sync.ts`, `src/utils/supabase.ts`, `app/(teen)/circle/feed.tsx`, `screens/CircleScreen.tsx` — none edited yet. `supabase/functions/safety-scan/index.ts` — **edited this PR** (§5). |
 | Schema | `supabase/migrations/*.sql`, `db/schema.sql` — confirmed materially out of date vs. live (bigint vs. uuid, missing enums, missing `crews`/`media_attachments`/`circles_kind_shape`) |
 | Tests | `test/sync-restore.test.mjs` |
 | Docs | `docs/circle-v1-spec.md`, `docs/circle-model-v1-spec.md`, `docs/SUPABASE.md`, `docs/WIRING_STATUS.md` |
@@ -156,22 +160,32 @@ No SQL drafted for this yet — pending the decision, though (a) is now low-risk
 
 ## 8. Phase 0 checklist
 
-1. **Repo-vs-live schema reconciliation** — done, this update. Repo migrations do not match live for the Circle V2 tables at all (id types, enums, `crews`, `media_attachments`, `circles_kind_shape` are all absent from repo). A real reconciliation migration/rewrite of `supabase/migrations/` is separate follow-up work, not blocking this plan.
-2. **Final Circle model** — Teen/Friends/Crew locked and confirmed buildable (mostly already built). **Parent blocked on §1.2.**
-3. **Parent community model** — blocked, §1.2, needs your decision among (a)/(b)/(c).
-4. **Identity visibility rules** — drafted §4, buildable once §1.2 resolves for the Parent piece; Teen/Friends/Crew pieces are unblocked now.
-5. **Safety scan contract** — drafted §5, fully confirmed, ready to build now.
-6. **Reaction vocabulary** — conflict confirmed real, §6, needs decision (a) vs (b).
-7. **No destructive SQL** — honored; every query this session was read-only `SELECT`/`information_schema`/`pg_catalog`.
-8. **No runtime cutover** — honored; no `sync.ts`/screen changes.
+1. **Repo-vs-live schema reconciliation** — done. Repo migrations do not match live for the Circle V2 tables at all (id types, enums, `crews`, `media_attachments`, `circles_kind_shape` are all absent from repo). A full reconciliation rewrite of `supabase/migrations/` for these tables is separate follow-up work, not blocking this PR.
+2. **Final Circle model** — locked, all four kinds. §1.2 decided.
+3. **Parent community model** — decided, §1.2: `parent_community` circle kind, migration drafted.
+4. **Identity visibility rules** — Teen/Parent-community guard drafted and in the migration (§4); Friends/Crew identity-reveal-after-trust logic still unbuilt, separate follow-up.
+5. **Safety scan contract** — drafted and in the migration + edge function edit (§5).
+6. **Reaction vocabulary** — still unresolved, §6, intentionally excluded from this migration.
+7. **No destructive SQL** — honored; the two new migration files exist in the repo but have **not** been applied via `apply_migration`/`execute_sql` — every live query this session was read-only.
+8. **No runtime cutover** — honored; `sync.ts`/screens still untouched.
 
-## 9. What changed in this update
+## 9. What's in this PR vs. what's still open
 
-Everything previously marked "reported" or "unconfirmed" is now either confirmed-as-stated, confirmed-different, or confirmed-not-applicable, based on live read-only queries against `tbsevonvegdnlyjgplmm`, not on anyone's report. The draft migration at `docs/circle-v2-phase0-draft-migration.sql` is now **stale** in several ways (wrong shape for Teen Circle open-read, which already works; wrong shape for Parent Circle, which needs §1.2 first) and shouldn't be used as-is — it'll be replaced once §1.2 is decided.
+**In this PR (repo only, nothing applied to Supabase):**
+- `supabase/migrations/20260701010000_circle_kind_add_parent_community.sql` — adds the `parent_community` enum value, its own transaction by necessity.
+- `supabase/migrations/20260701020000_circle_v2_parent_community.sql` — guardian verification states, `circles_kind_shape` update, `is_verified_guardian()` helper, RLS updates on `circles`/`posts`, the anonymity guard trigger, safety-scan trigger attachment on `posts`.
+- `supabase/functions/safety-scan/index.ts` — `posts` added to the allowlist, flag-update made table-aware (`author_user_id` vs `user_id`).
+- This doc, fully updated with confirmed live facts.
+
+**Explicitly still open, not in this PR:**
+- §6 reaction vocabulary — separate decision, no SQL drafted.
+- Friends/Crew identity-reveal-after-acceptance logic (§4) — design is clear, no SQL drafted yet.
+- Full `supabase/migrations/` reconciliation for pre-existing drift (bigint vs. uuid, missing `crews`/`media_attachments` definitions, etc.) — real but out of scope for this PR, which only adds new objects.
+- The earlier `docs/circle-v2-phase0-draft-migration.sql` is stale (marked as such) and superseded by the two files above.
 
 ## Next steps
 
-1. **Your call on §1.2** (Parent Circle: new enum value / relax the shape constraint / reuse `public` + `account_type` split) — this is the one thing blocking a real migration PR.
-2. Once decided, draft the actual migration: `VERIFIED_GUARDIAN` states, the §1.2 resolution, the anonymity-guard trigger (§4), safety-scan extension (§5), and the reaction vocabulary decision (§6) if resolved by then.
-3. Apply that migration to `tbsevonvegdnlyjgplmm` (step 2 in your ordering) — separate PR, still no cutover.
-4. Only after that's applied and verified, update `sync.ts`/screens (step 3) — and note `sync.ts` will need a larger rewrite than originally scoped, since the real schema (uuid ids, `author_user_id`/`body`, enum types, `crews`, `friendships`-based friend visibility) differs substantially from what the repo's own migrations assume.
+1. Review the two migration files and the edge-function diff in this PR.
+2. When ready, apply the two migrations to `tbsevonvegdnlyjgplmm` in order (the enum-value file first, always — same constraint about not using a new enum value in the transaction that created it applies to however they're eventually run, not just how they're written). Deploy the updated `safety-scan` Edge Function alongside.
+3. Verify: a verified-guardian test account can read/write `parent_community` posts anonymously; a teen account cannot; the anonymity guard rejects `is_identity_revealed=true` on `public`/`parent_community` posts; a `posts` insert fires the safety-scan trigger and the Edge Function accepts `source_table='posts'`.
+4. Only after that's applied and verified, update `sync.ts`/screens (step 3) — this will be a larger rewrite than originally scoped, since the real schema (uuid ids, `author_user_id`/`body`, enum types, `crews`, `friendships`-based friend visibility) differs substantially from what the repo's own migrations assume.
