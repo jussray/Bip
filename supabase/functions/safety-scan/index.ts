@@ -168,15 +168,29 @@ function buildScanMetadata(
   };
 }
 
-// ── Parent notification guard ─────────────────────────────────────────────────
-// Queries parent_links for status='active' only.
-// Notification payload contains zero content — alert_id + severity only.
-async function notifyParentIfLinked(
+// ── Parent-safe alert copy ────────────────────────────────────────────────────
+// safety_alerts has real `title`/`summary` columns that reach the parent UI —
+// these must only ever describe severity/category, never source content.
+function buildAlertCopy(
+  alertType: 'moderation' | 'keyword',
+  severity:  Severity,
+): { title: string; summary: string } {
+  const title = severity === 'high' ? 'Wellness check suggested' : 'Wellness note';
+  const summary =
+    alertType === 'moderation'
+      ? 'Automated content review flagged a possible wellness concern.'
+      : 'A keyword pattern flagged a possible wellness concern.';
+  return { title, summary };
+}
+
+// ── Parent link lookup ────────────────────────────────────────────────────────
+// safety_alerts.parent_user_id is a stored column, not resolved via join at
+// read time — the parent-read RLS policy (`teen_user_id = auth.uid() or
+// parent_user_id = auth.uid()`) requires it to be set at write time.
+async function findActiveParent(
   supabase:     ReturnType<typeof createClient>,
   teen_user_id: string,
-  severity:     Severity,
-  alert_id:     number,
-): Promise<void> {
+): Promise<string | null> {
   const { data: link } = await supabase
     .from('parent_links')
     .select('parent_user_id')
@@ -184,22 +198,7 @@ async function notifyParentIfLinked(
     .eq('status', 'active')  // pending and revoked links are excluded
     .maybeSingle();
 
-  if (!link?.parent_user_id) return;
-
-  // Stamp parent_notified_at on the alert row
-  await supabase
-    .from('safety_alerts')
-    .update({ parent_notified_at: new Date().toISOString() })
-    .eq('id', alert_id);
-
-  // TODO: wire to Expo push token lookup + expo-server-sdk when push ships.
-  // Payload shape when ready:
-  //   { to: <parent_expo_token>, title: 'Wellness Check',
-  //     body: 'Someone you care about may need support',
-  //     data: { alert_id, severity } }   ← NO content, NO source text
-  console.log(
-    `[safety-scan] parent notify queued alert_id=${String(alert_id)} severity=${severity}`,
-  );
+  return link?.parent_user_id ?? null;
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -253,18 +252,36 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false },
   });
 
-  // Insert safety_alert — no content stored anywhere in this row
+  const alertType = mod?.flagged ? 'moderation' : 'keyword';
+  const { title, summary } = buildAlertCopy(alertType, severity);
+  const parent_user_id = await findActiveParent(supabase, user_id);
+
+  // Insert safety_alert — no content stored anywhere in this row.
+  //
+  // Live safety_alerts columns (confirmed 2026-07-01, see
+  // docs/circle-v2-migration-plan.md §10.3): id, teen_user_id,
+  // parent_user_id, source_mood_id, source_post_id, alert_type, severity,
+  // title, summary, is_read, created_at, updated_at, scan_metadata.
+  // There is no generic source_table/source_id pair — it's a typed-per-
+  // source design. Only `posts` (the V2 unified model) has a typed slot
+  // today (source_post_id); the legacy per-surface tables
+  // (journal_entries/circle_posts/public_circle_posts) have none yet, so
+  // their origin is kept in scan_metadata instead of forcing it into a
+  // column it doesn't belong to.
   const { data: alert, error: alertErr } = await supabase
     .from('safety_alerts')
     .insert({
-      user_id,
-      alert_type:   mod?.flagged ? 'moderation' : 'keyword',
-      source_table,
-      source_id:    record_id,   // string — bigint-safe (trigger cast NEW.id::text)
+      teen_user_id:   user_id,
+      parent_user_id,
+      source_post_id: source_table === 'posts' ? record_id : null,
+      alert_type:     alertType,
       severity,
-      scan_metadata,             // reduced shape only
+      title,
+      summary,
+      is_read:        false,
+      scan_metadata:  { ...scan_metadata, source_table, source_id: record_id },
     })
-    .select('id')
+    .select('id, parent_user_id')
     .single();
 
   if (alertErr || !alert) {
@@ -291,9 +308,16 @@ Deno.serve(async (req: Request) => {
       .eq('id', record_id);
   }
 
-  // Parent notification — high severity only, active link only, no content
-  if (severity === 'high') {
-    await notifyParentIfLinked(supabase, user_id, severity, alert.id);
+  // Parent notification — high severity only, active link only, no content.
+  // parent_user_id was already resolved and stored on the row above.
+  if (severity === 'high' && alert.parent_user_id) {
+    // TODO: wire to Expo push token lookup + expo-server-sdk when push ships.
+    // Payload shape when ready:
+    //   { to: <parent_expo_token>, title, body: summary,
+    //     data: { alert_id: alert.id, severity } }   ← NO source content
+    console.log(
+      `[safety-scan] parent notify queued alert_id=${String(alert.id)} severity=${severity}`,
+    );
   }
 
   return new Response(
