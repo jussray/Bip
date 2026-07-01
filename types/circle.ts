@@ -17,7 +17,7 @@ export interface CircleProfile {
 
 // Public post: user_id is NEVER exposed to the UI.
 export interface PublicCirclePost {
-  id: number;
+  id: string;
   // user_id intentionally omitted — never render or store in component state
   text: string;
   post_mood: string | null;
@@ -28,7 +28,7 @@ export interface PublicCirclePost {
 
 // Friends post: shows nickname + avatar only, never real name.
 export interface FriendsCirclePost {
-  id: number;
+  id: string;
   user_id: string;
   nickname: string;        // from circle_profiles join
   avatar_emoji: string;   // from circle_profiles join
@@ -41,7 +41,7 @@ export interface FriendsCirclePost {
 
 // Crew post: identity fully visible.
 export interface CrewCirclePost {
-  id: number;
+  id: string;
   user_id: string;
   nickname: string;
   avatar_emoji: string;
@@ -55,7 +55,7 @@ export interface CrewCirclePost {
 // Parent post: anonymous by default.
 // identity_revealed is true only when the viewer is an accepted parent connection.
 export interface ParentCirclePost {
-  id: number;
+  id: string;
   user_id: string;
   text: string;
   reactions: Record<string, number>;
@@ -67,8 +67,8 @@ export interface ParentCirclePost {
 }
 
 export interface CircleComment {
-  id: number;
-  post_id: number;
+  id: string;
+  post_id: string;
   post_type: Exclude<CircleTab, 'public'>; // comments never allowed on public
   user_id: string;
   nickname: string;
@@ -78,8 +78,8 @@ export interface CircleComment {
 }
 
 export interface CircleReaction {
-  id: number;
-  post_id: number;
+  id: string;
+  post_id: string;
   post_type: CircleTab;
   user_id: string;
   emoji: string;

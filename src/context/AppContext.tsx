@@ -125,7 +125,7 @@ interface AppContextValue {
   // Parent actions
   saveParentPageEntry: (entry: SavePageInput) => void;
   saveParentCirclePost: () => void;
-  reactToParentPost: (postId: number, reaction: string) => void;
+  reactToParentPost: (postId: number | string, reaction: string) => void;
   completeParentOracleSession: (profile: OracleProfile, session: OracleSessionSummary) => void;
 
   // Teen profile
@@ -254,7 +254,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     s.setParentCirclePostText('');
   }
 
-  function reactToParentPost(postId: number, reaction: string) {
+  function reactToParentPost(postId: number | string, reaction: string) {
     s.setParentCirclePosts((posts: ParentCirclePost[]) =>
       posts.map(p => p.id === postId
         ? { ...p, reactions: { ...p.reactions, [reaction]: ((p.reactions as Record<string, number>)[reaction] ?? 0) + 1 } }
