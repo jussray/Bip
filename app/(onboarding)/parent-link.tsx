@@ -18,12 +18,17 @@ import {
   redeemInviteCodeResult as redeemInviteCode,
 } from '@/utils/parentLink';
 import { useAppContext } from '@/context/AppContext';
+import {
+  createDevTestFamily,
+  isDevTestFamilyEnabled,
+} from '@/features/testing/devTestFamily';
 
 export default function ParentLinkOnboarding() {
   const { setUserSide } = useAppContext();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const showFounderTools = isDevTestFamilyEnabled();
 
   const normalized = normalizeParentInviteCode(code);
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
@@ -52,6 +57,20 @@ export default function ParentLinkOnboarding() {
       router.replace('/(parent)/room');
     } catch {
       setError('Could not connect right now. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateTestFamily() {
+    setLoading(true);
+    setError('');
+    try {
+      await createDevTestFamily();
+      setUserSide('parent');
+      router.replace('/(parent)/room');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not create the test family.');
     } finally {
       setLoading(false);
     }
@@ -113,6 +132,16 @@ export default function ParentLinkOnboarding() {
           )}
         </TouchableOpacity>
 
+        {showFounderTools ? (
+          <View style={styles.devCard}>
+            <Text style={styles.devLabel}>FOUNDER TEST MODE</Text>
+            <Text style={styles.devBody}>Create a local simulated teen-parent pair so you can enter Parent Side without a real invite code.</Text>
+            <TouchableOpacity disabled={loading} onPress={handleCreateTestFamily} style={styles.devButton}>
+              <Text style={styles.devButtonText}>Create Test Family</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <TouchableOpacity onPress={() => router.replace('/(onboarding)/parent-welcome')} style={styles.help}>
           <Text style={styles.helpText}>I do not have a code yet</Text>
         </TouchableOpacity>
@@ -136,6 +165,11 @@ const styles = StyleSheet.create({
   primary: { height: 60, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.35 },
   primaryText: { color: '#062015', fontSize: 16, fontWeight: '900' },
+  devCard: { marginTop: 16, borderRadius: 18, borderWidth: 1, borderColor: '#f59e0b55', backgroundColor: '#f59e0b12', padding: 16 },
+  devLabel: { color: '#fbbf24', fontSize: 10, fontWeight: '900', letterSpacing: 1.7, marginBottom: 6 },
+  devBody: { color: '#d7c9a1', fontSize: 12, lineHeight: 18, marginBottom: 12 },
+  devButton: { minHeight: 50, borderRadius: 15, backgroundColor: '#f59e0b', alignItems: 'center', justifyContent: 'center' },
+  devButtonText: { color: '#2b1700', fontSize: 14, fontWeight: '900' },
   help: { alignItems: 'center', paddingVertical: 22 },
   helpText: { color: '#789082', fontSize: 13, fontWeight: '700' },
 });
