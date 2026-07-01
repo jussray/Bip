@@ -28,7 +28,7 @@ const tableEntries = Object.fromEntries(
 // ─── Reconstruct deriveTier for behavioral tests ─────────────────────────────
 const deriveTierMatch = syncSrc.match(/function deriveTier\(sessionCount: number\): string \{([\s\S]*?)\n\}/);
 assert.ok(deriveTierMatch, 'deriveTier must be defined in sync.ts');
-const deriveTier = new Function('sessionCount', deriveTierMatch[1].replace(/: number/g, '')); // eslint-disable-line no-new-func
+const deriveTier = new Function('sessionCount', deriveTierMatch[1].replace(/: number/g, ''));  
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // STORAGE KEYS
