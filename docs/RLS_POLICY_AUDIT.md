@@ -22,7 +22,7 @@ checks them for drift, not just RLS coverage.
 | table_name | exists_in_schema_sql | exists_in_0001_init | rls_enabled | select_policy | insert_policy | update_policy | delete_policy | notes |
 |---|---|---|---|---|---|---|---|---|
 | `journal_entries` | yes | yes | yes | owner + linked-parent (`shared_with_parent`, via `20260628_consent_visibility.sql`) | owner | owner | owner | Primary key differs between the two files: `db/schema.sql` uses a plain `id bigint` PK; `0001_init.sql` uses composite `(user_id, id)`. Whichever path a given environment was actually bootstrapped from determines the real PK — worth collapsing to one canonical file. |
-| `crew_members` | yes | yes | yes | owner | owner | owner | owner | **Real drift, not yet fixed:** `db/schema.sql` adds `bip_id` and `connection_status` columns (with a check constraint) via inline `alter table ... add column if not exists`. No `supabase/migrations/*.sql` file adds these columns. `src/utils/supabase.ts` reads/writes `connection_status`. A project bootstrapped purely from `supabase/migrations/` (the CLI path) would be **missing both columns** and that code path would fail. Same PK mismatch as `journal_entries` (plain `id` vs composite `(user_id, id)`). |
+| `crew_members` | yes | yes | yes | owner | owner | owner | owner | **Fixed** in `supabase/migrations/20260702060000_crew_members_bip_id.sql` — mirrors `db/schema.sql`'s `bip_id`/`connection_status` columns and check constraint into the migrations path. Same PK mismatch as `journal_entries` (plain `id` vs composite `(user_id, id)`) is still open — not addressed by this fix. |
 | `parent_circle_posts` | yes | yes | yes | owner-only in `db/schema.sql`; owner-insert/update/delete + **any-authenticated-read** in migrations (`0004_supplemental_tables.sql`, since parents need to read the shared feed) | owner | owner | owner | **Drift already caught and fixed once:** `db/schema.sql`'s `reactions` default (`beenThere/solidarity/reminder/needed/strength`) diverged from `0001_init.sql`'s default (`felt/comfort/proud/stay`, copy-pasted from `circle_posts`). `0004_supplemental_tables.sql` explicitly patches the migrations-path default to match `db/schema.sql`. Confirms this dual-bootstrap-file setup produces real bugs, not just theoretical ones — it already did once. |
 | `voice_sessions` | no | no | n/a | n/a | n/a | n/a | n/a | Not yet defined anywhere — see `docs/AGENT_L4_ARCHITECTURE.md` and the reviewed voice-WS draft. If built, needs RLS scoped to `auth.uid() = user_id` in both `db/schema.sql` and a real migration, not just one. |
 | `voice_turns` | no | no | n/a | n/a | n/a | n/a | n/a | Same as above — planned only. |
@@ -31,16 +31,15 @@ checks them for drift, not just RLS coverage.
 
 ## Findings, ranked
 
-1. **`crew_members.bip_id` / `connection_status` are missing from the migrations path.**
-   `db/schema.sql` (line ~160) adds them with `alter table ... add column if not
-   exists ... connection_status text not null default 'pending' check (...)`, but
-   no file under `supabase/migrations/` does the same. `src/utils/supabase.ts`
-   depends on `connection_status`. Any Supabase project stood up via
-   `supabase db push` (the CLI path implied by the numbered/timestamped migration
-   files) instead of manually pasting `db/schema.sql` would be missing these
-   columns and the crew-connection code path would break at runtime. Fix: add a
-   timestamped migration (e.g. `supabase/migrations/<ts>_crew_members_bip_id.sql`)
-   mirroring the `db/schema.sql` `alter table` block.
+1. **`crew_members.bip_id` / `connection_status` were missing from the migrations
+   path — fixed.** `db/schema.sql` (line ~160) added them with
+   `alter table ... add column if not exists ... connection_status text not null
+   default 'pending' check (...)`, but no file under `supabase/migrations/` did
+   the same, even though `src/utils/supabase.ts` depends on `connection_status`.
+   Added `supabase/migrations/20260702060000_crew_members_bip_id.sql`, mirroring
+   `db/schema.sql`'s block exactly. Verified with
+   `node scripts/control-room-rls-scan.mjs` (0 findings, unaffected since this
+   was a column-drift issue, not an RLS-coverage issue).
 
 2. **Two schema-defining files exist with no single source of truth.**
    `docs/SUPABASE.md` tells operators to paste `db/schema.sql` directly. Separately,
