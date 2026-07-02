@@ -43,15 +43,19 @@ create policy "mood_history_self" on public.mood_history
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── journal_entries ─────────────────────────────────────────────────────────
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.journal_entries (
-  id            bigint        primary key,
+  id            bigint        not null,
   user_id       uuid          not null references auth.users(id) on delete cascade,
   text          text          not null,
   mood          text          not null,
   date          text          not null,
   time          text          not null,
   sekret_reply  text,
-  created_at    timestamptz   not null default now()
+  created_at    timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.journal_entries enable row level security;
 drop policy if exists "journal_entries_self" on public.journal_entries;
@@ -144,8 +148,11 @@ create policy "comfort_sessions_self" on public.comfort_sessions
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── crew_members ────────────────────────────────────────────────────────────
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.crew_members (
-  id           bigint        primary key,
+  id           bigint        not null,
   user_id      uuid          not null references auth.users(id) on delete cascade,
   name         text          not null,
   emoji        text          not null,
@@ -155,7 +162,8 @@ create table if not exists public.crew_members (
   bip_id       text,
   connection_status text not null default 'pending' check (connection_status in ('pending', 'accepted', 'blocked', 'removed')),
   added_at     timestamptz   not null,
-  created_at   timestamptz   not null default now()
+  created_at   timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.crew_members add column if not exists bip_id text;
 alter table public.crew_members add column if not exists connection_status text not null default 'pending';
