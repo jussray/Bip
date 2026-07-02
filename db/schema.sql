@@ -29,13 +29,17 @@ create policy "accounts_self" on public.accounts
 -- should happen by invite/QR/Bip ID flow and must not expose email or first_name.
 
 -- ── mood_history ────────────────────────────────────────────────────────────
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.mood_history (
-  id          bigint        primary key,
+  id          bigint        not null,
   user_id     uuid          not null references auth.users(id) on delete cascade,
   mood        text          not null,
   date        text          not null,
   time        text          not null,
-  created_at  timestamptz   not null default now()
+  created_at  timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.mood_history enable row level security;
 drop policy if exists "mood_history_self" on public.mood_history;
@@ -63,8 +67,11 @@ create policy "journal_entries_self" on public.journal_entries
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── circle_posts ────────────────────────────────────────────────────────────
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.circle_posts (
-  id          bigint        primary key,
+  id          bigint        not null,
   user_id     uuid          not null references auth.users(id) on delete cascade,
   text        text          not null,
   date        text,
@@ -77,7 +84,8 @@ create table if not exists public.circle_posts (
   avatar_key text,
   visibility text not null default 'public_circle' check (visibility in ('public_circle', 'friends_only')),
   identity_context text not null default 'public_circle' check (identity_context in ('public_circle', 'trusted_friend')),
-  created_at  timestamptz   not null default now()
+  created_at  timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.circle_posts add column if not exists anonymous_name text;
 alter table public.circle_posts add column if not exists avatar_key text;
@@ -102,15 +110,19 @@ create policy "circle_posts_self" on public.circle_posts
 -- IMPORTANT: reactions shape for the *parent* circle is different from the
 -- teen circle. Keys: beenThere, solidarity, reminder, needed, strength.
 -- The teen circle uses: felt, comfort, proud, stay.
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.parent_circle_posts (
-  id          bigint        primary key,
+  id          bigint        not null,
   user_id     uuid          not null references auth.users(id) on delete cascade,
   text        text          not null,
   date        text          not null,
   time        text          not null,
   reactions   jsonb         not null default '{"beenThere":0,"solidarity":0,"reminder":0,"needed":0,"strength":0}'::jsonb,
   circle_tag  text,
-  created_at  timestamptz   not null default now()
+  created_at  timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.parent_circle_posts enable row level security;
 drop policy if exists "parent_circle_posts_self" on public.parent_circle_posts;
@@ -118,14 +130,18 @@ create policy "parent_circle_posts_self" on public.parent_circle_posts
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── voice_notes ─────────────────────────────────────────────────────────────
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.voice_notes (
-  id          bigint        primary key,
+  id          bigint        not null,
   user_id     uuid          not null references auth.users(id) on delete cascade,
   title       text          not null,
   date        text          not null,
   time        text          not null,
   duration    text          not null,
-  created_at  timestamptz   not null default now()
+  created_at  timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.voice_notes enable row level security;
 drop policy if exists "voice_notes_self" on public.voice_notes;
@@ -133,14 +149,18 @@ create policy "voice_notes_self" on public.voice_notes
   using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- ── comfort_sessions ────────────────────────────────────────────────────────
+-- id is client-generated (Date.now() — see src/hooks/useAppActions.ts), so it
+-- is only unique per user, not globally. Primary key must be (user_id, id),
+-- matching supabase/migrations/0001_init.sql.
 create table if not exists public.comfort_sessions (
-  id          bigint        primary key,
+  id          bigint        not null,
   user_id     uuid          not null references auth.users(id) on delete cascade,
   type        text          not null,
   mood        text,
   date        text          not null,
   time        text          not null,
-  created_at  timestamptz   not null default now()
+  created_at  timestamptz   not null default now(),
+  primary key (user_id, id)
 );
 alter table public.comfort_sessions enable row level security;
 drop policy if exists "comfort_sessions_self" on public.comfort_sessions;

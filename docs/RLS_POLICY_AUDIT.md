@@ -23,7 +23,8 @@ checks them for drift, not just RLS coverage.
 |---|---|---|---|---|---|---|---|---|
 | `journal_entries` | yes | yes | yes | owner + linked-parent (`shared_with_parent`, via `20260628_consent_visibility.sql`) | owner | owner | owner | **PK mismatch fixed.** `db/schema.sql` now declares `primary key (user_id, id)`, matching `0001_init.sql`. `supabase/migrations/20260702070000_reconcile_journal_crew_primary_keys.sql` widens any already-live database still on the old single-column `id` PK — safe, since a set unique under `(id)` is trivially unique under `(user_id, id)`. |
 | `crew_members` | yes | yes | yes | owner | owner | owner | owner | **Fixed** in `supabase/migrations/20260702060000_crew_members_bip_id.sql` (columns) and `20260702070000_reconcile_journal_crew_primary_keys.sql` (PK shape — same fix and same reasoning as `journal_entries`). |
-| `parent_circle_posts` | yes | yes | yes | owner-only in `db/schema.sql`; owner-insert/update/delete + **any-authenticated-read** in migrations (`0004_supplemental_tables.sql`, since parents need to read the shared feed) | owner | owner | owner | **Drift already caught and fixed once:** `db/schema.sql`'s `reactions` default (`beenThere/solidarity/reminder/needed/strength`) diverged from `0001_init.sql`'s default (`felt/comfort/proud/stay`, copy-pasted from `circle_posts`). `0004_supplemental_tables.sql` explicitly patches the migrations-path default to match `db/schema.sql`. Confirms this dual-bootstrap-file setup produces real bugs, not just theoretical ones — it already did once. |
+| `parent_circle_posts` | yes | yes | yes | owner-only in `db/schema.sql`; owner-insert/update/delete + **any-authenticated-read** in migrations (`0004_supplemental_tables.sql`, since parents need to read the shared feed) | owner | owner | owner | **Drift already caught and fixed once:** `db/schema.sql`'s `reactions` default (`beenThere/solidarity/reminder/needed/strength`) diverged from `0001_init.sql`'s default (`felt/comfort/proud/stay`, copy-pasted from `circle_posts`). `0004_supplemental_tables.sql` explicitly patches the migrations-path default to match `db/schema.sql`. Confirms this dual-bootstrap-file setup produces real bugs, not just theoretical ones — it already did once. **PK mismatch also fixed** — see finding 2. |
+| `mood_history` / `circle_posts` / `voice_notes` / `comfort_sessions` | yes | yes | yes | owner | owner | owner | owner | Not otherwise re-audited row-by-row here (out of this pass's scope beyond PK shape) — **PK mismatch fixed**, see finding 2. |
 | `voice_sessions` | no | no | n/a | n/a | n/a | n/a | n/a | Not yet defined anywhere — see `docs/AGENT_L4_ARCHITECTURE.md` and the reviewed voice-WS draft. If built, needs RLS scoped to `auth.uid() = user_id` in both `db/schema.sql` and a real migration, not just one. |
 | `voice_turns` | no | no | n/a | n/a | n/a | n/a | n/a | Same as above — planned only. |
 | `voice_events` | no | no | n/a | n/a | n/a | n/a | n/a | Same as above — planned only. |
@@ -46,16 +47,19 @@ checks them for drift, not just RLS coverage.
    `supabase/migrations/0001_init.sql` calls itself "a mirror of db/schema.sql" but
    had already diverged on `parent_circle_posts` defaults (caught, fixed in
    `0004_supplemental_tables.sql`), `crew_members` columns (finding 1, now fixed),
-   and primary-key shape on `journal_entries`/`crew_members` (now fixed — see the
-   table above). `mood_history`, `circle_posts`, `parent_circle_posts`,
-   `voice_notes`, and `comfort_sessions` all still use the same client-generated
-   `Date.now()` id pattern in `db/schema.sql` with a plain `id bigint primary key`
-   there but composite `(user_id, id)` in `0001_init.sql` — **not yet audited or
-   fixed**, only `journal_entries`/`crew_members` were in scope for this pass.
-   Two maintained copies of the same schema will keep drifting as long as both
-   exist. Worth deciding on one canonical path (recommend: CLI migrations only,
-   with `db/schema.sql` regenerated from them or retired) rather than
-   hand-editing both on every schema change.
+   and primary-key shape on all seven client-id tables — `journal_entries`,
+   `crew_members`, `mood_history`, `circle_posts`, `parent_circle_posts`,
+   `voice_notes`, `comfort_sessions` — **now fixed across the board.**
+   `db/schema.sql` declares `primary key (user_id, id)` on all seven; the last
+   five are reconciled on already-live databases by
+   `supabase/migrations/20260702080000_reconcile_remaining_primary_keys.sql`
+   (same pattern and same safety argument as
+   `20260702070000_reconcile_journal_crew_primary_keys.sql`: widening a PK
+   from `(id)` to `(user_id, id)` can't violate existing data). Two maintained
+   copies of the same schema will still keep drifting on anything *other* than
+   PK shape as long as both files exist — worth deciding on one canonical path
+   (recommend: CLI migrations only, with `db/schema.sql` regenerated from them
+   or retired) rather than hand-editing both on every schema change.
 
 3. **`scripts/control-room-rls-scan.mjs` only scans `supabase/migrations/`.**
    It would not have caught finding 1, because the columns it's missing are
