@@ -65,7 +65,7 @@ jobs:
       - run: npm run verify:bundle
 
   audit:
-    name: Asset audit
+    name: Control Room audits
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,3 +76,15 @@ jobs:
       - run: npm ci
       - run: npm run audit:runtime-assets
       - run: npm run verify:room-archives
+      - name: Run Control Room scanners
+        run: npm run audit:control-room:ingest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      - name: Upload scanner report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-room-scanner-report
+          path: artifacts/control-room/scanner-report.json
+          if-no-files-found: warn

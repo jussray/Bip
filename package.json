@@ -18,6 +18,7 @@
     "audit:control-room:structure": "node scripts/control-room-structural-scan.mjs",
     "audit:control-room:rls": "node scripts/control-room-rls-scan.mjs",
     "audit:control-room": "npm run audit:control-room:structure && npm run audit:control-room:rls",
+    "audit:control-room:ingest": "node scripts/control-room-ingest-scans.mjs",
     "validate:companions": "node scripts/validate-companion-assets.mjs",
     "verify:room-archives": "node scripts/verify-room-archives.js",
     "verify:bundle": "npx expo export --platform web --clear",
