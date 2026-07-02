@@ -67,4 +67,11 @@ module.exports = [
       '@typescript-eslint/no-require-imports': 'off',
     },
   },
+  {
+    files: ['src/services/issueNormalizer.ts'],
+    rules: {
+      // `created` is reserved for future create-vs-update accounting.
+      'prefer-const': 'off',
+    },
+  },
 ];
