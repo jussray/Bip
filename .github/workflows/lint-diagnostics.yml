@@ -1,0 +1,38 @@
+name: Lint Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Run lint and capture JSON
+        shell: bash
+        run: |
+          mkdir -p artifacts/lint
+          set +e
+          npx eslint . --format json --output-file artifacts/lint/report.json
+          status=$?
+          set -e
+          echo "lint_status=$status" >> "$GITHUB_ENV"
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-diagnostics
+          path: artifacts/lint/report.json
+          if-no-files-found: error
+      - name: Fail when lint fails
+        if: env.lint_status != '0'
+        run: exit 1
