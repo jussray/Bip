@@ -29,6 +29,7 @@ import {
   type SekretHistoryTurn,
 } from '@/utils/api';
 import { buildSekretPresence } from '../../../services/sekretPresence';
+import { buildReplyRequest } from '@/services/ai/buildReplyRequest';
 import { emitEvent } from '@/features/activity/events';
 import { COMPANION_CURRICULUM } from '@/config/companionCurriculum';
 
@@ -55,6 +56,11 @@ export interface CompanionReplyInput {
   history?: SekretHistoryTurn[];
   parentSharingEnabled?: boolean;
   teenGender?: 'girl' | 'boy' | 'other' | null;
+  /** Long-term oracle understandings, e.g. buildOracleContext(oracleProfile, 'teen'). */
+  oracleContext?: string[];
+  userName?: string;
+  displayName?: string;
+  profileName?: string;
 }
 
 export interface CompanionReplyResult {
@@ -175,18 +181,21 @@ export async function sendCompanionMessage(
 ): Promise<CompanionReplyResult> {
   emitEvent('companion_message', { personalityId: input.companionId });
 
-  const memory: Record<string, unknown> = {};
-  if (input.teenGender) memory.teenGender = input.teenGender;
-
-  const result = await fetchSekretBrainReply({
+  const { request } = await buildReplyRequest({
     characterId:          normalizeSekretCharacter(input.companionId),
     surface:              toBackendSurface(input.surface),
-    userText:             input.text,
+    text:                 input.text,
     mood:                 input.mood,
     history:              input.history,
     parentSharingEnabled: input.parentSharingEnabled,
-    memory:               Object.keys(memory).length > 0 ? memory : undefined,
+    oracleContext:        input.oracleContext,
+    userName:             input.userName,
+    displayName:          input.displayName,
+    profileName:          input.profileName,
+    extraMemory:          input.teenGender ? { teenGender: input.teenGender } : undefined,
   });
+
+  const result = await fetchSekretBrainReply(request);
 
   return {
     reply:                result.reply,

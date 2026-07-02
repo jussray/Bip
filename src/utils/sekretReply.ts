@@ -2,12 +2,11 @@ import { IMAGES } from '../../constants/theme';
 import { fetchSekretBrainReply, type SekretAvatarState } from './api';
 import {
   getSekretFallback,
-  getConversationPhase,
-  buildConversationPhaseInstruction,
   isArrivalMessage,
   keepSekretReply,
 } from '../../services/sekretVoice';
 import { normalizeSekretPersonality } from '../../services/sekretPresence';
+import { buildReplyRequest } from '../services/ai/buildReplyRequest';
 import type { PagesTab } from '../../screens/PagesScreen';
 import type { ChatMessage } from '../../src/services/ai/chat';
 
@@ -117,6 +116,7 @@ export async function fetchPagesReplyDetails(input: {
   text: string;
   mood?: string;
   history?: ChatMessage[];
+  oracleContext?: string[];
 }): Promise<PagesReplyResult> {
   const avatarKey = tabToAvatarKey(input.tab);
   if (!avatarKey || !input.text.trim()) {
@@ -132,7 +132,6 @@ export async function fetchPagesReplyDetails(input: {
 
   const history = input.history ?? [];
   const historyLength = history.length;
-  const phase = getConversationPhase(historyLength);
   const personality = normalizeSekretPersonality(avatarKey);
   const fallback = getSekretFallback(personality, input.text);
   const isArrival = isArrivalMessage(input.text, historyLength);
@@ -143,7 +142,6 @@ export async function fetchPagesReplyDetails(input: {
 
   setAvatarState(avatarKey, 'thinking');
 
-  const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, avatarKey);
   const workerHistory = history.map((m) => ({
     role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
     content: m.text,
@@ -154,7 +152,6 @@ export async function fetchPagesReplyDetails(input: {
       companion: avatarKey,
       surface: 'journal',
       isArrival,
-      phase,
       historyLength,
       hasMood: Boolean(input.mood),
       userTextLength: input.text.length,
@@ -162,18 +159,16 @@ export async function fetchPagesReplyDetails(input: {
   }
 
   try {
-    const request = {
+    const { request } = await buildReplyRequest({
       characterId: avatarKey,
-      surface: 'journal' as const,
-      userText: input.text,
+      surface: 'journal',
+      text: input.text,
       mood: input.mood,
       history: workerHistory,
-      conversationPhase: phase,
-      phaseInstruction,
-      isArrival,
-    };
+      oracleContext: input.oracleContext,
+    });
 
-    const response = await fetchSekretBrainReply(request as Parameters<typeof fetchSekretBrainReply>[0]);
+    const response = await fetchSekretBrainReply(request);
 
     if (__DEV__) {
       console.log('[fetchPagesReplyDetails] ← Worker', {
@@ -234,6 +229,7 @@ export async function fetchPagesReply(input: {
   text: string;
   mood?: string;
   history?: ChatMessage[];
+  oracleContext?: string[];
 }): Promise<string> {
   return (await fetchPagesReplyDetails(input)).reply;
 }

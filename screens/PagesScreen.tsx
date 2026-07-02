@@ -39,6 +39,7 @@ import { OracleDiscoveryPanel } from '../components/OracleDiscoveryPanel';
 import { MiniAvatarSticker } from '../components/MiniAvatarSticker';
 import type { MiniAvatarCharacter } from '../components/MiniAvatarSticker';
 import type { OracleProfile, OracleSessionSummary } from '../services/oracleDiscovery';
+import { buildOracleContext } from '../services/oracleDiscovery';
 import { fetchPagesReply, THINKING_LABELS, tabToAvatarKey } from '@/utils/sekretReply';
 import { fetchSekretVoice } from '../utils/api';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
@@ -666,6 +667,7 @@ function PagesWorkspace({
       tab: activeTab,
       text: savedText,
       mood: entryMoodTag,
+      oracleContext: buildOracleContext(oracleProfile, 'teen'),
     });
 
     setReplyState(prev => ({ ...prev, [entryId]: { typing: false, reply } }));
