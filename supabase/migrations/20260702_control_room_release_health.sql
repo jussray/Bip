@@ -35,6 +35,7 @@ create or replace function public.refresh_control_room_release_health(p_release_
 returns jsonb
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
   v_release public.control_room_releases%rowtype;
@@ -112,3 +113,8 @@ begin
   return v_summary;
 end;
 $$;
+
+revoke all on function public.refresh_control_room_release_health(text) from public;
+revoke all on function public.refresh_control_room_release_health(text) from anon;
+revoke all on function public.refresh_control_room_release_health(text) from authenticated;
+grant execute on function public.refresh_control_room_release_health(text) to service_role;

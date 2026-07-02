@@ -37,6 +37,6 @@ async function post(pathname, body, prefer) {
   return text ? JSON.parse(text) : null;
 }
 
-await post('/rest/v1/control_room_releases?on_conflict=release_key', release, 'resolution=merge-duplicates,return=representation');
+await post('/rest/v1/control_room_releases?on_conflict=release_key', release, 'resolution=ignore-duplicates,return=representation');
 const health = await post('/rest/v1/rpc/refresh_control_room_release_health', { p_release_key: releaseKey }, 'return=representation');
-console.log(JSON.stringify({ release, health }, null, 2));
+console.log(JSON.stringify({ release_key: releaseKey, health }, null, 2));
