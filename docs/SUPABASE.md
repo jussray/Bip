@@ -19,10 +19,24 @@ crew invites.
 
 ## 2. Apply the schema
 
-1. In the Supabase dashboard, open **SQL Editor**.
-2. Paste the contents of [`db/schema.sql`](../db/schema.sql) and run.
-3. This creates every table, enables Row Level Security, and adds
-   owner-only policies — each row is scoped to `auth.uid()`.
+`supabase/migrations/` is the single source of truth for the schema — apply
+it with the Supabase CLI:
+
+```bash
+npx supabase login
+npx supabase link --project-ref <your-project-ref>
+npx supabase db push
+```
+
+This runs every file in `supabase/migrations/` in order, creating each
+table, enabling Row Level Security, and adding owner-only policies — each
+row is scoped to `auth.uid()`. Every migration is written to be safely
+rerunnable (`create table if not exists`, `drop policy if exists` before
+`create policy`), so `db push` is safe to run again after pulling new
+migrations.
+
+No dashboard SQL Editor paste-in required, and none of the tables it
+creates are hand-maintained anywhere else in the repo.
 
 ## 3. Enable anonymous auth
 
@@ -119,7 +133,7 @@ tests), see [`docs/CODESPACES.md`](./CODESPACES.md). The short version:
    ```
 3. Fill `.env.local` with your `EXPO_PUBLIC_SUPABASE_URL` and
    `EXPO_PUBLIC_SUPABASE_ANON_KEY` from Supabase → Settings → API.
-4. Run [`db/schema.sql`](../db/schema.sql) once in the Supabase SQL Editor.
+4. Run `npx supabase link --project-ref <your-project-ref> && npx supabase db push` once (see [§2](#2-apply-the-schema)).
 5. Start the app:
    ```bash
    npx expo start --web

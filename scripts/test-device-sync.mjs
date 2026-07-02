@@ -35,19 +35,26 @@ test('teen and parent bottom navigation use the same five destinations', () => {
   }
 });
 
-test('account and privacy schema exists and can be safely rerun', () => {
-  const schema = read('db/schema.sql');
-  assert.match(schema, /create table if not exists public\.accounts/);
-  assert.match(schema, /anonymous_handle\s+text\s+not null/);
-  assert.match(schema, /bip_id\s+text\s+not null unique/);
-  assert.match(schema, /create table if not exists public\.parent_teen_invites/);
-  assert.match(schema, /create table if not exists public\.parent_teen_links/);
-  assert.match(schema, /create table if not exists public\.teen_guardian_shares/);
-  assert.match(schema, /anonymous_name\s+text/);
-  assert.match(schema, /identity_context\s+text/);
-  assert.match(schema, /connection_status\s+text/);
-  assert.match(schema, /drop policy if exists "accounts_self"/);
-  assert.match(schema, /drop policy if exists "mood_history_self"/);
+test('privacy-relevant schema is defined in migrations and can be safely rerun', () => {
+  // supabase/migrations/ is the single source of truth for schema (db/schema.sql
+  // was retired — it had drifted from the real, currently-used design: dead
+  // accounts/parent_teen_invites/parent_teen_links/teen_guardian_shares tables
+  // that no app code ever read, superseded by parent_links + account_verification).
+  const init = read('supabase/migrations/0001_init.sql');
+  const consent = read('supabase/migrations/20260628_consent_visibility.sql');
+  const crewColumns = read('supabase/migrations/20260702060000_crew_members_bip_id.sql');
+
+  assert.match(init, /create table if not exists public\.mood_history/);
+  assert.match(init, /create table if not exists public\.journal_entries/);
+  assert.match(init, /create table if not exists public\.crew_members/);
+  assert.match(init, /primary key \(user_id, id\)/, 'client-generated ids must be scoped per user, not global');
+  assert.match(init, /drop policy if exists/, 'RLS policies must be re-creatable so the migration is safe to rerun');
+
+  assert.match(consent, /ADD COLUMN IF NOT EXISTS visibility/);
+  assert.match(consent, /journal_entries_visibility_check/);
+
+  assert.match(crewColumns, /add column if not exists bip_id/);
+  assert.match(crewColumns, /add column if not exists connection_status/);
 });
 
 test('legacy API imports resolve to the canonical src implementation', () => {
