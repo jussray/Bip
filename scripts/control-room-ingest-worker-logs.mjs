@@ -11,7 +11,8 @@ const reportPath = path.join(process.cwd(), 'artifacts', 'control-room', 'worker
 const allowed = new Set([
   'source', 'schema_version', 'timestamp', 'fingerprint', 'route', 'method',
   'status', 'duration_ms', 'provider', 'operation', 'character_id',
-  'error_name', 'request_id',
+  'error_name', 'request_id', 'model', 'fallback_used', 'retry_count',
+  'voice_source',
 ]);
 
 function sanitize(event) {
