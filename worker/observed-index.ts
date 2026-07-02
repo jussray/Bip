@@ -17,14 +17,14 @@ function fingerprintFor(status: number, operation: string): string {
 }
 
 export default {
-  async fetch(request: Request, env: unknown, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request: Request, env: unknown): Promise<Response> {
     const started = Date.now();
     const url = new URL(request.url);
     const operation = operationForPath(url.pathname);
     const requestId = request.headers.get('CF-Ray') || undefined;
 
     try {
-      const response = await worker.fetch(request, env as never, ctx as never);
+      const response = await worker.fetch(request, env as never);
       emitWorkerTelemetry({
         fingerprint: fingerprintFor(response.status, operation),
         route: url.pathname,
