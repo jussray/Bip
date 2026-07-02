@@ -1,8 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createRemoteJWKSet, jwtVerify } from 'https://esm.sh/jose@6';
 
-const WEBHOOK_SECRET = Deno.env.get('RELEASE_HEALTH_WEBHOOK_SECRET') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const EXPECTED_REPOSITORY = 'jussray/Bip';
+const EXPECTED_AUDIENCE = 'sekret-bip-release-health';
+const githubJwks = createRemoteJWKSet(new URL('https://token.actions.githubusercontent.com/.well-known/jwks'));
 
 type ReleasePayload = {
   commit_sha?: unknown;
@@ -18,13 +21,29 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+async function verifyGitHubOidc(request: Request): Promise<boolean> {
+  const authorization = request.headers.get('authorization') ?? '';
+  const token = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+  if (!token) return false;
+
+  try {
+    const { payload } = await jwtVerify(token, githubJwks, {
+      issuer: 'https://token.actions.githubusercontent.com',
+      audience: EXPECTED_AUDIENCE,
+    });
+
+    return payload.repository === EXPECTED_REPOSITORY
+      && payload.ref === 'refs/heads/main'
+      && typeof payload.workflow_ref === 'string'
+      && payload.workflow_ref.includes('/.github/workflows/deploy-cloudflare.yml@refs/heads/main');
+  } catch {
+    return false;
+  }
+}
+
 Deno.serve(async (request: Request) => {
   if (request.method !== 'POST') return json({ error: 'method not allowed' }, 405);
-
-  const incomingSecret = request.headers.get('x-release-health-secret') ?? '';
-  if (!WEBHOOK_SECRET || incomingSecret !== WEBHOOK_SECRET) {
-    return json({ error: 'unauthorized' }, 401);
-  }
+  if (!(await verifyGitHubOidc(request))) return json({ error: 'unauthorized' }, 401);
 
   let payload: ReleasePayload;
   try {
