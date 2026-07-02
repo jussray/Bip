@@ -76,15 +76,25 @@ jobs:
       - run: npm ci
       - run: npm run audit:runtime-assets
       - run: npm run verify:room-archives
-      - name: Run Control Room scanners
+      - name: Run scanners in report-only mode
         run: npm run audit:control-room:ingest
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          CONTROL_ROOM_REPORT_ONLY: 'true'
+      - name: Generate advisor report in report-only mode
+        run: npm run audit:control-room:advisors
+        env:
+          CONTROL_ROOM_REPORT_ONLY: 'true'
       - name: Upload scanner report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: control-room-scanner-report
           path: artifacts/control-room/scanner-report.json
+          if-no-files-found: warn
+      - name: Upload advisor report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-advisors-report
+          path: artifacts/control-room/supabase-advisors-report.json
           if-no-files-found: warn
