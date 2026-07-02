@@ -10,6 +10,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "build:web": "expo export -p web",
+    "vercel-build": "npm run build:web",
     "test": "node --test \"test/**/*.test.mjs\"",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
