@@ -9,7 +9,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "vercel-build": "expo export -p web",
+    "build:web": "expo export -p web",
     "test": "node --test \"test/**/*.test.mjs\"",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
@@ -27,8 +27,10 @@
     "test:device-sync": "node --test scripts/test-device-sync.mjs",
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
     "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
-    "deploy": "npm run vercel-build && wrangler deploy",
-    "preview": "npm run vercel-build && wrangler dev"
+    "deploy:pages": "npm run build:web && wrangler pages deploy dist",
+    "deploy:worker": "wrangler deploy",
+    "deploy:cloudflare": "npm run deploy:worker",
+    "preview:worker": "wrangler dev"
   },
   "dependencies": {
     "@expo/log-box": "^56.0.13",
