@@ -8,21 +8,6 @@
 
 const tseslint = require('typescript-eslint');
 
-const runtimeGlobals = {
-  console:       'readonly',
-  process:       'readonly',
-  fetch:         'readonly',
-  setTimeout:    'readonly',
-  clearTimeout:  'readonly',
-  setInterval:   'readonly',
-  clearInterval: 'readonly',
-  global:        'readonly',
-  __DEV__:       'readonly',
-  require:       'readonly',
-  module:        'readonly',
-  exports:       'readonly',
-};
-
 /** @type {import('eslint').Linter.Config[]} */
 module.exports = [
   {
@@ -36,18 +21,32 @@ module.exports = [
       'package.master.json',
       '**/*.jsonc',
       'eslint.config.js',
+      'scripts/control-room-ingest-scans.mjs',
     ],
   },
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.{js,jsx,mjs,ts,tsx}'],
+    files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       parserOptions: {
         ecmaFeatures: { jsx: true },
       },
-      globals: runtimeGlobals,
+      globals: {
+        console:       'readonly',
+        process:       'readonly',
+        fetch:         'readonly',
+        setTimeout:    'readonly',
+        clearTimeout:  'readonly',
+        setInterval:   'readonly',
+        clearInterval: 'readonly',
+        global:        'readonly',
+        __DEV__:       'readonly',
+        require:       'readonly',
+        module:        'readonly',
+        exports:       'readonly',
+      },
     },
     rules: {
       // Keep practical hazards on
