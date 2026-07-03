@@ -15,6 +15,8 @@ type Value = {
   verificationState: VerificationState;
   isVerificationLoading: boolean;
   verificationError: string | null;
+  isAuthResolved: boolean;
+  isAuthenticated: boolean;
   refreshVerification: () => Promise<void>;
 };
 
@@ -40,11 +42,15 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
   const [verificationSnapshot, setSnapshot] = useState<VerificationSnapshot>(INITIAL_VERIFICATION_SNAPSHOT);
   const [isVerificationLoading, setLoading] = useState(isSupabaseConfigured);
   const [verificationError, setError] = useState<string | null>(null);
+  const [isAuthResolved, setAuthResolved] = useState(!isSupabaseConfigured);
+  const [isAuthenticated, setAuthenticated] = useState(false);
 
   const refreshVerification = useCallback(async () => {
     const supabase = getSupabase();
     if (!supabase) {
       setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
+      setAuthenticated(false);
+      setAuthResolved(true);
       setLoading(false);
       return;
     }
@@ -54,7 +60,12 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     try {
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
-      const userId = sessionData.session?.user.id;
+
+      const session = sessionData.session;
+      const userId = session?.user.id;
+      setAuthenticated(Boolean(session));
+      setAuthResolved(true);
+
       if (!userId) {
         setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
         return;
@@ -66,6 +77,9 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
         .eq('user_id', userId)
         .maybeSingle();
       if (error) throw error;
+
+      // Missing or malformed server data must fail closed. The local default is
+      // only a locked fallback and is never treated as proof of verification.
       if (!data) {
         setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
         setError('Verification record unavailable.');
@@ -73,6 +87,8 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
       }
       setSnapshot(mapRow(data as Row));
     } catch (error) {
+      setAuthenticated(false);
+      setAuthResolved(true);
       setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
       setError(error instanceof Error ? error.message : 'Unable to load verification.');
     } finally {
@@ -83,11 +99,15 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const supabase = getSupabase();
     if (!supabase) {
+      setAuthResolved(true);
       setLoading(false);
       return;
     }
+
     void refreshVerification();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthResolved(true);
+      setAuthenticated(Boolean(session));
       if (!session) {
         setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
         setError(null);
@@ -104,8 +124,17 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     verificationState: verificationSnapshot.state,
     isVerificationLoading,
     verificationError,
+    isAuthResolved,
+    isAuthenticated,
     refreshVerification,
-  }), [verificationSnapshot, isVerificationLoading, verificationError, refreshVerification]);
+  }), [
+    verificationSnapshot,
+    isVerificationLoading,
+    verificationError,
+    isAuthResolved,
+    isAuthenticated,
+    refreshVerification,
+  ]);
 
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
