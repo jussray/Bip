@@ -20,7 +20,7 @@ export interface ScreenPurpose {
 
 export const SCREEN_PURPOSES: ScreenPurpose[] = [
   { id: 'room', side: 'teen', title: 'Room', purpose: 'Visual home base and companion presence.', owns: ['time/weather atmosphere', 'mood check-in', 'continue last activity', 'feature hotspots'], mustNotBecome: ['a second dashboard', 'a journal editor', 'a chat transcript'] },
-  { id: 'pages', side: 'teen', title: 'Pages', purpose: 'Journal and notebook hub.', owns: ['typed entries', 'voice attachments', 'prompts', 'saved history', 'entry-linked Se'kret replies'], mustNotBecome: ['a full companion chat', 'a comfort hub', 'a duplicate home screen'] },
+  { id: 'pages', side: 'teen', title: 'Pages', purpose: 'Journal and notebook hub.', owns: ['typed entries', 'voice attachments', 'prompts', 'saved history', "entry-linked Se'kret replies"], mustNotBecome: ['a full companion chat', 'a comfort hub', 'a duplicate home screen'] },
   { id: 'calm', side: 'teen', title: 'Calm', purpose: 'Comfort tools and regulation exercises.', owns: ['breathing', 'grounding', 'Cloud Thoughts', 'comfort cards', 'wind-down tools'], mustNotBecome: ['a journal editor', 'a chat screen', 'a social feed'] },
   { id: 'voicebip', side: 'teen', title: 'Voice Bip', purpose: 'Voice-first talk mode.', owns: ['recording', 'playback', 'transcript', 'spoken companion reply', 'save to Pages'], mustNotBecome: ['Pages with a microphone', 'a text chat clone', 'a calm dashboard'] },
   { id: 'circle', side: 'teen', title: 'Circle', purpose: 'Teen community, friends, and Crew.', owns: ['public anonymous posts', 'friends', 'Crew', 'reactions', 'moderation'], mustNotBecome: ['parent communication', 'private journaling', 'family messaging'] },
