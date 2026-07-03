@@ -177,7 +177,7 @@ Bip/
 
 ## Backend & Deployment
 
-- **Database:** `supabase/migrations/` is the single source of truth for schema (46 migrations as of this writing). Apply with the Supabase CLI — see [`docs/SUPABASE.md`](docs/SUPABASE.md). `db/schema.sql` was retired; do not recreate it as a second schema source.
+- **Database:** `supabase/migrations/` is the single source of truth for schema (47 migrations as of this writing). Apply with the Supabase CLI — see [`docs/SUPABASE.md`](docs/SUPABASE.md). `db/schema.sql` was retired; do not recreate it as a second schema source.
 - **Edge Functions:** `supabase/functions/` — `account-delete`, `account-deletion-request`, `account-request-cancel`, `release-health`, `safety-scan`.
 - **Worker/API:** Cloudflare Worker at `worker/` (entry point `worker/observed-index.ts` per `wrangler.toml`). Deploy with `npm run deploy:worker`.
 - **Web:** Cloudflare Pages, built via `npm run build:web` (aliased as `vercel-build` for the Pages project's configured build command) and deployed with `npm run deploy:pages`.

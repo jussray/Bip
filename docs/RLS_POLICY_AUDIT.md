@@ -40,6 +40,7 @@ database today.
 | `voice_turns` | no | no | n/a | n/a | n/a | n/a | n/a | Same as above — planned only. |
 | `voice_events` | no | no | n/a | n/a | n/a | n/a | n/a | Same as above — planned only. |
 | `voice_latency_metrics` | no | no | n/a | n/a | n/a | n/a | n/a | Same as above — planned only. |
+| `agent_memories` | no (didn't exist yet) | no | yes | owner | owner | owner | owner | **New table**, built in `supabase/migrations/20260702090000_agent_memories.sql` (Agent L4 Phase 1, see `docs/AGENT_L4_ARCHITECTURE.md`). Single `for all` owner policy, `user_id references auth.users(id)` — deliberately not `app_profiles(id)`, correcting a mistake in that doc's own original schema sketch. Never existed in `db/schema.sql`, so no historical drift to track — added straight to the single source of truth. |
 
 ## Findings, ranked
 
@@ -92,7 +93,13 @@ database today.
 
 4. **Planned `voice_*` tables have no schema yet.** Not a defect — just confirms
    the tables reviewed alongside the voice-WS draft (see chat review) don't
-   exist in this repo. If Phase 1 of `docs/AGENT_L4_ARCHITECTURE.md` or the
-   voice session flow is approved, they need RLS added in a
-   `supabase/migrations/` file — there is only one schema file to keep in sync
-   with now (finding 2).
+   exist in this repo. If that voice session flow is ever approved, it needs
+   RLS added in a `supabase/migrations/` file — there is only one schema file
+   to keep in sync with now (finding 2).
+
+5. **`agent_memories` built.** Agent L4 Phase 1 (`docs/AGENT_L4_ARCHITECTURE.md`)
+   shipped `supabase/migrations/20260702090000_agent_memories.sql` directly
+   against the single-source-of-truth migrations path — there was no second
+   file to keep in sync with, unlike every finding above. RLS enabled, single
+   owner policy, confirmed by `node scripts/control-room-rls-scan.mjs` (0
+   findings).
