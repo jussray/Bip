@@ -74,7 +74,7 @@ export function TeenChoresScreen({ setScreen, BottomNav }: TeenChoresScreenProps
         style={{ opacity: fadeIn }}
       >
         <View style={s.header}>
-          <TouchableOpacity onPress={() => setScreen('points')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <TouchableOpacity onPress={() => setScreen('bippin2')} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={s.back}>{'<'}</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
