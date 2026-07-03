@@ -17,6 +17,8 @@ export default function MoreRoute() {
       router.push('/(teen)/room' as any);
     } else if (screen === 'dev-control-room') {
       router.push('/(dev)/control-room' as any);
+    } else if (screen === 'dev-split-view') {
+      router.push('/(dev)/split-view' as any);
     } else {
       router.push(routeForSide(side, screen) as any);
     }

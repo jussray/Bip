@@ -94,6 +94,9 @@ export function MoreScreen({
             <TouchableOpacity style={[styles.sideButton, { backgroundColor: glow }]} onPress={() => setScreen('dev-control-room')}>
               <Text style={styles.sideButtonText}>Open Control Room</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={[styles.sideButton, styles.secondaryButton]} onPress={() => setScreen('dev-split-view')}>
+              <Text style={styles.sideButtonText}>Open Split View (both sides)</Text>
+            </TouchableOpacity>
             {userSide !== 'parent' ? (
               <TouchableOpacity style={[styles.sideButton, styles.secondaryButton]} onPress={handleSideSwitch}>
                 <Text style={styles.sideButtonText}>Go to Parent Side</Text>

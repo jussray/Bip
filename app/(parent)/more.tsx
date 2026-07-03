@@ -63,6 +63,9 @@ export default function ParentMoreRoute() {
             <TouchableOpacity style={styles.controlButton} onPress={() => router.push('/(dev)/control-room' as any)}>
               <Text style={styles.switchText}>Open Control Room</Text>
             </TouchableOpacity>
+            <TouchableOpacity style={styles.controlButton} onPress={() => router.push('/(dev)/split-view' as any)}>
+              <Text style={styles.switchText}>Open Split View (both sides)</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.switchButton}
               onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}

@@ -8,6 +8,7 @@ import { SafetyExperienceSheet } from '../../components/safety/SafetyExperienceS
 import { useAppContext } from '@/context/AppContext';
 import { useSafetyCheck } from '@/hooks/useSafetyCheck';
 import { toCompanionId } from '@/features/sekret/companionEngine';
+import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
@@ -90,9 +91,11 @@ export default function TeenLayout() {
     };
   }, []);
 
+  const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
+
   if (isLoading || !profileChecked) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
-  if (userSide === 'parent') return <Redirect href="/(parent)/room" />;
-  if (userSide !== 'teen') return <Redirect href="/" />;
+  if (effectiveUserSide === 'parent') return <Redirect href="/(parent)/room" />;
+  if (effectiveUserSide !== 'teen') return <Redirect href="/" />;
   if (!profileDone) return <Redirect href="/(onboarding)/welcome" />;
   return <TeenTabs selectedSekret={selectedSekret ?? 'raylene'} />;
 }
