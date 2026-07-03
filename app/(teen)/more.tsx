@@ -15,6 +15,8 @@ export default function MoreRoute() {
       router.push('/(parent)/room' as any);
     } else if (screen === 'home') {
       router.push('/(teen)/room' as any);
+    } else if (screen === 'dev-control-room') {
+      router.push('/(dev)/control-room' as any);
     } else {
       router.push(routeForSide(side, screen) as any);
     }
