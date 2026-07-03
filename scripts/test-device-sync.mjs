@@ -6,10 +6,22 @@ const read = (path) => readFileSync(path, 'utf8');
 
 test('root router protects authenticated areas through centralized route access', () => {
   const layout = read('app/_layout.tsx');
+  const verificationContext = read('src/context/VerificationContext.tsx');
   const routeAccess = read('src/services/routeAccess.ts');
 
-  assert.match(layout, /auth\.getSession\(\)/, 'root layout should resolve the current Supabase session');
-  assert.match(layout, /onAuthStateChange/, 'root layout should react to sign-out and session changes');
+  assert.match(
+    verificationContext,
+    /auth\.getSession\(\)/,
+    'verification context should resolve the current Supabase session',
+  );
+  assert.match(
+    verificationContext,
+    /onAuthStateChange/,
+    'verification context should react to authentication session changes',
+  );
+  assert.match(layout, /isAuthResolved/, 'root layout should wait for auth hydration');
+  assert.match(layout, /isAuthenticated/, 'root layout should enforce the resolved auth session');
+  assert.match(layout, /onAuthStateChange/, 'root layout should react to sign-out for cache cleanup');
   assert.match(layout, /router\.replace\('\/\(auth\)\/login'\)/, 'signed-out users should be sent to login');
   assert.match(layout, /decideRouteAccess/, 'root layout should delegate route policy centrally');
   assert.match(layout, /router\.replace\(decision\.redirectTo\)/, 'denied routes should use the centralized redirect');
