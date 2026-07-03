@@ -8,6 +8,7 @@
  *   - learned relationship style (tone/nickname/profanity preferences)
  *   - conversation phase + phase instruction
  *   - long-term oracle understandings (memory)
+ *   - durable per-companion memory (docs/AGENT_L4_ARCHITECTURE.md)
  *   - the teen's name context
  *
  * Without this, a surface sends a thin payload and the companion feels generic
@@ -27,6 +28,7 @@ import {
   isArrivalMessage,
   type ConversationPhase,
 } from '../../../services/sekretVoice';
+import { writeAgentMemory, listRecentAgentMemories } from '@/services/agentMemory';
 import type { SekretCharacterId, SekretSurface, SekretHistoryTurn } from '@/utils/api';
 
 export interface ReplyRequestContext {
@@ -88,9 +90,17 @@ export async function buildReplyRequest(ctx: ReplyRequestContext): Promise<Built
   );
   const isArrival = isArrivalMessage(ctx.text, historyLength);
 
+  // Durable, per-companion memory (docs/AGENT_L4_ARCHITECTURE.md Phase 1) —
+  // distinct from ctx.oracleContext, which is the caller-supplied Oracle
+  // profile summary. Recency-ordered read; best-effort write. Neither call
+  // throws or blocks the reply on failure.
+  const agentMemories = await listRecentAgentMemories(ctx.characterId, 5);
+  await writeAgentMemory(ctx.characterId, 'episodic', ctx.text);
+
   const memory: Record<string, unknown> = {
     relationshipStyle: relationshipProfileToOracleNote(relationship),
     ...(ctx.oracleContext && ctx.oracleContext.length > 0 ? { oracleContext: ctx.oracleContext } : {}),
+    ...(agentMemories.length > 0 ? { agentMemories } : {}),
     ...(ctx.extraMemory ?? {}),
   };
 

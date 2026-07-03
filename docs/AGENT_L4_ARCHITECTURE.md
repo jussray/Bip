@@ -39,6 +39,11 @@ Maturity scale used below, specific to this doc:
   messaging** exist today. Oracle/Se'kret currently reflects patterns back
   using whatever `oracleContext` is passed in per-call, not a queried memory
   store.
+- **`oracle_records` / `oracle_sessions`** (`20260618_bridge_oracle_tables.sql`,
+  extending `0003_oracle_parentlinks_period_safety.sql`) already persist a
+  durable, cross-device `OracleRecord` snapshot per `(user_id, mode)` plus an
+  append-only session log — this is real L3-equivalent memory, just scoped to
+  the Oracle discovery flow (teen/parent mode), not per-companion.
 - Supabase already hosts event-sourced tables (`audit_events`, `founder_ideas`,
   control room tables — see `supabase/migrations/`), so there's precedent for
   the kind of append-only tables L3/L4 memory would need.
@@ -103,19 +108,63 @@ stack — a Postgres queue table polled by the existing Worker (same shape as
 real-time vendor. That keeps the protocol inside infrastructure Bip already
 operates and pays for.
 
-## Phased plan (proposal — not yet built)
+## Phased plan
 
-| Phase | Level | Scope |
-|---|---|---|
-| 1 | L3 | Persist `RoomMemory` server-side; add an `agent_memories` table (`pgvector`); wire Oracle's `oracleContext` build to query it instead of relying only on passed-in history |
-| 2 | L3 | Add a `agent_goals` table for cross-session continuity (e.g. "follow up about X next time") |
-| 3 | L4 | Scheduled reflection job that summarizes a finished session into semantic memory and flags patterns for Oracle |
-| 4 | L4 (conditional) | Async inter-companion signaling via a Supabase queue + the existing Worker poller — **only** if one of the trigger conditions above materializes |
+| Phase | Level | Scope | Status |
+|---|---|---|---|
+| 1 | L3 | Add an `agent_memories` table; wire it into `buildReplyRequest.ts` so every companion turn reads recent memory and writes the new one | **Built** — see below |
+| 2 | L3 | Add an `agent_goals` table for cross-session continuity (e.g. "follow up about X next time") | Not started |
+| 3 | L4 | Scheduled reflection job that summarizes a finished session into semantic memory and flags patterns for Oracle | Not started |
+| 4 | L4 (conditional) | Async inter-companion signaling via a Supabase queue + the existing Worker poller — **only** if one of the trigger conditions above materializes | Not started |
 
-## Illustrative schema sketch (proposal only — not applied)
+### Phase 1 — what actually shipped
+
+- `supabase/migrations/20260702090000_agent_memories.sql`
+- `src/services/agentMemory.ts` — `writeAgentMemory()` / `listRecentAgentMemories()`
+- Wired into `src/services/ai/buildReplyRequest.ts`: reads the 5 most recent
+  memories for the companion before assembling the request, writes the
+  incoming message as a new `episodic` memory after, folds the read result
+  into the shared `memory` bundle under its own `agentMemories` key (kept
+  separate from `oracleContext`, which is the caller-supplied Oracle profile
+  summary — a different thing).
+- `test/agent-memory.test.mjs`
+
+Two corrections made against this doc's own earlier proposal, found while
+implementing it:
+
+1. **`user_id references auth.users(id)`, not `app_profiles(id)`.** The
+   original schema sketch below (kept for the record) pointed at
+   `public.app_profiles`. That table is never `create table`'d anywhere in
+   `supabase/migrations/` — it's referenced only by founder/control-room
+   tables (see `docs/FOUNDER_CONTROL_ROOM.md`) and isn't the right FK target
+   for teen-owned data. Every other per-user table in this repo
+   (`oracle_records`, `bridge_signals`, `mood_history`, `journal_entries`, …)
+   keys on `auth.users(id)`; `agent_memories` now does too.
+2. **`oracle_records` / `oracle_sessions` already existed** (added in
+   `20260618_bridge_oracle_tables.sql`, extending `0003_oracle_parentlinks_period_safety.sql`)
+   and already provide durable, per-user, cross-device memory — a single
+   upserted JSON snapshot per `(user_id, mode)` plus an append-only session
+   log. This doc's original "Current state" section missed them. They're not
+   a substitute for `agent_memories`: they're mode-scoped (teen/parent) profile
+   snapshots for the Oracle discovery flow, not per-companion, individually
+   retrievable memory items. `agent_memories` is additive, not a replacement.
+
+`embedding vector(1536)` is in the table now but **unpopulated** — there is no
+embedding-generation call anywhere in this codebase yet (no embeddings model is
+configured; `worker/config/models.ts` only has chat/TTS/STT models). Retrieval
+today is recency-ordered, not similarity search. Wiring an embeddings model and
+switching `listRecentAgentMemories()` to vector similarity is a real follow-up,
+not done here — it's a new external-model-call decision, not "just" a query
+change.
+
+## Illustrative schema sketch (superseded — kept for the record)
+
+The version actually applied is `supabase/migrations/20260702090000_agent_memories.sql`.
+This is the original sketch from before Phase 1 was built, left here so the
+"what changed and why" note above makes sense:
 
 ```sql
--- Not a migration yet. For review before Phase 1 is scheduled.
+-- Superseded — see supabase/migrations/20260702090000_agent_memories.sql
 create table public.agent_memories (
   id           uuid primary key default gen_random_uuid(),
   profile_id   uuid not null references public.app_profiles(id) on delete cascade,
@@ -131,27 +180,22 @@ create index on public.agent_memories using ivfflat (embedding vector_cosine_ops
 alter table public.agent_memories enable row level security;
 ```
 
-This should follow the same RLS pattern as the rest of `supabase/migrations/`
-(founder/control-room tables restrict by `app_profiles`; this would restrict
-by the owning teen's profile) — write that policy alongside the real migration,
-not here.
-
 ## Open questions for founder decision
 
-- Is cross-session memory (Phases 1–2) or inter-companion coordination
+- Is cross-session goal tracking (Phase 2) or inter-companion coordination
   (Phase 4) the more valuable next step? Nothing in the current product
   requires Phase 4 yet.
 - Confirm: no third-party memory/orchestration vendor is adopted without a
   COPPA subprocessor review, even if it benchmarks better than `pgvector`.
+- Is it worth wiring an embeddings model now to make `agent_memories`
+  similarity-searchable, or is recency-ordered retrieval good enough until
+  Phase 3's reflection job needs it?
 
-## Next steps if Phase 1 is approved
+## Next steps if Phase 2 is approved
 
-Follow the repo's existing conventions rather than a standalone `output/`
-bundle:
+Follow the same conventions Phase 1 used:
 
-1. Migration under `supabase/migrations/<YYYYMMDDHHMMSS>_agent_memories.sql`
-2. Service module under `src/services/` (e.g. `agentMemory.ts`), following the
-   pattern in `src/services/founderAudit.ts`
-3. Wire into `src/services/ai/buildReplyRequest.ts` where `oracleContext` is
-   already assembled
-4. Tests under `test/`, following `test/companion-reply-continuity.test.mjs`
+1. Migration under `supabase/migrations/<YYYYMMDDHHMMSS>_agent_goals.sql`
+2. Extend `src/services/agentMemory.ts` (or a sibling `agentGoals.ts`)
+3. Wire into `src/services/ai/buildReplyRequest.ts` alongside the Phase 1 read/write
+4. Tests under `test/`, following `test/agent-memory.test.mjs`
