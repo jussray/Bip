@@ -53,7 +53,7 @@ export default function Bippin2Index() {
   return (
     <View style={s.root}>
       <AmbientWeatherOverlay />
-      <ImageBackground source={IMAGES.roomBg} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <ImageBackground source={IMAGES.bgCircle} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <LinearGradient
         colors={['rgba(20,8,40,0.65)', 'rgba(10,6,20,0.82)', 'rgba(5,3,12,0.96)']}
         style={StyleSheet.absoluteFill}
