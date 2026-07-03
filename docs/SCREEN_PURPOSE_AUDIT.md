@@ -64,12 +64,24 @@ Primary screens are feature homes, not visual reskins of the same companion prom
    - teen: comfort and regulation
    - parent: pause before replying and relationship reset
 
-4. **Room cleanup**
-   - remove dashboard duplication
-   - keep only home-base shortcuts and presence
+4. **Room cleanup — done.** Neither `RoomScreen.tsx` nor `ParentRoomScreen.tsx`
+   contains dashboard/stats content (`ParentRoomScreen.tsx` states outright:
+   "The room IS the interface. No cards. No grids. No dashboard."), and
+   `app/(parent)/dashboard.tsx` is only a hidden redirect alias into Bridge,
+   not a competing home. Removed one leftover: a dead `'dashboard'` member
+   of the `RoomTarget` union in `RoomScreen.tsx` that no hotspot ever routed to.
 
-5. **Circle separation**
-   - verify distinct data sources, identity rules, and moderation for teen versus parent
+5. **Circle separation — data sources done, moderation added.**
+   Teen Circle (`public_circle_posts`/`friends_circle_posts`/`crew_circle_posts`)
+   and Parent Circle (`parent_circle_posts`) were already fully separate
+   tables with no overlap, and every post already renders without an author
+   identity (by design — see `types/circle.ts`), which rules out a
+   client-side block-by-user feature without a larger identity-exposure
+   change. What was genuinely missing was moderation: added a `reported_posts`
+   table (`supabase/migrations/20260703200000_circle_moderation.sql`) and a
+   report action on both the teen (`app/(teen)/circle/feed.tsx`) and parent
+   (`screens/ParentCircleScreen.tsx`) feeds — reporting a post hides it from
+   that device immediately and records the report for founder/admin review.
 
 6. **Mobile layout pass**
    - safe areas
