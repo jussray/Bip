@@ -69,6 +69,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     settings: TEEN_ROUTES.settings,
     more: TEEN_ROUTES.more,
     points: TEEN_ROUTES.points,
+    chores: TEEN_ROUTES.chores,
     history: TEEN_ROUTES.history,
     bridge: TEEN_ROUTES.bridge,
     parentBridge: TEEN_ROUTES.bridge,
