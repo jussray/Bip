@@ -8,6 +8,7 @@ import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import { clearPrivateAccountCache } from '@/utils/storage';
 import { clearProfileIdentityCache } from '@/features/identity/clearProfileIdentityCache';
+import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 
 void validateEnv();
 
@@ -46,7 +47,8 @@ function RouteBoundary() {
   }, []);
 
   useEffect(() => {
-    if (isLoading || isVerificationLoading || !userSide) return;
+    const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
+    if (isLoading || isVerificationLoading || !effectiveUserSide) return;
 
     const routeSegments = Array.from(segments) as string[];
     const first = String(routeSegments[0] ?? '');
@@ -54,7 +56,7 @@ function RouteBoundary() {
     const firstSegment = SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
     const decision = decideRouteAccess({
       firstSegment,
-      userSide,
+      userSide: effectiveUserSide,
       verificationState,
     });
 

@@ -12,8 +12,20 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { getCurrentFounderProfile, isFounderProfile, type FounderProfile } from '@/services/founderAudit';
+import { DEV_SPLIT_VIEW_SIDE_PARAM } from '@/utils/devSplitViewSide';
 
 type PaneSide = 'teen' | 'parent';
+
+// Both panes load the same origin, which would otherwise share the founder's
+// real AsyncStorage userSide and race to the same room. Stamp each pane's
+// side onto its URL so the route gates (app/_layout.tsx, app/(teen)/_layout.tsx)
+// can render the correct side for that pane specifically.
+function withDevSide(path: string, side: PaneSide): string {
+  const [withoutHash, hash] = path.split('#');
+  const separator = withoutHash.includes('?') ? '&' : '?';
+  const stamped = `${withoutHash}${separator}${DEV_SPLIT_VIEW_SIDE_PARAM}=${side}`;
+  return hash ? `${stamped}#${hash}` : stamped;
+}
 
 interface QuickLink {
   label: string;
@@ -100,7 +112,7 @@ function Pane({ side, initialPath }: { side: PaneSide; initialPath: string }) {
             <TouchableOpacity
               style={s.goBtn}
               onPress={() => {
-                if (typeof window !== 'undefined') window.open(path, '_blank');
+                if (typeof window !== 'undefined') window.open(withDevSide(path, side), '_blank');
               }}
             >
               <Text style={s.goBtnText}>↗</Text>
@@ -117,7 +129,7 @@ function Pane({ side, initialPath }: { side: PaneSide; initialPath: string }) {
         {Platform.OS === 'web'
           ? React.createElement('iframe', {
               key: `${side}-${reloadToken}`,
-              src: path,
+              src: withDevSide(path, side),
               title: `${side}-preview`,
               sandbox: 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-popups-to-escape-sandbox',
               style: { width: '100%', height: '100%', border: 'none', backgroundColor: '#080611' },
@@ -180,7 +192,7 @@ export default function DevSplitViewScreen() {
         </View>
         <Text style={s.muted}>
           {Platform.OS === 'web'
-            ? 'Both panes share your current session and storage — sign in once and use the founder side-switch or dev test family tools to link a teen+parent pair, then watch Bridge, Doorbell, and S2Tell interactions live in both panes at once. Some screen names exist on both sides (Room, Bridge, Growth, Sekret…); only the parent version is deep-linkable from cold, so drive those teen screens with in-app taps once you land inside.'
+            ? 'Each pane is pinned to its side (teen left, parent right) independent of your signed-in account’s stored side — sign in once and use a linked teen+parent pair to watch Bridge, Doorbell, and S2Tell interactions live in both panes at once. Some screen names exist on both sides (Room, Bridge, Growth, Sekret…); only the parent version is deep-linkable from cold, so drive those teen screens with in-app taps once you land inside.'
             : 'Independent split-screen preview requires the web dev build (npm run web). On-device navigation follows your account’s assigned side.'}
         </Text>
       </View>
