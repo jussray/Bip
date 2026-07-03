@@ -1,15 +1,40 @@
 -- 20260618_bridge_oracle_tables.sql
 -- Se'kret Bip — P6–P8 tables
+--   • parent_links     — prerequisite for linked-parent bridge policies
 --   • bridge_signals   — teen-to-parent metadata signal (NO message content)
 --   • oracle_records   — upsert snapshot of a user's full OracleRecord per mode
---   • oracle_sessions  — append-only per-session log (extends table from 0003)
+--   • oracle_sessions  — companion-memory + append-only per-session log
 --
--- oracle_sessions was first created in 0003_oracle_parentlinks_period_safety.sql
--- for companion-memory upserts.  This migration adds the columns needed by the
--- P7/P8 markSessionComplete() append-only insert path and updates its RLS
--- policies to match.  All DDL is idempotent (IF NOT EXISTS / IF EXISTS guards).
---
--- Run after 0003_oracle_parentlinks_period_safety.sql.
+-- Some production databases already received parent_links and oracle_sessions
+-- through remote migration history. Fresh databases replay this repository in
+-- filename order, so this migration must establish those base tables before any
+-- policy or ALTER TABLE statement references them. All DDL below is idempotent.
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 0. prerequisite base tables
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.parent_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  teen_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  invite_code text NOT NULL UNIQUE,
+  status text NOT NULL DEFAULT 'pending',
+  linked_at timestamptz,
+  expires_at timestamptz NOT NULL DEFAULT (now() + interval '48 hours'),
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.oracle_sessions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  personality_id text NOT NULL,
+  memory jsonb NOT NULL DEFAULT '{}',
+  session_count integer NOT NULL DEFAULT 0,
+  last_synced timestamptz NOT NULL DEFAULT now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, personality_id)
+);
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 1. bridge_signals
@@ -87,12 +112,11 @@ CREATE POLICY "oracle_records: owner all"
   WITH CHECK (auth.uid() = user_id);
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. oracle_sessions  (extends existing table from 0003)
---    The 0003 migration created oracle_sessions for companion-memory upserts
---    (personality_id + memory columns).  P7/P8 adds an append-only insert
---    path via markSessionComplete() that writes mode, session_index,
---    total_turns, question_ids, dimension_summary, profile_snapshot, and
---    completed_at.  We add those columns idempotently and refresh RLS policies.
+-- 3. oracle_sessions
+--    The base companion-memory columns are created above for fresh databases.
+--    P7/P8 adds an append-only insert path via markSessionComplete() that writes
+--    mode, session_index, total_turns, question_ids, dimension_summary,
+--    profile_snapshot, and completed_at.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- Add P7/P8 columns (safe no-ops if already present).
@@ -113,7 +137,6 @@ CREATE INDEX IF NOT EXISTS oracle_sessions_user_mode_idx
 
 ALTER TABLE public.oracle_sessions ENABLE ROW LEVEL SECURITY;
 
--- Drop existing policies (created without guards in 0003) before recreating.
 DROP POLICY IF EXISTS "oracle_sessions: owner read"   ON public.oracle_sessions;
 DROP POLICY IF EXISTS "oracle_sessions: owner insert" ON public.oracle_sessions;
 DROP POLICY IF EXISTS "oracle_sessions: owner update" ON public.oracle_sessions;
@@ -129,7 +152,7 @@ CREATE POLICY "oracle_sessions: owner insert"
   ON public.oracle_sessions FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
--- Users may update their own rows (companion-memory upsert path from 0003).
+-- Users may update their own rows (companion-memory upsert path).
 CREATE POLICY "oracle_sessions: owner update"
   ON public.oracle_sessions FOR UPDATE
   USING     (auth.uid() = user_id)
