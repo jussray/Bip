@@ -10,9 +10,13 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppContext } from '@/context/AppContext';
 import { writeCirclePost, loadCircleFeed, syncCircleReaction } from '@/utils/sync';
 import type { CirclePost } from '@/context/AppContext';
+import { GlitterSparkles } from '../../../components/GlitterSparkles';
+
+const CIRCLE_GLITTER_KEY = 'circle_glitter_deco';
 
 const REACTION_LABELS: { key: keyof CirclePost['reactions']; emoji: string; label: string }[] = [
   { key: 'felt',    emoji: '💜', label: 'felt this too'     },
@@ -248,6 +252,22 @@ export function CircleFeed() {
 }
 
 export default function CircleScreen() {
+  const [glitterOn, setGlitterOn] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(CIRCLE_GLITTER_KEY).then(v => {
+      if (v === 'true') setGlitterOn(true);
+    }).catch(() => {});
+  }, []);
+
+  function toggleGlitter() {
+    setGlitterOn(prev => {
+      const next = !prev;
+      void AsyncStorage.setItem(CIRCLE_GLITTER_KEY, next ? 'true' : 'false');
+      return next;
+    });
+  }
+
   return (
     <SafeAreaView style={s.safe}>
       <View style={s.header}>
@@ -255,11 +275,22 @@ export default function CircleScreen() {
           <Text style={s.kicker}>{"SE'KRET BIP"}</Text>
           <Text style={s.title}>{'Circle 💜'}</Text>
         </View>
-        <View style={s.anonPill}>
-          <Text style={s.anonPillText}>🌑 anonymous</Text>
+        <View style={s.headerRight}>
+          <TouchableOpacity
+            style={[s.anonPill, glitterOn && s.glitterPillActive]}
+            onPress={toggleGlitter}
+            accessibilityRole="button"
+            accessibilityLabel={glitterOn ? 'Turn off glitter decorations' : 'Turn on glitter decorations'}
+          >
+            <Text style={s.anonPillText}>{glitterOn ? '✨ deco on' : '✨ deco'}</Text>
+          </TouchableOpacity>
+          <View style={s.anonPill}>
+            <Text style={s.anonPillText}>🌑 anonymous</Text>
+          </View>
         </View>
       </View>
       <CircleFeed />
+      {glitterOn ? <GlitterSparkles count={14} /> : null}
     </SafeAreaView>
   );
 }
@@ -276,6 +307,7 @@ const s = StyleSheet.create({
   },
   kicker: { color: '#5a3a78', fontSize: 9, fontWeight: '900', letterSpacing: 1.8 },
   title:  { color: '#f0e6ff', fontSize: 26, fontWeight: '800', marginTop: 2 },
+  headerRight: { flexDirection: 'row', gap: 8 },
   anonPill: {
     backgroundColor: '#1e0b30',
     borderRadius: 20,
@@ -284,6 +316,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#3d1a5e',
   },
+  glitterPillActive: { backgroundColor: '#3d1a5e', borderColor: '#f472b6' },
   anonPillText: { color: '#7c5a9e', fontSize: 11, fontWeight: '600' },
   composeCard: {
     marginHorizontal: 16,
@@ -331,8 +364,9 @@ const s = StyleSheet.create({
     backgroundColor: '#16082a',
     borderRadius: 18,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#2e1250',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#3d1a5e',
     shadowColor: '#7c3aed',
     shadowOpacity: 0.12,
     shadowRadius: 8,

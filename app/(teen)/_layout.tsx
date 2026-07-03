@@ -64,6 +64,7 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
         <Tabs.Screen name="pages/new" options={{ href: null }} />
         <Tabs.Screen name="circle/[id]" options={{ href: null }} />
         <Tabs.Screen name="circle/weather" options={{ href: null }} />
+        <Tabs.Screen name="resources" options={{ href: null }} />
       </Tabs>
       <SideSafeBackButton side="teen" />
       <GlobalMoodButton />

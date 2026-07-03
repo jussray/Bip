@@ -672,7 +672,7 @@ export function VoiceBipScreen({
         )}
 
         {/* ── Reply ── */}
-        {sekretReply && !isThinking && (
+        {Boolean(sekretReply) && !isThinking && (
           <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
             <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.responseLabel}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>

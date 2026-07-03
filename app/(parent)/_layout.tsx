@@ -39,6 +39,7 @@ export default function ParentLayout() {
         <Tabs.Screen name="period-calendar" options={{ href: null }} />
         <Tabs.Screen name="sekret" options={{ href: null }} />
         <Tabs.Screen name="growth" options={{ href: null }} />
+        <Tabs.Screen name="resources" options={{ href: null }} />
       </Tabs>
       <SideSafeBackButton side="parent" />
     </View>

@@ -39,7 +39,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
       parentConnection: PARENT_ROUTES.bridge,
       'parent-connection': PARENT_ROUTES.bridge,
       messages: PARENT_ROUTES.bridge,
-      resources: PARENT_ROUTES.more,
+      resources: PARENT_ROUTES.resources,
       insights: PARENT_ROUTES.more,
       'parent-insights': PARENT_ROUTES.more,
       points: PARENT_ROUTES.more,
@@ -87,6 +87,7 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     growth: TEEN_ROUTES.growth,
     mindReset: TEEN_ROUTES.mindReset,
     bodyReset: TEEN_ROUTES.bodyReset,
+    resources: TEEN_ROUTES.resources,
   };
   return teenMap[key] ?? TEEN_ROUTES.room;
 }

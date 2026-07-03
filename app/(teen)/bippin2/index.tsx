@@ -7,7 +7,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AmbientWeatherOverlay } from '../../../components/AmbientWeatherOverlay';
 import { useAppContext } from '@/context/AppContext';
-import { getRoomBg } from '../../../constants/theme';
+import { IMAGES } from '../../../constants/theme';
 
 const PATHS = [
   {
@@ -53,7 +53,7 @@ export default function Bippin2Index() {
   return (
     <View style={s.root}>
       <AmbientWeatherOverlay />
-      <ImageBackground source={getRoomBg('raylene', 'day')} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <ImageBackground source={IMAGES.bgCircle} style={StyleSheet.absoluteFill} resizeMode="cover" />
       <LinearGradient
         colors={['rgba(20,8,40,0.65)', 'rgba(10,6,20,0.82)', 'rgba(5,3,12,0.96)']}
         style={StyleSheet.absoluteFill}

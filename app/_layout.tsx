@@ -53,7 +53,12 @@ function RouteBoundary() {
     const routeSegments = Array.from(segments) as string[];
     const first = String(routeSegments[0] ?? '');
     const second = String(routeSegments[1] ?? '');
-    const firstSegment = SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
+    // Teen and parent routes share the same leaf segment names (e.g. both
+    // (teen)/circle and (parent)/circle are just "circle"), so only treat
+    // this as a gated social route when it's actually on the teen side —
+    // canUnlockSocial()/verificationState is teen verification, and gating
+    // Parent Circle behind it would make it permanently unreachable.
+    const firstSegment = first === '(teen)' && SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
     const decision = decideRouteAccess({
       firstSegment,
       userSide: effectiveUserSide,

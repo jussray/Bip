@@ -9,7 +9,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
-  Text, View, TouchableOpacity, Image,
+  Text, View, TouchableOpacity,
   ImageBackground, Animated, StyleSheet,
   Platform, Dimensions, Easing,
 } from 'react-native';
@@ -122,19 +122,24 @@ const TIME_BADGE: Record<string, string> = {
   rain:      '🌧️ rain',
 };
 
-// ─── Room hotspots — positioned over where the objects actually are ───────────
-// Fractions of W × H, approximated from the room art layout:
-//   journal on coffee table (center-low), mug left of table,
-//   cloud neon on bookshelf (center-mid), laptop/bridge desk (right),
-//   cork board (right-upper), memory shelf (left-mid)
-const HOTSPOTS = [
-  { icon: '📔', label: 'Pages',      route: 'pages',             xf: 0.42, yf: 0.58, delay: 0   },
-  { icon: '☕', label: "Se\'kret",    route: 'sekret',            xf: 0.20, yf: 0.65, delay: 350 },
-  { icon: '🌉', label: 'Bridge',     route: 'bridge',            xf: 0.74, yf: 0.52, delay: 600 },
-  { icon: '🌐', label: 'Circle',     route: 'circle',            xf: 0.83, yf: 0.38, delay: 900 },
-  { icon: '🌬️', label: 'Calm',       route: 'calm',              xf: 0.13, yf: 0.47, delay: 450 },
-  { icon: '🤝', label: 'Connection', route: 'parent-connection', xf: 0.58, yf: 0.36, delay: 700 },
-  { icon: '🌱', label: 'Growth',     route: 'parent-growth',     xf: 0.31, yf: 0.35, delay: 550 },
+// ─── Room hotspots ────────────────────────────────────────────────────────────
+// Point-based invisible CTAs — x/y are the center of the touch target as a
+// fraction of screen width/height (0–1). Rendered BEHIND the room art; the
+// art uses pointerEvents="none" so taps fall through to these. No visible
+// icon, no ring, no label — matches screens/RoomScreen.tsx's pattern.
+// Positions approximated from the room art layout: journal on coffee table
+// (center-low), cloud neon on bookshelf (center-mid), laptop/bridge desk
+// (right), cork board (right-upper), memory shelf (left-mid). Se'kret has
+// its own dedicated pill below, so it isn't duplicated here.
+type ParentHotspot = { id: string; x: number; y: number; route: string; label: string; size?: number };
+
+const PARENT_HOTSPOTS: ParentHotspot[] = [
+  { id: 'pages',      x: 0.42, y: 0.58, route: 'pages',             label: 'Pages'      },
+  { id: 'bridge',     x: 0.74, y: 0.52, route: 'bridge',            label: 'Bridge'     },
+  { id: 'circle',     x: 0.83, y: 0.38, route: 'circle',            label: 'Circle'     },
+  { id: 'calm',       x: 0.13, y: 0.47, route: 'calm',              label: 'Calm'       },
+  { id: 'connection', x: 0.58, y: 0.36, route: 'parent-connection', label: 'Connection' },
+  { id: 'growth',     x: 0.31, y: 0.35, route: 'parent-growth',     label: 'Growth'     },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -154,49 +159,6 @@ function getGreeting(style: ParentRoomStyle, slot: string) {
   if (slot === 'deepNight') return "put it down for tonight.";
   if (slot === 'rain')      return "it's a quiet one. take it.";
   return style === 'mom' ? "good morning, mama." : "good morning, dad.";
-}
-
-const DEBUG_HOTSPOTS = false;
-
-// ─── Room Hotspot ─────────────────────────────────────────────────────────────
-interface HotspotProps {
-  icon: string; label: string; route: string;
-  xf: number; yf: number; delay: number;
-  accent: string; visible: boolean; onPress: () => void;
-}
-
-function RoomHotspot({ icon, label, xf, yf, delay, accent, visible, onPress }: HotspotProps) {
-  const appear = useRef(new Animated.Value(0)).current;
-  const glow   = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (!visible) return;
-    Animated.timing(appear, { toValue: 1, duration: 450, delay, useNativeDriver: true }).start();
-    const timer = setTimeout(() => {
-      Animated.loop(Animated.sequence([
-        Animated.timing(glow, { toValue: 1, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(glow, { toValue: 0, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ])).start();
-    }, delay + 200);
-    return () => clearTimeout(timer);
-  }, [visible]);
-
-  const scale   = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
-  const opacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1.0] });
-
-  return (
-    <Animated.View style={[s.hotspot, { left: W * xf - 30, top: H * yf - 30, opacity: appear }]}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={s.hotspotHit}>
-        <Animated.View style={[
-          s.hotspotRing,
-          { borderColor: accent + 'cc', shadowColor: accent, transform: [{ scale }], opacity },
-        ]}>
-          <Text style={s.hotspotIcon}>{icon}</Text>
-        </Animated.View>
-        <Text style={s.hotspotLabel}>{label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
 }
 
 // ─── ParentRoomScreen ─────────────────────────────────────────────────────────
@@ -255,8 +217,6 @@ export function ParentRoomScreen({
   // What Se'kret says: mood response → memory/ambient cycling
   const presenceLine = moodResponse || cyclingQuotes[presenceIdx % cyclingQuotes.length];
 
-  const [hotspotsReady,  setHotspotsReady]  = useState(false);
-
   const roomFade    = useRef(new Animated.Value(0)).current;
   const textFade    = useRef(new Animated.Value(0)).current;
   const cloudBreath = useRef(new Animated.Value(0)).current;
@@ -276,7 +236,7 @@ export function ParentRoomScreen({
     Animated.sequence([
       Animated.timing(roomFade, { toValue: 1, duration: 900, easing: Easing.out(Easing.quad), useNativeDriver: true }),
       Animated.timing(textFade, { toValue: 1, duration: 550, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-    ]).start(() => setHotspotsReady(true));
+    ]).start();
 
     const loop = Animated.loop(Animated.sequence([
       Animated.timing(cloudBreath, { toValue: 1, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
@@ -291,18 +251,42 @@ export function ParentRoomScreen({
 
   return (
     <View style={s.root}>
+      {/* ── HOTSPOT LAYER — invisible CTAs behind the room art ───────────── */}
+      {/* Rendered first so it sits below the art in z-order. The art below */}
+      {/* uses pointerEvents="none", letting taps fall through to these.   */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {PARENT_HOTSPOTS.map(spot => (
+          <TouchableOpacity
+            key={spot.id}
+            style={{
+              position: 'absolute',
+              left: W * spot.x - (spot.size ?? 40),
+              top: H * spot.y - (spot.size ?? 40),
+              width: spot.size ?? 80,
+              height: spot.size ?? 80,
+            }}
+            onPress={() => setScreen(spot.route)}
+            activeOpacity={0}
+            accessibilityRole="button"
+            accessibilityLabel={spot.label}
+          />
+        ))}
+      </View>
+
       <AmbientWeatherOverlay />
 
-      {/* ── ROOM ART ─────────────────────────────────────────────────────── */}
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: roomFade }]}>
+      {/* ── ROOM ART — visual only; taps pass through to the hotspot layer ── */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: roomFade }]} pointerEvents="none">
         <ImageBackground source={roomBg} style={StyleSheet.absoluteFill} resizeMode="cover" />
       </Animated.View>
 
       {/* ── READABILITY VIGNETTE: dark top/bottom, clear middle ──────────── */}
+      {/* pointerEvents="none" — visual only, must not block the hotspot layer below */}
       <LinearGradient
         colors={overlay}
         style={StyleSheet.absoluteFill}
         locations={[0, 0.28, 0.65, 1.0]}
+        pointerEvents="none"
       />
 
       {/* ── TIME BADGE — small, top-left, same pattern as teen room ────────── */}
@@ -327,28 +311,23 @@ export function ParentRoomScreen({
         </TouchableOpacity>
       </Animated.View>
 
-      {/* ── SE'KRET CLOUD — living in the room, not in a card ────────────── */}
+      {/* ── SE'KRET — plain pill button, no cloud/bubble art ─────────────── */}
       <Animated.View style={[
-        s.cloudInRoom,
-        { left: W * 0.50 - 28, top: H * 0.33 },
+        s.sekretPillWrap,
+        // top: 0.22, clear of the Connection (0.36) / Growth (0.35) hotspot
+        // zones below it — those were getting their taps swallowed by this
+        // pill's higher z-order when the two overlapped.
+        { left: W * 0.50 - 78, top: H * 0.22 },
         { transform: [{ scale: Animated.multiply(cloudScale, moodPop) }], opacity: cloudOpacity },
       ]}>
-        <TouchableOpacity onPress={() => setScreen('sekret')} activeOpacity={0.75}>
-          <Image source={IMAGES.cloudHeadphones} style={s.cloudImg} resizeMode="contain" />
-          <Text style={[s.cloudLabel, { color: tokens.accent }]}>se'kret</Text>
+        <TouchableOpacity
+          onPress={() => setScreen('sekret')}
+          activeOpacity={0.75}
+          style={[s.sekretPill, { borderColor: tokens.accent + '99', backgroundColor: 'rgba(6,3,15,0.55)' }]}
+        >
+          <Text style={[s.sekretPillText, { color: tokens.accent }]}>💬 Talk to Se'kret</Text>
         </TouchableOpacity>
       </Animated.View>
-
-      {/* ── ROOM HOTSPOTS — objects in the room, not menu items ──────────── */}
-      {HOTSPOTS.map(h => (
-        <RoomHotspot
-          key={h.label}
-          {...h}
-          accent={tokens.accent}
-          visible={hotspotsReady}
-          onPress={() => setScreen(h.route)}
-        />
-      ))}
 
       {/* ── MOOD CHECK-IN — soft, at the bottom, 4 options only ──────────── */}
       <Animated.View style={[s.bottomStrip, { opacity: textFade }]}>
@@ -429,56 +408,32 @@ const s = StyleSheet.create({
     textShadowRadius: 10,
   },
 
-  // Cloud inside the room
-  cloudInRoom: { position: 'absolute', alignItems: 'center' },
-  cloudImg:    { width: 56, height: 56 },
-  cloudLabel:  {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textAlign: 'center',
-    marginTop: 2,
-    textShadowColor: 'rgba(0,0,0,0.85)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 5,
+  // Se'kret entry point — plain pill, no cloud/bubble art
+  sekretPillWrap: { position: 'absolute', alignItems: 'center' },
+  sekretPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  sekretPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 
-  // Hotspots
-  hotspot:    { position: 'absolute', alignItems: 'center' },
-  hotspotHit: { width: 60, height: 60, alignItems: 'center', justifyContent: 'center' },
-  hotspotRing: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.28)',
-    shadowOpacity: 0.70,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 6,
-  },
-  hotspotIcon:  { fontSize: 19 },
-  hotspotLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#fff',
-    textAlign: 'center',
-    marginTop: 4,
-    letterSpacing: 0.4,
-    textShadowColor: 'rgba(0,0,0,0.90)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 5,
-  },
-
-  // Bottom mood strip
+  // Bottom mood strip — opaque card so it reads as a UI panel, not the
+  // cloud-shaped decal painted into the room background photo behind it.
   bottomStrip: {
     position: 'absolute',
-    bottom: NAV_H + 10,
-    left: 20,
-    right: 20,
+    bottom: NAV_H,
+    left: 0,
+    right: 0,
     alignItems: 'center',
+    backgroundColor: 'rgba(4,2,12,0.94)',
+    paddingTop: 44,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
   },
   moodAsk:   {
     fontSize: 12,
