@@ -48,10 +48,13 @@ Primary screens are feature homes, not visual reskins of the same companion prom
 
 ## Next implementation order
 
-1. **Pages separation**
-   - keep entry-linked Se’kret replies
-   - remove full-chat behavior from Pages
-   - keep Comfort recommendations as a small handoff, not an embedded Calm experience
+1. **Pages separation — done.** Pages never embedded a full chat thread —
+   its only companion surface was already entry-linked (`SekretReplyBubble`,
+   one reply per saved entry) plus the scripted, non-chat Oracle Q&A panel;
+   full multi-turn chat lives solely on `app/(teen)/chat/[personalityId].tsx`.
+   What was missing was the Comfort handoff: teen Pages now has a small
+   "Need a moment? Try a Calm tool →" link in the Write tab that pushes to
+   Calm, rather than embedding any comfort experience directly.
 
 2. **Voice Bip separation**
    - teen: talk, hear companion, save voice note to Pages
