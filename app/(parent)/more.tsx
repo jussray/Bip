@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ImageBackground, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -7,10 +7,26 @@ import { routeForSide } from '@/shared/routes';
 import { useAppContext } from '@/context/AppContext';
 import { PARENT_MORE_GROUPS } from '@/constants/screenPurpose';
 import { isDevTestFamilyEnabled } from '@/features/testing/devTestFamily';
+import { useLinkedBridge } from '@/hooks/useLinkedBridge';
+import { fetchPendingTaskSubmissions, fetchPendingRewardRedemptions } from '@/utils/parentApprovals';
 
 export default function ParentMoreRoute() {
   const { setUserSide } = useAppContext();
   const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true' || isDevTestFamilyEnabled();
+  const { linkedTeenId, isLinked } = useLinkedBridge();
+  const [pendingApprovals, setPendingApprovals] = useState(0);
+
+  useEffect(() => {
+    if (!isLinked || !linkedTeenId) { setPendingApprovals(0); return; }
+    let cancelled = false;
+    void Promise.all([
+      fetchPendingTaskSubmissions(linkedTeenId),
+      fetchPendingRewardRedemptions(linkedTeenId),
+    ]).then(([tasks, rewards]) => {
+      if (!cancelled) setPendingApprovals(tasks.length + rewards.length);
+    });
+    return () => { cancelled = true; };
+  }, [isLinked, linkedTeenId]);
 
   function open(route: string) {
     if (route === 'parent-link') {
@@ -43,6 +59,11 @@ export default function ParentMoreRoute() {
                   <Text style={styles.label}>{item.label}</Text>
                   <Text style={styles.description}>{item.description}</Text>
                 </View>
+                {item.route === 'approvals' && pendingApprovals > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{pendingApprovals}</Text>
+                  </View>
+                )}
                 <Text style={styles.arrow}>›</Text>
               </TouchableOpacity>
             ))}
@@ -94,6 +115,8 @@ const styles = StyleSheet.create({
   group: { marginBottom: 22 },
   groupTitle: { color: '#85aa96', fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginBottom: 10 },
   row: { minHeight: 76, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#a7f3d026', borderRadius: 18, backgroundColor: 'rgba(17,37,28,0.90)', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10 },
+  badge: { backgroundColor: '#34d399', borderRadius: 10, minWidth: 22, height: 22, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, marginRight: 4 },
+  badgeText: { color: '#0d2318', fontSize: 12, fontWeight: '900' },
   emoji: { width: 38, fontSize: 21 },
   rowText: { flex: 1 },
   label: { color: '#fff', fontSize: 15, fontWeight: '800', marginBottom: 3 },
