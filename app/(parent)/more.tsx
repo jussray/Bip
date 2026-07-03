@@ -57,12 +57,19 @@ export default function ParentMoreRoute() {
         </View>
 
         {allowSideSwitch ? (
-          <TouchableOpacity
-            style={styles.switchButton}
-            onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}
-          >
-            <Text style={styles.switchText}>Founder Test: Go to Teen Side</Text>
-          </TouchableOpacity>
+          <View style={styles.devCard}>
+            <Text style={styles.promiseTitle}>Founder tools</Text>
+            <Text style={styles.promiseBody}>Development-only shortcuts. The Control Room still verifies founder, admin, or developer access.</Text>
+            <TouchableOpacity style={styles.controlButton} onPress={() => router.push('/(dev)/control-room' as any)}>
+              <Text style={styles.switchText}>Open Control Room</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.switchButton}
+              onPress={() => { setUserSide('teen'); router.push('/(teen)/room' as any); }}
+            >
+              <Text style={styles.switchText}>Founder Test: Go to Teen Side</Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
       </ScrollView>
     </ImageBackground>
@@ -92,6 +99,8 @@ const styles = StyleSheet.create({
   promiseCard: { borderRadius: 20, borderWidth: 1, borderColor: '#a7f3d02e', backgroundColor: 'rgba(17,37,28,0.92)', padding: 18, marginTop: 4, marginBottom: 14 },
   promiseTitle: { color: '#fff', fontSize: 16, fontWeight: '900', marginBottom: 6 },
   promiseBody: { color: '#9bb0a2', fontSize: 12, lineHeight: 18 },
-  switchButton: { height: 54, borderRadius: 18, backgroundColor: '#4338CA', alignItems: 'center', justifyContent: 'center' },
+  devCard: { borderRadius: 20, borderWidth: 1, borderColor: '#a7f3d02e', backgroundColor: 'rgba(17,37,28,0.92)', padding: 18, marginTop: 4 },
+  controlButton: { height: 54, borderRadius: 18, backgroundColor: '#047857', alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  switchButton: { height: 54, borderRadius: 18, backgroundColor: '#4338CA', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   switchText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 });
