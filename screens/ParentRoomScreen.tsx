@@ -122,7 +122,26 @@ const TIME_BADGE: Record<string, string> = {
   rain:      '🌧️ rain',
 };
 
-// ─── Room hotspots — positioned over where the objects actually are ───────────
+// ─── Room hotspots ────────────────────────────────────────────────────────────
+// Point-based invisible CTAs — x/y are the center of the touch target as a
+// fraction of screen width/height (0–1). Rendered BEHIND the room art; the
+// art uses pointerEvents="none" so taps fall through to these. No visible
+// icon, no ring, no label — matches screens/RoomScreen.tsx's pattern.
+// Positions approximated from the room art layout: journal on coffee table
+// (center-low), cloud neon on bookshelf (center-mid), laptop/bridge desk
+// (right), cork board (right-upper), memory shelf (left-mid). Se'kret has
+// its own dedicated pill below, so it isn't duplicated here.
+type ParentHotspot = { id: string; x: number; y: number; route: string; label: string; size?: number };
+
+const PARENT_HOTSPOTS: ParentHotspot[] = [
+  { id: 'pages',      x: 0.42, y: 0.58, route: 'pages',             label: 'Pages'      },
+  { id: 'bridge',     x: 0.74, y: 0.52, route: 'bridge',            label: 'Bridge'     },
+  { id: 'circle',     x: 0.83, y: 0.38, route: 'circle',            label: 'Circle'     },
+  { id: 'calm',       x: 0.13, y: 0.47, route: 'calm',              label: 'Calm'       },
+  { id: 'connection', x: 0.58, y: 0.36, route: 'parent-connection', label: 'Connection' },
+  { id: 'growth',     x: 0.31, y: 0.35, route: 'parent-growth',     label: 'Growth'     },
+];
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function getTimeSlot(weatherMode?: string) {
   if (weatherMode === 'rain') return 'rain';
@@ -232,18 +251,42 @@ export function ParentRoomScreen({
 
   return (
     <View style={s.root}>
+      {/* ── HOTSPOT LAYER — invisible CTAs behind the room art ───────────── */}
+      {/* Rendered first so it sits below the art in z-order. The art below */}
+      {/* uses pointerEvents="none", letting taps fall through to these.   */}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {PARENT_HOTSPOTS.map(spot => (
+          <TouchableOpacity
+            key={spot.id}
+            style={{
+              position: 'absolute',
+              left: W * spot.x - (spot.size ?? 40),
+              top: H * spot.y - (spot.size ?? 40),
+              width: spot.size ?? 80,
+              height: spot.size ?? 80,
+            }}
+            onPress={() => setScreen(spot.route)}
+            activeOpacity={0}
+            accessibilityRole="button"
+            accessibilityLabel={spot.label}
+          />
+        ))}
+      </View>
+
       <AmbientWeatherOverlay />
 
-      {/* ── ROOM ART ─────────────────────────────────────────────────────── */}
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: roomFade }]}>
+      {/* ── ROOM ART — visual only; taps pass through to the hotspot layer ── */}
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: roomFade }]} pointerEvents="none">
         <ImageBackground source={roomBg} style={StyleSheet.absoluteFill} resizeMode="cover" />
       </Animated.View>
 
       {/* ── READABILITY VIGNETTE: dark top/bottom, clear middle ──────────── */}
+      {/* pointerEvents="none" — visual only, must not block the hotspot layer below */}
       <LinearGradient
         colors={overlay}
         style={StyleSheet.absoluteFill}
         locations={[0, 0.28, 0.65, 1.0]}
+        pointerEvents="none"
       />
 
       {/* ── TIME BADGE — small, top-left, same pattern as teen room ────────── */}
@@ -271,7 +314,10 @@ export function ParentRoomScreen({
       {/* ── SE'KRET — plain pill button, no cloud/bubble art ─────────────── */}
       <Animated.View style={[
         s.sekretPillWrap,
-        { left: W * 0.50 - 78, top: H * 0.33 },
+        // top: 0.22, clear of the Connection (0.36) / Growth (0.35) hotspot
+        // zones below it — those were getting their taps swallowed by this
+        // pill's higher z-order when the two overlapped.
+        { left: W * 0.50 - 78, top: H * 0.22 },
         { transform: [{ scale: Animated.multiply(cloudScale, moodPop) }], opacity: cloudOpacity },
       ]}>
         <TouchableOpacity
