@@ -20,7 +20,7 @@ export interface ScreenPurpose {
 
 export const SCREEN_PURPOSES: ScreenPurpose[] = [
   { id: 'room', side: 'teen', title: 'Room', purpose: 'Visual home base and companion presence.', owns: ['time/weather atmosphere', 'mood check-in', 'continue last activity', 'feature hotspots'], mustNotBecome: ['a second dashboard', 'a journal editor', 'a chat transcript'] },
-  { id: 'pages', side: 'teen', title: 'Pages', purpose: 'Journal and notebook hub.', owns: ['typed entries', 'voice attachments', 'prompts', 'saved history', 'entry-linked Se’kret replies'], mustNotBecome: ['a full companion chat', 'a comfort hub', 'a duplicate home screen'] },
+  { id: 'pages', side: 'teen', title: 'Pages', purpose: 'Journal and notebook hub.', owns: ['typed entries', 'voice attachments', 'prompts', 'saved history', 'entry-linked Se'kret replies'], mustNotBecome: ['a full companion chat', 'a comfort hub', 'a duplicate home screen'] },
   { id: 'calm', side: 'teen', title: 'Calm', purpose: 'Comfort tools and regulation exercises.', owns: ['breathing', 'grounding', 'Cloud Thoughts', 'comfort cards', 'wind-down tools'], mustNotBecome: ['a journal editor', 'a chat screen', 'a social feed'] },
   { id: 'voicebip', side: 'teen', title: 'Voice Bip', purpose: 'Voice-first talk mode.', owns: ['recording', 'playback', 'transcript', 'spoken companion reply', 'save to Pages'], mustNotBecome: ['Pages with a microphone', 'a text chat clone', 'a calm dashboard'] },
   { id: 'circle', side: 'teen', title: 'Circle', purpose: 'Teen community, friends, and Crew.', owns: ['public anonymous posts', 'friends', 'Crew', 'reactions', 'moderation'], mustNotBecome: ['parent communication', 'private journaling', 'family messaging'] },
@@ -41,15 +41,17 @@ export interface FeatureDrawerGroup { title: string; items: FeatureDrawerItem[];
 export const TEEN_MORE_GROUPS: FeatureDrawerGroup[] = [
   { title: 'YOUR SPACE', items: [
     { emoji: '👤', label: 'Profile', route: 'profile', description: 'Your identity and preferences.' },
-    { emoji: '📖', label: 'History', route: 'history', description: 'Your saved growth over time.' },
+    { emoji: '📖', label: 'History', route: 'history', description: 'Your saved conversations and journal timeline.' },
   ] },
   { title: 'GROWTH TOOLS', items: [
-    { emoji: '🌱', label: 'Bippin 2', route: 'bippin2', description: 'Growth tracks, goals, rewards, and relevant body tools.' },
+    { emoji: '🌱', label: 'Bippin 2', route: 'bippin2', description: 'Womanhood, manhood, body, emotions — at your own pace.' },
+    { emoji: '⭐', label: 'Points', route: 'points', description: 'Your XP balance, streaks, and earned rewards.' },
+    { emoji: '🔭', label: 'Discover', route: 'discover', description: 'Explore new companions, topics, and experiences.' },
     { emoji: '🤝', label: 'Bip Crew', route: 'crew', description: 'Your chosen accountability people.' },
   ] },
   { title: 'ACCOUNT & SAFETY', items: [
     { emoji: '🔗', label: 'Parent Link', route: 'parent-link-verify', description: 'Manage verification and trusted connection.' },
-    { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Theme, privacy, notifications, and account.' },
+    { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Theme, sekret selection, privacy, notifications, and account.' },
     { emoji: '🛟', label: 'Help & Safety', route: 'resources', description: 'Support, safety tools, and legal information.' },
   ] },
 ];
@@ -61,7 +63,7 @@ export const PARENT_MORE_GROUPS: FeatureDrawerGroup[] = [
   ] },
   { title: 'YOUR SUPPORT SPACE', items: [
     { emoji: '🎙️', label: 'Parent Voice Bip', route: 'voicebip', description: 'Private voice reflection and reply drafts.' },
-    { emoji: '🌱', label: 'Bippin 2', route: 'parent-growth', description: 'Parent guidance for growing-up topics.' },
+    { emoji: '🌿', label: 'Growth Tools', route: 'growth', description: 'Repair, voice reflect, cycle awareness, and conversation guides.' },
     { emoji: '🤝', label: 'Parent Circle', route: 'circle', description: 'Parent-to-parent support and community.' },
   ] },
   { title: 'ACCOUNT & RESOURCES', items: [
