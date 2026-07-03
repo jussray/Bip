@@ -16,17 +16,18 @@ const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew', 'discover']);
 
 function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
-  const { verificationState, isVerificationLoading } = useVerificationContext();
+  const {
+    verificationState,
+    isVerificationLoading,
+    isAuthResolved,
+    isAuthenticated,
+  } = useVerificationContext();
   const segments = useSegments();
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const sb = getSupabase();
     if (!sb) return;
-
-    void sb.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace('/(auth)/login');
-    });
 
     const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
       if (session) return;
@@ -47,17 +48,25 @@ function RouteBoundary() {
   }, []);
 
   useEffect(() => {
-    const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
-    if (isLoading || isVerificationLoading || !effectiveUserSide) return;
-
     const routeSegments = Array.from(segments) as string[];
     const first = String(routeSegments[0] ?? '');
     const second = String(routeSegments[1] ?? '');
+
+    // Never enforce protected routing from an unresolved local/default state.
+    // Authentication and verification must both be hydrated from Supabase first.
+    if (!isAuthResolved || isLoading || isVerificationLoading) return;
+
+    if (isSupabaseConfigured && !isAuthenticated) {
+      if (first !== '(auth)') router.replace('/(auth)/login');
+      return;
+    }
+
+    const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
+    if (!effectiveUserSide) return;
+
     // Teen and parent routes share the same leaf segment names (e.g. both
     // (teen)/circle and (parent)/circle are just "circle"), so only treat
-    // this as a gated social route when it's actually on the teen side —
-    // canUnlockSocial()/verificationState is teen verification, and gating
-    // Parent Circle behind it would make it permanently unreachable.
+    // this as a gated social route when it's actually on the teen side.
     const firstSegment = first === '(teen)' && SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
     const decision = decideRouteAccess({
       firstSegment,
@@ -68,7 +77,15 @@ function RouteBoundary() {
     if (!decision.allowed && decision.redirectTo) {
       router.replace(decision.redirectTo);
     }
-  }, [isLoading, isVerificationLoading, segments, userSide, verificationState]);
+  }, [
+    isAuthResolved,
+    isAuthenticated,
+    isLoading,
+    isVerificationLoading,
+    segments,
+    userSide,
+    verificationState,
+  ]);
 
   return null;
 }
