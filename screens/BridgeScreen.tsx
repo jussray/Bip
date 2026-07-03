@@ -33,6 +33,9 @@ import {
   subscribeToParentNotes,
   type ParentNote,
 } from '@/utils/sync';
+import { getSupabase } from '@/utils/supabase';
+import { fetchBridgeSignals, type BridgeSignal } from '@/utils/parentBridgeCompat';
+import { fetchBridgeShares, type BridgeShare } from '@/features/bridge/bridgeShareCompat';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -85,6 +88,10 @@ export function BridgeScreen({
   const [sent, setSent]             = useState(false);
   const [sending, setSending]       = useState(false);
   const [parentNotes, setParentNotes] = useState<ParentNote[]>([]);
+  const [view, setView]             = useState<'share' | 'history'>('share');
+  const [mySignals, setMySignals]   = useState<BridgeSignal[]>([]);
+  const [myShares, setMyShares]     = useState<BridgeShare[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
   const isRylane = selectedSekret === 'rylane';
@@ -125,6 +132,48 @@ export function BridgeScreen({
 
     return () => { loop.stop(); unsub(); };
   }, [fade1, fade2, fade3, breath]);
+
+  useEffect(() => {
+    if (view !== 'history' || historyLoaded) return;
+    (async () => {
+      const sb = getSupabase();
+      const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };
+      const myId = data.user?.id;
+      if (!myId) { setHistoryLoaded(true); return; }
+      const [signals, shares] = await Promise.all([
+        fetchBridgeSignals(myId),
+        fetchBridgeShares(myId),
+      ]);
+      setMySignals(signals);
+      setMyShares(shares);
+      setHistoryLoaded(true);
+    })();
+  }, [view, historyLoaded]);
+
+  type HistoryItem = { id: string; emoji: string; label: string; detail?: string; timestamp: string };
+  const historyItems: HistoryItem[] = [
+    ...mySignals.map(sig => ({
+      id: `signal-${sig.id}`,
+      emoji: sig.share_type === 'mood' ? '💜' : sig.share_type === 'thought' ? '💭' : sig.share_type === 'need' ? '🌿' : '⚡',
+      label: 'You sent a signal',
+      detail: sig.share_type === 'mood' ? 'My Mood' : sig.share_type === 'thought' ? 'A Thought' : sig.share_type === 'need' ? 'Something I Need' : 'A Win',
+      timestamp: sig.sent_at,
+    })),
+    ...myShares.map(share => ({
+      id: `share-${share.id}`,
+      emoji: '🌉',
+      label: 'You sent an S2Tell share',
+      detail: share.payload.rewrite ?? share.payload.text,
+      timestamp: share.shared_at,
+    })),
+    ...parentNotes.map(note => ({
+      id: `note-${note.id}`,
+      emoji: '💌',
+      label: 'From your person',
+      detail: note.content,
+      timestamp: note.sent_at,
+    })),
+  ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
   const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
@@ -226,8 +275,46 @@ export function BridgeScreen({
               {charLabel} helps you bridge it · you stay in control
             </Text>
           </Animated.View>
+
+          <View style={styles.viewToggleRow}>
+            <TouchableOpacity
+              style={[styles.viewToggleBtn, view === 'share' && { backgroundColor: glow + '33', borderColor: glow }]}
+              onPress={() => setView('share')}
+            >
+              <Text style={[styles.viewToggleText, { color: view === 'share' ? '#fff' : '#cbb6f7' }]}>share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.viewToggleBtn, view === 'history' && { backgroundColor: glow + '33', borderColor: glow }]}
+              onPress={() => setView('history')}
+            >
+              <Text style={[styles.viewToggleText, { color: view === 'history' ? '#fff' : '#cbb6f7' }]}>history</Text>
+            </TouchableOpacity>
+          </View>
         </Animated.View>
 
+        {view === 'history' && (
+          <Animated.View style={cardStyle(fade2)}>
+            <Text style={[styles.sectionLabel, { color: '#cbb6f7', marginBottom: 10 }]}>connection history</Text>
+            {historyItems.length === 0 && (
+              <Text style={styles.historyEmptyText}>
+                {historyLoaded ? "Nothing's passed through Bridge yet." : 'Loading…'}
+              </Text>
+            )}
+            {historyItems.map(item => (
+              <View key={item.id} style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.75)', borderColor: glow + '44', marginBottom: 10 }]}>
+                <Text style={[styles.cardLabel, { color: glow, marginBottom: 4 }]}>{item.emoji} {item.label}</Text>
+                {!!item.detail && (
+                  <Text style={styles.noteText} numberOfLines={2}>{item.detail}</Text>
+                )}
+                <Text style={styles.noteTime}>
+                  {new Date(item.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+            ))}
+          </Animated.View>
+        )}
+
+        {view === 'share' && (
         <Animated.View style={cardStyle(fade2)}>
           <Text style={[styles.sectionLabel, { color: '#cbb6f7' }]}>what do you want to share?</Text>
           <View style={styles.typeRow}>
@@ -304,9 +391,10 @@ export function BridgeScreen({
             </>
           )}
         </Animated.View>
+        )}
 
         {/* Parent notes received */}
-        {parentNotes.length > 0 && (
+        {view === 'share' && parentNotes.length > 0 && (
           <Animated.View style={cardStyle(fade2)}>
             <Text style={[styles.sectionLabel, { color: '#cbb6f7', marginBottom: 10 }]}>
               💌 from your person
@@ -348,6 +436,7 @@ export function BridgeScreen({
           </Animated.View>
         )}
 
+        {view === 'share' && (
         <Animated.View style={cardStyle(fade3)}>
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
@@ -372,14 +461,15 @@ export function BridgeScreen({
               {sending ? 'sending…' : '🌉 send to bridge'}
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.ghostButton, { borderColor: glow + '88' }]}
-            onPress={() => setScreen('home')}
-          >
-            <Text style={[styles.ghostButtonText, { color: '#cbb6f7' }]}>back to room</Text>
-          </TouchableOpacity>
         </Animated.View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.ghostButton, { borderColor: glow + '88' }]}
+          onPress={() => setScreen('home')}
+        >
+          <Text style={[styles.ghostButtonText, { color: '#cbb6f7' }]}>back to room</Text>
+        </TouchableOpacity>
 
         {BottomNav}
       </ScrollView>
@@ -394,6 +484,11 @@ const styles = StyleSheet.create({
   subtitle:        { fontSize: 14, color: '#cbb6f7', textAlign: 'center', marginBottom: 14, fontStyle: 'italic', lineHeight: 20 },
   energyBadge:     { alignSelf: 'center', borderWidth: 1, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 16 },
   energyText:      { fontSize: 12, fontWeight: '600' },
+
+  viewToggleRow:   { flexDirection: 'row', gap: 8, marginBottom: 6 },
+  viewToggleBtn:   { flex: 1, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14, paddingVertical: 9, alignItems: 'center' },
+  viewToggleText:  { fontSize: 13, fontWeight: '700' },
+  historyEmptyText:{ color: '#9d8eb8', fontSize: 13, lineHeight: 20, textAlign: 'center', paddingVertical: 20 },
 
   sectionLabel:    { fontSize: 14, fontWeight: '600', marginBottom: 12 },
   typeRow:         { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
