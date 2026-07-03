@@ -2,186 +2,96 @@
 
 Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built with React Native, Expo Router, TypeScript, Supabase, and Cloudflare Workers.
 
-> Cool cousin energy: warm, slightly nosy, funny, soft, never clinical.
->
-> Dark-night scrapbook visuals, private rooms, taped notes, stickers, clouds, moonlight, and companion-led support.
+> Warm, funny, soft, slightly nosy, and never clinical.
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/jussray/Bip?quickstart=1)
+## Product promise
 
-## Product Promise
+- Private reflections stay private.
+- Teens choose what they share.
+- Parent access is relationship-based, not surveillance-based.
+- Identity and permission rules are enforced across services and Supabase policies.
 
-Se'kret Bip is designed around four rules:
+## Product areas
 
-- **Privacy by default** — private journals, Voice Bip, AI companion chats, and private memories stay private.
-- **Support by choice** — teens decide what they explicitly share through Bridge, Parent Pages, and other supported surfaces.
-- **Protection by architecture** — identity, verification, permissions, safety events, and parent visibility are modeled centrally rather than patched into individual screens.
-- **Parents verify safety, not thoughts** — parent access is event-based and consent-based, never surveillance-based.
+### Teen
 
-## Core Product Areas
-
-### Teen experience
-
-- **Room / User Room** — personal emotional home with companion and time-of-day room scenes
-- **Pages** — private journal and scrapbook creation
-- **Voice Bip** — voice-first reflection and companion response flows
-- **Se'kret companions** — Raylene, Rylane, Cloud, Night, and Oracle experiences
-- **Calm / Comfort / MindBody Reset** — grounding and coping tools
-- **Cloud Thoughts** — quiet thought space
-- **Bippin 2** — growth, development, and identity support; Manhood/Womanhood concepts are being folded into this system
-- **Growth / Insights / History / Memories** — private progress and reflection systems
-- **Period Calendar** — private cycle tracking
-- **Points / Rewards** — positive habit and participation rewards
+- Room and User Room
+- Pages and journal flows
+- Voice Bip
+- Raylene, Rylane, Cloud, Night, and Oracle/Se'kret
+- Calm, Comfort, Mind-Body Reset, and Cloud Thoughts
+- Bippin 2, Growth, Insights, History, and Memories
+- Period Calendar
+- Points and Rewards
 
 ### Social and trusted connection
 
 - **Circle** — anonymous or circle-safe community posting
-- **Bip Crew** — trusted mutual accountability relationships
-- **Connection Hub** — managed relationship and connection surfaces
-- **Bridge / Parent Bridge** — teen-controlled support sharing
-- **Parent Circle** — parent-to-parent support space
-- **Messages** — bounded app communication; the product does not support open stranger DMs
+- **Bip Crew** — trusted accountability relationships
+- **Bridge** — the private teen-parent connection system
+  - Doorbell is the signal layer inside Bridge
+  - S2Tell is the intentional share composer inside Bridge
+  - Parent Bridge is the parent view of the linked relationship
+- **Parent Circle** — separate parent-to-parent community space
+- No open stranger direct messages
 
-### Safety
+### Parent
 
-- **Age gate and trusted-adult verification**
-- **Limited Mode** before verification
-- **Report and block flows**
-- **Emergency shutoff and safety check-ins**
-- **Suspicious-behavior detection architecture**
-- **Parent Doorbell events** — safety and verification summaries without private teen content
-- **Account deletion request and grace-period flow**
-- **Row Level Security and private storage policies in Supabase**
+Parent routes and linked-account data exist. The parent experience still needs a focused completion pass covering Parent Bridge presentation, onboarding, link lifecycle states, Parent Circle privacy, Parent Coach boundaries, period-sharing permissions, notifications, and end-to-end tests. That work is tracked in issue #212.
 
-## Identity and Privacy Model
+## Privacy boundaries
 
-Bip keeps different identity contexts separate:
-
-- **Account identity** — private authenticated account facts
-- **Circle identity** — safe social display name and avatar per circle
-- **Crew identity** — trusted relationship presentation and support preferences
-- **Parent connection identity** — relationship and verification metadata only
-
-Public Circle surfaces must never fall back to a teen's real account name.
-
-Parent-visible data must never include:
+Parent surfaces must not read:
 
 - raw journal text
 - Voice Bip transcripts
-- AI companion chat content
-- private memories
+- private companion chats
+- private character memory
 - private notes
-- private message bodies
+- unshared messages
+- general app activity history
 
-## Current Architecture
+Bridge contains only content intentionally sent into the linked relationship. Circle and Bridge remain separate systems.
 
-- **Frontend:** React Native + Expo Router + TypeScript
-- **State:** local React state and AsyncStorage for offline/local experiences, with Supabase-backed sync for supported account data
-- **Backend:** Supabase Auth, Postgres, Row Level Security, Storage, migrations, and Edge Functions
-- **Worker/API layer:** Cloudflare Worker services for selected AI and app integrations
-- **Navigation:** Expo Router with ongoing migration toward domain route groups
-- **Styling:** React Native StyleSheet, design tokens, scrapbook/night visual system
-- **Assets:** companion art, room scenes, splash screens, stickers, and design references under `assets/` and `design-references/`
+## Architecture
 
-## Architecture Roadmap
+- **Frontend:** React Native, Expo Router, TypeScript
+- **Routes:** separate teen and parent route groups
+- **Local state:** React state, context, hooks, and AsyncStorage
+- **Cloud data:** Supabase Auth, Postgres, RLS, Storage, functions, and migrations
+- **API layer:** Cloudflare Worker for AI, voice, authenticated APIs, and metadata-only telemetry
+- **Deployment direction:** Cloudflare-first, with remaining Vercel compatibility treated as transitional
+- **Schema source of truth:** `supabase/migrations/`
 
-The current roadmap is architecture-first so every new screen inherits the same privacy and trust rules.
+## Companion intelligence
 
-1. **Identity foundation**
-   - `AccountIdentity`
-   - `CircleIdentity`
-   - `CrewIdentity`
-   - `ProfileMemory`
+The current companion system is L2: short-term history and supplied context are passed into each turn.
 
-2. **Verification state machine**
-   - unverified
-   - pending parent/trusted adult
-   - limited mode
-   - verified teen
-   - expired
-   - manual review
-   - suspended
+Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are proposed but not implemented. See `docs/AGENT_L4_ARCHITECTURE.md`.
 
-3. **Domain route groups**
-   - `(auth)`
-   - `(teen)`
-   - `(parent)`
-   - `(profile)`
-   - `(safety)`
-   - `(social)`
+## Current priorities
 
-4. **Front door and onboarding**
-   - Welcome
-   - Sign up / Login
-   - Teen onboarding
-   - Parent onboarding
-   - Parent link verification
-   - Limited Mode
+1. Complete the parent experience without expanding parent visibility.
+2. Keep fresh Supabase migration replay safe.
+3. Validate parent-link, storage, RLS, identity, and founder boundaries.
+4. Retire stale deployment and routing compatibility layers.
+5. Begin durable character memory only after privacy boundaries are tested.
 
-5. **Shared safety services**
-   - Doorbell events
-   - report/block services
-   - emergency flow
-   - suspicious behavior signals
-   - parent-safe payload redaction
-
-6. **Profile and identity platform**
-   - profile
-   - Circle identity management
-   - avatar customization
-   - room themes
-   - privacy settings
-
-7. **Figma-led screen expansion**
-   - onboarding and verification screens first
-   - safety and Parent Doorbell screens next
-   - profile and parent platform screens after trust architecture is stable
-   - search, discover, post detail, and reply threads later
-
-## Project Structure
+## Project structure
 
 ```text
-Bip/
-├── app/                       # Expo Router route entry points
-├── screens/                   # Full-page screen implementations
-├── src/
-│   ├── components/            # Shared UI and safety components
-│   ├── context/               # App context
-│   ├── features/              # Domain feature logic
-│   ├── hooks/                 # App hooks
-│   ├── services/              # AI, permissions, verification, safety, sync helpers
-│   ├── types/                 # Canonical TypeScript domain models
-│   └── utils/                 # Shared utilities and sync helpers
-├── components/                # Legacy/shared UI still being migrated
-├── constants/                 # Theme, images, voice, and design constants
-├── hooks/                     # Existing shared hooks
-├── utils/                     # Storage, API, Supabase, and compatibility utilities
-├── supabase/
-│   ├── functions/             # Edge Functions
-│   └── migrations/            # Database migrations and RLS changes
-├── assets/images/             # Companion, room, splash, and screen artwork
-├── design-references/         # Visual reference assets
-├── docs/                      # Implementation and asset guardrails
-├── .github/workflows/         # CI, regression, and deployment workflows
-├── .env.example               # Environment template
-└── app.json                   # Expo configuration
+app/                 Expo Router route groups
+screens/             compatibility screen implementations
+src/                 components, features, hooks, services, types, utilities
+worker/              Cloudflare Worker
+supabase/            migrations and functions
+assets/              app artwork and media
+docs/                architecture and implementation guidance
+scripts/             audits and validation tools
+test/                automated tests
 ```
 
 ## Setup
-
-### GitHub Codespaces
-
-1. Open the repository in Codespaces.
-2. Allow the devcontainer to install dependencies.
-3. Copy `.env.example` to `.env.local` when needed.
-4. Run:
-
-```bash
-npx expo start --web -c
-```
-
-### Local development
-
-Prerequisites: Node.js and npm.
 
 ```bash
 gh repo clone jussray/Bip
@@ -191,33 +101,17 @@ cp .env.example .env.local
 npx expo start --web -c
 ```
 
-Other targets:
+### Supabase
 
 ```bash
-npm run ios
-npm run android
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push
 ```
 
-## Environment and Secret Safety
-
-Only `EXPO_PUBLIC_*` variables may be exposed to the client bundle.
-
-Never commit:
-
-- `.env.local`
-- Supabase `service_role` keys
-- Cloudflare API tokens
-- account deletion processing secrets
-- AI provider secret keys
-- webhook secrets
-
-Use the active Supabase project configured for this repository. Do not copy project references or keys from older Bip environments.
+Do not maintain a second schema bootstrap file. Use the ordered migration chain.
 
 ## Validation
-
-Use the repository scripts and CI workflows before merging meaningful implementation changes.
-
-Typical checks include:
 
 ```bash
 npm run type-check
@@ -225,25 +119,29 @@ npm test
 npm run test:oracle
 npm run test:voice-intelligence
 npm run test:device-sync
+npm run audit:control-room
+npm run validate:companions
 ```
 
-When available, run:
+Full check:
 
 ```bash
 npm run verify:prepush
 ```
 
-Do not claim tests passed unless they were actually executed by a shell or CI run.
+## Key guides
 
-## Guides
+- `docs/CURRENT_STATUS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/SUPABASE.md`
+- `docs/BRIDGE_CONNECTION_AUDIT.md`
+- `docs/AGENT_L4_ARCHITECTURE.md`
+- `docs/RLS_POLICY_AUDIT.md`
+- `docs/COPPA_COMPLIANCE.md`
+- `docs/PRIVACY_POLICY.md`
+- `DEPLOYMENT.md`
 
-- [Codespaces setup](docs/CODESPACES.md)
-- [Dependency audit](docs/DEPENDENCY_AUDIT.md)
-- [Room art guide](docs/ROOM_ART_GUIDE.md)
-- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md)
-- [Asset backup rules](docs/ASSET_BACKUP_RULES.md)
-
-Additional vision, privacy, safety, and Figma documentation should live under `docs/` and be treated as implementation guardrails rather than disposable planning notes.
+Documentation is an implementation guardrail. When code and docs disagree, fix the stale source.
 
 ## License
 
