@@ -60,6 +60,16 @@ const SECTIONS = [
     cta: 'browse conversation guides ->',
     note: 'Teens want to talk. They just need the door to feel safe.',
   },
+  {
+    id: 'approvals',
+    emoji: '✅',
+    title: 'Approvals',
+    sub: 'review chores your teen submitted and rewards they requested',
+    accent: '#34d399',
+    route: 'approvals',
+    cta: 'open approvals ->',
+    note: 'Only tasks you set up and rewards your teen asked for — nothing else.',
+  },
 ] as const;
 
 export default function ParentGrowthHub() {

@@ -1,20 +1,17 @@
 /**
  * screens/PagesScreen.tsx
  *
- * PHASE 5 — Pages is now the notebook / scrapbook home.
+ * PHASE 5 — Pages is the notebook / scrapbook home.
  *
- * Teen section order (top nav pills):
- *   Write · Voice Bips · Se'kret Replies · Memories
- *   Cloud Thoughts · S2Tell · Period Calendar · History
+ * Teen section order (top nav pills): Write · Memories · Cloud Thoughts · S2Tell.
  *
- * Se'kret Replies:
- *   Companion-picker grid (Raylene / Rylane / Cloud / Night / Oracle).
- *   Tapping a card calls onOpenCompanion(id) → router.push to chat screen.
- *   Previously saved sekretReply entries are also listed below the picker.
- *
- * SAFETY RULE:
- *   Se'kret is NOT removed. It is relocated here.
- *   If onOpenCompanion is not wired, companion interaction breaks → Phase 5 fails.
+ * Companion involvement stays entry-linked, not a chat thread: each saved
+ * journal entry can carry one Se'kret reply (SekretReplyBubble, fetched via
+ * fetchPagesReply), and the Write tab's "oracle" mode is a scripted,
+ * non-chat Q&A (OracleDiscoveryPanel). Full multi-turn companion chat lives
+ * on its own screen (app/(teen)/chat/[personalityId].tsx) — Pages never
+ * embeds it. Comfort/Calm is a small handoff link, not an embedded
+ * experience (see docs/SCREEN_PURPOSE_AUDIT.md "Pages separation").
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -864,6 +861,12 @@ function PagesWorkspace({
                     </TouchableOpacity>
                   </View>
 
+                  {side === 'teen' && (
+                    <TouchableOpacity style={styles.comfortHandoff} onPress={() => setScreen('calm')} activeOpacity={0.82}>
+                      <Text style={styles.comfortHandoffText}>Need a moment? Try a Calm tool →</Text>
+                    </TouchableOpacity>
+                  )}
+
                   <Text style={styles.privacyLine}>
                     {side === 'teen'
                       ? 'Only you can see these pages. Nothing goes to Parent Pages unless you deliberately choose to share elsewhere.'
@@ -1228,6 +1231,17 @@ const styles = StyleSheet.create({
   },
   saveDisabled: { opacity: 0.3 },
   saveText: { color: '#171018', fontSize: 13, fontWeight: '900' },
+  comfortHandoff: {
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.35)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    backgroundColor: 'rgba(196,181,253,0.08)',
+  },
+  comfortHandoffText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700' },
   privacyLine: { color: '#77707f', fontSize: 10, lineHeight: 15, marginTop: 13 },
   savedHeader: {
     flexDirection: 'row',

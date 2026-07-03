@@ -8,6 +8,7 @@ import {
   RefreshControl,
   StyleSheet,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -15,6 +16,7 @@ import { useAppContext } from '@/context/AppContext';
 import { writeCirclePost, loadCircleFeed, syncCircleReaction } from '@/utils/sync';
 import type { CirclePost } from '@/context/AppContext';
 import { GlitterSparkles } from '../../../components/GlitterSparkles';
+import { reportPost } from '@/utils/circleModeration';
 
 const CIRCLE_GLITTER_KEY = 'circle_glitter_deco';
 
@@ -77,8 +79,27 @@ export function CircleFeed() {
   const [refreshing, setRefreshing]   = useState(false);
   const [posting, setPosting]         = useState(false);
   const [feedTab, setFeedTab]         = useState<FeedTab>('foryou');
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { void fetchFeed(); }, []);
+
+  function handleReport(postId: CirclePost['id']) {
+    Alert.alert(
+      'Report this bip?',
+      "We'll take a look. It'll stop showing up in your feed right away.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report',
+          style: 'destructive',
+          onPress: () => {
+            setReportedIds(prev => new Set(prev).add(String(postId)));
+            void reportPost(Number(postId), 'public');
+          },
+        },
+      ],
+    );
+  }
 
   async function fetchFeed() {
     const cloudPosts = await loadCircleFeed('public', 40);
@@ -205,7 +226,7 @@ export function CircleFeed() {
         </View>
       )}
 
-      {circlePosts.map(post => {
+      {circlePosts.filter(post => !reportedIds.has(String(post.id))).map(post => {
         const postMood    = getPostMood(post.text);
         const displayText = postMood ? post.text.slice(post.text.indexOf(' ') + 1) : post.text;
         const reactions   = normalizeReactions(post.reactions);
@@ -223,7 +244,15 @@ export function CircleFeed() {
                   : <Text style={s.anonDot}>🌑</Text>}
                 <Text style={s.anonLabel}>anonymous bip</Text>
               </View>
-              <Text style={s.cardTime}>{post.time || ''}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={s.cardTime}>{post.time || ''}</Text>
+                <TouchableOpacity
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => handleReport(post.id)}
+                >
+                  <Text style={s.reportFlag}>⚑</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <Text style={s.cardText}>{displayText}</Text>
             <View style={s.reactions}>
@@ -379,6 +408,7 @@ const s = StyleSheet.create({
   anonMoodEmoji: { fontSize: 14 },
   anonLabel:     { color: '#5a3a78', fontSize: 11, fontWeight: '600' },
   cardTime:      { color: '#3d2258', fontSize: 10 },
+  reportFlag:    { color: '#5a3a78', fontSize: 13, opacity: 0.7 },
   cardText:      { color: '#e8dff5', fontSize: 15, lineHeight: 23, marginBottom: 12 },
   reactions:    { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   reactionBtn:  { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#1e0a30', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#2e1250' },

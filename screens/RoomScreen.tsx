@@ -44,7 +44,7 @@ type Mood       = 'Happy' | 'Sad' | 'Angry' | 'Tired' | 'Neutral' | string;
 type RoomTarget =
   | 'home' | 'pages' | 'circle' | 'bippin2' | 'comfort' | 'calm'
   | 'voiceBip' | 'sekret' | 'cloudThoughts' | 'bridge' | 'parentBridge' | 's2tell'
-  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar' | 'dashboard'
+  | 'settings' | 'more' | 'mindReset' | 'bodyReset' | 'periodCalendar'
   | 'companionPicker' | 'write' | 'goals' | 'memories' | 'music' | 'rewards' | 'vibeLab';
 
 // Point-based invisible hotspot — position is the CENTER of the touch target.

@@ -10,6 +10,7 @@ export const TEEN_ROUTES = {
   settings: '/(teen)/settings',
   more: '/(teen)/more',
   points: '/(teen)/points',
+  chores: '/(teen)/chores',
   history: '/(teen)/history',
   bridge: '/(teen)/bridge',
   s2tell: '/(teen)/bridge?compose=true',
