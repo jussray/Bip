@@ -48,9 +48,14 @@ const isDev = process.env.NODE_ENV === 'development';
  * validateEnv()
  *
  * Missing SUPABASE vars  → cloud sync disabled, AsyncStorage only.
- * Missing BACKEND_URL    → HARD ERROR logged; AI replies will silently fail
- *                          mid-chat without it. Fix before shipping to testers.
+ * Missing BACKEND_URL    → AI replies fall back to pre-written companion
+ *                          replies (see fallbackReply() in ./api). Fine for
+ *                          local dev; deploy the Worker before real launch.
  * Banned keys present    → security violation logged.
+ *
+ * Note: missing-config cases use console.warn, not console.error — in Expo
+ * web dev, console.error triggers a full-screen LogBox overlay that blocks
+ * all interaction with the app underneath it.
  */
 export function validateEnv(): void {
   // ── Required for cloud sync ──────────────────────────────────────────────
@@ -67,12 +72,12 @@ export function validateEnv(): void {
     );
   }
 
-  // ── Required for AI replies — hard error ────────────────────────────────
+  // ── Backend URL: falls back to pre-written companion replies ────────────
   if (!BACKEND_URL) {
-    console.error(
-      "[Se'kret Bip] 🚨 EXPO_PUBLIC_BACKEND_URL is not set.\n" +
-      "   Se'kret AI WILL silently drop all replies without this.\n" +
-      '   Set it to your Cloudflare Worker URL after `wrangler deploy`.\n' +
+    console.warn(
+      "[Se'kret Bip] ℹ️  EXPO_PUBLIC_BACKEND_URL is not set.\n" +
+      "   Se'kret AI is running in fallback mode (pre-written replies).\n" +
+      '   Set it to your Cloudflare Worker URL after `wrangler deploy` for live AI replies.\n' +
       '   Example: EXPO_PUBLIC_BACKEND_URL=https://sekret-reply.<account>.workers.dev'
     );
   }
