@@ -23,9 +23,15 @@ const FOCUS_OPTIONS = [
   { id: 'learn', label: 'Learn', emoji: '📖' },
 ];
 
+const ROOM_STYLE_OPTIONS: { id: 'mom' | 'dad'; label: string; emoji: string; desc: string }[] = [
+  { id: 'mom', label: 'Mom', emoji: '💜', desc: 'Mom Room' },
+  { id: 'dad', label: 'Dad', emoji: '👑', desc: 'Dad Room' },
+];
+
 export default function ParentSetup() {
-  const { setUserSide } = useAppContext();
+  const { setUserSide, setParentRoomStyle } = useAppContext();
   const [name, setName] = useState('');
+  const [roomStyle, setRoomStyle] = useState<'mom' | 'dad' | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<TextInput>(null);
@@ -40,7 +46,7 @@ export default function ParentSetup() {
     }).start();
   }
 
-  const ready = name.trim().length > 0 && focus !== null && !saving;
+  const ready = name.trim().length > 0 && roomStyle !== null && focus !== null && !saving;
 
   async function handleFinish() {
     if (!ready) return;
@@ -48,9 +54,10 @@ export default function ParentSetup() {
     Keyboard.dismiss();
     try {
       setUserSide('parent');
+      setParentRoomStyle(roomStyle);
       await AsyncStorage.setItem(
         'parent_profile_data',
-        JSON.stringify({ name: name.trim(), focus }),
+        JSON.stringify({ name: name.trim(), roomStyle, focus }),
       );
       await AsyncStorage.removeItem('parent_profile_done');
       router.replace('/(onboarding)/parent-link');
@@ -98,7 +105,27 @@ export default function ParentSetup() {
           <Animated.View style={[styles.inputUnderline, { backgroundColor: underlineColor }]} />
         </TouchableOpacity>
 
-        <Text style={styles.label}>What's your main intention here?</Text>
+        <Text style={styles.label}>You are</Text>
+        <View style={styles.grid}>
+          {ROOM_STYLE_OPTIONS.map(opt => (
+            <TouchableOpacity
+              key={opt.id}
+              activeOpacity={0.8}
+              onPress={() => setRoomStyle(opt.id)}
+              style={[styles.card, roomStyle === opt.id && styles.cardActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: roomStyle === opt.id }}
+            >
+              <Text style={styles.cardEmoji}>{opt.emoji}</Text>
+              <Text style={[styles.cardText, roomStyle === opt.id && styles.cardTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.hint}>Shapes your Room art and greeting. You can change this later in Settings.</Text>
+
+        <Text style={[styles.label, styles.labelSpaced]}>What's your main intention here?</Text>
         <View style={styles.grid}>
           {FOCUS_OPTIONS.map(opt => (
             <TouchableOpacity
@@ -138,6 +165,8 @@ const styles = StyleSheet.create({
   step: { color: '#6ee7b7', fontSize: 10, fontWeight: '900', letterSpacing: 2.5, marginBottom: 10 },
   title: { color: '#fff', fontSize: 32, fontWeight: '900', lineHeight: 40, marginBottom: 36 },
   label: { color: '#8aaf9c', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 14 },
+  labelSpaced: { marginTop: 24 },
+  hint: { color: '#3d5e4a', fontSize: 11, lineHeight: 16, marginTop: 10 },
   inputWrap: { marginBottom: 36, paddingBottom: 8 },
   input: { color: '#fff', fontSize: 28, fontWeight: '800', paddingBottom: 8 },
   inputUnderline: { height: 2, borderRadius: 1 },
