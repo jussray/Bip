@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import { GlitterSparkles } from '../../components/GlitterSparkles';
+import { MarqueeBanner } from '../../components/MarqueeBanner';
+import { RetroFrame } from '../../components/RetroFrame';
 
 type Gender = 'girl' | 'boy' | 'other';
 type TeenTab = 'identity' | 'circle' | 'memories';
+
+const PAGE_ACCENTS = ['#c4b5fd', '#f472b6', '#38bdf8', '#a3e635', '#fb923c', '#f43f5e'] as const;
 
 const GENDER_OPTIONS: { id: Gender; label: string; desc: string }[] = [
   { id: 'girl', label: '🌸 Girl', desc: 'Start with Raylene' },
@@ -35,6 +40,9 @@ export default function TeenProfile() {
   const [gender, setGender] = useState<Gender | null>(null);
   const [choice, setChoice] = useState<OptionId>(() => sekretToChoice(selectedSekret));
   const [circleName, setCircleName] = useState('');
+  const [pageAccent, setPageAccent] = useState<string>(PAGE_ACCENTS[0]);
+  const [statusLine, setStatusLine] = useState('');
+  const [glitterOn, setGlitterOn] = useState(false);
 
   useEffect(() => {
     AsyncStorage.multiGet(['teen_profile_data', 'teen_circle_identity']).then(pairs => {
@@ -42,9 +50,23 @@ export default function TeenProfile() {
       if (profile?.name) setName(profile.name);
       if (profile?.gender) setGender(profile.gender as Gender);
       if (profile?.choice) setChoice(profile.choice as OptionId);
+      if (profile?.pageAccent) setPageAccent(profile.pageAccent);
+      if (typeof profile?.statusLine === 'string') setStatusLine(profile.statusLine);
+      if (typeof profile?.glitterOn === 'boolean') setGlitterOn(profile.glitterOn);
       if (circle?.circleName) setCircleName(circle.circleName);
     }).catch(() => {});
   }, []);
+
+  async function saveCustomization(next: Partial<{ pageAccent: string; statusLine: string; glitterOn: boolean }>) {
+    const existingRaw = await AsyncStorage.getItem('teen_profile_data');
+    let existing: Record<string, unknown> = {};
+    try {
+      existing = existingRaw ? JSON.parse(existingRaw) : {};
+    } catch {
+      existing = {};
+    }
+    await AsyncStorage.setItem('teen_profile_data', JSON.stringify({ ...existing, ...next }));
+  }
 
   function pickGender(g: Gender) {
     setGender(g);
@@ -68,10 +90,47 @@ export default function TeenProfile() {
   const ready = name.trim().length > 0 && gender !== null;
 
   return (
-    <ScrollView contentContainerStyle={styles.root} showsVerticalScrollIndicator={false}>
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={styles.root} showsVerticalScrollIndicator={false}>
       <Text style={styles.kicker}>PROFILE</Text>
       <Text style={styles.title}>Your profile hub</Text>
       <Text style={styles.sub}>One place for who you are, your Circle identity, and your space memories.</Text>
+
+      <RetroFrame accent={pageAccent} style={styles.customizeFrame}>
+        <Text style={[styles.customizeKicker, { color: pageAccent }]}>✨ CUSTOMIZE MY PAGE ✨</Text>
+        <MarqueeBanner
+          text={statusLine.trim() || 'set your status →'}
+          accent={pageAccent}
+          background={`${pageAccent}1a`}
+        />
+        <Text style={[styles.label, styles.labelSpaced]}>Status line</Text>
+        <TextInput
+          value={statusLine}
+          onChangeText={text => { setStatusLine(text); void saveCustomization({ statusLine: text }); }}
+          placeholder="what's the vibe today?"
+          placeholderTextColor="#7f7487"
+          style={styles.input}
+          maxLength={60}
+        />
+        <Text style={[styles.label, styles.labelSpaced]}>Page color</Text>
+        <View style={styles.swatchRow}>
+          {PAGE_ACCENTS.map(color => (
+            <TouchableOpacity
+              key={color}
+              onPress={() => { setPageAccent(color); void saveCustomization({ pageAccent: color }); }}
+              style={[styles.swatch, { backgroundColor: color }, pageAccent === color && styles.swatchActive]}
+            />
+          ))}
+        </View>
+        <View style={styles.glitterRow}>
+          <Text style={styles.glitterLabel}>✨ Glitter mode</Text>
+          <Switch
+            value={glitterOn}
+            onValueChange={value => { setGlitterOn(value); void saveCustomization({ glitterOn: value }); }}
+            trackColor={{ false: '#3a3245', true: pageAccent }}
+          />
+        </View>
+      </RetroFrame>
 
       <View style={styles.tabs}>
         <TouchableOpacity style={[styles.tab, tab === 'identity' && styles.tabActive]} onPress={() => setTab('identity')}>
@@ -159,7 +218,9 @@ export default function TeenProfile() {
           ))}
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+      {glitterOn ? <GlitterSparkles count={18} /> : null}
+    </View>
   );
 }
 
@@ -168,6 +229,13 @@ const styles = StyleSheet.create({
   kicker: { color: '#c4b5fd', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
   title: { color: '#fff', fontSize: 30, fontWeight: '900', marginTop: 8 },
   sub: { color: '#a99fb1', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 20 },
+  customizeFrame: { marginBottom: 20 },
+  customizeKicker: { fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginBottom: 10, textAlign: 'center' },
+  swatchRow: { flexDirection: 'row', gap: 10 },
+  swatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'transparent' },
+  swatchActive: { borderColor: '#fff' },
+  glitterRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 18 },
+  glitterLabel: { color: '#eee7f2', fontSize: 13, fontWeight: '800' },
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 16 },
   tab: { flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)' },
   tabActive: { backgroundColor: 'rgba(196,181,253,0.16)', borderWidth: 1, borderColor: '#c4b5fd' },

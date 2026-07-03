@@ -17,6 +17,9 @@ import { IMAGES, AVATARS as THEME_AVATARS, THEME_PACKS, getRoomPhase, getRoomSce
 import type { CompanionState } from '../types/sekretCompanion';
 import { SafeAsset } from '../components/SafeAsset';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
+import { GlitterSparkles } from '../components/GlitterSparkles';
+
+const ROOM_GLITTER_KEY = 'room_glitter_deco';
 
 const { width, height } = Dimensions.get('window');
 
@@ -409,6 +412,21 @@ export function RoomScreen({
   const [greeting, setGreeting]               = useState(
     () => getGreeting(character, mood, timeOfDay, false)
   );
+  const [glitterOn, setGlitterOn] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ROOM_GLITTER_KEY).then(v => {
+      if (v === 'true') setGlitterOn(true);
+    }).catch(() => {});
+  }, []);
+
+  function toggleGlitter() {
+    setGlitterOn(prev => {
+      const next = !prev;
+      void AsyncStorage.setItem(ROOM_GLITTER_KEY, next ? 'true' : 'false');
+      return next;
+    });
+  }
 
   const pose = getPose(mood, timeOfDay, isFirstVisit, isSekretVisible, character);
 
@@ -667,6 +685,14 @@ export function RoomScreen({
           >
             <Text style={styles.myRoomBtnText}>✦ my room</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.myRoomBtn, glitterOn && styles.glitterBtnActive]}
+            onPress={toggleGlitter}
+            accessibilityRole="button"
+            accessibilityLabel={glitterOn ? 'Turn off glitter decorations' : 'Turn on glitter decorations'}
+          >
+            <Text style={styles.myRoomBtnText}>{glitterOn ? '✨ deco on' : '✨ deco'}</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.characterToggle}>
@@ -796,6 +822,7 @@ export function RoomScreen({
 
         {BottomNav}
       </Animated.View>
+      {glitterOn ? <GlitterSparkles count={14} /> : null}
     </View>
   );
 }
@@ -901,6 +928,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   myRoomBtnText:         { color: '#c4b5fd', fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  glitterBtnActive:      { backgroundColor: 'rgba(196,132,252,0.32)', borderColor: '#f472b6' },
 
   characterToggle:       { flexDirection: 'row', gap: 8 },
   toggleBtn:             {
