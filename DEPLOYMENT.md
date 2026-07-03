@@ -1,173 +1,76 @@
 # Se'kret Bip — Deployment Guide
 
-> Environment configuration, secrets management, and deployment steps.
+## Current direction
 
----
+- Web: Cloudflare-first
+- API and AI relay: Cloudflare Workers
+- Database, auth, storage, and RLS: Supabase
+- Native builds: Expo / EAS
 
-## Architecture Overview
+Remaining Vercel compatibility code is transitional and is not the canonical production path.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Expo / React Native App                                        │
-│  Deployed on Vercel (web) + EAS (native)                        │
-│  Uses: EXPO_PUBLIC_SUPABASE_URL                                 │
-│        EXPO_PUBLIC_SUPABASE_ANON_KEY                            │
-│        EXPO_PUBLIC_BACKEND_URL                                  │
-└────────────────────────┬────────────────────────────────────────┘
-                         │ POST /api/sekret/reply
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Cloudflare Worker (worker/sekret-reply.ts)                     │
-│  Secret: OPENAI_API_KEY  ← set via `wrangler secret put` ONLY  │
-│  Never exposed to Expo, Vercel, GitHub, or any client code      │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Supabase                                                       │
-│  Project ref: tbsevonvegdnlyjgplmm                              │
-│  URL: https://tbsevonvegdnlyjgplmm.supabase.co                 │
-│  Anon key: safe to expose (RLS enforced)                        │
-│  service_role key: server-side ONLY, never in client code       │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Environment Variables
-
-### Frontend (Expo / Vercel)
-
-| Variable | Required | Description |
-|---|---|---|
-| `EXPO_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key (safe to expose — RLS enforced) |
-| `EXPO_PUBLIC_BACKEND_URL` | No | Cloudflare Worker URL. Blank = Se'kret AI runs in fallback mode |
-
-### Backend (Cloudflare Worker — secrets only)
-
-| Variable | How to set | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | `wrangler secret put OPENAI_API_KEY` | OpenAI API key. **Never** in any file or Expo env |
-
-### Forbidden
-
-These must **never** appear in any Expo file, `.env.local`, Vercel env, or GitHub:
-- `OPENAI_API_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- Any `SERVICE_ROLE` value
-
----
-
-## Local Development Setup
+## Local development
 
 ```bash
-# 1. Copy env template
+npm install --legacy-peer-deps
 cp .env.example .env.local
-
-# 2. Fill in .env.local:
-#    EXPO_PUBLIC_SUPABASE_URL=https://tbsevonvegdnlyjgplmm.supabase.co
-#    EXPO_PUBLIC_SUPABASE_ANON_KEY=<from Supabase → Project Settings → API>
-#    EXPO_PUBLIC_BACKEND_URL=   (blank until Worker is deployed)
-
-# 3. Install dependencies
-npm install
-
-# 4. Start Expo
-npx expo start
+npx expo start --web -c
 ```
 
-Values for `EXPO_PUBLIC_SUPABASE_ANON_KEY` are in your Supabase dashboard:
-**Project Settings → API → Project API Keys → anon / public**
+Only client-safe public environment variables belong in the Expo bundle. Provider keys, service-role credentials, Cloudflare credentials, webhook secrets, and account-processing secrets must remain in server-side secret stores.
 
----
+## Supabase
 
-## Supabase Setup
+`supabase/migrations/` is the schema source of truth.
 
 ```bash
-# Run the full bootstrap SQL once on a fresh project:
-# 1. Open Supabase dashboard → SQL Editor
-# 2. Open the Raw view of: supabase/migrations/sekret_bip_full_bootstrap.sql
-#    (GitHub → file → Raw button → Select All → Copy)
-# 3. Paste into SQL Editor → Run
+npx supabase login
+npx supabase link --project-ref <project-ref>
+npx supabase db push
 ```
 
-The bootstrap creates all tables, enums, RLS policies, triggers, functions,
-and storage buckets in a single idempotent script.
+Do not use a separate full-bootstrap SQL file. Fresh projects must be able to replay migrations in filename order.
 
----
+Deploy required functions from `supabase/functions/` and configure their server-side secrets in Supabase.
 
-## Cloudflare Worker Deployment
+## Cloudflare Worker
+
+Deploy with:
 
 ```bash
-# 1. Set the OpenAI secret (one-time per account)
-wrangler secret put OPENAI_API_KEY
-# Paste your key when prompted — it is never written to disk
-
-# 2. Deploy the worker
-wrangler deploy
-
-# 3. Copy the deployed URL (e.g. https://bip-worker.<account>.workers.dev)
-#    and set it in .env.local:
-#    EXPO_PUBLIC_BACKEND_URL=https://bip-worker.<account>.workers.dev
-
-# 4. (Optional) Set a custom domain in Cloudflare dashboard
+npm run deploy:worker
 ```
 
-The worker route is `POST /api/sekret/reply`.
+The Worker must validate authenticated identity for private routes and must not trust a user identifier supplied only in the request body.
 
----
+## Cloudflare Pages
 
-## Vercel (Web) Deployment
+Build and deploy with:
 
 ```bash
-# Deploy
-vercel --prod
+npm run deploy:pages
 ```
 
-In the Vercel dashboard → Project Settings → Environment Variables, add:
+Configure only the required public client variables in the Pages build environment. Keep server credentials in Worker or Supabase secret stores.
 
-| Name | Value | Environment |
-|---|---|---|
-| `EXPO_PUBLIC_SUPABASE_URL` | `https://tbsevonvegdnlyjgplmm.supabase.co` | Production, Preview, Development |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `<anon key>` | Production, Preview, Development |
-| `EXPO_PUBLIC_BACKEND_URL` | `<worker URL>` | Production, Preview, Development |
+## Native builds
 
-**Do not add `OPENAI_API_KEY` to Vercel.** It belongs only in the Worker secret store.
+Use Expo / EAS for production mobile builds. Never embed server secrets in the app bundle.
 
----
-
-## EAS (Native Build) Deployment
+## Release validation
 
 ```bash
-# Configure EAS secrets (replaces .env.local for CI builds)
-eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value "https://tbsevonvegdnlyjgplmm.supabase.co"
-eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "<anon key>"
-eas secret:create --scope project --name EXPO_PUBLIC_BACKEND_URL --value "<worker URL>"
-
-# Build
-eas build --platform all
+npm run type-check
+npm test
+npm run audit:control-room
+npm run validate:companions
+npm run verify:bundle
 ```
 
-**Do not add `OPENAI_API_KEY` as an EAS secret.** Client builds must never contain it.
+Also verify:
 
----
-
-## Startup Validation
-
-`utils/env.ts` runs at app boot and logs:
-
-- `⚠️ warning` if `EXPO_PUBLIC_SUPABASE_URL` or `EXPO_PUBLIC_SUPABASE_ANON_KEY` is missing → cloud sync disabled, app runs on local AsyncStorage
-- `ℹ️ info` if `EXPO_PUBLIC_BACKEND_URL` is missing → Se'kret AI uses pre-written fallback replies
-- `🚨 SECURITY error` if `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, or `SERVICE_ROLE` is found in client env → rotate immediately
-
----
-
-## Security Checklist
-
-- [ ] `.env.local` is in `.gitignore` (already configured)
-- [ ] `OPENAI_API_KEY` set via `wrangler secret put` only
-- [ ] `SUPABASE_SERVICE_ROLE_KEY` never in any client file
-- [ ] Supabase RLS policies active (verified via `sekret_bip_full_bootstrap.sql`)
-- [ ] Worker CORS origin restricted to production domain before public launch
-- [ ] No secrets in GitHub Actions (use EAS secrets for builds)
+- Supabase migrations and RLS are current
+- Worker secrets are configured
+- CORS is restricted appropriately
+- parent and teen privacy tests pass
+- release-health telemetry records the deployed commit

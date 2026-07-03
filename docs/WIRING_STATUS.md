@@ -1,170 +1,88 @@
 # Se'kret Bip — Backend Wiring Status
 
-> Last updated: 2026-06-18  
-> Tracks all 12 wiring items from the Phase 2/3 audit.
+Last reviewed: 2026-07-03
 
----
+## Implemented
 
-## Legend
-| Symbol | Meaning |
-|--------|---------|
-| ✅ | Done — wired end-to-end |
-| 🔜 | Code scaffolded, needs DB table applied OR screen-level hookup |
-| ⬜ | Not started |
+- Supabase authentication and persisted sessions
+- Local-first AsyncStorage restore and cloud merge
+- Teen Circle and Parent Circle data flows
+- Bip Crew members, invites, connection states, and check-ins
+- Points snapshots and rewards infrastructure
+- Voice Bip recording, transcription, reply, and speech playback
+- Oracle profile/session persistence paths
+- Parent-link invites and redemption
+- Safety tables, triggers, alerts, and Edge Function scaffolding
+- Period-calendar synchronization
+- Explicit splash entry controls
+- Bridge signals and linked-account messages
+- Founder Control Room ingestion and release-health systems
 
----
+## Current route model
 
-## 1. Anonymous Supabase Login on App Launch
-**Status: ✅ DONE**
+The app uses Expo Router route groups:
 
-- `ensureAnonymousSession()` → `src/utils/sync.ts`
-- Called from `useAppEffects.ts` effect #3 on `isLoading` change
-- Session persisted via `AsyncStorage` through Supabase client config
-- All cloud writes gate on `currentUserId()` returning non-null
+- teen routes: `app/(teen)/`
+- parent routes: `app/(parent)/`
 
----
+Older references to `app/(main)/`, `app/parent/`, or a global string router are historical and should not be used for new work.
 
-## 2. Local Persistence Autosave (`saveState`)
-**Status: ✅ DONE**
+## Database source of truth
 
-- `saveState()` called in `useAppEffects.ts` effect #4
-- Watches all major state slices: mood, journal, oracle, circle, crew, voice, streaks, room
-- `loadState()` restores on mount (effect #1) with safe defaults
-- Cloud merge via `pullAll()` runs after anon session resolves
+`supabase/migrations/` is the schema source of truth.
 
----
+Fresh projects should use:
 
-## 3. Teen Circle Live Feed
-**Status: ✅ DONE**
+```bash
+npx supabase link --project-ref <project-ref>
+npx supabase db push
+```
 
-- `loadCircleFeed(tab)` — reads public / friends / crew tabs → `src/utils/sync.ts`
-- `writeCirclePost(tab, text, opts)` — inserts to `posts` table via `circle_id`
-- `syncCircleReaction(postId, reaction)` — upserts `post_reactions`
-- All three are called in `screens/CircleScreen.tsx` via `useFeed` hook (mount +
-  pull-to-refresh), post composer `handlePost`, and reaction bar `handleReact`.
-- Mock fallback data shown when Supabase is unconfigured / offline.
+Do not rely on missing `0003_*` files or a separate full-bootstrap SQL file. Migration ordering must remain safe for an empty database.
 
----
+## Parent and Bridge status
 
-## 4. Parent Circle Live Feed
-**Status: ✅ DONE**
+The linked-account data model is implemented, including parent links, Bridge signals, Bridge messages, and relationship-aware RLS.
 
-- `syncParentCirclePost()` writes to `parent_circle_posts` → `src/utils/sync.ts`
-- `pullAll()` pulls `parent_circle_posts` on launch
-- `loadParentCircleFeed()` called on mount in both route wrappers
-  (`app/(main)/parent-circle.tsx` and `app/parent/circle.tsx`)
-- Cloud posts merged additively — no local posts are lost
+The parent product is not complete yet. Remaining work is tracked in issue #212:
 
----
+- canonical Parent Bridge tabs
+- parent splash and onboarding
+- pending, active, expired, revoked, and blocked states
+- Parent Circle privacy validation
+- Parent Coach memory boundaries
+- period-sharing permissions
+- minimal-content notifications
+- end-to-end relationship and privacy tests
 
-## 5. Bip Crew Cloud Actions
-**Status: ✅ DONE**
+## Companion status
 
-- `syncCrewMember(m)` — upserts crew member with `invite_code` field
-- `deleteCrewMember(id)` — deletes from `crew_members`
-- `syncCrewCheckIn(c)` — upserts check-in with `member_id` FK
-- `pullAll()` restores `crewMembers` + `crewCheckIns` on launch
-- Invite code stored on `CrewMember.inviteCode`, synced to `invite_code` column
+Current companion maturity is L2:
 
----
+- unified reply payloads
+- short-term conversation history
+- supplied RoomMemory and Oracle context
+- metadata-only provider telemetry
 
-## 6. Points / Rewards Snapshot
-**Status: ✅ DONE**
+Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are not implemented. See `AGENT_L4_ARCHITECTURE.md`.
 
-- `snapshotPoints(total)` inserts a timestamped row → `bip_points` table
-- `PointsScreen.tsx` computes points from all activity logs (no separate stored total)
-- `snapshotPoints(breakdown.total)` called via `useEffect` on every change
+## Deployment checks still required
 
----
+- confirm current Cloudflare Worker and web deployment secrets
+- verify the safety-scan Edge Function is deployed in the active Supabase project
+- verify Worker CORS and authenticated request handling
+- verify fresh migration replay
+- run the repository validation scripts before release
 
-## 7. Voice Bip AI Speaking Pipeline
-**Status: ✅ DONE**
+## Validation
 
-- `VoiceBipScreen.startRecording()` — requests mic permission, calls `Audio.Recording.createAsync(HIGH_QUALITY)`
-- `VoiceBipScreen.stopRecording()` — stops recording, converts URI to base64 via `FileReader`
-- Worker `POST /api/sekret/transcribe` — receives base64 audio, calls Whisper, returns transcript
-- `fetchSekretTranscribe()` in `src/utils/api.ts` — client helper (OPENAI_API_KEY in Worker secrets only)
-- Real transcript fed to `fetchSekretReply()` then `fetchSekretVoice()` → TTS playback via `expo-av`
+```bash
+npm run type-check
+npm test
+npm run test:device-sync
+npm run audit:control-room
+npm run validate:companions
+npm run verify:prepush
+```
 
----
-
-## 8. Oracle / Companion Memory Cloud Sync
-**Status: ✅ DONE**
-
-- `services/oracleProfile.ts` owns the full cloud sync path:
-  - `saveOracleRecord(record)` — upserts full profile snapshot to
-    `oracle_records (user_id, mode)` on every answer processed
-  - `markSessionComplete(record, questionIds)` — inserts immutable row to
-    `oracle_session_log` at session end (analytics + cross-device restore)
-  - Both calls use `supabase.auth.getUser()` directly; errors swallowed so
-    local AsyncStorage always wins as source of truth
-- `syncOracleSession` / `loadOracleSession` in `src/utils/sync.ts` exist as
-  a lighter companion-memory path (`oracle_sessions` table) but are superseded
-  by the richer `oracleProfile.ts` implementation above.
-
----
-
-## 9. Parent / Teen Link System
-**Status: ✅ DONE**
-
-- Migration `0003_*` creates `parent_links` table with invite flow columns
-- RLS: teen creates invite, parent redeems by code, both can read their link
-- `createParentLink()` → `src/utils/sync.ts`: teen generates/retrieves pending code
-- `redeemParentLink(code)` → `src/utils/sync.ts`: parent activates link by code
-- `SettingsScreen.tsx` teen side: "Connect to a Parent" — generate + copy 6-char code
-- `SettingsScreen.tsx` parent side: "Connect to Your Teen" — enter code + link button
-
----
-
-## 10. Safety System
-**Status: ✅ DONE (deploy pending)**
-
-- Migration `0003_*` creates `safety_alerts` table with severity, source tracking, RLS
-- Migration `20260619_safety_scan.sql` — adds `safety_flagged` columns, `trigger_safety_scan()`,
-  and attaches triggers to `journal_entries`, `circle_posts`, `public_circle_posts`
-- Edge Function `supabase/functions/safety-scan/index.ts` — keyword + OpenAI moderation scan,
-  inserts `safety_alerts`, notifies linked parent (no content in notification)
-- **Deploy steps** (manual, one-time):
-  1. `supabase functions deploy safety-scan --no-verify-jwt`
-  2. `supabase secrets set SAFETY_SCAN_SECRET=<random> OPENAI_API_KEY=<key>`
-  3. Run `20260619_safety_scan.sql` in Supabase SQL editor
-
----
-
-## 11. Period Calendar Sync
-**Status: ✅ DONE**
-
-- Migration `0003_*` creates `period_days (user_id, day DATE)` with unique key
-- `syncPeriodDay(day, note?)` — upserts on toggle-on → `src/utils/sync.ts`
-- `deletePeriodDay(day)` — deletes on toggle-off → `src/utils/sync.ts`
-- `loadPeriodDays()` — pulls all days on mount → `src/utils/sync.ts`
-- All three wired in `screens/PeriodCalendarScreen.tsx`:
-  - Mount effect: loads AsyncStorage first (instant), then `loadPeriodDays()`
-    and merges cloud days additively (non-destructive)
-  - `toggleDay()`: calls `syncPeriodDay` on mark, `deletePeriodDay` on unmark
-
----
-
-## 12. Splash / Entry Flow Control
-**Status: ✅ DONE**
-
-- `screens/SplashScreen.tsx` — no auto-timer; sole entry is `TouchableOpacity`
-  CTA calling `setScreen('home')`
-- Teen and parent sides both use the same gate, toggled by `userSide` prop
-- Artwork is wrapped in `pointerEvents="none"` so only the CTA is tappable
-
----
-
-## Quick Reference: Remaining Open Items
-
-All 12 wiring items are now done in code. Item 10 requires a one-time manual deploy (see Section 10 above).
-
----
-
-## Phase 5 Constraint — Se'kret Into Pages
-
-See `docs/PHASE5_SEKRET_INTO_PAGES.md` for the full specification.
-
-**One-line rule:** Hiding the Se'kret tab is only valid if Se'kret's full
-functionality is relocated inside Pages. If companion interaction is unreachable
-after the tab is hidden, Phase 5 fails.
+Do not mark a path complete merely because code exists. Completion requires the route, service, database policy, and tests to agree.
