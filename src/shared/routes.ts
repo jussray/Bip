@@ -35,6 +35,8 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
       profile: PARENT_ROUTES.profile,
       growth: PARENT_ROUTES.growth,
       'parent-growth': PARENT_ROUTES.growth,
+      approvals: PARENT_ROUTES.approvals,
+      'parent-approvals': PARENT_ROUTES.approvals,
       connection: PARENT_ROUTES.bridge,
       parentConnection: PARENT_ROUTES.bridge,
       'parent-connection': PARENT_ROUTES.bridge,

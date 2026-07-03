@@ -15,6 +15,7 @@ export const PARENT_ROUTES = {
   profile:        '/(parent)/profile',
   growth:         '/(parent)/growth',
   resources:      '/(parent)/resources',
+  approvals:      '/(parent)/approvals',
 } as const;
 
 export type ParentRouteKey = keyof typeof PARENT_ROUTES;
