@@ -153,18 +153,37 @@ Bip/
 │   └── utils/                 # Shared utilities and sync helpers
 ├── components/                # Legacy/shared UI still being migrated
 ├── constants/                 # Theme, images, voice, and design constants
+├── context/                   # Root-level app context (pre-src/ legacy)
 ├── hooks/                     # Existing shared hooks
 ├── utils/                     # Storage, API, Supabase, and compatibility utilities
+├── services/                  # Oracle, Se'kret memory/voice, audio, and Piper TTS service code
+├── types/                     # Root-level shared TypeScript models (bridge, circle, oracle, privacy…)
+├── worker/                    # Cloudflare Worker source (entry: worker/observed-index.ts, per wrangler.toml)
 ├── supabase/
-│   ├── functions/             # Edge Functions
-│   └── migrations/            # Database migrations and RLS changes
+│   ├── functions/             # Edge Functions (account deletion flow, release-health, safety-scan)
+│   └── migrations/            # Single source of truth for schema — see docs/SUPABASE.md
+├── db/                        # storage.sql only (Supabase Storage bucket policies) — db/schema.sql was retired
 ├── assets/images/             # Companion, room, splash, and screen artwork
 ├── design-references/         # Visual reference assets
-├── docs/                      # Implementation and asset guardrails
+├── figma/                     # Figma plugin (code.js/manifest.json) for design sync
+├── tools/                     # Standalone dev tooling (e.g. figma-vibe-builder)
+├── test/                      # node:test suite (`npm test`)
+├── scripts/                   # Audit, validation, and CI-support scripts
+├── docs/                      # Implementation, safety, and asset guardrails — see Guides below
 ├── .github/workflows/         # CI, regression, and deployment workflows
 ├── .env.example               # Environment template
 └── app.json                   # Expo configuration
 ```
+
+## Backend & Deployment
+
+- **Database:** `supabase/migrations/` is the single source of truth for schema (46 migrations as of this writing). Apply with the Supabase CLI — see [`docs/SUPABASE.md`](docs/SUPABASE.md). `db/schema.sql` was retired; do not recreate it as a second schema source.
+- **Edge Functions:** `supabase/functions/` — `account-delete`, `account-deletion-request`, `account-request-cancel`, `release-health`, `safety-scan`.
+- **Worker/API:** Cloudflare Worker at `worker/` (entry point `worker/observed-index.ts` per `wrangler.toml`). Deploy with `npm run deploy:worker`.
+- **Web:** Cloudflare Pages, built via `npm run build:web` (aliased as `vercel-build` for the Pages project's configured build command) and deployed with `npm run deploy:pages`.
+- **CI:** `.github/workflows/` runs type-check, lint, the `node:test` suite, control-room audits, and companion/room-archive validation on every PR into `main`; `deploy-cloudflare.yml` and `deploy-worker.yml` push Worker/Pages changes on merge to `main`.
+
+> **Known issue:** the Worker deploy job currently fails on every run due to an invalid `CLOUDFLARE_API_TOKEN` repo secret — see [issue #210](https://github.com/jussray/Bip/issues/210). Fixing it requires updating the secret in the Cloudflare/GitHub dashboards, not a code change.
 
 ## Setup
 
@@ -198,6 +217,8 @@ npm run ios
 npm run android
 ```
 
+The app runs fully offline without Supabase configured — every cloud call is a safe no-op and state stays in AsyncStorage. To wire up cross-device sync, durable history, and real crew invites, see [`docs/SUPABASE.md`](docs/SUPABASE.md).
+
 ## Environment and Secret Safety
 
 Only `EXPO_PUBLIC_*` variables may be exposed to the client bundle.
@@ -225,6 +246,7 @@ npm test
 npm run test:oracle
 npm run test:voice-intelligence
 npm run test:device-sync
+npm run audit:control-room   # structural + RLS drift scanners, see docs/RLS_POLICY_AUDIT.md
 ```
 
 When available, run:
@@ -237,13 +259,31 @@ Do not claim tests passed unless they were actually executed by a shell or CI ru
 
 ## Guides
 
-- [Codespaces setup](docs/CODESPACES.md)
-- [Dependency audit](docs/DEPENDENCY_AUDIT.md)
-- [Room art guide](docs/ROOM_ART_GUIDE.md)
-- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md)
-- [Asset backup rules](docs/ASSET_BACKUP_RULES.md)
+`docs/` holds the full set (30+ files) of architecture, safety, and asset guardrails. Most load-bearing:
 
-Additional vision, privacy, safety, and Figma documentation should live under `docs/` and be treated as implementation guardrails rather than disposable planning notes.
+**Architecture & product**
+- [Architecture](docs/ARCHITECTURE.md) · [Vision](docs/VISION.md) · [User Room architecture](docs/USER_ROOM_ARCHITECTURE.md)
+- [Agent L4 architecture decision matrix](docs/AGENT_L4_ARCHITECTURE.md) — companion memory/orchestration design
+- [Founder Control Room](docs/FOUNDER_CONTROL_ROOM.md) · [Companion production pipeline](docs/COMPANION_PIPELINE.md)
+
+**Backend & data**
+- [Supabase setup](docs/SUPABASE.md) — env vars, migrations, anonymous auth, sync model
+- [RLS policy audit](docs/RLS_POLICY_AUDIT.md) — schema drift history and current RLS coverage
+- [Dependency audit](docs/DEPENDENCY_AUDIT.md)
+
+**Safety & compliance**
+- [COPPA compliance](docs/COPPA_COMPLIANCE.md) · [Privacy policy](docs/PRIVACY_POLICY.md) · [Terms of service](docs/TERMS_OF_SERVICE.md)
+- [Bridge connection audit](docs/BRIDGE_CONNECTION_AUDIT.md)
+- Legal drafts and launch checklist: `docs/legal/`
+
+**Design & assets**
+- [Room art guide](docs/ROOM_ART_GUIDE.md) · [Asset backup rules](docs/ASSET_BACKUP_RULES.md)
+- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md) · [Figma MCP setup](docs/FIGMA_MCP_SETUP.md)
+
+**Dev environment**
+- [Codespaces setup](docs/CODESPACES.md) · [Piper TTS](docs/PIPER_TTS.md)
+
+The rest of `docs/` (screen/UX audits, circle v1/v2 specs, phase-specific specs, dated fix audits) are point-in-time planning and audit records — treat them as historical context, not always-current instructions. Root-level `DEPLOYMENT.md` predates the Cloudflare-first migration and describes a Vercel/EAS deploy path that's no longer how this repo ships — use [Backend & Deployment](#backend--deployment) above instead.
 
 ## License
 
