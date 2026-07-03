@@ -60,7 +60,7 @@ export const PARENT_MORE_GROUPS: FeatureDrawerGroup[] = [
     { emoji: '🤝', label: 'Connection Hub', route: 'parent-connection', description: 'Repair, boundaries, and relationship tools.' },
   ] },
   { title: 'YOUR SUPPORT SPACE', items: [
-    { emoji: '🎙️', label: 'Parent Voice Bip', route: 'voicebip', description: 'Private voice reflection and reply drafts.' },
+    { emoji: '🎙️', label: 'Parent Voice Bip', route: 'voicereflect', description: 'Private voice reflection and reply drafts.' },
     { emoji: '🌱', label: 'Bippin 2', route: 'parent-growth', description: 'Parent guidance for growing-up topics.' },
     { emoji: '🤝', label: 'Parent Circle', route: 'circle', description: 'Parent-to-parent support and community.' },
   ] },
