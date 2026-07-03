@@ -87,13 +87,18 @@ export function MoreScreen({
           </View>
         ))}
 
-        {allowSideSwitch && userSide !== 'parent' ? (
+        {allowSideSwitch ? (
           <View style={styles.sideCard}>
-            <Text style={styles.sideTitle}>Founder test switch</Text>
-            <Text style={styles.sideBody}>Development-only shortcut for testing the simulated family. This is never shown in production.</Text>
-            <TouchableOpacity style={[styles.sideButton, { backgroundColor: glow }]} onPress={handleSideSwitch}>
-              <Text style={styles.sideButtonText}>Go to Parent Side</Text>
+            <Text style={styles.sideTitle}>Founder tools</Text>
+            <Text style={styles.sideBody}>Development-only shortcuts. The Control Room still checks your founder, admin, or developer profile before opening.</Text>
+            <TouchableOpacity style={[styles.sideButton, { backgroundColor: glow }]} onPress={() => setScreen('dev-control-room')}>
+              <Text style={styles.sideButtonText}>Open Control Room</Text>
             </TouchableOpacity>
+            {userSide !== 'parent' ? (
+              <TouchableOpacity style={[styles.sideButton, styles.secondaryButton]} onPress={handleSideSwitch}>
+                <Text style={styles.sideButtonText}>Go to Parent Side</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : null}
       </ScrollView>
@@ -125,6 +130,7 @@ const styles = StyleSheet.create({
   sideCard: { borderRadius: 20, borderWidth: 1, borderColor: '#ffffff18', backgroundColor: 'rgba(30,18,55,0.90)', padding: 18, marginTop: 4 },
   sideTitle: { color: '#fff', fontSize: 17, fontWeight: '900', marginBottom: 6 },
   sideBody: { color: '#bfb4c8', fontSize: 12, lineHeight: 18, marginBottom: 14 },
-  sideButton: { minHeight: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  sideButton: { minHeight: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  secondaryButton: { backgroundColor: '#4338CA' },
   sideButtonText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 });
