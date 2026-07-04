@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { getSupabase } from '@/utils/supabase';
+import { clearStoredExpoPushToken, getStoredExpoPushToken } from '@/services/notifications';
 
 function getAppVariant(): 'teen' | 'parent' {
   return Constants.expoConfig?.extra?.appVariant === 'parent' ? 'parent' : 'teen';
@@ -13,14 +14,27 @@ export async function syncExpoPushToken(token: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { error } = await supabase.from('push_tokens').upsert({
-    user_id: user.id,
-    expo_push_token: token,
-    platform: Platform.OS,
-    app_variant: getAppVariant(),
-    enabled: true,
-    last_seen_at: new Date().toISOString(),
-  }, { onConflict: 'expo_push_token' });
+  const { error } = await supabase.rpc('claim_push_token', {
+    p_expo_push_token: token,
+    p_platform: Platform.OS,
+    p_app_variant: getAppVariant(),
+  });
 
   if (error) throw error;
+}
+
+export async function disableCurrentPushToken(): Promise<void> {
+  const supabase = getSupabase();
+  const token = await getStoredExpoPushToken();
+  if (!token) return;
+
+  try {
+    if (supabase) {
+      await supabase.rpc('disable_push_token', {
+        p_expo_push_token: token,
+      });
+    }
+  } finally {
+    await clearStoredExpoPushToken();
+  }
 }
