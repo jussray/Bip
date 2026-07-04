@@ -6,6 +6,7 @@ import {
   configureNotificationHandling,
   registerForPushNotificationsAsync,
 } from '@/services/notifications';
+import { syncExpoPushToken } from '@/services/pushTokenSync';
 
 function openNotificationRoute(response: Notifications.NotificationResponse): void {
   const url = response.notification.request.content.data?.url;
@@ -20,6 +21,15 @@ export function NotificationBootstrap() {
     void (async () => {
       await configureNotificationHandling();
       const registration = await registerForPushNotificationsAsync();
+
+      if (registration.token) {
+        try {
+          await syncExpoPushToken(registration.token);
+        } catch (error) {
+          if (__DEV__) console.info('[notifications] token sync failed', error);
+        }
+      }
+
       if (__DEV__ && registration.reason) {
         console.info('[notifications]', registration.reason);
       }
