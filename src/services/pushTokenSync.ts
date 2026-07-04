@@ -27,14 +27,12 @@ export async function disableCurrentPushToken(): Promise<void> {
   const supabase = getSupabase();
   const token = await getStoredExpoPushToken();
   if (!token) return;
+  if (!supabase) throw new Error('Supabase is not configured.');
 
-  try {
-    if (supabase) {
-      await supabase.rpc('disable_push_token', {
-        p_expo_push_token: token,
-      });
-    }
-  } finally {
-    await clearStoredExpoPushToken();
-  }
+  const { error } = await supabase.rpc('disable_push_token', {
+    p_expo_push_token: token,
+  });
+  if (error) throw error;
+
+  await clearStoredExpoPushToken();
 }
