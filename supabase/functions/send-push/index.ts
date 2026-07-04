@@ -6,7 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+type PushAudience = 'self' | 'linked_parent' | 'linked_teen';
+
 type PushRequest = {
+  audience?: PushAudience;
+  teenId?: string;
   title?: string;
   body?: string;
   url?: string;
@@ -52,16 +56,54 @@ Deno.serve(async (request) => {
   const title = payload.title?.trim().slice(0, 80) || "Se'kret Bip";
   const body = payload.body?.trim().slice(0, 240);
   const url = payload.url?.trim();
+  const audience = payload.audience ?? 'self';
   if (!body) return json({ error: 'body is required.' }, 400);
   if (url && !url.startsWith('/')) return json({ error: 'url must be an internal app route.' }, 400);
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
+
+  let recipientUserId = user.id;
+
+  if (audience === 'linked_parent') {
+    const { data: link, error } = await admin
+      .from('parent_links')
+      .select('parent_user_id')
+      .eq('teen_user_id', user.id)
+      .eq('status', 'active')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) return json({ error: 'Unable to resolve linked parent.' }, 500);
+    if (!link?.parent_user_id) return json({ sent: 0, message: 'No active linked parent found.' });
+    recipientUserId = link.parent_user_id;
+  }
+
+  if (audience === 'linked_teen') {
+    const teenId = payload.teenId?.trim();
+    if (!teenId) return json({ error: 'teenId is required.' }, 400);
+
+    const { data: link, error } = await admin
+      .from('parent_links')
+      .select('teen_user_id')
+      .eq('parent_user_id', user.id)
+      .eq('teen_user_id', teenId)
+      .eq('status', 'active')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error) return json({ error: 'Unable to verify linked teen.' }, 500);
+    if (!link?.teen_user_id) return json({ error: 'No active parent link found.' }, 403);
+    recipientUserId = link.teen_user_id;
+  }
+
   const { data: rows, error: tokenError } = await admin
     .from('push_tokens')
     .select('expo_push_token')
-    .eq('user_id', user.id)
+    .eq('user_id', recipientUserId)
     .eq('enabled', true);
 
   if (tokenError) return json({ error: 'Unable to load push tokens.' }, 500);
