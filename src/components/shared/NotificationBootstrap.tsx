@@ -6,7 +6,7 @@ import {
   configureNotificationHandling,
   registerForPushNotificationsAsync,
 } from '@/services/notifications';
-import { disableCurrentPushToken, syncExpoPushToken } from '@/services/pushTokenSync';
+import { syncExpoPushToken } from '@/services/pushTokenSync';
 import { getSupabase } from '@/utils/supabase';
 
 function openNotificationRoute(response: Notifications.NotificationResponse): void {
@@ -44,12 +44,6 @@ export function NotificationBootstrap() {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         void registerAndSync().catch((error) => {
           if (__DEV__) console.info('[notifications] auth sync failed', error);
-        });
-      }
-
-      if (event === 'SIGNED_OUT') {
-        void disableCurrentPushToken().catch((error) => {
-          if (__DEV__) console.info('[notifications] sign-out cleanup failed', error);
         });
       }
     }).data.subscription;
