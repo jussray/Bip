@@ -6,14 +6,29 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-type PushAudience = 'self' | 'linked_parent' | 'linked_teen';
+type PushEvent = 'parent_bridge_share' | 'parent_bridge_reply';
 
 type PushRequest = {
-  audience?: PushAudience;
+  event?: string;
   teenId?: string;
-  title?: string;
-  body?: string;
-  url?: string;
+};
+
+const ALLOWED_EVENTS = new Set<PushEvent>([
+  'parent_bridge_share',
+  'parent_bridge_reply',
+]);
+
+const EVENT_TEMPLATES: Record<PushEvent, { title: string; body: string; url: string }> = {
+  parent_bridge_share: {
+    title: "Se'kret Bip Parent",
+    body: 'Your teen shared something with you in Parent Bridge.',
+    url: '/(parent)/bridge',
+  },
+  parent_bridge_reply: {
+    title: "Se'kret Bip",
+    body: 'Your parent left you a reply in Parent Bridge.',
+    url: '/(teen)/bridge',
+  },
 };
 
 function json(data: unknown, status = 200): Response {
@@ -53,20 +68,19 @@ Deno.serve(async (request) => {
     return json({ error: 'Invalid JSON.' }, 400);
   }
 
-  const title = payload.title?.trim().slice(0, 80) || "Se'kret Bip";
-  const body = payload.body?.trim().slice(0, 240);
-  const url = payload.url?.trim();
-  const audience = payload.audience ?? 'self';
-  if (!body) return json({ error: 'body is required.' }, 400);
-  if (url && !url.startsWith('/')) return json({ error: 'url must be an internal app route.' }, 400);
+  const rawEvent = payload.event;
+  if (typeof rawEvent !== 'string' || !ALLOWED_EVENTS.has(rawEvent as PushEvent)) {
+    return json({ error: 'Unsupported notification event.' }, 400);
+  }
+  const event = rawEvent as PushEvent;
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
 
-  let recipientUserId = user.id;
+  let recipientUserId: string;
 
-  if (audience === 'linked_parent') {
+  if (event === 'parent_bridge_share') {
     const { data: link, error } = await admin
       .from('parent_links')
       .select('parent_user_id')
@@ -80,9 +94,7 @@ Deno.serve(async (request) => {
     if (error) return json({ error: 'Unable to resolve linked parent.' }, 500);
     if (!link?.parent_user_id) return json({ sent: 0, message: 'No active linked parent found.' });
     recipientUserId = link.parent_user_id;
-  }
-
-  if (audience === 'linked_teen') {
+  } else {
     const teenId = payload.teenId?.trim();
     if (!teenId) return json({ error: 'teenId is required.' }, 400);
 
@@ -100,6 +112,17 @@ Deno.serve(async (request) => {
     recipientUserId = link.teen_user_id;
   }
 
+  const cutoff = new Date(Date.now() - 30_000).toISOString();
+  const { count, error: throttleError } = await admin
+    .from('notification_deliveries')
+    .select('id', { count: 'exact', head: true })
+    .eq('sender_user_id', user.id)
+    .eq('event_type', event)
+    .gte('created_at', cutoff);
+
+  if (throttleError) return json({ error: 'Unable to enforce notification cooldown.' }, 500);
+  if ((count ?? 0) >= 3) return json({ error: 'Notification cooldown active.' }, 429);
+
   const { data: rows, error: tokenError } = await admin
     .from('push_tokens')
     .select('expo_push_token')
@@ -110,20 +133,21 @@ Deno.serve(async (request) => {
   const tokens = (rows ?? []).map((row) => row.expo_push_token).filter(Boolean);
   if (tokens.length === 0) return json({ sent: 0, message: 'No enabled devices found.' });
 
+  const template = EVENT_TEMPLATES[event];
   const messages = tokens.map((to) => ({
     to,
-    title,
-    body,
+    title: template.title,
+    body: template.body,
     sound: 'default',
-    data: url ? { url } : {},
+    data: { url: template.url },
   }));
 
-  const expoAccessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
   const headers: Record<string, string> = {
     Accept: 'application/json',
     'Accept-Encoding': 'gzip, deflate',
     'Content-Type': 'application/json',
   };
+  const expoAccessToken = Deno.env.get('EXPO_ACCESS_TOKEN');
   if (expoAccessToken) headers.Authorization = `Bearer ${expoAccessToken}`;
 
   const expoResponse = await fetch('https://exp.host/--/api/v2/push/send', {
@@ -136,6 +160,12 @@ Deno.serve(async (request) => {
   if (!expoResponse.ok) {
     return json({ error: 'Expo rejected the push request.', details: result }, 502);
   }
+
+  await admin.from('notification_deliveries').insert({
+    sender_user_id: user.id,
+    recipient_user_id: recipientUserId,
+    event_type: event,
+  });
 
   return json({ sent: tokens.length, result });
 });

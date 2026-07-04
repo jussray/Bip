@@ -7,6 +7,8 @@ export const SIDE_ROOTS = {
 } as const;
 
 export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: string): string {
+  if (key === 'logout') return '/(auth)/logout';
+
   if (side === 'parent') {
     const parentMap: Record<string, string> = {
       home: PARENT_ROUTES.room,

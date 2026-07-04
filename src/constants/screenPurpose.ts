@@ -53,6 +53,7 @@ export const TEEN_MORE_GROUPS: FeatureDrawerGroup[] = [
     { emoji: '🔗', label: 'Parent Link', route: 'parent-link-verify', description: 'Manage verification and trusted connection.' },
     { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Theme, sekret selection, privacy, notifications, and account.' },
     { emoji: '🛟', label: 'Help & Safety', route: 'resources', description: 'Support, safety tools, and legal information.' },
+    { emoji: '🚪', label: 'Sign out', route: 'logout', description: 'Securely sign out and stop alerts on this device.' },
   ] },
 ];
 
@@ -72,5 +73,6 @@ export const PARENT_MORE_GROUPS: FeatureDrawerGroup[] = [
     { emoji: '🔗', label: 'Parent Link', route: 'parent-link', description: 'Manage the trusted teen connection.' },
     { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Privacy, notifications, and account.' },
     { emoji: '📚', label: 'Resources', route: 'resources', description: 'Guides, support, and legal information.' },
+    { emoji: '🚪', label: 'Sign out', route: 'logout', description: 'Securely sign out and stop alerts on this device.' },
   ] },
 ];

@@ -44,13 +44,7 @@ export async function sendS2TellShare(params: {
 
   if (error) return false;
 
-  void sendBridgePushAlert({
-    audience: 'linked_parent',
-    title: "Se'kret Bip Parent",
-    body: 'Your teen shared something with you in Parent Bridge.',
-    url: '/(parent)/bridge',
-  });
-
+  void sendBridgePushAlert({ event: 'parent_bridge_share' });
   return true;
 }
 
