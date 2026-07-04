@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack, router, useSegments } from 'expo-router';
 import { Analytics } from '@/components/shared/Analytics';
+import { NotificationBootstrap } from '@/components/shared/NotificationBootstrap';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
 import { decideRouteAccess } from '@/services/routeAccess';
@@ -95,6 +96,7 @@ export default function RootLayout() {
     <VerificationProvider>
       <AppProvider>
         <RouteBoundary />
+        <NotificationBootstrap />
         <Analytics />
         <Stack screenOptions={{ headerShown: false }} />
       </AppProvider>
