@@ -9,6 +9,7 @@ import { PARENT_MORE_GROUPS } from '@/constants/screenPurpose';
 import { isDevTestFamilyEnabled } from '@/features/testing/devTestFamily';
 import { useLinkedBridge } from '@/hooks/useLinkedBridge';
 import { fetchPendingTaskSubmissions, fetchPendingRewardRedemptions } from '@/utils/parentApprovals';
+import { ControlRoomEntry } from '@/components/ControlRoomEntry';
 
 export default function ParentMoreRoute() {
   const { setUserSide } = useAppContext();
@@ -48,6 +49,8 @@ export default function ParentMoreRoute() {
         <Text style={styles.subtitle}>
           Extra tools, connection management, and support resources. Bridge carries Doorbell signals, S2Tell shares, and replies.
         </Text>
+
+        <ControlRoomEntry />
 
         {PARENT_MORE_GROUPS.map(group => (
           <View key={group.title} style={styles.group}>

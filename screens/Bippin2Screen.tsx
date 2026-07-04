@@ -809,6 +809,22 @@ export function Bippin2Screen({
                 </View>
               ))}
             </View>
+
+            {ledger.isLoaded && ledger.breakdown.some(row => row.count > 0) && (
+              <>
+                <Text style={[styles.cardBodySmall, { marginTop: 14, marginBottom: 8 }]}>where your points came from</Text>
+                <View style={{ gap: 6 }}>
+                  {ledger.breakdown.filter(row => row.count > 0).map(row => (
+                    <View key={row.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Text style={{ fontSize: 14 }}>{row.emoji}</Text>
+                      <Text style={{ flex: 1, color: idSoft, fontSize: 12, fontWeight: '600' }}>{row.label}</Text>
+                      <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>{row.count}×</Text>
+                      <Text style={{ color: idAccent, fontSize: 12, fontWeight: '800', minWidth: 34, textAlign: 'right' }}>{row.pts}pt</Text>
+                    </View>
+                  ))}
+                </View>
+              </>
+            )}
           </View>
 
           <View style={scrapCard()}>

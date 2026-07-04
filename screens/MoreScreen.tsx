@@ -16,6 +16,7 @@ import { getRoomBg } from '../constants/theme';
 import { glowForMood as glowFor } from '../constants/moodGlow';
 import { TEEN_MORE_GROUPS } from '@/constants/screenPurpose';
 import { isDevTestFamilyEnabled } from '@/features/testing/devTestFamily';
+import { ControlRoomEntry } from '@/components/ControlRoomEntry';
 
 interface MoreScreenProps {
   t: Record<string, any>;
@@ -65,6 +66,8 @@ export function MoreScreen({
         <Text style={styles.kicker}>FEATURE DRAWER</Text>
         <Text style={styles.logo}>More</Text>
         <Text style={styles.subtitle}>The extra tools live here. Room, Pages, Calm, Voice Bip, and Circle keep their own jobs.</Text>
+
+        <ControlRoomEntry />
 
         {TEEN_MORE_GROUPS.map(group => (
           <View key={group.title} style={styles.group}>

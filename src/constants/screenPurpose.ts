@@ -44,8 +44,7 @@ export const TEEN_MORE_GROUPS: FeatureDrawerGroup[] = [
     { emoji: '📖', label: 'History', route: 'history', description: 'Your saved conversations and journal timeline.' },
   ] },
   { title: 'GROWTH TOOLS', items: [
-    { emoji: '🌱', label: 'Bippin 2', route: 'bippin2', description: 'Womanhood, manhood, body, emotions — at your own pace.' },
-    { emoji: '⭐', label: 'Points', route: 'points', description: 'Your XP balance, streaks, and earned rewards.' },
+    { emoji: '🌱', label: 'Bippin 2', route: 'bippin2', description: 'Womanhood, manhood, body, emotions, points, and streaks — at your own pace.' },
     { emoji: '✅', label: 'Chores', route: 'chores', description: 'Tasks your parent set up — mark them done when finished.' },
     { emoji: '🔭', label: 'Discover', route: 'discover', description: 'Explore new companions, topics, and experiences.' },
     { emoji: '🤝', label: 'Bip Crew', route: 'crew', description: 'Your chosen accountability people.' },
