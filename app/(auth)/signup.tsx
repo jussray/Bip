@@ -25,16 +25,71 @@ export default function SignupScreen() {
     setError('');
     const e = email.trim();
     const p = password.trim();
+
     if (!e || !p) { setError('Email and password are required.'); return; }
     if (p.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (p !== confirm.trim()) { setError("Passwords don't match."); return; }
+
     setLoading(true);
     const sb = getSupabase();
-    if (!sb) { setError('Auth unavailable. Try skipping for now.'); setLoading(false); return; }
+    if (!sb) {
+      setError('Auth unavailable. Try skipping for now.');
+      setLoading(false);
+      return;
+    }
+
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) {
+      setError(sessionError.message);
+      setLoading(false);
+      return;
+    }
+
+    const currentUser = sessionData.session?.user;
+    const isAnonymous = Boolean(currentUser?.is_anonymous);
+
+    if (isAnonymous) {
+      // Upgrade the anonymous account in place. Keeping the same auth user ID
+      // preserves all journals, Circle data, points, and other rows already
+      // owned by this anonymous session.
+      const { error: upgradeError } = await sb.auth.updateUser({
+        email: e,
+        password: p,
+      });
+
+      setLoading(false);
+
+      if (upgradeError) {
+        const message = upgradeError.message.toLowerCase();
+        const emailExists =
+          message.includes('already registered') ||
+          message.includes('already exists') ||
+          message.includes('duplicate') ||
+          message.includes('email address is already');
+
+        if (emailExists) {
+          setError('That email already has a Bip account. Sign in instead so we can use that account safely.');
+          return;
+        }
+
+        setError(upgradeError.message);
+        return;
+      }
+
+      // Email confirmation may still be required, depending on Supabase Auth settings.
+      const { data: refreshed } = await sb.auth.getSession();
+      if (refreshed.session?.user && !refreshed.session.user.is_anonymous) {
+        router.replace('/');
+      } else {
+        setSuccess(true);
+      }
+      return;
+    }
+
     const { error: authErr } = await sb.auth.signUp({ email: e, password: p });
     setLoading(false);
     if (authErr) { setError(authErr.message); return; }
-    // Supabase may require email confirmation — if so, session won't exist yet.
+
     const { data } = await sb.auth.getSession();
     if (data.session) {
       router.replace('/');
@@ -61,7 +116,7 @@ export default function SignupScreen() {
           <Text style={styles.logo}>💜</Text>
           <Text style={styles.successTitle}>Check your email</Text>
           <Text style={styles.successBody}>
-            We sent a confirmation link to {email.trim()}.{'\n'}
+            We sent a confirmation link to {email.trim()}.{`\n`}
             Open it, then come back and sign in.
           </Text>
           <TouchableOpacity style={styles.btn} onPress={() => router.replace('/(auth)/login')}>
