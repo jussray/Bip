@@ -1,24 +1,18 @@
 import { getSupabase } from '@/utils/supabase';
 
-type BridgePushAudience = 'linked_parent' | 'linked_teen';
+type BridgePushEvent = 'parent_bridge_share' | 'parent_bridge_reply';
 
 export async function sendBridgePushAlert(params: {
-  audience: BridgePushAudience;
+  event: BridgePushEvent;
   teenId?: string;
-  title: string;
-  body: string;
-  url: string;
 }): Promise<boolean> {
   const supabase = getSupabase();
   if (!supabase) return false;
 
   const { error } = await supabase.functions.invoke('send-push', {
     body: {
-      audience: params.audience,
+      event: params.event,
       teenId: params.teenId,
-      title: params.title,
-      body: params.body,
-      url: params.url,
     },
   });
 
