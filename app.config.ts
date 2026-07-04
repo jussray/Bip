@@ -1,8 +1,6 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 import appJson from './app.json';
 
-type LegacyExpoConfig = ExpoConfig & { splash?: Record<string, unknown> };
-
 type AppVariant = 'teen' | 'parent';
 
 const EXPO_OWNER = 'sekret-bip';
@@ -31,14 +29,22 @@ function isSplashPlugin(plugin: ExpoPlugin): boolean {
     (Array.isArray(plugin) && plugin[0] === 'expo-splash-screen');
 }
 
+// TODO(store-release): Supply real 1024×1024 square production icons before
+// submitting to the App Store or Google Play:
+//   assets/images/icon.png        — teen variant
+//   assets/images/parent-icon.png — parent variant
+// Once real icons exist, restore:
+//   top-level `icon` field pointing to the appropriate file
+//   `android.adaptiveIcon.foregroundImage` pointing to the appropriate file
+// Until then both fields are intentionally omitted so `expo prebuild` can
+// resolve a valid MIME type and the build does not fail with
+// "Could not find MIME for Buffer <null>".
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = getAppVariant();
   const isParent = variant === 'parent';
-  const base = appJson.expo as LegacyExpoConfig;
+  const base = appJson.expo as ExpoConfig;
   const baseExtra = getBaseExtra(base);
-  const splashImage = isParent
-    ? './assets/images/parent-space-splash.png'
-    : './assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png';
 
   const easProjectId = isParent ? PARENT_EAS_PROJECT_ID : TEEN_EAS_PROJECT_ID;
   const plugins = (base.plugins ?? []).filter((plugin) => !isSplashPlugin(plugin));
@@ -50,16 +56,15 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     name: isParent ? "Se'kret Bip Parent" : "Se'kret Bip",
     slug: isParent ? 'sekret-bip-parents-' : 'sekret-bip',
     scheme: isParent ? 'sekretbipparent' : 'sekretbip',
-    icon: isParent
-      ? './assets/images/parent-icon.png'
-      : './assets/images/icon.png',
+    // icon intentionally omitted — placeholder text files are not valid images.
+    // See TODO above.
     plugins: [
       ...plugins,
       [
         'expo-splash-screen',
         {
-          image: splashImage,
-          resizeMode: 'contain',
+          // Color-only splash: no image reference. The opening screen is
+          // rendered by React Native components (see docs/MISSING_ASSETS.md).
           backgroundColor: '#160028',
         },
       ],
@@ -68,17 +73,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...base.ios,
       bundleIdentifier: isParent ? 'com.sekretbip.parent' : 'com.sekretbip.app',
       infoPlist: {
-        ...base.ios?.infoPlist,
+        ...((base.ios as { infoPlist?: Record<string, unknown> })?.infoPlist),
         ITSAppUsesNonExemptEncryption: false,
       },
     },
     android: {
       ...base.android,
       package: isParent ? 'com.sekretbip.parent' : 'com.sekretbip.app',
+      // adaptiveIcon.foregroundImage intentionally omitted — placeholder text
+      // files are not valid images. backgroundColor alone is valid in SDK 56.
       adaptiveIcon: {
-        foregroundImage: isParent
-          ? './assets/images/parent-icon.png'
-          : './assets/images/icon.png',
         backgroundColor: '#160028',
       },
     },
