@@ -9,6 +9,7 @@ import fs from 'node:fs';
 
 const storageSrc  = fs.readFileSync(new URL('../src/utils/storage.ts',   import.meta.url), 'utf8');
 const syncSrc     = fs.readFileSync(new URL('../src/utils/sync.ts',      import.meta.url), 'utf8');
+const sessionSrc  = fs.readFileSync(new URL('../src/services/session.ts', import.meta.url), 'utf8');
 const supabaseSrc = fs.readFileSync(new URL('../src/utils/supabase.ts',  import.meta.url), 'utf8');
 
 // ─── Extract STORAGE_KEYS and JSON_KEYS from source ──────────────────────────
@@ -435,6 +436,15 @@ test('ensureAnonymousSession delegates session reuse and anonymous fallback to t
 test('ensureAnonymousSession catches errors and returns null (never throws)', () => {
   const fn = syncSrc.slice(syncSrc.indexOf('export async function ensureAnonymousSession'));
   assert.match(fn, /catch.*return null/s);
+});
+
+test('session service treats missing Supabase auth session as no current user', () => {
+  const fn = sessionSrc.slice(
+    sessionSrc.indexOf('export async function getCurrentSessionUserId'),
+    sessionSrc.indexOf('export async function ensureAnonymousSession'),
+  );
+  assert.match(sessionSrc, /AuthSessionMissingError/);
+  assert.match(fn, /if \(isMissingSessionError\(userError\)\) return null/);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
