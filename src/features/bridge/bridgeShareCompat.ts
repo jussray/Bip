@@ -1,3 +1,4 @@
+import { sendBridgePushAlert } from '@/services/pushAlerts';
 import { getSupabase } from '@/utils/supabase';
 
 export interface BridgeShare {
@@ -40,7 +41,17 @@ export async function sendS2TellShare(params: {
     },
     shared_at: new Date().toISOString(),
   });
-  return !error;
+
+  if (error) return false;
+
+  void sendBridgePushAlert({
+    audience: 'linked_parent',
+    title: "Se'kret Bip Parent",
+    body: 'Your teen shared something with you in Parent Bridge.',
+    url: '/(parent)/bridge',
+  });
+
+  return true;
 }
 
 export async function fetchBridgeShares(teenId: string): Promise<BridgeShare[]> {
