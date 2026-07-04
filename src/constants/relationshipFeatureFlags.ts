@@ -12,7 +12,7 @@ export const RELATIONSHIP_FEATURE_FLAGS: Readonly<RelationshipFeatureFlagMap> = 
 export function isRelationshipFeatureAvailable(
   feature: RelationshipFeature,
   audience: 'founder' | 'internal' | 'beta' | 'public' = 'public',
-  flags: RelationshipFeatureFlagMap = RELATIONSHIP_FEATURE_FLAGS,
+  flags: Readonly<RelationshipFeatureFlagMap> = RELATIONSHIP_FEATURE_FLAGS,
 ): boolean {
   const state = flags[feature];
 
