@@ -145,11 +145,8 @@ export async function sendParentNote(teenId: string, content: string): Promise<b
   if (error) return false;
 
   void sendBridgePushAlert({
-    audience: 'linked_teen',
+    event: 'parent_bridge_reply',
     teenId,
-    title: "Se'kret Bip",
-    body: 'Your parent left you a reply in Parent Bridge.',
-    url: '/(teen)/bridge',
   });
 
   return true;
