@@ -1,6 +1,6 @@
 # Se'kret Bip — Current Status
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-04
 
 ## Implemented
 
@@ -11,7 +11,7 @@ Last reviewed: 2026-07-03
 - Bridge linked-account data model
 - Founder Control Room and release-health tooling
 
-## In progress
+## Enforced in-progress release gates
 
 - Parent Bridge presentation and parent onboarding
 - Parent relationship lifecycle states and privacy tests
@@ -19,7 +19,7 @@ Last reviewed: 2026-07-03
 - Deployment cleanup toward Cloudflare-first operation
 - Retirement of legacy route and screen compatibility layers
 
-## Proposed, not implemented
+## Roadmap only — not demo-ready implementation
 
 - Durable semantic character memory
 - Persistent companion goals
@@ -27,3 +27,8 @@ Last reviewed: 2026-07-03
 - Inter-companion coordination
 
 See `AGENT_L4_ARCHITECTURE.md` for the grounded proposal and `BRIDGE_CONNECTION_AUDIT.md` for the parent connection boundary.
+
+
+## Demo-readiness enforcement
+
+See `DEMO_READINESS_ENFORCEMENT.md`. A controlled internal demo may be scripted around unfinished areas, but public launch, public demo, app-store release, and production teen-data collection remain blocked until parent/Bridge, live deployment, legal age-gate, deletion, RLS/storage, and companion-memory claims have implementation evidence.

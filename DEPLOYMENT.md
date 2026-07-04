@@ -57,7 +57,7 @@ Configure only the required public client variables in the Pages build environme
 
 Use Expo / EAS for production mobile builds. Never embed server secrets in the app bundle.
 
-## Release validation
+## Enforced release validation
 
 ```bash
 npm run type-check
@@ -67,10 +67,13 @@ npm run validate:companions
 npm run verify:bundle
 ```
 
-Also verify:
+Also verify before calling any deployed environment demo-ready or launch-ready:
 
 - Supabase migrations and RLS are current
 - Worker secrets are configured
 - CORS is restricted appropriately
 - parent and teen privacy tests pass
 - release-health telemetry records the deployed commit
+- `safety-scan` is deployed in the active Supabase project
+- `notification_deliveries` has an intentional RLS policy or documented service-role-only exception
+- public/legal demos satisfy `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`

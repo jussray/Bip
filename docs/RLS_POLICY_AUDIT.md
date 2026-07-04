@@ -24,6 +24,10 @@ coverage — and found real drift (findings 1 and 2 below), which is why
 | `src/utils/supabase.ts` | Only app code that reads/writes `crew_members` |
 | `scripts/control-room-rls-scan.mjs` | Existing automated scanner — regex-based, checks `supabase/migrations/` only |
 
+## Current enforced release warning — notification_deliveries
+
+`npm run audit:control-room` currently reports `notification_deliveries` as a table without an RLS policy. Treat this as release-blocking for any public demo, production launch, app-store release, or production teen-data collection until a migration adds the intended policy or the table is documented as service-role-only with a scanner allowlist rationale.
+
 ## Policy map
 
 `exists_in_schema_sql` reflects `db/schema.sql` as it stood *before retirement* —

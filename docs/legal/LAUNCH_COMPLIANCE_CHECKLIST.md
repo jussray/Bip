@@ -2,7 +2,7 @@
 
 **Version 1.0 — June 2026**
 
-This checklist is a release gate for any public production launch. A checked box must be backed by code, configuration, test evidence, or a signed operational/legal record.
+This checklist is a release gate for any public production launch, public demo, app-store release, or production teen-data collection. A checked box must be backed by code, configuration, test evidence, or a signed operational/legal record.
 
 ## Age and Eligibility
 
@@ -10,7 +10,7 @@ This checklist is a release gate for any public production launch. A checked box
 - [ ] Users under 13 are blocked before non-essential personal information is collected.
 - [ ] Server/API enforces the same minimum-age rule.
 - [ ] Direct API and replay tests prove the UI gate cannot be bypassed.
-- [ ] Demo environment warns users not to enter real personal or crisis information.
+- [ ] Demo environment warns users not to enter real personal, journal, voice, or crisis information unless approved for production data handling.
 
 ## Public Legal Documents
 
@@ -63,6 +63,7 @@ This checklist is a release gate for any public production launch. A checked box
 - [ ] OpenAI and internal shared secrets exist only in server-side secret storage.
 - [ ] Repository and build logs contain no production secrets.
 - [ ] RLS is enabled and tested on every user-data table.
+- [ ] `notification_deliveries` has an intentional RLS policy or documented service-role-only exception.
 - [ ] Private storage buckets use owner-scoped policies.
 - [ ] Incident-response and breach-notification procedures are approved.
 - [ ] Dependency, secret, and configuration scans pass.
