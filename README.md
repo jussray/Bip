@@ -37,7 +37,7 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 
 ### Parent
 
-Parent routes and linked-account data exist. The parent experience still needs a focused completion pass covering Parent Bridge presentation, onboarding, link lifecycle states, Parent Circle privacy, Parent Coach boundaries, period-sharing permissions, notifications, and end-to-end tests. That work is tracked in issue #212.
+Parent routes and linked-account data exist, but parent product completion is now an enforced release gate. The parent experience remains in-progress until issue #212 verifies Parent Bridge presentation, onboarding, link lifecycle states, Parent Circle privacy, Parent Coach boundaries, period-sharing permissions, notifications, and end-to-end privacy tests. Demo scripts must avoid implying those flows are production-complete.
 
 ## Privacy boundaries
 
@@ -65,17 +65,15 @@ Bridge contains only content intentionally sent into the linked relationship. Ci
 
 ## Companion intelligence
 
-The current companion system is L2: short-term history and supplied context are passed into each turn.
+The enforced companion implementation is L2: short-term history and approved context are passed into each turn. Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination must not be presented as implemented until the migrations, services, privacy controls, and tests described in `docs/AGENT_L4_ARCHITECTURE.md` exist.
 
-Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are proposed but not implemented. See `docs/AGENT_L4_ARCHITECTURE.md`.
+## Enforced readiness gates
 
-## Current priorities
-
-1. Complete the parent experience without expanding parent visibility.
-2. Keep fresh Supabase migration replay safe.
-3. Validate parent-link, storage, RLS, identity, and founder boundaries.
-4. Retire stale deployment and routing compatibility layers.
-5. Begin durable character memory only after privacy boundaries are tested.
+1. Parent/Bridge completion is blocked on issue #212 and may not expand parent visibility.
+2. Live demo readiness requires verified Cloudflare Worker/web secrets, restricted CORS, authenticated Worker handling, deployed Supabase functions, clean migration replay, and release-health telemetry.
+3. Parent-link, storage, RLS, identity, founder, age-gate, and deletion boundaries must be enforced by services/RLS/RPCs/storage policies, not UI hiding.
+4. The `notification_deliveries` RLS scanner warning is release-blocking until a policy or documented service-role-only exception is implemented.
+5. Durable character memory remains a roadmap item until privacy boundaries, migrations, and tests are implemented.
 
 ## Project structure
 
@@ -131,6 +129,7 @@ npm run verify:prepush
 
 ## Key guides
 
+- `docs/DEMO_READINESS_ENFORCEMENT.md`
 - `docs/CURRENT_STATUS.md`
 - `docs/ARCHITECTURE.md`
 - `docs/SUPABASE.md`

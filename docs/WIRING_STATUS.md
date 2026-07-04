@@ -1,6 +1,6 @@
 # Se'kret Bip — Backend Wiring Status
 
-Last reviewed: 2026-07-03
+Last reviewed: 2026-07-04
 
 ## Implemented
 
@@ -44,7 +44,7 @@ Do not rely on missing `0003_*` files or a separate full-bootstrap SQL file. Mig
 
 The linked-account data model is implemented, including parent links, Bridge signals, Bridge messages, and relationship-aware RLS.
 
-The parent product is not complete yet. Remaining work is tracked in issue #212:
+The parent product remains an enforced release gate. It is not production/demo-complete until issue #212 verifies:
 
 - canonical Parent Bridge tabs
 - parent splash and onboarding
@@ -64,15 +64,18 @@ Current companion maturity is L2:
 - supplied RoomMemory and Oracle context
 - metadata-only provider telemetry
 
-Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are not implemented. See `AGENT_L4_ARCHITECTURE.md`.
+Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are not implemented and must not be demoed as complete. See `AGENT_L4_ARCHITECTURE.md`.
 
 ## Deployment checks still required
+
+These are enforced release gates, not optional notes:
 
 - confirm current Cloudflare Worker and web deployment secrets
 - verify the safety-scan Edge Function is deployed in the active Supabase project
 - verify Worker CORS and authenticated request handling
 - verify fresh migration replay
 - run the repository validation scripts before release
+- resolve or formally document the `notification_deliveries` RLS scanner warning
 
 ## Validation
 
