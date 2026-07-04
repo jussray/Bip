@@ -13,6 +13,7 @@
 // because the cloud is down. Errors are logged and swallowed.
 
 import { getSupabase, TABLES } from './supabase';
+import { ensureAnonymousSession as startAnonymousSession, getCurrentSessionUserId } from '@/services/session';
 import { loadState } from './storage';
 import { emitEvent } from '@/features/activity/events';
 import type {
@@ -29,11 +30,8 @@ import type {
 
 // ── Internal helpers ──────────────────────────────────────────────
 async function currentUserId(): Promise<string | null> {
-  const sb = getSupabase();
-  if (!sb) return null;
   try {
-    const { data } = await sb.auth.getUser();
-    return data?.user?.id ?? null;
+    return await getCurrentSessionUserId();
   } catch {
     return null;
   }
@@ -76,14 +74,9 @@ export async function ensureAnonymousSession(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
   try {
-    const { data } = await sb.auth.getUser();
-    if (data?.user?.id) return data.user.id;
-    const { data: signed, error } = await sb.auth.signInAnonymously();
-    if (error) {
-      if (__DEV__) console.warn('[sync] anon sign-in failed', error);
-      return null;
-    }
-    return signed?.user?.id ?? null;
+    const uid = await startAnonymousSession();
+    if (uid) return uid;
+    return null;
   } catch (e) {
     if (__DEV__) console.warn('[sync] ensureAnonymousSession threw', e);
     return null;
