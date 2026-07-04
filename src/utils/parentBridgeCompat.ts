@@ -1,3 +1,4 @@
+import { sendBridgePushAlert } from '@/services/pushAlerts';
 import { getSupabase } from './supabase';
 import {
   generateInviteCode,
@@ -140,7 +141,18 @@ export async function sendParentNote(teenId: string, content: string): Promise<b
     content: content.trim(),
     sent_at: new Date().toISOString(),
   });
-  return !error;
+
+  if (error) return false;
+
+  void sendBridgePushAlert({
+    audience: 'linked_teen',
+    teenId,
+    title: "Se'kret Bip",
+    body: 'Your parent left you a reply in Parent Bridge.',
+    url: '/(teen)/bridge',
+  });
+
+  return true;
 }
 
 export async function fetchParentEngagement(): Promise<ParentEngagement | null> {
