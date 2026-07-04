@@ -111,7 +111,7 @@ export default function TeenSekretRoute() {
 
 const styles = StyleSheet.create({
   root:           { flex: 1, backgroundColor: '#0d0015' },
-  splash:         { flex: 1 },
+  splash:         { flex: 1, width: '100%', height: '100%' },
   splashInner:    { flex: 1, justifyContent: 'flex-end' },
 
   ctaBlock:       { alignItems: 'center', paddingHorizontal: 32, paddingBottom: 16 },

@@ -104,7 +104,7 @@ export default function ParentMoreRoute() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0d0914' },
+  root: { flex: 1, width: '100%', height: '100%', backgroundColor: '#0d0914' },
   container: {
     flexGrow: 1,
     padding: 20,

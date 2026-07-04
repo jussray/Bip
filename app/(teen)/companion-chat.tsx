@@ -330,7 +330,7 @@ export default function CompanionChatScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#110a28' },
+  root: { flex: 1, width: '100%', height: '100%', backgroundColor: '#110a28' },
   safe: { flex: 1 },
   flex: { flex: 1 },
   msgList: {
