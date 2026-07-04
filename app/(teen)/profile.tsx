@@ -225,7 +225,7 @@ export default function TeenProfile() {
 }
 
 const styles = StyleSheet.create({
-  root: { flexGrow: 1, backgroundColor: '#0d0820', padding: 22, paddingTop: 60, paddingBottom: 40 },
+  root: { flexGrow: 1, backgroundColor: '#0d0820', padding: 22, paddingTop: 104, paddingBottom: 40 },
   kicker: { color: '#c4b5fd', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
   title: { color: '#fff', fontSize: 30, fontWeight: '900', marginTop: 8 },
   sub: { color: '#a99fb1', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 20 },

@@ -441,7 +441,7 @@ export function BipCrewScreen({
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  bg:     { flex: 1 },
+  bg:     { flex: 1, width: '100%', height: '100%' },
   scroll: { padding: 20, paddingTop: 60, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
 
   hero:      { alignItems: 'center', marginBottom: 22 },

@@ -301,7 +301,7 @@ export function CloudThoughtsScreen({
         )}
 
         {/* ── Reply ── */}
-        {reply && !isThinking && (
+        {!!reply && !isThinking && (
           <View style={[styles.replyCard, { borderColor: 'rgba(168,85,247,0.3)', backgroundColor: 'rgba(13,9,20,0.92)' }]}>
             <Image source={CLOUD_HP} style={styles.replyCloud} resizeMode="contain" />
             <View style={{ flex: 1 }}>
@@ -327,7 +327,7 @@ export function CloudThoughtsScreen({
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:          { flex: 1 },
+  root:          { flex: 1, width: '100%', height: '100%' },
   scroll:        { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   header:        { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingHorizontal: 16, marginBottom: 8 },
   backBtn:       { alignSelf: 'flex-start' },

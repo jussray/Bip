@@ -442,7 +442,7 @@ export function MindBodyResetScreen({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:            { flex: 1 },
+  root:            { flex: 1, width: '100%', height: '100%' },
   bgGlow:          {
     position: 'absolute', top: -120, alignSelf: 'center',
     width: 340, height: 340, borderRadius: 170,
