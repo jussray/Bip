@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@10.9.2
       - run: npm ci
       - run: npm run lint
 
@@ -35,6 +36,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@10.9.2
       - run: npm ci
       - run: npm run type-check
 
@@ -47,6 +49,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@10.9.2
       - run: npm ci
       - run: npm test
       - run: npm run test:oracle
@@ -62,6 +65,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@10.9.2
       - run: npm ci
       - run: npm run verify:bundle
 
@@ -74,6 +78,7 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@10.9.2
       - run: npm ci
       - run: npm run audit:runtime-assets
       - run: npm run verify:room-archives
