@@ -21,7 +21,8 @@
     "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
     "deploy": "npm run vercel-build && wrangler deploy",
     "preview": "npm run vercel-build && wrangler dev",
-    "test:device-sync": "node --test scripts/test-device-sync.mjs"
+    "test:device-sync": "node --test scripts/test-device-sync.mjs",
+    "test:age-gate": "node --test scripts/test-age-gate-guard.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",
