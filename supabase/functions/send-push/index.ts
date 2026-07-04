@@ -9,9 +9,14 @@ const corsHeaders = {
 type PushEvent = 'parent_bridge_share' | 'parent_bridge_reply';
 
 type PushRequest = {
-  event?: PushEvent;
+  event?: string;
   teenId?: string;
 };
+
+const ALLOWED_EVENTS = new Set<PushEvent>([
+  'parent_bridge_share',
+  'parent_bridge_reply',
+]);
 
 const EVENT_TEMPLATES: Record<PushEvent, { title: string; body: string; url: string }> = {
   parent_bridge_share: {
@@ -63,10 +68,11 @@ Deno.serve(async (request) => {
     return json({ error: 'Invalid JSON.' }, 400);
   }
 
-  const event = payload.event;
-  if (!event || !(event in EVENT_TEMPLATES)) {
+  const rawEvent = payload.event;
+  if (typeof rawEvent !== 'string' || !ALLOWED_EVENTS.has(rawEvent as PushEvent)) {
     return json({ error: 'Unsupported notification event.' }, 400);
   }
+  const event = rawEvent as PushEvent;
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
