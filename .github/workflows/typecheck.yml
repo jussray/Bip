@@ -14,5 +14,6 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - run: npm install --global npm@10.9.2
       - run: npm ci
       - run: npm run type-check
