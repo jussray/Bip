@@ -13,8 +13,13 @@ type ExpoExtra = NonNullable<ExpoConfig['extra']>;
 type ExpoPlugin = NonNullable<ExpoConfig['plugins']>[number];
 
 function getAppVariant(): AppVariant {
-  const value = process.env.APP_VARIANT ?? process.env.EXPO_PUBLIC_APP_VARIANT;
-  return value === 'parent' ? 'parent' : 'teen';
+  const explicitVariant = process.env.APP_VARIANT ?? process.env.EXPO_PUBLIC_APP_VARIANT;
+
+  if (explicitVariant === 'parent') return 'parent';
+  if (explicitVariant === 'teen') return 'teen';
+
+  const buildProfile = process.env.EAS_BUILD_PROFILE ?? '';
+  return buildProfile.startsWith('parent-') ? 'parent' : 'teen';
 }
 
 function getBaseExtra(base: ExpoConfig): ExpoExtra {
