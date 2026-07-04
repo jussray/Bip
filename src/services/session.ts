@@ -1,6 +1,17 @@
 import { disableCurrentPushToken } from '@/services/pushTokenSync';
 import { getSupabase } from '@/utils/supabase';
 
+function isMissingSessionError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+
+  const { name, message } = error as { name?: string; message?: string };
+  return (
+    name === 'AuthSessionMissingError' ||
+    message === 'Auth session missing!' ||
+    message === 'Auth session missing'
+  );
+}
+
 export async function getCurrentSessionUserId(): Promise<string | null> {
   const supabase = getSupabase();
   if (!supabase) return null;
@@ -11,7 +22,10 @@ export async function getCurrentSessionUserId(): Promise<string | null> {
   if (sessionData.session?.user.id) return sessionData.session.user.id;
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
+  if (userError) {
+    if (isMissingSessionError(userError)) return null;
+    throw userError;
+  }
 
   return userData.user?.id ?? null;
 }
