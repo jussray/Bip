@@ -39,14 +39,14 @@ Choose the smallest shipping-safe action.
 
 Before coding, decide:
 
-- Can this be fixed by deleting code?
 - Can this be fixed by wiring existing code?
 - Can this be fixed in one file?
+- Can existing code be preserved behind a route, flag, or compatibility boundary?
 - Does this need a database migration, environment variable, or backend change?
 - Does this need tests or only a verification checklist?
 - Should this wait because it is not required for the next demo or release?
 
-If there are multiple possible fixes, choose the least risky one that keeps the app shippable.
+If there are multiple possible fixes, choose the least risky one that keeps the app shippable and preserves future product work.
 
 ### 4. Act
 
@@ -56,6 +56,9 @@ When acting:
 
 - Modify only the necessary files.
 - Keep naming consistent with the repo.
+- Preserve existing features, routes, assets, and services unless removal is required for correctness, privacy, security, or release safety.
+- Prefer feature flags, route isolation, deprecation notes, and compatibility adapters over deletion.
+- Before deleting anything, identify all references and explain why preserving it is unsafe or materially blocks shipping.
 - Avoid new dependencies unless there is no native or existing option.
 - Avoid broad refactors unless the task explicitly requires them.
 - Leave the app easier to understand than before.
@@ -64,15 +67,26 @@ After acting, report:
 
 - What changed.
 - Why it was the smallest safe change.
+- How existing work was preserved.
 - How it was verified.
 - What remains unfinished, if anything.
+
+## Preservation-First Rule
+
+Se'kret Bip is being shipped in phases, not reduced to a permanently smaller product.
+
+- Do not delete unfinished product work merely because it is outside the current release path.
+- Keep future features available for later build-out through feature flags, hidden routes, documented backlog status, or isolated modules.
+- Do not merge duplicate active implementations indefinitely; select one canonical launch path while preserving the other only when it has clear future value.
+- Mark deprecated or inactive code clearly so future agents do not treat it as current behavior.
+- Delete only when code is unsafe, irreparably broken, legally risky, secret-bearing, truly obsolete, or proven to have no future use.
 
 ## Ponytail Rule
 
 Before adding code, pause and ask:
 
-1. Can this be deleted instead of added?
-2. Does this already exist in the codebase?
+1. Does this already exist in the codebase?
+2. Can existing code be connected instead of replaced?
 3. Can Expo do this already?
 4. Can React Native do this already?
 5. Can Supabase do this already?
@@ -84,7 +98,7 @@ Only write new code after those checks are answered.
 
 ## Project Priorities
 
-Se'kret Bip should stay simple, shippable, and easy to demo.
+Se'kret Bip should stay simple, shippable, and easy to demo while preserving the larger product vision.
 
 Prefer:
 
@@ -94,7 +108,7 @@ Prefer:
 - Supabase features over custom backend code when Supabase already covers the need.
 - Cloudflare Workers features over adding another backend provider.
 - Small patches over sweeping refactors.
-- Removing dead code over adding compatibility layers.
+- Canonical active paths plus preserved flagged future work.
 
 Avoid:
 
@@ -103,6 +117,7 @@ Avoid:
 - Large architecture rewrites without a direct shipping reason.
 - Moving files just to make the structure look cleaner.
 - Adding placeholder systems that are not wired into the app.
+- Destructive cleanup performed only to make metrics or file counts look smaller.
 
 ## Se'kret Bip Product Guardrails
 
@@ -135,7 +150,8 @@ When changing code:
 Before marking work complete, verify:
 
 - The changed files are necessary.
-- No duplicate implementation already exists.
-- No unused imports, unused files, or dead branches were added.
+- No duplicate active implementation was introduced.
+- Preserved inactive work is clearly flagged or isolated.
+- No unused imports or dead execution branches were added.
 - The app can still run in Expo Go unless the change intentionally requires a native build.
 - Any safety, privacy, or parent/teen boundary touched by the change still behaves correctly.
