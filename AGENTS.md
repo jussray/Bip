@@ -2,6 +2,71 @@
 
 Use these instructions whenever an AI coding agent works in this repository.
 
+## OODA Workflow
+
+Every agent must follow OODA before changing code.
+
+### 1. Observe
+
+Inspect the real repository state before acting.
+
+Check:
+
+- Existing files, routes, services, hooks, types, and assets.
+- Current branch and recent changes when available.
+- Build or TypeScript errors related to the task.
+- Whether the requested feature already exists but is disconnected.
+- Whether the issue is caused by stale local code, unpushed work, or actual repo state.
+
+Do not assume planned architecture exists. Verify it in the repo.
+
+### 2. Orient
+
+Map the task against the current app architecture.
+
+Ask:
+
+- Which existing file owns this behavior now?
+- Is this app UI, backend, database, auth, storage, AI reply, release, or shared work?
+- Is this a shipping blocker, demo polish, refactor, or future idea?
+- Does this interact with Expo Router, Supabase, Cloudflare Workers, or OpenAI?
+
+Prefer the current working structure over imaginary clean-room architecture.
+
+### 3. Decide
+
+Choose the smallest shipping-safe action.
+
+Before coding, decide:
+
+- Can this be fixed by deleting code?
+- Can this be fixed by wiring existing code?
+- Can this be fixed in one file?
+- Does this need a database migration, environment variable, or backend change?
+- Does this need tests or only a verification checklist?
+- Should this wait because it is not required for the next demo or release?
+
+If there are multiple possible fixes, choose the least risky one that keeps the app shippable.
+
+### 4. Act
+
+Make the change with minimal blast radius.
+
+When acting:
+
+- Modify only the necessary files.
+- Keep naming consistent with the repo.
+- Avoid new dependencies unless there is no native or existing option.
+- Avoid broad refactors unless the task explicitly requires them.
+- Leave the app easier to understand than before.
+
+After acting, report:
+
+- What changed.
+- Why it was the smallest safe change.
+- How it was verified.
+- What remains unfinished, if anything.
+
 ## Ponytail Rule
 
 Before adding code, pause and ask:
