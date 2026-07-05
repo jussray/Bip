@@ -10,13 +10,19 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 
-const MAX_OFFSET  = 8;
-const LERP_SPEED  = 120;
+const MAX_OFFSET = 8;
+const LERP_SPEED = 120;
 
-let Gyroscope: typeof import('expo-sensors').Gyroscope | null = null;
+type GyroscopeModule = {
+  isAvailableAsync: () => Promise<boolean>;
+  setUpdateInterval: (intervalMs: number) => void;
+  addListener: (listener: (measurement: { x: number; y: number; z: number }) => void) => { remove: () => void };
+};
+
+let Gyroscope: GyroscopeModule | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Gyroscope = require('expo-sensors').Gyroscope;
+  Gyroscope = require('expo-sensors').Gyroscope as GyroscopeModule;
 } catch {
   // expo-sensors not installed — idle float will be used instead.
 }
@@ -26,7 +32,7 @@ export interface RoomParallaxResult {
 }
 
 export function useRoomParallax(): RoomParallaxResult {
-  const offset   = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const offset = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
   const idleAnim = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
@@ -34,12 +40,12 @@ export function useRoomParallax(): RoomParallaxResult {
 
     const startIdleFloat = () => {
       const floatX = Animated.sequence([
-        Animated.timing(offset.x, { toValue:  MAX_OFFSET * 0.4, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(offset.x, { toValue: MAX_OFFSET * 0.4, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
         Animated.timing(offset.x, { toValue: -MAX_OFFSET * 0.4, duration: 3200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]);
       const floatY = Animated.sequence([
         Animated.timing(offset.y, { toValue: -MAX_OFFSET * 0.25, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(offset.y, { toValue:  MAX_OFFSET * 0.25, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(offset.y, { toValue: MAX_OFFSET * 0.25, duration: 2800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
       ]);
       idleAnim.current = Animated.loop(Animated.parallel([floatX, floatY]));
       idleAnim.current.start();
@@ -51,12 +57,16 @@ export function useRoomParallax(): RoomParallaxResult {
     }
 
     Gyroscope.isAvailableAsync().then((available) => {
-      if (!available) { startIdleFloat(); return; }
+      if (!available) {
+        startIdleFloat();
+        return;
+      }
 
-      Gyroscope!.setUpdateInterval(16);
-      let targetX = 0, targetY = 0;
+      Gyroscope?.setUpdateInterval(16);
+      let targetX = 0;
+      let targetY = 0;
 
-      subscription = Gyroscope!.addListener(({ x, y }) => {
+      subscription = Gyroscope?.addListener(({ x, y }) => {
         targetX = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, targetX + y * 1.5));
         targetY = Math.max(-MAX_OFFSET, Math.min(MAX_OFFSET, targetY + x * 1.5));
         Animated.spring(offset, {
@@ -65,7 +75,7 @@ export function useRoomParallax(): RoomParallaxResult {
           bounciness: 0,
           useNativeDriver: true,
         }).start();
-      });
+      }) ?? null;
     });
 
     return () => {
