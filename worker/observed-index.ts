@@ -5,6 +5,7 @@ function operationForPath(path: string): string {
   if (path.endsWith('/api/sekret/reply')) return 'reply';
   if (path.endsWith('/api/sekret/voice')) return 'tts';
   if (path.endsWith('/api/sekret/transcribe')) return 'stt';
+  if (path.endsWith('/api/bridge/summary/generate')) return 'bridge_summary';
   return 'unknown';
 }
 
@@ -17,11 +18,21 @@ function modelForOperation(operation: string): string | undefined {
 
 function fingerprintFor(status: number, operation: string, fallbackUsed: boolean): string {
   if (fallbackUsed && operation === 'reply') return 'openai_reply_fallback';
+  if (fallbackUsed && operation === 'bridge_summary') return 'bridge_summary_fallback';
   if (status === 401 || status === 403) return 'worker_auth_failure';
   if (status === 429) return 'worker_rate_limit';
-  if (status >= 500) return operation === 'tts' ? 'openai_tts_failure' : operation === 'stt' ? 'openai_stt_failure' : 'openai_reply_failure';
+  if (status >= 500) {
+    if (operation === 'tts') return 'openai_tts_failure';
+    if (operation === 'stt') return 'openai_stt_failure';
+    if (operation === 'bridge_summary') return 'bridge_summary_failure';
+    return 'openai_reply_failure';
+  }
   if (status >= 400) return 'worker_invalid_request';
-  return operation === 'reply' ? 'openai_reply_success' : operation === 'tts' ? 'openai_tts_success' : operation === 'stt' ? 'openai_stt_success' : 'worker_request_success';
+  if (operation === 'reply') return 'openai_reply_success';
+  if (operation === 'tts') return 'openai_tts_success';
+  if (operation === 'stt') return 'openai_stt_success';
+  if (operation === 'bridge_summary') return 'bridge_summary_success';
+  return 'worker_request_success';
 }
 
 async function readSafeResponseMetadata(response: Response, operation: string): Promise<{ characterId?: string; fallbackUsed: boolean; voiceSource?: string }> {
@@ -32,7 +43,7 @@ async function readSafeResponseMetadata(response: Response, operation: string): 
     const data = await response.clone().json() as Record<string, unknown>;
     return {
       characterId: typeof data.characterId === 'string' ? data.characterId : undefined,
-      fallbackUsed: data.replySource === 'fallback',
+      fallbackUsed: data.replySource === 'fallback' || data.usedFallback === true,
       voiceSource: typeof data.voiceSource === 'string' ? data.voiceSource : undefined,
     };
   } catch {
@@ -56,7 +67,7 @@ export default {
         method: request.method,
         status: response.status,
         duration_ms: Date.now() - started,
-        provider: operation === 'unknown' ? 'cloudflare' : 'openai',
+        provider: operation === 'unknown' || operation === 'bridge_summary' ? 'cloudflare' : 'openai',
         operation,
         character_id: metadata.characterId,
         request_id: requestId,
@@ -68,12 +79,12 @@ export default {
       return response;
     } catch (error) {
       emitWorkerTelemetry({
-        fingerprint: operation === 'unknown' ? 'worker_unhandled_exception' : `openai_${operation}_exception`,
+        fingerprint: operation === 'unknown' ? 'worker_unhandled_exception' : operation === 'bridge_summary' ? 'bridge_summary_exception' : `openai_${operation}_exception`,
         route: url.pathname,
         method: request.method,
         status: 500,
         duration_ms: Date.now() - started,
-        provider: operation === 'unknown' ? 'cloudflare' : 'openai',
+        provider: operation === 'unknown' || operation === 'bridge_summary' ? 'cloudflare' : 'openai',
         operation,
         error_name: error instanceof Error ? error.name : 'UnknownError',
         request_id: requestId,

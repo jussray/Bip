@@ -1,6 +1,7 @@
 import worker from './sekret-reply';
 import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './piper-tts';
 import { authenticate, type AuthEnv, type Principal } from './auth';
+import { handleBridgeSummaryGenerate } from './bridge-summary';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
 
@@ -11,6 +12,7 @@ interface RateLimit {
 
 interface Env extends PiperTtsEnv, AuthEnv {
   OPENAI_API_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   /** Per-key request limiter; when unbound, rate limiting is skipped. */
   SEKRET_RATE_LIMITER?: RateLimit;
   /**
@@ -168,6 +170,7 @@ export default {
     if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
+    let principal: Principal | null = null;
 
     // Gate every authenticated API route behind shared-token auth + rate
     // limiting. Non-/api routes (e.g. GET /health reachability checks) pass
@@ -175,9 +178,15 @@ export default {
     if (request.method === 'POST' && path.includes('/api/')) {
       const auth = await authenticate(request, env);
       if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
+      principal = auth.principal;
 
       const limited = await enforceRateLimit(request, env, auth.principal, cors);
       if (limited) return limited;
+    }
+
+    if (request.method === 'POST' && path.endsWith('/api/bridge/summary/generate')) {
+      if (!principal) return json({ error: 'authentication required' }, 401, cors);
+      return handleBridgeSummaryGenerate(request, env, principal, cors);
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL?.trim()) {
