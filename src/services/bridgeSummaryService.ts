@@ -118,6 +118,7 @@ export async function createBridgeShareRequest(
       if (!response.ok) {
         return { ok: false, code: 'ai_unavailable', message: 'The share was saved, but the summary is still being prepared.', retryable: true };
       }
+      return { ok: true, value: { requestId: data, status: 'ready' } };
     }
 
     return { ok: true, value: { requestId: data, status: 'pending' } };
