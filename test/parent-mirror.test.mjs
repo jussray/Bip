@@ -24,21 +24,14 @@ for (const [name, path] of mirroredRoutes) {
 test('parent bottom navigation mirrors the five primary teen destinations', () => {
   const layout = read('app/(parent)/_layout.tsx');
   for (const route of ['room', 'pages', 'calm', 'circle', 'more']) {
-    assert.match(layout, new RegExp(`Tabs\\.Screen\\s+name=["']${route}["']`));
+    assert.match(layout, new RegExp(`Tabs\.Screen\s+name=["']${route}["']`));
   }
 });
 
 test('parent routes do not directly read private teen storage collections', () => {
   const parentFiles = mirroredRoutes.map(([, path]) => read(path)).join('\n');
-  for (const privateKey of [
-    'journalText',
-    'voiceNotes',
-    'periodDays',
-    'lastPeriodStart',
-    'oracleSessions',
-    'roomMemory',
-  ]) {
-    assert.doesNotMatch(parentFiles, new RegExp(`AsyncStorage\\.(?:getItem|multiGet)\\([^)]*${privateKey}`));
+  for (const privateKey of ['journalText', 'voiceNotes', 'periodDays', 'lastPeriodStart', 'oracleSessions', 'roomMemory']) {
+    assert.doesNotMatch(parentFiles, new RegExp(`AsyncStorage\.(?:getItem|multiGet)\([^)]*${privateKey}`));
   }
 });
 
@@ -51,26 +44,12 @@ test('parent pages use parent-owned reflection state', () => {
 
 test('parent bridge remains a dedicated parent route', () => {
   const bridge = read('app/(parent)/bridge.tsx');
-  assert.match(bridge, /ParentBridgeScreen/);
+  assert.match(bridge, /ParentBridgeSummaryScreen/);
 });
 
 test('parent More exposes parent-safe mirrored support destinations', () => {
-  // ParentMoreRoute renders items dynamically from PARENT_MORE_GROUPS.
-  // Scan screenPurpose.ts where the drawer contract is defined.
-  // NOTE: 'Parent Bridge', 'Parent Pages', and 'Calm Before Replying' are
-  // architectural concepts but not current drawer entries. Add them here
-  // only after they have routes and screens wired up.
   const screenPurpose = read('src/constants/screenPurpose.ts');
-  for (const label of [
-    'Bridge',
-    'Parent Voice Bip',
-    'Bippin 2',
-    'Connection Hub',
-    'Parent Circle',
-    'Parent Profile',
-    'Parent Link',
-    'Resources',
-  ]) {
+  for (const label of ['Bridge', 'Parent Voice Bip', 'Bippin 2', 'Connection Hub', 'Parent Circle', 'Parent Profile', 'Parent Link', 'Resources']) {
     assert.match(screenPurpose, new RegExp(label), `PARENT_MORE_GROUPS must include "${label}"`);
   }
 });

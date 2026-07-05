@@ -265,7 +265,7 @@ export async function loadCircleFeed(
         .order('created_at', { ascending: false })
         .limit(limit);
       if (error) throw error;
-      return (data ?? []).map((r: ParentCirclePostRow & { created_at: string }) => ({
+      return (data ?? []).map((r: Pick<ParentCirclePostRow, 'id' | 'text' | 'reactions' | 'circle_tag'> & { created_at: string }) => ({
         id:               r.id,
         user_id:          '',
         text:             r.text,
