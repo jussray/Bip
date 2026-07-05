@@ -1,6 +1,6 @@
 import { Redirect, Tabs } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { GlobalMoodButton } from '@/components/GlobalMoodButton';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
@@ -9,6 +9,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useSafetyCheck } from '@/hooks/useSafetyCheck';
 import { toCompanionId } from '@/features/sekret/companionEngine';
 import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
+import { logEvent } from '@/services/logEvent';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
@@ -78,6 +79,7 @@ export default function TeenLayout() {
   const { userSide, isLoading, selectedSekret } = useAppContext();
   const [profileChecked, setProfileChecked] = useState(false);
   const [profileDone, setProfileDone] = useState(false);
+  const sessionLogged = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -94,6 +96,18 @@ export default function TeenLayout() {
   }, []);
 
   const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
+  const isTeenActive =
+    !isLoading &&
+    profileChecked &&
+    (effectiveUserSide === 'teen' || getDevSplitViewSideOverride() != null);
+
+  // Fire session_start once per app mount when teen is confirmed active
+  useEffect(() => {
+    if (isTeenActive && !sessionLogged.current) {
+      sessionLogged.current = true;
+      logEvent('session_start');
+    }
+  }, [isTeenActive]);
 
   if (isLoading || !profileChecked) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
   if (effectiveUserSide === 'parent') return <Redirect href="/(parent)/room" />;
