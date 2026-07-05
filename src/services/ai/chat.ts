@@ -20,6 +20,7 @@ import {
   type ConversationPhase,
 } from '../../../services/sekretVoice';
 import { backendAuthHeaders } from '../../utils/backendAuth';
+import { logRuntimeAuditEvent } from '@/services/runtimeAudit';
 
 export interface ChatMessage {
   id: string;
@@ -297,6 +298,20 @@ export async function sendMessage(
         substituted: guardedReply.slice(0, 80),
       });
     }
+
+    // ── Retention: log every successful companion chat (fire-and-forget) ──
+    logRuntimeAuditEvent('manual', {
+      event_type: 'companion_chat_sent',
+      screen: normalizedSurface ?? 'chat',
+      severity: 'info',
+      metadata: {
+        companion: personalityId,
+        surface: normalizedSurface,
+        reply_source: data.replySource ?? 'worker',
+        history_length: historyLength,
+        fallback_used: false,
+      },
+    }).catch(() => {/* silent — never block the reply */});
 
     return {
       reply: guardedReply,
