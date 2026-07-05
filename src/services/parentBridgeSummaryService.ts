@@ -104,7 +104,6 @@ export async function fetchParentBridgeSummaryInbox(
 
 export async function markBridgeSummaryViewed(
   summaryId: string,
-  requestId: string,
   audience: 'founder' | 'internal' | 'beta' | 'public' = 'public',
 ): Promise<RelationshipResult<{ viewed: boolean }>> {
   if (!isRelationshipFeatureAvailable('bridgeSummaries', audience)) return unavailable();
@@ -117,18 +116,20 @@ export async function markBridgeSummaryViewed(
     return { ok: false, code: 'unauthorized', message: 'Sign in to view Bridge summaries.' };
   }
 
+  const { data: existing, error: existingError } = await sb
+    .from('bridge_summary_views')
+    .select('summary_id')
+    .eq('summary_id', summaryId)
+    .eq('parent_user_id', parentUserId)
+    .maybeSingle();
+
+  if (existingError) return { ok: false, code: 'server_error', message: existingError.message };
+  if (existing) return { ok: true, value: { viewed: true } };
+
   const { error: viewError } = await sb
     .from('bridge_summary_views')
-    .upsert({ summary_id: summaryId, parent_user_id: parentUserId }, { onConflict: 'summary_id,parent_user_id' });
+    .insert({ summary_id: summaryId, parent_user_id: parentUserId });
+
   if (viewError) return { ok: false, code: 'server_error', message: viewError.message };
-
-  const { error: requestError } = await sb
-    .from('bridge_share_requests')
-    .update({ status: 'viewed', updated_at: new Date().toISOString() })
-    .eq('id', requestId)
-    .eq('parent_user_id', parentUserId)
-    .eq('status', 'ready');
-
-  if (requestError) return { ok: false, code: 'server_error', message: requestError.message };
   return { ok: true, value: { viewed: true } };
 }
