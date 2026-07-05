@@ -27,6 +27,19 @@ test('Bridge summary route requires a user principal', () => {
   assert.match(moduleSource, /user_jwt_required/);
 });
 
+test('Bridge summary generation is scoped to the authenticated teen owner', () => {
+  assert.match(moduleSource, /teen_user_id=eq\.\$\{encodeURIComponent\(userId\)\}/);
+  assert.match(moduleSource, /fetchOwnedRequest\(env, requestId, userId\)/);
+  assert.match(moduleSource, /request not found/);
+  assert.match(moduleSource, /patchRequestStatus\(env, requestId, userId/);
+});
+
+test('revoked and expired requests cannot generate summaries', () => {
+  assert.match(moduleSource, /row\.revoked_at/);
+  assert.match(moduleSource, /revoked', 'expired', 'deleted/);
+  assert.match(moduleSource, /status: 'revoked'/);
+});
+
 test('Bridge summary fallback stores only summary fields', () => {
   assert.match(moduleSource, /themes: FALLBACK_SUMMARY\.themes/);
   assert.match(moduleSource, /conversation_starters: FALLBACK_SUMMARY\.conversationStarters/);
