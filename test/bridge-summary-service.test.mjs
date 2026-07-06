@@ -21,6 +21,12 @@ test('share creation uses canonical RPC then Worker route', () => {
   assert.match(source, /idempotencyKey/);
 });
 
+test('share creation surfaces missing Worker configuration instead of silent success', () => {
+  assert.match(source, /!BASE_URL/);
+  assert.match(source, /ai_unavailable/);
+  assert.match(source, /EXPO_PUBLIC_BACKEND_URL/);
+});
+
 test('revoke uses canonical RPC', () => {
   assert.match(source, /revoke_bridge_share_request/);
   assert.match(source, /p_request_id/);

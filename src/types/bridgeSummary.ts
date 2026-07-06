@@ -42,12 +42,12 @@ export interface GenerateBridgeSummaryResponse {
 
 export interface BridgeSummaryListItem {
   requestId: string;
-  summaryId: string;
   teenUserId: string;
   parentUserId: string;
-  status: 'ready' | 'viewed';
-  summary: BridgeSummaryContent;
-  generatedAt: string;
+  status: BridgeShareStatus;
+  summaryId?: string;
+  summary?: BridgeSummaryContent;
+  generatedAt?: string;
   viewedAt?: string | null;
   expiresAt?: string | null;
   usedFallback: boolean;

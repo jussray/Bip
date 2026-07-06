@@ -34,14 +34,14 @@ export function ParentBridgeSummaryInbox({ audience = 'public' }: ParentBridgeSu
   }, [load]);
 
   const markViewed = useCallback(async (item: BridgeSummaryListItem) => {
-    if (item.viewedAt) return;
+    if (item.viewedAt || !item.summaryId) return;
     const result = await markBridgeSummaryViewed(item.summaryId, audience);
     if (!result.ok) {
       setMessage(result.message);
       return;
     }
     setItems((current) => current.map((entry) => (
-      entry.summaryId === item.summaryId
+      entry.summaryId && entry.summaryId === item.summaryId
         ? { ...entry, viewedAt: new Date().toISOString() }
         : entry
     )));
@@ -75,14 +75,17 @@ export function ParentBridgeSummaryInbox({ audience = 'public' }: ParentBridgeSu
 
   return (
     <View style={styles.list}>
-      {items.map((item) => (
+      {items.map((item) => {
+        const summary = item.summary;
+        if (!summary) return null;
+        return (
         <TouchableOpacity
-          key={item.summaryId}
+          key={item.summaryId ?? item.requestId}
           style={styles.card}
           activeOpacity={0.86}
           onPress={() => void markViewed(item)}
           accessibilityRole="button"
-          accessibilityLabel={`Bridge Summary from ${new Date(item.generatedAt).toLocaleDateString()}`}
+          accessibilityLabel={`Bridge Summary from ${new Date(item.generatedAt ?? Date.now()).toLocaleDateString()}`}
         >
           <View style={styles.headerRow}>
             <Text style={styles.cardTitle}>Bridge Summary</Text>
@@ -90,26 +93,27 @@ export function ParentBridgeSummaryInbox({ audience = 'public' }: ParentBridgeSu
           </View>
 
           <Text style={styles.dateText}>
-            {new Date(item.generatedAt).toLocaleDateString(undefined, {
+            {new Date(item.generatedAt ?? Date.now()).toLocaleDateString(undefined, {
               month: 'short', day: 'numeric', year: 'numeric',
             })}
           </Text>
 
           <Text style={styles.sectionLabel}>Themes noticed</Text>
-          {item.summary.themes.map((theme) => (
+          {summary.themes.map((theme) => (
             <Text key={theme} style={styles.bodyText}>• {theme}</Text>
           ))}
 
           <Text style={styles.sectionLabel}>Conversation starters</Text>
-          {item.summary.conversationStarters.map((starter) => (
+          {summary.conversationStarters.map((starter) => (
             <Text key={starter} style={styles.bodyText}>• {starter}</Text>
           ))}
 
           <View style={styles.noticeBox}>
-            <Text style={styles.noticeText}>{item.summary.limitations}</Text>
+            <Text style={styles.noticeText}>{summary.limitations}</Text>
           </View>
         </TouchableOpacity>
-      ))}
+      );
+      })}
     </View>
   );
 }
