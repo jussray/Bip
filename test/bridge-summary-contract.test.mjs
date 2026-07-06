@@ -49,6 +49,8 @@ test('revocation immediately changes request state', () => {
 
 test('revoked Bridge requests can be safely replaced after active-link revalidation', () => {
   assert.match(reactivationSql, /create or replace function public\.create_bridge_share_request/i);
+  assert.match(reactivationSql, /pg_advisory_xact_lock/i);
+  assert.match(reactivationSql, /hashtextextended\(v_teen_user_id::text \|\| ':' \|\| v_normalized_idempotency_key, 0\)/i);
   assert.match(reactivationSql, /for update/i);
   assert.match(reactivationSql, /v_existing_status in \('revoked','expired','failed','deleted'\)/i);
   assert.match(reactivationSql, /active_parent_link_required/i);
