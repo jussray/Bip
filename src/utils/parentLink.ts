@@ -193,6 +193,35 @@ export async function fetchLinkedTeenId(): Promise<string | null> {
   }
 }
 
+export async function fetchLinkedParentId(): Promise<string | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+
+  try {
+    const { data, error } = await sb
+      .from('parent_links')
+      .select('parent_user_id')
+      .eq('teen_user_id', uid)
+      .eq('status', 'active')
+      .eq('is_active', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[parentLink] fetchLinkedParentId failed:', error.message);
+      return null;
+    }
+
+    return (data?.parent_user_id as string) ?? null;
+  } catch (error) {
+    if (__DEV__) console.warn('[parentLink] fetchLinkedParentId threw', error);
+    return null;
+  }
+}
+
 export async function revokeParentLink(): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;

@@ -108,7 +108,16 @@ export async function createBridgeShareRequest(
       return { ok: false, code: 'server_error', message: error?.message || 'Could not create the Bridge share.' };
     }
 
-    if (BASE_URL) {
+    if (!BASE_URL) {
+      return {
+        ok: false,
+        code: 'ai_unavailable',
+        message: 'Bridge AI is not configured. Set EXPO_PUBLIC_BACKEND_URL so the summary Worker can run.',
+        retryable: false,
+      };
+    }
+
+    {
       const headers = await backendAuthHeaders();
       const response = await fetch(`${BASE_URL}/api/bridge/summary/generate`, {
         method: 'POST',
@@ -169,22 +178,21 @@ export async function fetchTeenBridgeShareHistory(
   const items: BridgeSummaryListItem[] = [];
   for (const request of rows) {
     const summary = byRequest.get(request.id);
-    if (!summary || (request.status !== 'ready' && request.status !== 'viewed')) continue;
-    const content: BridgeSummaryContent = {
+    const content: BridgeSummaryContent | undefined = summary ? {
       themes: summary.themes ?? [],
       conversationStarters: summary.conversation_starters ?? [],
       limitations: summary.limitations,
-    };
+    } : undefined;
     items.push({
       requestId: request.id,
-      summaryId: summary.id,
+      summaryId: summary?.id,
       teenUserId: request.teen_user_id,
       parentUserId: request.parent_user_id,
-      status: request.status,
+      status: request.status as BridgeSummaryListItem['status'],
       summary: content,
-      generatedAt: summary.generated_at,
+      generatedAt: summary?.generated_at ?? request.created_at,
       expiresAt: request.expires_at,
-      usedFallback: summary.used_fallback,
+      usedFallback: summary?.used_fallback ?? false,
     });
   }
 

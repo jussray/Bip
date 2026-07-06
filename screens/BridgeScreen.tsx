@@ -36,6 +36,11 @@ import {
 import { getSupabase } from '@/utils/supabase';
 import { fetchBridgeSignals, type BridgeSignal } from '@/utils/parentBridgeCompat';
 import { fetchBridgeShares, type BridgeShare } from '@/features/bridge/bridgeShareCompat';
+import {
+  fetchTeenBridgeShareHistory,
+  revokeBridgeShareRequest,
+} from '@/services/bridgeSummaryService';
+import type { BridgeSummaryListItem } from '@/types/bridgeSummary';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -92,6 +97,8 @@ export function BridgeScreen({
   const [mySignals, setMySignals]   = useState<BridgeSignal[]>([]);
   const [myShares, setMyShares]     = useState<BridgeShare[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [bridgeSummaryHistory, setBridgeSummaryHistory] = useState<BridgeSummaryListItem[]>([]);
+  const [bridgeStatus, setBridgeStatus] = useState<string | null>(null);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
   const isRylane = selectedSekret === 'rylane';
@@ -140,12 +147,14 @@ export function BridgeScreen({
       const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };
       const myId = data.user?.id;
       if (!myId) { setHistoryLoaded(true); return; }
-      const [signals, shares] = await Promise.all([
+      const [signals, shares, summaryHistory] = await Promise.all([
         fetchBridgeSignals(myId),
         fetchBridgeShares(myId),
+        fetchTeenBridgeShareHistory(),
       ]);
       setMySignals(signals);
       setMyShares(shares);
+      if (summaryHistory.ok) setBridgeSummaryHistory(summaryHistory.value);
       setHistoryLoaded(true);
     })();
   }, [view, historyLoaded]);
@@ -158,6 +167,13 @@ export function BridgeScreen({
       label: 'You sent a signal',
       detail: sig.share_type === 'mood' ? 'My Mood' : sig.share_type === 'thought' ? 'A Thought' : sig.share_type === 'need' ? 'Something I Need' : 'A Win',
       timestamp: sig.sent_at,
+    })),
+    ...bridgeSummaryHistory.map(item => ({
+      id: `summary-${item.requestId}`,
+      emoji: item.status === 'revoked' ? '🔒' : '🌉',
+      label: item.status === 'revoked' ? 'Bridge Summary revoked' : 'Bridge Summary share',
+      detail: item.summary?.themes?.length ? item.summary.themes.join(', ') : `Status: ${item.status}`,
+      timestamp: item.generatedAt ?? new Date().toISOString(),
     })),
     ...myShares.map(share => ({
       id: `share-${share.id}`,
@@ -181,6 +197,26 @@ export function BridgeScreen({
     opacity: val,
     transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],
   });
+
+  const refreshBridgeSummaryHistory = async () => {
+    const result = await fetchTeenBridgeShareHistory();
+    if (result.ok) setBridgeSummaryHistory(result.value);
+  };
+
+  const handleCreateBridgeSummary = () => {
+    setBridgeStatus('Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window.');
+  };
+
+  const handleRevokeBridgeSummary = async (requestId: string) => {
+    setBridgeStatus('Revoking Bridge Summary access…');
+    const result = await revokeBridgeShareRequest(requestId);
+    if (!result.ok) {
+      setBridgeStatus(result.message);
+      return;
+    }
+    setBridgeStatus(result.value.revoked ? 'Bridge Summary access revoked.' : 'That share could not be revoked.');
+    await refreshBridgeSummaryHistory();
+  };
 
   const handleSend = async () => {
     if (!shareType || !message.trim()) {
@@ -309,6 +345,14 @@ export function BridgeScreen({
                 <Text style={styles.noteTime}>
                   {new Date(item.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </Text>
+                {item.id.startsWith('summary-') && item.label !== 'Bridge Summary revoked' && (
+                  <TouchableOpacity
+                    onPress={() => void handleRevokeBridgeSummary(item.id.replace('summary-', ''))}
+                    style={[styles.seenBtn, { borderColor: glow + '66' }]}
+                  >
+                    <Text style={[styles.seenBtnText, { color: glow }]}>revoke</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </Animated.View>
@@ -444,6 +488,21 @@ export function BridgeScreen({
                 ? '"share what you can. they don\'t need the whole story."'
                 : '"soft is brave. you don\'t have to explain everything."'}
             </Text>
+          </View>
+
+          <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.72)', borderColor: glow + '66' }]}>
+            <Text style={[styles.cardLabel, { color: glow }]}>Parent-safe Bridge Summary</Text>
+            <Text style={styles.noteText}>
+              Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window.
+            </Text>
+            {!!bridgeStatus && <Text style={[styles.noteText, { color: '#cbb6f7' }]}>{bridgeStatus}</Text>}
+            <TouchableOpacity
+              style={[styles.seenBtn, { borderColor: glow + '88', marginTop: 8 }]}
+              onPress={handleCreateBridgeSummary}
+              disabled={sending}
+            >
+              <Text style={[styles.seenBtnText, { color: glow }]}>summary sharing not ready here yet</Text>
+            </TouchableOpacity>
           </View>
 
           <TouchableOpacity
