@@ -1,0 +1,7 @@
+appId: com.sekretbip.parent
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- assertNotVisible: "Application error"
+- takeScreenshot: parent-launch
