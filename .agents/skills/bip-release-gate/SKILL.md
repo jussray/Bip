@@ -1,71 +1,122 @@
 # bip-release-gate
 
 ## Trigger
-Before ANY merge to main. This is the final checkpoint — run it last.
+Before any merge to `main`. Run this last, after all task-specific skills.
+
+## Rule
+Discover the current release machinery from the repository. Do not rely on a remembered or
+hardcoded workflow list. Required checks depend on changed paths, target environment, and release type.
+
+A workflow that did not trigger is not automatically passed. Classify it as:
+- REQUIRED — must run and pass before merge.
+- NOT APPLICABLE — explain why the changed paths and release target do not require it.
+- MANUAL GATE — requires external verification that CI cannot prove.
 
 ## Step 0 — Discover, Don't Assume
-Before running any checks, read `.github/workflows/` to get the current list of
-workflows. Do not rely on a hardcoded list — workflow files may have been added,
-renamed, or removed since this skill was written.
 
-For each workflow found, determine:
-1. Does it trigger on this PR's changed paths?
-2. Does it apply to this target (feature branch / release branch / main)?
-3. If it did not trigger: document WHY it is not applicable — do not silently skip it.
+```bash
+find .github/workflows -maxdepth 1 -type f -print | sort
+git diff --name-only origin/main...HEAD
+git rev-parse HEAD
+```
 
-**"Not triggered" is not the same as "passed."**
-If a workflow should have triggered but did not, that is a blocker to investigate.
+Read current workflow triggers, path filters, jobs, required secrets, and branch conditions.
+When available, inspect branch protection and required-check configuration too.
 
-## Release Gate Checklist (apply what is relevant to this PR)
+## Release Gate Checklist
 
-### 1. Core CI — Always Required
-- [ ] TypeScript typecheck workflow: green, zero errors
-- [ ] Primary CI workflow (lint, test): green
-- [ ] Pre-push / prepush workflow: green
-- [ ] Regression tests: green (or document why not triggered for this path)
+### 1. Change Classification
+Classify the change as one or more of:
+- app/UI-only
+- Worker/API
+- Supabase migration/RLS
+- Supabase Edge Function
+- native dependency/config
+- assets/content
+- CI/tooling
+- documentation/agent-instructions only
 
-### 2. Migration Safety — Required if `supabase/` changed
-- [ ] `supabase migration list` — all migrations applied in order
-- [ ] `supabase db diff` — zero schema drift
-- [ ] No migration references a table or column that doesn't exist yet
-- [ ] Any new migration has a corresponding RLS policy review (run bip-privacy-redteam)
+State the target: PR merge only, beta/preview build, staging deploy, or production release.
 
-### 3. Worker Deploy — Required if `worker/` or `wrangler.toml` changed
-- [ ] Worker compiles without error
-- [ ] `wrangler.toml` bindings match secrets configured in Cloudflare dashboard
-- [ ] No new env var added without a corresponding secret entry
-- [ ] Worker deploy workflow triggered and passed (or explain why not)
+### 2. Applicable CI Status
+- [ ] Discover current workflows from `.github/workflows/`.
+- [ ] Identify workflows whose event and path filters apply.
+- [ ] Confirm every applicable required check ran on the current HEAD SHA and passed.
+- [ ] Confirm no required check is pending, unexpectedly skipped, stale, or attached to an older SHA.
+- [ ] Explain every NOT APPLICABLE workflow; never silently skip it.
 
-### 4. Env Var Completeness — Required if any new env/secret reference added
-- [ ] `.env.example` and `.dev.vars.example` updated to document the new var
-- [ ] No secret key hardcoded — run secret scanning before merge
+"Not triggered" is not "passed." A green check from an older commit is not evidence for the current head.
 
-### 5. EAS Build — Required for release branches only (not every feature PR)
-- [ ] `eas.json` profile correct for this target
-- [ ] `app.config.ts` version bumped if this is a production release
-- [ ] No native module added without a new EAS build (OTA-only changes are safe)
-- [ ] EAS build workflow triggered and passed, or documented as not required for this PR type
+### 3. Migration Safety — when `supabase/` changed
+- [ ] Run `supabase migration list` against the intended environment.
+- [ ] Run `supabase db diff` and account for schema drift.
+- [ ] Confirm migration ordering and object dependencies.
+- [ ] Review concurrency, idempotency, indexes, backfills, locks, and `SECURITY DEFINER` functions.
+- [ ] Run `bip-privacy-redteam` and applicable migration contract tests.
+- [ ] Confirm a rollback or forward-fix strategy for production-impacting changes.
 
-### 6. Supabase Edge Function — Required if `supabase/functions/` changed
-- [ ] Edge function deploy workflow triggered and passed
+If the target environment is unavailable, mark the verification as BLOCKED or MANUAL GATE.
+Do not describe it as passed.
 
-### 7. Room Archives — Required if room assets or ROOM_ASSET_MAP.md changed
-- [ ] `verify-room-archives.yml` triggered and passed
+### 4. Worker Deploy Readiness — when `worker/`, Wrangler config, or bindings changed
+- [ ] Confirm changed Worker entry points compile.
+- [ ] Confirm the target Worker and environment. Production Worker name is `sekret`.
+- [ ] Compare Wrangler bindings with all changed secret/config references.
+- [ ] Confirm elevated credentials are not client-exposed or logged.
+- [ ] Run `bip-worker-guardian`.
+- [ ] Confirm the applicable deploy workflow or documented manual deployment path.
 
-### 8. Privacy Gate — Conditional
-- [ ] If any Supabase schema changed: bip-privacy-redteam passed
-- [ ] If any worker endpoint changed: bip-worker-guardian passed
+If a configured staging Worker exists, validate there before production. If staging does not exist,
+do not invent it as a gate: document the available local/preview path, run applicable tests, and
+require explicit production-deploy approval.
 
-## Staging Enforcement
-The following rules apply **only when a staging environment is confirmed to exist
-and be configured** (staging Supabase project + staging Worker environment +
-documented promotion steps). If staging infrastructure does not exist yet, note
-that as a known gap rather than blocking the PR.
-- Worker changes should be validated in staging before production deploy
-- Supabase migrations should be applied to staging before production
+### 5. Environment Variable Completeness — when configuration changed
+- [ ] Compare code references against current example/config files.
+- [ ] Confirm each new variable is documented and provisioned in the target environment.
+- [ ] Confirm secrets are not hardcoded, committed, printed, or bundled client-side.
+- [ ] Confirm client-exposed variables contain only intentionally public values.
+
+### 6. Expo/EAS Readiness — when app config, native modules, or release metadata changed
+- [ ] Confirm the applicable EAS profile and platform.
+- [ ] Confirm version/build-number policy for beta or production.
+- [ ] Confirm native changes receive a new native build rather than OTA-only delivery.
+- [ ] Confirm affected auth, route, and privacy journeys are covered by relevant tests.
+
+Documentation-only, agent-instruction-only, or server-only PRs do not require EAS unless repository
+policy explicitly says otherwise.
+
+### 7. Conditional Product Gates
+- [ ] Supabase/data boundary changes: `bip-privacy-redteam` passed.
+- [ ] Worker endpoint changes: `bip-worker-guardian` passed.
+- [ ] AI/prompt/summary changes: `bip-ai-review` passed.
+- [ ] User-facing copy changes: `bip-voice-guard` passed.
+- [ ] Beta/release candidate: `bip-beta-checklist` passed for affected journeys.
+
+### 8. Deployment Reality Check — deploys/releases only
+Verify actual target state rather than assuming merge equals deploy:
+- Worker: `wrangler deployments list` for Worker `sekret`.
+- Supabase: migration/function state for the target project.
+- Expo/EAS: build/update state for the intended channel.
+
+Record deployed commit/version and timestamp when available.
+
+## Pass Criteria
+Return READY TO MERGE only when:
+- all applicable checks passed on the current head;
+- each non-applicable check has a defensible reason;
+- no known safety, privacy, migration, or release blocker remains.
+
+Return READY TO DEPLOY only after deployment-specific manual gates are satisfied.
 
 ## Output
-Return: READY TO MERGE | BLOCKED
-- BLOCKED: list each failing or inapplicable-but-required check with the specific file or workflow
-- For each skipped check: document the reason it does not apply to this PR
-- Never recommend merging with known failures — no exceptions for "minor" issues
+Return one of: READY TO MERGE | READY TO DEPLOY | BLOCKED
+
+Include:
+- current head SHA;
+- change classification and target;
+- applicable checks with status;
+- NOT APPLICABLE checks with reasons;
+- manual gates still required;
+- exact blocker file/workflow when blocked.
+
+Never recommend merging with a known failure. Never describe an untriggered, skipped, or stale check as passed.
