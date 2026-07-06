@@ -434,8 +434,9 @@ export default function TeenPagesRoute() {
       return;
     }
 
-    if (current) return; // revoked/expired/failed — not re-shareable from here yet
-
+    // current is undefined (never shared) or a terminal state (revoked/expired/
+    // failed) — either way, create_bridge_share_request reactivates the same
+    // row in place on conflict, so falling through here is safe.
     if (!linkedParentId) {
       Alert.alert('no linked parent yet', 'Connect with a parent or trusted adult before sharing into Bridge.');
       return;
@@ -501,23 +502,20 @@ export default function TeenPagesRoute() {
               {!entry.locked && (() => {
                 const shareStatus = bridgeShareStatuses.get(entry.id);
                 const isActive = !!shareStatus && ACTIVE_BRIDGE_SHARE_STATUSES.has(shareStatus.status);
-                const isTerminal = !!shareStatus && !isActive;
                 const busy = sharingEntryId === entry.id;
-                const label = isTerminal
-                  ? `Bridge share ${shareStatus!.status}`
-                  : isActive
-                    ? 'Shared into Bridge — tap to revoke'
-                    : 'Share with Parent Window';
+                const label = isActive
+                  ? 'Shared into Bridge — tap to revoke'
+                  : 'Share with Parent Window';
                 return (
                   <TouchableOpacity
                     onPress={() => handleShareWithParent(entry.id)}
-                    disabled={busy || isTerminal}
+                    disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel={label}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Text style={[s.shareIcon, isTerminal && { opacity: 0.4 }]}>
-                      {busy ? '…' : isActive ? '💜' : isTerminal ? '🔒' : '👁️'}
+                    <Text style={s.shareIcon}>
+                      {busy ? '…' : isActive ? '💜' : '👁️'}
                     </Text>
                   </TouchableOpacity>
                 );
