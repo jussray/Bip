@@ -52,6 +52,13 @@ begin
     raise exception 'active_parent_link_required';
   end if;
 
+  -- Serialize by teen + idempotency key before checking for an existing row.
+  -- A missing row cannot be protected by FOR UPDATE, so this transaction-scoped
+  -- advisory lock preserves idempotency for simultaneous first-time requests.
+  perform pg_advisory_xact_lock(
+    hashtextextended(v_teen_user_id::text || ':' || v_normalized_idempotency_key, 0)
+  );
+
   select id, status
     into v_request_id, v_existing_status
   from public.bridge_share_requests
@@ -110,6 +117,6 @@ revoke execute on function public.create_bridge_share_request(uuid,text,jsonb,ti
 grant execute on function public.create_bridge_share_request(uuid,text,jsonb,timestamptz) to authenticated;
 
 comment on function public.create_bridge_share_request(uuid,text,jsonb,timestamptz) is
-  'Creates an idempotent teen-consented Bridge summary request. Reusing a key for a revoked, expired, failed, or deleted request revalidates the active link and replaces sources/summary before returning the same request id.';
+  'Creates an idempotent teen-consented Bridge summary request. Reusing a key for a revoked, expired, failed, or deleted request revalidates the active link and replaces sources/summary before returning the same request id. Transaction-scoped advisory locking serializes first-time duplicate requests by teen and idempotency key.';
 
 commit;
