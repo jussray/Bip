@@ -37,5 +37,13 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
+    // Force the unauthenticated splash -> onboarding path the smoke test
+    // exercises. If Supabase env vars are set (e.g. from a dev .env or CI
+    // secrets), app/index.tsx checks for a session and redirects to
+    // /(auth)/login before the splash ever renders.
+    env: {
+      EXPO_PUBLIC_SUPABASE_URL: '',
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: '',
+    },
   },
 });

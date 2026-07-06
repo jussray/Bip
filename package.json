@@ -13,6 +13,7 @@
     "build:web": "expo export -p web",
     "vercel-build": "npm run build:web",
     "test": "node --test \"test/**/*.test.mjs\"",
+    "pretest:e2e": "node scripts/ensure-playwright-browser.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
