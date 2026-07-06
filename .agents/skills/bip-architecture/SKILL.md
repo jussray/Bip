@@ -58,13 +58,19 @@ Before writing code that touches AI/character flow:
 - Supabase Realtime: circle membership, live posts
 - Local state (Context): UI state, transient AI conversation
 - Never store sensitive user content in AsyncStorage unencrypted
-- `author_user_id` never in client-side state exposed to other users
+- `author_user_id` never in client-side state exposed to untrusted surfaces
 
 ### Deploy Pipeline
 - Mobile: Expo EAS Build → TestFlight / Play Store internal track
-- Worker: Wrangler → Cloudflare (staging validation before prod)
+- Worker: Wrangler → Cloudflare
 - Supabase: migrations via CLI only — never dashboard edits in prod
-- No hotfixes to prod worker without staging validation first
+
+**Staging enforcement note:** The rules "validate in staging before prod" and
+"no Worker hotfix without staging validation" are the target state. Enforce them
+only if a staging Supabase project and staging Worker environment are confirmed
+to exist and be configured. If staging infrastructure is not yet in place, treat
+these as aspirational constraints and note the gap — do not block legitimate work
+on infrastructure that does not exist yet.
 
 ## Output
 When starting a session: confirm which route group and which source files you are

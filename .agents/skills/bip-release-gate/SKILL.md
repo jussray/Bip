@@ -3,56 +3,69 @@
 ## Trigger
 Before ANY merge to main. This is the final checkpoint — run it last.
 
-## Verified CI Pipeline (jussray/Bip, .github/workflows/)
-Real workflows that must pass before merge:
-- `ci.yml` — primary CI (lint, test)
-- `typecheck.yml` — TypeScript type checking
-- `prepush.yml` — pre-push validation
-- `regression-tests.yml` — regression suite
-- `deploy-worker.yml` — Cloudflare Worker deploy
-- `deploy-cloudflare.yml` — Cloudflare Pages deploy
-- `deploy-supabase-function.yml` — Supabase Edge Function deploy
-- `eas-build.yml` — Expo EAS build
-- `verify-room-archives.yml` — room asset archive validation
+## Step 0 — Discover, Don't Assume
+Before running any checks, read `.github/workflows/` to get the current list of
+workflows. Do not rely on a hardcoded list — workflow files may have been added,
+renamed, or removed since this skill was written.
 
-## Release Gate Checklist (run in order)
+For each workflow found, determine:
+1. Does it trigger on this PR's changed paths?
+2. Does it apply to this target (feature branch / release branch / main)?
+3. If it did not trigger: document WHY it is not applicable — do not silently skip it.
 
-### 1. CI Status
-- [ ] `ci.yml` green — no lint or test failures
-- [ ] `typecheck.yml` green — zero TypeScript errors
-- [ ] `prepush.yml` green — pre-push hooks passed
-- [ ] `regression-tests.yml` green — no regressions
+**"Not triggered" is not the same as "passed."**
+If a workflow should have triggered but did not, that is a blocker to investigate.
 
-### 2. Migration Safety
-- [ ] Run `supabase migration list` — confirm all migrations applied in order
-- [ ] Run `supabase db diff` — confirm zero schema drift
+## Release Gate Checklist (apply what is relevant to this PR)
+
+### 1. Core CI — Always Required
+- [ ] TypeScript typecheck workflow: green, zero errors
+- [ ] Primary CI workflow (lint, test): green
+- [ ] Pre-push / prepush workflow: green
+- [ ] Regression tests: green (or document why not triggered for this path)
+
+### 2. Migration Safety — Required if `supabase/` changed
+- [ ] `supabase migration list` — all migrations applied in order
+- [ ] `supabase db diff` — zero schema drift
 - [ ] No migration references a table or column that doesn't exist yet
-- [ ] Any new migration has a corresponding RLS policy (run bip-privacy-redteam)
+- [ ] Any new migration has a corresponding RLS policy review (run bip-privacy-redteam)
 
-### 3. Worker Deploy Readiness
-- [ ] `worker/sekret-reply.ts` compiles without error
-- [ ] `wrangler.toml` has correct environment bindings for all secrets used in code
-- [ ] No new environment variable added to worker without a corresponding secret in Cloudflare dashboard
-- [ ] `deploy-worker.yml` workflow will trigger correctly on this branch
+### 3. Worker Deploy — Required if `worker/` or `wrangler.toml` changed
+- [ ] Worker compiles without error
+- [ ] `wrangler.toml` bindings match secrets configured in Cloudflare dashboard
+- [ ] No new env var added without a corresponding secret entry
+- [ ] Worker deploy workflow triggered and passed (or explain why not)
 
-### 4. Env Var Completeness
-- [ ] Compare `.env.example` against `.dev.vars.example` — no undocumented vars
-- [ ] Any new `process.env.*` or `env.*` reference in worker has a corresponding entry
-- [ ] No secret key hardcoded — confirmed with secret scanning before merge
+### 4. Env Var Completeness — Required if any new env/secret reference added
+- [ ] `.env.example` and `.dev.vars.example` updated to document the new var
+- [ ] No secret key hardcoded — run secret scanning before merge
 
-### 5. EAS Build Readiness
-- [ ] `eas.json` profile for this target (development/preview/production) is correct
-- [ ] `app.config.ts` version bump if this is a production release
+### 5. EAS Build — Required for release branches only (not every feature PR)
+- [ ] `eas.json` profile correct for this target
+- [ ] `app.config.ts` version bumped if this is a production release
 - [ ] No native module added without a new EAS build (OTA-only changes are safe)
+- [ ] EAS build workflow triggered and passed, or documented as not required for this PR type
 
-### 6. Privacy Gate
+### 6. Supabase Edge Function — Required if `supabase/functions/` changed
+- [ ] Edge function deploy workflow triggered and passed
+
+### 7. Room Archives — Required if room assets or ROOM_ASSET_MAP.md changed
+- [ ] `verify-room-archives.yml` triggered and passed
+
+### 8. Privacy Gate — Conditional
 - [ ] If any Supabase schema changed: bip-privacy-redteam passed
 - [ ] If any worker endpoint changed: bip-worker-guardian passed
 
-## Pass Criteria
-All checkboxes above are checked. No skips.
+## Staging Enforcement
+The following rules apply **only when a staging environment is confirmed to exist
+and be configured** (staging Supabase project + staging Worker environment +
+documented promotion steps). If staging infrastructure does not exist yet, note
+that as a known gap rather than blocking the PR.
+- Worker changes should be validated in staging before production deploy
+- Supabase migrations should be applied to staging before production
 
 ## Output
 Return: READY TO MERGE | BLOCKED
-- BLOCKED: list each failing check with the specific file or workflow
+- BLOCKED: list each failing or inapplicable-but-required check with the specific file or workflow
+- For each skipped check: document the reason it does not apply to this PR
 - Never recommend merging with known failures — no exceptions for "minor" issues
