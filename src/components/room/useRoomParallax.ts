@@ -21,7 +21,6 @@ type GyroscopeModule = {
 
 let Gyroscope: GyroscopeModule | null = null;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   Gyroscope = require('expo-sensors').Gyroscope as GyroscopeModule;
 } catch {
   // expo-sensors not installed — idle float will be used instead.
