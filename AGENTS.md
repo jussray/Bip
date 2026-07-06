@@ -96,6 +96,19 @@ Before adding code, pause and ask:
 
 Only write new code after those checks are answered.
 
+## Testing Strategy
+
+Use the smallest testing tool that can prove the behavior being changed.
+
+Current testing priority:
+
+1. Keep unit, service, contract, and regression tests for core logic, privacy contracts, RLS assumptions, and route safety.
+2. Add Playwright for parent/teen web flows, especially Expo web smoke tests, auth routing, Parent Bridge inbox, settings, and regression checks after merges.
+3. Add Maestro for real iOS/Android device flows, especially signup, login, onboarding, teen-parent linking, Bridge share/revoke, navigation, and Expo Go or build smoke tests.
+4. Only move to Detox if the app eventually needs deep native automation that Maestro cannot cover, such as complex native module behavior, permission-heavy flows, or fine-grained synchronization.
+
+Do not add Playwright, Maestro, or Detox to a feature PR unless that PR specifically needs the new test layer. Prefer a dedicated testing-infrastructure PR.
+
 ## Project Priorities
 
 Se'kret Bip should stay simple, shippable, and easy to demo while preserving the larger product vision.
