@@ -1,7 +1,16 @@
+import fs from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 const BASE_URL = `http://localhost:${PORT}`;
+
+// Some sandboxed environments pre-install Chromium at a fixed path instead of
+// the revision this pinned @playwright/test version would normally download.
+// Only use it there; everywhere else, let Playwright manage its own browser.
+const sandboxChromium = '/opt/pw-browsers/chromium';
+const executablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ||
+  (fs.existsSync(sandboxChromium) ? sandboxChromium : undefined);
 
 export default defineConfig({
   testDir: './e2e',
@@ -19,10 +28,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // The pinned @playwright/test version expects a browser revision this
-        // environment doesn't have cached, and downloading one is blocked by
-        // network policy. Use the pre-installed Chromium instead.
-        launchOptions: { executablePath: '/opt/pw-browsers/chromium' },
+        ...(executablePath ? { launchOptions: { executablePath } } : {}),
       },
     },
   ],
