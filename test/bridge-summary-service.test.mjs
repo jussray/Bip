@@ -3,7 +3,9 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const servicePath = new URL('../src/services/bridgeSummaryService.ts', import.meta.url);
+const bridgeScreenPath = new URL('../screens/BridgeScreen.tsx', import.meta.url);
 const source = await readFile(servicePath, 'utf8');
+const bridgeScreen = await readFile(bridgeScreenPath, 'utf8');
 
 test('teen Bridge service remains behind disabled feature flag', () => {
   assert.match(source, /isRelationshipFeatureAvailable\('bridgeSummaries'/);
@@ -38,4 +40,11 @@ test('history reads summary tables rather than raw legacy Bridge payloads', () =
   assert.doesNotMatch(source, /bridge_shares/);
   assert.doesNotMatch(source, /journal_entries/);
   assert.doesNotMatch(source, /mood_history/);
+});
+
+
+test('freeform Bridge signals do not fabricate Bridge Summary source IDs', () => {
+  assert.doesNotMatch(bridgeScreen, /sourceId:\s*`bridge-/);
+  assert.doesNotMatch(bridgeScreen, /createBridgeShareRequest/);
+  assert.match(bridgeScreen, /Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window/);
 });

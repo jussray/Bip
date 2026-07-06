@@ -37,14 +37,10 @@ import { getSupabase } from '@/utils/supabase';
 import { fetchBridgeSignals, type BridgeSignal } from '@/utils/parentBridgeCompat';
 import { fetchBridgeShares, type BridgeShare } from '@/features/bridge/bridgeShareCompat';
 import {
-  buildBridgeSharePreview,
-  createBridgeShareRequest,
   fetchTeenBridgeShareHistory,
   revokeBridgeShareRequest,
 } from '@/services/bridgeSummaryService';
-import { fetchLinkedParentId } from '@/utils/parentLink';
 import type { BridgeSummaryListItem } from '@/types/bridgeSummary';
-import type { BridgeShareSourceRef } from '@/types/relationshipLayer';
 
 interface BridgeScreenProps {
   t:             Record<string, any>;
@@ -101,7 +97,6 @@ export function BridgeScreen({
   const [mySignals, setMySignals]   = useState<BridgeSignal[]>([]);
   const [myShares, setMyShares]     = useState<BridgeShare[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [linkedParentId, setLinkedParentId] = useState<string | null>(null);
   const [bridgeSummaryHistory, setBridgeSummaryHistory] = useState<BridgeSummaryListItem[]>([]);
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null);
 
@@ -141,8 +136,6 @@ export function BridgeScreen({
     subscribeToParentNotes((note) => {
       setParentNotes(prev => [note, ...prev]);
     }).then(fn => { unsub = fn; });
-
-    fetchLinkedParentId().then(setLinkedParentId);
 
     return () => { loop.stop(); unsub(); };
   }, [fade1, fade2, fade3, breath]);
@@ -210,43 +203,8 @@ export function BridgeScreen({
     if (result.ok) setBridgeSummaryHistory(result.value);
   };
 
-  const bridgeSource = (): BridgeShareSourceRef | null => {
-    if (!shareType) return null;
-    return {
-      kind: shareType === 'mood' ? 'mood' : 'journal',
-      sourceId: `bridge-${shareType}-${Date.now()}`,
-    };
-  };
-
-  const handleCreateBridgeSummary = async () => {
-    const source = bridgeSource();
-    if (!linkedParentId || !source) {
-      setBridgeStatus('Link a parent and choose what you want to share first.');
-      return;
-    }
-
-    const preview = buildBridgeSharePreview(linkedParentId, [source]);
-    if (!preview.ok) {
-      setBridgeStatus(preview.message);
-      return;
-    }
-
-    setSending(true);
-    setBridgeStatus('Saving consent and preparing a parent-safe summary…');
-    const result = await createBridgeShareRequest({
-      parentUserId: preview.value.parentUserId,
-      sources: [source],
-      idempotencyKey: `bridge-${Date.now()}`,
-    });
-    setSending(false);
-
-    if (!result.ok) {
-      setBridgeStatus(result.message);
-      return;
-    }
-
-    setBridgeStatus('Bridge Summary requested. Your parent will only see the generated summary.');
-    await refreshBridgeSummaryHistory();
+  const handleCreateBridgeSummary = () => {
+    setBridgeStatus('Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window.');
   };
 
   const handleRevokeBridgeSummary = async (requestId: string) => {
@@ -535,15 +493,15 @@ export function BridgeScreen({
           <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.72)', borderColor: glow + '66' }]}>
             <Text style={[styles.cardLabel, { color: glow }]}>Parent-safe Bridge Summary</Text>
             <Text style={styles.noteText}>
-              Generate a summary for your linked parent without sharing your full private words.
+              Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window.
             </Text>
             {!!bridgeStatus && <Text style={[styles.noteText, { color: '#cbb6f7' }]}>{bridgeStatus}</Text>}
             <TouchableOpacity
               style={[styles.seenBtn, { borderColor: glow + '88', marginTop: 8 }]}
               onPress={handleCreateBridgeSummary}
-              disabled={!shareType || sending}
+              disabled={sending}
             >
-              <Text style={[styles.seenBtnText, { color: glow }]}>request summary share</Text>
+              <Text style={[styles.seenBtnText, { color: glow }]}>summary sharing not ready here yet</Text>
             </TouchableOpacity>
           </View>
 
