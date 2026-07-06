@@ -149,7 +149,7 @@ export function RoomBackground({ sekret, variant, style, children }: RoomBackgro
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
   image: {
