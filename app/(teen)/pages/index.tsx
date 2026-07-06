@@ -24,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Alert,
   Animated,
   FlatList,
   Image,
@@ -64,12 +65,16 @@ import {
 } from '../../../src/features/safety/safetyCoordinator';
 import { SafetyExperienceSheet } from '../../../components/safety/SafetyExperienceSheet';
 import {
-  setItemVisibility,
-  revokeShare,
-  getTeenSharedItems,
-} from '../../../src/features/consent/consentLayer';
+  createBridgeShareRequest,
+  fetchBridgeShareStatusesForJournalEntries,
+  revokeBridgeShareRequest,
+  type JournalBridgeShareStatus,
+} from '@/services/bridgeSummaryService';
+import { fetchLinkedParentId } from '@/utils/parentLink';
 import { usePoints } from '@/features/activity/ledger';
 import { syncJournal } from '@/utils/sync';
+
+const ACTIVE_BRIDGE_SHARE_STATUSES = new Set(['pending', 'processing', 'ready', 'viewed']);
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
@@ -209,8 +214,10 @@ export default function TeenPagesRoute() {
   // audioCache: entryId → data-URI — avoids re-fetching voice for same entry
   const audioCache = useRef<Record<string, string>>({});
 
-  // ── Parent share state ────────────────────────────────────────────────────
-  const [sharedEntryIds, setSharedEntryIds] = useState<Set<number>>(new Set());
+  // ── Parent share state (Bridge Summary) ───────────────────────────────────
+  const [bridgeShareStatuses, setBridgeShareStatuses] = useState<Map<number, JournalBridgeShareStatus>>(new Map());
+  const [linkedParentId, setLinkedParentId] = useState<string | null>(null);
+  const [sharingEntryId, setSharingEntryId] = useState<number | null>(null);
 
   // ── Prompt rotation ────────────────────────────────────────────────────────
   const promptPool = PROMPTS[activeTab] ?? PROMPTS.raylene;
@@ -234,10 +241,11 @@ export default function TeenPagesRoute() {
     return () => loop.stop();
   }, [breathe]);
 
-  // Load which entries the teen has already shared with parent
+  // Load which entries the teen has already shared into Bridge, and who to share to
   useEffect(() => {
-    getTeenSharedItems('journal_entries').then(items => {
-      setSharedEntryIds(new Set(items.map(i => i.id)));
+    fetchLinkedParentId().then(setLinkedParentId);
+    fetchBridgeShareStatusesForJournalEntries().then(result => {
+      if (result.ok) setBridgeShareStatuses(result.value);
     });
   }, []);
 
@@ -402,17 +410,62 @@ export default function TeenPagesRoute() {
     }
   }
 
-  // ── Share-with-parent toggle ──────────────────────────────────────────────
-  const toggleShare = useCallback(async (entryId: number) => {
-    const isShared = sharedEntryIds.has(entryId);
-    if (isShared) {
-      await revokeShare('journal_entries', entryId);
-      setSharedEntryIds(prev => { const next = new Set(prev); next.delete(entryId); return next; });
-    } else {
-      await setItemVisibility('journal_entries', entryId, 'shared_with_parent');
-      setSharedEntryIds(prev => new Set([...prev, entryId]));
+  // ── Share with Parent Window (Bridge Summary) ─────────────────────────────
+  // Passes the real journal_entries.id as the Bridge source — never a
+  // synthetic/placeholder id — so the generated summary is always traceable
+  // back to a specific entry this teen actually wrote.
+  const handleShareWithParent = useCallback(async (entryId: number) => {
+    if (sharingEntryId !== null) return;
+
+    const current = bridgeShareStatuses.get(entryId);
+    if (current && ACTIVE_BRIDGE_SHARE_STATUSES.has(current.status)) {
+      setSharingEntryId(entryId);
+      const result = await revokeBridgeShareRequest(current.requestId);
+      setSharingEntryId(null);
+      if (!result.ok) {
+        Alert.alert('could not revoke', result.message);
+        return;
+      }
+      setBridgeShareStatuses(prev => {
+        const next = new Map(prev);
+        next.set(entryId, { requestId: current.requestId, status: 'revoked' });
+        return next;
+      });
+      return;
     }
-  }, [sharedEntryIds]);
+
+    if (current) return; // revoked/expired/failed — not re-shareable from here yet
+
+    if (!linkedParentId) {
+      Alert.alert('no linked parent yet', 'Connect with a parent or trusted adult before sharing into Bridge.');
+      return;
+    }
+
+    setSharingEntryId(entryId);
+    const result = await createBridgeShareRequest({
+      parentUserId: linkedParentId,
+      idempotencyKey: `journal-${entryId}`,
+      sources: [{ kind: 'journal', sourceId: String(entryId) }],
+    });
+
+    if (!result.ok) {
+      setSharingEntryId(null);
+      Alert.alert('could not share right now', result.message);
+      return;
+    }
+
+    const refreshed = await fetchBridgeShareStatusesForJournalEntries();
+    setSharingEntryId(null);
+    if (refreshed.ok) {
+      setBridgeShareStatuses(refreshed.value);
+    } else {
+      setBridgeShareStatuses(prev => {
+        const next = new Map(prev);
+        next.set(entryId, { requestId: result.value.requestId, status: result.value.status });
+        return next;
+      });
+    }
+  }, [sharingEntryId, bridgeShareStatuses, linkedParentId]);
 
   // ── Render each journal entry as a chat exchange ───────────────────────────
   const renderEntry = useCallback(({ item: entry }: { item: JournalEntry }) => {
@@ -445,18 +498,30 @@ export default function TeenPagesRoute() {
               ) : null}
               {entry.locked ? <Text style={s.metaLock}>🔒</Text> : null}
               {entry.pinned ? <Text style={s.metaPin}>📌</Text> : null}
-              {!entry.locked && (
-                <TouchableOpacity
-                  onPress={() => toggleShare(entry.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={sharedEntryIds.has(entry.id) ? 'Shared with parent — tap to revoke' : 'Share with parent'}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Text style={s.shareIcon}>
-                    {sharedEntryIds.has(entry.id) ? '💜' : '👁️'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {!entry.locked && (() => {
+                const shareStatus = bridgeShareStatuses.get(entry.id);
+                const isActive = !!shareStatus && ACTIVE_BRIDGE_SHARE_STATUSES.has(shareStatus.status);
+                const isTerminal = !!shareStatus && !isActive;
+                const busy = sharingEntryId === entry.id;
+                const label = isTerminal
+                  ? `Bridge share ${shareStatus!.status}`
+                  : isActive
+                    ? 'Shared into Bridge — tap to revoke'
+                    : 'Share with Parent Window';
+                return (
+                  <TouchableOpacity
+                    onPress={() => handleShareWithParent(entry.id)}
+                    disabled={busy || isTerminal}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={[s.shareIcon, isTerminal && { opacity: 0.4 }]}>
+                      {busy ? '…' : isActive ? '💜' : isTerminal ? '🔒' : '👁️'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           </TouchableOpacity>
         </View>
@@ -489,7 +554,7 @@ export default function TeenPagesRoute() {
         ) : null}
       </View>
     );
-  }, [companion, companionAvatarId, voiceLoading, sharedEntryIds, toggleShare]);
+  }, [companion, companionAvatarId, voiceLoading, bridgeShareStatuses, sharingEntryId, handleShareWithParent]);
 
   // ── Top avatar strip ───────────────────────────────────────────────────────
   const renderAvatarStrip = () => (

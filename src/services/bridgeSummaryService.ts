@@ -198,3 +198,52 @@ export async function fetchTeenBridgeShareHistory(
 
   return { ok: true, value: items };
 }
+
+export interface JournalBridgeShareStatus {
+  requestId: string;
+  status: BridgeSummaryListItem['status'];
+}
+
+/**
+ * Teen-side: map each of the teen's own journal entries that has ever been
+ * shared into Bridge to its current share-request id and status, so the
+ * Pages screen can render the right icon and know which request to revoke.
+ * Keyed by the numeric journal entry id used as bridge_share_sources.source_id.
+ */
+export async function fetchBridgeShareStatusesForJournalEntries(
+  audience: 'founder' | 'internal' | 'beta' | 'public' = 'public',
+): Promise<RelationshipResult<Map<number, JournalBridgeShareStatus>>> {
+  if (!isRelationshipFeatureAvailable('bridgeSummaries', audience)) return unavailable();
+  const sb = getSupabase();
+  if (!sb) return unavailable();
+
+  const { data: sources, error: sourceError } = await sb
+    .from('bridge_share_sources')
+    .select('request_id,source_id')
+    .eq('source_kind', 'journal');
+  if (sourceError) return { ok: false, code: 'server_error', message: sourceError.message };
+
+  const sourceRows = (sources ?? []) as Array<{ request_id: string; source_id: string }>;
+  if (sourceRows.length === 0) return { ok: true, value: new Map() };
+
+  const { data: requests, error: requestError } = await sb
+    .from('bridge_share_requests')
+    .select('id,status')
+    .in('id', sourceRows.map((row) => row.request_id));
+  if (requestError) return { ok: false, code: 'server_error', message: requestError.message };
+
+  const statusByRequest = new Map((requests ?? []).map((row) => {
+    const request = row as { id: string; status: string };
+    return [request.id, request.status as BridgeSummaryListItem['status']] as const;
+  }));
+
+  const result = new Map<number, JournalBridgeShareStatus>();
+  for (const row of sourceRows) {
+    const entryId = Number(row.source_id);
+    const status = statusByRequest.get(row.request_id);
+    if (!Number.isFinite(entryId) || !status) continue;
+    result.set(entryId, { requestId: row.request_id, status });
+  }
+
+  return { ok: true, value: result };
+}
