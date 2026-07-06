@@ -1,4 +1,3 @@
-/* eslint-disable */
 const reportOnly = process.env.CONTROL_ROOM_REPORT_ONLY === 'true';
 const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
