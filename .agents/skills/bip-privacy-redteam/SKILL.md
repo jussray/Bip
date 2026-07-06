@@ -5,72 +5,97 @@ Any PR touching: Supabase migrations, RLS policies, Edge Functions, API routes
 that query user or circle data.
 
 ## Core Rule — The Privacy Contract
-`author_user_id` must never reach anonymous, public, parent-summary, or
-untrusted-member clients unless the contract explicitly authorizes that identity
-disclosure. This rule is scoped to untrusted surfaces — there may be future
-trusted server-side or private-connection contexts where an identifier is
-intentionally available. When in doubt, treat the surface as untrusted.
+`author_user_id` and equivalent identity-bearing fields must never reach anonymous,
+public, parent-summary, or other untrusted clients unless the contract explicitly
+authorizes identity disclosure. Any SELECT, JOIN, RPC, Edge Function, response mapper,
+or realtime payload that exposes identity outside that contract is a critical violation.
 
 ## Review Protocol (run in order)
 
-### 1. Column Audit
-Grep every changed migration for columns named:
+### 1. Column and Audience Audit
+Grep every changed migration, query, RPC, response type, and mapper for identity-bearing
+columns such as:
 - `author_user_id`, `user_id`, `created_by`, `owner_id`
+- profile IDs, emails, usernames, invite IDs, device IDs, or stable internal identifiers
 
-For each: identify who the client is and whether that surface is trusted.
-Flag any column that reaches an anonymous, public, parent-summary, or
-untrusted-member client without an explicit authorization in the contract.
+For every use, state the intended audience and authorization contract.
+- Owner-only reads must bind the row to `auth.uid()`.
+- Circle/member reads must enforce membership without leaking identity fields.
+- Parent reads must flow through an active link plus explicit teen consent/request state.
+- Server-only identifiers must be removed or masked before crossing the wire.
 
-### 2. RLS Policy Intent Check
-For each table touched, identify the intended access model:
-- Who is allowed to SELECT? INSERT? UPDATE? DELETE?
-- Every **allowed** operation must have an explicit policy.
-- Every **disallowed** operation must remain impossible (no policy = blocked by default in Supabase with RLS enabled — confirm RLS is ON).
+Flag any identity-bearing field in a response without an explicit, tested reason.
 
-Do NOT require all four policies on every table. Instead:
-- Append-only audit/event tables: INSERT policy only — no UPDATE or DELETE required.
-- Server-written tables (written via service role only): no client policies needed — confirm service-role-only write path.
-- Immutable reference tables: SELECT policy only if clients read them; no write policies needed.
-- Tables clients must never touch: RLS enabled + no policy = correct security control.
+### 2. RLS Operation Matrix
+For every touched table, classify SELECT, INSERT, UPDATE, and DELETE as:
+- ALLOWED — requires an explicit policy with the correct ownership, membership, or consent check.
+- DENIED — must remain impossible; absence of a policy may be the intended control.
+- SERVER-ONLY — must not be reachable through an end-user JWT.
 
-Flag: any table where RLS is **disabled** and client access is assumed safe.
-Flag: any allowed operation that lacks an explicit policy.
-Do NOT flag: absent policies for operations the client must never perform.
+Do not require policies for operations clients must never perform. A table passes only when:
+- RLS is enabled for every client-reachable table;
+- every allowed operation is explicitly protected;
+- every denied operation remains denied;
+- every server-only operation is unreachable through user credentials.
+
+For user-authored inserts, prefer `WITH CHECK` binding ownership to `auth.uid()`.
+For updates and deletes, verify both row visibility and ownership constraints.
 
 ### 3. Teen/Parent Boundary Check
-The primary privacy boundary is the `(teen)` / `(parent)` route split.
-Any data query that can return teen-authored content to a parent context without
-explicit consent linkage is a violation — even if RLS technically allows it.
-- Teen content queries must be scoped to the teen's own `auth.uid()`
-- Parent bridge queries must go through the consent/link table, not direct joins
-- Anonymous post rows must be indistinguishable from identified post rows at the wire level
+The `(teen)` / `(parent)` route split is a presentation boundary, not sufficient privacy
+enforcement by itself. Authorization must also exist at the database, RPC, Worker, consent,
+and response-contract layers.
+
+Verify:
+- teen content queries are scoped to the teen's own `auth.uid()`;
+- parent Bridge queries require an active link and valid consent/request record;
+- parent responses contain generated summaries only, never raw source content;
+- revocation immediately removes parent access at the data layer;
+- unlinking invalidates access independently of cached UI state.
 
 ### 4. Circle Anon/Cross-Leak Test
-- Can Member A query content authored by Member B and retrieve `author_user_id`? Should be NULL or absent on this untrusted surface.
-- Does the circle membership join leak user identity through a side channel (e.g., `profiles` table join)?
+- Can Member A retrieve Member B's identity or an equivalent stable identifier?
+- Does a `profiles`, membership, avatar, ordering, nullability, or metadata join create a side channel?
+- Are anonymous and identified posts distinguishable at the wire level?
+- Do realtime payloads expose columns omitted from normal SELECT responses?
 
-### 5. Edge Function Auth Boundary
-The service-role key is for admin operations only.
-User-scoped queries MUST use the user's JWT, not the service key.
-Flag any `supabaseAdmin.from(...)` call that returns user-authored content
-without a server-side business justification.
+Anonymous content fails if identity can be inferred reliably, even when `author_user_id` itself
+is absent.
 
-### 6. Eval Case (known bug baseline)
-The known `author_user_id` leak: a SELECT on circle posts that joined `profiles`
-and returned `author_user_id` in the response payload without RLS filtering.
-The fix: RLS policy on `circle_posts` restricting SELECT to circle members only,
-with `author_user_id` either excluded from the select list or null-masked.
-If new code would re-introduce this pattern on an untrusted surface, it fails.
+### 5. Edge Function and Worker Auth Boundary
+The service-role key is for narrowly scoped elevated operations only. User-scoped reads must
+preserve and validate the user's JWT or perform an equivalent explicit authorization check before
+using elevated credentials.
+
+Flag any `supabaseAdmin.from(...)`, elevated RPC, or Worker query that returns user-authored
+content without:
+- verified audience authorization;
+- least-privilege query scope;
+- response minimization;
+- tests for unauthorized callers.
+
+### 6. Eval Case — Known Identity Leak
+Known baseline: a Circle posts query joined `profiles` and returned `author_user_id` without a
+safe disclosure contract.
+
+The durable fix is layered:
+- membership/visibility enforced by RLS or equivalent server authorization;
+- identity-bearing columns excluded or masked for untrusted audiences;
+- response and realtime contract tests proving the field cannot cross the wire.
+
+If new code reintroduces this pattern, it fails.
 
 ## Pass Criteria
-- No `author_user_id` reachable by anonymous, public, parent-summary, or untrusted-member clients without explicit contract authorization
-- Every allowed client operation has an explicit RLS policy
-- RLS is enabled on every table that clients touch
-- No service-role key used for user-scoped reads without business justification
-- Teen/parent boundary enforced at the query layer, not just the UI layer
-- Anon posts have no identity bleed path
+- No identity-bearing field reaches an unauthorized audience.
+- Every allowed client operation has an explicit correct policy.
+- Every denied or server-only operation remains unreachable to end-user JWTs.
+- No unbounded service-role read returns user-authored content.
+- Teen/parent access is enforced below the UI layer.
+- Parent Bridge responses remain consent-based and summary-only.
+- Revocation and unlinking remove access immediately at the data layer.
+- Anonymous content has no practical identity bleed path.
 
 ## Output Format
 Return: PASS | FAIL | NEEDS REVIEW
-- FAIL: exact file + line + violation type + which surface is exposed
-- NEEDS REVIEW: ambiguous pattern that needs migration test or contract clarification
+- FAIL: exact file + line + violation type + affected audience.
+- NEEDS REVIEW: ambiguous contract or behavior requiring a migration, integration, realtime, or response test.
