@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/utils/supabase';
 
 /**
  * Fire-and-forget event logger → app_events table.
@@ -9,6 +9,8 @@ export async function logEvent(
   metadata: Record<string, unknown> = {}
 ): Promise<void> {
   try {
+    const supabase = getSupabase();
+    if (!supabase) return;
     const {
       data: { user },
     } = await supabase.auth.getUser();

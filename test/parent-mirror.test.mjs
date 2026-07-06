@@ -24,14 +24,14 @@ for (const [name, path] of mirroredRoutes) {
 test('parent bottom navigation mirrors the five primary teen destinations', () => {
   const layout = read('app/(parent)/_layout.tsx');
   for (const route of ['room', 'pages', 'calm', 'circle', 'more']) {
-    assert.match(layout, new RegExp(`Tabs\.Screen\s+name=["']${route}["']`));
+    assert.match(layout, new RegExp(`Tabs\\.Screen\\s+name=["']${route}["']`));
   }
 });
 
 test('parent routes do not directly read private teen storage collections', () => {
   const parentFiles = mirroredRoutes.map(([, path]) => read(path)).join('\n');
   for (const privateKey of ['journalText', 'voiceNotes', 'periodDays', 'lastPeriodStart', 'oracleSessions', 'roomMemory']) {
-    assert.doesNotMatch(parentFiles, new RegExp(`AsyncStorage\.(?:getItem|multiGet)\([^)]*${privateKey}`));
+    assert.doesNotMatch(parentFiles, new RegExp(`AsyncStorage\\.(?:getItem|multiGet)\\([^)]*${privateKey}`));
   }
 });
 

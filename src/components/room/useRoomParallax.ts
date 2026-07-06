@@ -13,10 +13,16 @@ import { Animated, Easing } from 'react-native';
 const MAX_OFFSET  = 8;
 const LERP_SPEED  = 120;
 
-let Gyroscope: typeof import('expo-sensors').Gyroscope | null = null;
+type GyroscopeModule = {
+  isAvailableAsync: () => Promise<boolean>;
+  setUpdateInterval: (intervalMs: number) => void;
+  addListener: (listener: (measurement: { x: number; y: number; z: number }) => void) => { remove: () => void };
+};
+
+let Gyroscope: GyroscopeModule | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  Gyroscope = require('expo-sensors').Gyroscope;
+  Gyroscope = require('expo-sensors').Gyroscope as GyroscopeModule;
 } catch {
   // expo-sensors not installed — idle float will be used instead.
 }

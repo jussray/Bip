@@ -90,7 +90,7 @@ export function CurtainSway({ intensity = 0.3, color = 'rgba(220,200,180,0.35)' 
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     top: 0,
   },
   curtain: {
