@@ -9,6 +9,8 @@ const parentSettings = fs.readFileSync(new URL('../app/(parent)/settings.tsx', i
 const requestFunction = fs.readFileSync(new URL('../supabase/functions/account-deletion-request/index.ts', import.meta.url), 'utf8');
 const cancelFunction = fs.readFileSync(new URL('../supabase/functions/account-request-cancel/index.ts', import.meta.url), 'utf8');
 const deleteFunction = fs.readFileSync(new URL('../supabase/functions/account-delete/index.ts', import.meta.url), 'utf8');
+const sweepScript = fs.readFileSync(new URL('../scripts/sweep-account-deletions.mjs', import.meta.url), 'utf8');
+const sweepWorkflow = fs.readFileSync(new URL('../.github/workflows/account-deletion-sweep.yml', import.meta.url), 'utf8');
 
 test('client uses deployed account deletion function names', () => {
   assert.match(service, /functions\.invoke\('account-deletion-request'/);
@@ -40,4 +42,19 @@ test('both account roles render the shared deletion controls', () => {
   assert.match(parentSettings, /<AccountDeletionControls\s*\/>/);
   assert.match(teenSettings, /Delete local device data/);
   assert.match(parentSettings, /Delete local device data/);
+});
+
+test('sweep script only processes expired, still-pending requests via the process secret', () => {
+  assert.match(sweepScript, /status: 'eq\.pending'/);
+  assert.match(sweepScript, /scheduled_for: `lte\.\$\{nowIso\}`/);
+  assert.match(sweepScript, /x-account-deletion-secret/);
+  assert.match(sweepScript, /functions\/v1\/account-delete/);
+});
+
+test('sweep workflow runs on a schedule against the production environment', () => {
+  assert.match(sweepWorkflow, /cron:/);
+  assert.match(sweepWorkflow, /environment:\s*production/);
+  assert.match(sweepWorkflow, /node scripts\/sweep-account-deletions\.mjs/);
+  assert.match(sweepWorkflow, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(sweepWorkflow, /ACCOUNT_DELETION_PROCESS_SECRET/);
 });
