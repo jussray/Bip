@@ -4,6 +4,32 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 
 > Warm, funny, soft, slightly nosy, and never clinical.
 
+## Why Se'kret Bip exists
+
+Teens need room to process emotions, build habits, and ask for support without feeling watched. Parents need a healthier way to stay connected without being given unrestricted access to private reflections.
+
+Se'kret Bip is designed around that tension: private by default, intentional sharing by choice, and relationship-based support instead of surveillance.
+
+## Who it is for
+
+- Teens who want a private, expressive space for journaling, voice reflection, emotional regulation, habits, and trusted connection.
+- Parents and guardians who want a consent-based window into what a teen intentionally chooses to share.
+- Youth-serving partners interested in privacy-preserving wellbeing, family communication, digital literacy, accessibility, and responsible AI.
+
+## What support unlocks
+
+Funding and strategic support are intended to accelerate concrete readiness milestones:
+
+- independent privacy and security review
+- teen and parent usability testing
+- accessibility testing and remediation
+- parent-side completion and end-to-end Bridge verification
+- moderation, safeguarding, and release-readiness work
+- infrastructure, AI, voice, storage, and device-testing costs
+- pilot preparation with qualified youth-serving organizations
+
+See `docs/SUPPORT_AND_PARTNERSHIPS.md` and `docs/FUNDER_OVERVIEW.md` for current support priorities and due-diligence guidance.
+
 ## Product promise
 
 - Private reflections stay private.
@@ -138,6 +164,8 @@ npm run verify:prepush
 - `docs/RLS_POLICY_AUDIT.md`
 - `docs/COPPA_COMPLIANCE.md`
 - `docs/PRIVACY_POLICY.md`
+- `docs/SUPPORT_AND_PARTNERSHIPS.md`
+- `docs/FUNDER_OVERVIEW.md`
 - `DEPLOYMENT.md`
 
 Documentation is an implementation guardrail. When code and docs disagree, fix the stale source.
