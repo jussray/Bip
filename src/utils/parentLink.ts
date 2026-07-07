@@ -2,15 +2,14 @@
 // Se'kret Bip — Parent ↔ Teen linking helpers
 
 import { getSupabase } from './supabase';
+import { mapParentInviteRpcError, type ParentInviteRpcErrorCode } from './parentLinkErrors';
 
 export const PARENT_INVITE_CODE_LENGTH = 8;
 
 export type ParentLinkErrorCode =
   | 'not_configured'
-  | 'not_authenticated'
-  | 'invalid_code'
-  | 'expired_or_used'
-  | 'server_error';
+  | ParentInviteRpcErrorCode
+  | 'expired_or_used';
 
 export type ParentLinkResult<T> =
   | { ok: true; value: T }
@@ -66,7 +65,7 @@ export async function generateInviteCodeResult(): Promise<ParentLinkResult<strin
     const { data, error } = await sb.rpc('create_parent_link_invite');
     if (error) {
       console.warn('[parentLink] generateInviteCode failed:', error.message);
-      return { ok: false, code: 'server_error', message: error.message || 'Could not create an invite code.' };
+      return mapParentInviteRpcError(error.message);
     }
 
     const code = typeof data === 'string' ? normalizeParentInviteCode(data) : '';
@@ -136,11 +135,7 @@ export async function redeemInviteCodeResult(code: string): Promise<ParentLinkRe
 
     if (error) {
       console.warn('[parentLink] redeemInviteCode failed:', error.message);
-      return {
-        ok: false,
-        code: 'expired_or_used',
-        message: 'That code is invalid, expired, or already used. Ask your teen for a new one.',
-      };
+      return mapParentInviteRpcError(error.message);
     }
 
     const teenId = extractRedeemedTeenId(data);
