@@ -117,19 +117,18 @@ export async function createBridgeShareRequest(
       };
     }
 
-    {
-      const headers = await backendAuthHeaders();
-      const response = await fetch(`${BASE_URL}/api/bridge/summary/generate`, {
-        method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId: data, idempotencyKey: input.idempotencyKey }),
-      });
-      if (!response.ok) {
-        return { ok: false, code: 'ai_unavailable', message: 'The share was saved, but the summary is still being prepared.', retryable: true };
-      }
+    const headers = await backendAuthHeaders();
+    const response = await fetch(`${BASE_URL}/api/bridge/summary/generate`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: data, idempotencyKey: input.idempotencyKey }),
+    });
+
+    if (!response.ok) {
+      return { ok: false, code: 'ai_unavailable', message: 'The share was saved, but the summary is still being prepared.', retryable: true };
     }
 
-    return { ok: true, value: { requestId: data, status: 'pending' } };
+    return { ok: true, value: { requestId: data, status: 'ready' } };
   } catch {
     return { ok: false, code: 'server_error', message: 'Could not create the Bridge share.', retryable: true };
   }
