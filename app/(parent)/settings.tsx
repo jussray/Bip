@@ -21,27 +21,28 @@ import {
   cancelDailyReminder,
 } from '@/utils/notifications';
 import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
+import { revokeParentLink } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
 const COMPANIONS = [
-  { key: 'soft',   name: 'Raylene', emoji: '💜', title: 'Big Sis', tagline: 'warm · protective · emotionally real' },
-  { key: 'rylane', name: 'Rylane',  emoji: '⚡', title: 'Loyal Bro', tagline: 'street smart · down to earth · no cap' },
+  { key: 'soft', name: 'Raylene', emoji: '💜', title: 'Big Sis', tagline: 'warm · protective · emotionally real' },
+  { key: 'rylane', name: 'Rylane', emoji: '⚡', title: 'Loyal Bro', tagline: 'street smart · down to earth · no cap' },
 ];
 
 const SEKRET_MODES = [
-  { key: 'soft',     emoji: '🌙', label: 'Soft' },
+  { key: 'soft', emoji: '🌙', label: 'Soft' },
   { key: 'realTalk', emoji: '🧠', label: 'Real Talk' },
   { key: 'distract', emoji: '😂', label: 'Distract' },
-  { key: 'listen',   emoji: '☁️', label: 'Just Listen' },
-  { key: 'push',     emoji: '🔥', label: 'Push Me' },
+  { key: 'listen', emoji: '☁️', label: 'Just Listen' },
+  { key: 'push', emoji: '🔥', label: 'Push Me' },
 ];
 
 const SLEEP_OPTIONS: Array<{ label: string; value: SleepWindow | null }> = [
-  { label: 'Off',         value: null },
-  { label: '10pm – 7am',  value: { start: '22:00', end: '07:00' } },
-  { label: '11pm – 8am',  value: { start: '23:00', end: '08:00' } },
+  { label: 'Off', value: null },
+  { label: '10pm – 7am', value: { start: '22:00', end: '07:00' } },
+  { label: '11pm – 8am', value: { start: '23:00', end: '08:00' } },
 ];
 
 type RedeemStatus = 'idle' | 'ok' | 'not_found' | 'error';
@@ -63,10 +64,11 @@ export default function SettingsScreen() {
 
   const { sleepWindow, setSleepWindow } = useSleepGuard();
 
-  const [inviteCode,   setInviteCode]   = useState('');
+  const [inviteCode, setInviteCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [codeInput,    setCodeInput]    = useState('');
-  const [isRedeeming,  setIsRedeeming]  = useState(false);
+  const [codeInput, setCodeInput] = useState('');
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [isUnlinking, setIsUnlinking] = useState(false);
   const [redeemStatus, setRedeemStatus] = useState<RedeemStatus>('idle');
 
   async function handleNotificationToggle(enabled: boolean) {
@@ -89,12 +91,12 @@ export default function SettingsScreen() {
 
   function handleDeleteData() {
     Alert.alert(
-      'Delete your data?',
-      'This clears everything saved on this device — journal entries, moods, voice bips, and settings. This cannot be undone.',
+      'Delete local data?',
+      'This clears data saved on this device only. It does not delete your account or server data.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete local data',
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.clear();
@@ -106,15 +108,37 @@ export default function SettingsScreen() {
     );
   }
 
+  function handleUnlinkTeen() {
+    Alert.alert(
+      'Unlink teen?',
+      'Your linked access will be removed immediately. A new invite is required to reconnect.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unlink',
+          style: 'destructive',
+          onPress: async () => {
+            setIsUnlinking(true);
+            const revoked = await revokeParentLink();
+            setIsUnlinking(false);
+            if (revoked) {
+              setInviteCode('');
+              Alert.alert('Teen unlinked', 'Your linked access has been removed.');
+            } else {
+              Alert.alert('Could not unlink', 'No active link was found, or the connection could not be updated.');
+            }
+          },
+        },
+      ],
+    );
+  }
+
   const handleGenerateCode = useCallback(async () => {
     setIsGenerating(true);
     const code = await createParentLink();
     setIsGenerating(false);
-    if (code) {
-      setInviteCode(code);
-    } else {
-      Alert.alert('Not signed in', 'Sign in to your account first, then generate a link code.');
-    }
+    if (code) setInviteCode(code);
+    else Alert.alert('Not signed in', 'Sign in to your account first, then generate a link code.');
   }, []);
 
   const handleCopyCode = useCallback(() => {
@@ -129,8 +153,7 @@ export default function SettingsScreen() {
     const raw = await redeemParentLink(codeInput);
     setIsRedeeming(false);
     const VALID: RedeemStatus[] = ['idle', 'ok', 'not_found', 'error'];
-    const result = VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error';
-    setRedeemStatus(result);
+    setRedeemStatus(VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error');
   }, [codeInput]);
 
   return (
@@ -202,13 +225,14 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.button} onPress={handleRedeemCode} disabled={isRedeeming}>
           <Text style={styles.buttonText}>{isRedeeming ? 'Connecting…' : 'Redeem code'}</Text>
         </TouchableOpacity>
-        {redeemStatus !== 'idle' && (
-          <Text style={styles.hint}>Status: {redeemStatus}</Text>
-        )}
+        {redeemStatus !== 'idle' && <Text style={styles.hint}>Status: {redeemStatus}</Text>}
+        <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkTeen} disabled={isUnlinking}>
+          <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink teen'}</Text>
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
         <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleDeleteData}>
-          <Text style={styles.buttonText}>Delete local data</Text>
+          <Text style={styles.buttonText}>Delete local device data</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -216,20 +240,20 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#130b24' },
-  content:      { padding: 20, paddingBottom: 80 },
-  title:        { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 20 },
+  container: { flex: 1, backgroundColor: '#130b24' },
+  content: { padding: 20, paddingBottom: 80 },
+  title: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 20 },
   sectionTitle: { color: '#c4b5fd', fontWeight: '800', fontSize: 16, marginTop: 18, marginBottom: 8 },
-  row:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
-  label:        { color: '#fff', fontWeight: '700' },
-  option:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
-  optionText:   { color: '#fff', flex: 1 },
-  check:        { color: '#a78bfa', fontWeight: '900', fontSize: 18 },
-  button:       { padding: 14, borderRadius: 16, backgroundColor: '#a78bfa', alignItems: 'center', marginBottom: 10 },
-  danger:       { backgroundColor: '#ef4444' },
-  buttonText:   { color: '#1e1236', fontWeight: '800' },
-  codeBox:      { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#a78bfa', alignItems: 'center', marginBottom: 10 },
-  codeText:     { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 3 },
-  hint:         { color: '#c4b5fd', textAlign: 'center', marginBottom: 10 },
-  input:        { color: '#fff', borderWidth: 1, borderColor: '#6d5aa5', borderRadius: 14, padding: 12, marginBottom: 10 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
+  label: { color: '#fff', fontWeight: '700' },
+  option: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
+  optionText: { color: '#fff', flex: 1 },
+  check: { color: '#a78bfa', fontWeight: '900', fontSize: 18 },
+  button: { padding: 14, borderRadius: 16, backgroundColor: '#a78bfa', alignItems: 'center', marginBottom: 10 },
+  danger: { backgroundColor: '#ef4444' },
+  buttonText: { color: '#1e1236', fontWeight: '800' },
+  codeBox: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#a78bfa', alignItems: 'center', marginBottom: 10 },
+  codeText: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 3 },
+  hint: { color: '#c4b5fd', textAlign: 'center', marginBottom: 10 },
+  input: { color: '#fff', borderWidth: 1, borderColor: '#6d5aa5', borderRadius: 14, padding: 12, marginBottom: 10 },
 });

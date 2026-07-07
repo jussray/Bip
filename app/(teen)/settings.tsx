@@ -21,6 +21,7 @@ import {
   cancelDailyReminder,
 } from '@/utils/notifications';
 import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
+import { revokeParentLink } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
@@ -67,6 +68,7 @@ export default function SettingsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [codeInput,    setCodeInput]    = useState('');
   const [isRedeeming,  setIsRedeeming]  = useState(false);
+  const [isUnlinking,  setIsUnlinking]  = useState(false);
   const [redeemStatus, setRedeemStatus] = useState<RedeemStatus>('idle');
 
   async function handleNotificationToggle(enabled: boolean) {
@@ -89,17 +91,42 @@ export default function SettingsScreen() {
 
   function handleDeleteData() {
     Alert.alert(
-      'Delete your data?',
-      'This clears everything saved on this device — journal entries, moods, voice bips, and settings. This cannot be undone.',
+      'Delete local data?',
+      'This clears data saved on this device only. It does not delete your account or server data.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete local data',
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.clear();
             resetApp();
             router.replace('/(onboarding)/welcome' as any);
+          },
+        },
+      ],
+    );
+  }
+
+  function handleUnlinkParent() {
+    Alert.alert(
+      'Unlink parent?',
+      'Your parent will immediately lose linked access. You can create a new invite later.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unlink',
+          style: 'destructive',
+          onPress: async () => {
+            setIsUnlinking(true);
+            const revoked = await revokeParentLink();
+            setIsUnlinking(false);
+            if (revoked) {
+              setInviteCode('');
+              Alert.alert('Parent unlinked', 'Linked access has been removed.');
+            } else {
+              Alert.alert('Could not unlink', 'No active link was found, or the connection could not be updated.');
+            }
           },
         },
       ],
@@ -205,10 +232,13 @@ export default function SettingsScreen() {
         {redeemStatus !== 'idle' && (
           <Text style={styles.hint}>Status: {redeemStatus}</Text>
         )}
+        <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkParent} disabled={isUnlinking}>
+          <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink parent'}</Text>
+        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
         <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleDeleteData}>
-          <Text style={styles.buttonText}>Delete local data</Text>
+          <Text style={styles.buttonText}>Delete local device data</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const linkSrc = fs.readFileSync(new URL('../src/utils/parentLink.ts', import.meta.url), 'utf8');
 const reconcileSql = fs.readFileSync(new URL('../supabase/migrations/20260630003000_reconcile_parent_link_contract.sql', import.meta.url), 'utf8');
+const revokeSql = fs.readFileSync(new URL('../supabase/migrations/20260707022000_revoke_parent_link.sql', import.meta.url), 'utf8');
 
 test('invite creation uses the protected RPC', () => {
   assert.match(linkSrc, /\.rpc\('create_parent_link_invite'\)/);
@@ -52,8 +53,21 @@ test('linked teen lookup reads only active links', () => {
   assert.match(linkSrc, /fetchLinkedTeenId[\s\S]*?\.eq\('status', 'active'\)[\s\S]*?\.eq\('is_active', true\)/s);
 });
 
-test('revocation updates only the teen active link', () => {
-  assert.match(linkSrc, /revokeParentLink[\s\S]*?\.eq\('teen_user_id', uid\)[\s\S]*?\.eq\('status', 'active'\)/s);
+test('revocation uses an authenticated RPC instead of a client-side table update', () => {
+  assert.match(linkSrc, /revokeParentLink[\s\S]*?\.rpc\('revoke_parent_link'\)/s);
+  assert.doesNotMatch(linkSrc, /revokeParentLink[\s\S]*?\.from\('parent_links'\)/s);
+  assert.match(revokeSql, /v_user_id uuid := auth\.uid\(\)/);
+  assert.match(revokeSql, /teen_user_id = v_user_id or parent_user_id = v_user_id/);
+  assert.match(revokeSql, /status in \('pending', 'active'\)/);
+  assert.match(revokeSql, /status = 'revoked'/);
+  assert.match(revokeSql, /is_active = false/);
+  assert.match(revokeSql, /verification_state = 'PENDING_PARENT'/);
+  assert.match(revokeSql, /parent_link_state = 'revoked'/);
+});
+
+test('revocation RPC is authenticated-only', () => {
+  assert.match(revokeSql, /revoke execute on function public\.revoke_parent_link\(\) from public, anon/);
+  assert.match(revokeSql, /grant execute on function public\.revoke_parent_link\(\) to authenticated/);
 });
 
 test('link helpers return actionable failures without Supabase or auth', () => {
