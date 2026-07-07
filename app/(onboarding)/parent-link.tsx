@@ -14,7 +14,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import {
   PARENT_INVITE_CODE_LENGTH,
-  fetchLinkedTeenId,
   normalizeParentInviteCode,
   redeemInviteCodeResult as redeemInviteCode,
 } from '@/utils/parentLink';
@@ -35,11 +34,6 @@ export default function ParentLinkOnboarding() {
   const normalized = normalizeParentInviteCode(code);
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
 
-  async function verifyRedeemedLink(expectedTeenId: string): Promise<boolean> {
-    const activeTeenId = await fetchLinkedTeenId();
-    return Boolean(activeTeenId && activeTeenId === expectedTeenId);
-  }
-
   async function handleLink() {
     if (!ready) {
       setError('Enter the full eight-character code from your teen.');
@@ -56,20 +50,14 @@ export default function ParentLinkOnboarding() {
         return;
       }
 
-      const verified = await verifyRedeemedLink(result.value);
-      if (!verified) {
-        setError('The code was received, but the connection could not be confirmed. Try again before entering Parent Side.');
-        await AsyncStorage.multiRemove(['parent_profile_done', 'linked_teen_id']);
-        return;
-      }
-
       setUserSide('parent');
       await AsyncStorage.multiSet([
         ['parent_profile_done', 'true'],
-        ['linked_teen_id', result.value],
+        ['linked_teen_id', result.value.teenUserId],
       ]);
       router.replace('/(parent)/room');
     } catch {
+      await AsyncStorage.multiRemove(['parent_profile_done', 'linked_teen_id']);
       setError('Could not connect right now. Check your connection and try again.');
     } finally {
       setLoading(false);
