@@ -225,22 +225,15 @@ export async function fetchLinkedParentId(): Promise<string | null> {
 export async function revokeParentLink(): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;
-  const uid = await currentUserId();
-  if (!uid) return false;
 
   try {
-    const { error } = await sb
-      .from('parent_links')
-      .update({ status: 'revoked', is_active: false })
-      .eq('teen_user_id', uid)
-      .eq('status', 'active');
-
+    const { data, error } = await sb.rpc('revoke_parent_link');
     if (error) {
       console.warn('[parentLink] revokeParentLink failed:', error.message);
       return false;
     }
 
-    return true;
+    return data === true;
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);
     return false;
