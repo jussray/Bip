@@ -100,3 +100,66 @@ Fix the highest-impact failure, rerun locally, and optionally ingest unresolved 
 ## MCP direction
 
 The existing Control Room can later coordinate read-only connectors for GitHub, Supabase, Cloudflare, Expo/EAS, Companion Lab, and local execution. Suggested fixes, PR creation, merging, and deployment should remain separate permission levels requiring explicit approval.
+
+## Repo placement rule
+
+The Control Room has one founder entry:
+
+```text
+app/(dev)/control-room.tsx -> src/screens/DevControlRoomScreen.tsx
+```
+
+Build new Control Room capability only in the existing screen/workspace and approved support folders:
+
+- `src/screens/DevControlRoomScreen.tsx`
+- `src/screens/DevControlRoomWorkspace.tsx`
+- `src/features/control-room/` when UI needs component splits
+- `src/services/controlRoom*`
+- `src/config/controlRoom*`
+- `src/types/controlRoom*`
+- `scripts/control-room-*.mjs` and `scripts/control-room-agent.mjs`
+- `docs/CONTROL_ROOM*.md`
+
+Do not create `control-room/`, `apps/control-room/`, `founder-os/`, `operations-center/`, new dashboard routes, or a standalone app unless explicitly approved later.
+
+The structural scan enforces the highest-risk parts of this rule by failing on known parallel Control Room roots and by checking that `app/(dev)/control-room.tsx` still exports the existing founder screen.
+
+## Control Room OS V1
+
+Control Room OS V1 is the founder operating layer for shipping Bip. Bip remains the first product; Control Room exists to make launching, observing, testing, recovering, and improving Bip faster and safer.
+
+### Mission Engine
+
+The mission engine is scaffolded in `src/config/controlRoomOs.ts` and `src/services/controlRoomMissionEngine.ts`. It defines the founder's morning actions as missions instead of terminal commands:
+
+- Launch Bip
+- Continue Yesterday
+- Verify Local
+- Ship Release
+- Recover System
+
+The existing founder dashboard renders these missions inside `src/screens/DevControlRoomWorkspace.tsx` so the founder does not need a second dashboard or a standalone operations app.
+
+### Worker and connector registries
+
+Workers and connectors are registries, not hardcoded single points of failure. V1 includes local-first workers and provider connectors with explicit fallback notes for GitHub, Supabase, Expo, Gmail, and the filesystem.
+
+GitHub remains project memory and source of truth, but local git and local reports keep execution unblocked when hosted services fail.
+
+### Local Agent
+
+The local agent lives at `scripts/control-room-agent.mjs` and only runs allowlisted missions. It intentionally rejects arbitrary shell passthrough.
+
+Allowed local missions include:
+
+```bash
+npm run control-room:agent -- --help
+npm run control-room:mission:launch-bip
+npm run control-room:mission:verify-local
+```
+
+Remote access must stay authenticated before this becomes anything other than a localhost/default local process.
+
+### Founder notifications
+
+Gmail is treated as a connector for mission reports, failure alerts, daily briefings, release summaries, and founder notifications. The configured destination is `sekretbip@gmail.com`.
