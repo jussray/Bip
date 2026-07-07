@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { PERSONALITY_CONFIG } from '@/services/ai/personalities';
-import { PERSONA_OPERATIONS } from '@/config/personaOperations';
-import { PROMPT_OS_ENTRIES, PROMPT_OS_SCOPE, type PromptOsCategory } from '@/config/promptOs';
+import { PERSONA_OPERATIONS } from '@/config/controlRoomPersonaOperations';
+import { PROMPT_OS_ENTRIES, PROMPT_OS_SCOPE, type PromptOsCategory } from '@/config/controlRoomPromptOs';
 
 type Panel = 'library' | 'personas' | 'quality' | 'deployments';
 const categories: Array<'all' | PromptOsCategory> = ['all', 'personas', 'system', 'redteam', 'engineering', 'release'];
