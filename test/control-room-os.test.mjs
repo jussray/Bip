@@ -4,6 +4,9 @@ import test from 'node:test';
 
 const config = fs.readFileSync('src/config/controlRoomOs.ts', 'utf8');
 const agent = fs.readFileSync('scripts/control-room-agent.mjs', 'utf8');
+const localRunner = fs.readFileSync('scripts/control-room-local.js', 'utf8');
+const verificationRegistry = JSON.parse(fs.readFileSync('src/config/controlRoomVerificationRegistry.json', 'utf8'));
+const placement = fs.readFileSync('src/config/controlRoomPlacement.ts', 'utf8');
 const workspace = fs.readFileSync('src/screens/DevControlRoomWorkspace.tsx', 'utf8');
 
 test('Control Room OS defines founder-first V1 missions inside the existing workspace', () => {
@@ -31,4 +34,18 @@ test('connector and worker registries preserve fallbacks for provider failure', 
   }
   assert.match(config, /fallback:/);
   assert.match(config, /sekretbip@gmail.com/);
+});
+
+
+test('verification registry stays owned by Control Room config, not agent-local duplicates', () => {
+  assert.equal(verificationRegistry.owner, 'Control Room');
+  assert.ok(verificationRegistry.checks.length >= 10);
+  for (const check of verificationRegistry.checks) {
+    assert.equal(typeof check.id, 'string');
+    assert.equal(typeof check.command, 'string');
+    assert.ok(Array.isArray(check.args));
+  }
+  assert.match(localRunner, /controlRoomVerificationRegistry\.json/);
+  assert.match(localRunner, /path\.resolve\(__dirname, '\.\.'\)/);
+  assert.match(placement, /\.agents\/verification-registry\.json/);
 });
