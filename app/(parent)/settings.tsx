@@ -23,6 +23,7 @@ import {
 import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
 import { revokeParentLink } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
+import { AccountDeletionControls } from '@/components/settings/AccountDeletionControls';
 
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
@@ -231,6 +232,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
+        <AccountDeletionControls />
         <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleDeleteData}>
           <Text style={styles.buttonText}>Delete local device data</Text>
         </TouchableOpacity>
