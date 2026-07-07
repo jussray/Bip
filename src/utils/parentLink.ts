@@ -40,18 +40,25 @@ function firstRedeemRow(data: unknown): RedeemParentLinkRow | null {
   return data && typeof data === 'object' ? (data as RedeemParentLinkRow) : null;
 }
 
+function extractRedeemedTeenId(data: unknown): string | null {
+  const row = firstRedeemRow(data);
+  return typeof row?.teen_user_id === 'string' && row.teen_user_id.length > 0
+    ? row.teen_user_id
+    : null;
+}
+
 function parseRedeemedParentLink(data: unknown, expectedParentId: string): RedeemedParentLink | null {
   const row = firstRedeemRow(data);
-  if (!row) return null;
+  const teenUserId = extractRedeemedTeenId(data);
+  if (!row || !teenUserId) return null;
   if (typeof row.link_id !== 'string' || row.link_id.length === 0) return null;
-  if (typeof row.teen_user_id !== 'string' || row.teen_user_id.length === 0) return null;
   if (typeof row.parent_user_id !== 'string' || row.parent_user_id !== expectedParentId) return null;
   if (row.status !== 'active') return null;
   if (row.activated_at != null && typeof row.activated_at !== 'string') return null;
 
   return {
     linkId: row.link_id,
-    teenUserId: row.teen_user_id,
+    teenUserId,
     parentUserId: row.parent_user_id,
     status: 'active',
     activatedAt: row.activated_at ?? null,
