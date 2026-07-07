@@ -20,7 +20,7 @@ export interface CreateBridgeShareRequestInput {
 
 export interface CreateBridgeShareRequestValue {
   requestId: string;
-  status: 'pending';
+  status: 'pending' | 'ready';
 }
 
 export type CreateBridgeShareRequestResult = RelationshipResult<CreateBridgeShareRequestValue>;
