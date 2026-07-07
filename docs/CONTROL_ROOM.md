@@ -1,94 +1,102 @@
 # Bip Control Room
 
-Bip Control Room is the local-first verification layer for Se'kret Bip. It exists so development can keep moving even when GitHub-hosted Actions minutes are exhausted or unavailable.
+Bip already has a founder-only Control Room UI at `src/screens/DevControlRoomWorkspace.tsx`. This document covers the local verification engine that feeds that existing system when GitHub-hosted Actions minutes are exhausted or unavailable.
 
 ## Why this exists
 
-GitHub Actions is useful, but it should not be the only engineering gate. When the account has no hosted-runner minutes left, jobs can be created but fail before a runner starts. Control Room gives the repo a local verification path that does not depend on paid GitHub Actions minutes.
+GitHub Actions is useful, but it should not be the only engineering gate. When the account has no hosted-runner minutes left, jobs can be created but fail before a runner starts.
 
-## Current mode
+The local Control Room path lets daily development continue without paid GitHub Actions minutes.
 
-The first implementation is local and read-only:
+## Local verification
+
+Run:
 
 ```bash
 npm run verify:local
 ```
 
-This runs the repo's existing checks and writes reports to:
+This executes the repo's existing checks and writes:
 
 ```text
 reports/control-room/latest.json
 reports/control-room/latest.md
 ```
 
-## What it checks
+The verifier currently covers:
 
-The local verifier currently runs:
-
-- runtime asset audit
-- Control Room structural scan
-- Supabase RLS scan
-- companion asset validation
-- TypeScript type-check
+- runtime assets
+- Control Room structure
+- Supabase RLS
+- companion assets
+- TypeScript
 - lint
 - unit tests
-- voice intelligence test
-- Oracle discovery test
-- room archive verification
+- voice intelligence
+- Oracle discovery
+- room archives
 
-## How to use it
+If the report says `Push safe: yes`, the branch passed the required local checks. If it says `Push safe: no`, open `reports/control-room/latest.md` and fix the listed failure.
 
-Before pushing:
+## Publish failures into the existing founder Control Room
 
-```bash
-npm run verify:local
+The app's Control Room reads Supabase-backed audit events and issues. A local JSON file alone is not visible to the app.
+
+To publish failed checks into the existing Control Room, first configure these values in the local shell or Codespace secret store:
+
+```text
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
 ```
 
-If the report says `Push safe: yes`, the branch is locally healthy enough to push.
+Then run:
 
-If it says `Push safe: no`, open `reports/control-room/latest.md` and fix the failing area first.
+```bash
+npm run verify:local:ingest
+```
+
+This command:
+
+1. runs the local verification suite
+2. reads the generated report
+3. publishes only failed checks into `audit_events`
+4. upserts matching `control_room_issues`
+
+The existing founder Control Room can then display those failures under its current Issues workflow.
+
+Ingestion is deliberately opt-in. `scripts/control-room-ingest-local-report.mjs` refuses to run unless `CONTROL_ROOM_INGEST=1` is set by the npm command.
 
 ## Relationship to GitHub Actions
 
-Control Room does not remove GitHub Actions. It demotes Actions from the only gate to a backup gate.
+Recommended split while hosted minutes are unavailable:
 
-Recommended split while Actions minutes are constrained:
-
-- local Control Room for daily development
-- GitHub Actions for release candidates, final PR verification, deployment confirmation, or when minutes/budget are available
+- local Control Room for daily verification
+- existing founder Control Room for issue review and operating history
+- GitHub Actions only for release candidates, final PR verification, or deployment confirmation when minutes become available
 
 ## Secret rules
 
-Control Room must not require secrets for local verification.
-
-- Do not put a GitHub PAT in React Native, Expo public env vars, committed files, or report files.
-- Do not put OpenAI API keys in app code or reports.
-- Do not run companion test fixtures on real teen private data.
-- Do not silently deploy, merge, or rewrite production configuration from Control Room.
+- Never commit `SUPABASE_SERVICE_ROLE_KEY`.
+- Store it only in a local/Codespace secret manager.
+- Never put a GitHub PAT in React Native, Expo public variables, report files, or app code.
+- Never put OpenAI API keys in app code or reports.
+- Never use real teen private content as test or audit fixtures.
+- Local ingestion may create audit records and Control Room issues, but it does not merge, deploy, or rewrite production configuration.
 
 ## OODA model
 
 ### Observe
-Run local checks and collect the real state of the repo.
+Run real repository checks locally.
 
 ### Orient
-Group failures by app, companions, Supabase, voice, Oracle, assets, and code quality.
+Group failures by app, companions, Supabase, voice, Oracle, assets, tests, and code quality.
 
 ### Decide
-Mark the branch as push-safe or blocked.
+Mark the branch push-safe or blocked.
 
 ### Act
-Fix the highest-impact blocker, rerun locally, then push only when the report is green.
+Fix the highest-impact failure, rerun locally, and optionally ingest unresolved failures into the existing founder Control Room.
 
-## Future MCP direction
+## MCP direction
 
-Control Room can later coordinate MCP-style connectors for:
-
-- GitHub repository and PR state
-- Supabase schema, RLS, storage, and advisors
-- Cloudflare Worker deploys, secrets, and routes
-- Expo/EAS build readiness
-- Companion Lab scoring
-- local runner execution
-
-These connectors should start read-only, then progress to suggested fixes and PR creation only with explicit approval.
+The existing Control Room can later coordinate read-only connectors for GitHub, Supabase, Cloudflare, Expo/EAS, Companion Lab, and local execution. Suggested fixes, PR creation, merging, and deployment should remain separate permission levels requiring explicit approval.
