@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
-const registryPath = path.join(repoRoot, '.agents', 'verification-registry.json');
+const registryPath = path.join(repoRoot, 'src', 'config', 'controlRoomVerificationRegistry.ts');
 const lastRunPath = path.join(repoRoot, '.agents', 'verification-last-run.json');
 
 const env = { ...process.env };
@@ -16,7 +16,10 @@ if (env.NODE_ENV !== 'ci') {
   if (env.SKIP_E2E === undefined) env.SKIP_E2E = '1';
 }
 
-const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
+const registrySource = readFileSync(registryPath, 'utf8');
+const registryMatch = registrySource.match(/CONTROL_ROOM_VERIFICATION_REGISTRY\s*=\s*(\[[\s\S]*?\])\s*as const;/);
+if (!registryMatch) throw new Error('Could not parse Control Room verification registry');
+const registry = JSON.parse(registryMatch[1]);
 const checks = registry.filter((entry) => entry.key !== 'verify:release');
 const now = new Date().toISOString();
 const results = [];

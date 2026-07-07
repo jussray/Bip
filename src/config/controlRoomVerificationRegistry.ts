@@ -1,4 +1,4 @@
-[
+export const CONTROL_ROOM_VERIFICATION_REGISTRY = [
   {
     "key": "verify:types",
     "label": "Types",
@@ -98,4 +98,4 @@
     "track": "Control Room OS",
     "description": "Meta-verification: runs all of the above in order; blocks if any non-skipped check fails"
   }
-]
+] as const;

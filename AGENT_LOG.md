@@ -63,3 +63,13 @@ WRONG: none
 PRESERVED: All existing scripts, tests, and worker files untouched. Registry calls existing npm scripts only.
 REMAINS: Control Room OS UI to surface .agents/verification-last-run.json as a visual dashboard. verify:release guard not yet wired to Ship Release button flow.
 ---
+---
+DATE: 2026-07-07
+AGENT: Codex
+TRACK: Control Room OS
+ACTION: Moved Verification Registry source of truth from .agents into src/config/controlRoomVerificationRegistry.ts and updated verify-local to consume the Control Room OS config registry while keeping .agents/verification-last-run.json as generated runtime state.
+WHY: The registry is product architecture for Control Room OS, not agent-private metadata; missions, workers, connectors, UI, and local verification should share one authoritative config source.
+WRONG: Initial registry location under .agents made it look agent-owned instead of Control Room-owned.
+PRESERVED: Existing verification units, commands, skip semantics, local defaults, and generated last-run report path.
+REMAINS: Control Room OS UI still needs to render .agents/verification-last-run.json.
+---
