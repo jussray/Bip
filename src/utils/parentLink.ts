@@ -15,6 +15,14 @@ export type ParentLinkResult<T> =
   | { ok: true; value: T }
   | { ok: false; code: ParentLinkErrorCode; message: string };
 
+export interface RedeemedParentLink {
+  linkId: string;
+  teenUserId: string;
+  parentUserId: string;
+  status: 'active';
+  activatedAt: string | null;
+}
+
 interface RedeemParentLinkRow {
   link_id?: unknown;
   teen_user_id?: unknown;
@@ -27,16 +35,27 @@ export function normalizeParentInviteCode(value: string): string {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, PARENT_INVITE_CODE_LENGTH);
 }
 
-function extractRedeemedTeenId(data: unknown): string | null {
-  const row: RedeemParentLinkRow | null = Array.isArray(data)
-    ? ((data[0] as RedeemParentLinkRow | undefined) ?? null)
-    : data && typeof data === 'object'
-      ? (data as RedeemParentLinkRow)
-      : null;
+function firstRedeemRow(data: unknown): RedeemParentLinkRow | null {
+  if (Array.isArray(data)) return (data[0] as RedeemParentLinkRow | undefined) ?? null;
+  return data && typeof data === 'object' ? (data as RedeemParentLinkRow) : null;
+}
 
-  return typeof row?.teen_user_id === 'string' && row.teen_user_id.length > 0
-    ? row.teen_user_id
-    : null;
+function parseRedeemedParentLink(data: unknown, expectedParentId: string): RedeemedParentLink | null {
+  const row = firstRedeemRow(data);
+  if (!row) return null;
+  if (typeof row.link_id !== 'string' || row.link_id.length === 0) return null;
+  if (typeof row.teen_user_id !== 'string' || row.teen_user_id.length === 0) return null;
+  if (typeof row.parent_user_id !== 'string' || row.parent_user_id !== expectedParentId) return null;
+  if (row.status !== 'active') return null;
+  if (row.activated_at != null && typeof row.activated_at !== 'string') return null;
+
+  return {
+    linkId: row.link_id,
+    teenUserId: row.teen_user_id,
+    parentUserId: row.parent_user_id,
+    status: 'active',
+    activatedAt: row.activated_at ?? null,
+  };
 }
 
 async function currentUserId(): Promise<string | null> {
@@ -112,7 +131,7 @@ export async function fetchPendingInviteCode(): Promise<string | null> {
   }
 }
 
-export async function redeemInviteCodeResult(code: string): Promise<ParentLinkResult<string>> {
+export async function redeemInviteCodeResult(code: string): Promise<ParentLinkResult<RedeemedParentLink>> {
   const sb = getSupabase();
   if (!sb) {
     return { ok: false, code: 'not_configured', message: 'The secure connection service is not configured.' };
@@ -138,16 +157,16 @@ export async function redeemInviteCodeResult(code: string): Promise<ParentLinkRe
       return mapParentInviteRpcError(error.message);
     }
 
-    const teenId = extractRedeemedTeenId(data);
-    if (!teenId) {
+    const redeemedLink = parseRedeemedParentLink(data, userId);
+    if (!redeemedLink) {
       return {
         ok: false,
-        code: 'expired_or_used',
-        message: 'That code could not be connected. Ask your teen for a new one.',
+        code: 'server_error',
+        message: 'The connection response could not be verified. Try again before entering Parent Side.',
       };
     }
 
-    return { ok: true, value: teenId };
+    return { ok: true, value: redeemedLink };
   } catch (error) {
     if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);
     return { ok: false, code: 'server_error', message: 'Could not connect right now. Check your connection and try again.' };
@@ -156,7 +175,7 @@ export async function redeemInviteCodeResult(code: string): Promise<ParentLinkRe
 
 export async function redeemInviteCode(code: string): Promise<string | null> {
   const result = await redeemInviteCodeResult(code);
-  return result.ok ? result.value : null;
+  return result.ok ? result.value.teenUserId : null;
 }
 
 export async function fetchLinkedTeenId(): Promise<string | null> {
