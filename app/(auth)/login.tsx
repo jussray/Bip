@@ -75,7 +75,13 @@ export default function LoginScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <TouchableOpacity style={styles.btn} onPress={handleSignIn} disabled={loading}>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={handleSignIn}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel="Sign In"
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -83,11 +89,22 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.push('/(auth)/signup')} style={styles.link}>
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/signup')}
+          style={styles.link}
+          accessibilityRole="link"
+          accessibilityLabel="New here? Create an account"
+        >
           <Text style={styles.linkText}>New here? Create an account</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSkip} style={styles.skip} disabled={loading}>
+        <TouchableOpacity
+          onPress={handleSkip}
+          style={styles.skip}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel="Skip — use without an account"
+        >
           <Text style={styles.skipText}>Skip — use without an account</Text>
         </TouchableOpacity>
       </View>
