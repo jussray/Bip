@@ -23,12 +23,17 @@ git rev-parse HEAD
 Read current workflow triggers, path filters, jobs, required secrets, and branch conditions.
 When available, inspect branch protection and required-check configuration too.
 
+Read `docs/CLOUDFLARE_OWNERSHIP.md` for deployment ownership:
+- backend Worker: `bip`
+- frontend Cloudflare Pages project: owner-confirmed `sekret`, configured through `CLOUDFLARE_PAGES_PROJECT_NAME`
+
 ## Release Gate Checklist
 
 ### 1. Change Classification
 Classify the change as one or more of:
 - app/UI-only
-- Worker/API
+- backend Worker/API (`bip`)
+- web frontend/Cloudflare Pages (`sekret`)
 - Supabase migration/RLS
 - Supabase Edge Function
 - native dependency/config
@@ -58,9 +63,9 @@ State the target: PR merge only, beta/preview build, staging deploy, or producti
 If the target environment is unavailable, mark the verification as BLOCKED or MANUAL GATE.
 Do not describe it as passed.
 
-### 4. Worker Deploy Readiness — when `worker/`, Wrangler config, or bindings changed
+### 4. Backend Worker Deploy Readiness — when `worker/`, `wrangler.toml`, or bindings changed
 - [ ] Confirm changed Worker entry points compile.
-- [ ] Confirm the target Worker and environment. Production Worker name is `sekret`.
+- [ ] Confirm `wrangler.toml` still names the production backend Worker `bip`.
 - [ ] Compare Wrangler bindings with all changed secret/config references.
 - [ ] Confirm elevated credentials are not client-exposed or logged.
 - [ ] Run `bip-worker-guardian`.
@@ -70,13 +75,23 @@ If a configured staging Worker exists, validate there before production. If stag
 do not invent it as a gate: document the available local/preview path, run applicable tests, and
 require explicit production-deploy approval.
 
-### 5. Environment Variable Completeness — when configuration changed
+### 5. Web Frontend / Cloudflare Pages Readiness — when Expo web or Pages deployment changed
+- [ ] Run the web export and Playwright smoke tests.
+- [ ] Confirm `.github/workflows/deploy-cloudflare.yml` deploys `dist` to Cloudflare Pages.
+- [ ] Verify repository variable `CLOUDFLARE_PAGES_PROJECT_NAME` is set to the intended frontend project; owner-confirmed production target is `sekret`.
+- [ ] Verify the purchased custom domain is attached to that Pages project.
+- [ ] Verify `EXPO_PUBLIC_BACKEND_URL` points to the backend `bip` Worker endpoint.
+- [ ] Confirm no backend secret is exposed in the client bundle.
+
+Do not treat a successful `bip` Worker deployment as proof that the `sekret` frontend deployed, or vice versa.
+
+### 6. Environment Variable Completeness — when configuration changed
 - [ ] Compare code references against current example/config files.
 - [ ] Confirm each new variable is documented and provisioned in the target environment.
 - [ ] Confirm secrets are not hardcoded, committed, printed, or bundled client-side.
 - [ ] Confirm client-exposed variables contain only intentionally public values.
 
-### 6. Expo/EAS Readiness — when app config, native modules, or release metadata changed
+### 7. Expo/EAS Readiness — when app config, native modules, or release metadata changed
 - [ ] Confirm the applicable EAS profile and platform.
 - [ ] Confirm version/build-number policy for beta or production.
 - [ ] Confirm native changes receive a new native build rather than OTA-only delivery.
@@ -85,16 +100,17 @@ require explicit production-deploy approval.
 Documentation-only, agent-instruction-only, or server-only PRs do not require EAS unless repository
 policy explicitly says otherwise.
 
-### 7. Conditional Product Gates
+### 8. Conditional Product Gates
 - [ ] Supabase/data boundary changes: `bip-privacy-redteam` passed.
 - [ ] Worker endpoint changes: `bip-worker-guardian` passed.
 - [ ] AI/prompt/summary changes: `bip-ai-review` passed.
 - [ ] User-facing copy changes: `bip-voice-guard` passed.
 - [ ] Beta/release candidate: `bip-beta-checklist` passed for affected journeys.
 
-### 8. Deployment Reality Check — deploys/releases only
+### 9. Deployment Reality Check — deploys/releases only
 Verify actual target state rather than assuming merge equals deploy:
-- Worker: `wrangler deployments list` for Worker `sekret`.
+- Backend Worker: `wrangler deployments list --name bip`.
+- Web frontend: verify the Cloudflare Pages deployment for project `sekret` and its deployed commit.
 - Supabase: migration/function state for the target project.
 - Expo/EAS: build/update state for the intended channel.
 
