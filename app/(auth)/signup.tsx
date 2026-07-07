@@ -49,9 +49,6 @@ export default function SignupScreen() {
     const isAnonymous = Boolean(currentUser?.is_anonymous);
 
     if (isAnonymous) {
-      // Upgrade the anonymous account in place. Keeping the same auth user ID
-      // preserves all journals, Circle data, points, and other rows already
-      // owned by this anonymous session.
       const { error: upgradeError } = await sb.auth.updateUser({
         email: e,
         password: p,
@@ -76,7 +73,6 @@ export default function SignupScreen() {
         return;
       }
 
-      // Email confirmation may still be required, depending on Supabase Auth settings.
       const { data: refreshed } = await sb.auth.getSession();
       if (refreshed.session?.user && !refreshed.session.user.is_anonymous) {
         router.replace('/');
@@ -119,7 +115,12 @@ export default function SignupScreen() {
             We sent a confirmation link to {email.trim()}.{`\n`}
             Open it, then come back and sign in.
           </Text>
-          <TouchableOpacity style={styles.btn} onPress={() => router.replace('/(auth)/login')}>
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => router.replace('/(auth)/login')}
+            accessibilityRole="button"
+            accessibilityLabel="Go to Sign In"
+          >
             <Text style={styles.btnText}>Go to Sign In</Text>
           </TouchableOpacity>
         </View>
@@ -166,7 +167,13 @@ export default function SignupScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
-        <TouchableOpacity style={styles.btn} onPress={handleSignUp} disabled={loading}>
+        <TouchableOpacity
+          style={styles.btn}
+          onPress={handleSignUp}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel="Create Account"
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -174,11 +181,22 @@ export default function SignupScreen() {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.replace('/(auth)/login')} style={styles.link}>
+        <TouchableOpacity
+          onPress={() => router.replace('/(auth)/login')}
+          style={styles.link}
+          accessibilityRole="link"
+          accessibilityLabel="Already have an account? Sign in"
+        >
           <Text style={styles.linkText}>Already have an account? Sign in</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handleSkip} style={styles.skip} disabled={loading}>
+        <TouchableOpacity
+          onPress={handleSkip}
+          style={styles.skip}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel="Skip — use without an account"
+        >
           <Text style={styles.skipText}>Skip — use without an account</Text>
         </TouchableOpacity>
       </View>
