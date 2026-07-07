@@ -1,4 +1,7 @@
-export const CONTROL_ROOM_VERIFICATION_REGISTRY = [
+{
+  "_owner": "Verification Engine — scripts/verify-local.mjs",
+  "_rule": "Only Verification Engine reads this file. No other engine or agent accesses it directly.",
+  "verifications": [
   {
     "key": "verify:types",
     "label": "Types",
@@ -98,4 +101,5 @@ export const CONTROL_ROOM_VERIFICATION_REGISTRY = [
     "track": "Control Room OS",
     "description": "Meta-verification: runs all of the above in order; blocks if any non-skipped check fails"
   }
-] as const;
+]
+}

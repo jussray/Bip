@@ -73,3 +73,13 @@ WRONG: Initial registry location under .agents made it look agent-owned instead 
 PRESERVED: Existing verification units, commands, skip semantics, local defaults, and generated last-run report path.
 REMAINS: Control Room OS UI still needs to render .agents/verification-last-run.json.
 ---
+---
+DATE: 2026-07-07
+AGENT: Codex
+TRACK: Control Room OS
+ACTION: Added Verification Engine boundary markers: scripts/verify-local.mjs now declares kernel ownership rules, and .agents/verification-registry.json now wraps verifications with owner/rule metadata for engine-only access.
+WHY: Architectural ownership needed to be explicit before merge: the Local Agent executes, the Mission Engine decides, and the Verification Engine is the only reader of the registry.
+WRONG: Previous revision moved the registry into src/config, conflicting with the requested engine-owned registry boundary.
+PRESERVED: Verification entries, commands, skip semantics, generated last-run report, and orchestrator behavior.
+REMAINS: none
+---

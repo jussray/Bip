@@ -1,3 +1,16 @@
+/**
+ * VERIFICATION ENGINE — Control Room OS Kernel
+ *
+ * Owner:    Verification Engine (this file)
+ * Registry: .agents/verification-registry.json
+ * Consumer: Mission Engine (calls this as a subprocess or module)
+ *
+ * Rule: No other engine or script reads verification-registry.json directly.
+ * All verification state is obtained by calling this engine.
+ *
+ * The Local Agent executes. The Mission Engine decides.
+ * This engine reports — it does not decide what to do with results.
+ */
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -7,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
-const registryPath = path.join(repoRoot, 'src', 'config', 'controlRoomVerificationRegistry.ts');
+const registryPath = path.join(repoRoot, '.agents', 'verification-registry.json');
 const lastRunPath = path.join(repoRoot, '.agents', 'verification-last-run.json');
 
 const env = { ...process.env };
@@ -16,11 +29,8 @@ if (env.NODE_ENV !== 'ci') {
   if (env.SKIP_E2E === undefined) env.SKIP_E2E = '1';
 }
 
-const registrySource = readFileSync(registryPath, 'utf8');
-const registryMatch = registrySource.match(/CONTROL_ROOM_VERIFICATION_REGISTRY\s*=\s*(\[[\s\S]*?\])\s*as const;/);
-if (!registryMatch) throw new Error('Could not parse Control Room verification registry');
-const registry = JSON.parse(registryMatch[1]);
-const checks = registry.filter((entry) => entry.key !== 'verify:release');
+const registry = JSON.parse(readFileSync(registryPath, 'utf8'));
+const checks = registry.verifications.filter((entry) => entry.key !== 'verify:release');
 const now = new Date().toISOString();
 const results = [];
 
