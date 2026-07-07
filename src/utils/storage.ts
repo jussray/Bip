@@ -77,6 +77,9 @@ const PRIVATE_ACCOUNT_KEYS = [
   'sekret_self_discovery_profile',
   'bip_onboarding_reflection',
   'teen_profile_data',
+  'parent_profile_data',
+  'parent_profile_done',
+  'linked_teen_id',
 ] as const;
 
 export const loadState = async (): Promise<Record<string, any>> => {
