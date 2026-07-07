@@ -1,12 +1,16 @@
-import { Tabs } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Redirect, Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
+import { useAppContext } from '@/context/AppContext';
+import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
 }
 
-export default function ParentLayout() {
+function ParentTabs() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -45,4 +49,38 @@ export default function ParentLayout() {
       <SideSafeBackButton side="parent" />
     </View>
   );
+}
+
+export default function ParentLayout() {
+  const { userSide, isLoading } = useAppContext();
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [profileDone, setProfileDone] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem('parent_profile_done')
+      .then(value => {
+        if (active) setProfileDone(value === 'true');
+      })
+      .finally(() => {
+        if (active) setProfileChecked(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
+
+  // Authentication and role separation are enforced globally by RouteBoundary.
+  // This local guard only prevents an incomplete parent setup from rendering
+  // the parent navigation shell after a direct/deep link.
+  if (isLoading || !profileChecked) {
+    return <View style={{ flex: 1, backgroundColor: '#08140f' }} />;
+  }
+  if (effectiveUserSide === 'teen') return <Redirect href="/(teen)/room" />;
+  if (effectiveUserSide !== 'parent') return <Redirect href="/" />;
+  if (!profileDone) return <Redirect href="/(onboarding)/parent-welcome" />;
+
+  return <ParentTabs />;
 }
