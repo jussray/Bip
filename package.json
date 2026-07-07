@@ -30,6 +30,7 @@
     "verify:local": "node scripts/control-room-local.js",
     "verify:local:ingest": "npm run verify:local; CONTROL_ROOM_INGEST=1 npm run audit:control-room:local-report",
     "verify:prepush": "npm run audit:runtime-assets && npm run audit:control-room && npm run validate:companions && npm run type-check && npm run lint && npm run verify:bundle && npm run verify:room-archives",
+    "control-room:agent": "node scripts/control-room-agent.mjs",
     "test:device-sync": "node --test scripts/test-device-sync.mjs",
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
     "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
