@@ -14,6 +14,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import {
   PARENT_INVITE_CODE_LENGTH,
+  fetchLinkedTeenId,
   normalizeParentInviteCode,
   redeemInviteCodeResult as redeemInviteCode,
 } from '@/utils/parentLink';
@@ -28,10 +29,16 @@ export default function ParentLinkOnboarding() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [needsCodeHelp, setNeedsCodeHelp] = useState(false);
   const showFounderTools = isDevTestFamilyEnabled();
 
   const normalized = normalizeParentInviteCode(code);
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
+
+  async function verifyRedeemedLink(expectedTeenId: string): Promise<boolean> {
+    const activeTeenId = await fetchLinkedTeenId();
+    return Boolean(activeTeenId && activeTeenId === expectedTeenId);
+  }
 
   async function handleLink() {
     if (!ready) {
@@ -46,6 +53,13 @@ export default function ParentLinkOnboarding() {
       const result = await redeemInviteCode(normalized);
       if (!result.ok) {
         setError(result.message);
+        return;
+      }
+
+      const verified = await verifyRedeemedLink(result.value);
+      if (!verified) {
+        setError('The code was received, but the connection could not be confirmed. Try again before entering Parent Side.');
+        await AsyncStorage.multiRemove(['parent_profile_done', 'linked_teen_id']);
         return;
       }
 
@@ -100,6 +114,7 @@ export default function ParentLinkOnboarding() {
             onChangeText={text => {
               setCode(text);
               setError('');
+              setNeedsCodeHelp(false);
             }}
             placeholder="AB12CD34"
             placeholderTextColor="#355246"
@@ -116,6 +131,15 @@ export default function ParentLinkOnboarding() {
         <Text style={styles.privacy}>
           This code only establishes the trusted teen-parent connection. You will only see what your teen intentionally sends through Bridge.
         </Text>
+
+        {needsCodeHelp ? (
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>Need a code?</Text>
+            <Text style={styles.helpBody}>
+              Ask your teen to open Limited Mode or their parent-link screen and create a fresh eight-character invite code. Stay here and enter it when they share it with you.
+            </Text>
+          </View>
+        ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -142,7 +166,13 @@ export default function ParentLinkOnboarding() {
           </View>
         ) : null}
 
-        <TouchableOpacity onPress={() => router.replace('/(onboarding)/parent-welcome')} style={styles.help}>
+        <TouchableOpacity
+          onPress={() => {
+            setNeedsCodeHelp(true);
+            setError('');
+          }}
+          style={styles.help}
+        >
           <Text style={styles.helpText}>I do not have a code yet</Text>
         </TouchableOpacity>
       </View>
@@ -161,6 +191,9 @@ const styles = StyleSheet.create({
   codeWrap: { borderRadius: 22, borderWidth: 1.5, borderColor: '#a7f3d044', backgroundColor: '#ffffff08', paddingHorizontal: 20, marginBottom: 18 },
   codeInput: { height: 86, color: '#fff', fontSize: 30, fontWeight: '900', letterSpacing: 6, textAlign: 'center' },
   privacy: { color: '#789082', fontSize: 12, lineHeight: 18, marginBottom: 18 },
+  helpCard: { borderRadius: 18, borderWidth: 1, borderColor: '#a7f3d033', backgroundColor: '#a7f3d010', padding: 14, marginBottom: 14 },
+  helpTitle: { color: '#a7f3d0', fontSize: 13, fontWeight: '900', marginBottom: 6 },
+  helpBody: { color: '#8aaf9c', fontSize: 12, lineHeight: 18 },
   error: { color: '#fca5a5', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 14 },
   primary: { height: 60, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.35 },
