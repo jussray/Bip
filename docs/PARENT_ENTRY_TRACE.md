@@ -80,11 +80,11 @@ After this branch, the screen performs a second verification read using `fetchLi
 
 **Classification:** P0 privacy boundary + P1 journey integrity.
 
-**Status:** Open.
+**Status:** Mitigated for sign-out/account reset; still open for authoritative role/profile resolution.
 
 The root route does not derive the parent role from an authoritative authenticated profile before routing. `effectiveSide` can come from local `AppContext.userSide`, and parent readiness is decided by the local `parent_profile_done` key.
 
-This does not itself bypass Supabase RLS, but it means UI role and onboarding access can drift from the authenticated account's actual role and relationship state.
+This branch now ensures the canonical private cache reset removes `parent_profile_done`, `parent_profile_data`, and `linked_teen_id`, reducing stale-state risk after sign-out and account reset. The remaining fix is to resolve parent role/profile/readiness from the backend rather than treating local flags as the source of truth.
 
 **Required fix contract:**
 
@@ -115,11 +115,11 @@ This branch now verifies the active backend link with `fetchLinkedTeenId()` befo
 
 **Classification:** P0 cross-account isolation + P2 architecture drift.
 
-**Status:** Partially mitigated, still open.
+**Status:** Mitigated for redemption failure and account reset; still open as duplicated cache.
 
 `parent-link.tsx` stores the linked teen ID in AsyncStorage, while `fetchLinkedTeenId()` separately queries active `parent_links` by the current authenticated user.
 
-This branch now writes `linked_teen_id` only after the backend active link matches the redeemed teen id and clears it if verification fails. However, the local identifier still exists and can become stale after unlink, relink, account switch, revocation, blocked state, or future multi-teen support.
+This branch now writes `linked_teen_id` only after the backend active link matches the redeemed teen id, clears it if verification fails, and removes it during canonical private account cache clearing. However, the local identifier still exists and can become stale after unlink, relink, relationship updates, blocked state, or future multi-teen support unless every path resolves from the backend.
 
 **Required fix contract:**
 
@@ -166,11 +166,11 @@ This branch keeps the parent on the code screen and shows inline guidance explai
 
 **Classification:** P1 persistence + P2 parity.
 
-**Status:** Open.
+**Status:** Account-reset leakage mitigated; persistence still open.
 
 The parent display name, room style and focus are written to `parent_profile_data` in AsyncStorage. No backend profile write is performed in the traced setup path.
 
-This can cause loss across reinstall/device change, cross-account leakage on shared devices, and disagreement between local UI and authenticated profile data.
+This branch now clears `parent_profile_data` through the canonical private account cache reset, reducing cross-account leakage on sign-out/account reset. The data is still local-only and can be lost across reinstall/device change.
 
 **Required fix contract:**
 
