@@ -1,0 +1,136 @@
+import type { ControlRoomConnector, ControlRoomMission, ControlRoomWorker } from '@/types/controlRoomOs';
+
+export const CONTROL_ROOM_MISSIONS: ControlRoomMission[] = [
+  {
+    id: 'launch-bip',
+    title: 'Launch Bip',
+    category: 'launch',
+    founderPrompt: 'Start the app locally so the founder can demo or test immediately.',
+    primaryAction: 'npm run control-room:mission:launch-bip',
+    localAgentMission: 'launch-bip',
+    recoveryPath: 'If Expo tunnel fails, retry with LAN or localhost before depending on hosted tooling.',
+    requiresNetwork: false,
+  },
+  {
+    id: 'continue-yesterday',
+    title: 'Continue Yesterday',
+    category: 'planning',
+    founderPrompt: 'Resume the most recent shipping thread using local git and Control Room memory first.',
+    primaryAction: 'git status --short --branch',
+    recoveryPath: 'If GitHub is unavailable, continue from local commits and docs until sync returns.',
+    requiresNetwork: false,
+  },
+  {
+    id: 'verify-local',
+    title: 'Verify Local',
+    category: 'verify',
+    founderPrompt: 'Run the local verification suite without waiting on GitHub Actions minutes.',
+    primaryAction: 'npm run control-room:mission:verify-local',
+    localAgentMission: 'verify-local',
+    recoveryPath: 'If hosted CI fails or quota is exhausted, this remains the primary verification path.',
+    requiresNetwork: false,
+  },
+  {
+    id: 'ship-release',
+    title: 'Ship Release',
+    category: 'release',
+    founderPrompt: 'Confirm local verification, review release health, then deploy through the available connector.',
+    primaryAction: 'npm run verify:local && npm run build:web',
+    recoveryPath: 'If one deployment provider is unavailable, keep a local build artifact and retry through the next connector.',
+    requiresNetwork: true,
+  },
+  {
+    id: 'recover-system',
+    title: 'Recover System',
+    category: 'recovery',
+    founderPrompt: 'Identify the failed provider and route the mission through local tools or a fallback connector.',
+    primaryAction: 'npm run audit:control-room:structure',
+    localAgentMission: 'recover-system',
+    recoveryPath: 'Prefer local execution, local git, and alternate workers before blocking the founder.',
+    requiresNetwork: false,
+  },
+];
+
+export const CONTROL_ROOM_WORKERS: ControlRoomWorker[] = [
+  {
+    id: 'codex',
+    label: 'Codex',
+    health: 'healthy',
+    capabilities: ['code-editing', 'local-repo', 'tests', 'pull-request'],
+    fallbackWorkerId: 'chatgpt',
+    localFirst: true,
+  },
+  {
+    id: 'chatgpt',
+    label: 'ChatGPT',
+    health: 'healthy',
+    capabilities: ['planning', 'debugging', 'product-review'],
+    fallbackWorkerId: 'claude',
+    localFirst: false,
+  },
+  {
+    id: 'claude',
+    label: 'Claude',
+    health: 'warning',
+    capabilities: ['review', 'long-context-analysis'],
+    fallbackWorkerId: 'codex',
+    localFirst: false,
+  },
+  {
+    id: 'local-agent',
+    label: 'Local Agent',
+    health: 'healthy',
+    capabilities: ['launch-bip', 'verify-local', 'tests', 'build'],
+    localFirst: true,
+  },
+];
+
+export const CONTROL_ROOM_CONNECTORS: ControlRoomConnector[] = [
+  {
+    id: 'filesystem',
+    label: 'Filesystem',
+    health: 'healthy',
+    capabilities: ['local-reports', 'repo-files', 'build-artifacts'],
+    fallback: 'Local git and reports/control-room remain available without hosted providers.',
+    availableMissions: ['continue-yesterday', 'verify-local', 'recover-system'],
+    requiresAuthentication: false,
+  },
+  {
+    id: 'github',
+    label: 'GitHub',
+    health: 'warning',
+    capabilities: ['source-of-truth', 'prs', 'issues', 'project-memory'],
+    fallback: 'Use local git, local reports, and delayed push if GitHub or Actions is unavailable.',
+    availableMissions: ['continue-yesterday', 'ship-release'],
+    requiresAuthentication: true,
+  },
+  {
+    id: 'supabase',
+    label: 'Supabase',
+    health: 'healthy',
+    capabilities: ['database', 'auth', 'control-room-issues'],
+    fallback: 'Use local verification reports and defer ingestion if Supabase is unavailable.',
+    availableMissions: ['verify-local', 'recover-system'],
+    requiresAuthentication: true,
+  },
+  {
+    id: 'expo',
+    label: 'Expo',
+    health: 'healthy',
+    capabilities: ['launch', 'web-export', 'device-preview'],
+    fallback: 'Switch tunnel to LAN or localhost before blocking on hosted Expo services.',
+    availableMissions: ['launch-bip', 'ship-release'],
+    requiresAuthentication: false,
+  },
+  {
+    id: 'gmail',
+    label: 'Gmail',
+    health: 'warning',
+    capabilities: ['mission-reports', 'failure-alerts', 'daily-briefing'],
+    fallback: 'Write reports locally and send when the connector is authenticated again.',
+    availableMissions: ['ship-release', 'recover-system'],
+    requiresAuthentication: true,
+  },
+];
+
+export const CONTROL_ROOM_NOTIFICATION_DESTINATION = 'sekretbip@gmail.com';

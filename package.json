@@ -36,7 +36,10 @@
     "deploy:pages": "npm run build:web && wrangler pages deploy dist",
     "deploy:worker": "wrangler deploy",
     "deploy:cloudflare": "npm run deploy:worker",
-    "preview:worker": "wrangler dev"
+    "preview:worker": "wrangler dev",
+    "control-room:agent": "node scripts/control-room-agent.mjs",
+    "control-room:mission:launch-bip": "node scripts/control-room-agent.mjs launch-bip",
+    "control-room:mission:verify-local": "node scripts/control-room-agent.mjs verify-local"
   },
   "dependencies": {
     "@expo/log-box": "^56.0.13",
