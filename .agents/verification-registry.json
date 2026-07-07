@@ -1,0 +1,101 @@
+[
+  {
+    "key": "verify:types",
+    "label": "Types",
+    "command": "npm run type-check",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Control Room OS",
+    "description": "TypeScript noEmit check across the full repo"
+  },
+  {
+    "key": "verify:lint",
+    "label": "Lint",
+    "command": "npm run lint",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Control Room OS",
+    "description": "ESLint across all source files"
+  },
+  {
+    "key": "verify:test",
+    "label": "Unit Tests",
+    "command": "npm run test",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Control Room OS",
+    "description": "Node built-in test runner across test/*.test.mjs"
+  },
+  {
+    "key": "verify:assets",
+    "label": "Assets",
+    "command": "npm run audit:runtime-assets",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Bip Room UI",
+    "description": "Confirms all runtime assets referenced in code are present on disk"
+  },
+  {
+    "key": "verify:control-room",
+    "label": "Control Room",
+    "command": "npm run audit:control-room",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Control Room OS",
+    "description": "Structural and RLS scan of Control Room OS"
+  },
+  {
+    "key": "verify:companions",
+    "label": "Companions",
+    "command": "npm run validate:companions",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Bip Room UI",
+    "description": "Validates companion asset manifests"
+  },
+  {
+    "key": "verify:room-archives",
+    "label": "Room Archives",
+    "command": "npm run verify:room-archives",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Bip Room UI",
+    "description": "Verifies room archive integrity"
+  },
+  {
+    "key": "verify:backend",
+    "label": "Backend Contract",
+    "command": "node --test test/sekret-reply-contract.test.mjs",
+    "skipEnv": ["SUPABASE_URL"],
+    "skipFlag": "",
+    "track": "Control Room OS",
+    "description": "Supabase → Worker → AI reply contract test; skips if SUPABASE_URL is absent"
+  },
+  {
+    "key": "verify:bundle",
+    "label": "Bundle",
+    "command": "npm run verify:bundle",
+    "skipEnv": [],
+    "skipFlag": "SKIP_BUNDLE",
+    "track": "Bip Room UI",
+    "description": "Expo web export dry-run; set SKIP_BUNDLE=1 to skip locally"
+  },
+  {
+    "key": "verify:frontend",
+    "label": "Frontend",
+    "command": "npm run test:e2e",
+    "skipEnv": ["DISPLAY", "CI_E2E"],
+    "skipFlag": "SKIP_E2E",
+    "track": "Bip Room UI",
+    "description": "Playwright end-to-end suite; skips when no display or SKIP_E2E=1"
+  },
+  {
+    "key": "verify:release",
+    "label": "Release",
+    "command": "",
+    "skipEnv": [],
+    "skipFlag": "",
+    "track": "Control Room OS",
+    "description": "Meta-verification: runs all of the above in order; blocks if any non-skipped check fails"
+  }
+]

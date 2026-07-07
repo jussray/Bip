@@ -53,3 +53,13 @@ Location: assets/, screens/RoomScreen.tsx, ROOM_ASSET_MAP.md.
 One is the workshop. One is the product.
 An agent working on Control Room OS does not touch Bip Room UI files, and vice versa, unless the task explicitly crosses tracks and a human has confirmed the crossing.
 ---
+---
+DATE: 2026-07-07
+AGENT: Codex
+TRACK: Control Room OS
+ACTION: Added Verification Registry (.agents/verification-registry.json) and verify-local orchestrator (scripts/verify-local.mjs) with 11 named checks, skip logic, and machine-readable last-run output.
+WHY: GitHub Actions was the first place problems were discovered. This inverts the loop — local verification is now primary, CI becomes confirmation.
+WRONG: none
+PRESERVED: All existing scripts, tests, and worker files untouched. Registry calls existing npm scripts only.
+REMAINS: Control Room OS UI to surface .agents/verification-last-run.json as a visual dashboard. verify:release guard not yet wired to Ship Release button flow.
+---
