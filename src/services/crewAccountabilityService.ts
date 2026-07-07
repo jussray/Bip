@@ -91,17 +91,22 @@ export async function createCheckIn(
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { ok: false, code: 'not_authenticated', message: 'Sign in to create a check-in.' };
 
-  // Verify all recipients are accepted crew members
+  // Verify all recipients are accepted crew members. crew_members.id is the
+  // local bigint row id; member_user_id is the authenticated recipient UUID.
   const { data: crewRows, error: crewError } = await sb
     .from('crew_members')
-    .select('member_id')
+    .select('member_user_id')
     .eq('user_id', user.id)
     .eq('connection_status', 'accepted')
-    .in('member_id', input.shareWithUserIds);
+    .in('member_user_id', input.shareWithUserIds);
 
   if (crewError) return { ok: false, code: 'server_error', message: crewError.message };
 
-  const acceptedIds = new Set((crewRows ?? []).map((r: { member_id: string }) => r.member_id));
+  const acceptedIds = new Set(
+    (crewRows ?? [])
+      .map((r: { member_user_id: string | null }) => r.member_user_id)
+      .filter((id): id is string => Boolean(id)),
+  );
   const unaccepted = input.shareWithUserIds.filter((id) => !acceptedIds.has(id));
   if (unaccepted.length > 0) {
     return { ok: false, code: 'not_authorized', message: 'One or more recipients are not accepted crew members.' };
