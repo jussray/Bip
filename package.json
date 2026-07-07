@@ -26,6 +26,7 @@
     "validate:companions": "node scripts/validate-companion-assets.mjs",
     "verify:room-archives": "node scripts/verify-room-archives.js",
     "verify:bundle": "npx expo export --platform web --clear",
+    "verify:local": "node scripts/control-room-local.js",
     "verify:prepush": "npm run audit:runtime-assets && npm run audit:control-room && npm run validate:companions && npm run type-check && npm run lint && npm run verify:bundle && npm run verify:room-archives",
     "test:device-sync": "node --test scripts/test-device-sync.mjs",
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
