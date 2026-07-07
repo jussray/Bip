@@ -53,3 +53,14 @@ Location: assets/, screens/RoomScreen.tsx, ROOM_ASSET_MAP.md.
 One is the workshop. One is the product.
 An agent working on Control Room OS does not touch Bip Room UI files, and vice versa, unless the task explicitly crosses tracks and a human has confirmed the crossing.
 ---
+
+---
+DATE: 2026-07-07
+AGENT: GPT-5.5
+TRACK: Control Room OS
+ACTION: Added a Supabase to Cloudflare Worker AI reply contract test with explicit skip behavior and a named npm script.
+WHY: This is the smallest test-only guard for the Supabase write/read seam, Worker request boundary, and reply-shaped response without touching product UI or production behavior.
+WRONG: none
+PRESERVED: Existing Worker, Supabase schema, app routes, assets, screens, and Room UI files were left unchanged; paid AI remains opt-in through test env configuration.
+REMAINS: The live contract path still requires Control Room operators to provide safe environment variables and choose fallback, fixture, or paid Worker mode before it will run.
+---

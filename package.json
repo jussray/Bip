@@ -39,7 +39,8 @@
     "preview:worker": "wrangler dev",
     "control-room:agent": "node scripts/control-room-agent.mjs",
     "control-room:mission:launch-bip": "node scripts/control-room-agent.mjs launch-bip",
-    "control-room:mission:verify-local": "node scripts/control-room-agent.mjs verify-local"
+    "control-room:mission:verify-local": "node scripts/control-room-agent.mjs verify-local",
+    "test:contract:supabase-worker": "node --test test/supabase-worker-ai-reply-contract.test.mjs"
   },
   "dependencies": {
     "@expo/log-box": "^56.0.13",
