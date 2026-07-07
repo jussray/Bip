@@ -2,9 +2,10 @@
 
 ## Trigger
 Any session involving: new features, refactors, routing changes,
-context/state work, character/AI integration, or onboarding flow changes.
+context/state work, character/AI integration, onboarding flow changes,
+or Cloudflare deployment ownership.
 
-## Verified Repo Structure (jussray/Bip, main, 2026-07-06)
+## Verified Repo Structure (jussray/Bip, main, 2026-07-07)
 
 This section is a snapshot, not permanent truth. Run `bip-repo-truth` first and verify paths
 before relying on it. If the repository has changed, update this skill in the same PR or open
@@ -35,7 +36,7 @@ Framework-required files such as `_layout.tsx`, `index.tsx`, and `+not-found.tsx
 ### Key Source Files (verified paths)
 ```
 constants/
-  bip_voice.ts          — character voice definitions, copy source of truth (38KB)
+  bip_voice.ts          — character voice definitions, copy source of truth
   characterAssets.ts    — character asset mappings
   characterAvatars.ts   — character avatar mappings
   characterStickers.ts  — character sticker sets
@@ -47,13 +48,50 @@ constants/
 
 context/               — React contexts; verify exact exported names before use
 services/              — API/service layer; verify current function signatures
-worker/                — Cloudflare Worker source; production Worker is `sekret`
+worker/                — backend Cloudflare Worker source
 supabase/              — migrations, functions, and RLS policies
 ```
 
 **No `constants/characters.ts` existed in the verified snapshot.** Character config was split
 across `characterAssets.ts`, `characterAvatars.ts`, `characterStickers.ts`, and `parentSekret.ts`.
 Do not invent or reference a monolithic file without first checking the current repo.
+
+## Canonical Cloudflare Ownership
+
+Read `docs/CLOUDFLARE_OWNERSHIP.md` before changing deployment code.
+
+### `bip` — backend Worker
+
+Verified by `wrangler.toml`:
+- name: `bip`
+- entry point: `worker/observed-index.ts`
+
+Owns:
+- authenticated API routes
+- Supabase access and authorization
+- OpenAI / Se'kret replies
+- Bridge Summary generation
+- safety, Oracle, voice, push, and backend business logic
+
+### `sekret` — frontend Cloudflare Pages project
+
+Owner-confirmed frontend target. The repository deploys Expo web through
+`.github/workflows/deploy-cloudflare.yml` using `CLOUDFLARE_PAGES_PROJECT_NAME`.
+
+Owns:
+- Expo web export
+- custom domain
+- browser routes and static assets
+- client bootstrap
+
+The dashboard variable must be verified as `sekret`; never infer it only from memory.
+
+### Boundary Rule
+
+- Secrets and database/business logic belong to `bip`, never the `sekret` frontend.
+- Frontend routing/assets belong to `sekret`, never the `bip` backend Worker.
+- The clients call `bip` through `EXPO_PUBLIC_BACKEND_URL`.
+- Do not rename either deployment target to resolve domain confusion.
 
 ### Contracts to Verify Each Session
 Before writing code that touches AI/character flow:
@@ -62,6 +100,12 @@ Before writing code that touches AI/character flow:
 3. Open `constants/bip_voice.ts`, `constants/voiceBip.ts`, and relevant Worker files.
 4. Confirm whether the change belongs in app state, server state, prompt/persona config, or copy config.
 5. Confirm the response/auth boundary before passing sensitive data between layers.
+
+Before changing Cloudflare deployment:
+1. Verify `wrangler.toml` still names the backend Worker `bip`.
+2. Read `.github/workflows/deploy-cloudflare.yml`.
+3. Verify the actual Pages project variable and custom-domain attachment.
+4. Confirm `EXPO_PUBLIC_BACKEND_URL` targets the backend, not the frontend host.
 
 Do not duplicate state or persona configuration merely because a remembered contract says it exists.
 
@@ -74,12 +118,13 @@ Do not duplicate state or persona configuration merely because a remembered cont
 - Route separation never substitutes for database and server authorization.
 
 ## Deploy Pipeline
-The intended deployment paths are:
+The verified repository deployment paths are:
 - Mobile: Expo EAS Build / Update according to target channel and native-change requirements.
-- Worker: Wrangler / GitHub Actions to Cloudflare Worker `sekret`.
+- Backend: Wrangler / GitHub Actions to Cloudflare Worker `bip`.
+- Web frontend: Expo export to Cloudflare Pages project configured by `CLOUDFLARE_PAGES_PROJECT_NAME`; owner-confirmed target is `sekret`.
 - Supabase: versioned migrations and functions through the repository-controlled deployment path.
 
-These are intentions that must be verified against current workflows and environments before use.
+These paths must be verified against actual workflows and environment values before release.
 
 ### Environment-Aware Deployment Rules
 - If a configured staging environment exists for the affected layer, validate there before production.
@@ -93,6 +138,7 @@ When starting a session, report:
 - verified commit/branch and timestamp;
 - route group and source files being touched;
 - data/auth/privacy boundaries that apply;
+- whether the target is backend `bip`, frontend `sekret`, mobile, or Supabase;
 - target environment and whether staging actually exists;
 - any architecture snapshot in this skill that is now stale.
 
