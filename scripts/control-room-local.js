@@ -4,23 +4,41 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = process.cwd();
+const root = path.resolve(__dirname, '..');
+const registryPath = path.join(root, 'src', 'config', 'controlRoomVerificationRegistry.json');
 const reportDir = path.join(root, 'reports', 'control-room');
 const jsonPath = path.join(reportDir, 'latest.json');
 const mdPath = path.join(reportDir, 'latest.md');
 
-const checks = [
-  { id: 'runtime-assets', label: 'Runtime assets', command: 'npm', args: ['run', 'audit:runtime-assets'], area: 'app', required: true },
-  { id: 'control-room-structure', label: 'Control Room structure', command: 'npm', args: ['run', 'audit:control-room:structure'], area: 'control-room', required: true },
-  { id: 'control-room-rls', label: 'Supabase RLS scan', command: 'npm', args: ['run', 'audit:control-room:rls'], area: 'supabase', required: true },
-  { id: 'companions', label: 'Companion assets', command: 'npm', args: ['run', 'validate:companions'], area: 'companions', required: true },
-  { id: 'type-check', label: 'TypeScript', command: 'npm', args: ['run', 'type-check'], area: 'code-quality', required: true },
-  { id: 'lint', label: 'Lint', command: 'npm', args: ['run', 'lint'], area: 'code-quality', required: true },
-  { id: 'unit-tests', label: 'Unit tests', command: 'npm', args: ['test'], area: 'tests', required: true },
-  { id: 'voice-intelligence', label: 'Voice intelligence', command: 'npm', args: ['run', 'test:voice-intelligence'], area: 'voice', required: true },
-  { id: 'oracle', label: 'Oracle discovery', command: 'npm', args: ['run', 'test:oracle'], area: 'oracle', required: true },
-  { id: 'room-archives', label: 'Room archives', command: 'npm', args: ['run', 'verify:room-archives'], area: 'assets', required: true },
-];
+function loadVerificationRegistry() {
+  let registry;
+  try {
+    registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+  } catch (error) {
+    throw new Error(`Unable to load Control Room verification registry at ${path.relative(root, registryPath)}: ${error.message}`);
+  }
+
+  if (!registry || !Array.isArray(registry.checks) || registry.checks.length === 0) {
+    throw new Error('Control Room verification registry must define a non-empty checks array.');
+  }
+
+  return registry.checks.map((check, index) => {
+    if (!check || typeof check !== 'object') {
+      throw new Error(`Control Room verification check #${index + 1} must be an object.`);
+    }
+    for (const key of ['id', 'label', 'command', 'area']) {
+      if (typeof check[key] !== 'string' || check[key].trim() === '') {
+        throw new Error(`Control Room verification check #${index + 1} is missing string field: ${key}.`);
+      }
+    }
+    if (!Array.isArray(check.args) || !check.args.every((arg) => typeof arg === 'string')) {
+      throw new Error(`Control Room verification check ${check.id} must define args as an array of strings.`);
+    }
+    return { ...check, required: check.required !== false };
+  });
+}
+
+const checks = loadVerificationRegistry();
 
 function nowIso() {
   return new Date().toISOString();
@@ -90,6 +108,7 @@ function writeReports(results, summary) {
     generatedAt: nowIso(),
     mode: 'local-control-room',
     purpose: 'Free local verification when GitHub Actions minutes are unavailable.',
+    registry: path.relative(root, registryPath),
     summary,
     checks: results,
     guardrails: [

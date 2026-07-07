@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = process.cwd();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(__dirname, '..');
 const controlRoomEntryPoint = 'app/(dev)/control-room.tsx';
 const controlRoomScreenEntry = 'src/screens/DevControlRoomScreen.tsx';
 const forbiddenControlRoomPaths = [
@@ -9,6 +11,7 @@ const forbiddenControlRoomPaths = [
   'apps/control-room',
   'founder-os',
   'operations-center',
+  '.agents/verification-registry.json',
 ];
 const requiredPaths = [
   'app/_layout.tsx',
@@ -18,6 +21,7 @@ const requiredPaths = [
   controlRoomScreenEntry,
   'src/screens/DevControlRoomWorkspace.tsx',
   'src/config/controlRoomOs.ts',
+  'src/config/controlRoomVerificationRegistry.json',
   'src/services/controlRoomMissionEngine.ts',
   'src/types/controlRoomOs.ts',
   'scripts/control-room-agent.mjs',

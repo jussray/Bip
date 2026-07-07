@@ -14,6 +14,7 @@
     "vercel-build": "npm run build:web",
     "test": "node scripts/run-unit-tests.mjs",
     "test:e2e": "playwright test",
+    "test:contract:supabase-worker": "node --test test/parent-link-contract.test.mjs test/bridge-summary-contract.test.mjs test/bridge-summary-worker.test.mjs test/worker-auth.test.mjs test/worker-safety.test.mjs",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "typecheck": "npm run type-check",
