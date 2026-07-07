@@ -80,6 +80,7 @@ const PRIVATE_ACCOUNT_KEYS = [
   'parent_profile_data',
   'parent_profile_done',
   'linked_teen_id',
+  'dev_test_family_v1',
 ] as const;
 
 export const loadState = async (): Promise<Record<string, any>> => {
