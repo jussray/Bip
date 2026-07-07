@@ -13,6 +13,7 @@
     "build:web": "expo export -p web",
     "vercel-build": "npm run build:web",
     "test": "node --test \"test/**/*.test.mjs\"",
+    "test:e2e": "playwright test",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "typecheck": "npm run type-check",
@@ -71,6 +72,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@playwright/test": "^1.61.1",
     "@types/react": "~19.2.0",
     "babel-plugin-module-resolver": "^5.0.0",
     "babel-preset-expo": "~56.0.0",

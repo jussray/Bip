@@ -20,6 +20,10 @@ npm-debug.*
 *.orig.*
 web-build/
 
+# ── Browser test artifacts ────────────────────────────────────────────────
+playwright-report/
+test-results/
+
 # ── Native build outputs ──────────────────────────────────────────────────
 android/
 ios/
