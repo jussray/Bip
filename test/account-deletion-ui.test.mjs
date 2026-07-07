@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const service = fs.readFileSync(new URL('../src/services/accountDeletion.ts', import.meta.url), 'utf8');
+const controls = fs.readFileSync(new URL('../src/components/settings/AccountDeletionControls.tsx', import.meta.url), 'utf8');
+const teenSettings = fs.readFileSync(new URL('../app/(teen)/settings.tsx', import.meta.url), 'utf8');
+const parentSettings = fs.readFileSync(new URL('../app/(parent)/settings.tsx', import.meta.url), 'utf8');
+const requestFunction = fs.readFileSync(new URL('../supabase/functions/account-deletion-request/index.ts', import.meta.url), 'utf8');
+const cancelFunction = fs.readFileSync(new URL('../supabase/functions/account-request-cancel/index.ts', import.meta.url), 'utf8');
+const deleteFunction = fs.readFileSync(new URL('../supabase/functions/account-delete/index.ts', import.meta.url), 'utf8');
+
+test('client uses deployed account deletion function names', () => {
+  assert.match(service, /functions\.invoke\('account-deletion-request'/);
+  assert.match(service, /functions\.invoke\('account-request-cancel'/);
+});
+
+test('request function derives user identity from authenticated session', () => {
+  assert.match(requestFunction, /db\.auth\.getUser\(\)/);
+  assert.match(requestFunction, /user_id: userId/);
+  assert.match(requestFunction, /confirmed !== true/);
+});
+
+test('account deletion retains the seven-day grace and cancel path', () => {
+  assert.match(controls, /seven-day grace period/);
+  assert.match(controls, /Cancel account deletion/);
+  assert.match(cancelFunction, /status: 'cancelled'/);
+  assert.match(cancelFunction, /\.eq\('status', 'pending'\)/);
+});
+
+test('delayed processor removes private files and auth user', () => {
+  assert.match(deleteFunction, /PRIVATE_BUCKETS/);
+  assert.match(deleteFunction, /removePrivateFiles/);
+  assert.match(deleteFunction, /admin\.auth\.admin\.deleteUser\(userId\)/);
+  assert.match(deleteFunction, /grace_period_active/);
+});
+
+test('both account roles render the shared deletion controls', () => {
+  assert.match(teenSettings, /<AccountDeletionControls\s*\/>/);
+  assert.match(parentSettings, /<AccountDeletionControls\s*\/>/);
+  assert.match(teenSettings, /Delete local device data/);
+  assert.match(parentSettings, /Delete local device data/);
+});
