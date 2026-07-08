@@ -49,6 +49,16 @@ export const CONTROL_ROOM_MISSIONS: ControlRoomMission[] = [
     recoveryPath: 'Prefer local execution, local git, and alternate workers before blocking the founder.',
     requiresNetwork: false,
   },
+  {
+    id: 'verify-frontend',
+    title: 'Verify Frontend',
+    category: 'verify',
+    founderPrompt: 'Run the Playwright frontend smoke suite against the local web build.',
+    primaryAction: 'npm run control-room:mission:verify-frontend',
+    localAgentMission: 'verify-frontend',
+    recoveryPath: 'If Playwright or its browser binaries are unavailable, this mission falls back to npm run verify:local and reports the fallback instead of failing silently.',
+    requiresNetwork: false,
+  },
 ];
 
 export const CONTROL_ROOM_WORKERS: ControlRoomWorker[] = [
@@ -80,7 +90,7 @@ export const CONTROL_ROOM_WORKERS: ControlRoomWorker[] = [
     id: 'local-agent',
     label: 'Local Agent',
     health: 'healthy',
-    capabilities: ['launch-bip', 'verify-local', 'tests', 'build'],
+    capabilities: ['launch-bip', 'verify-local', 'tests', 'build', 'browser-test'],
     localFirst: true,
   },
 ];
@@ -130,6 +140,15 @@ export const CONTROL_ROOM_CONNECTORS: ControlRoomConnector[] = [
     fallback: 'Write reports locally and send when the connector is authenticated again.',
     availableMissions: ['ship-release', 'recover-system'],
     requiresAuthentication: true,
+  },
+  {
+    id: 'playwright',
+    label: 'Playwright',
+    health: 'healthy',
+    capabilities: ['browser-test'],
+    fallback: 'Skip browser verification and run npm run verify:local instead when Playwright or its browser binaries are unavailable.',
+    availableMissions: ['verify-frontend'],
+    requiresAuthentication: false,
   },
 ];
 

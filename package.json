@@ -40,6 +40,7 @@
     "control-room:agent": "node scripts/control-room-agent.mjs",
     "control-room:mission:launch-bip": "node scripts/control-room-agent.mjs launch-bip",
     "control-room:mission:verify-local": "node scripts/control-room-agent.mjs verify-local",
+    "control-room:mission:verify-frontend": "node scripts/control-room-agent.mjs verify-frontend",
     "test:contract:supabase-worker": "node --test test/supabase-worker-ai-reply-contract.test.mjs"
   },
   "dependencies": {

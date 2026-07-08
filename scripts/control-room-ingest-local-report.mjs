@@ -2,14 +2,40 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const candidates = [
-  path.join(root, 'artifacts', 'control-room', 'local-verification-report.json'),
-  path.join(root, 'reports', 'control-room', 'latest.json'),
-];
-const reportPath = candidates.find((candidate) => fs.existsSync(candidate));
 
-if (!reportPath) {
-  throw new Error('No local Control Room report found. Run `npm run verify:local` first.');
+function normalizeVerifyLocalReport(reportPath) {
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  const checks = Array.isArray(report.checks) ? report.checks : [];
+  return { reportPath, generatedAt: report.generatedAt || report.generated_at || null, checks };
+}
+
+function normalizeFrontendReport(reportPath) {
+  const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+  const run = report.run || {};
+  const checks = [
+    {
+      id: 'frontend-verification',
+      label: `Frontend verification (${run.mode || 'unknown mode'})`,
+      area: 'frontend',
+      status: run.status || 'fail',
+      commandText: run.mode || 'verify-frontend',
+      exitCode: run.exitCode ?? null,
+      durationMs: run.durationMs ?? null,
+      stdoutTail: run.stdoutTail || '',
+      stderrTail: run.stderrTail || '',
+    },
+  ];
+  return { reportPath, generatedAt: report.generatedAt || null, checks };
+}
+
+const sources = [
+  { path: path.join(root, 'artifacts', 'control-room', 'local-verification-report.json'), normalize: normalizeVerifyLocalReport },
+  { path: path.join(root, 'reports', 'control-room', 'latest.json'), normalize: normalizeVerifyLocalReport },
+  { path: path.join(root, 'reports', 'control-room', 'frontend.json'), normalize: normalizeFrontendReport },
+].filter((source) => fs.existsSync(source.path));
+
+if (sources.length === 0) {
+  throw new Error('No local Control Room report found. Run `npm run verify:local` or `npm run control-room:mission:verify-frontend` first.');
 }
 
 if (process.env.CONTROL_ROOM_INGEST !== '1') {
@@ -23,10 +49,12 @@ if (!supabaseUrl || !serviceRoleKey) {
   throw new Error('SUPABASE_URL (or EXPO_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY are required.');
 }
 
-const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
-const failedChecks = Array.isArray(report.checks)
-  ? report.checks.filter((check) => check.status === 'fail')
-  : [];
+const reports = sources.map((source) => source.normalize(source.path));
+const failedChecks = reports.flatMap((entry) =>
+  entry.checks
+    .filter((check) => check.status === 'fail')
+    .map((check) => ({ ...check, reportPath: entry.reportPath, generatedAt: entry.generatedAt })),
+);
 
 async function supabaseRequest(pathname, options = {}) {
   const response = await fetch(`${supabaseUrl.replace(/\/$/, '')}${pathname}`, {
@@ -63,14 +91,15 @@ function suggestedFix(check) {
   if (check.id === 'unit-tests') return 'Fix the failing test before pushing or preparing a release.';
   if (check.id === 'voice-intelligence') return 'Review the voice intelligence test output and restore the expected reply path.';
   if (check.id === 'oracle') return 'Review Oracle discovery output and restore the expected integration contract.';
+  if (check.id === 'frontend-verification') return 'Review the Playwright or fallback verification output and fix the failing frontend check.';
   return 'Review the local verification output and fix the failing command before pushing.';
 }
 
 async function ingestFailure(check) {
   const metadata = {
     source: 'local_control_room',
-    report_generated_at: report.generatedAt || report.generated_at || null,
-    report_path: path.relative(root, reportPath),
+    report_generated_at: check.generatedAt || null,
+    report_path: path.relative(root, check.reportPath),
     command: check.commandText || null,
     exit_code: check.exitCode ?? null,
     duration_ms: check.durationMs ?? null,
@@ -121,8 +150,7 @@ for (const check of failedChecks) {
 }
 
 const result = {
-  report_path: path.relative(root, reportPath),
-  report_status: report.summary?.status || null,
+  report_paths: reports.map((entry) => path.relative(root, entry.reportPath)),
   failed_count: failedChecks.length,
   ingested_count: ingested.length,
   ingested,

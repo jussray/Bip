@@ -7,6 +7,7 @@ const missions = new Map([
   ['run-tests', { command: 'npm', args: ['test'], description: 'Run unit and regression tests.' }],
   ['build-web', { command: 'npm', args: ['run', 'build:web'], description: 'Build the Expo web artifact.' }],
   ['recover-system', { command: 'npm', args: ['run', 'audit:control-room'], description: 'Run Control Room recovery-oriented audits.' }],
+  ['verify-frontend', { command: 'node', args: ['scripts/control-room-verify-frontend.mjs'], description: 'Run the Playwright frontend smoke suite, falling back to non-browser local verification if unavailable.' }],
 ]);
 
 const missionId = process.argv[2] ?? 'help';

@@ -5,7 +5,8 @@ export type ControlRoomMissionId =
   | 'continue-yesterday'
   | 'verify-local'
   | 'ship-release'
-  | 'recover-system';
+  | 'recover-system'
+  | 'verify-frontend';
 
 export type ControlRoomMissionCategory = 'launch' | 'verify' | 'release' | 'recovery' | 'planning';
 

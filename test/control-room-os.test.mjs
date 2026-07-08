@@ -26,7 +26,7 @@ test('local agent exposes only allowlisted missions and no arbitrary shell passt
 });
 
 test('connector and worker registries preserve fallbacks for provider failure', () => {
-  for (const connector of ['github', 'supabase', 'expo', 'gmail', 'filesystem']) {
+  for (const connector of ['github', 'supabase', 'expo', 'gmail', 'filesystem', 'playwright']) {
     assert.match(config, new RegExp(`id: '${connector}'`));
   }
   for (const worker of ['codex', 'chatgpt', 'claude', 'local-agent']) {
@@ -34,6 +34,13 @@ test('connector and worker registries preserve fallbacks for provider failure', 
   }
   assert.match(config, /fallback:/);
   assert.match(config, /sekretbip@gmail.com/);
+});
+
+test('Playwright is an optional, health-reported capability with a non-browser fallback mission', () => {
+  assert.match(config, /id: 'verify-frontend'/);
+  assert.match(config, /localAgentMission: 'verify-frontend'/);
+  assert.match(config, /capabilities: \['browser-test'\]/);
+  assert.match(config, /Skip browser verification and run npm run verify:local instead/);
 });
 
 
