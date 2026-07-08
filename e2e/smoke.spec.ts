@@ -38,6 +38,23 @@ test('signup deep link exposes account creation controls', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
 });
 
+test('representative teen route (Room) renders without crashing and shows the tab bar', async ({ page }) => {
+  await page.goto('/room');
+
+  await expect(page.getByText('Talk to Se\'kret')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('how you holding up?')).toBeVisible();
+  await expect(page.getByText('Room', { exact: true })).toBeVisible();
+  await expect(page.getByText('Circle', { exact: true })).toBeVisible();
+});
+
+test('representative parent route (Dashboard) redirects to Parent Bridge and renders without crashing', async ({ page }) => {
+  await page.goto('/dashboard');
+
+  await expect(page.getByText('Parent Bridge')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Privacy boundary')).toBeVisible();
+  await expect(page).toHaveURL(/\/bridge\?tab=signals/);
+});
+
 test('frontend entry renders at phone width without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
