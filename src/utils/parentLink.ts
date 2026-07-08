@@ -222,6 +222,60 @@ export async function fetchLinkedParentId(): Promise<string | null> {
   }
 }
 
+// The parent_links.status contract (from supabase/migrations/20260630003000_reconcile_parent_link_contract.sql
+// and 20260707022000_revoke_parent_link.sql) only ever writes 'pending' | 'active' | 'revoked' | 'expired'.
+// There is no 'blocked' status for parent_links — that value exists only for the unrelated
+// crew_members.connection_status column. 'none' below means no link row exists at all yet.
+export type ParentLinkStatus = 'pending' | 'active' | 'revoked' | 'expired' | 'none';
+
+export interface ParentLinkStatusInfo {
+  status: ParentLinkStatus;
+  updatedAt: string | null;
+}
+
+const KNOWN_STATUSES: readonly ParentLinkStatus[] = ['pending', 'active', 'revoked', 'expired'];
+
+export async function fetchLinkStatus(): Promise<ParentLinkResult<ParentLinkStatusInfo>> {
+  const sb = getSupabase();
+  if (!sb) {
+    return { ok: false, code: 'not_configured', message: 'The secure connection service is not configured.' };
+  }
+
+  const uid = await currentUserId();
+  if (!uid) {
+    return { ok: false, code: 'not_authenticated', message: 'Sign in to check your linked connection.' };
+  }
+
+  try {
+    const { data, error } = await sb
+      .from('parent_links')
+      .select('status,updated_at')
+      .or(`teen_user_id.eq.${uid},parent_user_id.eq.${uid}`)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('[parentLink] fetchLinkStatus failed:', error.message);
+      return { ok: false, code: 'server_error', message: 'Could not check your linked connection. Check your connection and try again.' };
+    }
+
+    if (!data) {
+      return { ok: true, value: { status: 'none', updatedAt: null } };
+    }
+
+    const rawStatus = data.status as string;
+    const status: ParentLinkStatus = (KNOWN_STATUSES as string[]).includes(rawStatus)
+      ? (rawStatus as ParentLinkStatus)
+      : 'none';
+
+    return { ok: true, value: { status, updatedAt: (data.updated_at as string) ?? null } };
+  } catch (error) {
+    if (__DEV__) console.warn('[parentLink] fetchLinkStatus threw', error);
+    return { ok: false, code: 'server_error', message: 'Could not check your linked connection. Check your connection and try again.' };
+  }
+}
+
 export async function revokeParentLink(): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;

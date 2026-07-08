@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import {
   cancelDailyReminder,
 } from '@/utils/notifications';
 import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
-import { revokeParentLink } from '@/utils/parentLink';
+import { fetchLinkStatus, revokeParentLink, type ParentLinkStatus } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 import { AccountDeletionControls } from '@/components/settings/AccountDeletionControls';
 
@@ -71,6 +71,25 @@ export default function SettingsScreen() {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [isUnlinking, setIsUnlinking] = useState(false);
   const [redeemStatus, setRedeemStatus] = useState<RedeemStatus>('idle');
+  const [linkStatus,      setLinkStatus]      = useState<ParentLinkStatus | null>(null);
+  const [isCheckingLink,  setIsCheckingLink]  = useState(true);
+  const [linkStatusFailed, setLinkStatusFailed] = useState(false);
+
+  const loadLinkStatus = useCallback(async () => {
+    setIsCheckingLink(true);
+    const result = await fetchLinkStatus();
+    setIsCheckingLink(false);
+    if (result.ok) {
+      setLinkStatusFailed(false);
+      setLinkStatus(result.value.status);
+    } else {
+      setLinkStatusFailed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadLinkStatus();
+  }, [loadLinkStatus]);
 
   async function handleNotificationToggle(enabled: boolean) {
     if (enabled) {
@@ -124,9 +143,11 @@ export default function SettingsScreen() {
             setIsUnlinking(false);
             if (revoked) {
               setInviteCode('');
+              await loadLinkStatus();
               Alert.alert('Teen unlinked', 'Your linked access has been removed.');
             } else {
-              Alert.alert('Could not unlink', 'No active link was found, or the connection could not be updated.');
+              await loadLinkStatus();
+              Alert.alert('Could not unlink', 'No active link was found, or the connection could not be updated. Check your connection and try again.');
             }
           },
         },
@@ -154,8 +175,10 @@ export default function SettingsScreen() {
     const raw = await redeemParentLink(codeInput);
     setIsRedeeming(false);
     const VALID: RedeemStatus[] = ['idle', 'ok', 'not_found', 'error'];
-    setRedeemStatus(VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error');
-  }, [codeInput]);
+    const result = VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error';
+    setRedeemStatus(result);
+    if (result === 'ok') await loadLinkStatus();
+  }, [codeInput, loadLinkStatus]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -206,6 +229,24 @@ export default function SettingsScreen() {
         ))}
 
         <Text style={styles.sectionTitle}>Parent link</Text>
+        {isCheckingLink ? (
+          <Text style={styles.hint}>Checking connection…</Text>
+        ) : linkStatusFailed ? (
+          <>
+            <Text style={styles.hint}>Couldn't check your connection status. Check your connection and try again.</Text>
+            <TouchableOpacity style={styles.button} onPress={loadLinkStatus}>
+              <Text style={styles.buttonText}>Retry</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <Text style={styles.hint}>
+            {linkStatus === 'active'  ? 'Linked and active.'
+              : linkStatus === 'pending' ? 'Invite pending — waiting for your teen to enter the code.'
+              : linkStatus === 'revoked' ? 'Not linked. The previous connection was unlinked.'
+              : linkStatus === 'expired' ? 'Not linked. Your last invite code expired.'
+              : 'Not linked yet.'}
+          </Text>
+        )}
         <TouchableOpacity style={styles.button} onPress={handleGenerateCode} disabled={isGenerating}>
           <Text style={styles.buttonText}>{isGenerating ? 'Generating…' : 'Generate link code'}</Text>
         </TouchableOpacity>
@@ -227,9 +268,11 @@ export default function SettingsScreen() {
           <Text style={styles.buttonText}>{isRedeeming ? 'Connecting…' : 'Redeem code'}</Text>
         </TouchableOpacity>
         {redeemStatus !== 'idle' && <Text style={styles.hint}>Status: {redeemStatus}</Text>}
-        <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkTeen} disabled={isUnlinking}>
-          <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink teen'}</Text>
-        </TouchableOpacity>
+        {(linkStatus === 'active' || linkStatus === 'pending') && (
+          <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkTeen} disabled={isUnlinking}>
+            <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink teen'}</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
         <AccountDeletionControls />
