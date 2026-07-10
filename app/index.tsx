@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
+import { resolveParentEntryState, routeForParentEntry } from '@/services/parentEntryState';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 
 type AppSide = 'teen' | 'parent';
@@ -52,8 +53,8 @@ export default function Index() {
     async function route() {
       setRouted(true);
       if (effectiveSide === 'parent') {
-        const done = await AsyncStorage.getItem('parent_profile_done');
-        router.replace(done === 'true' ? '/(parent)/room' : '/(onboarding)/parent-welcome');
+        const parentEntry = await resolveParentEntryState();
+        router.replace(routeForParentEntry(parentEntry) as any);
         return;
       }
 
