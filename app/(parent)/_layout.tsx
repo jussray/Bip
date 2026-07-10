@@ -1,9 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Redirect, Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
 import { useAppContext } from '@/context/AppContext';
+import { resolveParentEntryState, type ParentEntryState } from '@/services/parentEntryState';
 import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 
 function TabIcon({ emoji }: { emoji: string }) {
@@ -22,14 +22,12 @@ function ParentTabs() {
           tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         }}
       >
-        {/* Keep both sides consistent: Room · Pages · Calm · Circle · More. */}
         <Tabs.Screen name="room" options={{ title: 'Room', tabBarIcon: () => <TabIcon emoji="🏡" /> }} />
         <Tabs.Screen name="pages" options={{ title: 'Pages', tabBarIcon: () => <TabIcon emoji="📝" /> }} />
         <Tabs.Screen name="calm" options={{ title: 'Calm', tabBarIcon: () => <TabIcon emoji="🌙" /> }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🤝" /> }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
 
-        {/* Everything else stays off the bottom nav and is reached from More or in-flow navigation. */}
         <Tabs.Screen name="dashboard" options={{ href: null }} />
         <Tabs.Screen name="circle/[id]" options={{ href: null }} />
         <Tabs.Screen name="circle/weather" options={{ href: null }} />
@@ -53,18 +51,13 @@ function ParentTabs() {
 
 export default function ParentLayout() {
   const { userSide, isLoading } = useAppContext();
-  const [profileChecked, setProfileChecked] = useState(false);
-  const [profileDone, setProfileDone] = useState(false);
+  const [entryState, setEntryState] = useState<ParentEntryState | null>(null);
 
   useEffect(() => {
     let active = true;
-    AsyncStorage.getItem('parent_profile_done')
-      .then(value => {
-        if (active) setProfileDone(value === 'true');
-      })
-      .finally(() => {
-        if (active) setProfileChecked(true);
-      });
+    void resolveParentEntryState().then(state => {
+      if (active) setEntryState(state);
+    });
     return () => {
       active = false;
     };
@@ -72,15 +65,14 @@ export default function ParentLayout() {
 
   const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
 
-  // Authentication and role separation are enforced globally by RouteBoundary.
-  // This local guard only prevents an incomplete parent setup from rendering
-  // the parent navigation shell after a direct/deep link.
-  if (isLoading || !profileChecked) {
+  if (isLoading || !entryState) {
     return <View style={{ flex: 1, backgroundColor: '#08140f' }} />;
   }
   if (effectiveUserSide === 'teen') return <Redirect href="/(teen)/room" />;
   if (effectiveUserSide !== 'parent') return <Redirect href="/" />;
-  if (!profileDone) return <Redirect href="/(onboarding)/parent-welcome" />;
+  if (entryState.state === 'signed_out') return <Redirect href="/(auth)/login" />;
+  if (entryState.state === 'profile_required') return <Redirect href="/(onboarding)/parent-welcome" />;
+  if (entryState.state !== 'active') return <Redirect href="/(onboarding)/parent-link" />;
 
   return <ParentTabs />;
 }
