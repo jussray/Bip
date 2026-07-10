@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { getSupabase } from '@/utils/supabase';
-import { ensureAnonymousSession } from '@/utils/sync';
 
 function readableAuthError(error: unknown): string {
   if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
@@ -111,23 +110,6 @@ export default function SignupScreen() {
     }
   }
 
-  async function handleSkip() {
-    setError('');
-    setLoading(true);
-    try {
-      const uid = await ensureAnonymousSession();
-      if (!uid) {
-        setError('Could not start a session. Check your connection and try again.');
-        return;
-      }
-      router.replace('/');
-    } catch (caught) {
-      setError(readableAuthError(caught));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   if (success) {
     return (
       <View style={styles.root}>
@@ -165,6 +147,7 @@ export default function SignupScreen() {
           placeholder="email"
           placeholderTextColor="#555"
           autoCapitalize="none"
+          autoComplete="email"
           keyboardType="email-address"
           value={email}
           onChangeText={t => { setEmail(t); setError(''); }}
@@ -174,6 +157,7 @@ export default function SignupScreen() {
           placeholder="password (8+ characters)"
           placeholderTextColor="#555"
           secureTextEntry
+          autoComplete="new-password"
           value={password}
           onChangeText={t => { setPassword(t); setError(''); }}
         />
@@ -182,6 +166,7 @@ export default function SignupScreen() {
           placeholder="confirm password"
           placeholderTextColor="#555"
           secureTextEntry
+          autoComplete="new-password"
           value={confirm}
           onChangeText={t => { setConfirm(t); setError(''); }}
           onSubmitEditing={handleSignUp}
@@ -212,16 +197,6 @@ export default function SignupScreen() {
         >
           <Text style={styles.linkText}>Already have an account? Sign in</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleSkip}
-          style={styles.skip}
-          disabled={loading}
-          accessibilityRole="button"
-          accessibilityLabel="Skip — use without an account"
-        >
-          <Text style={styles.skipText}>Skip — use without an account</Text>
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -245,8 +220,6 @@ const styles = StyleSheet.create({
   btnText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
   link:         { marginBottom: 28 },
   linkText:     { color: '#c4b5fd', fontSize: 14 },
-  skip:         { position: 'absolute', bottom: 40 },
-  skipText:     { color: '#444', fontSize: 13 },
   successTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 14 },
   successBody:  { color: '#94a3b8', fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 36 },
 });
