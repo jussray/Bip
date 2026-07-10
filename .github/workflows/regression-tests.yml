@@ -43,15 +43,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          passed=0
           while IFS= read -r test_file; do
-            echo "::group::$test_file"
-            if ! node --test "$test_file"; then
-              echo "::endgroup::"
-              echo "::error file=$test_file::Core regression failed in $test_file"
-              exit 1
+            output_file="$(mktemp)"
+            if node --test "$test_file" >"$output_file" 2>&1; then
+              passed=$((passed + 1))
+              rm -f "$output_file"
+              continue
             fi
-            echo "::endgroup::"
+
+            echo "::error file=$test_file::Core regression failed in $test_file"
+            echo "Failing test output:"
+            cat "$output_file"
+            rm -f "$output_file"
+            exit 1
           done < <(find test -type f -name '*.test.mjs' -print | sort)
+
+          echo "Core regression passed: $passed test files"
 
       - name: Oracle discovery tests
         run: npm run test:oracle
