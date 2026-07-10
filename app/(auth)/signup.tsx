@@ -13,6 +13,15 @@ import { router } from 'expo-router';
 import { getSupabase } from '@/utils/supabase';
 import { ensureAnonymousSession } from '@/utils/sync';
 
+function readableAuthError(error: unknown): string {
+  if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+    return 'Could not reach the account server. Check your connection and Supabase settings, then try again.';
+  }
+
+  if (error instanceof Error && error.message) return error.message;
+  return 'Something went wrong while creating your account. Please try again.';
+}
+
 export default function SignupScreen() {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
@@ -33,76 +42,90 @@ export default function SignupScreen() {
     setLoading(true);
     const sb = getSupabase();
     if (!sb) {
-      setError('Auth unavailable. Try skipping for now.');
+      setError('Auth unavailable. Check the Supabase app configuration.');
       setLoading(false);
       return;
     }
 
-    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
-    if (sessionError) {
-      setError(sessionError.message);
-      setLoading(false);
-      return;
-    }
+    try {
+      const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+      if (sessionError) {
+        setError(sessionError.message);
+        return;
+      }
 
-    const currentUser = sessionData.session?.user;
-    const isAnonymous = Boolean(currentUser?.is_anonymous);
+      const currentUser = sessionData.session?.user;
+      const isAnonymous = Boolean(currentUser?.is_anonymous);
 
-    if (isAnonymous) {
-      const { error: upgradeError } = await sb.auth.updateUser({
+      if (isAnonymous) {
+        const { error: upgradeError } = await sb.auth.updateUser({
+          email: e,
+          password: p,
+        });
+
+        if (upgradeError) {
+          const message = upgradeError.message.toLowerCase();
+          const emailExists =
+            message.includes('already registered') ||
+            message.includes('already exists') ||
+            message.includes('duplicate') ||
+            message.includes('email address is already');
+
+          if (emailExists) {
+            setError('That email already has a Bip account. Sign in instead so we can use that account safely.');
+            return;
+          }
+
+          setError(upgradeError.message);
+          return;
+        }
+
+        const { data: refreshed, error: refreshError } = await sb.auth.getSession();
+        if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
+          router.replace('/');
+        } else {
+          setSuccess(true);
+        }
+        return;
+      }
+
+      const { data: signUpData, error: authErr } = await sb.auth.signUp({
         email: e,
         password: p,
       });
 
-      setLoading(false);
-
-      if (upgradeError) {
-        const message = upgradeError.message.toLowerCase();
-        const emailExists =
-          message.includes('already registered') ||
-          message.includes('already exists') ||
-          message.includes('duplicate') ||
-          message.includes('email address is already');
-
-        if (emailExists) {
-          setError('That email already has a Bip account. Sign in instead so we can use that account safely.');
-          return;
-        }
-
-        setError(upgradeError.message);
+      if (authErr) {
+        setError(authErr.message);
         return;
       }
 
-      const { data: refreshed } = await sb.auth.getSession();
-      if (refreshed.session?.user && !refreshed.session.user.is_anonymous) {
+      if (signUpData.session) {
         router.replace('/');
       } else {
         setSuccess(true);
       }
-      return;
-    }
-
-    const { error: authErr } = await sb.auth.signUp({ email: e, password: p });
-    setLoading(false);
-    if (authErr) { setError(authErr.message); return; }
-
-    const { data } = await sb.auth.getSession();
-    if (data.session) {
-      router.replace('/');
-    } else {
-      setSuccess(true);
+    } catch (caught) {
+      setError(readableAuthError(caught));
+    } finally {
+      setLoading(false);
     }
   }
 
   async function handleSkip() {
+    setError('');
     setLoading(true);
-    const uid = await ensureAnonymousSession();
-    setLoading(false);
-    if (!uid) {
-      setError('Could not start a session. Check your connection and try again.');
-      return;
+    try {
+      const uid = await ensureAnonymousSession();
+      if (!uid) {
+        setError('Could not start a session. Check your connection and try again.');
+        return;
+      }
+      router.replace('/');
+    } catch (caught) {
+      setError(readableAuthError(caught));
+    } finally {
+      setLoading(false);
     }
-    router.replace('/');
   }
 
   if (success) {
