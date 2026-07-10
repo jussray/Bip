@@ -44,6 +44,7 @@ export default function ResetPasswordScreen() {
       setError('Auth unavailable. Check the Supabase app configuration.');
       return;
     }
+    const supabase = sb;
 
     let active = true;
 
@@ -51,7 +52,7 @@ export default function ResetPasswordScreen() {
       if (!url) return;
       const tokens = readTokens(url);
       if (!tokens) return;
-      const { error: sessionError } = await sb.auth.setSession({
+      const { error: sessionError } = await supabase.auth.setSession({
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
       });
