@@ -7,6 +7,7 @@ import {
   generateInviteCodeResult,
   PARENT_INVITE_CODE_LENGTH,
 } from '@/utils/parentLink';
+import { getSupabase } from '@/utils/supabase';
 import { useVerificationContext } from '@/context/VerificationContext';
 
 export default function ParentLinkVerifyScreen() {
@@ -29,6 +30,40 @@ export default function ParentLinkVerifyScreen() {
     });
     return () => { mounted = false; };
   }, []);
+
+  useEffect(() => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let active = true;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      const userId = data.user?.id;
+      if (!active || !userId) return;
+
+      channel = supabase
+        .channel(`account-verification-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'account_verification',
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            void refreshVerification();
+          },
+        )
+        .subscribe();
+    });
+
+    return () => {
+      active = false;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [refreshVerification]);
 
   async function createCode() {
     setLoading(true);
