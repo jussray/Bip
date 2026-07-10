@@ -4,7 +4,7 @@
  * Houses every useEffect that previously lived in AppContent:
  *   1. Load persisted state from AsyncStorage on mount
  *   2. userSide change → splash gate (CTA-only advance — no auto-timer)
- *   3. Supabase anon sign-in + cloud pull & merge
+ *   3. Authenticated Supabase cloud pull & merge
  *   4. Save state to AsyncStorage on change
  *   5. Streak tracking
  *   6. Rotating home message
@@ -15,11 +15,11 @@ import type { AppState } from '../store/useAppStore';
 import { loadState, saveState } from '@/utils/storage';
 import { isSupabaseConfigured } from '@/utils/supabase';
 import {
-  ensureAnonymousSession,
   pullAll,
   loadPeriodDays,
   initTeenActivitySync,
 } from '@/utils/sync';
+import { getCurrentSessionUserId } from '@/services/session';
 import { emitEvent } from '@/features/activity/events';
 import { initPointLedger } from '@/features/activity/ledger';
 import { mergeById } from '../utils/mergeById';
@@ -49,7 +49,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
           userSide:        s.userSide        ?? prev.userSide,
           selectedSekret:  s.selectedSekret  ?? prev.selectedSekret,
           sekretMode:      s.sekretMode      ?? prev.sekretMode,
-          journalText:     s.journalText     ?? prev.journalText,
+          journalText:     s.journalText      ?? prev.journalText,
           journalEntries:  Array.isArray(s.entries)              ? s.entries              : prev.journalEntries,
           parentPagesDraft:   s.parentPagesDraft   ?? prev.parentPagesDraft,
           parentPagesEntries: Array.isArray(s.parentPagesEntries) ? s.parentPagesEntries : prev.parentPagesEntries,
@@ -97,12 +97,13 @@ export function useAppEffects(state: AppState, setState: SetState) {
     setState(prev => ({ ...prev, screen: 'splash' }));
   }, [userSide]); // intentional: only re-run when side changes
 
-  // 3. Supabase: anon sign-in + cloud pull & merge
+  // 3. Supabase: pull and merge only for an authenticated account.
+  // Signed-out users stay at the auth boundary; no anonymous account is created.
   useEffect(() => {
     if (!isSupabaseConfigured || isLoading) return;
     let cancelled = false;
     (async () => {
-      const uid = await ensureAnonymousSession();
+      const uid = await getCurrentSessionUserId();
       if (!uid || cancelled) return;
 
       // Bulk pull (mood, journal, circle, voice, comfort, crew, room)
@@ -179,89 +180,67 @@ export function useAppEffects(state: AppState, setState: SetState) {
       moodCount:    state.moodHistory.length,
       journalCount: state.journalEntries.length,
       voiceCount:   state.voiceNotes.length,
-      circleCount:  state.circlePosts.length,
       comfortCount: state.comfortSessions.length,
       crewCount:    state.crewCheckIns.length,
       streakDays:   state.streakDays,
     });
   }, [isLoading, userSide]);
 
-  // 4. Persist state on change
+  // 4. Persist current state after hydration.
   useEffect(() => {
     if (isLoading) return;
-    saveState({
-      theme:              state.theme,
-      mood:               state.mood,
-      userSide:           state.userSide,
-      selectedSekret:     state.selectedSekret,
-      sekretMode:         state.sekretMode,
-      journalText:        state.journalText,
-      entries:            state.journalEntries,
-      oracleJournalEntries: state.oracleJournalEntries,
-      parentPagesDraft:   state.parentPagesDraft,
+    void saveState({
+      theme: state.theme,
+      mood: state.mood,
+      userSide: state.userSide,
+      selectedSekret: state.selectedSekret,
+      sekretMode: state.sekretMode,
+      journalText: state.journalText,
+      entries: state.journalEntries,
+      parentPagesDraft: state.parentPagesDraft,
       parentPagesEntries: state.parentPagesEntries,
-      oracleProfile:      state.oracleProfile,
+      oracleJournalEntries: state.oracleJournalEntries,
+      oracleProfile: state.oracleProfile,
       parentOracleProfile: state.parentOracleProfile,
-      oracleSessions:     state.oracleSessions,
+      oracleSessions: state.oracleSessions,
       parentOracleSessions: state.parentOracleSessions,
-      moodHistory:        state.moodHistory,
-      circlePosts:        state.circlePosts,
-      parentCirclePosts:  state.parentCirclePosts,
-      voiceNotes:         state.voiceNotes,
-      parentVoiceNotes:   state.parentVoiceNotes,
-      comfortSessions:    state.comfortSessions,
-      crewMembers:        state.crewMembers,
-      crewCheckIns:       state.crewCheckIns,
-      periodDays:         state.periodDays,
-      streakDays:         String(state.streakDays),
-      lastOpenDate:       state.lastOpenDate,
-      roomMemory:         JSON.stringify(state.roomMemory),
-      parentRoomStyle:    state.parentRoomStyle,
-      parentMood:         state.parentMood,
-      parentMoodDate:     state.parentMoodDate,
-    }).catch(() => {});
-  }, [
-    state.theme, state.mood, state.userSide, state.selectedSekret, state.sekretMode,
-    state.journalText, state.journalEntries, state.oracleJournalEntries,
-    state.parentPagesDraft, state.parentPagesEntries,
-    state.oracleProfile, state.parentOracleProfile,
-    state.oracleSessions, state.parentOracleSessions,
-    state.moodHistory, state.circlePosts, state.parentCirclePosts,
-    state.voiceNotes, state.parentVoiceNotes, state.comfortSessions,
-    state.crewMembers, state.crewCheckIns,
-    state.periodDays,
-    state.streakDays, state.lastOpenDate,
-    state.roomMemory, state.parentRoomStyle,
-    state.parentMood, state.parentMoodDate, isLoading,
-  ]);
+      moodHistory: state.moodHistory,
+      circlePosts: state.circlePosts,
+      parentCirclePosts: state.parentCirclePosts,
+      voiceNotes: state.voiceNotes,
+      parentVoiceNotes: state.parentVoiceNotes,
+      comfortSessions: state.comfortSessions,
+      crewMembers: state.crewMembers,
+      crewCheckIns: state.crewCheckIns,
+      periodDays: state.periodDays,
+      streakDays: state.streakDays,
+      lastOpenDate: state.lastOpenDate,
+      roomMemory: state.roomMemory,
+      parentRoomStyle: state.parentRoomStyle,
+      parentMood: state.parentMood,
+      parentMoodDate: state.parentMoodDate,
+    });
+  }, [state, isLoading]);
 
   // 5. Streak tracking
   useEffect(() => {
     if (isLoading) return;
-    const today = new Date().toLocaleDateString();
-    if (lastOpenDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const wasYesterday = lastOpenDate === yesterday.toLocaleDateString();
-      emitEvent('streak_milestone');
-      setState(prev => {
-        const nextDays = wasYesterday ? prev.streakDays + 1 : 1;
-        return {
-          ...prev,
-          streakDays:      nextDays,
-          streakJustReset: !wasYesterday && prev.streakDays > 1,
-          lastOpenDate:    today,
-        };
-      });
-    }
-  }, [isLoading, lastOpenDate]); // intentional: streak depends only on these two values
+    const today = new Date().toISOString().slice(0, 10);
+    if (lastOpenDate === today) return;
+
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    setState(prev => ({
+      ...prev,
+      streakDays: prev.lastOpenDate === yesterday ? prev.streakDays + 1 : 1,
+      lastOpenDate: today,
+    }));
+    emitEvent('app_opened', { date: today });
+  }, [isLoading, lastOpenDate]);
 
   // 6. Rotating home message
   useEffect(() => {
-    const id = setInterval(
-      () => setState(prev => ({ ...prev, homeMessageIndex: (prev.homeMessageIndex + 1) % HOME_MESSAGES.length })),
-      5000
-    );
-    return () => clearInterval(id);
-  }, []);
+    if (isLoading) return;
+    const index = Math.floor(Date.now() / 86_400_000) % HOME_MESSAGES.length;
+    setState(prev => ({ ...prev, homeMessage: HOME_MESSAGES[index] }));
+  }, [isLoading]);
 }
