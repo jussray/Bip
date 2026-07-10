@@ -1,6 +1,7 @@
 // src/utils/parentLink.ts
 // Se'kret Bip — Parent ↔ Teen linking helpers
 
+import { captureRuntimeError } from '@/services/runtimeAudit';
 import { getSupabase } from './supabase';
 import { mapParentInviteRpcError, type ParentInviteRpcErrorCode } from './parentLinkErrors';
 
@@ -29,6 +30,19 @@ interface RedeemParentLinkRow {
   parent_user_id?: unknown;
   status?: unknown;
   activated_at?: unknown;
+}
+
+async function auditParentLinkFailure(
+  eventType: string,
+  error: unknown,
+  metadata?: Record<string, unknown>,
+): Promise<void> {
+  await captureRuntimeError('parent_window', error, {
+    event_type: eventType,
+    screen: 'parentLink',
+    severity: 'warning',
+    metadata,
+  }).catch(() => {});
 }
 
 export function normalizeParentInviteCode(value: string): string {
@@ -69,9 +83,14 @@ async function currentUserId(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
   try {
-    const { data } = await sb.auth.getUser();
+    const { data, error } = await sb.auth.getUser();
+    if (error) {
+      await auditParentLinkFailure('auth_user_lookup_failed', error);
+      return null;
+    }
     return data?.user?.id ?? null;
-  } catch {
+  } catch (error) {
+    await auditParentLinkFailure('auth_user_lookup_threw', error);
     return null;
   }
 }
@@ -90,18 +109,23 @@ export async function generateInviteCodeResult(): Promise<ParentLinkResult<strin
   try {
     const { data, error } = await sb.rpc('create_parent_link_invite');
     if (error) {
-      console.warn('[parentLink] generateInviteCode failed:', error.message);
+      await auditParentLinkFailure('invite_generation_rpc_failed', error, { user_id: userId });
       return mapParentInviteRpcError(error.message);
     }
 
     const code = typeof data === 'string' ? normalizeParentInviteCode(data) : '';
     if (code.length !== PARENT_INVITE_CODE_LENGTH) {
+      await auditParentLinkFailure(
+        'invite_generation_response_invalid',
+        new Error('Invalid invite-code response shape'),
+        { response_type: typeof data },
+      );
       return { ok: false, code: 'server_error', message: 'The server returned an invalid invite code.' };
     }
 
     return { ok: true, value: code };
   } catch (error) {
-    if (__DEV__) console.warn('[parentLink] generateInviteCode threw', error);
+    await auditParentLinkFailure('invite_generation_threw', error, { user_id: userId });
     return { ok: false, code: 'server_error', message: 'Could not create an invite code. Check your connection and try again.' };
   }
 }
@@ -128,12 +152,17 @@ export async function fetchPendingInviteCode(): Promise<string | null> {
       .limit(1)
       .maybeSingle();
 
-    if (error || !data?.invite_code) return null;
+    if (error) {
+      await auditParentLinkFailure('pending_invite_lookup_failed', error, { user_id: userId });
+      return null;
+    }
+    if (!data?.invite_code) return null;
     if (data.expires_at && new Date(data.expires_at).getTime() <= Date.now()) return null;
 
     const code = normalizeParentInviteCode(String(data.invite_code));
     return code.length === PARENT_INVITE_CODE_LENGTH ? code : null;
-  } catch {
+  } catch (error) {
+    await auditParentLinkFailure('pending_invite_lookup_threw', error, { user_id: userId });
     return null;
   }
 }
@@ -160,12 +189,17 @@ export async function redeemInviteCodeResult(code: string): Promise<ParentLinkRe
     });
 
     if (error) {
-      console.warn('[parentLink] redeemInviteCode failed:', error.message);
+      await auditParentLinkFailure('invite_redemption_rpc_failed', error, { user_id: userId });
       return mapParentInviteRpcError(error.message);
     }
 
     const redeemedLink = parseRedeemedParentLink(data, userId);
     if (!redeemedLink) {
+      await auditParentLinkFailure(
+        'invite_redemption_response_invalid',
+        new Error('Unverified parent-link response'),
+        { user_id: userId, response_type: Array.isArray(data) ? 'array' : typeof data },
+      );
       return {
         ok: false,
         code: 'server_error',
@@ -175,7 +209,7 @@ export async function redeemInviteCodeResult(code: string): Promise<ParentLinkRe
 
     return { ok: true, value: redeemedLink };
   } catch (error) {
-    if (__DEV__) console.warn('[parentLink] redeemInviteCode threw', error);
+    await auditParentLinkFailure('invite_redemption_threw', error, { user_id: userId });
     return { ok: false, code: 'server_error', message: 'Could not connect right now. Check your connection and try again.' };
   }
 }
@@ -203,13 +237,13 @@ export async function fetchLinkedTeenId(): Promise<string | null> {
       .maybeSingle();
 
     if (error) {
-      console.warn('[parentLink] fetchLinkedTeenId failed:', error.message);
+      await auditParentLinkFailure('linked_teen_lookup_failed', error, { user_id: uid });
       return null;
     }
 
     return (data?.teen_user_id as string) ?? null;
   } catch (error) {
-    if (__DEV__) console.warn('[parentLink] fetchLinkedTeenId threw', error);
+    await auditParentLinkFailure('linked_teen_lookup_threw', error, { user_id: uid });
     return null;
   }
 }
@@ -232,13 +266,13 @@ export async function fetchLinkedParentId(): Promise<string | null> {
       .maybeSingle();
 
     if (error) {
-      console.warn('[parentLink] fetchLinkedParentId failed:', error.message);
+      await auditParentLinkFailure('linked_parent_lookup_failed', error, { user_id: uid });
       return null;
     }
 
     return (data?.parent_user_id as string) ?? null;
   } catch (error) {
-    if (__DEV__) console.warn('[parentLink] fetchLinkedParentId threw', error);
+    await auditParentLinkFailure('linked_parent_lookup_threw', error, { user_id: uid });
     return null;
   }
 }
@@ -250,13 +284,13 @@ export async function revokeParentLink(): Promise<boolean> {
   try {
     const { data, error } = await sb.rpc('revoke_parent_link');
     if (error) {
-      console.warn('[parentLink] revokeParentLink failed:', error.message);
+      await auditParentLinkFailure('link_revocation_rpc_failed', error);
       return false;
     }
 
     return data === true;
   } catch (error) {
-    if (__DEV__) console.warn('[parentLink] revokeParentLink threw', error);
+    await auditParentLinkFailure('link_revocation_threw', error);
     return false;
   }
 }
