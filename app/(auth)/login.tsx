@@ -11,7 +11,14 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { getSupabase } from '@/utils/supabase';
-import { ensureAnonymousSession } from '@/utils/sync';
+
+function readableAuthError(error: unknown): string {
+  if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+    return 'Could not reach the account server. Check your connection and try again.';
+  }
+  if (error instanceof Error && error.message) return error.message;
+  return 'Something went wrong while signing in. Please try again.';
+}
 
 export default function LoginScreen() {
   const [email, setEmail]       = useState('');
@@ -24,24 +31,24 @@ export default function LoginScreen() {
     const e = email.trim();
     const p = password.trim();
     if (!e || !p) { setError('Email and password are required.'); return; }
+
     setLoading(true);
     const sb = getSupabase();
-    if (!sb) { setError('Auth unavailable. Try skipping for now.'); setLoading(false); return; }
-    const { error: authErr } = await sb.auth.signInWithPassword({ email: e, password: p });
-    setLoading(false);
-    if (authErr) { setError(authErr.message); return; }
-    router.replace('/');
-  }
-
-  async function handleSkip() {
-    setLoading(true);
-    const uid = await ensureAnonymousSession();
-    setLoading(false);
-    if (!uid) {
-      setError('Could not start a session. Check your connection and try again.');
+    if (!sb) {
+      setError('Auth unavailable. Check the Supabase app configuration.');
+      setLoading(false);
       return;
     }
-    router.replace('/');
+
+    try {
+      const { error: authErr } = await sb.auth.signInWithPassword({ email: e, password: p });
+      if (authErr) { setError(authErr.message); return; }
+      router.replace('/');
+    } catch (caught) {
+      setError(readableAuthError(caught));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -58,6 +65,7 @@ export default function LoginScreen() {
           placeholder="email"
           placeholderTextColor="#555"
           autoCapitalize="none"
+          autoComplete="email"
           keyboardType="email-address"
           value={email}
           onChangeText={t => { setEmail(t); setError(''); }}
@@ -67,11 +75,21 @@ export default function LoginScreen() {
           placeholder="password"
           placeholderTextColor="#555"
           secureTextEntry
+          autoComplete="current-password"
           value={password}
           onChangeText={t => { setPassword(t); setError(''); }}
           onSubmitEditing={handleSignIn}
           returnKeyType="go"
         />
+
+        <TouchableOpacity
+          onPress={() => router.push('/(auth)/forgot-password')}
+          style={styles.forgot}
+          accessibilityRole="link"
+          accessibilityLabel="Forgot password"
+        >
+          <Text style={styles.forgotText}>Forgot password?</Text>
+        </TouchableOpacity>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -97,16 +115,6 @@ export default function LoginScreen() {
         >
           <Text style={styles.linkText}>New here? Create an account</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={handleSkip}
-          style={styles.skip}
-          disabled={loading}
-          accessibilityRole="button"
-          accessibilityLabel="Skip — use without an account"
-        >
-          <Text style={styles.skipText}>Skip — use without an account</Text>
-        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -122,7 +130,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14, paddingHorizontal: 18, color: '#fff', fontSize: 15,
     backgroundColor: '#111', marginBottom: 12,
   },
-  error:    { color: '#f87171', fontSize: 13, marginBottom: 10, textAlign: 'center' },
+  forgot:     { alignSelf: 'flex-end', marginTop: 2, marginBottom: 18 },
+  forgotText: { color: '#c4b5fd', fontSize: 14 },
+  error:      { color: '#f87171', fontSize: 13, marginBottom: 10, textAlign: 'center' },
   btn: {
     width: '100%', backgroundColor: '#6d28d9', borderRadius: 16,
     paddingVertical: 17, alignItems: 'center', marginTop: 4, marginBottom: 18,
@@ -130,6 +140,4 @@ const styles = StyleSheet.create({
   btnText:  { color: '#fff', fontWeight: '700', fontSize: 16 },
   link:     { marginBottom: 28 },
   linkText: { color: '#c4b5fd', fontSize: 14 },
-  skip:     { position: 'absolute', bottom: 40 },
-  skipText: { color: '#444', fontSize: 13 },
 });
