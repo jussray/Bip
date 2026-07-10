@@ -5,6 +5,12 @@ import { router } from 'expo-router';
 
 type ParentTab = 'identity' | 'circle' | 'memories';
 
+type StoredParentProfile = {
+  name?: string;
+  roomStyle?: 'mom' | 'dad';
+  focus?: string;
+};
+
 export default function ParentProfile() {
   const [tab, setTab] = useState<ParentTab>('identity');
   const [name, setName] = useState('');
@@ -24,9 +30,23 @@ export default function ParentProfile() {
 
   async function finish() {
     if (!name.trim()) return;
-    await AsyncStorage.setItem('parent_profile_done', 'true');
-    await AsyncStorage.setItem('parent_profile_data', JSON.stringify({ name: name.trim(), focus }));
-    await AsyncStorage.setItem('parent_circle_identity', JSON.stringify({ circleName: circleName.trim() || name.trim(), supportStyle }));
+
+    let existing: StoredParentProfile = {};
+    try {
+      const raw = await AsyncStorage.getItem('parent_profile_data');
+      existing = raw ? JSON.parse(raw) as StoredParentProfile : {};
+    } catch {
+      existing = {};
+    }
+
+    await AsyncStorage.setItem(
+      'parent_profile_data',
+      JSON.stringify({ ...existing, name: name.trim(), focus }),
+    );
+    await AsyncStorage.setItem(
+      'parent_circle_identity',
+      JSON.stringify({ circleName: circleName.trim() || name.trim(), supportStyle }),
+    );
     router.replace('/(parent)/room');
   }
 
