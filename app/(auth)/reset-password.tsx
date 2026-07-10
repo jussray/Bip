@@ -51,7 +51,7 @@ export default function ResetPasswordScreen() {
       if (!url) return;
       const tokens = readTokens(url);
       if (!tokens) return;
-      const { error: sessionError } = await sb.setSession({
+      const { error: sessionError } = await sb.auth.setSession({
         access_token: tokens.accessToken,
         refresh_token: tokens.refreshToken,
       });
@@ -116,6 +116,7 @@ export default function ResetPasswordScreen() {
         setError(updateError.message);
         return;
       }
+      await sb.auth.signOut();
       setSuccess(true);
     } catch (caught) {
       setError(readableAuthError(caught));
@@ -130,7 +131,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.inner}>
           <Text style={styles.logo}>💜</Text>
           <Text style={styles.title}>Password updated</Text>
-          <Text style={styles.body}>Your new password is ready. You can sign in now.</Text>
+          <Text style={styles.body}>Your new password is ready. Sign in with it now.</Text>
           <TouchableOpacity style={styles.btn} onPress={() => router.replace('/(auth)/login')}>
             <Text style={styles.btnText}>Go to Sign In</Text>
           </TouchableOpacity>
