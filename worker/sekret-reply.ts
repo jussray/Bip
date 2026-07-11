@@ -1694,7 +1694,7 @@ async function handleReply(request: Request, env: Env, principal: PreflightPrinc
     }
 
     let decision: Decision = evaluation.decision;
-    let violationCodes: ViolationCode[] = evaluation.violations;
+    const violationCodes: ViolationCode[] = evaluation.violations;
 
     if (decision === 'repair') {
       parsed = repairReply(parsed, violationCodes, parentSharingEnabled) as Partial<CompanionReply>;
