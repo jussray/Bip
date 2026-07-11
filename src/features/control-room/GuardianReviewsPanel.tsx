@@ -16,7 +16,7 @@ type GuardianReviewRow = {
   target_user_id: string;
   email: string | null;
   private_display_name: string | null;
-  verification_state: 'PENDING_GUARDIAN_REVIEW' | 'GUARDIAN_REJECTED';
+  verification_state: 'PENDING_GUARDIAN_REVIEW';
   verification_reason: string | null;
   submitted_at: string;
 };
@@ -38,7 +38,7 @@ export default function GuardianReviewsPanel() {
   const load = useCallback(async () => {
     setError(null);
     const founder = await getCurrentFounderProfile();
-    if (!isFounderProfile(founder) || !founder.can_manage_app) {
+    if (!founder || !isFounderProfile(founder) || !founder.can_manage_app) {
       setAuthorized(false);
       setRows([]);
       setLoading(false);
@@ -146,9 +146,7 @@ export default function GuardianReviewsPanel() {
                 <Text style={styles.name}>{row.private_display_name || 'Unnamed guardian'}</Text>
                 <Text style={styles.email}>{row.email || 'No email available'}</Text>
               </View>
-              <Text style={[styles.state, row.verification_state === 'GUARDIAN_REJECTED' && styles.rejected]}>
-                {row.verification_state === 'GUARDIAN_REJECTED' ? 'RESUBMITTED' : 'PENDING'}
-              </Text>
+              <Text style={styles.state}>PENDING</Text>
             </View>
             <Text style={styles.meta}>Submitted {formatDate(row.submitted_at)}</Text>
             {row.verification_reason ? <Text style={styles.meta}>Reason: {row.verification_reason}</Text> : null}
@@ -194,7 +192,6 @@ const styles = StyleSheet.create({
   name: { color: '#fff', fontSize: 16, fontWeight: '900' },
   email: { color: '#aaa1b8', fontSize: 12, marginTop: 4 },
   state: { color: '#fbbf24', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  rejected: { color: '#fb7185' },
   meta: { color: '#7c7489', fontSize: 11, lineHeight: 17, marginTop: 8 },
   input: { minHeight: 72, borderRadius: 14, borderWidth: 1, borderColor: '#2f293c', color: '#fff', backgroundColor: '#080611', padding: 12, marginTop: 14, textAlignVertical: 'top' },
   actions: { flexDirection: 'row', gap: 10, marginTop: 12 },
