@@ -10,6 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import { hydrateAccountProfile } from '@/features/identity/accountProfile';
 
 const AGE_OPTIONS = [
   { id: '13-15' as const, label: '13 – 15' },
@@ -31,13 +32,13 @@ export default function AgeScreen() {
   }
 
   async function handleParent() {
-    const done = await AsyncStorage.getItem('parent_profile_done');
-    if (done === 'true') {
-      setUserSide('parent');
-      router.replace('/(onboarding)/parent-splash?next=room');
-    } else {
-      router.push('/(onboarding)/parent-splash');
+    setUserSide('parent');
+    const profile = await hydrateAccountProfile('parent').catch(() => null);
+    if (profile?.accountSide === 'parent' && profile.onboardingComplete) {
+      router.replace('/(auth)/guardian-verification');
+      return;
     }
+    router.push('/(onboarding)/parent-splash');
   }
 
   return (
