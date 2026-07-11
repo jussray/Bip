@@ -33,6 +33,14 @@ export default function ParentLinkOnboarding() {
   const normalized = normalizeParentInviteCode(code);
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
 
+  async function completeParentOnboarding(linkedTeenId?: string) {
+    setUserSide('parent');
+    const entries: [string, string][] = [['parent_profile_done', 'true']];
+    if (linkedTeenId) entries.push(['linked_teen_id', linkedTeenId]);
+    await AsyncStorage.multiSet(entries);
+    router.replace('/(parent)/room');
+  }
+
   async function handleLink() {
     if (!ready) {
       setError('Enter the full eight-character code from your teen.');
@@ -49,14 +57,20 @@ export default function ParentLinkOnboarding() {
         return;
       }
 
-      setUserSide('parent');
-      await AsyncStorage.multiSet([
-        ['parent_profile_done', 'true'],
-        ['linked_teen_id', result.value],
-      ]);
-      router.replace('/(parent)/room');
+      await completeParentOnboarding(result.value);
     } catch {
       setError('Could not connect right now. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLinkLater() {
+    if (loading) return;
+    setLoading(true);
+    setError('');
+    try {
+      await completeParentOnboarding();
     } finally {
       setLoading(false);
     }
@@ -91,7 +105,7 @@ export default function ParentLinkOnboarding() {
         <Text style={styles.kicker}>LINK YOUR TEEN</Text>
         <Text style={styles.title}>Enter their private code.</Text>
         <Text style={styles.body}>
-          Your teen creates an eight-character code from Limited Mode. Enter it here to connect your accounts and finish verification.
+          Connect now with the eight-character code from your teen, or finish your parent account and link them later.
         </Text>
 
         <View style={styles.codeWrap}>
@@ -125,7 +139,7 @@ export default function ParentLinkOnboarding() {
           activeOpacity={0.85}
           style={[styles.primary, !ready && styles.disabled]}
         >
-          {loading ? (
+          {loading && ready ? (
             <ActivityIndicator color="#062015" />
           ) : (
             <Text style={styles.primaryText}>Approve and connect</Text>
@@ -142,8 +156,12 @@ export default function ParentLinkOnboarding() {
           </View>
         ) : null}
 
-        <TouchableOpacity onPress={() => router.replace('/(onboarding)/parent-welcome')} style={styles.help}>
-          <Text style={styles.helpText}>I do not have a code yet</Text>
+        <TouchableOpacity disabled={loading} onPress={handleLinkLater} style={styles.help}>
+          {loading && !ready ? (
+            <ActivityIndicator color="#789082" />
+          ) : (
+            <Text style={styles.helpText}>Link a teen later</Text>
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
