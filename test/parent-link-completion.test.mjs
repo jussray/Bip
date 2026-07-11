@@ -7,10 +7,12 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 test('parent invite completion validates the atomic RPC response', async () => {
   const source = await read('src/utils/parentLink.ts');
   assert.match(source, /parseRedeemedParentLink/);
+  assert.match(source, /extractRedeemedTeenId/);
+  assert.match(source, /typeof row\?\.teen_user_id === 'string'/);
+  assert.match(source, /row\.teen_user_id\.length > 0/);
   assert.match(source, /row\.parent_user_id !== expectedParentId/);
   assert.match(source, /row\.status !== 'active'/);
   assert.match(source, /typeof row\.link_id !== 'string'/);
-  assert.match(source, /typeof row\.teen_user_id !== 'string'/);
   assert.match(source, /return \{ ok: true, value: redeemedLink \}/);
 });
 
