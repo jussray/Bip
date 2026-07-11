@@ -13,8 +13,11 @@ const verificationContext = read('src/context/VerificationContext.tsx');
 const verificationState = read('src/services/verificationState.ts');
 const routeAccess = read('src/services/routeAccess.ts');
 const guardianScreen = read('app/(auth)/guardian-verification.tsx');
+const guardianPanel = read('src/features/control-room/GuardianReviewsPanel.tsx');
+const controlRoomScreen = read('src/screens/DevControlRoomScreen.tsx');
 const cleanup = read('src/features/identity/clearProfileIdentityCache.ts');
 const migration = read('supabase/migrations/20260711190000_account_profile_source_of_truth.sql');
+const reviewMigration = read('supabase/migrations/20260711194500_guardian_review_queue.sql');
 const guardianCommunityMigration = read('supabase/migrations/20260701020000_circle_v2_parent_community.sql');
 
 function between(source, start, end) {
@@ -118,6 +121,21 @@ test('guardian review and teen parent-link consent remain separate state machine
   assert.doesNotMatch(guardianRpc, /update public\.parent_links/);
   assert.match(parentOnboarding, /submitGuardianVerification\(\)/);
   assert.match(guardianScreen, /Teen sharing and parent-link consent are separate/);
+});
+
+test('guardian decisions are founder-admin gated, auditable, and operational in Control Room', () => {
+  assert.match(reviewMigration, /create table if not exists public\.guardian_verification_reviews/);
+  assert.match(reviewMigration, /p\.role in \('founder', 'admin'\)/);
+  assert.match(reviewMigration, /p\.can_manage_app = true/);
+  assert.match(reviewMigration, /create or replace function public\.list_guardian_verification_queue/);
+  assert.match(reviewMigration, /create or replace function public\.review_guardian_verification/);
+  assert.match(reviewMigration, /insert into public\.guardian_verification_reviews/);
+  assert.doesNotMatch(reviewMigration, /insert into public\.parent_links/);
+  assert.doesNotMatch(reviewMigration, /update public\.parent_links/);
+  assert.match(guardianPanel, /list_guardian_verification_queue/);
+  assert.match(guardianPanel, /review_guardian_verification/);
+  assert.match(controlRoomScreen, /GuardianReviewsPanel/);
+  assert.match(controlRoomScreen, /Guardians/);
 });
 
 test('guardian-only community access remains enforced in Postgres', () => {
