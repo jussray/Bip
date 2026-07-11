@@ -1,6 +1,7 @@
 import worker from './index';
 import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
 import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
+import { getModels, type WorkerEnv } from './config/models';
 
 /**
  * Minimal shape of Cloudflare's ExecutionContext. Declared locally instead of
@@ -20,14 +21,17 @@ function operationForPath(path: string): string {
   return 'unknown';
 }
 
-/** Fallback model label when the response body doesn't carry its own `model`
- * field (e.g. auth/rate-limit failures that never reached OpenAI). Once a
- * response reports `model` itself (sekret-reply.ts now does, via
- * getModels(env)), that value wins — this is only a last resort. */
-function modelForOperation(operation: string): string | undefined {
-  if (operation === 'reply') return 'gpt-4o-mini';
-  if (operation === 'tts') return 'gpt-4o-mini-tts';
-  if (operation === 'stt') return 'whisper-1';
+/**
+ * Fallback model label when the response body doesn't carry its own `model`
+ * field (e.g. auth/rate-limit failures that never reached OpenAI). Reads from
+ * getModels(env) so this stays in sync with wrangler.toml [vars] — no more
+ * hardcoded strings that drift when the active model is rotated.
+ */
+function modelForOperation(operation: string, env: WorkerEnv): string | undefined {
+  const models = getModels(env);
+  if (operation === 'reply') return models.chat;
+  if (operation === 'tts')   return models.tts;
+  if (operation === 'stt')   return models.stt;
   return undefined;
 }
 
@@ -39,7 +43,7 @@ function fingerprintFor(status: number, operation: string, fallbackUsed: boolean
   if (status === 429) return 'worker_rate_limit';
   if (status >= 500) {
     if (operation === 'tts') return 'openai_tts_failure';
-    if (operation === 'stt') return 'openai_stt_failure';
+    if (operation === 'sst') return 'openai_stt_failure';
     if (operation === 'bridge_summary') return 'bridge_summary_failure';
     return 'openai_reply_failure';
   }
@@ -104,6 +108,7 @@ export default {
     const operation = operationForPath(url.pathname);
     const requestId = request.headers.get('CF-Ray') || undefined;
     const traceIdFallback = requestId || crypto.randomUUID();
+    const typedEnv = env as WorkerEnv;
 
     try {
       const response = await worker.fetch(request, env as never);
@@ -118,7 +123,7 @@ export default {
         operation,
         character_id: metadata.characterId,
         request_id: requestId,
-        model: metadata.model || modelForOperation(operation),
+        model: metadata.model || modelForOperation(operation, typedEnv),
         fallback_used: metadata.fallbackUsed,
         retry_count: metadata.decision === 'retry' ? 1 : 0,
         voice_source: metadata.voiceSource,
@@ -147,7 +152,7 @@ export default {
         operation,
         error_name: error instanceof Error ? error.name : 'UnknownError',
         request_id: requestId,
-        model: modelForOperation(operation),
+        model: modelForOperation(operation, typedEnv),
         fallback_used: false,
         retry_count: 0,
         trace_id: traceIdFallback,
