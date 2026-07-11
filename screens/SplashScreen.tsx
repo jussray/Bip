@@ -8,7 +8,7 @@
 // Hit-target fractions are relative to the rendered artwork, not the viewport.
 // Tune T_BTN_* and P_BTN_* if the painted button moves inside an asset.
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Image,
@@ -31,6 +31,11 @@ const P_BTN = { top: 0.700, bottom: 0.900, left: 0.05, right: 0.05 };
 interface SplashScreenProps {
   userSide?: "teen" | "parent";
   setScreen: () => void;
+}
+
+interface ImageSize {
+  width: number;
+  height: number;
 }
 
 function getContainedLayout(
@@ -61,19 +66,23 @@ function getContainedLayout(
 export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps) {
   const fade = useRef(new Animated.Value(0)).current;
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const [imageSize, setImageSize] = useState<ImageSize | null>(null);
   const isParent = userSide === "parent";
   const btn = isParent ? P_BTN : T_BTN;
   const source = isParent ? PARENT_BG : TEEN_BG;
-  const resolvedSource = Image.resolveAssetSource(source);
+
+  useEffect(() => {
+    setImageSize(null);
+  }, [isParent]);
 
   const art = useMemo(
     () => getContainedLayout(
       viewportWidth,
       viewportHeight,
-      resolvedSource?.width ?? viewportWidth,
-      resolvedSource?.height ?? viewportHeight,
+      imageSize?.width ?? viewportWidth,
+      imageSize?.height ?? viewportHeight,
     ),
-    [resolvedSource?.height, resolvedSource?.width, viewportHeight, viewportWidth],
+    [imageSize?.height, imageSize?.width, viewportHeight, viewportWidth],
   );
 
   useEffect(() => {
@@ -81,7 +90,7 @@ export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps
   }, [fade]);
 
   return (
-    <Animated.View style={[s.root, { opacity: fade }]}>
+    <Animated.View style={[s.root, { opacity: fade }]}> 
       <StatusBar style="light" />
 
       {/* Full artwork stays visible; letterboxing uses the splash background. */}
@@ -90,6 +99,17 @@ export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps
           source={source}
           style={[s.artwork, { width: art.width, height: art.height }]}
           resizeMode="contain"
+          onLoad={({ nativeEvent }) => {
+            const width = nativeEvent.source?.width;
+            const height = nativeEvent.source?.height;
+            if (!width || !height || width <= 0 || height <= 0) return;
+
+            setImageSize(current =>
+              current?.width === width && current.height === height
+                ? current
+                : { width, height },
+            );
+          }}
         />
       </View>
 
@@ -120,7 +140,11 @@ export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps
 const s = StyleSheet.create({
   root: { flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", backgroundColor: "#090011" },
   artLayer: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",

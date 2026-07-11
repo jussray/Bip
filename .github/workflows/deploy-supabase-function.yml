@@ -11,6 +11,7 @@ on:
           - account-deletion-request
           - account-request-cancel
           - account-delete
+          - parent-link-revoke
       confirm_project:
         description: Type tbsevonvegdnlyjgplmm to confirm the target project
         required: true
