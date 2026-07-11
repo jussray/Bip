@@ -4,6 +4,21 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 
 > Warm, funny, soft, slightly nosy, and never clinical.
 
+## AI operating contracts
+
+- [`GLOBAL_AI.md`](GLOBAL_AI.md) — provider-neutral founder and product contract
+- [`AGENTS.md`](AGENTS.md) — Codex, ChatGPT, and repository-agent instructions
+- [`CLAUDE.md`](CLAUDE.md) — verified design-system and Figma integration reference
+- [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — Claude, Codex, OpenAI, Anthropic, Perplexity, GitHub, Supabase, Cloudflare, and Expo boundaries
+
+Shared founder stack:
+
+```text
+/garyvee lindymode redteam l99 redteam ooda
+```
+
+The first redteam attacks the product premise and evidence. The second attacks the selected implementation, privacy blast radius, rollback, and proof. Project-local instructions may become stricter, but they may not weaken teen privacy, consent, security, evidence, approval, provenance, or rollback.
+
 ## Why Se'kret Bip exists
 
 Teens need room to process emotions, build habits, and ask for support without feeling watched. Parents need a healthier way to stay connected without being given unrestricted access to private reflections.
@@ -19,7 +34,6 @@ Se'kret Bip is designed around that tension: private by default, intentional sha
 ## What support unlocks
 
 Funding and strategic support are intended to accelerate concrete readiness milestones:
-
 - independent privacy and security review
 - teen and parent usability testing
 - accessibility testing and remediation
@@ -155,6 +169,8 @@ npm run verify:prepush
 
 ## Key guides
 
+- `GLOBAL_AI.md`
+- `docs/PROVIDERS.md`
 - `docs/DEMO_READINESS_ENFORCEMENT.md`
 - `docs/CURRENT_STATUS.md`
 - `docs/ARCHITECTURE.md`
