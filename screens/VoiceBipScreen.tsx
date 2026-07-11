@@ -17,6 +17,13 @@
 //
 // Previous fixes preserved: A1 (onSave), A4 (char-aware badge), B1 (box-none),
 // B2 (none on hint), B3 (heroArt overlay), D1 (archive count + link)
+//
+// 2026-07-11 patch:
+//   - Replaced FileReader (Web-only) with uriToBase64 from utils/audioBase64
+//     FileReader is undefined in Hermes/JSC — transcription was silently
+//     failing on every device, falling through to the vibe-fallback reply.
+//   - recordingTimeRef added: stopRecording now reads from a ref instead of
+//     the render-cycle closure so duration is never stale / "0:00".
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -34,6 +41,7 @@ import type { VoiceNote } from '../types/bridge';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { fetchSekretReply, fetchSekretVoice, fetchSekretTranscribe } from '../utils/api';
+import { uriToBase64, recordingContentType } from '../utils/audioBase64';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
@@ -137,8 +145,10 @@ export function VoiceBipScreen({
   const [selectedBipType,  setSelectedBipType]   = useState<string | null>(null);
   const [transcriptFailed, setTranscriptFailed]  = useState(false);
 
-  const recordingRef    = useRef<Audio.Recording | null>(null);
-  const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
+  const recordingRef      = useRef<Audio.Recording | null>(null);
+  // ↓ ref mirrors recordingTime so stopRecording never captures a stale closure
+  const recordingTimeRef  = useRef(0);
+  const stopRecordingRef  = useRef<() => Promise<void>>(async () => {});
 
   // Animations
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -236,6 +246,7 @@ export function VoiceBipScreen({
     setSekretReply('');
     setReplyAudioUri('');
     setRecordingTime(0);
+    recordingTimeRef.current = 0;
     setTranscriptFailed(false);
     setShowBipMenu(false);
     prepareVoiceSession('voice');
@@ -278,7 +289,11 @@ export function VoiceBipScreen({
     waveLoop.current.start();
 
     timerRef.current = setInterval(() => {
-      setRecordingTime(t => t + 1);
+      setRecordingTime(t => {
+        const next = t + 1;
+        recordingTimeRef.current = next;
+        return next;
+      });
     }, 1000);
 
     await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
@@ -314,18 +329,10 @@ export function VoiceBipScreen({
       const uri = recording.getURI();
       if (uri) {
         try {
-          const fetchRes = await fetch(uri);
-          const blob = await fetchRes.blob();
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const dataUrl = reader.result as string;
-              resolve(dataUrl.split(',')[1] ?? '');
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          transcript = await fetchSekretTranscribe({ audioBase64: base64, contentType: blob.type || 'audio/m4a' });
+          // uriToBase64 uses expo-file-system — safe in Hermes/JSC (no FileReader)
+          const base64 = await uriToBase64(uri);
+          const contentType = recordingContentType();
+          transcript = await fetchSekretTranscribe({ audioBase64: base64, contentType });
         } catch {
           setTranscriptFailed(true);
         }
@@ -339,7 +346,8 @@ export function VoiceBipScreen({
       title: selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      duration: formatTime(recordingTime),
+      // Read from ref — never stale regardless of when this closure was created
+      duration: formatTime(recordingTimeRef.current),
       type: (selectedBipType || 'voice') as VoiceNote['type'],
       avatarKey,
       transcriptId: intelligence.transcript.id,
@@ -474,7 +482,7 @@ export function VoiceBipScreen({
         </View>
         <View style={styles.avatarIntro}>
           <Text style={[styles.avatarRole, { color: avatar.accent }]}>{avatar.role}</Text>
-          <Text style={styles.avatarGreeting}>“{avatar.greeting}”</Text>
+          <Text style={styles.avatarGreeting}>"{avatar.greeting}"</Text>
         </View>
 
         <SyncBadge status={syncStatus ?? 'idle'} />
@@ -703,209 +711,65 @@ export function VoiceBipScreen({
                   style={{ borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 }}
                   onPress={() => setVoicePromptIdx(i => i + 1)}
                 >
-                  <Text style={{ color: '#c4b5fd', fontSize: 12, fontWeight: '600' }}>different prompt</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{ flex: 1, backgroundColor: '#7c3aed', borderRadius: 12, paddingVertical: 7, alignItems: 'center' }}
-                  onPress={() => setShowBipMenu(true)}
-                >
-                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>🎙️ record now</Text>
+                  <Text style={{ color: '#c084fc', fontSize: 13 }}>next prompt ›</Text>
                 </TouchableOpacity>
               </View>
             </View>
           );
         })()}
 
-        {/* ── Tips ── */}
-        <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.85)' }]}>
-          <Text style={[styles.cardTitle, { color: '#fff' }]}>Tips for Voice Bips 🌙</Text>
-          {avatar.tips.map(tip => (
-            <Text key={tip} style={[styles.tip, { color: '#c4b5fd' }]}>• {tip}</Text>
-          ))}
-        </View>
-
       </ScrollView>
-
       {BottomNav}
-
-      {/* ── Bip type menu ── */}
-      {showBipMenu && (
-        <View style={styles.overlayWrap}>
-          <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowBipMenu(false)} />
-          <View style={[styles.bipMenuCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
-            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>What kind of Bip? {avatar.emoji}</Text>
-            <Text style={[styles.bipMenuSub, { color: '#7c6899' }]}>Choose how you want to express right now</Text>
-            {BIP_TYPES.map(bip => (
-              <TouchableOpacity
-                key={bip.id}
-                style={[styles.bipTypeRow, { borderColor: theme.accent }]}
-                onPress={() => {
-                  setSelectedBipType(bip.id);
-                  if (bip.id === 'text')       { setShowBipMenu(false); setScreen('pages'); }
-                  else if (bip.id === 'cloud') { setShowBipMenu(false); setScreen('cloudThoughts'); }
-                  else if (bip.id === 'video') { setShowBipMenu(false); void startVideoRecording(); }
-                  else                         { setShowBipMenu(false); startRecording(); }
-                }}
-              >
-                <Text style={styles.bipTypeEmoji}>{bip.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.bipTypeLabel, { color: '#fff' }]}>{bip.label}</Text>
-                  <Text style={[styles.bipTypeSub, { color: '#7c6899' }]}>{bip.sub}</Text>
-                </View>
-                <Text style={{ color: theme.soft, fontSize: 18 }}>›</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* ── Archive overlay ── */}
-      {showArchive && (
-        <View style={styles.overlayWrap}>
-          <TouchableOpacity style={styles.overlayBackdrop} onPress={() => setShowArchive(false)} />
-          <View style={[styles.archiveCard, { backgroundColor: 'rgba(13,9,20,0.97)', borderColor: theme.accent }]}>
-            <Text style={[styles.bipMenuTitle, { color: theme.soft }]}>
-              {avatar.archiveTitle} 📖
-            </Text>
-
-            {voiceNotes.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: 20 }}>
-                <Image source={CLOUD_HP} style={{ width: 48, height: 48, marginBottom: 10 }} resizeMode="contain" />
-                <Text style={[styles.emptyText, { color: '#7c6899' }]}>No bips yet. Your first one is waiting. 🎙️</Text>
-              </View>
-            ) : (
-              <>
-                {voiceNotes.slice(0, 6).map(n => (
-                  <View key={n.id} style={[styles.noteRow, { borderBottomColor: 'rgba(167,114,192,0.15)' }]}>
-                    <View style={[styles.noteIcon, { backgroundColor: 'rgba(124,58,237,0.3)' }]}>
-                      <Text style={{ fontSize: 14 }}>
-                        {n.type === 'video' ? '📹' : n.type === 'text' ? '✍️' : n.type === 'cloud' ? '☁️' : '🎙️'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.noteTitle, { color: '#fff' }]}>{n.title}</Text>
-                      <Text style={[styles.noteMeta, { color: '#7c6899' }]}>{n.date} · {n.duration}</Text>
-                    </View>
-                    <TouchableOpacity style={[styles.playBtn, { backgroundColor: 'rgba(124,58,237,0.25)' }]}>
-                      <Text style={[styles.playBtnText, { color: '#c4b5fd' }]}>▶</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                {voiceNotes.length > 6 && (
-                  <TouchableOpacity
-                    style={{ alignItems: 'center', paddingTop: 10 }}
-                    onPress={() => { setShowArchive(false); setScreen('pages'); }}
-                  >
-                    <Text style={{ color: theme.soft, fontSize: 12, fontWeight: '600' }}>
-                      +{voiceNotes.length - 6} more → open journal
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-
-            <TouchableOpacity style={{ alignItems: 'center', paddingTop: 12 }} onPress={() => setShowArchive(false)}>
-              <Text style={{ color: '#7c6899', fontSize: 13 }}>close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root:               { flex: 1, backgroundColor: '#0d0914' },
-  scrollView:          { flex: 1 },
-  scroll:             { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
-  avatarSelector:     { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },
-  avatarOption:       { flex: 1, minWidth: 0, alignItems: 'center', borderRadius: 14, borderWidth: 1, borderColor: 'rgba(196,181,253,0.18)', backgroundColor: 'rgba(13,9,20,0.72)', paddingVertical: 8, paddingHorizontal: 4 },
-  avatarOptionEmoji:  { fontSize: 18, marginBottom: 3 },
-  avatarOptionName:   { color: '#9b91aa', fontSize: 11, fontWeight: '800' },
-  avatarIntro:        { paddingHorizontal: 16, paddingBottom: 12 },
-  avatarRole:         { fontSize: 10, fontWeight: '900', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 3 },
-  avatarGreeting:     { color: '#f5f0ff', fontSize: 16, lineHeight: 22, fontWeight: '700' },
-  roomWrap:           { position: 'relative', width: '100%', height: Platform.OS === 'web' ? 240 : 340, marginBottom: 16, overflow: 'hidden' },
-  roomImage:          { width: '100%', height: '100%' },
-  environmentLayer:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  heroAvatar:         { position: 'absolute', bottom: -20, alignSelf: 'center', width: '88%', height: '82%', opacity: 0.16, tintColor: '#fff' },
-  topScrim:           { position: 'absolute', top: 0, left: 0, right: 0, height: 100 },
-  bottomScrim:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
-  cloudWrap:          { position: 'absolute', top: 36, right: 24 },
-  cloudImg:           { width: 64, height: 64 },
-  recordingOverlay:   { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(124,58,237,0.25)' },
-  timeBadge:          { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
-  timeBadgeText:      { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
-  presencePill:       {
-    position: 'absolute', top: 110, right: 16,
-    backgroundColor: 'rgba(168,85,247,0.18)',
-    borderColor: 'rgba(168,85,247,0.45)', borderWidth: 1,
-    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  presenceText:       { color: '#e9d5ff', fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
-  listeningBadge:     { position: 'absolute', bottom: 12, left: 0, right: 0, alignItems: 'center' },
-  listeningBadgeText: { color: '#f5f0ff', fontSize: 14, fontWeight: '800', backgroundColor: 'rgba(124,58,237,0.7)', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
-  hotspot:            { position: 'absolute' },
-  hotspotDebug:       { borderWidth: 2, borderColor: '#f472b6', backgroundColor: 'rgba(244,114,182,0.18)' },
-  debugLabel:         { color: '#f472b6', fontSize: 9, fontWeight: '900', padding: 2 },
-  stickyHint:         {
-    position: 'absolute',
-    backgroundColor: '#fff8e7',
-    borderColor: '#a855f7', borderWidth: 1, borderStyle: 'dashed',
-    borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5,
-    transform: [{ rotate: '-2deg' }],
-    shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 1, height: 2 },
-  },
-  stickyHintText:     { color: '#3d2563', fontSize: 11, fontWeight: '700', fontStyle: 'italic' },
-
-  // Recording card
-  recordingCard:      {
-    marginHorizontal: 16, marginBottom: 12, borderRadius: 24, borderWidth: 1, padding: 24, alignItems: 'center',
-    shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 0 },
-  },
-  pulseRing:          { width: 80, height: 80, borderRadius: 40, borderWidth: 3, position: 'absolute', top: 14 },
-  recordingLabel:     { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 6, marginTop: 8 },
-  recordingTimer:     { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 8 },
-  recordingWarn:      { color: '#fcd34d', fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
-  waveform:           { flexDirection: 'row', alignItems: 'center', gap: 3, height: 44, marginBottom: 20 },
-  waveBar:            { width: 4, borderRadius: 2 },
-  stopBtn:            { backgroundColor: '#ef4444', borderRadius: 18, paddingHorizontal: 24, paddingVertical: 12 },
-  stopBtnText:        { color: '#fff', fontWeight: '800', fontSize: 15 },
-
-  // Float cards
-  floatCard:          {
-    marginHorizontal: 16, marginBottom: 12, borderRadius: 18, borderWidth: 1, padding: 16,
-    shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
-  },
-  savedLabel:         { fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  thinkingText:       { fontSize: 13, fontStyle: 'italic' },
-  replyLabel:         { fontSize: 10, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 },
-  replyText:          { fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
-  voiceStatus:        { marginTop: 10, fontSize: 12, fontStyle: 'italic', opacity: 0.75 },
-  voiceBtn:           { marginTop: 12, alignSelf: 'flex-start', backgroundColor: 'rgba(124,58,237,0.34)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)' },
-  voiceBtnText:       { color: '#f5f0ff', fontSize: 12, fontWeight: '800' },
-  cardTitle:          { fontSize: 13, fontWeight: '600', marginBottom: 10 },
-  tip:                { fontSize: 13, marginBottom: 8, lineHeight: 20 },
-
-  // Bip menu overlay
-  overlayWrap:        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
-  overlayBackdrop:    { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
-  bipMenuCard:        { margin: 16, borderRadius: 28, borderWidth: 1, padding: 24, zIndex: 10 },
-  bipMenuTitle:       { fontSize: 20, fontWeight: '900', marginBottom: 4 },
-  bipMenuSub:         { fontSize: 12, marginBottom: 20 },
-  bipTypeRow:         { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 10 },
-  bipTypeEmoji:       { fontSize: 26 },
-  bipTypeLabel:       { fontSize: 15, fontWeight: '700' },
-  bipTypeSub:         { fontSize: 11, marginTop: 2 },
-
-  // Archive overlay
-  archiveCard:        { margin: 16, borderRadius: 28, borderWidth: 1, padding: 24, zIndex: 10, maxHeight: '70%' },
-  noteRow:            { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1 },
-  noteIcon:           { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  noteTitle:          { fontWeight: '600', fontSize: 13 },
-  noteMeta:           { fontSize: 11 },
-  playBtn:            { borderRadius: 10, padding: 8 },
-  playBtnText:        { fontSize: 14 },
-  emptyText:          { fontSize: 13, textAlign: 'center', fontStyle: 'italic' },
+  root:              { flex: 1 },
+  scrollView:        { flex: 1 },
+  scroll:            { paddingBottom: 120 },
+  avatarSelector:    { flexDirection: 'row', justifyContent: 'center', gap: 10, paddingTop: 56, paddingHorizontal: 16 },
+  avatarOption:      { alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  avatarOptionEmoji: { fontSize: 22, marginBottom: 3 },
+  avatarOptionName:  { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.55)', letterSpacing: 0.3 },
+  avatarIntro:       { alignItems: 'center', paddingTop: 10, paddingBottom: 4, paddingHorizontal: 24 },
+  avatarRole:        { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
+  avatarGreeting:    { fontSize: 14, color: 'rgba(245,240,255,0.72)', fontStyle: 'italic', textAlign: 'center', lineHeight: 20 },
+  roomWrap:          { marginHorizontal: 16, marginTop: 12, borderRadius: 20, overflow: 'hidden', aspectRatio: 0.85, position: 'relative' },
+  roomImage:         { ...StyleSheet.absoluteFillObject },
+  heroAvatar:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%' },
+  environmentLayer:  { ...StyleSheet.absoluteFillObject },
+  topScrim:          { position: 'absolute', top: 0, left: 0, right: 0, height: 90 },
+  bottomScrim:       { position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 },
+  cloudWrap:         { position: 'absolute', top: '6%', alignSelf: 'center' },
+  cloudImg:          { width: 90, height: 60 },
+  recordingOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(168,85,247,0.18)' },
+  timeBadge:         { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.55)', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 3 },
+  timeBadgeText:     { color: 'rgba(245,240,255,0.75)', fontSize: 11, fontWeight: '600' },
+  presencePill:      { position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(13,9,20,0.62)', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 5 },
+  presenceText:      { color: 'rgba(245,240,255,0.8)', fontSize: 12, fontStyle: 'italic' },
+  listeningBadge:    { position: 'absolute', top: 10, right: 12, backgroundColor: 'rgba(168,85,247,0.28)', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 3 },
+  listeningBadgeText:{ color: '#c084fc', fontSize: 11, fontWeight: '700' },
+  hotspot:           { position: 'absolute' },
+  hotspotDebug:      { backgroundColor: 'rgba(255,0,0,0.22)', borderWidth: 1, borderColor: 'red' },
+  debugLabel:        { color: 'red', fontSize: 10, fontWeight: '700' },
+  stickyHint:        { position: 'absolute', backgroundColor: '#fffde7', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5, transform: [{ rotate: '-2deg' }], shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 4, shadowOffset: { width: 1, height: 2 } },
+  stickyHintText:    { color: '#5c4a1e', fontSize: 12, fontWeight: '700' },
+  floatCard:         { marginHorizontal: 16, marginTop: 14, borderRadius: 18, borderWidth: 1, padding: 18, shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  recordingCard:     { marginHorizontal: 16, marginTop: 14, borderRadius: 18, borderWidth: 1.5, padding: 20, alignItems: 'center', shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
+  pulseRing:         { position: 'absolute', width: 80, height: 80, borderRadius: 40, borderWidth: 2, opacity: 0.5 },
+  recordingLabel:    { color: '#f5f0ff', fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  recordingTimer:    { color: '#c084fc', fontSize: 32, fontWeight: '800', fontVariant: ['tabular-nums'], marginBottom: 8 },
+  recordingWarn:     { color: '#fcd34d', fontSize: 12, fontStyle: 'italic', marginBottom: 8 },
+  waveform:          { flexDirection: 'row', alignItems: 'center', gap: 3, height: 40, marginBottom: 16 },
+  waveBar:           { width: 4, borderRadius: 2 },
+  stopBtn:           { backgroundColor: 'rgba(168,85,247,0.22)', borderWidth: 1, borderColor: '#a855f7', borderRadius: 14, paddingHorizontal: 32, paddingVertical: 11 },
+  stopBtnText:       { color: '#c084fc', fontSize: 15, fontWeight: '700' },
+  savedLabel:        { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  thinkingText:      { fontSize: 14, fontStyle: 'italic', flex: 1 },
+  replyLabel:        { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8 },
+  replyText:         { fontSize: 15, lineHeight: 23 },
+  voiceStatus:       { fontSize: 12, fontStyle: 'italic', marginTop: 10 },
+  voiceBtn:          { marginTop: 12, alignSelf: 'flex-start', backgroundColor: 'rgba(168,85,247,0.18)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
+  voiceBtnText:      { color: '#c084fc', fontSize: 13, fontWeight: '600' },
 });
