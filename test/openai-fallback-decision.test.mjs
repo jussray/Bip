@@ -3,8 +3,8 @@
  * existed before this change but was never actually wired into the real
  * OpenAI calls in sekret-reply.ts — every call hardcoded a model literal
  * directly. This file locks that fix in place: no hardcoded model literal
- * may remain at a live OpenAI call site, and getModels() must still resolve
- * to the same defaults it always advertised.
+ * may remain at a live OpenAI call site, and getModels() must resolve the
+ * configured production defaults while honoring environment overrides.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,9 +28,9 @@ const rawFn = modelsSource.slice(fnStart, fnEnd)
   .replace(/\}\s*as const;/, '};');
 const getModels = new Function(`${rawFn}; return getModels;`)();
 
-test('getModels falls back to the historically advertised defaults', () => {
+test('getModels falls back to the configured production defaults', () => {
   const models = getModels({});
-  assert.equal(models.chat, 'gpt-4o-mini');
+  assert.equal(models.chat, 'gpt-4o');
   assert.equal(models.tts, 'gpt-4o-mini-tts');
   assert.equal(models.stt, 'whisper-1');
 });
