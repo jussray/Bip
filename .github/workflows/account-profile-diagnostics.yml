@@ -1,0 +1,36 @@
+name: Account Profile Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test-output:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Capture test output
+        shell: bash
+        run: |
+          set +e
+          npm test > test-output.txt 2>&1
+          status=$?
+          cat test-output.txt
+          echo "$status" > test-exit-code.txt
+          exit 0
+      - name: Upload diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-profile-test-output
+          path: |
+            test-output.txt
+            test-exit-code.txt
+          if-no-files-found: error
