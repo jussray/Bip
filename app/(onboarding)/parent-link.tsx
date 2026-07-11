@@ -33,9 +33,8 @@ export default function ParentLinkOnboarding() {
   const normalized = normalizeParentInviteCode(code);
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
 
-  async function completeParentOnboarding(linkedTeenId?: string) {
+  async function completeParentLinkStep(linkedTeenId?: string) {
     setUserSide('parent');
-    await AsyncStorage.setItem('parent_profile_done', 'true');
 
     if (linkedTeenId) {
       await AsyncStorage.setItem('linked_teen_id', linkedTeenId);
@@ -43,7 +42,9 @@ export default function ParentLinkOnboarding() {
       await AsyncStorage.removeItem('linked_teen_id');
     }
 
-    router.replace('/(parent)/room');
+    // A teen link is consent to share, not proof of guardian identity and not
+    // completion of the Parent profile. The guardian gate decides what follows.
+    router.replace('/(auth)/guardian-verification');
   }
 
   async function handleLink() {
@@ -62,7 +63,7 @@ export default function ParentLinkOnboarding() {
         return;
       }
 
-      await completeParentOnboarding(result.value);
+      await completeParentLinkStep(result.value);
     } catch {
       setError('Could not connect right now. Check your connection and try again.');
     } finally {
@@ -75,7 +76,7 @@ export default function ParentLinkOnboarding() {
     setLoading(true);
     setError('');
     try {
-      await completeParentOnboarding();
+      await completeParentLinkStep();
     } finally {
       setLoading(false);
     }
