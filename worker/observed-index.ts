@@ -1,5 +1,16 @@
 import worker from './index';
-import { emitWorkerTelemetry } from './telemetry';
+import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
+import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
+
+/**
+ * Minimal shape of Cloudflare's ExecutionContext. Declared locally instead of
+ * depending on @cloudflare/workers-types (not installed in this project) —
+ * the real object the Workers runtime passes in has more methods, which is
+ * fine, since this only narrows what we call on it (`waitUntil`).
+ */
+interface MinimalExecutionContext {
+  waitUntil(promise: Promise<unknown>): void;
+}
 
 function operationForPath(path: string): string {
   if (path.endsWith('/api/sekret/reply')) return 'reply';
@@ -9,6 +20,10 @@ function operationForPath(path: string): string {
   return 'unknown';
 }
 
+/** Fallback model label when the response body doesn't carry its own `model`
+ * field (e.g. auth/rate-limit failures that never reached OpenAI). Once a
+ * response reports `model` itself (sekret-reply.ts now does, via
+ * getModels(env)), that value wins — this is only a last resort. */
 function modelForOperation(operation: string): string | undefined {
   if (operation === 'reply') return 'gpt-4o-mini';
   if (operation === 'tts') return 'gpt-4o-mini-tts';
@@ -16,7 +31,8 @@ function modelForOperation(operation: string): string | undefined {
   return undefined;
 }
 
-function fingerprintFor(status: number, operation: string, fallbackUsed: boolean): string {
+function fingerprintFor(status: number, operation: string, fallbackUsed: boolean, decision?: string): string {
+  if (decision === 'block') return 'openai_reply_blocked';
   if (fallbackUsed && operation === 'reply') return 'openai_reply_fallback';
   if (fallbackUsed && operation === 'bridge_summary') return 'bridge_summary_fallback';
   if (status === 401 || status === 403) return 'worker_auth_failure';
@@ -28,6 +44,7 @@ function fingerprintFor(status: number, operation: string, fallbackUsed: boolean
     return 'openai_reply_failure';
   }
   if (status >= 400) return 'worker_invalid_request';
+  if (decision === 'repair' || decision === 'retry') return 'openai_reply_repaired';
   if (operation === 'reply') return 'openai_reply_success';
   if (operation === 'tts') return 'openai_tts_success';
   if (operation === 'stt') return 'openai_stt_success';
@@ -35,16 +52,45 @@ function fingerprintFor(status: number, operation: string, fallbackUsed: boolean
   return 'worker_request_success';
 }
 
-async function readSafeResponseMetadata(response: Response, operation: string): Promise<{ characterId?: string; fallbackUsed: boolean; voiceSource?: string }> {
+interface SafeResponseMetadata {
+  characterId?: string;
+  fallbackUsed: boolean;
+  voiceSource?: string;
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  estimatedCostUsd?: number;
+  decision?: string;
+  violationCodes?: string[];
+  schemaValid?: boolean;
+  promptVersion?: string;
+  policyVersion?: string;
+  traceId?: string;
+}
+
+async function readSafeResponseMetadata(response: Response, operation: string): Promise<SafeResponseMetadata> {
   if (operation === 'unknown') return { fallbackUsed: false };
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) return { fallbackUsed: false };
   try {
     const data = await response.clone().json() as Record<string, unknown>;
+    const usage = data.usage as Record<string, unknown> | undefined;
     return {
       characterId: typeof data.characterId === 'string' ? data.characterId : undefined,
       fallbackUsed: data.replySource === 'fallback' || data.usedFallback === true,
       voiceSource: typeof data.voiceSource === 'string' ? data.voiceSource : undefined,
+      model: typeof data.model === 'string' ? data.model : undefined,
+      inputTokens: typeof usage?.inputTokens === 'number' ? usage.inputTokens : undefined,
+      outputTokens: typeof usage?.outputTokens === 'number' ? usage.outputTokens : undefined,
+      totalTokens: typeof usage?.totalTokens === 'number' ? usage.totalTokens : undefined,
+      estimatedCostUsd: typeof data.estimatedCostUsd === 'number' ? data.estimatedCostUsd : undefined,
+      decision: typeof data.decision === 'string' ? data.decision : undefined,
+      violationCodes: Array.isArray(data.violationCodes) ? data.violationCodes.filter((v): v is string => typeof v === 'string') : undefined,
+      schemaValid: typeof data.schemaValid === 'boolean' ? data.schemaValid : undefined,
+      promptVersion: typeof data.promptVersion === 'string' ? data.promptVersion : undefined,
+      policyVersion: typeof data.policyVersion === 'string' ? data.policyVersion : undefined,
+      traceId: typeof data.traceId === 'string' ? data.traceId : undefined,
     };
   } catch {
     return { fallbackUsed: false };
@@ -52,17 +98,18 @@ async function readSafeResponseMetadata(response: Response, operation: string): 
 }
 
 export default {
-  async fetch(request: Request, env: unknown): Promise<Response> {
+  async fetch(request: Request, env: unknown, ctx: MinimalExecutionContext): Promise<Response> {
     const started = Date.now();
     const url = new URL(request.url);
     const operation = operationForPath(url.pathname);
     const requestId = request.headers.get('CF-Ray') || undefined;
+    const traceIdFallback = requestId || crypto.randomUUID();
 
     try {
       const response = await worker.fetch(request, env as never);
       const metadata = await readSafeResponseMetadata(response, operation);
-      emitWorkerTelemetry({
-        fingerprint: fingerprintFor(response.status, operation, metadata.fallbackUsed),
+      const event: WorkerTelemetryEvent = {
+        fingerprint: fingerprintFor(response.status, operation, metadata.fallbackUsed, metadata.decision),
         route: url.pathname,
         method: request.method,
         status: response.status,
@@ -71,14 +118,26 @@ export default {
         operation,
         character_id: metadata.characterId,
         request_id: requestId,
-        model: modelForOperation(operation),
+        model: metadata.model || modelForOperation(operation),
         fallback_used: metadata.fallbackUsed,
-        retry_count: 0,
+        retry_count: metadata.decision === 'retry' ? 1 : 0,
         voice_source: metadata.voiceSource,
-      });
+        trace_id: metadata.traceId || traceIdFallback,
+        input_tokens: metadata.inputTokens,
+        output_tokens: metadata.outputTokens,
+        total_tokens: metadata.totalTokens,
+        estimated_cost_usd: metadata.estimatedCostUsd,
+        prompt_version: metadata.promptVersion,
+        policy_version: metadata.policyVersion,
+        schema_valid: metadata.schemaValid,
+        decision: metadata.decision as WorkerTelemetryEvent['decision'],
+        violation_codes: metadata.violationCodes,
+      };
+      emitWorkerTelemetry(event);
+      ctx.waitUntil(persistAuditEvent(event, env as AuditPersistEnv));
       return response;
     } catch (error) {
-      emitWorkerTelemetry({
+      const event: WorkerTelemetryEvent = {
         fingerprint: operation === 'unknown' ? 'worker_unhandled_exception' : operation === 'bridge_summary' ? 'bridge_summary_exception' : `openai_${operation}_exception`,
         route: url.pathname,
         method: request.method,
@@ -91,7 +150,10 @@ export default {
         model: modelForOperation(operation),
         fallback_used: false,
         retry_count: 0,
-      });
+        trace_id: traceIdFallback,
+      };
+      emitWorkerTelemetry(event);
+      ctx.waitUntil(persistAuditEvent(event, env as AuditPersistEnv));
       throw error;
     }
   },

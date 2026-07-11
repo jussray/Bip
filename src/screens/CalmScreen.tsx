@@ -106,7 +106,7 @@ function getTodayMessage(mood: string | null): string {
     case 'anxious':
     case 'overwhelmed': return "take a breath. you don't have to carry it all.";
     case 'sad':         return "it's okay to feel this. i'm right here with you.";
-    case 'stressed':    return 'let's slow things down together.';
+    case 'stressed':    return "let's slow things down together.";
     case 'tired':       return "rest is allowed. you've done enough today.";
     case 'calm':        return "you're doing good. let's keep that energy going. 💜";
     default:            return 'you made it through today. that matters.';

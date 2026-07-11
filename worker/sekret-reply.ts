@@ -1,5 +1,10 @@
 /** Se'kret Brain + Voice Worker */
 import { ORACLE_HIDDEN_GUIDANCE } from './companion-curriculum';
+import { getModels } from './config/models';
+import { PROMPT_VERSION, POLICY_VERSION } from './config/policy';
+import { estimateCostUsd } from './config/pricing';
+import { evaluateReply, repairReply, type Decision, type ViolationCode } from './audit/evaluate-reply';
+import { runPreflight, type PreflightPrincipal } from './audit/preflight';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret' | 'parentCoach';
 type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery' | 'parentCoach';
@@ -20,6 +25,9 @@ type ConversationIntent =
 
 interface Env {
   OPENAI_API_KEY: string;
+  OPENAI_CHAT_MODEL?: string;
+  OPENAI_TTS_MODEL?: string;
+  OPENAI_STT_MODEL?: string;
   RAYLENE_VOICE_ID?: string;
   RYLANE_VOICE_ID?: string;
   CLOUD_VOICE_ID?: string;
@@ -1583,7 +1591,10 @@ function buildBrainPrompt(
   return sections.join('\n');
 }
 
-async function handleReply(request: Request, env: Env): Promise<Response> {
+async function handleReply(request: Request, env: Env, principal: PreflightPrincipal | null = null): Promise<Response> {
+  const startedAt = Date.now();
+  const models = getModels(env);
+  const traceId = crypto.randomUUID();
   let body: ReplyRequestBody;
   try { body = await request.json() as ReplyRequestBody; } catch { return json({ error: 'Invalid JSON' }, 400); }
   const userText = (typeof body.userText === 'string' ? body.userText : typeof body.text === 'string' ? body.text : '').trim();
@@ -1592,7 +1603,9 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
   if (!characterId) return json({ error: 'characterId must be raylene, rylane, cloud, night, sekret, or parentCoach' }, 400);
   const surface = normalizeSurface(body.surface ?? body.context);
   const parentSharingEnabled = body.parentSharingEnabled === true;
-  const history = normalizeHistory(body.history);
+  const rawHistory = normalizeHistory(body.history);
+  const preflight = runPreflight(rawHistory, body.memory, principal);
+  const history = preflight.sanitizedHistory;
   const userName = normalizeUserName(body);
   const intent = detectIntent(userText, history);
 
@@ -1609,6 +1622,18 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
       replySource: 'fallback',
       detectedIntent: intent,
       usedGreetingVariant: intent === 'greeting',
+      decision: 'fallback',
+      violationCodes: [],
+      schemaValid: true,
+      promptVersion: PROMPT_VERSION,
+      policyVersion: POLICY_VERSION,
+      traceId,
+      audit: {
+        principalKind: preflight.context.principalKind,
+        memoryCategoriesUsed: preflight.context.memoryCategoriesUsed,
+        historyTruncated: preflight.context.historyTruncated,
+      },
+      durationMs: Date.now() - startedAt,
     });
   }
 
@@ -1624,7 +1649,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: models.chat,
         temperature,
         max_tokens: 300,
         response_format: { type: 'json_object' },
@@ -1636,19 +1661,81 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
       }),
     });
     if (!res.ok) throw new Error(`OpenAI ${res.status}`);
-    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}') as Partial<CompanionReply>;
-    const openAIReply = typeof parsed.reply === 'string' ? parsed.reply.trim() : '';
-    if (!openAIReply) throw new Error('OpenAI returned an empty reply');
+    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+    const usage = data.usage;
+    const inputTokens = usage?.prompt_tokens;
+    const outputTokens = usage?.completion_tokens;
+    const totalTokens = usage?.total_tokens;
+    let parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}') as Partial<CompanionReply>;
+    let evaluation = evaluateReply({ parsed, parentSharingEnabled });
+
+    if (evaluation.decision === 'retry') {
+      const retryRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+        body: JSON.stringify({
+          model: models.chat,
+          temperature: Math.max(0.6, temperature - 0.2),
+          max_tokens: 300,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: buildBrainPrompt(characterId, surface, typeof body.mood === 'string' ? body.mood : undefined, body.memory, parentSharingEnabled, history, userName, intent, typeof body.phaseInstruction === 'string' ? body.phaseInstruction : undefined) },
+            ...history,
+            { role: 'user', content: userText.slice(0, 4000) },
+            { role: 'system', content: 'Your previous reply violated the output contract (' + evaluation.violations.join(', ') + '). Send only ONE short, casual, non-clinical reply as valid JSON matching the schema, with at most one question mark.' },
+          ],
+        }),
+      });
+      if (retryRes.ok) {
+        const retryData = await retryRes.json() as { choices?: Array<{ message?: { content?: string } }>; usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } };
+        parsed = JSON.parse(retryData.choices?.[0]?.message?.content || '{}') as Partial<CompanionReply>;
+        evaluation = evaluateReply({ parsed, parentSharingEnabled });
+      }
+    }
+
+    let decision: Decision = evaluation.decision;
+    let violationCodes: ViolationCode[] = evaluation.violations;
+
+    if (decision === 'repair') {
+      parsed = repairReply(parsed, violationCodes, parentSharingEnabled) as Partial<CompanionReply>;
+    } else if (decision === 'retry' || decision === 'block') {
+      decision = decision === 'block' ? 'block' : 'fallback';
+      parsed = {
+        reply: fallbackReply,
+        tone: intent === 'greeting' ? 'casual' : characterId,
+        safetyFlag: false,
+        parentShareSummary: null,
+        suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : null,
+      };
+    }
+
+    const finalReply = typeof parsed.reply === 'string' ? parsed.reply.trim() : fallbackReply;
+    const replySource = decision === 'block' || decision === 'fallback' ? 'fallback' : 'openai';
+
     return json({
-      reply: openAIReply.replace(/\bOracle\b/gi, "Se'kret"),
+      reply: finalReply.replace(/\bOracle\b/gi, "Se'kret"),
       tone: String(parsed.tone || characterId),
       safetyFlag: Boolean(parsed.safetyFlag),
       parentShareSummary: typeof parsed.parentShareSummary === 'string' ? parsed.parentShareSummary : null,
       suggestedComfortTool: typeof parsed.suggestedComfortTool === 'string' ? parsed.suggestedComfortTool : null,
-      replySource: 'openai',
+      replySource,
       detectedIntent: intent,
       usedGreetingVariant: intent === 'greeting',
+      model: models.chat,
+      usage: (inputTokens !== undefined || outputTokens !== undefined) ? { inputTokens, outputTokens, totalTokens } : undefined,
+      decision,
+      violationCodes,
+      schemaValid: evaluation.schemaValid,
+      promptVersion: PROMPT_VERSION,
+      policyVersion: POLICY_VERSION,
+      traceId,
+      estimatedCostUsd: estimateCostUsd(models.chat, inputTokens, outputTokens),
+      audit: {
+        principalKind: preflight.context.principalKind,
+        memoryCategoriesUsed: preflight.context.memoryCategoriesUsed,
+        historyTruncated: preflight.context.historyTruncated,
+      },
+      durationMs: Date.now() - startedAt,
     });
   } catch (error) {
     console.error('[sekret/reply]', error);
@@ -1661,6 +1748,19 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
       replySource: 'fallback',
       detectedIntent: intent,
       usedGreetingVariant: intent === 'greeting',
+      model: models.chat,
+      decision: 'fallback',
+      violationCodes: [],
+      schemaValid: true,
+      promptVersion: PROMPT_VERSION,
+      policyVersion: POLICY_VERSION,
+      traceId,
+      audit: {
+        principalKind: preflight.context.principalKind,
+        memoryCategoriesUsed: preflight.context.memoryCategoriesUsed,
+        historyTruncated: preflight.context.historyTruncated,
+      },
+      durationMs: Date.now() - startedAt,
     });
   }
 }
@@ -1679,7 +1779,7 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
-      model: 'gpt-4o-mini-tts',
+      model: getModels(env).tts,
       voice: selectedVoice.voice,
       input: text.slice(0, 4000),
       instructions: VOICE_INSTRUCTIONS[characterId],
@@ -1696,6 +1796,7 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
     characterId,
     voiceSource: selectedVoice.source,
     aiGenerated: true,
+    model: getModels(env).tts,
   });
 }
 
@@ -1713,7 +1814,7 @@ async function handleTranscribe(request: Request, env: Env): Promise<Response> {
     for (let i = 0; i < binaryString.length; i += 1) bytes[i] = binaryString.charCodeAt(i);
     const formData = new FormData();
     formData.append('file', new Blob([bytes], { type: contentType }), `audio.${ext}`);
-    formData.append('model', 'whisper-1');
+    formData.append('model', getModels(env).stt);
     formData.append('language', 'en');
     const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',
@@ -1722,7 +1823,7 @@ async function handleTranscribe(request: Request, env: Env): Promise<Response> {
     });
     if (!res.ok) return json({ error: 'transcription failed' }, 502);
     const data = await res.json() as { text?: string };
-    return json({ transcript: typeof data.text === 'string' ? data.text.trim() : '' });
+    return json({ transcript: typeof data.text === 'string' ? data.text.trim() : '', model: getModels(env).stt });
   } catch (error) {
     console.error('[sekret/transcribe]', error);
     return json({ error: 'transcription error' }, 500);
@@ -1730,13 +1831,13 @@ async function handleTranscribe(request: Request, env: Env): Promise<Response> {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, principal: PreflightPrincipal | null = null): Promise<Response> {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS_HEADERS });
     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
     const path = new URL(request.url).pathname;
     if (path.endsWith('/api/sekret/transcribe')) return handleTranscribe(request, env);
     if (path.endsWith('/api/sekret/voice')) return handleVoice(request, env);
-    if (path.endsWith('/api/sekret/reply')) return handleReply(request, env);
+    if (path.endsWith('/api/sekret/reply')) return handleReply(request, env, principal);
     return json({ error: 'Not found' }, 404);
   },
 };

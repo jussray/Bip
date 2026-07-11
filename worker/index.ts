@@ -257,6 +257,6 @@ export default {
       }, 200, cors);
     }
 
-    return worker.fetch(request, env as { OPENAI_API_KEY: string });
+    return worker.fetch(request, env as { OPENAI_API_KEY: string }, principal);
   },
 };
