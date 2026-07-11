@@ -102,6 +102,27 @@ function sanitizeCircleNickname(value: string | undefined, side: AccountSide): s
   return trimmed || defaultCircleNickname(side);
 }
 
+async function readJsonObject(key: string): Promise<Record<string, unknown>> {
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+async function mergeJsonObject(
+  key: string,
+  patch: Record<string, unknown>,
+): Promise<void> {
+  const current = await readJsonObject(key);
+  await AsyncStorage.setItem(key, JSON.stringify({ ...current, ...patch }));
+}
+
 function parseCachedProfile(raw: string | null): AccountProfile | null {
   if (!raw) return null;
   try {
@@ -141,6 +162,7 @@ async function loadLegacyProfile(preferredSide?: AccountSide | null): Promise<Ac
     'teen_circle_identity',
     'parent_profile_done',
     'parent_profile_data',
+    'parent_circle_identity',
   ]);
   const map = new Map(values);
   const teenDone = map.get('teen_profile_done') === 'true';
@@ -159,10 +181,12 @@ async function loadLegacyProfile(preferredSide?: AccountSide | null): Promise<Ac
   try {
     if (side === 'parent') {
       const data = JSON.parse(map.get('parent_profile_data') ?? '{}') as Record<string, unknown>;
+      const circle = JSON.parse(map.get('parent_circle_identity') ?? '{}') as Record<string, unknown>;
       const name = typeof data.name === 'string' ? data.name.trim() : '';
       const roomStyle = isParentRoomStyle(data.roomStyle) ? data.roomStyle : null;
       const focus = isParentFocus(data.focus) ? data.focus : null;
       if (!name || !roomStyle || !focus) return null;
+      const circleName = typeof circle.circleName === 'string' ? circle.circleName.trim().slice(0, 40) : '';
       return {
         userId: '',
         accountSide: 'parent',
@@ -173,7 +197,7 @@ async function loadLegacyProfile(preferredSide?: AccountSide | null): Promise<Ac
         selectedCompanion: null,
         parentRoomStyle: roomStyle,
         parentFocus: focus,
-        circleNickname: 'Guardian Bip',
+        circleNickname: circleName || 'Guardian Bip',
         circleAvatarEmoji: roomStyle === 'dad' ? '👑' : '💜',
         profileUpdatedAt: null,
       };
@@ -219,28 +243,28 @@ export async function loadCachedAccountProfile(
 
 async function cacheLegacyShape(profile: AccountProfile): Promise<void> {
   if (profile.accountSide === 'teen') {
-    await AsyncStorage.multiSet([
-      ['teen_profile_done', profile.onboardingComplete ? 'true' : 'false'],
-      ['teen_profile_data', JSON.stringify({
-        name: profile.privateDisplayName,
-        age: profile.ageRange,
-        gender: profile.gender,
-        choice: profile.selectedCompanion,
-      })],
-      ['teen_circle_identity', JSON.stringify({ circleName: profile.circleNickname })],
-    ]);
+    await AsyncStorage.setItem('teen_profile_done', profile.onboardingComplete ? 'true' : 'false');
+    await mergeJsonObject('teen_profile_data', {
+      name: profile.privateDisplayName,
+      age: profile.ageRange,
+      gender: profile.gender,
+      choice: profile.selectedCompanion,
+    });
+    await mergeJsonObject('teen_circle_identity', {
+      circleName: profile.circleNickname,
+    });
     return;
   }
 
-  await AsyncStorage.multiSet([
-    ['parent_profile_done', profile.onboardingComplete ? 'true' : 'false'],
-    ['parent_profile_data', JSON.stringify({
-      name: profile.privateDisplayName,
-      roomStyle: profile.parentRoomStyle,
-      focus: profile.parentFocus,
-    })],
-    ['parent_circle_identity', JSON.stringify({ circleName: profile.circleNickname })],
-  ]);
+  await AsyncStorage.setItem('parent_profile_done', profile.onboardingComplete ? 'true' : 'false');
+  await mergeJsonObject('parent_profile_data', {
+    name: profile.privateDisplayName,
+    roomStyle: profile.parentRoomStyle,
+    focus: profile.parentFocus,
+  });
+  await mergeJsonObject('parent_circle_identity', {
+    circleName: profile.circleNickname,
+  });
 }
 
 export async function cacheAccountProfile(profile: AccountProfile): Promise<void> {
