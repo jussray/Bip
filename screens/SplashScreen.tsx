@@ -120,7 +120,11 @@ export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps
 const s = StyleSheet.create({
   root: { flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", backgroundColor: "#090011" },
   artLayer: {
-    ...StyleSheet.absoluteFillObject,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
