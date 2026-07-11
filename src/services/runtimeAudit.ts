@@ -136,9 +136,12 @@ export async function captureRuntimeError(
     severity?: AuditSeverity;
     metadata?: Record<string, unknown> | null;
   },
-): Promise<void> {
+): Promise<AuditEvent | null> {
   const message = error instanceof Error ? error.message : String(error);
-  await logRuntimeAuditEvent(source, {
+  // Returns the created audit_events row (or null if logging failed/offline)
+  // so callers can offer a "report this" action tied to the exact event —
+  // see src/services/userReports.ts::reportOwnAuditEvent.
+  return logRuntimeAuditEvent(source, {
     event_type: context.event_type,
     screen: context.screen,
     severity: context.severity ?? 'error',
