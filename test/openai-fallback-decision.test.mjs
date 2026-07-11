@@ -16,6 +16,8 @@ function read(path) {
 
 const reply = read('worker/sekret-reply.ts');
 const modelsSource = read('worker/config/models.ts');
+const observed = read('worker/observed-index.ts');
+const wrangler = read('wrangler.toml');
 
 // ─── getModels() is a pure function — extract and actually run it ───────────
 const fnStart = modelsSource.indexOf('export function getModels');
@@ -97,8 +99,19 @@ test('Env interface declares the optional model override vars', () => {
   assert.match(envBlock, /OPENAI_STT_MODEL\?:\s*string/);
 });
 
-// ─── worker/observed-index.ts's telemetry model label is now a fallback ─────
-test('observed-index.ts treats modelForOperation as a last-resort fallback, not the source of truth', () => {
-  const observed = read('worker/observed-index.ts');
-  assert.match(observed, /metadata\.model \|\| modelForOperation\(operation\)/, 'the response-reported model must win over the static per-operation guess');
+// ─── Runtime deployment and telemetry model contracts ──────────────────────
+test('wrangler pins the production chat model to gpt-4o', () => {
+  assert.match(wrangler, /^name = "bip"$/m);
+  assert.match(wrangler, /^OPENAI_CHAT_MODEL = "gpt-4o"$/m);
+});
+
+test('observed-index uses response model first and env-backed model fallback second', () => {
+  assert.match(
+    observed,
+    /metadata\.model \|\| modelForOperation\(operation, typedEnv\)/,
+    'the response-reported model must win over the env-backed per-operation fallback',
+  );
+  assert.match(observed, /function modelForOperation\(operation: string, env: WorkerEnv\)/);
+  assert.match(observed, /const models = getModels\(env\)/);
+  assert.match(observed, /model: modelForOperation\(operation, typedEnv\)/);
 });
