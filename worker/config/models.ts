@@ -7,10 +7,10 @@
  *
  * To rotate a model without a code change:
  *   1. Update wrangler.toml [vars]  (non-secret, safe to commit)
- *   2. wrangler deploy --name bip
+ *   2. wrangler deploy --name sekret-bip
  *
  * Or for a one-off override:
- *   wrangler deploy --var OPENAI_CHAT_MODEL:gpt-4.1 --name bip
+ *   wrangler deploy --var OPENAI_CHAT_MODEL:gpt-4.1 --name sekret-bip
  */
 
 export interface WorkerEnv {
