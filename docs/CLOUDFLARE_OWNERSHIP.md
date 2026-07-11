@@ -4,12 +4,13 @@
 
 Se'kret Bip uses two distinct Cloudflare deployment targets.
 
-### `bip` — backend Worker
+### `sekret-bip` — backend Worker
 
-Verified in `wrangler.toml`:
+Verified in `wrangler.toml` and the production deployment workflow:
 
-- Worker name: `bip`
+- Worker name: `sekret-bip`
 - Entry point: `worker/observed-index.ts`
+- Production endpoint: `https://sekret-bip.mcgill-raylene.workers.dev`
 
 Responsibilities:
 
@@ -53,7 +54,7 @@ Cloudflare Pages project: sekret
 Expo web frontend
     |
     v
-Cloudflare Worker: bip
+Cloudflare Worker: sekret-bip
     |
     +--> Supabase
     +--> OpenAI
@@ -65,7 +66,7 @@ Cloudflare Worker: bip
 ## Ownership rules
 
 - Frontend assets, Expo routes, and browser delivery belong to the `sekret` Pages project.
-- API routes, secrets, database access, and business logic belong to the `bip` Worker.
+- API routes, secrets, database access, and business logic belong to the `sekret-bip` Worker.
 - Never place service-role credentials or OpenAI credentials in the frontend deployment.
 - Never rename the backend Worker to `sekret` merely to match the domain or frontend project.
 - Before changing deployment code, verify both the repository configuration and the actual Cloudflare/GitHub environment values.
@@ -75,7 +76,7 @@ Cloudflare Worker: bip
 Backend:
 
 ```bash
-npx wrangler deployments list --name bip
+npx wrangler deployments list --name sekret-bip
 ```
 
 Frontend:
@@ -83,4 +84,4 @@ Frontend:
 - confirm `CLOUDFLARE_PAGES_PROJECT_NAME=sekret`
 - confirm the custom domain is attached to the `sekret` Pages project
 - confirm the deployed Pages commit matches the intended repository commit
-- confirm `EXPO_PUBLIC_BACKEND_URL` points to the `bip` backend endpoint
+- confirm `EXPO_PUBLIC_BACKEND_URL` points to `https://sekret-bip.mcgill-raylene.workers.dev`
