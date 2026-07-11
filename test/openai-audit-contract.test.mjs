@@ -54,7 +54,6 @@ test('persistAuditEvent no-ops silently when Supabase env vars are unset', () =>
 
 test('persistAuditEvent never lets a Supabase failure escape', () => {
   const fnStart = persist.indexOf('export async function persistAuditEvent');
-  const fnEnd = persist.indexOf('\n}', persist.lastIndexOf('\n}'));
   const fnBody = persist.slice(fnStart);
   assert.match(fnBody, /catch \(error\) \{/, 'persistAuditEvent must catch its own errors');
   assert.doesNotMatch(fnBody, /\bthrow error\b/, 'persistAuditEvent must not rethrow into the caller');
