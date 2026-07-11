@@ -35,9 +35,14 @@ export default function ParentLinkOnboarding() {
 
   async function completeParentOnboarding(linkedTeenId?: string) {
     setUserSide('parent');
-    const entries: [string, string][] = [['parent_profile_done', 'true']];
-    if (linkedTeenId) entries.push(['linked_teen_id', linkedTeenId]);
-    await AsyncStorage.multiSet(entries);
+    await AsyncStorage.setItem('parent_profile_done', 'true');
+
+    if (linkedTeenId) {
+      await AsyncStorage.setItem('linked_teen_id', linkedTeenId);
+    } else {
+      await AsyncStorage.removeItem('linked_teen_id');
+    }
+
     router.replace('/(parent)/room');
   }
 
