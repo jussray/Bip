@@ -55,12 +55,14 @@ export default function ParentSetup() {
     try {
       setUserSide('parent');
       setParentRoomStyle(roomStyle);
-      await AsyncStorage.setItem(
-        'parent_profile_data',
-        JSON.stringify({ name: name.trim(), roomStyle, focus }),
-      );
-      await AsyncStorage.removeItem('parent_profile_done');
-      router.replace('/(onboarding)/parent-link');
+      await AsyncStorage.multiSet([
+        [
+          'parent_profile_data',
+          JSON.stringify({ name: name.trim(), roomStyle, focus }),
+        ],
+        ['parent_profile_done', 'true'],
+      ]);
+      router.replace('/(parent)/room');
     } finally {
       setSaving(false);
     }
@@ -85,7 +87,10 @@ export default function ParentSetup() {
         </TouchableOpacity>
 
         <Text style={styles.step}>PARENT SETUP</Text>
-        <Text style={styles.title}>Quick intro,{`\n`}then connect.</Text>
+        <Text style={styles.title}>Quick intro,{`\n`}then your room.</Text>
+        <Text style={styles.intro}>
+          You can finish setting up now and connect a teen later. No invite code required.
+        </Text>
 
         <Text style={styles.label}>What should your teen call you?</Text>
         <TouchableOpacity activeOpacity={1} onPress={() => inputRef.current?.focus()} style={styles.inputWrap}>
@@ -150,7 +155,7 @@ export default function ParentSetup() {
           style={[styles.btn, !ready && styles.btnDisabled]}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnText}>{saving ? 'saving…' : 'Continue to private code →'}</Text>
+          <Text style={styles.btnText}>{saving ? 'saving…' : 'Finish setup →'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -163,7 +168,8 @@ const styles = StyleSheet.create({
   back: { marginBottom: 28 },
   backText: { color: '#789082', fontSize: 22 },
   step: { color: '#6ee7b7', fontSize: 10, fontWeight: '900', letterSpacing: 2.5, marginBottom: 10 },
-  title: { color: '#fff', fontSize: 32, fontWeight: '900', lineHeight: 40, marginBottom: 36 },
+  title: { color: '#fff', fontSize: 32, fontWeight: '900', lineHeight: 40, marginBottom: 12 },
+  intro: { color: '#8aaf9c', fontSize: 13, lineHeight: 20, marginBottom: 32 },
   label: { color: '#8aaf9c', fontSize: 12, fontWeight: '800', letterSpacing: 1, marginBottom: 14 },
   labelSpaced: { marginTop: 24 },
   hint: { color: '#3d5e4a', fontSize: 11, lineHeight: 16, marginTop: 10 },
