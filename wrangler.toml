@@ -1,19 +1,7 @@
-name = "bip"
+name = "sekretbip"
 main = "worker/observed-index.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
-
-[vars]
-OPENAI_CHAT_MODEL = "gpt-4o-mini"
-OPENAI_TTS_MODEL = "gpt-4o-mini-tts"
-OPENAI_STT_MODEL = "whisper-1"
-SUPABASE_URL = "https://tbsevonvegdnlyjgplmm.supabase.co"
-AUDIO_MAX_BYTES = "524288"
-
-[[ratelimits]]
-name = "SEKRET_RATE_LIMITER"
-namespace_id = "1001"
-simple = { limit = 60, period = 60 }
