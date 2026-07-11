@@ -24,6 +24,17 @@
 //     failing on every device, falling through to the vibe-fallback reply.
 //   - recordingTimeRef added: stopRecording now reads from a ref instead of
 //     the render-cycle closure so duration is never stale / "0:00".
+//
+// 2026-07-11 patch (state-machine fix):
+//   - Root cause 1: text reply was held hostage until voice generation
+//     finished. setIsThinking(false) now fires immediately after
+//     fetchSekretReply resolves. Voice generation runs independently under
+//     isVoiceLoading. The existing "preparing voice…" JSX path is unchanged.
+//   - Root cause 2: fetchSekretTranscribe returns null silently (it swallows
+//     its own errors and returns null for missing config, empty audio, non-OK
+//     responses, and empty transcript). The bare assignment is replaced with
+//     an explicit null/empty guard so transcriptFailed is set honestly and
+//     the amber badge appears.
 
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -332,7 +343,16 @@ export function VoiceBipScreen({
           // uriToBase64 uses expo-file-system — safe in Hermes/JSC (no FileReader)
           const base64 = await uriToBase64(uri);
           const contentType = recordingContentType();
-          transcript = await fetchSekretTranscribe({ audioBase64: base64, contentType });
+          // fetchSekretTranscribe swallows its own errors and returns null for
+          // missing config / empty audio / non-OK responses / empty transcript.
+          // Treat any falsy return as a transcription failure so transcriptFailed
+          // is set honestly and the amber badge appears.
+          const transcribed = await fetchSekretTranscribe({ audioBase64: base64, contentType });
+          if (transcribed?.trim()) {
+            transcript = transcribed.trim();
+          } else {
+            setTranscriptFailed(true);
+          }
         } catch {
           setTranscriptFailed(true);
         }
@@ -374,13 +394,25 @@ export function VoiceBipScreen({
       { role: 'user' as const, content: replyText },
       { role: 'assistant' as const, content: reply },
     ].slice(-20);
+
+    // Show the text reply immediately — do not hold it hostage until voice
+    // generation completes. isVoiceLoading independently signals the audio
+    // status; the existing "preparing voice…" JSX path handles that state.
     setSekretReply(reply);
-    setIsVoiceLoading(true);
-    const audio = await fetchSekretVoice({ reply, characterId: avatarKey });
-    if (audio) setReplyAudioUri(`data:${audio.contentType};base64,${audio.audioBase64}`);
-    setIsVoiceLoading(false);
     setIsThinking(false);
     presence.markResponseReady();
+
+    // Generate voice separately — failure here should never blank the text reply.
+    setIsVoiceLoading(true);
+    try {
+      const audio = await fetchSekretVoice({ reply, characterId: avatarKey });
+      if (audio) {
+        setReplyAudioUri(`data:${audio.contentType};base64,${audio.audioBase64}`);
+      }
+    } finally {
+      setIsVoiceLoading(false);
+    }
+
     setSelectedBipType(null);
   };
 
@@ -736,40 +768,40 @@ const styles = StyleSheet.create({
   avatarRole:        { fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 4 },
   avatarGreeting:    { fontSize: 14, color: 'rgba(245,240,255,0.72)', fontStyle: 'italic', textAlign: 'center', lineHeight: 20 },
   roomWrap:          { marginHorizontal: 16, marginTop: 12, borderRadius: 20, overflow: 'hidden', aspectRatio: 0.85, position: 'relative' },
-  roomImage:         { ...StyleSheet.absoluteFillObject },
-  heroAvatar:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%' },
-  environmentLayer:  { ...StyleSheet.absoluteFillObject },
-  topScrim:          { position: 'absolute', top: 0, left: 0, right: 0, height: 90 },
-  bottomScrim:       { position: 'absolute', bottom: 0, left: 0, right: 0, height: 160 },
-  cloudWrap:         { position: 'absolute', top: '6%', alignSelf: 'center' },
-  cloudImg:          { width: 90, height: 60 },
-  recordingOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(168,85,247,0.18)' },
-  timeBadge:         { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.55)', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 3 },
-  timeBadgeText:     { color: 'rgba(245,240,255,0.75)', fontSize: 11, fontWeight: '600' },
-  presencePill:      { position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(13,9,20,0.62)', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 5 },
-  presenceText:      { color: 'rgba(245,240,255,0.8)', fontSize: 12, fontStyle: 'italic' },
-  listeningBadge:    { position: 'absolute', top: 10, right: 12, backgroundColor: 'rgba(168,85,247,0.28)', borderRadius: 10, paddingHorizontal: 9, paddingVertical: 3 },
-  listeningBadgeText:{ color: '#c084fc', fontSize: 11, fontWeight: '700' },
+  roomImage:         { position: 'absolute', width: '100%', height: '100%' },
+  heroAvatar:        { position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%', height: '100%' },
+  environmentLayer:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  topScrim:          { position: 'absolute', top: 0, left: 0, right: 0, height: 80 },
+  bottomScrim:       { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
+  cloudWrap:         { position: 'absolute', top: '6%', alignSelf: 'center', width: '45%' },
+  cloudImg:          { width: '100%', aspectRatio: 1 },
+  recordingOverlay:  { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(168,85,247,0.18)' },
+  timeBadge:         { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  timeBadgeText:     { fontSize: 11, color: 'rgba(245,240,255,0.75)', fontWeight: '600' },
+  presencePill:      { position: 'absolute', bottom: 10, alignSelf: 'center', backgroundColor: 'rgba(13,9,20,0.72)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 6 },
+  presenceText:      { fontSize: 12, color: 'rgba(245,240,255,0.8)', fontStyle: 'italic' },
+  listeningBadge:    { position: 'absolute', top: 10, right: 12, backgroundColor: 'rgba(168,85,247,0.22)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)' },
+  listeningBadgeText:{ fontSize: 11, color: '#c084fc', fontWeight: '700' },
   hotspot:           { position: 'absolute' },
-  hotspotDebug:      { backgroundColor: 'rgba(255,0,0,0.22)', borderWidth: 1, borderColor: 'red' },
-  debugLabel:        { color: 'red', fontSize: 10, fontWeight: '700' },
-  stickyHint:        { position: 'absolute', backgroundColor: '#fffde7', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5, transform: [{ rotate: '-2deg' }], shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 4, shadowOffset: { width: 1, height: 2 } },
-  stickyHintText:    { color: '#5c4a1e', fontSize: 12, fontWeight: '700' },
-  floatCard:         { marginHorizontal: 16, marginTop: 14, borderRadius: 18, borderWidth: 1, padding: 18, shadowOpacity: 0.25, shadowRadius: 14, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
-  recordingCard:     { marginHorizontal: 16, marginTop: 14, borderRadius: 18, borderWidth: 1.5, padding: 20, alignItems: 'center', shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 6 }, elevation: 8 },
-  pulseRing:         { position: 'absolute', width: 80, height: 80, borderRadius: 40, borderWidth: 2, opacity: 0.5 },
-  recordingLabel:    { color: '#f5f0ff', fontSize: 15, fontWeight: '700', marginBottom: 4 },
-  recordingTimer:    { color: '#c084fc', fontSize: 32, fontWeight: '800', fontVariant: ['tabular-nums'], marginBottom: 8 },
-  recordingWarn:     { color: '#fcd34d', fontSize: 12, fontStyle: 'italic', marginBottom: 8 },
+  hotspotDebug:      { backgroundColor: 'rgba(255,0,0,0.25)', borderWidth: 1, borderColor: 'red' },
+  debugLabel:        { fontSize: 9, color: 'red', fontWeight: '700' },
+  stickyHint:        { position: 'absolute', backgroundColor: '#fef9c3', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5, transform: [{ rotate: '-2deg' }], shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  stickyHintText:    { fontSize: 12, color: '#78350f', fontWeight: '600' },
+  recordingCard:     { margin: 16, marginTop: 12, borderRadius: 18, borderWidth: 1.5, padding: 22, alignItems: 'center', shadowOpacity: 0.5, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
+  pulseRing:         { position: 'absolute', width: 80, height: 80, borderRadius: 40, borderWidth: 2, top: 16 },
+  recordingLabel:    { fontSize: 14, color: '#c084fc', fontWeight: '700', marginBottom: 4, marginTop: 8 },
+  recordingTimer:    { fontSize: 32, color: '#f5f0ff', fontWeight: '200', marginBottom: 8, letterSpacing: 2 },
+  recordingWarn:     { fontSize: 12, color: '#fcd34d', fontStyle: 'italic', marginBottom: 8 },
   waveform:          { flexDirection: 'row', alignItems: 'center', gap: 3, height: 40, marginBottom: 16 },
   waveBar:           { width: 4, borderRadius: 2 },
-  stopBtn:           { backgroundColor: 'rgba(168,85,247,0.22)', borderWidth: 1, borderColor: '#a855f7', borderRadius: 14, paddingHorizontal: 32, paddingVertical: 11 },
+  stopBtn:           { backgroundColor: 'rgba(168,85,247,0.2)', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(168,85,247,0.5)' },
   stopBtnText:       { color: '#c084fc', fontSize: 15, fontWeight: '700' },
-  savedLabel:        { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  floatCard:         { margin: 16, marginTop: 8, borderRadius: 18, borderWidth: 1, padding: 18, shadowOpacity: 0.4, shadowRadius: 12, shadowOffset: { width: 0, height: 3 }, elevation: 6 },
+  savedLabel:        { fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
   thinkingText:      { fontSize: 14, fontStyle: 'italic', flex: 1 },
-  replyLabel:        { fontSize: 11, fontWeight: '700', letterSpacing: 0.5, marginBottom: 8 },
+  replyLabel:        { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
   replyText:         { fontSize: 15, lineHeight: 23 },
-  voiceStatus:       { fontSize: 12, fontStyle: 'italic', marginTop: 10 },
-  voiceBtn:          { marginTop: 12, alignSelf: 'flex-start', backgroundColor: 'rgba(168,85,247,0.18)', borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 8 },
+  voiceStatus:       { fontSize: 12, fontStyle: 'italic', marginTop: 10, opacity: 0.7 },
+  voiceBtn:          { marginTop: 12, backgroundColor: 'rgba(168,85,247,0.18)', borderRadius: 12, paddingHorizontal: 18, paddingVertical: 8, alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(168,85,247,0.4)' },
   voiceBtnText:      { color: '#c084fc', fontSize: 13, fontWeight: '600' },
 });
