@@ -12,33 +12,42 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
+import { useVerificationContext } from '@/context/VerificationContext';
+import {
+  saveAccountProfile,
+  submitGuardianVerification,
+  type ParentFocus,
+  type ParentRoomStyle,
+} from '@/features/identity/accountProfile';
 
-const FOCUS_OPTIONS = [
+const FOCUS_OPTIONS: { id: ParentFocus; label: string; emoji: string }[] = [
   { id: 'support', label: 'Support', emoji: '🤝' },
   { id: 'listen', label: 'Listen', emoji: '👂' },
   { id: 'repair', label: 'Repair', emoji: '🌱' },
   { id: 'learn', label: 'Learn', emoji: '📖' },
 ];
 
-const ROOM_STYLE_OPTIONS: { id: 'mom' | 'dad'; label: string; emoji: string; desc: string }[] = [
+const ROOM_STYLE_OPTIONS: { id: ParentRoomStyle; label: string; emoji: string; desc: string }[] = [
   { id: 'mom', label: 'Mom', emoji: '💜', desc: 'Mom Room' },
   { id: 'dad', label: 'Dad', emoji: '👑', desc: 'Dad Room' },
 ];
 
 export default function ParentSetup() {
   const { setUserSide, setParentRoomStyle } = useAppContext();
+  const { refreshVerification } = useVerificationContext();
   const [name, setName] = useState('');
-  const [roomStyle, setRoomStyle] = useState<'mom' | 'dad' | null>(null);
-  const [focus, setFocus] = useState<string | null>(null);
+  const [roomStyle, setRoomStyle] = useState<ParentRoomStyle | null>(null);
+  const [focus, setFocus] = useState<ParentFocus | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
   const underline = useRef(new Animated.Value(0)).current;
 
   function handleNameChange(text: string) {
     setName(text);
+    setError(null);
     Animated.timing(underline, {
       toValue: text.length > 0 ? 1 : 0,
       duration: 200,
@@ -49,20 +58,34 @@ export default function ParentSetup() {
   const ready = name.trim().length > 0 && roomStyle !== null && focus !== null && !saving;
 
   async function handleFinish() {
-    if (!ready) return;
+    const privateDisplayName = name.trim();
+    if (!privateDisplayName || !roomStyle || !focus || saving) return;
+    const selectedRoomStyle = roomStyle;
+    const selectedFocus = focus;
     setSaving(true);
+    setError(null);
     Keyboard.dismiss();
     try {
+      await saveAccountProfile({
+        accountSide: 'parent',
+        privateDisplayName,
+        onboardingComplete: true,
+        parentRoomStyle: selectedRoomStyle,
+        parentFocus: selectedFocus,
+        circleNickname: 'Guardian Bip',
+        circleAvatarEmoji: selectedRoomStyle === 'dad' ? '👑' : '💜',
+      });
+      const state = await submitGuardianVerification();
       setUserSide('parent');
-      setParentRoomStyle(roomStyle);
-      await AsyncStorage.multiSet([
-        [
-          'parent_profile_data',
-          JSON.stringify({ name: name.trim(), roomStyle, focus }),
-        ],
-        ['parent_profile_done', 'true'],
-      ]);
-      router.replace('/(parent)/room');
+      setParentRoomStyle(selectedRoomStyle);
+      await refreshVerification();
+      router.replace(
+        state === 'VERIFIED_GUARDIAN'
+          ? '/(parent)/room'
+          : '/(auth)/guardian-verification',
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to save your Parent profile.');
     } finally {
       setSaving(false);
     }
@@ -116,7 +139,7 @@ export default function ParentSetup() {
             <TouchableOpacity
               key={opt.id}
               activeOpacity={0.8}
-              onPress={() => setRoomStyle(opt.id)}
+              onPress={() => { setRoomStyle(opt.id); setError(null); }}
               style={[styles.card, roomStyle === opt.id && styles.cardActive]}
               accessibilityRole="button"
               accessibilityState={{ selected: roomStyle === opt.id }}
@@ -136,7 +159,7 @@ export default function ParentSetup() {
             <TouchableOpacity
               key={opt.id}
               activeOpacity={0.8}
-              onPress={() => setFocus(opt.id)}
+              onPress={() => { setFocus(opt.id); setError(null); }}
               style={[styles.card, focus === opt.id && styles.cardActive]}
             >
               <Text style={styles.cardEmoji}>{opt.emoji}</Text>
@@ -146,6 +169,8 @@ export default function ParentSetup() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -182,6 +207,7 @@ const styles = StyleSheet.create({
   cardEmoji: { fontSize: 20 },
   cardText: { color: '#789082', fontSize: 13, fontWeight: '800' },
   cardTextActive: { color: '#a7f3d0' },
+  error: { color: '#fca5a5', fontSize: 13, lineHeight: 19, marginTop: 24 },
   footer: { paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 52 : 36 },
   btn: { height: 58, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
   btnDisabled: { opacity: 0.35 },

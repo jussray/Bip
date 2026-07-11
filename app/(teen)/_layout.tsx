@@ -1,5 +1,4 @@
 import { Redirect, Tabs } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { GlobalMoodButton } from '@/components/GlobalMoodButton';
@@ -8,6 +7,7 @@ import { SafetyExperienceSheet } from '../../components/safety/SafetyExperienceS
 import { useAppContext } from '@/context/AppContext';
 import { useSafetyCheck } from '@/hooks/useSafetyCheck';
 import { toCompanionId } from '@/features/sekret/companionEngine';
+import { hydrateAccountProfile } from '@/features/identity/accountProfile';
 import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 import { logEvent } from '@/services/logEvent';
 
@@ -78,14 +78,21 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
 export default function TeenLayout() {
   const { userSide, isLoading, selectedSekret } = useAppContext();
   const [profileChecked, setProfileChecked] = useState(false);
-  const [profileDone, setProfileDone] = useState(false);
+  const [profileComplete, setProfileComplete] = useState(false);
   const sessionLogged = useRef(false);
 
   useEffect(() => {
     let active = true;
-    AsyncStorage.getItem('teen_profile_done')
-      .then(value => {
-        if (active) setProfileDone(value === 'true');
+    hydrateAccountProfile('teen')
+      .then(profile => {
+        if (active) {
+          setProfileComplete(Boolean(
+            profile?.accountSide === 'teen' && profile.onboardingComplete,
+          ));
+        }
+      })
+      .catch(() => {
+        if (active) setProfileComplete(false);
       })
       .finally(() => {
         if (active) setProfileChecked(true);
@@ -99,6 +106,7 @@ export default function TeenLayout() {
   const isTeenActive =
     !isLoading &&
     profileChecked &&
+    profileComplete &&
     (effectiveUserSide === 'teen' || getDevSplitViewSideOverride() != null);
 
   // Fire session_start once per app mount when teen is confirmed active
@@ -112,6 +120,6 @@ export default function TeenLayout() {
   if (isLoading || !profileChecked) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
   if (effectiveUserSide === 'parent') return <Redirect href="/(parent)/room" />;
   if (effectiveUserSide !== 'teen') return <Redirect href="/" />;
-  if (!profileDone) return <Redirect href="/(onboarding)/welcome" />;
+  if (!profileComplete) return <Redirect href="/(onboarding)/welcome" />;
   return <TeenTabs selectedSekret={selectedSekret ?? 'raylene'} />;
 }

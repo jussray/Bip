@@ -32,6 +32,9 @@ export function getSupabase(): SupabaseClient | null {
 }
 
 export const TABLES = {
+  // ── Account identity + verification ────────────────────────────────────────
+  appProfiles:         'app_profiles',
+  accountVerification: 'account_verification',
   // ── Private per-user tables (0001_init.sql) ─────────────────────────────
   journalEntries:     'journal_entries',
   moodHistory:        'mood_history',

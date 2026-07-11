@@ -5,6 +5,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { IMAGES } from '@/constants/theme';
 import { useAppContext } from '@/context/AppContext';
+import { useVerificationContext } from '@/context/VerificationContext';
+import {
+  saveAccountProfile,
+  type AgeRange,
+  type Companion,
+  type ProfileGender,
+} from '@/features/identity/accountProfile';
 
 const QUESTIONS: Record<string, string> = {
   '13-15': 'What do you wish somebody understood about you?',
@@ -13,12 +20,26 @@ const QUESTIONS: Record<string, string> = {
   default: 'What are you carrying right now?',
 };
 
+function isAgeRange(value: string): value is AgeRange {
+  return value === '13-15' || value === '16-17' || value === '18-19';
+}
+
+function isGender(value: string | null): value is ProfileGender {
+  return value === 'girl' || value === 'boy' || value === 'other';
+}
+
+function isCompanion(value: string): value is Companion {
+  return value === 'raylene' || value === 'rylane' || value === 'cloud' || value === 'night';
+}
+
 export default function ReflectionScreen() {
-  const { setSelectedSekret } = useAppContext();
+  const { setSelectedSekret, setUserSide } = useAppContext();
+  const { verificationState } = useVerificationContext();
   const [question, setQuestion] = useState(QUESTIONS.default);
   const [name, setName] = useState('');
   const [answer, setAnswer] = useState('');
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const fade = useRef(new Animated.Value(0)).current;
   const breathe = useRef(new Animated.Value(1)).current;
 
@@ -41,24 +62,45 @@ export default function ReflectionScreen() {
   async function handleEnter() {
     if (saving) return;
     setSaving(true);
+    setError(null);
     try {
       const trimmed = answer.trim();
-      const values = await AsyncStorage.multiGet(['bip_onboarding_age', 'bip_onboarding_gender', 'bip_onboarding_companion', 'teen_profile_data']);
+      const values = await AsyncStorage.multiGet([
+        'bip_onboarding_age',
+        'bip_onboarding_gender',
+        'bip_onboarding_companion',
+      ]);
       const age = values[0][1] ?? '';
-      const gender = values[1][1] ?? null;
+      const gender = values[1][1];
       const choice = values[2][1] ?? 'raylene';
-      let existing: Record<string, unknown> = {};
-      try { existing = values[3][1] ? JSON.parse(values[3][1] as string) : {}; } catch { existing = {}; }
-      const profile = { ...existing, name, age, gender, choice, reflection: trimmed };
+
+      if (!name.trim() || !isAgeRange(age) || !isGender(gender) || !isCompanion(choice)) {
+        throw new Error('Your onboarding profile is incomplete. Go back and finish each step.');
+      }
+
+      await saveAccountProfile({
+        accountSide: 'teen',
+        privateDisplayName: name.trim(),
+        onboardingComplete: true,
+        ageRange: age,
+        gender,
+        selectedCompanion: choice,
+        circleNickname: 'anonymous bip',
+      });
+
       await AsyncStorage.multiSet([
-        ['teen_profile_done', 'true'],
-        ['teen_profile_data', JSON.stringify(profile)],
-        ['teen_circle_identity', JSON.stringify({ circleName: name })],
         ['bip_onboarding_reflection', trimmed],
         ['sekret_self_discovery_profile', JSON.stringify({ reflection: trimmed, updatedAt: new Date().toISOString() })],
       ]);
+      setUserSide('teen');
       setSelectedSekret(choice === 'raylene' ? 'soft' : choice);
-      router.replace('/(teen)/room');
+      router.replace(
+        verificationState === 'VERIFIED_TEEN'
+          ? '/(teen)/room'
+          : '/(auth)/limited-mode',
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Unable to save your Bip profile.');
     } finally {
       setSaving(false);
     }
@@ -75,8 +117,9 @@ export default function ReflectionScreen() {
         <Animated.View style={{ opacity: fade }}>
           <Text style={styles.companionLabel}>Se'kret</Text>
           <Text style={styles.question}>{question}</Text>
-          <View style={styles.answerWrap}><TextInput value={answer} onChangeText={setAnswer} placeholder="say it exactly how it feels…" placeholderTextColor="#4a4357" style={styles.answerInput} multiline textAlignVertical="top" maxLength={500} /></View>
+          <View style={styles.answerWrap}><TextInput value={answer} onChangeText={text => { setAnswer(text); setError(null); }} placeholder="say it exactly how it feels…" placeholderTextColor="#4a4357" style={styles.answerInput} multiline textAlignVertical="top" maxLength={500} /></View>
           {name ? <Text style={styles.nameHint}>We'll remember this for you, {name}.</Text> : null}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
         </Animated.View>
       </ScrollView>
       <View style={styles.footer}>
@@ -100,6 +143,7 @@ const styles = StyleSheet.create({
   answerWrap: { borderRadius: 20, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', padding: 16, minHeight: 130, marginBottom: 16 },
   answerInput: { color: '#eee7f1', fontSize: 16, lineHeight: 26, minHeight: 100 },
   nameHint: { color: '#5a5167', fontSize: 12, textAlign: 'center' },
+  error: { color: '#fca5a5', fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 14 },
   footer: { paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 52 : 36 },
   btn: { height: 58, borderRadius: 20, backgroundColor: '#6d28d9', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   btnDisabled: { opacity: 0.35 },

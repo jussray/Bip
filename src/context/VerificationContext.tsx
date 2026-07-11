@@ -22,7 +22,20 @@ type Value = {
 
 const Context = createContext<Value | null>(null);
 
-const states = new Set<VerificationState>(['UNVERIFIED','PENDING_PARENT','PENDING_TRUSTED_ADULT','LIMITED_MODE','VERIFIED_TEEN','EXPIRED','MANUAL_REVIEW','SUSPENDED']);
+const states = new Set<VerificationState>([
+  'UNVERIFIED',
+  'PENDING_PARENT',
+  'PENDING_TRUSTED_ADULT',
+  'LIMITED_MODE',
+  'VERIFIED_TEEN',
+  'EXPIRED',
+  'MANUAL_REVIEW',
+  'SUSPENDED',
+  'VERIFIED_GUARDIAN',
+  'PENDING_GUARDIAN_REVIEW',
+  'GUARDIAN_REJECTED',
+  'GUARDIAN_SUSPENDED',
+]);
 const linkStates = new Set<ParentLinkState>(['none','pending','active','expired','revoked','declined']);
 
 function mapRow(row: Row): VerificationSnapshot {
@@ -62,8 +75,9 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
       if (sessionError) throw sessionError;
 
       const session = sessionData.session;
-      const userId = session?.user.id;
-      setAuthenticated(Boolean(session));
+      const permanentSession = Boolean(session && !session.user.is_anonymous);
+      const userId = permanentSession ? session?.user.id : undefined;
+      setAuthenticated(permanentSession);
       setAuthResolved(true);
 
       if (!userId) {
@@ -106,9 +120,10 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
 
     void refreshVerification();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const permanentSession = Boolean(session && !session.user.is_anonymous);
       setAuthResolved(true);
-      setAuthenticated(Boolean(session));
-      if (!session) {
+      setAuthenticated(permanentSession);
+      if (!permanentSession) {
         setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
         setError(null);
         setLoading(false);
