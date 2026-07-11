@@ -31,7 +31,7 @@ test('unfinished teen routes use the durable account profile guard', () => {
   assert.equal(layout.includes("hydrateAccountProfile('teen')"), true);
   assert.equal(layout.includes('profileChecked'), true);
   assert.equal(layout.includes('profileComplete'), true);
-  assert.equal(layout.includes('profile?.onboardingComplete'), true);
+  assert.match(layout, /profile\??\.accountSide === 'teen' && profile\.onboardingComplete/);
   assert.equal(layout.includes('/(onboarding)/welcome'), true);
   assert.equal(layout.includes('AsyncStorage'), false);
 });
