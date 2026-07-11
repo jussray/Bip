@@ -15,14 +15,15 @@ test('parent setup completes without requiring a teen invite code', async () => 
   assert.match(source, /No invite code required/);
 });
 
-test('parent link screen supports both immediate linking and linking later', async () => {
+test('parent link screen stores consent state without completing guardian identity', async () => {
   const source = await read('app/(onboarding)/parent-link.tsx');
   assert.match(source, /redeemInviteCode\(normalized\)/);
   assert.match(source, /linked_teen_id/);
   assert.match(source, /handleLinkLater/);
   assert.match(source, /Link a teen later/);
-  assert.match(source, /completeParentOnboarding\(\)/);
-  assert.match(source, /router\.replace\('\/\(parent\)\/room'\)/);
+  assert.match(source, /completeParentLinkStep/);
+  assert.match(source, /router\.replace\('\/\(auth\)\/guardian-verification'\)/);
+  assert.doesNotMatch(source, /parent_profile_done/);
 });
 
 test('unlinked parents get a clear CTA and linked-only routes stay gated', async () => {
