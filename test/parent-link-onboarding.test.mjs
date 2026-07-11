@@ -4,10 +4,13 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('parent setup completes without requiring an invite code', async () => {
+test('parent setup completes without requiring a teen invite code', async () => {
   const source = await read('app/(onboarding)/parent-setup.tsx');
-  assert.match(source, /\['parent_profile_done', 'true'\]/);
-  assert.match(source, /router\.replace\('\/\(parent\)\/room'\)/);
+  assert.match(source, /saveAccountProfile\(\{/);
+  assert.match(source, /accountSide: 'parent'/);
+  assert.match(source, /submitGuardianVerification\(\)/);
+  assert.match(source, /\/\(auth\)\/guardian-verification/);
+  assert.doesNotMatch(source, /\['parent_profile_done', 'true'\]/);
   assert.doesNotMatch(source, /router\.replace\('\/\(onboarding\)\/parent-link'\)/);
   assert.match(source, /No invite code required/);
 });
