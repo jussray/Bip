@@ -5,3 +5,11 @@ compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
+
+# Non-secret model vars — safe to commit.
+# To rotate a model: edit here and run `wrangler deploy --name sekret-bip`.
+# Secrets (OPENAI_API_KEY) must use `wrangler secret put`, never this file.
+[vars]
+OPENAI_CHAT_MODEL = "gpt-4o"
+OPENAI_TTS_MODEL  = "gpt-4o-mini-tts"
+OPENAI_STT_MODEL  = "whisper-1"
