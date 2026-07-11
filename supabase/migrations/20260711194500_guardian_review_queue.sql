@@ -66,7 +66,7 @@ begin
   from public.account_verification av
   join public.app_profiles ap on ap.user_id = av.user_id
   join public.circle_profiles cp on cp.user_id = av.user_id
-  where av.verification_state in ('PENDING_GUARDIAN_REVIEW', 'GUARDIAN_REJECTED')
+  where av.verification_state = 'PENDING_GUARDIAN_REVIEW'
     and ap.account_side = 'parent'
     and ap.onboarding_complete = true
     and cp.account_type = 'guardian'
@@ -99,6 +99,10 @@ begin
     raise exception 'founder or admin access required' using errcode = '42501';
   end if;
 
+  if not p_approve and nullif(btrim(p_reason), '') is null then
+    raise exception 'rejection reason required' using errcode = '22023';
+  end if;
+
   select * into v_target_profile
   from public.app_profiles
   where user_id = p_target_user_id
@@ -123,7 +127,7 @@ begin
   where user_id = p_target_user_id
   for update;
 
-  if v_current_state not in ('PENDING_GUARDIAN_REVIEW', 'GUARDIAN_REJECTED') then
+  if not found or v_current_state <> 'PENDING_GUARDIAN_REVIEW' then
     raise exception 'guardian review is not pending' using errcode = '22023';
   end if;
 
@@ -135,7 +139,7 @@ begin
       parent_link_state = 'none',
       verification_reason = case
         when p_approve then 'guardian_review_approved'
-        else coalesce(nullif(btrim(p_reason), ''), 'guardian_review_rejected')
+        else btrim(p_reason)
       end,
       verification_updated_at = now()
   where user_id = p_target_user_id;
