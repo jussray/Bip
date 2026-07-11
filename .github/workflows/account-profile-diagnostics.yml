@@ -17,20 +17,26 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Capture test output
+      - name: Capture type-check and test output
         shell: bash
         run: |
           set +e
+          npm run type-check > typecheck-output.txt 2>&1
+          type_status=$?
           npm test > test-output.txt 2>&1
-          status=$?
+          test_status=$?
+          cat typecheck-output.txt
           cat test-output.txt
-          echo "$status" > test-exit-code.txt
+          echo "$type_status" > typecheck-exit-code.txt
+          echo "$test_status" > test-exit-code.txt
           exit 0
       - name: Upload diagnostics
         uses: actions/upload-artifact@v4
         with:
           name: account-profile-test-output
           path: |
+            typecheck-output.txt
+            typecheck-exit-code.txt
             test-output.txt
             test-exit-code.txt
           if-no-files-found: error
