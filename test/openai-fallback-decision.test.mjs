@@ -74,9 +74,6 @@ test('handleTranscribe resolves the STT model via getModels(env), not a literal'
 });
 
 test('no OpenAI fetch/formData call site hardcodes a model literal anymore', () => {
-  // These three literals may still appear as *defaults inside config/models.ts*
-  // (that file is intentionally excluded here) but must not appear anywhere
-  // else in sekret-reply.ts as a hardcoded `model:` value or form field.
   const bannedPatterns = [
     /model:\s*'gpt-4o-mini'(?!-tts)/,
     /model:\s*"gpt-4o-mini"(?!-tts)/,
@@ -100,8 +97,8 @@ test('Env interface declares the optional model override vars', () => {
 });
 
 // ─── Runtime deployment and telemetry model contracts ──────────────────────
-test('wrangler pins the production chat model to gpt-4o', () => {
-  assert.match(wrangler, /^name = "bip"$/m);
+test('wrangler pins the production chat model to gpt-4o on sekret-bip', () => {
+  assert.match(wrangler, /^name = "sekret-bip"$/m);
   assert.match(wrangler, /^OPENAI_CHAT_MODEL = "gpt-4o"$/m);
 });
 
