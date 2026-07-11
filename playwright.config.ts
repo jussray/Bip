@@ -10,6 +10,10 @@ const executablePath =
 
 export default defineConfig({
   testDir: './e2e',
+  // Requires real Supabase config to be meaningful (see e2e/production-smoke.spec.ts);
+  // this dev server intentionally runs with Supabase disabled, so it's excluded here
+  // and only runs against the live domain via playwright.production.config.ts.
+  testIgnore: '**/production-smoke.spec.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
