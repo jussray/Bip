@@ -1,5 +1,6 @@
 /** Se'kret Brain + Voice Worker */
 import { ORACLE_HIDDEN_GUIDANCE } from './companion-curriculum';
+import { getModels } from './config/models';
 
 type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret' | 'parentCoach';
 type Surface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery' | 'parentCoach';
@@ -20,6 +21,9 @@ type ConversationIntent =
 
 interface Env {
   OPENAI_API_KEY: string;
+  OPENAI_CHAT_MODEL?: string;
+  OPENAI_TTS_MODEL?: string;
+  OPENAI_STT_MODEL?: string;
   RAYLENE_VOICE_ID?: string;
   RYLANE_VOICE_ID?: string;
   CLOUD_VOICE_ID?: string;
@@ -1624,7 +1628,7 @@ async function handleReply(request: Request, env: Env): Promise<Response> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: getModels(env).chat,
         temperature,
         max_tokens: 300,
         response_format: { type: 'json_object' },
@@ -1679,7 +1683,7 @@ async function handleVoice(request: Request, env: Env): Promise<Response> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
     body: JSON.stringify({
-      model: 'gpt-4o-mini-tts',
+      model: getModels(env).tts,
       voice: selectedVoice.voice,
       input: text.slice(0, 4000),
       instructions: VOICE_INSTRUCTIONS[characterId],
@@ -1713,7 +1717,7 @@ async function handleTranscribe(request: Request, env: Env): Promise<Response> {
     for (let i = 0; i < binaryString.length; i += 1) bytes[i] = binaryString.charCodeAt(i);
     const formData = new FormData();
     formData.append('file', new Blob([bytes], { type: contentType }), `audio.${ext}`);
-    formData.append('model', 'whisper-1');
+    formData.append('model', getModels(env).stt);
     formData.append('language', 'en');
     const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
       method: 'POST',

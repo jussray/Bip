@@ -172,18 +172,26 @@ export function buildSekretVoiceInstruction(
   ].filter(Boolean).join(' ');
 }
 
+// Kept intentionally narrow — compound, clearly-clinical phrasings only.
+// Bare single words (e.g. "profile", "analysis", "dimension") and ordinary
+// warm phrasing (e.g. "how are you doing", "I'm here for you", "what's on
+// your mind") used to be blocked here too, but those are common in normal
+// in-character dialogue and were silently discarding good OpenAI replies —
+// see keepSekretReply() callers, which now report a blocked substitution as
+// a real fallback instead of masking it as a successful worker reply.
 const BLOCKED_REPLY_LANGUAGE = [
   /\bi understand\b/i,
   /\bthat's valid\b/i,
   /\bhow does that make you feel\b/i,
+  /\bhow are you feeling\b/i,
   /\bi'm here to support you\b/i,
   /\bbased on what you've shared\b/i,
+  /\bbased on your (?:patterns|profile|analysis)\b/i,
+  /\byour profile shows\b/i,
+  /\byour assessment\b/i,
+  /\bwhat(?:'s| is) bothering you\b/i,
   /\boracle\b/i,
-  /\b(?:profile|assessment|analysis|analyzed|dimension|hidden context)\b/i,
-  /\bhow are you (?:feeling|doing)\b/i,
-  /\bwhat(?:'s| is) (?:wrong|bothering you|on your mind)\b/i,
-  /\bwould you like to (?:talk|share|tell me)\b/i,
-  /\bi(?:'m| am) here (?:for you|to listen|to help|to support)\b/i,
+  /\bhidden context\b/i,
 ];
 
 export function keepSekretReply(reply: unknown, fallback: string): string {

@@ -307,17 +307,19 @@ export async function sendMessage(
       metadata: {
         companion: personalityId,
         surface: normalizedSurface,
-        reply_source: data.replySource ?? 'worker',
+        reply_source: guardBlocked ? 'client-guard-fallback' : (data.replySource ?? 'worker'),
         history_length: historyLength,
-        fallback_used: false,
+        fallback_used: guardBlocked,
       },
     }).catch(() => {/* silent — never block the reply */});
 
     return {
       reply: guardedReply,
-      replySource: 'worker',
-      fallbackUsed: false,
-      fallbackReason: null,
+      replySource: guardBlocked ? 'local-fallback' : 'worker',
+      fallbackUsed: guardBlocked,
+      fallbackReason: guardBlocked
+        ? 'client language guard (keepSekretReply) replaced an OpenAI reply matching a blocked pattern'
+        : null,
     };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);

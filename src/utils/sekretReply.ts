@@ -202,9 +202,11 @@ export async function fetchPagesReplyDetails(input: {
       reply: guardedReply,
       tone: response.tone,
       avatarState: nextState,
-      replySource: 'worker',
-      fallbackUsed: false,
-      fallbackReason: null,
+      replySource: guardBlocked ? 'local-fallback' : 'worker',
+      fallbackUsed: guardBlocked,
+      fallbackReason: guardBlocked
+        ? 'client language guard (keepSekretReply) replaced an OpenAI reply matching a blocked pattern'
+        : null,
     };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
