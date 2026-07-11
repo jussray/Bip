@@ -1,4 +1,4 @@
-name = "bip"
+name = "sekret-bip"
 main = "worker/observed-index.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 
 # Non-secret model vars — safe to commit.
-# To rotate a model: edit here and run `wrangler deploy --name bip`.
+# To rotate a model: edit here and run `wrangler deploy --name sekret-bip`.
 # Secrets (OPENAI_API_KEY) must use `wrangler secret put`, never this file.
 [vars]
 OPENAI_CHAT_MODEL = "gpt-4o"

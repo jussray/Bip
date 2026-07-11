@@ -18,7 +18,7 @@ env:
 
 jobs:
   deploy-worker:
-    name: Deploy Backend Worker (bip)
+    name: Deploy Backend Worker (sekret-bip)
     runs-on: ubuntu-latest
     environment: cloudflare-production
     steps:
@@ -30,13 +30,13 @@ jobs:
       - run: npm ci
       - name: Verify canonical Worker configuration
         run: |
-          grep -Eq '^name = "bip"$' wrangler.toml
+          grep -Eq '^name = "sekret-bip"$' wrangler.toml
           grep -Eq '^main = "worker/observed-index.ts"$' wrangler.toml
       - name: Verify Cloudflare credentials
         run: |
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-      - name: Deploy backend Worker bip
+      - name: Deploy backend Worker sekret-bip
         run: npm run deploy:worker
 
   deploy-pages:
