@@ -38,7 +38,7 @@ export default function TeenCircleRoute() {
 
       <View style={styles.identityNote}>
         <Text style={styles.identityNoteText}>
-          Circle uses {circleName}. Your private account name stays outside this space.
+          Your Circle identity is separate from your private account. Posting as {circleName}.
         </Text>
       </View>
 
