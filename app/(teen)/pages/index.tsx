@@ -65,6 +65,7 @@ import {
 } from '../../../src/features/safety/safetyCoordinator';
 import { SafetyExperienceSheet } from '../../../components/safety/SafetyExperienceSheet';
 import {
+  buildBridgeSharePreview,
   createBridgeShareRequest,
   fetchBridgeShareStatusesForJournalEntries,
   revokeBridgeShareRequest,
@@ -440,6 +441,25 @@ export default function TeenPagesRoute() {
       Alert.alert('no linked parent yet', 'Connect with a parent or trusted adult before sharing into Bridge.');
       return;
     }
+
+    const preview = buildBridgeSharePreview(linkedParentId, [{ kind: 'journal', sourceId: String(entryId) }]);
+    if (!preview.ok) {
+      Alert.alert('could not share right now', preview.message);
+      return;
+    }
+
+    const confirmed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        'Share with Parent Window?',
+        `${preview.value.notice}\n\nYour parent will NOT see this entry's raw text — only a generated summary.`,
+        [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Share', style: 'default', onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      );
+    });
+    if (!confirmed) return;
 
     setSharingEntryId(entryId);
     const result = await createBridgeShareRequest({

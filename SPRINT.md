@@ -125,7 +125,30 @@ Crew remains gated.
   view, revoke, unlink, delete — with privacy enforced by Worker auth +
   Supabase RLS/storage, not screen hiding.
 - P0/P1/P2 checklist and manual two-account test script are in the issue
-  body; not yet executed against current main as of this verification.
+  body; not yet executed end-to-end with two real accounts as of this
+  verification (only code-level gap inventory + fixes below have landed).
+- **Gap inventory (verified 2026-07-12) on branch
+  `claude/bip-v1-production-proof-nx6222`:** steps 1-4, 8-10 (teen/parent
+  auth, parent-link state machine, private Pages RLS, revoke, parent-loses-
+  access, unlink/delete) were already production-hardened. Steps 5-7 (Bridge
+  content selection → preview/confirm → parent-safe generation) were
+  functionally inert: `relationshipFeatureFlags.bridgeSummaries` was
+  `'internal'` (blocked for real users) and the Worker's
+  `handleBridgeSummaryGenerate` always wrote a hardcoded `FALLBACK_SUMMARY`
+  regardless of what the teen selected.
+- **Fixed this session:** flipped `bridgeSummaries` to `'enabled'`; added a
+  confirm/cancel step in `app/(teen)/pages/index.tsx` using
+  `buildBridgeSharePreview` before `createBridgeShareRequest` fires; Worker
+  (`worker/bridge-summary.ts`) now fetches the teen's selected journal/mood
+  content (scoped to `teen_user_id`, minimized fields only), calls OpenAI
+  with a themes/conversationStarters/limitations contract that forbids
+  verbatim quotes and clinical language, and only falls back to the static
+  summary if generation fails or `OPENAI_API_KEY` is unset. Raw source text
+  is used only as ephemeral model input — never persisted into
+  `bridge_summaries`. `PROMPT_VERSION` bumped to `bridge-summary-v2`.
+  Typecheck, lint, and unit tests (425 pass) all green; not yet exercised
+  against a real deployed Worker + two real Supabase accounts — that
+  two-account proof run is still open.
 
 ### Open pull requests (verified 2026-07-12, query GitHub before trusting this)
 

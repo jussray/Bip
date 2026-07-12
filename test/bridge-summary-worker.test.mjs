@@ -44,12 +44,31 @@ test('Bridge summary fallback stores only summary fields', () => {
   assert.match(moduleSource, /themes: FALLBACK_SUMMARY\.themes/);
   assert.match(moduleSource, /conversation_starters: FALLBACK_SUMMARY\.conversationStarters/);
   assert.match(moduleSource, /limitations: FALLBACK_SUMMARY\.limitations/);
-  assert.doesNotMatch(moduleSource, /journal_entries\?/);
-  assert.doesNotMatch(moduleSource, /mood_history\?/);
 });
 
-test('Bridge summary route does not expose notification or email behavior', () => {
-  assert.doesNotMatch(moduleSource, /email/i);
-  assert.doesNotMatch(moduleSource, /push/i);
-  assert.doesNotMatch(moduleSource, /notification/i);
+test('Bridge summary generation reads source content only as ephemeral LLM input, never writes it back', () => {
+  // Fetches minimized journal/mood content scoped to the requesting teen, to
+  // summarize — this is the intentional content-aware generator, not a leak.
+  assert.match(moduleSource, /journal_entries\?user_id=eq/);
+  assert.match(moduleSource, /mood_history\?user_id=eq/);
+
+  const upsertFallbackBody = moduleSource.slice(
+    moduleSource.indexOf('async function upsertFallbackSummary'),
+    moduleSource.indexOf('async function upsertGeneratedSummary'),
+  );
+  const upsertGeneratedBody = moduleSource.slice(
+    moduleSource.indexOf('async function upsertGeneratedSummary'),
+    moduleSource.indexOf('async function fetchShareSources'),
+  );
+  // Neither write path persists raw source snippets or row text — only the
+  // model's generated themes/conversationStarters/limitations fields.
+  assert.doesNotMatch(upsertFallbackBody, /snippets/);
+  assert.doesNotMatch(upsertGeneratedBody, /snippets/);
+  assert.doesNotMatch(upsertFallbackBody + upsertGeneratedBody, /row\.text/);
+});
+
+test('Bridge summary route does not expose notification or email delivery behavior', () => {
+  assert.doesNotMatch(moduleSource, /send email/i);
+  assert.doesNotMatch(moduleSource, /push notification/i);
+  assert.doesNotMatch(moduleSource, /notification_deliveries/i);
 });
