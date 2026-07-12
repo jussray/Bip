@@ -184,6 +184,93 @@ const BLOCKED_REPLY_LANGUAGE = [
   /\bwhat(?:'s| is) (?:wrong|bothering you|on your mind)\b/i,
   /\bwould you like to (?:talk|share|tell me)\b/i,
   /\bi(?:'m| am) here (?:for you|to listen|to help|to support)\b/i,
+
+  // Em / en dashes — no teen or companion voice uses these in a text.
+  /[—–]/,
+  / -- /,
+
+  // Chatbot service phrases
+  /\bgreat question\b/i,
+  /\bof course[!,]/i,
+  /\bcertainly[!,]/i,
+  /\byou're absolutely right\b/i,
+  /\bi hope this helps\b/i,
+  /\blet me know if you need\b/i,
+  /\bwould you like me to\b/i,
+  /\bshould i continue\b/i,
+  /\bhere is (?:an? )?(?:overview|summary|breakdown)\b/i,
+  /\bwant me to give examples\b/i,
+
+  // Sycophancy
+  /\bfascinating (?:question|point|perspective|insight)\b/i,
+  /\bexcellent (?:question|point|observation)\b/i,
+  /\bthat'?s a (?:great|fantastic|wonderful|brilliant) (?:point|question|observation)\b/i,
+  /\bwhat an insightful\b/i,
+  /\bthank you for sharing\b/i,
+
+  // Signposting
+  /\blet'?s dive in\b/i,
+  /\blet'?s explore\b/i,
+  /\blet'?s break (?:this|it) down\b/i,
+  /\bhere'?s what you need to know\b/i,
+  /\bwithout further ado\b/i,
+  /\bnow let'?s (?:look at|turn to)\b/i,
+
+  // Significance inflation / essay-speak
+  /\bpivotal (?:moment|role|part|dynamic|shift)\b/i,
+  /\bkey turning point\b/i,
+  /\bindelible mark\b/i,
+  /\bevolving landscape\b/i,
+  /\bstands as a testament\b/i,
+  /\bsetting the stage for\b/i,
+  /\bmarks (?:a|the) shift\b/i,
+
+  // Vague positive conclusions
+  /\bthe future looks bright\b/i,
+  /\bexciting times (?:lie ahead|ahead)\b/i,
+  /\ba (?:major |big )?step in the right direction\b/i,
+  /\bcontinues to thrive\b/i,
+  /\bjourney toward excellence\b/i,
+
+  // AI vocabulary
+  /\btapestry\b/i,
+  /\bdelve\b/i,
+  /\bunderscore(?:s|d)?\b/i,
+  /\bshowcase(?:s|d|ing)?\b/i,
+  /\bvibrant\b/i,
+  /\bintricate(?:ly|ies)?\b/i,
+  /\bgarner(?:s|ed|ing)?\b/i,
+  /\bfostering\b/i,
+  /\binterplay\b/i,
+
+  // Promotional / brochure language
+  /\bboasts (?:a|an|the)\b/i,
+  /\bgroundbreaking\b/i,
+  /\bbreathtaking\b/i,
+  /\brenowned\b/i,
+  /\bnestled\b/i,
+  /\bin the heart of\b/i,
+
+  // Superficial -ing analyses
+  /\bhighlighting that\b/i,
+  /\bunderscoring (?:the|that|its|their)\b/i,
+  /\bsymbolizing\b/i,
+  /\bcultivating (?:a|the|deeper)\b/i,
+  /\bencompassing\b/i,
+
+  // Filler / bureaucratic phrases
+  /\bin order to\b/i,
+  /\bdue to the fact that\b/i,
+  /\bat this point in time\b/i,
+  /\bin the event that\b/i,
+  /\bit is important to note that\b/i,
+  /\bhas the ability to\b/i,
+
+  // Excessive hedging
+  /\bcould potentially possibly\b/i,
+  /\bmight possibly\b/i,
+  /\bit could be argued that\b/i,
+  /\bone could argue\b/i,
 ];
 
 export function keepSekretReply(reply: unknown, fallback: string): string {
