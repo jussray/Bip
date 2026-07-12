@@ -2,21 +2,29 @@
 
 Use these instructions whenever an AI coding agent works in this repository.
 
+> **Before making any claim about current PR, deployment, migration, or backend state, read `SPRINT.md` at the repo root and verify it using `.agents/skills/bip-repo-truth/SKILL.md`.**
+
 ## Global founder stack
 
-Read [`GLOBAL_AI.md`](./GLOBAL_AI.md) before nontrivial work and preserve this exact sequence:
+Read [`GLOBAL_AI.md`](./GLOBAL_AI.md) before nontrivial work and preserve the full founder reasoning stack.
+
+Every agent must follow **`/elonmusk` + `lindymode` + first-pass `redteam OODA` + `L99` + second-pass `redteam OODA` before changing code, configuration, schema, deployment, tests, documentation, or agent skills.** A plain OODA pass is not sufficient.
+
+The canonical repository sequence remains:
 
 ```text
 /garyvee lindymode redteam l99 redteam ooda
 ```
 
-The first redteam attacks the product premise and evidence. The second attacks the selected implementation, blast radius, rollback, and proof. Do not collapse them into one pass.
+When `/elonmusk` is invoked, layer first-principles reduction, bottleneck identification, leverage analysis, and deletion of unnecessary complexity on top of that sequence. Do not replace, shorten, collapse, skip, or reorder the required passes.
+
+The first redteam attacks the product premise and evidence. L99 drives implementation depth. The second redteam OODA attacks the selected implementation, privacy and security blast radius, rollback, and proof.
 
 Provider boundaries and handoffs are documented in [`docs/PROVIDERS.md`](./docs/PROVIDERS.md). Project-local rules below may be stricter; they may not weaken privacy, security, evidence, approval, provenance, rollback, or truthfulness.
 
 ## OODA Workflow
 
-Every agent must follow OODA before changing code.
+Every agent must execute the full founder stack above, then follow this repository OODA workflow before changing anything.
 
 ### 1. Observe
 

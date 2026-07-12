@@ -1,3 +1,5 @@
+> **Before making any claim about current PR, deployment, migration, or backend state, read `SPRINT.md` at the repo root and verify it using `.agents/skills/bip-repo-truth/SKILL.md`.**
+
 # Se'kret Bip — Design System Rules for Figma MCP Integration
 
 Grounded, file-verified reference for any agent (Claude Code, Figma MCP,
