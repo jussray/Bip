@@ -55,11 +55,23 @@ remain separate verification steps and are not certified by CI alone.
 - **State:** Open and synchronized with the corrected main baseline
 - **Purpose:** Add `SPRINT.md`, `bip-current-state`, `bip-companion-lab`, and
   `bip-supabase-guardian`; strengthen agent entrypoint instructions
-- **Current work:** Correct real Companion Lab paths/scenarios, separate durable
-  Supabase rules from live findings, and validate the six-file documentation
-  scope
+- **Current work:** Validate the corrected six-file documentation-only scope
 - **Merge condition:** all required checks green and PR description matches the
-  final six-file diff
+  final diff
+
+---
+
+## Open Issues
+
+### #344 — Supabase authorization hardening
+
+- **State:** Open
+- **Purpose:** Convert live security and performance advisor findings into a
+  phased, test-first hardening campaign
+- **First phase:** Inventory policy roles, RLS-without-policy tables, elevated
+  function grants, and Edge Function JWT exceptions; add denial tests before
+  migrations
+- **Production changes:** None made from this issue yet
 
 ---
 
@@ -118,17 +130,16 @@ The performance advisor reports:
 - overlapping permissive policies;
 - unused indexes.
 
-These are not part of PR #340. They require a dedicated, phased migration and
-test campaign. Do not mass-edit live policies merely to reduce advisor counts.
+The backlog is tracked in issue #344. Do not mass-edit live policies merely to
+reduce advisor counts.
 
 ---
 
 ## Next Execution Order
 
 1. Finish and merge #340 after its refreshed checks pass.
-2. Open a Supabase security-hardening tracking issue with phased scope.
-3. Phase 1: inventory exposed roles, RLS-without-policy tables, and executable
-   `SECURITY DEFINER` functions; add denial tests before migrations.
-4. Verify production Cloudflare deployment and one authenticated OpenAI
+2. Begin issue #344 Phase 0 inventory and denial-test design without production
+   writes.
+3. Verify production Cloudflare deployment and one authenticated OpenAI
    companion reply.
-5. Return to product feature work only after the verified baseline is recorded.
+4. Select the next product feature only after the verified baseline is recorded.
