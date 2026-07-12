@@ -5,6 +5,7 @@ import test from 'node:test';
 // type-stripping can load it directly — these tests exercise the real
 // validator logic, not a regex match against the source file.
 const {
+  BRIDGE_JSON_SCHEMA,
   isGeneratedSummary,
   passesPrivacyValidator,
   containsClinicalLanguage,
@@ -13,6 +14,8 @@ const {
   ngramSet,
   isBridgeSummariesRolloutAllowed,
   MAX_THEME_LEN,
+  MAX_STARTER_LEN,
+  MAX_LIMITATIONS_LEN,
 } = await import('../worker/bridge-privacy-validator.ts');
 
 const VALID_SUMMARY = {
@@ -46,8 +49,20 @@ test('passesPrivacyValidator rejects too many themes or conversation starters', 
 });
 
 test('passesPrivacyValidator rejects oversized fields', () => {
-  const overLong = { ...VALID_SUMMARY, themes: ['x'.repeat(MAX_THEME_LEN + 1)] };
-  assert.equal(passesPrivacyValidator(overLong, []), false);
+  assert.equal(passesPrivacyValidator({ ...VALID_SUMMARY, themes: ['x'.repeat(MAX_THEME_LEN + 1)] }, []), false);
+  assert.equal(passesPrivacyValidator({ ...VALID_SUMMARY, conversationStarters: ['x'.repeat(MAX_STARTER_LEN + 1)] }, []), false);
+  assert.equal(passesPrivacyValidator({ ...VALID_SUMMARY, limitations: 'x'.repeat(MAX_LIMITATIONS_LEN + 1) }, []), false);
+});
+
+test('structured output schema mirrors deterministic count and length limits', () => {
+  const properties = BRIDGE_JSON_SCHEMA.schema.properties;
+  assert.equal(properties.themes.minItems, 1);
+  assert.equal(properties.themes.maxItems, 3);
+  assert.equal(properties.themes.items.maxLength, MAX_THEME_LEN);
+  assert.equal(properties.conversationStarters.minItems, 1);
+  assert.equal(properties.conversationStarters.maxItems, 2);
+  assert.equal(properties.conversationStarters.items.maxLength, MAX_STARTER_LEN);
+  assert.equal(properties.limitations.maxLength, MAX_LIMITATIONS_LEN);
 });
 
 test('passesPrivacyValidator accepts the required "not a diagnosis" disclaimer in limitations', () => {
@@ -87,11 +102,15 @@ test('leaksSourceContent is false when there is no 7-word overlap', () => {
 
 test('containsClinicalLanguage matches whole words only, not substrings', () => {
   assert.equal(containsClinicalLanguage('feeling anxious about the test'), true);
-  assert.equal(containsClinicalLanguage('a transformative moment'), false); // must not false-positive on substrings
+  assert.equal(containsClinicalLanguage('a transformative moment'), false);
 });
 
-test('isBridgeSummariesRolloutAllowed defaults to allowed when unset', () => {
-  assert.equal(isBridgeSummariesRolloutAllowed({}, 'user-1'), true);
+test('isBridgeSummariesRolloutAllowed fails closed when unset or blank', () => {
+  assert.equal(isBridgeSummariesRolloutAllowed({}, 'user-1'), false);
+  assert.equal(isBridgeSummariesRolloutAllowed({ BRIDGE_SUMMARIES_ROLLOUT: '   ' }, 'user-1'), false);
+});
+
+test('isBridgeSummariesRolloutAllowed allows everyone only when explicitly enabled', () => {
   assert.equal(isBridgeSummariesRolloutAllowed({ BRIDGE_SUMMARIES_ROLLOUT: 'enabled' }, 'user-1'), true);
 });
 
