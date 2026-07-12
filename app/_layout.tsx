@@ -4,6 +4,7 @@ import { Analytics } from '@/components/shared/Analytics';
 import { NotificationBootstrap } from '@/components/shared/NotificationBootstrap';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
+import { installSekretBipGuardrailRuntime } from '@/config/visionGuardrails';
 import { decideRouteAccess } from '@/services/routeAccess';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
@@ -53,8 +54,6 @@ function RouteBoundary() {
     const first = String(routeSegments[0] ?? '');
     const second = String(routeSegments[1] ?? '');
 
-    // Never enforce protected routing from an unresolved local/default state.
-    // Authentication and verification must both be hydrated from Supabase first.
     if (!isAuthResolved || isLoading || isVerificationLoading) return;
 
     if (isSupabaseConfigured && !isAuthenticated) {
@@ -65,9 +64,6 @@ function RouteBoundary() {
     const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
     if (!effectiveUserSide) return;
 
-    // Teen and parent routes share the same leaf segment names (e.g. both
-    // (teen)/circle and (parent)/circle are just "circle"), so only treat
-    // this as a gated social route when it's actually on the teen side.
     const firstSegment = first === '(teen)' && SOCIAL_SEGMENTS.has(second) ? '(social)' : first;
     const decision = decideRouteAccess({
       firstSegment,
@@ -92,6 +88,10 @@ function RouteBoundary() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    installSekretBipGuardrailRuntime();
+  }, []);
+
   return (
     <VerificationProvider>
       <AppProvider>

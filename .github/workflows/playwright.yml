@@ -1,4 +1,4 @@
-name: Playwright Smoke
+name: Playwright Smoke and Guardrails
 
 on:
   pull_request:
@@ -8,6 +8,8 @@ on:
       - 'screens/**'
       - 'src/**'
       - 'e2e/**'
+      - 'docs/VISION.md'
+      - 'docs/GUARDRAILS.md'
       - 'playwright.config.ts'
       - 'package.json'
       - 'package-lock.json'
@@ -38,7 +40,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run onboarding smoke test
+      - name: Run Playwright smoke and guardrail tests
         run: npx playwright test
 
       - name: Upload Playwright report
