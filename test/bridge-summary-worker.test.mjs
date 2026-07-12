@@ -59,8 +59,12 @@ test('Bridge summary generation reads source content only as ephemeral LLM input
   assert.match(storeSource, /journal_entries\?user_id=eq/);
   assert.match(storeSource, /mood_history\?user_id=eq/);
   assert.match(handlerSource, /Teen-selected private content to summarize for a parent/);
-  assert.doesNotMatch(storeSource, /snippets:/);
-  assert.doesNotMatch(storeSource, /row\.text[^\n]*JSON\.stringify/);
+
+  const persistenceBody = storeSource.slice(
+    storeSource.indexOf('async function upsertSummary'),
+    storeSource.indexOf('async function fetchShareSources'),
+  );
+  assert.doesNotMatch(persistenceBody, /snippets|row\.text|source_text|raw_source/);
 });
 
 test('missing and partial sources fail explicitly instead of producing a ready fallback', () => {
