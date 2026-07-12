@@ -60,13 +60,13 @@ The required proof remains:
 
 Steps 1–4 and 8–10 have existing implementation and contract coverage, but the entire journey has not yet been proven against a deployed Worker with two real Supabase accounts.
 
-### PR #350 — Bridge summary activation and privacy hardening
+### PR #350 — Bridge summary preparation and privacy hardening
 
 **State:** Open; query GitHub for the latest head and checks.
 
 Implemented on `claude/bip-v1-production-proof-nx6222`:
 
-- Bridge summary UI moved from internal-only to client-visible;
+- Bridge summary UI remains internal-only until deployed two-account proof passes;
 - confirmation discloses that selected text is sent to an external AI provider;
 - revoke → re-share is supported instead of ending in a dead UI state;
 - selected journal and mood content is fetched only for the authenticated teen;
@@ -91,7 +91,19 @@ Production project `tbsevonvegdnlyjgplmm` was checked directly on 2026-07-12:
 - `notification_deliveries` has RLS enabled, no policies, no grants for `anon` or `authenticated`, and table privileges only for `service_role`;
 - the no-policy shape of `notification_deliveries` is therefore an intentional server-only boundary, not a missing client policy.
 
-The repository RLS scanner now verifies that exception only when both RLS and the migration-level client-role revocation are present.
+A rollback-contained two-principal production-schema probe passed seven checks:
+
+- teen could read only the temporary teen-owned journal row;
+- linked parent could not read the raw journal row;
+- linked parent could read the ready generated summary;
+- linked parent could not read source references;
+- revocation removed parent summary access immediately;
+- re-share reused the same idempotent request;
+- reactivated request returned to `pending` for fresh generation.
+
+Cleanup was verified after the probe: no temporary users, parent links, Bridge requests, or proof journals remained.
+
+The repository RLS scanner now verifies the `notification_deliveries` exception only when both RLS and migration-level client-role revocation are present.
 
 ### Still not production proof
 
@@ -162,8 +174,8 @@ Do not rename the Worker, change production rollout, or deploy from an unrelated
 ## Next Execution Order
 
 1. Finish PR #350 checks, including Playwright, unit tests, typecheck, lint, build, regression, and RLS audit.
-2. Merge PR #350 only after all required checks pass, with rollout still disabled.
-3. Deploy separately under an explicit deployment approval.
+2. Merge PR #350 only after all required checks pass, with public UI and Worker rollout still disabled.
+3. Deploy separately under explicit deployment approval.
 4. Run issue #259's complete two-account journey using a controlled rollout cohort.
 5. Record failures, repair them, and repeat until revoke, re-share, unlink, delete, and privacy boundaries pass.
 6. Complete issue #344 denial-test inventory before broad authorization changes.
