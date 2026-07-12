@@ -36,7 +36,6 @@ export default function TeenRoomRoute() {
     });
     // A Room mount is one visit. Hotspot and companion taps update their own
     // fields without incrementing the visit counter.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleScreen = (screen: string) => {
