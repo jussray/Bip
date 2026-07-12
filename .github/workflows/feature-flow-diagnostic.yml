@@ -1,9 +1,9 @@
 name: Feature Flow Diagnostic
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/unify-feature-flow-supabase
+      - main
   workflow_dispatch:
 
 permissions:
