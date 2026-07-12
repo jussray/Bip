@@ -3,7 +3,9 @@ import type { RelationshipFeature, RelationshipFeatureState } from '@/types/rela
 export type RelationshipFeatureFlagMap = Record<RelationshipFeature, RelationshipFeatureState>;
 
 export const RELATIONSHIP_FEATURE_FLAGS: Readonly<RelationshipFeatureFlagMap> = Object.freeze({
-  bridgeSummaries: 'enabled',
+  // Keep the public UI closed until the deployed Worker and real two-account
+  // proof pass. The Worker also fails closed through BRIDGE_SUMMARIES_ROLLOUT.
+  bridgeSummaries: 'internal',
   crewAccountability: 'disabled',
   emotionalScrapbook: 'disabled',
   companionMemory: 'disabled',
