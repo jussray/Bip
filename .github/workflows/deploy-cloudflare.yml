@@ -64,7 +64,7 @@ jobs:
       SEKRET_FRONTEND_URL: ${{ vars.SEKRET_FRONTEND_URL }}
       EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
       EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-      EXPO_PUBLIC_BACKEND_URL: ${{ vars.EXPO_PUBLIC_BACKEND_URL }}
+      EXPO_PUBLIC_BACKEND_URL: https://sekret-backend.mcgill-raylene.workers.dev
       APP_ENV: production
       EXPO_PUBLIC_ENABLE_FOUNDER_TOOLS: 'false'
     steps:
@@ -82,7 +82,7 @@ jobs:
           test -n "$SEKRET_FRONTEND_URL"
           test -n "$EXPO_PUBLIC_SUPABASE_URL"
           test -n "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
-          test -n "$EXPO_PUBLIC_BACKEND_URL"
+          test "$EXPO_PUBLIC_BACKEND_URL" = "https://sekret-backend.mcgill-raylene.workers.dev"
       - name: Build Expo web frontend
         run: npm run build:web
       - name: Deploy Expo web export to Cloudflare Pages project sekret
