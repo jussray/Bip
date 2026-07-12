@@ -69,6 +69,17 @@ test('Teen Circle cannot bypass account onboarding from a blank browser session'
   await expect(page.getByText('🌐 Circle')).not.toBeVisible();
 });
 
+test('Teen Bridge remains closed from a blank browser session during controlled rollout proof', async ({ page }) => {
+  await page.goto('/bridge?bipDevSide=teen');
+
+  const splashButton = page.getByRole('button', {
+    name: "Se'kret Bip — enter your safe space",
+  });
+  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/share with parent/i)).not.toBeVisible();
+  await expect(page.getByText(/conversation starters/i)).not.toBeVisible();
+});
+
 test('Parent Bridge fails closed until guardian verification is complete', async ({ page }) => {
   await page.goto('/bridge?bipDevSide=parent');
 
