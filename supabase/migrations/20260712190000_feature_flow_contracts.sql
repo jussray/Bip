@@ -46,7 +46,7 @@ grant select (user_id, nickname, avatar_emoji)
   on table public.circle_profiles to authenticated;
 grant insert (user_id, nickname, avatar_emoji, account_type, updated_at)
   on table public.circle_profiles to authenticated;
-grant update (nickname, avatar_emoji, account_type, updated_at)
+grant update (user_id, nickname, avatar_emoji, account_type, updated_at)
   on table public.circle_profiles to authenticated;
 
 -- Replace overlapping legacy policies on public posts. Anonymous Auth users may
