@@ -48,6 +48,7 @@ test('legacy Circle deep links redirect to the canonical reactions-only feed', (
 test('the database migrations separate private notebooks and harden Circle', () => {
   const migration = read('supabase/migrations/20260712190000_feature_flow_contracts.sql');
   const profileReadMigration = read('supabase/migrations/20260712195000_secure_circle_profile_reads.sql');
+  const optimizerMigration = read('supabase/migrations/20260712200000_optimize_circle_policy_plans.sql');
   assert.equal(migration.includes('owner_side text not null'), true);
   assert.equal(migration.includes("check (owner_side in ('teen', 'parent'))"), true);
 
@@ -78,6 +79,12 @@ test('the database migrations separate private notebooks and harden Circle', () 
   assert.equal(migration.includes('set search_path = pg_catalog, pg_temp'), true);
   assert.equal(migration.includes('revoke all on function public.react_to_public_circle_post(bigint, text) from anon'), true);
   assert.equal(migration.includes('grant execute on function public.react_to_public_circle_post(bigint, text) to authenticated'), true);
+
+  assert.equal(optimizerMigration.includes('drop index if exists public.circle_reactions_unique_user_post'), true);
+  assert.equal(optimizerMigration.includes('public_circle_posts_user_id_idx'), true);
+  assert.equal(optimizerMigration.includes("((select auth.jwt()) ->> 'is_anonymous')"), true);
+  assert.equal(optimizerMigration.includes('circle_profiles_owner_select'), true);
+  assert.equal(optimizerMigration.includes('circle_reactions_permanent_accounts_only'), true);
 });
 
 test('Parent Circle does not re-upload local history or double-save a new post', () => {
