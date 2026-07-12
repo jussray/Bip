@@ -59,25 +59,22 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
 });
 
-test('Teen Circle keeps public identity separate and does not expose fake Crew invites', async ({ page }) => {
+test('Teen Circle cannot bypass account onboarding from a blank browser session', async ({ page }) => {
   await page.goto('/circle?bipDevSide=teen');
 
-  await expect(page.getByText('🌐 Circle')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('🤝 Crew')).toBeVisible();
-  await expect(page.getByText('💜 Messages')).toBeVisible();
-  await expect(page.getByText(/Your Circle identity is separate from your private account/)).toBeVisible();
-
-  await page.getByText('🤝 Crew').click();
-
-  await expect(page.getByText('Private Crew is being prepared.')).toBeVisible();
-  await expect(page.getByText(/Placeholder invite codes are no longer treated as real connections/)).toBeVisible();
+  const splashButton = page.getByRole('button', {
+    name: "Se'kret Bip — enter your safe space",
+  });
+  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('🌐 Circle')).not.toBeVisible();
 });
 
-test('Parent Bridge is reachable as a primary tab and preserves the privacy boundary', async ({ page }) => {
+test('Parent Bridge fails closed until guardian verification is complete', async ({ page }) => {
   await page.goto('/bridge?bipDevSide=parent');
 
-  await expect(page.getByText('Parent Bridge', { exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Bridge', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Only summaries your teen deliberately chooses to share.')).toBeVisible();
-  await expect(page.getByText(/Linking accounts does not unlock journals, chats, mood history, media/)).toBeVisible();
+  await expect(page.getByText('GUARDIAN ACCESS')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Guardian verification is required.')).toBeVisible();
+  await expect(page.getByText(/Linking to a teen is a separate consent step/)).toBeVisible();
+  await expect(page.getByText(/No journal, voice note, or private source is shared automatically/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Submit for guardian review' })).toBeVisible();
 });
