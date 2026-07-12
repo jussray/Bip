@@ -23,12 +23,13 @@ test('canonical state hydrates durable feature records after the offline cache',
   assert.equal(state.includes('mergeById'), true);
 });
 
-test('public Circle reconciles the inserted database row instead of inventing a permanent ID', () => {
+test('public Circle reconciles saved rows and loads identities through the guarded RPC', () => {
   const repository = read('src/features/circle/circleRepository.ts');
   const screen = read('app/(teen)/circle/feed-v2.tsx');
   assert.equal(repository.includes(".select('id,user_id,text,post_mood,media_kind,reactions,created_at')"), true);
   assert.equal(repository.includes('react_to_public_circle_post'), true);
-  assert.equal(repository.includes(".from('circle_profiles')"), true);
+  assert.equal(repository.includes('get_public_circle_profiles'), true);
+  assert.equal(repository.includes(".from('circle_profiles')"), false);
   assert.equal(screen.includes('createPublicCirclePost'), true);
   assert.equal(screen.includes('Date.now()'), false);
   assert.equal(screen.includes('For You'), false);
@@ -44,14 +45,19 @@ test('legacy Circle deep links redirect to the canonical reactions-only feed', (
   assert.equal(legacyDetail.includes('syncCircleReaction'), false);
 });
 
-test('the database migration separates private notebooks and hardens Circle', () => {
+test('the database migrations separate private notebooks and harden Circle', () => {
   const migration = read('supabase/migrations/20260712190000_feature_flow_contracts.sql');
+  const profileReadMigration = read('supabase/migrations/20260712195000_secure_circle_profile_reads.sql');
   assert.equal(migration.includes('owner_side text not null'), true);
   assert.equal(migration.includes("check (owner_side in ('teen', 'parent'))"), true);
 
-  assert.equal(migration.includes('circle_profiles_public_identity_select'), true);
-  assert.equal(migration.includes('grant select (user_id, nickname, avatar_emoji)'), true);
-  assert.equal(migration.includes('grant select (user_id, nickname, avatar_emoji, account_type)'), false);
+  assert.equal(profileReadMigration.includes('circle_profiles_owner_select'), true);
+  assert.equal(profileReadMigration.includes('get_public_circle_profiles'), true);
+  assert.equal(profileReadMigration.includes('returns table'), true);
+  assert.equal(profileReadMigration.includes('account_type text'), false);
+  assert.equal(profileReadMigration.includes('set search_path = pg_catalog, pg_temp'), true);
+  assert.equal(profileReadMigration.includes('revoke all on function public.get_public_circle_profiles(uuid[]) from anon'), true);
+  assert.equal(profileReadMigration.includes('grant execute on function public.get_public_circle_profiles(uuid[]) to authenticated'), true);
 
   assert.equal(migration.includes('drop policy if exists pcp_insert'), true);
   assert.equal(migration.includes('public_circle_posts_permanent_insert'), true);
