@@ -35,6 +35,15 @@ test('public Circle reconciles the inserted database row instead of inventing a 
   assert.equal(screen.includes('Following'), false);
 });
 
+test('legacy Circle deep links redirect to the canonical reactions-only feed', () => {
+  const legacyFeed = read('app/(teen)/circle/feed.tsx');
+  const legacyDetail = read('app/(teen)/circle/[id].tsx');
+  assert.equal(legacyFeed.includes('<Redirect href="/(teen)/circle"'), true);
+  assert.equal(legacyDetail.includes('<Redirect href="/(teen)/circle"'), true);
+  assert.equal(legacyFeed.includes('syncCircleReaction'), false);
+  assert.equal(legacyDetail.includes('syncCircleReaction'), false);
+});
+
 test('the database migration separates private notebooks and hardens Circle reactions', () => {
   const migration = read('supabase/migrations/20260712190000_feature_flow_contracts.sql');
   assert.equal(migration.includes('owner_side text not null'), true);
@@ -42,6 +51,8 @@ test('the database migration separates private notebooks and hardens Circle reac
   assert.equal(migration.includes('circle_reactions_unique_user_post'), true);
   assert.equal(migration.includes('circle_reactions_user_id_idx'), true);
   assert.equal(migration.includes('circle_reactions_permanent_accounts_only'), true);
+  assert.equal(migration.includes('circle_reactions_direct_insert_non_public'), true);
+  assert.equal(migration.includes("post_type <> 'public'"), true);
   assert.equal(migration.includes('as restrictive'), true);
   assert.equal(migration.includes("auth.jwt() ->> 'is_anonymous'"), true);
   assert.equal(migration.includes('revoke all on table public.circle_reactions from anon'), true);
