@@ -38,14 +38,16 @@ create index if not exists circle_reactions_user_id_idx
 
 -- The legacy policy treated anonymous Supabase Auth users as ordinary signed-in
 -- users because they also assume the authenticated Postgres role. Replace it
--- with a restrictive permanent-account boundary plus an owner policy so direct
--- Data API writes cannot bypass the RPC's account requirement.
+-- with a restrictive permanent-account boundary plus an owner policy.
 alter table public.circle_reactions enable row level security;
 
 drop policy if exists cr_read on public.circle_reactions;
 drop policy if exists cr_self on public.circle_reactions;
 drop policy if exists circle_reactions_permanent_accounts_only on public.circle_reactions;
 drop policy if exists circle_reactions_self on public.circle_reactions;
+drop policy if exists circle_reactions_direct_insert_non_public on public.circle_reactions;
+drop policy if exists circle_reactions_direct_update_non_public on public.circle_reactions;
+drop policy if exists circle_reactions_direct_delete_non_public on public.circle_reactions;
 
 create policy circle_reactions_permanent_accounts_only
 on public.circle_reactions
@@ -71,6 +73,31 @@ with check (
   (select auth.uid()) is not null
   and (select auth.uid()) = user_id
 );
+
+-- Public reactions must flow through the guarded RPC so emoji validation and
+-- cached post totals cannot be bypassed by a direct Data API write. Non-public
+-- reaction types retain owner-scoped direct writes for later Friends/Crew work.
+create policy circle_reactions_direct_insert_non_public
+on public.circle_reactions
+as restrictive
+for insert
+to authenticated
+with check (post_type <> 'public');
+
+create policy circle_reactions_direct_update_non_public
+on public.circle_reactions
+as restrictive
+for update
+to authenticated
+using (post_type <> 'public')
+with check (post_type <> 'public');
+
+create policy circle_reactions_direct_delete_non_public
+on public.circle_reactions
+as restrictive
+for delete
+to authenticated
+using (post_type <> 'public');
 
 -- Default privileges on this older project were far broader than the app needs,
 -- including TRUNCATE, REFERENCES, and TRIGGER for client roles.
