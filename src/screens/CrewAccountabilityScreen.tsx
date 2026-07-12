@@ -21,7 +21,7 @@ import { getSupabase } from '@/utils/supabase';
 import type { CrewCheckinEmoji } from '@/types/relationshipLayer';
 
 const AUDIENCE = 'public' as const;
-const EMOJIS: CrewCheckinEmoji[] = ['steady', 'heavy', 'proud', 'need_support'];
+const EMOJIS: CrewCheckinEmoji[] = ['great', 'okay', 'low', 'need_support', 'resting'];
 const ENCOURAGEMENTS = [
   { key: 'with_you', label: 'with you 💜' },
   { key: 'proud_of_you', label: 'proud of you ⭐' },
@@ -33,6 +33,12 @@ interface AcceptedCrewMember {
   nickname: string;
   avatarEmoji: string;
 }
+
+type CircleProfileRow = {
+  user_id: string;
+  nickname: string | null;
+  avatar_emoji: string | null;
+};
 
 async function loadAcceptedCrew(): Promise<AcceptedCrewMember[]> {
   const supabase = getSupabase();
@@ -64,20 +70,16 @@ async function loadAcceptedCrew(): Promise<AcceptedCrewMember[]> {
     .in('user_id', userIds);
   if (profileError) throw profileError;
 
-  const profileMap = new Map(
-    (profiles ?? []).map(profile => [profile.user_id as string, profile]),
+  const profileMap = new Map<string, CircleProfileRow>(
+    ((profiles ?? []) as CircleProfileRow[]).map(profile => [profile.user_id, profile]),
   );
 
   return userIds.map(userId => {
     const profile = profileMap.get(userId);
     return {
       userId,
-      nickname: typeof profile?.nickname === 'string' && profile.nickname.trim()
-        ? profile.nickname.trim()
-        : 'Crew member',
-      avatarEmoji: typeof profile?.avatar_emoji === 'string' && profile.avatar_emoji.trim()
-        ? profile.avatar_emoji.trim()
-        : '🌙',
+      nickname: profile?.nickname?.trim() || 'Crew member',
+      avatarEmoji: profile?.avatar_emoji?.trim() || '🌙',
     };
   });
 }
@@ -88,7 +90,7 @@ export function CrewAccountabilityScreen() {
   const [myCheckIns, setMyCheckIns] = useState<CrewCheckInItem[]>([]);
   const [feed, setFeed] = useState<CrewFeedItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [emoji, setEmoji] = useState<CrewCheckinEmoji>('steady');
+  const [emoji, setEmoji] = useState<CrewCheckinEmoji>('okay');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(available);
   const [saving, setSaving] = useState(false);
