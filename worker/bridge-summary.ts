@@ -7,18 +7,21 @@ import {
   passesPrivacyValidator,
   type GeneratedSummary,
 } from './bridge-privacy-validator';
+import {
+  createBridgeSummaryStore,
+  type BridgeShareRequestRow,
+  type BridgeSummaryStoreEnv,
+} from './bridge-summary-store';
 
-interface BridgeSummaryEnv {
-  SUPABASE_URL?: string;
-  SUPABASE_SERVICE_ROLE_KEY?: string;
+interface BridgeSummaryEnv extends BridgeSummaryStoreEnv {
   OPENAI_API_KEY?: string;
   OPENAI_CHAT_MODEL?: string;
   /**
    * Server-side rollout control for Bridge summary generation, independent of
    * the client-bundled relationshipFeatureFlags constant (which a modified
    * client or direct API call can bypass). Values:
-   *   unset or 'enabled' -> allowed for everyone (current default rollout)
-   *   'disabled'         -> hard kill switch, blocks generation for everyone
+   *   unset or 'disabled' -> fail closed; generation is blocked
+   *   'enabled'           -> allowed for everyone
    *   comma-separated user IDs -> allowlist for a controlled beta cohort
    * Set via `wrangler secret put BRIDGE_SUMMARIES_ROLLOUT` or [vars] in
    * wrangler.toml — changeable without an app release, unlike the client flag.
@@ -28,19 +31,6 @@ interface BridgeSummaryEnv {
 
 interface BridgeSummaryRequestBody {
   requestId?: unknown;
-}
-
-interface BridgeShareRequestRow {
-  id: string;
-  teen_user_id: string;
-  status: string;
-  revoked_at: string | null;
-  expires_at: string | null;
-}
-
-interface BridgeShareSourceRow {
-  source_kind: 'journal' | 'mood' | 'goal' | 'scrapbook';
-  source_id: string;
 }
 
 const BRIDGE_SYSTEM_PROMPT = `
@@ -74,7 +64,7 @@ interface BridgeSummaryResponse {
   failureCode?: string;
 }
 
-const PROMPT_VERSION = 'bridge-summary-v2';
+const PROMPT_VERSION = 'bridge-summary-v3';
 const FALLBACK_SUMMARY = {
   themes: ['A teen chose to share emotional context with you.'],
   conversationStarters: [
@@ -88,133 +78,11 @@ function requireUser(principal: Principal): string {
   return principal.userId;
 }
 
-function requireSupabase(env: BridgeSummaryEnv): { url: string; key: string } {
-  const url = env.SUPABASE_URL?.replace(/\/$/, '');
-  const key = env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error('supabase_not_configured');
-  return { url, key };
-}
-
-function serviceHeaders(key: string): Record<string, string> {
-  return { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
-}
-
-async function fetchOwnedRequest(env: BridgeSummaryEnv, requestId: string, userId: string): Promise<BridgeShareRequestRow | null> {
-  const { url, key } = requireSupabase(env);
-  const response = await fetch(
-    `${url}/rest/v1/bridge_share_requests?id=eq.${encodeURIComponent(requestId)}&teen_user_id=eq.${encodeURIComponent(userId)}&select=id,teen_user_id,status,revoked_at,expires_at`,
-    { headers: serviceHeaders(key) },
-  );
-  if (!response.ok) throw new Error('request_lookup_failed');
-  const rows = await response.json() as BridgeShareRequestRow[];
-  return rows[0] ?? null;
-}
-
 function requestIsUsable(row: BridgeShareRequestRow): boolean {
   if (row.revoked_at) return false;
   if (['revoked', 'expired', 'deleted'].includes(row.status)) return false;
   if (row.expires_at && new Date(row.expires_at).getTime() <= Date.now()) return false;
   return true;
-}
-
-async function patchRequestStatus(env: BridgeSummaryEnv, requestId: string, userId: string, status: 'ready' | 'failed', failureCode?: string): Promise<void> {
-  const { url, key } = requireSupabase(env);
-  const response = await fetch(
-    `${url}/rest/v1/bridge_share_requests?id=eq.${encodeURIComponent(requestId)}&teen_user_id=eq.${encodeURIComponent(userId)}`,
-    {
-      method: 'PATCH',
-      headers: { ...serviceHeaders(key), Prefer: 'return=minimal' },
-      body: JSON.stringify({ status, failure_code: failureCode ?? null, updated_at: new Date().toISOString() }),
-    },
-  );
-  if (!response.ok) throw new Error('request_status_update_failed');
-}
-
-async function upsertFallbackSummary(env: BridgeSummaryEnv, requestId: string): Promise<void> {
-  const { url, key } = requireSupabase(env);
-  const response = await fetch(`${url}/rest/v1/bridge_summaries?on_conflict=request_id`, {
-    method: 'POST',
-    headers: { ...serviceHeaders(key), Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({
-      request_id: requestId,
-      themes: FALLBACK_SUMMARY.themes,
-      conversation_starters: FALLBACK_SUMMARY.conversationStarters,
-      limitations: FALLBACK_SUMMARY.limitations,
-      prompt_version: PROMPT_VERSION,
-      model: null,
-      used_fallback: true,
-      generated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }),
-  });
-  if (!response.ok) throw new Error('summary_write_failed');
-}
-
-async function upsertGeneratedSummary(env: BridgeSummaryEnv, requestId: string, summary: GeneratedSummary, model: string): Promise<void> {
-  const { url, key } = requireSupabase(env);
-  const response = await fetch(`${url}/rest/v1/bridge_summaries?on_conflict=request_id`, {
-    method: 'POST',
-    headers: { ...serviceHeaders(key), Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({
-      request_id: requestId,
-      themes: summary.themes,
-      conversation_starters: summary.conversationStarters,
-      limitations: summary.limitations,
-      prompt_version: PROMPT_VERSION,
-      model,
-      used_fallback: false,
-      generated_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }),
-  });
-  if (!response.ok) throw new Error('summary_write_failed');
-}
-
-async function fetchShareSources(env: BridgeSummaryEnv, requestId: string): Promise<BridgeShareSourceRow[]> {
-  const { url, key } = requireSupabase(env);
-  const response = await fetch(
-    `${url}/rest/v1/bridge_share_sources?request_id=eq.${encodeURIComponent(requestId)}&select=source_kind,source_id`,
-    { headers: serviceHeaders(key) },
-  );
-  if (!response.ok) throw new Error('sources_lookup_failed');
-  return await response.json() as BridgeShareSourceRow[];
-}
-
-/**
- * Fetches only the minimized text needed to summarize — never returns rows to
- * the caller, only the raw content used as ephemeral LLM input.
- */
-async function fetchSourceContent(env: BridgeSummaryEnv, teenUserId: string, sources: BridgeShareSourceRow[]): Promise<string[]> {
-  const { url, key } = requireSupabase(env);
-  const snippets: string[] = [];
-
-  const journalIds = sources.filter((s) => s.source_kind === 'journal').map((s) => s.source_id);
-  if (journalIds.length > 0) {
-    const idList = journalIds.map((id) => encodeURIComponent(id)).join(',');
-    const response = await fetch(
-      `${url}/rest/v1/journal_entries?user_id=eq.${encodeURIComponent(teenUserId)}&id=in.(${idList})&select=text,mood`,
-      { headers: serviceHeaders(key) },
-    );
-    if (response.ok) {
-      const rows = await response.json() as Array<{ text: string; mood: string }>;
-      for (const row of rows) snippets.push(`[journal entry, mood: ${row.mood}] ${row.text}`.slice(0, 2000));
-    }
-  }
-
-  const moodIds = sources.filter((s) => s.source_kind === 'mood').map((s) => s.source_id);
-  if (moodIds.length > 0) {
-    const idList = moodIds.map((id) => encodeURIComponent(id)).join(',');
-    const response = await fetch(
-      `${url}/rest/v1/mood_history?user_id=eq.${encodeURIComponent(teenUserId)}&id=in.(${idList})&select=mood,date`,
-      { headers: serviceHeaders(key) },
-    );
-    if (response.ok) {
-      const rows = await response.json() as Array<{ mood: string; date: string }>;
-      for (const row of rows) snippets.push(`[mood check-in on ${row.date}] felt ${row.mood}`);
-    }
-  }
-
-  return snippets;
 }
 
 async function requestSummaryCompletion(apiKey: string, model: string, snippets: string[], correction?: string): Promise<unknown> {
@@ -287,12 +155,14 @@ export async function handleBridgeSummaryGenerate(request: Request, env: BridgeS
   if (!requestId) return json({ error: 'requestId is required' }, 400, cors);
 
   let userId = '';
+  const store = createBridgeSummaryStore(env);
   try {
     userId = requireUser(principal);
     if (!isBridgeSummariesRolloutAllowed(env, userId)) {
       return json({ requestId, status: 'failed', failureCode: 'bridge_summaries_disabled' }, 403, cors);
     }
-    const shareRequest = await fetchOwnedRequest(env, requestId, userId);
+
+    const shareRequest = await store.fetchOwnedRequest(requestId, userId);
     if (!shareRequest) return json({ error: 'request not found' }, 404, cors);
     if (!requestIsUsable(shareRequest)) {
       return json({ requestId, status: 'revoked', failureCode: 'revoked' }, 409, cors);
@@ -301,29 +171,36 @@ export async function handleBridgeSummaryGenerate(request: Request, env: BridgeS
       return json({ requestId, status: 'ready' }, 200, cors);
     }
 
-    const sources = await fetchShareSources(env, requestId);
+    const sources = await store.fetchShareSources(requestId);
     if (sources.length === 0) {
-      // No source rows for this request at all — something is wrong with the
-      // share itself, not with AI availability. Fail loudly rather than
-      // silently returning an unrelated generic summary as "ready".
+      await store.patchRequestStatus(requestId, userId, 'failed', 'no_sources');
       return json({ requestId, status: 'failed', failureCode: 'no_sources' }, 422, cors);
     }
 
-    const snippets = await fetchSourceContent(env, userId, sources);
-    if (snippets.length === 0) {
-      // Sources were selected, but none of them resolved to real content
-      // (stale id, not yet synced, deleted). Never mask this as a generated
-      // summary — the teen selected specific content and the parent must not
-      // receive an unrelated fallback message mislabeled as that content.
-      await patchRequestStatus(env, requestId, userId, 'failed', 'source_not_available');
-      return json({ requestId, status: 'failed', failureCode: 'source_not_available' }, 422, cors);
+    let snippets: string[];
+    try {
+      snippets = await store.fetchSourceContent(userId, sources);
+    } catch (error) {
+      const sourceFailure = error instanceof Error ? error.message : 'source_lookup_failed';
+      if (sourceFailure === 'source_not_available') {
+        await store.patchRequestStatus(requestId, userId, 'failed', sourceFailure);
+        return json({ requestId, status: 'failed', failureCode: sourceFailure }, 422, cors);
+      }
+      throw error;
     }
 
     const generated = await generateSummary(env, snippets);
 
     if (generated) {
-      await upsertGeneratedSummary(env, requestId, generated.summary, generated.model);
-      await patchRequestStatus(env, requestId, userId, 'ready');
+      await store.upsertSummary(requestId, {
+        themes: generated.summary.themes,
+        conversationStarters: generated.summary.conversationStarters,
+        limitations: generated.summary.limitations,
+        promptVersion: PROMPT_VERSION,
+        model: generated.model,
+        usedFallback: false,
+      });
+      await store.patchRequestStatus(requestId, userId, 'ready');
       const response: BridgeSummaryResponse = {
         requestId,
         status: 'ready',
@@ -335,8 +212,15 @@ export async function handleBridgeSummaryGenerate(request: Request, env: BridgeS
       return json(response, 200, cors);
     }
 
-    await upsertFallbackSummary(env, requestId);
-    await patchRequestStatus(env, requestId, userId, 'ready');
+    await store.upsertSummary(requestId, {
+      themes: FALLBACK_SUMMARY.themes,
+      conversationStarters: FALLBACK_SUMMARY.conversationStarters,
+      limitations: FALLBACK_SUMMARY.limitations,
+      promptVersion: PROMPT_VERSION,
+      model: null,
+      usedFallback: true,
+    });
+    await store.patchRequestStatus(requestId, userId, 'ready');
     const response: BridgeSummaryResponse = {
       requestId,
       status: 'ready',
@@ -351,7 +235,7 @@ export async function handleBridgeSummaryGenerate(request: Request, env: BridgeS
     if (message === 'user_jwt_required') return json({ error: message }, 403, cors);
     if (userId) {
       try {
-        await patchRequestStatus(env, requestId, userId, 'failed', message.slice(0, 80));
+        await store.patchRequestStatus(requestId, userId, 'failed', message.slice(0, 80));
       } catch {
         // Preserve the original failure.
       }
