@@ -30,7 +30,23 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run lint
+      - name: Capture lint output
+        shell: bash
+        run: |
+          set +e
+          npm run lint 2>&1 | tee lint-output.txt
+          status=${PIPESTATUS[0]}
+          echo "$status" > lint-exit.txt
+          exit "$status"
+      - name: Upload temporary lint diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-diagnostic
+          path: |
+            lint-output.txt
+            lint-exit.txt
+          retention-days: 1
 
   unit-tests:
     name: "Unit Tests"
