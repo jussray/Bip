@@ -4,6 +4,7 @@ import { Analytics } from '@/components/shared/Analytics';
 import { NotificationBootstrap } from '@/components/shared/NotificationBootstrap';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
+import { installSekretBipGuardrailRuntime } from '@/config/visionGuardrails';
 import { decideRouteAccess } from '@/services/routeAccess';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
@@ -92,6 +93,10 @@ function RouteBoundary() {
 }
 
 export default function RootLayout() {
+  useEffect(() => {
+    installSekretBipGuardrailRuntime();
+  }, []);
+
   return (
     <VerificationProvider>
       <AppProvider>
