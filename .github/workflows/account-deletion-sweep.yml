@@ -1,0 +1,40 @@
+name: Account Deletion Sweep
+
+on:
+  schedule:
+    # Runs once daily. account-delete only processes requests whose
+    # seven-day grace period has already expired, so a daily cadence is
+    # enough slack for a scheduling delay without materially extending
+    # anyone's grace period.
+    - cron: '17 9 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-deletion-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Process expired account deletion requests
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ACCOUNT_DELETION_PROCESS_SECRET: ${{ secrets.ACCOUNT_DELETION_PROCESS_SECRET }}
+        run: node scripts/sweep-account-deletions.mjs
