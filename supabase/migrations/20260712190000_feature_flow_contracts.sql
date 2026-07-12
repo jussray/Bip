@@ -26,6 +26,91 @@ $$;
 create index if not exists journal_entries_owner_side_created_idx
   on public.journal_entries (user_id, owner_side, created_at desc);
 
+-- Circle profiles contain the public pseudonym/avatar used beside community
+-- posts. Cross-account reads are required for the feed, but account_type remains
+-- server-only through column-level grants.
+alter table public.circle_profiles enable row level security;
+
+drop policy if exists circle_profiles_owner_select on public.circle_profiles;
+drop policy if exists circle_profiles_public_identity_select on public.circle_profiles;
+
+create policy circle_profiles_public_identity_select
+on public.circle_profiles
+for select
+to authenticated
+using (true);
+
+revoke all on table public.circle_profiles from anon;
+revoke all on table public.circle_profiles from authenticated;
+grant select (user_id, nickname, avatar_emoji)
+  on table public.circle_profiles to authenticated;
+grant insert (user_id, nickname, avatar_emoji, account_type, updated_at)
+  on table public.circle_profiles to authenticated;
+grant update (nickname, avatar_emoji, account_type, updated_at)
+  on table public.circle_profiles to authenticated;
+
+-- Replace overlapping legacy policies on public posts. Anonymous Auth users may
+-- read the feed, but only permanent users may create or delete their own posts.
+alter table public.public_circle_posts enable row level security;
+
+drop policy if exists pcp_read on public.public_circle_posts;
+drop policy if exists pcp_insert on public.public_circle_posts;
+drop policy if exists pcp_delete on public.public_circle_posts;
+drop policy if exists "Anonymous and permanent users can view the public feed" on public.public_circle_posts;
+drop policy if exists "Only permanent users can post to the public feed" on public.public_circle_posts;
+drop policy if exists public_circle_posts_owner_insert on public.public_circle_posts;
+drop policy if exists public_circle_posts_permanent_insert on public.public_circle_posts;
+drop policy if exists public_circle_posts_owner_delete on public.public_circle_posts;
+drop policy if exists public_circle_posts_permanent_delete on public.public_circle_posts;
+
+create policy "Anonymous and permanent users can view the public feed"
+on public.public_circle_posts
+for select
+to authenticated
+using (true);
+
+create policy public_circle_posts_owner_insert
+on public.public_circle_posts
+for insert
+to authenticated
+with check (
+  (select auth.uid()) is not null
+  and (select auth.uid()) = user_id
+);
+
+create policy public_circle_posts_permanent_insert
+on public.public_circle_posts
+as restrictive
+for insert
+to authenticated
+with check (
+  coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) is false
+);
+
+create policy public_circle_posts_owner_delete
+on public.public_circle_posts
+for delete
+to authenticated
+using (
+  (select auth.uid()) is not null
+  and (select auth.uid()) = user_id
+);
+
+create policy public_circle_posts_permanent_delete
+on public.public_circle_posts
+as restrictive
+for delete
+to authenticated
+using (
+  coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) is false
+);
+
+revoke all on table public.public_circle_posts from anon;
+revoke all on table public.public_circle_posts from authenticated;
+grant select, insert, delete on table public.public_circle_posts to authenticated;
+revoke all on sequence public.public_circle_posts_id_seq from anon;
+grant usage, select on sequence public.public_circle_posts_id_seq to authenticated;
+
 -- One reaction per permanent account and post. A later reaction replaces the
 -- previous reaction instead of inflating totals by repeated taps.
 create unique index if not exists circle_reactions_unique_user_post
@@ -104,6 +189,8 @@ using (post_type <> 'public');
 revoke all on table public.circle_reactions from anon;
 revoke all on table public.circle_reactions from authenticated;
 grant select, insert, update, delete on table public.circle_reactions to authenticated;
+revoke all on sequence public.circle_reactions_id_seq from anon;
+grant usage, select on sequence public.circle_reactions_id_seq to authenticated;
 
 create or replace function public.react_to_public_circle_post(
   p_post_id bigint,
