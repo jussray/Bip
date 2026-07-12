@@ -2,9 +2,10 @@ name: Quality Gate
 
 on:
   pull_request:
-    branches:
-      - main
-      - staging
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   typecheck:
@@ -47,6 +48,7 @@ jobs:
         with:
           name: test-results
           path: test-results.json
+          if-no-files-found: ignore
 
   rls-audit:
     name: "RLS Audit"
@@ -58,26 +60,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - name: Check RLS policies present on sensitive tables
-        run: |
-          node -e "
-            const fs = require('fs');
-            const path = require('path');
-            const migrationsDir = './supabase/migrations';
-            const sensitivePatterns = ['teen_posts','moods','journals','messages'];
-            if (!fs.existsSync(migrationsDir)) {
-              console.log('No migrations directory found – skipping RLS audit.');
-              process.exit(0);
-            }
-            const files = fs.readdirSync(migrationsDir).map(f => fs.readFileSync(path.join(migrationsDir, f), 'utf8'));
-            const allMigrations = files.join('\\n');
-            const drops = sensitivePatterns.filter(t => allMigrations.includes('DROP POLICY') && allMigrations.includes(t));
-            if (drops.length > 0) {
-              console.error('RLS audit: DROP POLICY found on sensitive tables:', drops.join(', '));
-              process.exit(1);
-            }
-            console.log('RLS audit passed.');
-          "
+      - name: Run canonical repository RLS scanner
+        run: npm run audit:control-room:rls
 
   qodo-contracts:
     name: "Qodo – Data + API Contract Tests"
@@ -89,11 +73,28 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+
+      - name: Detect Qodo configuration
+        id: qodo_config
+        shell: bash
+        env:
+          QODO_API_KEY: ${{ secrets.QODO_API_KEY }}
+        run: |
+          if [[ -n "$QODO_API_KEY" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Qodo is not configured; skipping the optional vendor gate."
+          fi
+
       - name: Run Qodo tests
+        if: steps.qodo_config.outputs.configured == 'true'
         run: npx qodo test --coverage --reporter=json --output=qodo-results.json
         env:
           QODO_API_KEY: ${{ secrets.QODO_API_KEY }}
+
       - name: Evaluate Qodo gate
+        if: steps.qodo_config.outputs.configured == 'true'
         run: |
           node -e "
             const r = require('./qodo-results.json');
@@ -106,11 +107,13 @@ jobs:
             }
             console.log('Qodo gate passed.');
           "
+
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && steps.qodo_config.outputs.configured == 'true' }}
         with:
           name: qodo-results
           path: qodo-results.json
+          if-no-files-found: ignore
 
   sonarqube:
     name: "SonarQube – API + Data Standard"
@@ -124,7 +127,23 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
+
+      - name: Detect SonarQube configuration
+        id: sonar_config
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          if [[ -n "$SONAR_TOKEN" && -n "$SONAR_HOST_URL" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "SonarQube is not configured; skipping the optional vendor gate."
+          fi
+
       - name: SonarQube Scan
+        if: steps.sonar_config.outputs.configured == 'true'
         uses: SonarSource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
