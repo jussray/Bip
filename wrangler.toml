@@ -15,8 +15,7 @@ OPENAI_TTS_MODEL  = "gpt-4o-mini-tts"
 OPENAI_STT_MODEL  = "whisper-1"
 
 # Bridge summary rollout control (worker/bridge-summary.ts). This fails closed:
-# unset, blank, or "disabled" blocks generation. Set to "enabled" only after
-# the deployed two-account proof passes, or use a comma-separated list of teen
-# user IDs for a controlled beta cohort. A change takes effect on Worker deploy
-# without requiring an app release.
-BRIDGE_SUMMARIES_ROLLOUT = "disabled"
+# unset, blank, or "disabled" blocks generation. This temporary single-user
+# cohort is only for issue #259/#270 live proof and must be reverted to
+# "disabled" immediately after the sanitized result is recorded.
+BRIDGE_SUMMARIES_ROLLOUT = "cd1c0de1-ec13-422b-8bfe-7828e8cd85c3"
