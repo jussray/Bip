@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { router } from 'expo-router';
 import { UserRoomScreen } from '@screens/UserRoomScreen';
 import { useAppContext } from '@/context/AppContext';
@@ -17,21 +18,37 @@ function resolveCompanionKey(selectedSekret: string | null | undefined): string 
 }
 
 export default function TeenRoomRoute() {
-  const { mood, selectedSekret, setSelectedSekret, theme } = useAppContext();
+  const {
+    mood,
+    selectedSekret,
+    setSelectedSekret,
+    theme,
+    updateRoomMemory,
+  } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.raylene;
   const vibe = resolveRoomVibe(theme);
   const companionKey = resolveCompanionKey(selectedSekret);
+
+  useEffect(() => {
+    updateRoomMemory({
+      character: companionKey,
+      lastVisit: new Date().toISOString(),
+    });
+    // A Room mount is one visit. Hotspot and companion taps update their own
+    // fields without incrementing the visit counter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleScreen = (screen: string) => {
     if (screen === 'sekret') {
       router.push({
         pathname: '/(teen)/companion-chat',
         params: { companion: companionKey, surface: 'home' },
-      } as any);
+      } as never);
       return;
     }
 
-    router.push(routeForSide('teen', screen) as any);
+    router.push(routeForSide('teen', screen) as never);
   };
 
   return (
@@ -44,6 +61,7 @@ export default function TeenRoomRoute() {
       vibe={vibe}
       BottomNav={null}
       sekretMode={selectedSekret}
+      updateRoomMemory={updateRoomMemory}
     />
   );
 }
