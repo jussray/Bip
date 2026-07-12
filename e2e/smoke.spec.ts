@@ -60,7 +60,7 @@ test('frontend entry renders at phone width without horizontal overflow', async 
 });
 
 test('Teen Circle keeps public identity separate and does not expose fake Crew invites', async ({ page }) => {
-  await page.goto('/(teen)/circle');
+  await page.goto('/circle?bipDevSide=teen');
 
   await expect(page.getByText('🌐 Circle')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('🤝 Crew')).toBeVisible();
@@ -74,7 +74,7 @@ test('Teen Circle keeps public identity separate and does not expose fake Crew i
 });
 
 test('Parent Bridge is reachable as a primary tab and preserves the privacy boundary', async ({ page }) => {
-  await page.goto('/(parent)/bridge');
+  await page.goto('/bridge?bipDevSide=parent');
 
   await expect(page.getByText('Parent Bridge', { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('Bridge', { exact: true }).first()).toBeVisible();
