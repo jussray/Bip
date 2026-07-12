@@ -15,7 +15,12 @@ data, speculative architecture, or unverified dashboard claims here.
 **Last verified:** 2026-07-12  
 **Repository:** `jussray/Sekret-Bip`  
 **Default branch:** `main`  
-**Verified main commit:** `bc17b7f0a015b0d1b2f7d26d2d25ddf8face8bff`
+**Verified baseline before this state layer:** `bc17b7f0a015b0d1b2f7d26d2d25ddf8face8bff`  
+**Publication PR:** #340
+
+When this file is present on `main`, PR #340 has merged. The final merge SHA is
+not predicted inside the PR that creates it. Verify the live main head before
+using an exact commit identifier.
 
 ---
 
@@ -46,22 +51,23 @@ remain separate verification steps and are not certified by CI alone.
 
 ---
 
-## Open Pull Requests
+## Published Agent Layer
 
-### #340 — Living repository state and agent skills
+PR #340 adds:
 
-- **Branch:** `repo-current-state`
-- **Base:** `main`
-- **State:** Open and synchronized with the corrected main baseline
-- **Purpose:** Add `SPRINT.md`, `bip-current-state`, `bip-companion-lab`, and
-  `bip-supabase-guardian`; strengthen agent entrypoint instructions
-- **Current work:** Validate the corrected six-file documentation-only scope
-- **Merge condition:** all required checks green and PR description matches the
-  final diff
+- `bip-current-state`
+- `bip-companion-lab`
+- `bip-supabase-guardian`
+- this `SPRINT.md` snapshot
+- verified-state directives in `AGENTS.md` and `CLAUDE.md`
+- the full founder reasoning stack requirement in `AGENTS.md`
+
+The PR is documentation and agent instructions only. It does not change app
+runtime, Cloudflare configuration, Supabase schema, Edge Functions, or secrets.
 
 ---
 
-## Open Issues
+## Open Work
 
 ### #344 — Supabase authorization hardening
 
@@ -73,6 +79,9 @@ remain separate verification steps and are not certified by CI alone.
   migrations
 - **Production changes:** None made from this issue yet
 
+Live pull-request state is intentionally not duplicated here without a fresh
+verification. Query GitHub before claiming there are no other open PRs.
+
 ---
 
 ## Recently Completed
@@ -81,6 +90,7 @@ remain separate verification steps and are not certified by CI alone.
 - #338 — 40 synthetic reply fixtures, 8 scenarios × 5 companions
 - #339 — Green baseline repair for Companion Lab, Worker identity, and Quality
   Gate; includes the stacked work from #341 and #342
+- #340 — Living state layer and Bip operational guardian skills
 
 Do not reimplement these changes.
 
@@ -137,9 +147,8 @@ reduce advisor counts.
 
 ## Next Execution Order
 
-1. Finish and merge #340 after its refreshed checks pass.
-2. Begin issue #344 Phase 0 inventory and denial-test design without production
+1. Begin issue #344 Phase 0 inventory and denial-test design without production
    writes.
-3. Verify production Cloudflare deployment and one authenticated OpenAI
+2. Verify production Cloudflare deployment and one authenticated OpenAI
    companion reply.
-4. Select the next product feature only after the verified baseline is recorded.
+3. Select the next product feature only after the verified baseline is recorded.
