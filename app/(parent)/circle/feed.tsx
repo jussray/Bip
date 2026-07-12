@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
@@ -16,8 +16,6 @@ export default function ParentCircleRoute() {
     reactToParentPost,
   } = useAppContext();
 
-  const [refreshing, setRefreshing] = useState(false);
-
   const mergeCloudPosts = useCallback(async () => {
     const cloud = await loadParentCircleFeed();
     if (!cloud.length) return;
@@ -33,12 +31,6 @@ export default function ParentCircleRoute() {
     void mergeCloudPosts();
   }, [mergeCloudPosts]);
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await mergeCloudPosts();
-    setRefreshing(false);
-  }, [mergeCloudPosts]);
-
   return (
     <ParentCircleScreen
       parentCirclePosts={parentCirclePosts}
@@ -49,8 +41,6 @@ export default function ParentCircleRoute() {
       setScreen={navigateTo}
       BottomNav={null}
       onPostPress={id => router.push(`/(parent)/circle/${id}` as never)}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
     />
   );
 }
