@@ -40,13 +40,7 @@ jobs:
         run: npm run type-check
 
       - name: Core test suite
-        shell: bash
-        run: |
-          set +e
-          npm test 2>&1 | tee test-output.txt
-          status=${PIPESTATUS[0]}
-          echo "$status" > test-exit.txt
-          exit "$status"
+        run: npm test
 
       - name: Oracle discovery tests
         run: npm run test:oracle
@@ -56,13 +50,3 @@ jobs:
 
       - name: Device sync tests
         run: npm run test:device-sync
-
-      - name: Upload temporary regression diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: regression-diagnostic
-          path: |
-            test-output.txt
-            test-exit.txt
-          retention-days: 1
