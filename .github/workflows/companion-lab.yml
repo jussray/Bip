@@ -59,10 +59,33 @@ jobs:
         # Exit 0 = all scored scenarios pass (or no reply files yet — gap report).
         # Exit 1 = one or more hard-fail or below-threshold results.
 
-      - name: Upload audit report
+      - name: Capture lint diagnostics
+        id: lint_diagnostics
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee companion-lab-lint.txt
+
+      - name: Capture unit-test diagnostics
+        id: test_diagnostics
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee companion-lab-tests.txt
+
+      - name: Upload audit and diagnostic reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: companion-lab-report
-          path: companion-lab-report.txt
+          path: |
+            companion-lab-report.txt
+            companion-lab-lint.txt
+            companion-lab-tests.txt
           retention-days: 30
+
+      - name: Enforce diagnostic results
+        if: always()
+        run: |
+          test "${{ steps.lint_diagnostics.outcome }}" = "success"
+          test "${{ steps.test_diagnostics.outcome }}" = "success"
