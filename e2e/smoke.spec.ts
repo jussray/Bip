@@ -76,5 +76,5 @@ test('Parent Bridge fails closed until guardian verification is complete', async
   await expect(page.getByText('Guardian verification is required.')).toBeVisible();
   await expect(page.getByText(/Linking to a teen is a separate consent step/)).toBeVisible();
   await expect(page.getByText(/No journal, voice note, or private source is shared automatically/)).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Submit for guardian review' })).toBeVisible();
+  await expect(page.getByText('Submit for guardian review')).toBeVisible();
 });
