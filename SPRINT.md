@@ -1,55 +1,90 @@
 # Se'kret Bip — Current Sprint State
 
-This file records volatile project state.
-Read it at the start of each working session, then verify material claims using
-`.agents/skills/bip-repo-truth/SKILL.md`.
+This file records volatile project state. Read it at the start of each working
+session, then verify material claims with
+`.agents/skills/bip-repo-truth/SKILL.md` before acting.
 
-Update this file only after verification:
-- when a PR opens, changes status, or merges
-- when deployment ownership or health changes
-- when migrations or Edge Functions change
-- when a blocker is discovered or resolved
-- before ending a session that materially changed project, deployment, or database state
-
-Do not place durable architecture or detailed implementation instructions here.
+Update this file only after verification when PR, deployment, migration,
+backend, release, or blocker state changes. Do not store secrets, private user
+data, speculative architecture, or unverified dashboard claims here.
 
 ---
 
 ## Verification
 
-**Last verified:** 2026-07-12
-**Repository:** `jussray/Sekret-Bip`
-**Default branch:** `main`
+**Last verified:** 2026-07-12  
+**Repository:** `jussray/Sekret-Bip`  
+**Default branch:** `main`  
+**Verified main commit:** `bc17b7f0a015b0d1b2f7d26d2d25ddf8face8bff`
 
 ---
 
-## Open PRs
+## Main Baseline
 
-### #339 — Companion Lab CI
+PR #339 merged into `main` after the complete final branch passed:
 
-- **Branch:** `companion-lab-ci`
+- Companion Lab Audit
+- Quality Gate
+- Type Check
+- Regression Tests
+- Pre-Push Checks
+- Playwright Smoke
+- CI
+
+The merge established:
+
+- Companion Lab package scripts and path-filtered CI;
+- honest-disclaimer-aware fake-memory scoring;
+- `sekret-backend` as the canonical Cloudflare Worker;
+- `sekret` as the frontend Cloudflare Pages project;
+- a deterministic repository RLS gate;
+- configuration-aware Qodo and SonarQube jobs.
+
+Post-merge Companion Lab, Quality Gate, and Type Check runs completed
+successfully. Production Worker deployment and a live OpenAI companion request
+remain separate verification steps and are not certified by CI alone.
+
+---
+
+## Open Pull Requests
+
+### #340 — Living repository state and agent skills
+
+- **Branch:** `repo-current-state`
 - **Base:** `main`
-- **State:** Open and mergeable, but blocked by failing checks
-- **Purpose:** Add Companion Lab package scripts and path-filtered CI
-- **Current head:** `0b08e059`
-
-**Known blockers:**
-- `scripts/companion-lab-audit.js` contains an invalid unescaped apostrophe in a string literal
-- Workflow report captures stdout but not stderr (missing `2>&1`)
-- Fake-memory scoring incorrectly penalises honest memory disclaimers mentioning "last week"
-- Companion Lab Audit, CI, Quality Gate, Type Check, Pre-Push Checks, and Regression Tests are currently failing
-- Only Playwright completed successfully in the latest recorded run
-
-**Next action:** Repair the audit script and heuristic, capture stderr, then rerun all checks.
+- **State:** Open and synchronized with the corrected main baseline
+- **Purpose:** Add `SPRINT.md`, `bip-current-state`, `bip-companion-lab`, and
+  `bip-supabase-guardian`; strengthen agent entrypoint instructions
+- **Current work:** Correct real Companion Lab paths/scenarios, separate durable
+  Supabase rules from live findings, and validate the six-file documentation
+  scope
+- **Merge condition:** all required checks green and PR description matches the
+  final six-file diff
 
 ---
 
-## Recently Merged
+## Recently Completed
 
 - #337 — Companion Lab foundation
-- #338 — 40 Companion Lab reply fixtures covering 8 scenarios × 5 companions
+- #338 — 40 synthetic reply fixtures, 8 scenarios × 5 companions
+- #339 — Green baseline repair for Companion Lab, Worker identity, and Quality
+  Gate; includes the stacked work from #341 and #342
 
 Do not reimplement these changes.
+
+---
+
+## Cloudflare / OpenAI
+
+- **Backend Worker:** `sekret-backend`
+- **Worker entrypoint:** `worker/observed-index.ts`
+- **Frontend Pages project:** `sekret`
+- **OpenAI models:** configuration remains environment-backed through the Worker
+- **Credential health:** not certified by repository configuration alone
+- **End-to-end companion reply:** verify with an authenticated live request
+  before claiming production AI health
+
+Do not rename the Worker or change `wrangler.toml` in an unrelated PR.
 
 ---
 
@@ -58,24 +93,42 @@ Do not reimplement these changes.
 - **Project:** Se'kret Bip
 - **Status:** `ACTIVE_HEALTHY`
 - **Region:** `us-east-1`
-- **Latest recorded migration:** `20260711193738 guardian_review_queue`
+- **Latest live migration:** `20260711193738 guardian_review_queue`
 - **Active Edge Functions:** 16
-- **Schema drift:** Not certified by project health alone; verify before database work
+- **JWT setting:** 13 functions use platform JWT verification; 3 functions have
+  `verify_jwt: false` and require explicit custom-auth or public-endpoint review
+- **Schema parity:** not certified by project health alone
+- **Production changes this session:** none
+
+### Live security backlog
+
+The current security advisor reports material review work, including:
+
+- RLS-enabled tables with no policies;
+- policies applying to roles that can include anonymous access;
+- broad execution access to multiple `SECURITY DEFINER` functions;
+- leaked-password protection disabled.
+
+### Live performance backlog
+
+The performance advisor reports:
+
+- unindexed foreign keys;
+- per-row authentication-function evaluation in RLS policies;
+- overlapping permissive policies;
+- unused indexes.
+
+These are not part of PR #340. They require a dedicated, phased migration and
+test campaign. Do not mass-edit live policies merely to reduce advisor counts.
 
 ---
 
-## OpenAI / Worker
+## Next Execution Order
 
-- OpenAI Platform organisation and project target are available
-- Live Worker credential success is not certified by Platform availability alone
-- Verify the actual Worker deployment and a live companion request before claiming the OpenAI path is healthy
-- Do not change Worker naming or `wrangler.toml` in unrelated PRs
-
----
-
-## Next Likely Work
-
-1. Fix and complete PR #339
-2. Merge only after required checks pass
-3. Update this file immediately after merge
-4. Select the next product or Companion Lab increment
+1. Finish and merge #340 after its refreshed checks pass.
+2. Open a Supabase security-hardening tracking issue with phased scope.
+3. Phase 1: inventory exposed roles, RLS-without-policy tables, and executable
+   `SECURITY DEFINER` functions; add denial tests before migrations.
+4. Verify production Cloudflare deployment and one authenticated OpenAI
+   companion reply.
+5. Return to product feature work only after the verified baseline is recorded.
