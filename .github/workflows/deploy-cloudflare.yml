@@ -37,7 +37,23 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
       - name: Deploy backend Worker sekret-backend
-        run: npm run deploy:worker
+        id: deploy_worker
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/cloudflare
+          set -o pipefail
+          npm run deploy:worker 2>&1 | tee artifacts/cloudflare/worker-deploy.log
+      - name: Upload Worker deployment diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-worker-deploy-log
+          path: artifacts/cloudflare/worker-deploy.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce Worker deployment result
+        if: steps.deploy_worker.outcome != 'success'
+        run: exit 1
 
   deploy-pages:
     name: Deploy Frontend Pages (sekret)
@@ -70,6 +86,22 @@ jobs:
       - name: Build Expo web frontend
         run: npm run build:web
       - name: Deploy Expo web export to Cloudflare Pages project sekret
-        run: npx wrangler pages deploy dist --project-name="$CLOUDFLARE_PAGES_PROJECT_NAME" --branch=main
+        id: deploy_pages
+        continue-on-error: true
+        run: |
+          mkdir -p artifacts/cloudflare
+          set -o pipefail
+          npx wrangler pages deploy dist --project-name="$CLOUDFLARE_PAGES_PROJECT_NAME" --branch=main 2>&1 | tee artifacts/cloudflare/pages-deploy.log
+      - name: Upload Pages deployment diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-pages-deploy-log
+          path: artifacts/cloudflare/pages-deploy.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce Pages deployment result
+        if: steps.deploy_pages.outcome != 'success'
+        run: exit 1
       - name: Verify custom-domain frontend health
         run: curl --fail-with-body --silent --show-error --location "$SEKRET_FRONTEND_URL"
