@@ -44,10 +44,20 @@ test('legacy Circle deep links redirect to the canonical reactions-only feed', (
   assert.equal(legacyDetail.includes('syncCircleReaction'), false);
 });
 
-test('the database migration separates private notebooks and hardens Circle reactions', () => {
+test('the database migration separates private notebooks and hardens Circle', () => {
   const migration = read('supabase/migrations/20260712190000_feature_flow_contracts.sql');
   assert.equal(migration.includes('owner_side text not null'), true);
   assert.equal(migration.includes("check (owner_side in ('teen', 'parent'))"), true);
+
+  assert.equal(migration.includes('circle_profiles_public_identity_select'), true);
+  assert.equal(migration.includes('grant select (user_id, nickname, avatar_emoji)'), true);
+  assert.equal(migration.includes('grant select (user_id, nickname, avatar_emoji, account_type)'), false);
+
+  assert.equal(migration.includes('drop policy if exists pcp_insert'), true);
+  assert.equal(migration.includes('public_circle_posts_permanent_insert'), true);
+  assert.equal(migration.includes('public_circle_posts_permanent_delete'), true);
+  assert.equal(migration.includes('grant select, insert, delete on table public.public_circle_posts to authenticated'), true);
+
   assert.equal(migration.includes('circle_reactions_unique_user_post'), true);
   assert.equal(migration.includes('circle_reactions_user_id_idx'), true);
   assert.equal(migration.includes('circle_reactions_permanent_accounts_only'), true);
