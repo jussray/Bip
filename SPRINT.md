@@ -149,13 +149,35 @@ Crew remains gated.
   Typecheck, lint, and unit tests (425 pass) all green; not yet exercised
   against a real deployed Worker + two real Supabase accounts — that
   two-account proof run is still open.
+- **Red-team follow-up (verified 2026-07-12):** a second-pass review of this
+  branch's Bridge work (against the live Supabase project directly, not just
+  code) found the Bridge RLS shape is directionally correct, but flagged real
+  gaps in the first pass, fixed in a follow-up commit on the same branch:
+  a revoke → re-share dead end in the UI (`if (current) return;` blocked
+  reactivating a request the DB migration already supports), missing-source
+  content silently producing a fallback summary marked `ready` instead of
+  failing, and the confirm dialog not disclosing that source text is sent to
+  an external AI provider. **Still open, not yet done:** this branch enables
+  `bridgeSummaries` globally with no server-side rollout/kill-switch, the
+  generated-summary validator only checks JSON shape (not verbatim-quote
+  leakage, clinical language, or length), and the Worker tests are
+  regex-over-source-text, not executed-behavior tests. The
+  `notification_deliveries` RLS classification in #344 below was also
+  disputed by a live-Supabase check (claims it's intentionally server-only,
+  not a broken user path) — not independently re-verified here; treat as
+  unconfirmed until checked against the live project directly.
 
 ### Open pull requests (verified 2026-07-12, query GitHub before trusting this)
 
-- **#349** — Guardrails + Playwright verification (`docs/GUARDRAILS.md`,
-  `src/config/visionGuardrails.ts`, `e2e/guardrails.spec.ts`). Open, draft:
-  false, all 22 checks green as of last run, but base was one commit behind
-  main (missing #348) — needs updating onto current main before merge.
+- **#349** — Guardrails + Playwright verification. **Merged** into main at
+  `85624c9` (merged by jussray). Current SPRINT correction: earlier text in
+  this file said #349 was open and awaiting a merge go-ahead — that was
+  stale as of this verification.
+- **#350** — Opened from `claude/bip-v1-production-proof-nx6222` (this
+  branch). Carries the SPRINT.md fix, the PR #349 rebase-in-place, and the
+  Bridge activation/fix commits above. Title/description as auto-opened only
+  described the SPRINT.md doc change — does not mention the runtime/privacy
+  changes; needs correcting before merge review.
 - **#345** — Control Room PR A: identity contract, style profiles,
   relationship phase, agent skills, unit tests. Open. Contracts/tests only,
   no panels or Worker wiring (that's PR B/C per the Control Room rollout

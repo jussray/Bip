@@ -125,6 +125,10 @@ export async function createBridgeShareRequest(
     });
 
     if (!response.ok) {
+      const failure = await response.json().catch(() => null) as { failureCode?: string } | null;
+      if (failure?.failureCode === 'source_not_available' || failure?.failureCode === 'no_sources') {
+        return { ok: false, code: 'invalid_input', message: 'That entry could not be found to share — try again in a moment.', retryable: true };
+      }
       return { ok: false, code: 'ai_unavailable', message: 'The share was saved, but the summary is still being prepared.', retryable: true };
     }
 

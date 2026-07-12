@@ -435,7 +435,9 @@ export default function TeenPagesRoute() {
       return;
     }
 
-    if (current) return; // revoked/expired/failed — not re-shareable from here yet
+    // A terminal status (revoked/expired/failed) falls through to the same
+    // createBridgeShareRequest call below — reusing the same idempotency key
+    // causes the RPC to reactivate the existing request rather than reject it.
 
     if (!linkedParentId) {
       Alert.alert('no linked parent yet', 'Connect with a parent or trusted adult before sharing into Bridge.');
@@ -451,7 +453,7 @@ export default function TeenPagesRoute() {
     const confirmed = await new Promise<boolean>((resolve) => {
       Alert.alert(
         'Share with Parent Window?',
-        `${preview.value.notice}\n\nYour parent will NOT see this entry's raw text — only a generated summary.`,
+        `${preview.value.notice}\n\nYour parent will NOT see this entry's raw text — only a generated summary. To create that summary, this entry's text is sent to our AI provider for processing.`,
         [
           { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Share', style: 'default', onPress: () => resolve(true) },
@@ -524,20 +526,20 @@ export default function TeenPagesRoute() {
                 const isTerminal = !!shareStatus && !isActive;
                 const busy = sharingEntryId === entry.id;
                 const label = isTerminal
-                  ? `Bridge share ${shareStatus!.status}`
+                  ? `Bridge share ${shareStatus!.status} — tap to share again`
                   : isActive
                     ? 'Shared into Bridge — tap to revoke'
                     : 'Share with Parent Window';
                 return (
                   <TouchableOpacity
                     onPress={() => handleShareWithParent(entry.id)}
-                    disabled={busy || isTerminal}
+                    disabled={busy}
                     accessibilityRole="button"
                     accessibilityLabel={label}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Text style={[s.shareIcon, isTerminal && { opacity: 0.4 }]}>
-                      {busy ? '…' : isActive ? '💜' : isTerminal ? '🔒' : '👁️'}
+                    <Text style={s.shareIcon}>
+                      {busy ? '…' : isActive ? '💜' : isTerminal ? '↻' : '👁️'}
                     </Text>
                   </TouchableOpacity>
                 );

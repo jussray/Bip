@@ -274,7 +274,23 @@ export async function handleBridgeSummaryGenerate(request: Request, env: BridgeS
     }
 
     const sources = await fetchShareSources(env, requestId);
+    if (sources.length === 0) {
+      // No source rows for this request at all — something is wrong with the
+      // share itself, not with AI availability. Fail loudly rather than
+      // silently returning an unrelated generic summary as "ready".
+      return json({ requestId, status: 'failed', failureCode: 'no_sources' }, 422, cors);
+    }
+
     const snippets = await fetchSourceContent(env, userId, sources);
+    if (snippets.length === 0) {
+      // Sources were selected, but none of them resolved to real content
+      // (stale id, not yet synced, deleted). Never mask this as a generated
+      // summary — the teen selected specific content and the parent must not
+      // receive an unrelated fallback message mislabeled as that content.
+      await patchRequestStatus(env, requestId, userId, 'failed', 'source_not_available');
+      return json({ requestId, status: 'failed', failureCode: 'source_not_available' }, 422, cors);
+    }
+
     const generated = await generateSummary(env, snippets);
 
     if (generated) {
