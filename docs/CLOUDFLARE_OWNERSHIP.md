@@ -4,13 +4,13 @@
 
 Se'kret Bip uses two distinct Cloudflare deployment targets.
 
-### `sekret-bip` — backend Worker
+### `sekret-backend` — backend Worker
 
-Verified in `wrangler.toml` and the production deployment workflow:
+Verified in `wrangler.toml`, EAS profiles, the Worker identity contract, and Cloudflare preview deployments:
 
-- Worker name: `sekret-bip`
+- Worker name: `sekret-backend`
 - Entry point: `worker/observed-index.ts`
-- Production endpoint: `https://sekret-bip.mcgill-raylene.workers.dev`
+- Production endpoint: `https://sekret-backend.mcgill-raylene.workers.dev`
 
 Responsibilities:
 
@@ -54,7 +54,7 @@ Cloudflare Pages project: sekret
 Expo web frontend
     |
     v
-Cloudflare Worker: sekret-bip
+Cloudflare Worker: sekret-backend
     |
     +--> Supabase
     +--> OpenAI
@@ -66,7 +66,7 @@ Cloudflare Worker: sekret-bip
 ## Ownership rules
 
 - Frontend assets, Expo routes, and browser delivery belong to the `sekret` Pages project.
-- API routes, secrets, database access, and business logic belong to the `sekret-bip` Worker.
+- API routes, secrets, database access, and business logic belong to the `sekret-backend` Worker.
 - Never place service-role credentials or OpenAI credentials in the frontend deployment.
 - Never rename the backend Worker to `sekret` merely to match the domain or frontend project.
 - Before changing deployment code, verify both the repository configuration and the actual Cloudflare/GitHub environment values.
@@ -76,7 +76,7 @@ Cloudflare Worker: sekret-bip
 Backend:
 
 ```bash
-npx wrangler deployments list --name sekret-bip
+npx wrangler deployments list --name sekret-backend
 ```
 
 Frontend:
@@ -84,4 +84,4 @@ Frontend:
 - confirm `CLOUDFLARE_PAGES_PROJECT_NAME=sekret`
 - confirm the custom domain is attached to the `sekret` Pages project
 - confirm the deployed Pages commit matches the intended repository commit
-- confirm `EXPO_PUBLIC_BACKEND_URL` points to `https://sekret-bip.mcgill-raylene.workers.dev`
+- confirm `EXPO_PUBLIC_BACKEND_URL` points to `https://sekret-backend.mcgill-raylene.workers.dev`

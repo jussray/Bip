@@ -97,8 +97,8 @@ test('Env interface declares the optional model override vars', () => {
 });
 
 // ─── Runtime deployment and telemetry model contracts ──────────────────────
-test('wrangler pins the production chat model to gpt-4o on sekret-bip', () => {
-  assert.match(wrangler, /^name = "sekret-bip"$/m);
+test('wrangler pins the production chat model to gpt-4o on sekret-backend', () => {
+  assert.match(wrangler, /^name = "sekret-backend"$/m);
   assert.match(wrangler, /^OPENAI_CHAT_MODEL = "gpt-4o"$/m);
 });
 
