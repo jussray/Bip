@@ -157,11 +157,31 @@ Crew remains gated.
   reactivating a request the DB migration already supports), missing-source
   content silently producing a fallback summary marked `ready` instead of
   failing, and the confirm dialog not disclosing that source text is sent to
-  an external AI provider. **Still open, not yet done:** this branch enables
-  `bridgeSummaries` globally with no server-side rollout/kill-switch, the
-  generated-summary validator only checks JSON shape (not verbatim-quote
-  leakage, clinical language, or length), and the Worker tests are
-  regex-over-source-text, not executed-behavior tests. The
+  an external AI provider. **Fixed in a further commit on the same branch:**
+  added `BRIDGE_SUMMARIES_ROLLOUT` — a server-side kill switch/allowlist
+  (`worker/bridge-summary.ts`, documented in `wrangler.toml`) checked
+  independently of the client-bundled `relationshipFeatureFlags` constant, so
+  the feature can be dialed to `disabled` or a comma-separated beta cohort
+  via a Worker env var without an app release; migrated summary generation
+  to OpenAI Structured Outputs (`json_schema`, strict mode) instead of plain
+  `json_object` mode; added a deterministic post-generation privacy validator
+  (`worker/bridge-privacy-validator.ts`) enforcing theme/starter count and
+  length bounds, a clinical-language blocklist (scoped to themes/starters
+  only — the required "not a diagnosis" disclaimer in `limitations` would
+  otherwise false-positive against its own negation, caught by the new
+  tests), and 7-word-ngram near-verbatim-leak detection against the source
+  content, with one corrective retry before falling back to the static
+  summary. Real behavioral tests now exist for this
+  (`test/bridge-privacy-validator.test.mjs`, imports the dependency-free
+  validator module directly via Node's native TS support rather than
+  regex-matching source text) — 13 new tests covering shape validation,
+  count/length bounds, clinical-language rejection, near-verbatim leak
+  detection, the disclaimer false-positive regression, and rollout
+  allow/deny/cohort logic. 439 total tests pass. **Still not done:** the
+  Worker's Supabase-calling functions (`fetchOwnedRequest`,
+  `upsertGeneratedSummary`, etc.) are still only covered by the older
+  regex-over-source-text test file, not mocked-fetch behavioral tests; no
+  real deployed-Worker + two-Supabase-account run has happened yet. The
   `notification_deliveries` RLS classification in #344 below was also
   disputed by a live-Supabase check (claims it's intentionally server-only,
   not a broken user path) — not independently re-verified here; treat as

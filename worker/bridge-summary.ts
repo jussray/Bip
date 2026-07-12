@@ -1,11 +1,29 @@
 import type { Principal } from './auth';
 import { getModels } from './config/models';
+import {
+  BRIDGE_JSON_SCHEMA,
+  isBridgeSummariesRolloutAllowed,
+  isGeneratedSummary,
+  passesPrivacyValidator,
+  type GeneratedSummary,
+} from './bridge-privacy-validator';
 
 interface BridgeSummaryEnv {
   SUPABASE_URL?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   OPENAI_API_KEY?: string;
   OPENAI_CHAT_MODEL?: string;
+  /**
+   * Server-side rollout control for Bridge summary generation, independent of
+   * the client-bundled relationshipFeatureFlags constant (which a modified
+   * client or direct API call can bypass). Values:
+   *   unset or 'enabled' -> allowed for everyone (current default rollout)
+   *   'disabled'         -> hard kill switch, blocks generation for everyone
+   *   comma-separated user IDs -> allowlist for a controlled beta cohort
+   * Set via `wrangler secret put BRIDGE_SUMMARIES_ROLLOUT` or [vars] in
+   * wrangler.toml — changeable without an app release, unlike the client flag.
+   */
+  BRIDGE_SUMMARIES_ROLLOUT?: string;
 }
 
 interface BridgeSummaryRequestBody {
@@ -23,12 +41,6 @@ interface BridgeShareRequestRow {
 interface BridgeShareSourceRow {
   source_kind: 'journal' | 'mood' | 'goal' | 'scrapbook';
   source_id: string;
-}
-
-interface GeneratedSummary {
-  themes: string[];
-  conversationStarters: string[];
-  limitations: string;
 }
 
 const BRIDGE_SYSTEM_PROMPT = `
@@ -205,20 +217,36 @@ async function fetchSourceContent(env: BridgeSummaryEnv, teenUserId: string, sou
   return snippets;
 }
 
-function isGeneratedSummary(value: unknown): value is GeneratedSummary {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Partial<GeneratedSummary>;
-  return (
-    Array.isArray(candidate.themes) && candidate.themes.every((t) => typeof t === 'string') && candidate.themes.length > 0 &&
-    Array.isArray(candidate.conversationStarters) && candidate.conversationStarters.every((t) => typeof t === 'string') && candidate.conversationStarters.length > 0 &&
-    typeof candidate.limitations === 'string' && candidate.limitations.length > 0
-  );
+async function requestSummaryCompletion(apiKey: string, model: string, snippets: string[], correction?: string): Promise<unknown> {
+  const messages: Array<{ role: 'system' | 'user'; content: string }> = [
+    { role: 'system', content: BRIDGE_SYSTEM_PROMPT },
+    { role: 'user', content: `Teen-selected private content to summarize for a parent:\n\n${snippets.join('\n\n')}` },
+  ];
+  if (correction) messages.push({ role: 'system', content: correction });
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model,
+      temperature: 0.4,
+      max_tokens: 300,
+      response_format: { type: 'json_schema', json_schema: BRIDGE_JSON_SCHEMA },
+      messages,
+    }),
+  });
+  if (!res.ok) throw new Error(`openai_${res.status}`);
+  const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
+  return JSON.parse(data.choices?.[0]?.message?.content || '{}');
 }
 
 /**
  * Calls the model with only the minimized source snippets as ephemeral input
- * (never persisted). Returns null on any failure so the caller falls back to
- * the static FALLBACK_SUMMARY rather than surfacing a raw error to the parent.
+ * (never persisted). Every candidate summary must pass isGeneratedSummary
+ * (shape) and passesPrivacyValidator (content) before being accepted — one
+ * corrective retry is attempted on failure, then this returns null so the
+ * caller falls back to the static FALLBACK_SUMMARY rather than persisting an
+ * unvalidated model output.
  */
 async function generateSummary(env: BridgeSummaryEnv, snippets: string[]): Promise<{ summary: GeneratedSummary; model: string } | null> {
   if (!env.OPENAI_API_KEY || snippets.length === 0) return null;
@@ -226,25 +254,22 @@ async function generateSummary(env: BridgeSummaryEnv, snippets: string[]): Promi
   const models = getModels({ OPENAI_API_KEY: apiKey, OPENAI_CHAT_MODEL: env.OPENAI_CHAT_MODEL });
 
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: models.chat,
-        temperature: 0.4,
-        max_tokens: 300,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: BRIDGE_SYSTEM_PROMPT },
-          { role: 'user', content: `Teen-selected private content to summarize for a parent:\n\n${snippets.join('\n\n')}` },
-        ],
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const parsed = JSON.parse(data.choices?.[0]?.message?.content || '{}');
-    if (!isGeneratedSummary(parsed)) return null;
-    return { summary: parsed, model: models.chat };
+    const first = await requestSummaryCompletion(apiKey, models.chat, snippets);
+    if (isGeneratedSummary(first) && passesPrivacyValidator(first, snippets)) {
+      return { summary: first, model: models.chat };
+    }
+
+    const retry = await requestSummaryCompletion(
+      apiKey,
+      models.chat,
+      snippets,
+      'Your previous response either used forbidden clinical language, quoted/closely paraphrased the source text, or exceeded the length/count limits. Send only generalized themes (1-3), conversation starters (1-2), and a short limitations sentence, with no verbatim or near-verbatim source wording.',
+    );
+    if (isGeneratedSummary(retry) && passesPrivacyValidator(retry, snippets)) {
+      return { summary: retry, model: models.chat };
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -264,6 +289,9 @@ export async function handleBridgeSummaryGenerate(request: Request, env: BridgeS
   let userId = '';
   try {
     userId = requireUser(principal);
+    if (!isBridgeSummariesRolloutAllowed(env, userId)) {
+      return json({ requestId, status: 'failed', failureCode: 'bridge_summaries_disabled' }, 403, cors);
+    }
     const shareRequest = await fetchOwnedRequest(env, requestId, userId);
     if (!shareRequest) return json({ error: 'request not found' }, 404, cors);
     if (!requestIsUsable(shareRequest)) {
