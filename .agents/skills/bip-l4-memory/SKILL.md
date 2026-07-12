@@ -84,8 +84,9 @@ Initial thresholds:
 
 ```text
 new         0 durable memories
-building    1–9\ established 10–29
- deep        30+
+building    1–9
+established 10–29
+deep        30+
 reflective  at least 10, completed reflection, zero unresolved contradictions
 ```
 
