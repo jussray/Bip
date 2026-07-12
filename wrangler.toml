@@ -1,5 +1,4 @@
-name = "# wrangler.toml
-name = 'sekret-backend'
+name = "sekret-bip"
 main = "worker/observed-index.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
