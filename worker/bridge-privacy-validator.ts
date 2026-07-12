@@ -79,11 +79,15 @@ export interface RolloutEnv {
   BRIDGE_SUMMARIES_ROLLOUT?: string;
 }
 
-/** Server-side kill switch, checked independently of the client's feature flag. */
+/**
+ * Server-side rollout control, checked independently of the client flag.
+ * Fail closed: an unset or blank value means disabled until production is
+ * deliberately configured for `enabled` or a comma-separated user cohort.
+ */
 export function isBridgeSummariesRolloutAllowed(env: RolloutEnv, userId: string): boolean {
   const raw = env.BRIDGE_SUMMARIES_ROLLOUT?.trim();
-  if (!raw || raw === 'enabled') return true;
-  if (raw === 'disabled') return false;
+  if (!raw || raw === 'disabled') return false;
+  if (raw === 'enabled') return true;
   return raw.split(',').map((id) => id.trim()).filter(Boolean).includes(userId);
 }
 
@@ -93,9 +97,19 @@ export const BRIDGE_JSON_SCHEMA = {
   schema: {
     type: 'object',
     properties: {
-      themes: { type: 'array', items: { type: 'string' } },
-      conversationStarters: { type: 'array', items: { type: 'string' } },
-      limitations: { type: 'string' },
+      themes: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 3,
+        items: { type: 'string', minLength: 1, maxLength: MAX_THEME_LEN },
+      },
+      conversationStarters: {
+        type: 'array',
+        minItems: 1,
+        maxItems: 2,
+        items: { type: 'string', minLength: 1, maxLength: MAX_STARTER_LEN },
+      },
+      limitations: { type: 'string', minLength: 1, maxLength: MAX_LIMITATIONS_LEN },
     },
     required: ['themes', 'conversationStarters', 'limitations'],
     additionalProperties: false,
