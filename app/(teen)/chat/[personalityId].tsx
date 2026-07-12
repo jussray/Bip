@@ -30,9 +30,6 @@ const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'orac
 const TAB_BAR_HEIGHT = 68;
 const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
 
-// Writing system — matches PagesScreen story engine
-const WRITING_FONT = Platform.select({ ios: 'Bradley Hand', android: 'sans-serif', default: 'cursive' });
-
 export default function PersonalityChatScreen() {
   const { personalityId } = useLocalSearchParams<{ personalityId: string }>();
   const { mood, oracleProfile } = useAppContext();
@@ -227,8 +224,8 @@ const styles = StyleSheet.create({
   },
   userBubble:      { alignSelf: 'flex-end', backgroundColor: '#1E293B' },
   assistBubble:    { alignSelf: 'flex-start', backgroundColor: '#111827', borderWidth: 1 },
-  bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22, fontFamily: WRITING_FONT },
-  userBubbleText:  { color: '#fff', fontFamily: WRITING_FONT },
+  bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22 },
+  userBubbleText:  { color: '#fff' },
   inputRow:        {
     flexDirection:   'row',
     alignItems:      'flex-end',
@@ -248,7 +245,6 @@ const styles = StyleSheet.create({
     fontSize:          15,
     maxHeight:         120,
     marginRight:       10,
-    fontFamily:        WRITING_FONT,
   },
   sendBtn:         { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
