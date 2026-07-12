@@ -25,7 +25,11 @@ import { syncOracleSession, loadOracleSession } from '@/utils/sync';
 import { buildOracleContext } from '@/services/oracleDiscovery';
 import { emitEvent } from '@/features/activity/events';
 
-const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
+// Writing system — matches PagesScreen story engine
+const WRITING_FONT = Platform.select({ ios: 'Bradley Hand', android: 'sans-serif', default: 'cursive' });
+
+// oracle is an internal engine identity, not a routable companion surface
+const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night'];
 
 const TAB_BAR_HEIGHT = 68;
 const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
@@ -224,8 +228,8 @@ const styles = StyleSheet.create({
   },
   userBubble:      { alignSelf: 'flex-end', backgroundColor: '#1E293B' },
   assistBubble:    { alignSelf: 'flex-start', backgroundColor: '#111827', borderWidth: 1 },
-  bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22 },
-  userBubbleText:  { color: '#fff' },
+  bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22, fontFamily: WRITING_FONT },
+  userBubbleText:  { color: '#fff', fontFamily: WRITING_FONT },
   inputRow:        {
     flexDirection:   'row',
     alignItems:      'flex-end',
@@ -245,6 +249,7 @@ const styles = StyleSheet.create({
     fontSize:          15,
     maxHeight:         120,
     marginRight:       10,
+    fontFamily:        WRITING_FONT,
   },
   sendBtn:         { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },

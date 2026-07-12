@@ -4,7 +4,8 @@ import { router } from 'expo-router';
 import { PERSONALITY_CONFIG } from '@/services/ai';
 import type { PersonalityId } from '@/types';
 
-const PERSONALITY_ORDER: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
+// oracle is an internal engine identity, not a teen-facing companion card
+const PERSONALITY_ORDER: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night'];
 
 export default function ChatHubScreen() {
   return (
