@@ -69,10 +69,10 @@ async function loadProfileMap(userIds: string[]): Promise<Map<string, CircleProf
   const supabase = getSupabase();
   if (!supabase || userIds.length === 0) return new Map();
 
-  const { data, error } = await supabase
-    .from('circle_profiles')
-    .select('user_id,nickname,avatar_emoji')
-    .in('user_id', [...new Set(userIds)]);
+  const uniqueUserIds = [...new Set(userIds)].slice(0, 100);
+  const { data, error } = await supabase.rpc('get_public_circle_profiles', {
+    p_user_ids: uniqueUserIds,
+  });
 
   if (error) throw error;
 
