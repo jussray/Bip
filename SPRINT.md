@@ -15,7 +15,7 @@ unverified dashboard claims here.
 **Last verified:** 2026-07-12  
 **Repository:** `jussray/Sekret-Bip`  
 **Default branch:** `main`  
-**Verified main commit:** `667305fe6f5bfef9f1b7faf557dbd8676f1bb2f2`
+**Verified main commit:** `8ba6f20f7211f65c2e112d8a853275c3ad313546`
 
 ---
 
@@ -66,6 +66,39 @@ These are contracts, not runtime activation. Screens, the Worker reply path,
 accessibility labels, archives, TTS, Control Room panels, durable memory,
 goals, reflection, and L4 persistence are not completed by #346.
 
+### #348 — Unify feature state and repair Supabase-backed flows
+
+Merged at `8ba6f20f7211f65c2e112d8a853275c3ad313546` (head
+`e47260742c5e044b902bfdc019bf6be5a814734c`) after CI, Playwright Smoke, Type
+Check, Pre-Push Checks, Regression Tests, and Quality Gate passed.
+
+It added:
+
+- durable Supabase hydration mounted in the `AppContext` state provider
+  (Teen/Parent Pages, mood, voice metadata, comfort activity, Circle
+  summaries, Crew data, period days, room memory);
+- one owner-scoped journal contract for Teen and Parent Pages, keeping them
+  private and distinct via `owner_side`;
+- Circle correctness/security: DB-ID reconciliation, a guarded pseudonym RPC
+  that never exposes `account_type`, RPC-only reactions with validated
+  vocabulary and one-reaction-per-account/post enforcement, removed broad
+  legacy table/sequence privileges;
+- Crew placeholder invites removed from the active public path; Crew stays
+  disabled publicly pending accepted-connection beta;
+- navigation consolidation (Bridge promoted to primary nav, duplicate Room
+  routes redirected);
+- production migrations applied: `20260712190000_feature_flow_contracts.sql`,
+  `20260712195000_secure_circle_profile_reads.sql`,
+  `20260712200000_optimize_circle_policy_plans.sql`;
+- a rollback-contained three-identity probe (two permanent accounts + one
+  anonymous) verifying cross-account read/write denial on Circle, with no
+  synthetic data left behind.
+
+Known follow-up debt explicitly called out by #348 (not regressions from it):
+legacy policy/index cleanup and leaked-password protection still disabled —
+tracked in #344. No parent/teen links were created or activated by #348;
+Crew remains gated.
+
 ---
 
 ## Open Work
@@ -77,6 +110,36 @@ goals, reflection, and L4 persistence are not completed by #346.
 - **First phase:** Inventory existing access rules and add denial tests before
   production database changes
 - **Production changes:** None made from this issue yet
+- Live advisor findings (verified 2026-07-12): RLS-enabled-no-policy on
+  `app_config`, `app_private_config`, `guardian_verification_reviews`,
+  `notification_deliveries`; anonymous-capable policy roles on private
+  tables; SECURITY DEFINER grant review needed; leaked-password protection
+  disabled. See issue body for full phase plan — do not mass-rewrite
+  policies before Phase 0 inventory + denial tests exist.
+
+### #259 — Preservation-first path to polished teen + parent V1
+
+- **State:** Open
+- **Purpose:** Prove the full two-account journey — teen signup, parent
+  signup, link, teen private reflection, Bridge preview/confirm/share, parent
+  view, revoke, unlink, delete — with privacy enforced by Worker auth +
+  Supabase RLS/storage, not screen hiding.
+- P0/P1/P2 checklist and manual two-account test script are in the issue
+  body; not yet executed against current main as of this verification.
+
+### Open pull requests (verified 2026-07-12, query GitHub before trusting this)
+
+- **#349** — Guardrails + Playwright verification (`docs/GUARDRAILS.md`,
+  `src/config/visionGuardrails.ts`, `e2e/guardrails.spec.ts`). Open, draft:
+  false, all 22 checks green as of last run, but base was one commit behind
+  main (missing #348) — needs updating onto current main before merge.
+- **#345** — Control Room PR A: identity contract, style profiles,
+  relationship phase, agent skills, unit tests. Open. Contracts/tests only,
+  no panels or Worker wiring (that's PR B/C per the Control Room rollout
+  below).
+- **#284** — Harden parent entry flow (draft). Explicitly not claiming
+  backend-authoritative parent profile persistence complete; needs branch
+  sync with main before review.
 
 ### Control Room AI rollout
 
@@ -106,6 +169,8 @@ verification. Query GitHub before claiming there are no other open PRs.
 - #339 — Green Companion Lab, Worker identity, and Quality Gate baseline
 - #340 — Living state layer and operational guardian skills
 - #346 — Se'kret identity, companion style, and future L4 contract baseline
+- #348 — Durable Supabase hydration, owner-scoped Pages, Circle security
+  hardening, navigation consolidation
 
 Do not reimplement these changes.
 
@@ -143,12 +208,18 @@ apply broad live changes merely to reduce advisory counts.
 
 ## Next Execution Order
 
-1. Build PR B from current `main`: Control Room observer panels and read-only,
-   privacy-safe adapters only.
-2. Complete issue #344 Phase 0 inventory and denial-test design before any L4,
+1. Update PR #349 onto current `main` and confirm CI reruns green; merge only
+   after explicit review (it is not this repo's most urgent item, but it is
+   the closest to done).
+2. Execute issue #259's two-account journey against current main and record
+   which P0/P1 checklist items actually pass — this outranks new Control Room
+   panels, L4 memory, monetization, or merch work.
+3. Complete issue #344 Phase 0 inventory and denial-test design before any L4,
    parent-authorization, or broad policy migration.
-3. Build PR C: activate Se'kret identity and companion style in the real runtime,
+4. Build PR B from current `main`: Control Room observer panels and read-only,
+   privacy-safe adapters only.
+5. Build PR C: activate Se'kret identity and companion style in the real runtime,
    including text, accessibility, archives, notifications and TTS.
-4. Verify the production Cloudflare deployment and one authenticated OpenAI
+6. Verify the production Cloudflare deployment and one authenticated OpenAI
    companion reply before claiming live AI health.
-5. Build PR D only after authorization evidence exists.
+7. Build PR D only after authorization evidence exists.
