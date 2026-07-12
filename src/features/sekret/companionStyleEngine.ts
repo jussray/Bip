@@ -1,6 +1,7 @@
 import type { NamedCompanionId } from './identityContract';
 import {
   getStyleProfile,
+  isNamedCompanionId,
   type AdviceMode,
   type Cadence,
   type PresenceStyleId,
@@ -60,6 +61,13 @@ function buildStyleRequest(styleId: PresenceStyleId): StyledReplyRequest {
 export function buildCompanionStyleRequest(
   companionId: NamedCompanionId,
 ): StyledReplyRequest {
+  if (!isNamedCompanionId(companionId)) {
+    throw new Error(
+      `[companionStyleEngine] ${String(companionId)} is not a named companion. ` +
+        `Use buildSekretPresenceStyleRequest() for Se'kret continuity.`,
+    );
+  }
+
   return buildStyleRequest(companionId);
 }
 
