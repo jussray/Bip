@@ -2,232 +2,183 @@
 
 ## Relationship to Upstream Skills
 
-This skill layers on top of the installed `supabase` and
-`supabase-postgres-best-practices` skills. Read those first for general
-Supabase and PostgreSQL guidance. This skill adds Bip-specific trust
-boundaries, data classification, and proof requirements that the generic
-skills cannot know.
+Use the installed Supabase and PostgreSQL best-practice skills for general
+platform guidance. This skill adds Se'kret Bip's product-specific trust
+boundaries, privacy constraints, and proof requirements.
 
-When this skill and an upstream skill conflict, this skill wins.
-
----
+When a generic recommendation conflicts with a stricter Bip privacy rule, the
+Bip rule wins.
 
 ## Trigger
 
-Activate whenever a PR or session touches:
+Activate whenever work touches:
 
-- `supabase/migrations/`
-- `supabase/functions/`
-- Any RLS policy
-- Any RPC function
-- `src/utils/supabase*`
-- `src/services/` files that read or write Supabase directly
-- `worker/` files that call Supabase
-- Auth flows, session handling, or JWT verification
-- Account deletion, data export, or cache clearing
-- pgvector memory tables (when built)
-- Any schema change affecting teen, parent, guardian, or Circle data
+- `supabase/migrations/**`
+- `supabase/functions/**`
+- RLS policies, grants, roles, RPCs, triggers, or database functions
+- authentication, JWT verification, session handling, or account deletion
+- client or Worker code that reads or writes Supabase
+- Storage buckets or policies
+- parent, guardian, Bridge, Circle, journal, voice, safety, or memory data
+- Supabase health, migration, advisor, or Edge Function claims
 
-Also activate before claiming any Supabase state (health, migration
-status, Edge Function count) is current. Read `SPRINT.md` first, then
-verify using `bip-repo-truth`.
+Read `SPRINT.md` first, then verify live state. Project health alone does not
+prove schema parity, policy safety, or function configuration.
 
----
+## Trust Model
 
-## Bip Data Trust Model
+| Principal | Allowed trust |
+|---|---|
+| Teen | Owner of their private rows |
+| Verified guardian | Explicitly consent-scoped access only |
+| Linked parent | Limited access through approved contracts and RPCs |
+| Authenticated unrelated user | No access to another user's rows |
+| Anonymous user | No access to private user data |
+| Service role | Server-side only, narrowly justified, audited |
 
-### Users and Roles
+Service-role use may occur in a Supabase Edge Function or the backend Worker.
+It must never appear in the app bundle, browser, client logs, or public config.
 
-| Principal | Trust level | Notes |
-|---|---|---|
-| Teen | Owner of private data | Cannot be read by any other party without explicit consent |
-| Verified guardian | Elevated, consent-scoped | Access granted only to Bridge-summarised data, not raw journal or chat |
-| Linked parent | Limited, RPC-only | `parent_links` mutations via RPC only, never direct table write |
-| Service role | Backend-only | Permitted only inside Edge Functions with explicit audit justification |
-| Anon / public | Zero access to user data | Must be provably denied at RLS level |
+## Data Boundaries
 
-### Data Classification
+- Journal entries and private chat history are teen-private.
+- Voice notes and session metadata are teen-private unless a separate consented
+  product contract explicitly says otherwise.
+- Bridge exposes approved summaries or share requests, not raw journal or chat
+  content.
+- Circle identity remains pseudonymous and separate from private identity.
+- Parent and guardian visibility is not implied by account linkage.
+- Safety access must be purpose-limited and must not become general surveillance.
+- Future companion memories belong to a `(user_id, companion_id)` scope and
+  require a reachable deletion path.
 
-| Data type | Owner | Guardian access | Notes |
-|---|---|---|---|
-| Journal entries | Teen | None | Private by design |
-| Chat history | Teen | None | Private by design |
-| Bridge summaries | Teen | Read (consent-gated) | Summarised, not raw |
-| Circle posts | Teen (pseudonymous) | None | Circle identity is separate from real identity |
-| Voice session metadata | Teen | None | |
-| Agent memories (future) | Teen | None | pgvector; deletion path required |
-| Guardian review queue | Guardian | Read (their queue only) | `guardian_review_queue` migration landed 20260711193738 |
-| Parent link records | System | RPC-only | Direct table writes forbidden |
-| Account metadata | Teen | None | |
+## Required Verification Sequence
 
----
+Before changing schema, policies, functions, or authorization:
 
-## Required Proof Sequence
+1. Verify the live project, migration history, relevant tables, functions, and
+   Edge Functions.
+2. Compare live state with repository migrations. Record any drift.
+3. List every affected role and operation: select, insert, update, delete,
+   execute, storage access, and service-role path.
+4. State who may read and write each affected row.
+5. Prove anonymous denial where data is private.
+6. Prove cross-user denial using two distinct authenticated users.
+7. Prove guardian or parent access is no broader than current consent.
+8. Verify direct table writes are denied where an RPC-only contract exists.
+9. Run security and performance advisors after the change.
+10. Document rollback and regression evidence.
 
-Before any database change that touches the above tables or their policies:
+Do not describe a policy as safe because it contains `auth.uid()`. Verify the
+role target, USING clause, WITH CHECK clause, function ownership, grants, and
+all alternate access paths.
 
-1. **Verify live project and migration state.**
-   Read `SPRINT.md`, then run the bip-repo-truth verification sequence.
-   Confirm the live project matches the repository migration history.
-   Schema drift is not certified by Supabase project health alone.
+## RLS Rules
 
-2. **Read the affected RLS and RPC contracts.**
-   Identify every policy on every table touched by the change.
-   Identify every RPC that wraps mutations on those tables.
+- Enable RLS on every exposed user-data table.
+- A table with RLS enabled and no policy is allowed only when intentional denial
+  is documented and tested.
+- Private policies should target explicit roles such as `authenticated` rather
+  than silently applying to anonymous-capable roles.
+- Owner policies must prevent user A from reading or mutating user B's rows.
+- Separate read and write semantics when consent differs by operation.
+- Avoid multiple overlapping permissive policies unless their union is
+  deliberate and tested.
+- Use `(select auth.uid())` where appropriate to avoid per-row re-evaluation,
+  but never trade correctness for planner optimization.
+- Any policy replacement must prove the replacement exists before the old
+  access path is removed.
 
-3. **Classify the data audience.**
-   State explicitly: who can read this row? Who can write it?
-   Who must be denied? Map to the trust table above.
+## RPC and SECURITY DEFINER Rules
 
-4. **Prove anonymous denial.**
-   Write or verify a test that confirms `anon` role cannot read or
-   write the affected rows. If the table is not publicly accessible,
-   prove it with policy text, not assumption.
-
-5. **Prove cross-user denial.**
-   Confirm that user A cannot read or write user B's rows.
-   The standard pattern is `auth.uid() = user_id` in the USING clause.
-   Verify this is present and not bypassable.
-
-6. **Prove guardian access is no broader than consent permits.**
-   If a guardian can read any data, confirm the policy scope matches
-   the consent model exactly. Bridge summaries only, not raw content.
-   Consent withdrawal must revoke access immediately.
-
-7. **Add rollback and regression evidence.**
-   Every migration must have a documented rollback path.
-   Every RLS change must include a test or SQL proof of denial.
-   "It looks right" is not evidence.
-
----
-
-## RPC-Only Mutations
-
-The following tables must only be mutated via named RPC functions.
-Direct `INSERT`, `UPDATE`, or `DELETE` from client code is forbidden.
-
-- `parent_links` — use the designated RPC; verify the function
-  validates the linking token and records the event.
-
-When adding a new sensitive mutation path:
-1. Create a named RPC function with explicit parameter validation.
-2. Add an RLS policy that denies direct table mutation from all roles
-   except service role.
-3. Audit the RPC for parameter injection and privilege escalation.
-4. Document the RPC in this skill's table above.
-
----
+- Revoke broad `PUBLIC` or generic authenticated execution unless the function
+  is intentionally user-callable.
+- Grant EXECUTE only to the roles that need it.
+- Set a safe, explicit `search_path` for `SECURITY DEFINER` functions.
+- Validate caller identity and authorization inside the function.
+- Never assume RLS protects operations executed with elevated privileges.
+- Administrative, founder, guardian-review, notification, and audit-ingestion
+  functions require especially narrow grants.
+- RPC-only tables, including parent-link mutation paths, must deny equivalent
+  direct client writes.
 
 ## Edge Function Rules
 
-- Every Edge Function that accesses user data must verify the JWT.
-  No unauthenticated access to user rows, ever.
-- Service-role access inside an Edge Function must be justified in a
-  comment explaining why the elevated role is required and what scope
-  limits it.
-- Edge Functions must not log raw user content, chat history, or
-  journal text. Log event types and anonymised metadata only.
-- New Edge Functions must be listed in `SPRINT.md` after deployment.
-  The current verified count is 16 (as of 2026-07-12).
+JWT verification is the default.
 
----
+`verify_jwt: false` is permitted only when one of these is true:
 
-## Migration Safety Rules
+- the endpoint implements and tests its own authentication contract;
+- it is a deliberately public health or webhook endpoint with no private-data
+  access;
+- explicit product and security review approved the exception.
 
-- Run `supabase db diff` against the live project before opening a
-  migration PR. Schema drift between the live project and the
-  repository is a blocker.
-- Never run `supabase db reset` against the live project.
-- Migration filenames must follow the existing timestamp format:
-  `YYYYMMDDHHMMSS_description.sql`.
-- Every migration that adds a table or column must include:
-  - RLS enabled on the table
-  - At least one policy (or explicit justification for zero policies)
-  - A documented rollback statement
-- Do not combine schema changes and data migrations in the same file.
-- Do not bundle a migration with unrelated application code in the
-  same PR.
+For every exception, document the authentication mechanism, accessible data,
+abuse controls, logging policy, and regression test. Edge Functions must not
+log raw journal text, chat content, voice data, tokens, or service keys.
 
----
+## Migration Rules
 
-## pgvector / Agent Memory Rules (Pre-Build)
+- Use the repository's existing migration naming convention.
+- Keep schema and unrelated application work in separate PRs.
+- Do not hardcode generated IDs into data migrations.
+- Do not run destructive reset operations against production.
+- New tables require an RLS decision, policy proof, indexes for expected foreign
+  key access, and a rollback plan.
+- New foreign keys require an index decision based on actual query and delete
+  paths.
+- Generate and review updated TypeScript database types when contracts change.
+- Apply production migrations only after the reviewed repository migration is
+  approved and the target project is verified.
 
-Durable companion memory is not yet built (L3 Phase 1 in the
-architecture plan). When it is built, the following constraints apply
-from day one:
+## Account Deletion
 
-- Memory rows are owned by a `(user_id, companion_id)` pair.
-  No memory is shared across companions without explicit design.
-- Raw transcript text must never be stored as a memory entry.
-  Store extracted, safety-reviewed, semantic summaries only.
-- Every memory table must have a deletion path reachable by the
-  teen from within the app. "Forget this" is not optional.
-- Memory read and write events must be logged to an audit table.
-- pgvector similarity search must be scoped to the authenticated
-  user's rows. Cross-user vector search is forbidden.
-- Memory compression and reflection runs outside the live reply
-  latency path. It must not access private session content
-  without server-side scope controls and audit evidence.
+Account deletion must cover private rows, Storage objects, parent links,
+Bridge records, Circle identity linkage, derived memory, queued notifications,
+and backend caches. The completion record may contain counts and timestamps,
+but not deleted private content.
 
----
+Do not substitute an undocumented soft delete for private teen-data deletion.
 
-## Account Deletion Requirements
+## Durable Memory Rules
 
-When a teen account is deleted:
+Before durable companion memory ships:
 
-1. All journal entries, chat history, voice session metadata, and
-   Bridge summaries must be hard-deleted or cryptographically
-   unrecoverable within the retention window.
-2. Agent memories (when built) must be deleted.
-3. Circle pseudonymous identity must be unlinked.
-4. Parent links must be invalidated.
-5. Any cached or derived data in the Worker or Edge Functions must
-   be purged.
-6. The deletion event must be logged with a timestamp and
-   confirmation of row counts deleted.
+- store safety-reviewed summaries, not raw transcripts;
+- scope retrieval to the authenticated user and companion;
+- prevent cross-user vector search;
+- record memory provenance and confidence;
+- support correction and deletion;
+- keep reflection and compression outside live reply latency;
+- audit every privileged memory read and write path.
 
-Do not implement soft-delete for teen private data without explicit
-product and legal review.
+## Advisor Handling
 
----
+Supabase advisor findings are evidence, not automatic migrations.
 
-## Absorbed Prompt OS Capabilities
+Classify each finding as:
 
-The following Prompt OS prompts are considered covered by this skill
-for repository work. Use this skill instead of re-running those prompts
-in isolation:
+- exploitable authorization risk;
+- defense-in-depth hardening;
+- performance issue with observed impact;
+- intentional design with documented exception;
+- stale or false-positive finding with proof.
 
-- RLS Policy Generator
-- Auth & Trust Audit
-- DB Migration Safety Check
-- pgvector Memory Review
-
-Generating SQL is easy. Proving it does not leak a teenager's journal
-to the wrong adult is what this skill enforces.
-
----
-
-## What This Skill Does Not Own
-
-- Cloudflare Worker deployment and health → `bip-worker-guardian`
-- Companion reply logic and AI behaviour → `bip-companion-lab`,
-  `bip-ai-review`
-- Privacy threat modelling → `bip-privacy-redteam`
-- Release gating → `bip-release-gate`
-- General PostgreSQL best practices → upstream `supabase-postgres-best-practices`
-
----
+Never silence or mass-edit policies merely to reduce the advisor count. Fix
+highest-blast-radius authorization issues first, in small reviewed migrations.
 
 ## Output
 
-After any Supabase-touching review:
-
-```
-Supabase Guardian: [CLEAR|BLOCKED]
-Migration drift: [none detected | <description>]
-RLS proof: [anonymous denial ✓ | cross-user denial ✓ | guardian scope ✓]
-RPC contracts: [unchanged | <list of changes>]
-Edge Functions: [unchanged | <list of changes>]
-Rollback: [documented | MISSING — blocker]
-[If BLOCKED]: <specific issue and required fix before merge>
+```text
+Supabase Guardian: CLEAR|BLOCKED
+Project verified: yes|no
+Migration drift: none|description
+Anonymous denial: proven|missing
+Cross-user denial: proven|missing
+Guardian scope: proven|not applicable|missing
+Elevated functions: reviewed|list of blockers
+Edge Function auth: reviewed|list of exceptions
+Advisors: security <count>, performance <count>
+Rollback: documented|missing
+Next action: <smallest safe fix>
 ```
