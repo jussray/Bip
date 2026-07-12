@@ -40,8 +40,15 @@ test('the database migration separates private notebooks and hardens Circle reac
   assert.equal(migration.includes('owner_side text not null'), true);
   assert.equal(migration.includes("check (owner_side in ('teen', 'parent'))"), true);
   assert.equal(migration.includes('circle_reactions_unique_user_post'), true);
-  assert.equal(migration.includes('react_to_public_circle_post'), true);
+  assert.equal(migration.includes('circle_reactions_user_id_idx'), true);
+  assert.equal(migration.includes('circle_reactions_permanent_accounts_only'), true);
+  assert.equal(migration.includes('as restrictive'), true);
   assert.equal(migration.includes("auth.jwt() ->> 'is_anonymous'"), true);
+  assert.equal(migration.includes('revoke all on table public.circle_reactions from anon'), true);
+  assert.equal(migration.includes('grant select, insert, update, delete on table public.circle_reactions to authenticated'), true);
+  assert.equal(migration.includes('react_to_public_circle_post'), true);
+  assert.equal(migration.includes('for update;'), true);
+  assert.equal(migration.includes('set search_path = pg_catalog, pg_temp'), true);
   assert.equal(migration.includes('revoke all on function public.react_to_public_circle_post(bigint, text) from anon'), true);
   assert.equal(migration.includes('grant execute on function public.react_to_public_circle_post(bigint, text) to authenticated'), true);
 });
