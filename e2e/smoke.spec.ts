@@ -58,3 +58,23 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
 });
+
+test('Teen Circle cannot bypass account onboarding from a blank browser session', async ({ page }) => {
+  await page.goto('/circle?bipDevSide=teen');
+
+  const splashButton = page.getByRole('button', {
+    name: "Se'kret Bip — enter your safe space",
+  });
+  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('🌐 Circle')).not.toBeVisible();
+});
+
+test('Parent Bridge fails closed until guardian verification is complete', async ({ page }) => {
+  await page.goto('/bridge?bipDevSide=parent');
+
+  await expect(page.getByText('GUARDIAN ACCESS')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Guardian verification is required.')).toBeVisible();
+  await expect(page.getByText(/Linking to a teen is a separate consent step/)).toBeVisible();
+  await expect(page.getByText(/No journal, voice note, or private source is shared automatically/)).toBeVisible();
+  await expect(page.getByText('Submit for guardian review')).toBeVisible();
+});

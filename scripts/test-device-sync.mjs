@@ -53,15 +53,27 @@ test('a second device restores side and onboarding from the server profile', () 
   assert.match(profile, /if \(local\?\.onboardingComplete\)[\s\S]*return saveAccountProfile\(/s);
 });
 
-test('teen and parent bottom navigation use the same five destinations', () => {
-  for (const path of ['app/(teen)/_layout.tsx', 'app/(parent)/_layout.tsx']) {
+test('teen and parent bottom navigation each preserve their five primary jobs', () => {
+  const expectations = [
+    {
+      path: 'app/(teen)/_layout.tsx',
+      order: ['name="room"', 'name="pages"', 'name="calm"', 'name="circle"', 'name="more"'],
+      label: 'Room, Pages, Calm, Circle, More',
+    },
+    {
+      path: 'app/(parent)/_layout.tsx',
+      order: ['name="room"', 'name="bridge"', 'name="pages"', 'name="circle"', 'name="more"'],
+      label: 'Room, Bridge, Pages, Circle, More',
+    },
+  ];
+
+  for (const { path, order, label } of expectations) {
     const layout = read(path);
-    const order = ['name="room"', 'name="pages"', 'name="calm"', 'name="circle"', 'name="more"'];
     let previous = -1;
     for (const marker of order) {
       const position = layout.indexOf(marker);
       assert.notEqual(position, -1, `${path} must include ${marker}`);
-      assert.ok(position > previous, `${path} must order tabs Room, Pages, Calm, Circle, More`);
+      assert.ok(position > previous, `${path} must order tabs ${label}`);
       previous = position;
     }
   }
