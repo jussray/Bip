@@ -1,0 +1,44 @@
+name: Feature Flow Diagnostic
+
+on:
+  push:
+    branches:
+      - agent/unify-feature-flow-supabase
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Capture type-check output
+        shell: bash
+        run: |
+          set +e
+          npm run type-check > type-check.txt 2>&1
+          echo $? > type-check-exit.txt
+          exit 0
+      - name: Capture test output
+        shell: bash
+        run: |
+          set +e
+          npm test > test-output.txt 2>&1
+          echo $? > test-exit.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: feature-flow-diagnostic
+          path: |
+            type-check.txt
+            type-check-exit.txt
+            test-output.txt
+            test-exit.txt
+          retention-days: 1
