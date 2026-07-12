@@ -5,8 +5,8 @@ session, then verify material claims with
 `.agents/skills/bip-repo-truth/SKILL.md` before acting.
 
 Update this file only after verification when PR, deployment, migration,
-backend, release, or blocker state changes. Do not store secrets, private user
-data, speculative architecture, or unverified dashboard claims here.
+backend, release, or blocker state changes. Do not store private user data or
+unverified dashboard claims here.
 
 ---
 
@@ -15,55 +15,56 @@ data, speculative architecture, or unverified dashboard claims here.
 **Last verified:** 2026-07-12  
 **Repository:** `jussray/Sekret-Bip`  
 **Default branch:** `main`  
-**Verified baseline before this state layer:** `bc17b7f0a015b0d1b2f7d26d2d25ddf8face8bff`  
-**Publication PR:** #340
-
-When this file is present on `main`, PR #340 has merged. The final merge SHA is
-not predicted inside the PR that creates it. Verify the live main head before
-using an exact commit identifier.
+**Verified main commit:** `667305fe6f5bfef9f1b7faf557dbd8676f1bb2f2`
 
 ---
 
 ## Main Baseline
 
-PR #339 merged into `main` after the complete final branch passed:
+### #339 — Green CI and Worker baseline
 
-- Companion Lab Audit
-- Quality Gate
-- Type Check
-- Regression Tests
-- Pre-Push Checks
-- Playwright Smoke
-- CI
+Merged after Companion Lab Audit, Quality Gate, Type Check, Regression Tests,
+Pre-Push Checks, Playwright Smoke, and CI passed.
 
-The merge established:
+It established:
 
 - Companion Lab package scripts and path-filtered CI;
 - honest-disclaimer-aware fake-memory scoring;
 - `sekret-backend` as the canonical Cloudflare Worker;
 - `sekret` as the frontend Cloudflare Pages project;
-- a deterministic repository RLS gate;
-- configuration-aware Qodo and SonarQube jobs.
+- deterministic repository quality gates.
 
-Post-merge Companion Lab, Quality Gate, and Type Check runs completed
-successfully. Production Worker deployment and a live OpenAI companion request
-remain separate verification steps and are not certified by CI alone.
+### #340 — Living state and operational agent layer
 
----
+It added:
 
-## Published Agent Layer
+- `bip-current-state`;
+- `bip-companion-lab`;
+- `bip-supabase-guardian`;
+- this `SPRINT.md` snapshot;
+- verified-state directives in `AGENTS.md` and `CLAUDE.md`;
+- the full founder reasoning stack requirement in `AGENTS.md`.
 
-PR #340 adds:
+### #346 — Se'kret identity, style, and L4 contracts
 
-- `bip-current-state`
-- `bip-companion-lab`
-- `bip-supabase-guardian`
-- this `SPRINT.md` snapshot
-- verified-state directives in `AGENTS.md` and `CLAUDE.md`
-- the full founder reasoning stack requirement in `AGENTS.md`
+Merged at `667305fe6f5bfef9f1b7faf557dbd8676f1bb2f2` after Type Check,
+Quality Gate, Regression Tests, Pre-Push Checks, Playwright Smoke, and CI passed.
 
-The PR is documentation and agent instructions only. It does not change app
-runtime, Cloudflare configuration, Supabase schema, Edge Functions, or secrets.
+It added:
+
+- `docs/CONTROL_ROOM_ARCHITECTURE.md`;
+- Oracle-to-Se'kret visible identity rules;
+- separate named-companion and Se'kret continuity style contracts;
+- deterministic text and speech style request builders;
+- guarded relationship-phase rules;
+- `bip-sekret-identity`;
+- `bip-companion-style-engine`;
+- `bip-l4-memory`;
+- executable identity, style, question-budget, and phase tests.
+
+These are contracts, not runtime activation. Screens, the Worker reply path,
+accessibility labels, archives, TTS, Control Room panels, durable memory,
+goals, reflection, and L4 persistence are not completed by #346.
 
 ---
 
@@ -72,12 +73,26 @@ runtime, Cloudflare configuration, Supabase schema, Edge Functions, or secrets.
 ### #344 — Supabase authorization hardening
 
 - **State:** Open
-- **Purpose:** Convert live security and performance advisor findings into a
-  phased, test-first hardening campaign
-- **First phase:** Inventory policy roles, RLS-without-policy tables, elevated
-  function grants, and Edge Function JWT exceptions; add denial tests before
-  migrations
+- **Purpose:** A phased, test-first review of current authorization findings
+- **First phase:** Inventory existing access rules and add denial tests before
+  production database changes
 - **Production changes:** None made from this issue yet
+
+### Control Room AI rollout
+
+The next scoped phases are:
+
+1. **PR B — observers:** read-only identity, style, voice, L4, and MCP panels;
+   founder-route wiring; privacy-safe adapters and redacted identifiers.
+2. **PR C — runtime activation:** connect the identity and style contracts to
+   screens, the real reply request, accessibility, archives, notifications and
+   TTS; add Companion Lab and identity-leak evaluations.
+3. **PR D — L4 persistence:** reviewed memory, goal and reflection storage;
+   ownership, provenance, correction, expiry, deletion and denial tests.
+
+The old `control-room-architecture` branch is not a merge candidate. It was
+based on an older main history and contained unrelated changes. Reuse its ideas
+only through fresh, scoped branches from current main.
 
 Live pull-request state is intentionally not duplicated here without a fresh
 verification. Query GitHub before claiming there are no other open PRs.
@@ -88,9 +103,9 @@ verification. Query GitHub before claiming there are no other open PRs.
 
 - #337 — Companion Lab foundation
 - #338 — 40 synthetic reply fixtures, 8 scenarios × 5 companions
-- #339 — Green baseline repair for Companion Lab, Worker identity, and Quality
-  Gate; includes the stacked work from #341 and #342
-- #340 — Living state layer and Bip operational guardian skills
+- #339 — Green Companion Lab, Worker identity, and Quality Gate baseline
+- #340 — Living state layer and operational guardian skills
+- #346 — Se'kret identity, companion style, and future L4 contract baseline
 
 Do not reimplement these changes.
 
@@ -101,10 +116,11 @@ Do not reimplement these changes.
 - **Backend Worker:** `sekret-backend`
 - **Worker entrypoint:** `worker/observed-index.ts`
 - **Frontend Pages project:** `sekret`
-- **OpenAI models:** configuration remains environment-backed through the Worker
-- **Credential health:** not certified by repository configuration alone
+- **Model configuration:** remains environment-backed through the Worker
 - **End-to-end companion reply:** verify with an authenticated live request
   before claiming production AI health
+- **Text-to-speech:** profile and architecture contracts exist, but production
+  Se'kret/companion TTS activation is not certified
 
 Do not rename the Worker or change `wrangler.toml` in an unrelated PR.
 
@@ -117,38 +133,22 @@ Do not rename the Worker or change `wrangler.toml` in an unrelated PR.
 - **Region:** `us-east-1`
 - **Latest live migration:** `20260711193738 guardian_review_queue`
 - **Active Edge Functions:** 16
-- **JWT setting:** 13 functions use platform JWT verification; 3 functions have
-  `verify_jwt: false` and require explicit custom-auth or public-endpoint review
 - **Schema parity:** not certified by project health alone
-- **Production changes this session:** none
+- **Production changes from #346:** none
 
-### Live security backlog
-
-The current security advisor reports material review work, including:
-
-- RLS-enabled tables with no policies;
-- policies applying to roles that can include anonymous access;
-- broad execution access to multiple `SECURITY DEFINER` functions;
-- leaked-password protection disabled.
-
-### Live performance backlog
-
-The performance advisor reports:
-
-- unindexed foreign keys;
-- per-row authentication-function evaluation in RLS policies;
-- overlapping permissive policies;
-- unused indexes.
-
-The backlog is tracked in issue #344. Do not mass-edit live policies merely to
-reduce advisor counts.
+The current security and performance backlog is tracked in issue #344. Do not
+apply broad live changes merely to reduce advisory counts.
 
 ---
 
 ## Next Execution Order
 
-1. Begin issue #344 Phase 0 inventory and denial-test design without production
-   writes.
-2. Verify production Cloudflare deployment and one authenticated OpenAI
-   companion reply.
-3. Select the next product feature only after the verified baseline is recorded.
+1. Build PR B from current `main`: Control Room observer panels and read-only,
+   privacy-safe adapters only.
+2. Complete issue #344 Phase 0 inventory and denial-test design before any L4,
+   parent-authorization, or broad policy migration.
+3. Build PR C: activate Se'kret identity and companion style in the real runtime,
+   including text, accessibility, archives, notifications and TTS.
+4. Verify the production Cloudflare deployment and one authenticated OpenAI
+   companion reply before claiming live AI health.
+5. Build PR D only after authorization evidence exists.
