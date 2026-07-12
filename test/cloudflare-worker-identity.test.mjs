@@ -17,6 +17,12 @@ test('Wrangler targets the canonical Worker name', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
 });
 
+test('production deployment workflow targets the canonical Worker name', () => {
+  assert.ok(workflow.includes(`Deploy Backend Worker (${WORKER_NAME})`));
+  assert.ok(workflow.includes(`^name = "${WORKER_NAME}"$`));
+  assert.ok(workflow.includes(`Deploy backend Worker ${WORKER_NAME}`));
+});
+
 test('all EAS profiles point to the canonical Worker URL', () => {
   for (const [profileName, profile] of Object.entries(eas.build)) {
     assert.equal(
