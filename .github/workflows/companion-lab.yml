@@ -8,13 +8,20 @@ on:
       - 'test/fixtures/companion-lab-scenarios.json'
       - 'test/fixtures/replies/**'
       - 'docs/COMPANION_LAB.md'
+      - '.github/workflows/companion-lab.yml'
+      - 'package.json'
   pull_request:
     paths:
       - 'scripts/companion-lab-audit.js'
       - 'test/fixtures/companion-lab-scenarios.json'
       - 'test/fixtures/replies/**'
       - 'docs/COMPANION_LAB.md'
+      - '.github/workflows/companion-lab.yml'
+      - 'package.json'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   audit:
@@ -35,8 +42,9 @@ jobs:
         run: npm ci --ignore-scripts
 
       - name: Run Companion Lab audit
-        id: audit
-        run: node scripts/companion-lab-audit.js --verbose
+        run: |
+          set -o pipefail
+          npm run audit:companion-lab:verbose | tee companion-lab-report.txt
         # Exit 0 = all scored scenarios pass (or no reply files yet — gap report).
         # Exit 1 = one or more hard-fail or below-threshold results.
 
@@ -45,8 +53,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: companion-lab-report
-          path: |
-            test/fixtures/companion-lab-scenarios.json
-            test/fixtures/replies/
+          path: companion-lab-report.txt
           retention-days: 30
-          if-no-files-found: ignore
