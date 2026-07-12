@@ -26,10 +26,57 @@ $$;
 create index if not exists journal_entries_owner_side_created_idx
   on public.journal_entries (user_id, owner_side, created_at desc);
 
--- One reaction per signed-in account and public post. A later reaction replaces
--- the previous reaction instead of inflating totals by repeated taps.
+-- One reaction per permanent account and post. A later reaction replaces the
+-- previous reaction instead of inflating totals by repeated taps.
 create unique index if not exists circle_reactions_unique_user_post
   on public.circle_reactions (post_id, post_type, user_id);
+
+-- Keep the user foreign key cheap to validate/delete independently from the
+-- composite uniqueness index above, whose leading columns are post scoped.
+create index if not exists circle_reactions_user_id_idx
+  on public.circle_reactions (user_id);
+
+-- The legacy policy treated anonymous Supabase Auth users as ordinary signed-in
+-- users because they also assume the authenticated Postgres role. Replace it
+-- with a restrictive permanent-account boundary plus an owner policy so direct
+-- Data API writes cannot bypass the RPC's account requirement.
+alter table public.circle_reactions enable row level security;
+
+drop policy if exists cr_read on public.circle_reactions;
+drop policy if exists cr_self on public.circle_reactions;
+drop policy if exists circle_reactions_permanent_accounts_only on public.circle_reactions;
+drop policy if exists circle_reactions_self on public.circle_reactions;
+
+create policy circle_reactions_permanent_accounts_only
+on public.circle_reactions
+as restrictive
+for all
+to authenticated
+using (
+  coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) is false
+)
+with check (
+  coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false) is false
+);
+
+create policy circle_reactions_self
+on public.circle_reactions
+for all
+to authenticated
+using (
+  (select auth.uid()) is not null
+  and (select auth.uid()) = user_id
+)
+with check (
+  (select auth.uid()) is not null
+  and (select auth.uid()) = user_id
+);
+
+-- Default privileges on this older project were far broader than the app needs,
+-- including TRUNCATE, REFERENCES, and TRIGGER for client roles.
+revoke all on table public.circle_reactions from anon;
+revoke all on table public.circle_reactions from authenticated;
+grant select, insert, update, delete on table public.circle_reactions to authenticated;
 
 create or replace function public.react_to_public_circle_post(
   p_post_id bigint,
@@ -38,7 +85,7 @@ create or replace function public.react_to_public_circle_post(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = pg_catalog, pg_temp
 as $$
 declare
   v_user_id uuid := auth.uid();
@@ -56,12 +103,16 @@ begin
     raise exception 'unsupported reaction' using errcode = '22023';
   end if;
 
-  if not exists (
-    select 1
-    from public.public_circle_posts
-    where id = p_post_id
-      and safety_flagged is false
-  ) then
+  -- Serialize reaction/count updates for this post. Without this row lock, two
+  -- concurrent reactions can each count before seeing the other's uncommitted
+  -- row and the last writer can leave the cached totals stale.
+  perform 1
+  from public.public_circle_posts
+  where id = p_post_id
+    and safety_flagged is false
+  for update;
+
+  if not found then
     raise exception 'post not found' using errcode = 'P0002';
   end if;
 
