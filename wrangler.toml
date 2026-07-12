@@ -13,3 +13,10 @@ enabled = true
 OPENAI_CHAT_MODEL = "gpt-4o"
 OPENAI_TTS_MODEL  = "gpt-4o-mini-tts"
 OPENAI_STT_MODEL  = "whisper-1"
+
+# Bridge summary rollout control (worker/bridge-summary.ts). This fails closed:
+# unset, blank, or "disabled" blocks generation. Set to "enabled" only after
+# the deployed two-account proof passes, or use a comma-separated list of teen
+# user IDs for a controlled beta cohort. A change takes effect on Worker deploy
+# without requiring an app release.
+BRIDGE_SUMMARIES_ROLLOUT = "disabled"
