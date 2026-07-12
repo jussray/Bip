@@ -58,3 +58,26 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
 });
+
+test('Teen Circle keeps public identity separate and does not expose fake Crew invites', async ({ page }) => {
+  await page.goto('/(teen)/circle');
+
+  await expect(page.getByText('🌐 Circle')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('🤝 Crew')).toBeVisible();
+  await expect(page.getByText('💜 Messages')).toBeVisible();
+  await expect(page.getByText(/Your Circle identity is separate from your private account/)).toBeVisible();
+
+  await page.getByText('🤝 Crew').click();
+
+  await expect(page.getByText('Private Crew is being prepared.')).toBeVisible();
+  await expect(page.getByText(/Placeholder invite codes are no longer treated as real connections/)).toBeVisible();
+});
+
+test('Parent Bridge is reachable as a primary tab and preserves the privacy boundary', async ({ page }) => {
+  await page.goto('/(parent)/bridge');
+
+  await expect(page.getByText('Parent Bridge', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Bridge', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Only summaries your teen deliberately chooses to share.')).toBeVisible();
+  await expect(page.getByText(/Linking accounts does not unlock journals, chats, mood history, media/)).toBeVisible();
+});
