@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: production-smoke
   cancel-in-progress: false
@@ -18,7 +21,7 @@ jobs:
     name: Verify sekretbip.net
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: >-
+    if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
 
@@ -29,7 +32,7 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '24'
           cache: npm
 
       - name: Install repository dependencies
