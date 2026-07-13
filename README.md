@@ -1,5 +1,9 @@
 # Se'kret Bip 💜
 
+> **Copyright © 2024–2026 Juss Ray. All rights reserved.**
+> This is proprietary software. No license to use, copy, modify, distribute,
+> sublicense, or create derivative works is granted. See [LICENSE](LICENSE).
+
 Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built with React Native, Expo Router, TypeScript, Supabase, and Cloudflare Workers.
 
 > Warm, funny, soft, slightly nosy, and never clinical.
@@ -203,4 +207,5 @@ Documentation is an implementation guardrail. When code, production configuratio
 
 ## License
 
-Private project.
+Copyright © 2024–2026 Juss Ray. All rights reserved.
+Proprietary software — see [LICENSE](LICENSE).
