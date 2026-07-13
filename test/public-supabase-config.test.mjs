@@ -29,7 +29,7 @@ const releaseMetadataSource = fs.readFileSync(
 const PUBLIC_FIXTURE = {
   EXPO_PUBLIC_SUPABASE_URL: 'https://fixture-project.supabase.co',
   EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_fixture_public_key',
-  EXPO_PUBLIC_BACKEND_URL: 'https://fixture-worker.example.workers.dev',
+  EXPO_PUBLIC_BACKEND_URL: 'https://fixture-worker.workers.dev',
 };
 
 test('production Expo export receives the canonical public Supabase config', () => {
