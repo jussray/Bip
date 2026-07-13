@@ -156,7 +156,7 @@
       "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/344",
       "acceptanceCriteria": [
         "Live RLS, table grants, database functions, Edge Function JWT settings, and migration parity are classified by trust boundary.",
-        "A rollback-contained live probe proves owner access, cross-user read and update denial, anonymous denial, and zero synthetic residue.",
+        "Rollback-contained live probes prove owner access, cross-user denial, anonymous denial, founder and guardian administration boundaries, and zero retained synthetic data.",
         "Server-owned configuration tables expose no client table privileges and preserve their rows and service-role access.",
         "Obsolete Edge Functions require platform JWT verification, return side-effect-free HTTP 410 responses, and have no executable callers.",
         "Anonymous-authenticated sessions cannot obtain founder, Control Room, audit-review, or guardian-administration authority even if a privileged profile row exists."
@@ -167,7 +167,9 @@
         "supabase/probes/authorization_phase0.sql",
         "supabase/probes/authorization_founder_guardian_phase1.sql",
         "supabase/migrations/20260713011803_harden_config_table_grants.sql",
-        "supabase/migrations/20260713023500_harden_founder_guardian_authorization.sql",
+        "supabase/migrations/20260713024231_harden_founder_helper_anonymous_guard.sql",
+        "supabase/migrations/20260713024245_harden_audit_control_room_policies.sql",
+        "supabase/migrations/20260713024253_remove_anon_audit_control_room_grants.sql",
         "supabase/functions/retirement-manifest.json",
         "supabase/functions/release-health/index.ts",
         "supabase/functions/bridge-e2e-probe/index.ts",
@@ -181,9 +183,9 @@
         "e2e/smoke.spec.ts"
       ],
       "verification": {
-        "state": "partial",
+        "state": "passed",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/344",
-        "blocker": "Founder/guardian hardening is proposed but not yet merged, applied, or live-probed. Custom-auth negative tests and password-breach protection also remain before L4 activation."
+        "blocker": "Phase 0, config grants, retired Edge Functions, and founder/guardian authorization passed. Parent-link, Bridge, push-token, task/reward-review, remaining Control Room RPCs, custom-auth Edge Functions, and password-breach protection still require focused proof before L4 activation."
       }
     },
     {
@@ -200,7 +202,7 @@
       "verification": {
         "state": "not-run",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
-        "blocker": "Founder/guardian database-function hardening, remaining custom-auth negative tests, and password-breach protection require focused proof before L4 schema activation."
+        "blocker": "Additional authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection require focused proof before L4 schema activation."
       }
     }
   ]
