@@ -2,6 +2,7 @@ import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {verifyPublicWebConfig} from './verify-public-web-config.mjs';
 
 function gitValue(args, cwd) {
   try {
@@ -54,6 +55,10 @@ export function writeReleaseMetadata(outputDirectory = 'dist', options = {}) {
 const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isDirectExecution) {
   const outputDirectory = process.argv[2] || 'dist';
+  const verification = verifyPublicWebConfig(outputDirectory);
+  console.log(
+    `Verified ${verification.verifiedNames.length} required public configuration values in ${verification.distPath}.`,
+  );
   const result = writeReleaseMetadata(outputDirectory);
   console.log(`Wrote release metadata to ${result.destination}`);
   console.log(JSON.stringify(result.metadata));
