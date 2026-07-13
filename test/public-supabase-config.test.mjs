@@ -6,51 +6,61 @@ const envSource = fs.readFileSync(
   new URL('../src/utils/env.ts', import.meta.url),
   'utf8',
 );
-
+const productionEnv = fs.readFileSync(
+  new URL('../.env.production', import.meta.url),
+  'utf8',
+);
+const gitignore = fs.readFileSync(
+  new URL('../.gitignore', import.meta.url),
+  'utf8',
+);
 const supabaseSource = fs.readFileSync(
   new URL('../src/utils/supabase.ts', import.meta.url),
   'utf8',
 );
 
-test('production web builds retain a client-safe Supabase default', () => {
+test('production Expo export receives the canonical public Supabase config', () => {
   assert.match(
-    envSource,
-    /PRODUCTION_SUPABASE_URL\s*=\s*'https:\/\/tbsevonvegdnlyjgplmm\.supabase\.co'/,
+    productionEnv,
+    /^EXPO_PUBLIC_SUPABASE_URL=https:\/\/tbsevonvegdnlyjgplmm\.supabase\.co$/m,
   );
   assert.match(
-    envSource,
-    /PRODUCTION_SUPABASE_PUBLISHABLE_KEY\s*=\s*'sb_publishable_[A-Za-z0-9_-]+'/,
+    productionEnv,
+    /^EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_[A-Za-z0-9_-]+$/m,
   );
   assert.match(
-    envSource,
-    /clean\(env\.EXPO_PUBLIC_SUPABASE_URL\)[\s\S]*\|\| PRODUCTION_SUPABASE_URL/,
+    productionEnv,
+    /^EXPO_PUBLIC_BACKEND_URL=https:\/\/sekret-backend\.mcgill-raylene\.workers\.dev$/m,
   );
-  assert.match(
-    envSource,
-    /clean\(env\.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY\)[\s\S]*clean\(env\.EXPO_PUBLIC_SUPABASE_ANON_KEY\)[\s\S]*PRODUCTION_SUPABASE_PUBLISHABLE_KEY/,
-  );
+  assert.doesNotMatch(gitignore, /^\.env\.production$/m);
 });
 
-test('deployment variables override defaults and legacy anon env remains supported', () => {
+test('client prefers modern publishable config and retains legacy anon compatibility', () => {
+  assert.match(
+    envSource,
+    /export const SUPABASE_URL = clean\(env\.EXPO_PUBLIC_SUPABASE_URL\)/,
+  );
+  assert.match(
+    envSource,
+    /clean\(env\.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY\)[\s\S]*clean\(env\.EXPO_PUBLIC_SUPABASE_ANON_KEY\)/,
+  );
+
   const publishableIndex = envSource.indexOf('clean(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY)');
   const legacyIndex = envSource.indexOf('clean(env.EXPO_PUBLIC_SUPABASE_ANON_KEY)');
-  const defaultIndex = envSource.indexOf('|| PRODUCTION_SUPABASE_PUBLISHABLE_KEY');
-
   assert.notEqual(publishableIndex, -1);
   assert.notEqual(legacyIndex, -1);
-  assert.notEqual(defaultIndex, -1);
   assert.equal(publishableIndex < legacyIndex, true);
-  assert.equal(legacyIndex < defaultIndex, true);
 });
 
-test('client config never embeds a privileged Supabase key', () => {
-  assert.doesNotMatch(envSource, /sb_secret_/i);
-  assert.doesNotMatch(envSource, /service_role[^'"\n]*['"][A-Za-z0-9._-]{20,}/i);
-  assert.match(envSource, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(envSource, /This key must NEVER be in Expo, Vercel, or client code/);
+test('production config contains only public client values', () => {
+  assert.doesNotMatch(productionEnv, /sb_secret_/i);
+  assert.doesNotMatch(productionEnv, /SUPABASE_SERVICE_ROLE_KEY/i);
+  assert.doesNotMatch(productionEnv, /OPENAI_API_KEY/i);
+  assert.doesNotMatch(productionEnv, /SEKRET_CLIENT_TOKEN/i);
+  assert.match(productionEnv, /Never add server secrets here/);
 });
 
-test('Supabase readiness uses the resolved production-capable values', () => {
+test('Supabase readiness uses the resolved Expo public values', () => {
   assert.match(envSource, /isSupabaseReady = Boolean\(SUPABASE_URL && SUPABASE_ANON\)/);
   assert.match(supabaseSource, /export const isSupabaseConfigured = isSupabaseReady/);
   assert.match(supabaseSource, /createClient\(SUPABASE_URL, SUPABASE_ANON/);
