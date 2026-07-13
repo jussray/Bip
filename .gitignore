@@ -22,6 +22,7 @@ web-build/
 
 # ── Browser test artifacts ────────────────────────────────────────────────
 playwright-report/
+playwright-report-auth-redirect/
 test-results/
 
 # ── Control Room generated reports ────────────────────────────────────────
