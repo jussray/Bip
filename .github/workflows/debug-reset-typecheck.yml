@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/mind-body-reset-workouts
+  pull_request:
 
 jobs:
   capture-typecheck:
