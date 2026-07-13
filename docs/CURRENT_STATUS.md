@@ -10,6 +10,7 @@ This page is the human-readable status summary. `implementation-ledger.json` is 
 - Supabase-backed authentication, synchronization, ordered migrations, RLS, Storage, and Edge Functions
 - Canonical Cloudflare Worker `sekret-backend`
 - Cloudflare Pages project `sekret-bip`
+- One typed frontend-to-Worker client and shared request/response contract for companion replies, transcription, speech, health, stable errors, trace IDs, fallback state, and avatar state
 - Companion reply, transcription, speech, and metadata-only telemetry flows
 - Versioned Se'kret identity and companion-style runtime wrapper in Worker and TTS paths
 - Mind + Body Reset guided regulation tools and timer-driven bodyweight workouts
@@ -26,8 +27,20 @@ This page is the human-readable status summary. `implementation-ledger.json` is 
 - `release-health`, `bridge-e2e-probe`, and `github-workflow-status` retired as JWT-protected, side-effect-free HTTP 410 functions with replacement evidence
 - Repository migration history aligned with the live Supabase migration version for config-grant hardening
 - The existing `bip_events` event-to-points trigger restored and inspected live without adding a parallel workout or reward table
+- `comfort_sessions` and `room_memory` now require both permanent-account status and matching ownership; anonymous table grants were removed and authenticated access was reduced to CRUD only
+- Migration `20260713230600_harden_private_self_data_permanent_accounts` is applied live and matches the repository migration ledger
+- A rollback-contained live proof passed 7 of 7 checks: anonymous-auth writes were denied, permanent-owner writes remained functional, least-privilege grants were confirmed, and no synthetic application rows were retained
+- Supabase still emits static anonymous-role warnings for these guarded policies because the advisor does not evaluate `is_non_anonymous_user()`; the executable JWT-claim proof is the authorization evidence
 
 ## Integrated but not yet fully verified or released
+
+### Frontend-to-Worker contract spine
+
+- `src/contracts/sekretApi.ts` defines the shared reply, voice, transcription, avatar-state, and stable-error contracts.
+- `src/services/backend/sekretClient.ts` owns migrated Worker transport, authentication headers, timeout mapping, trace IDs, and Worker-versus-local fallback state.
+- Main chat, legacy API helpers, and the founder Worker adapter route through the shared client rather than owning separate direct fetch logic.
+- Exact-head CI, Type Check, Quality Gate, Regression, Pre-Push, Companion Lab, and Playwright passed before merge.
+- Exact-production-release observation and complete user-facing proof for 401, 403, 429, timeout, offline, safety, malformed-response, and voice-unavailable states remain before verified or released status.
 
 ### Mind + Body Reset
 
@@ -59,7 +72,8 @@ This page is the human-readable status summary. `implementation-ledger.json` is 
 
 - Controlled production proof for Bridge and parent relationship journeys
 - Account deletion and privacy lifecycle completion
-- Focused positive and negative behavior tests for high-blast-radius authenticated database functions
+- Focused positive and negative behavior tests for remaining high-blast-radius authenticated database functions
+- Continued anonymous-auth policy hardening for Bridge, activity, points/rewards, tasks, relationships, and other private surfaces tracked in issue #399
 - Negative-auth tests for the two remaining custom-auth Edge Functions: `account-delete` and `safety-scan`
 - Password-breach protection planning and Auth regression evidence
 - Legal, accessibility, safeguarding, moderation, and store-review readiness
@@ -85,5 +99,6 @@ See:
 - `docs/WIRING_STATUS.md`
 - `docs/DEMO_READINESS_ENFORCEMENT.md`
 - `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
+- `security/private-self-data-hardening.json`
 - `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
 - `DEPLOYMENT.md`
