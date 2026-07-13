@@ -47,7 +47,7 @@
       },
       "verification": {
         "state": "blocked",
-        "evidence": "https://github.com/jussray/Sekret-Bip/issues/270#issuecomment-4953018790",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/270",
         "blocker": "Deploy the reviewed Worker through the canonical Cloudflare path and repeat the controlled two-account proof."
       },
       "rollback": "Keep BRIDGE_SUMMARIES_ROLLOUT disabled; revert the Worker deployment or merge commit if the controlled proof fails."
@@ -85,14 +85,14 @@
       "rollout": {
         "state": "controlled",
         "controlPath": "worker/index.ts",
-        "controlKey": "authenticated /api/sekret/reply and /api/sekret/voice runtime wrapper"
+        "controlKey": "authenticated reply and voice runtime wrapper"
       },
       "verification": {
         "state": "partial",
         "evidence": "https://github.com/jussray/Sekret-Bip/pull/360",
         "blocker": "Exact-head CI, Companion Lab, and Playwright passed; production deployment and observed live style-version telemetry remain before verified or released status."
       },
-      "rollback": "Revert the runtime-activation merge commit; the existing sekret-reply brain remains intact behind the wrapper and no database migration is introduced."
+      "rollback": "Revert the runtime-activation merge commit; the existing reply brain remains intact behind the wrapper and no database migration is introduced."
     },
     {
       "id": "control-room-operational-observability",
@@ -135,29 +135,35 @@
     },
     {
       "id": "supabase-authorization-proof",
-      "name": "Supabase authorization Phase 0 inventory and denial harness",
+      "name": "Supabase authorization inventory and denial harness",
       "status": "contract",
       "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/344",
       "acceptanceCriteria": [
-        "Live RLS, table grants, SECURITY DEFINER functions, Edge Function JWT settings, and migration parity are classified by trust boundary.",
+        "Live RLS, table grants, database functions, Edge Function JWT settings, and migration parity are classified by trust boundary.",
         "A rollback-contained live probe proves owner access, cross-user read and update denial, anonymous denial, and zero synthetic residue.",
         "Server-owned configuration tables expose no client table privileges and preserve their rows and service-role access.",
-        "L4 persistence remains blocked until the authorization boundary it will use has reviewed migrations and denial tests."
+        "Obsolete Edge Functions require platform JWT verification, return side-effect-free HTTP 410 responses, and have no executable callers."
       ],
       "contractPaths": [
         "security/supabase-authorization-baseline.json",
         "docs/security/SUPABASE_AUTHORIZATION_PHASE0.md",
         "supabase/probes/authorization_phase0.sql",
-        "supabase/migrations/20260713011803_harden_config_table_grants.sql"
+        "supabase/migrations/20260713011803_harden_config_table_grants.sql",
+        "supabase/functions/retirement-manifest.json",
+        "supabase/functions/release-health/index.ts",
+        "supabase/functions/bridge-e2e-probe/index.ts",
+        "supabase/functions/github-workflow-status/index.ts"
       ],
       "testPaths": [
         "test/supabase-authorization-phase0.test.mjs",
-        "test/supabase-config-grants.test.mjs"
+        "test/supabase-config-grants.test.mjs",
+        "test/retired-edge-functions.test.mjs",
+        "e2e/smoke.spec.ts"
       ],
       "verification": {
         "state": "passed",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/344",
-        "blocker": "Phase 0 and config-table grant hardening passed; authenticated RPC denial suites, stale release-health cleanup, retired functions, and Auth leaked-password protection remain before L4 activation."
+        "blocker": "Authorization inventory, config-grant hardening, and JWT-protected retirements passed; authenticated database-function denial suites, remaining custom-auth negative tests, and password-breach protection remain before L4 activation."
       }
     },
     {
@@ -174,7 +180,7 @@
       "verification": {
         "state": "not-run",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
-        "blocker": "Config-table grants are hardened; high-blast-radius authenticated RPCs, stale release-health evidence, retired functions, and Auth leaked-password protection still require focused Phase 1 proof before L4 schema activation."
+        "blocker": "Config grants and obsolete Edge Function exposure are hardened; authenticated database-function denial suites and password-breach protection still require focused proof before L4 schema activation."
       }
     }
   ]

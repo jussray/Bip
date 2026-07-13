@@ -110,4 +110,6 @@ test('authorization evidence and retired internals stay out of the public web su
   expect(visibleText).not.toContain('release-health');
   expect(visibleText).not.toContain('bridge-e2e-probe');
   expect(visibleText).not.toContain('github-workflow-status');
+  expect(visibleText).not.toContain('retirement-manifest.json');
+  expect(visibleText).not.toContain('function_retired');
 });
