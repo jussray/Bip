@@ -8,20 +8,23 @@ function read(path) {
 
 const wrangler = read('wrangler.toml');
 const workflow = read('.github/workflows/deploy-cloudflare.yml');
+const verifier = read('scripts/verify-cloudflare-native-deploy.mjs');
 const eas = JSON.parse(read('eas.json'));
 
 const WORKER_NAME = 'sekret-backend';
 const WORKER_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
 
- test('Wrangler targets the canonical Worker name', () => {
+test('Wrangler targets the canonical Worker name', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
 });
 
-test('production verification requires the canonical native Worker deployment', () => {
-  assert.ok(workflow.includes(`Workers Builds: ${WORKER_NAME}`));
+test('production verification requires the canonical native Worker and Pages checks', () => {
+  assert.ok(workflow.includes('npm run test:e2e:production'));
+  assert.ok(workflow.includes('scripts/verify-cloudflare-native-deploy.mjs'));
   assert.ok(workflow.includes(`${WORKER_URL}/health`));
-  assert.ok(workflow.includes('Cloudflare Pages'));
   assert.ok(workflow.includes('checks: read'));
+  assert.ok(verifier.includes(`Workers Builds: ${WORKER_NAME}`));
+  assert.ok(verifier.includes('Cloudflare Pages'));
 });
 
 test('GitHub Actions does not require Cloudflare deployment credentials', () => {
