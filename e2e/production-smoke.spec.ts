@@ -1,5 +1,28 @@
 import { expect, test } from '@playwright/test';
 
+const expectedReleaseSha = process.env.EXPECTED_RELEASE_SHA?.trim().toLowerCase();
+
+test('production exposes the exact expected release commit', async ({ request }) => {
+  test.skip(!expectedReleaseSha, 'EXPECTED_RELEASE_SHA is required for exact production release proof.');
+
+  const response = await request.get(`/release.json?playwright=${Date.now()}`, {
+    headers: {
+      'cache-control': 'no-cache, no-store, max-age=0',
+    },
+  });
+  expect(response.ok()).toBe(true);
+  expect(response.headers()['content-type']).toContain('application/json');
+
+  const release = await response.json();
+  expect(release).toMatchObject({
+    schemaVersion: 1,
+    app: 'sekret-bip',
+    commitSha: expectedReleaseSha,
+    branch: 'main',
+    deploymentProvider: 'cloudflare-pages',
+  });
+});
+
 // A blank/unauthenticated session on a protected route lands on the splash
 // onboarding entry point, not a bare /login form — confirmed against real
 // production by the sibling "Teen Circle cannot bypass account onboarding"

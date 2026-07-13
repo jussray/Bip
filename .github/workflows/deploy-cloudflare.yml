@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: cloudflare-native-production-${{ github.sha }}
-  cancel-in-progress: false
+  group: cloudflare-native-production
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -15,16 +15,18 @@ permissions:
 
 jobs:
   verify-native-deployment:
-    name: Verify Workers Builds and Pages
+    name: Verify exact Worker and Pages release
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 40
     env:
       GITHUB_TOKEN: ${{ github.token }}
-      CLOUDFLARE_CHECK_TIMEOUT_MS: '900000'
+      CLOUDFLARE_CHECK_TIMEOUT_MS: '1800000'
       CLOUDFLARE_CHECK_POLL_MS: '10000'
       CLOUDFLARE_EVIDENCE_PATH: artifacts/cloudflare-native-deploy.json
       PRODUCTION_BASE_URL: https://sekretbip.net
+      FRONTEND_RELEASE_URL: https://sekretbip.net/release.json
       BACKEND_HEALTH_URL: https://sekret-backend.mcgill-raylene.workers.dev/health
+      EXPECTED_RELEASE_SHA: ${{ github.sha }}
     steps:
       - name: Check out deployed commit
         uses: actions/checkout@v4
@@ -38,7 +40,7 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
-      - name: Wait for Cloudflare Git integration deployments
+      - name: Wait for exact Worker check and Pages release marker
         run: node scripts/verify-cloudflare-native-deploy.mjs
 
       - name: Verify backend health
@@ -48,7 +50,7 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Verify deployed frontend with Playwright
+      - name: Verify exact deployed frontend with Playwright
         run: npm run test:e2e:production
 
       - name: Upload deployment evidence

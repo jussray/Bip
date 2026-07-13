@@ -4,6 +4,9 @@ import {fileURLToPath} from 'node:url';
 
 export const REQUIRED_CLOUDFLARE_CHECKS = Object.freeze([
   'Workers Builds: sekret-backend',
+]);
+
+export const OPTIONAL_CLOUDFLARE_CHECKS = Object.freeze([
   'Cloudflare Pages',
 ]);
 
@@ -21,15 +24,16 @@ function newestFirst(a, b) {
   return bTime - aTime;
 }
 
-export function evaluateCloudflareChecks(checkRuns, requiredChecks = REQUIRED_CLOUDFLARE_CHECKS) {
-  const selected = {};
+function selectNewestCheck(checkRuns, name) {
+  return checkRuns
+    .filter((run) => run?.name === name)
+    .sort(newestFirst)[0] ?? null;
+}
 
-  for (const requiredName of requiredChecks) {
-    const candidates = checkRuns
-      .filter((run) => run?.name === requiredName)
-      .sort(newestFirst);
-    selected[requiredName] = candidates[0] ?? null;
-  }
+export function evaluateCloudflareChecks(checkRuns, requiredChecks = REQUIRED_CLOUDFLARE_CHECKS) {
+  const selected = Object.fromEntries(
+    requiredChecks.map((name) => [name, selectNewestCheck(checkRuns, name)]),
+  );
 
   const missing = requiredChecks.filter((name) => !selected[name]);
   const pending = requiredChecks.filter((name) => {
@@ -55,6 +59,17 @@ export function evaluateCloudflareChecks(checkRuns, requiredChecks = REQUIRED_CL
   };
 }
 
+export function evaluateReleaseMarker(marker, expectedSha) {
+  const actualSha = typeof marker?.commitSha === 'string' ? marker.commitSha.trim().toLowerCase() : '';
+  const normalizedExpected = String(expectedSha ?? '').trim().toLowerCase();
+  return {
+    complete: Boolean(normalizedExpected) && actualSha === normalizedExpected,
+    expectedSha: normalizedExpected,
+    actualSha: actualSha || null,
+    marker: marker && typeof marker === 'object' ? marker : null,
+  };
+}
+
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -64,7 +79,7 @@ async function fetchCheckRuns({repository, sha, token}) {
   if (!owner || !repo) throw new Error(`Invalid GITHUB_REPOSITORY: ${repository}`);
 
   const response = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs?per_page=100`,
+    `https://api.github.com/repos/${owner}/${repo}/commits/${sha}/check-runs?per_page=100&filter=all`,
     {
       headers: {
         Accept: 'application/vnd.github+json',
@@ -82,6 +97,19 @@ async function fetchCheckRuns({repository, sha, token}) {
 
   const payload = await response.json();
   return Array.isArray(payload.check_runs) ? payload.check_runs : [];
+}
+
+async function fetchReleaseMarker(releaseUrl) {
+  const url = new URL(releaseUrl);
+  url.searchParams.set('verify', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+      'Cache-Control': 'no-cache, no-store, max-age=0',
+    },
+  });
+  if (!response.ok) return null;
+  return response.json().catch(() => null);
 }
 
 function publicCheckEvidence(run) {
@@ -102,7 +130,8 @@ async function verifyCloudflareNativeDeploy() {
   const repository = process.env.GITHUB_REPOSITORY;
   const sha = process.env.GITHUB_SHA;
   const token = process.env.GITHUB_TOKEN;
-  const timeoutMs = Number(process.env.CLOUDFLARE_CHECK_TIMEOUT_MS ?? 15 * 60 * 1000);
+  const releaseUrl = process.env.FRONTEND_RELEASE_URL ?? 'https://sekretbip.net/release.json';
+  const timeoutMs = Number(process.env.CLOUDFLARE_CHECK_TIMEOUT_MS ?? 25 * 60 * 1000);
   const pollMs = Number(process.env.CLOUDFLARE_CHECK_POLL_MS ?? 10_000);
   const evidencePath = process.env.CLOUDFLARE_EVIDENCE_PATH ?? 'artifacts/cloudflare-native-deploy.json';
 
@@ -111,39 +140,59 @@ async function verifyCloudflareNativeDeploy() {
   }
 
   const deadline = Date.now() + timeoutMs;
-  let evaluation;
+  let checkEvaluation;
+  let releaseEvaluation = evaluateReleaseMarker(null, sha);
+  let allCheckRuns = [];
 
   while (Date.now() < deadline) {
-    const checkRuns = await fetchCheckRuns({repository, sha, token});
-    evaluation = evaluateCloudflareChecks(checkRuns);
+    allCheckRuns = await fetchCheckRuns({repository, sha, token});
+    checkEvaluation = evaluateCloudflareChecks(allCheckRuns);
 
-    if (evaluation.failed.length > 0) {
-      throw new Error(`Cloudflare native deployment failed: ${evaluation.failed.join(', ')}`);
+    if (checkEvaluation.failed.length > 0) {
+      throw new Error(`Cloudflare Worker deployment failed: ${checkEvaluation.failed.join(', ')}`);
     }
 
-    if (evaluation.complete) break;
+    const marker = await fetchReleaseMarker(releaseUrl).catch(() => null);
+    releaseEvaluation = evaluateReleaseMarker(marker, sha);
 
-    const waitingFor = [...evaluation.missing, ...evaluation.pending, ...evaluation.unsuccessful];
-    console.log(`Waiting for Cloudflare native deployment checks: ${[...new Set(waitingFor)].join(', ')}`);
+    if (checkEvaluation.complete && releaseEvaluation.complete) break;
+
+    const waitingFor = [
+      ...checkEvaluation.missing,
+      ...checkEvaluation.pending,
+      ...checkEvaluation.unsuccessful,
+      ...(releaseEvaluation.complete ? [] : [`Pages release marker ${releaseEvaluation.actualSha ?? 'missing'} -> ${sha}`]),
+    ];
+    console.log(`Waiting for exact production release: ${[...new Set(waitingFor)].join(', ')}`);
     await sleep(pollMs);
   }
 
-  if (!evaluation?.complete) {
+  if (!checkEvaluation?.complete || !releaseEvaluation.complete) {
     throw new Error(
-      `Timed out waiting for successful Cloudflare native deployment checks. Missing: ${evaluation?.missing.join(', ') || 'none'}; pending: ${evaluation?.pending.join(', ') || 'none'}; unsuccessful: ${evaluation?.unsuccessful.join(', ') || 'none'}`,
+      `Timed out waiting for the exact production release. Worker missing: ${checkEvaluation?.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation?.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation?.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; expected: ${sha}`,
     );
   }
 
+  const optionalChecks = Object.fromEntries(
+    OPTIONAL_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(selectNewestCheck(allCheckRuns, name))]),
+  );
+
   const evidence = {
-    version: 1,
+    version: 2,
     repository,
     commitSha: sha,
     verifiedAt: new Date().toISOString(),
     deploymentMode: 'cloudflare-native-git-integration',
     apiTokenRequiredInGitHub: false,
-    checks: Object.fromEntries(
-      REQUIRED_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(evaluation.selected[name])]),
+    requiredChecks: Object.fromEntries(
+      REQUIRED_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(checkEvaluation.selected[name])]),
     ),
+    optionalChecks,
+    pagesRelease: {
+      url: releaseUrl,
+      commitSha: releaseEvaluation.actualSha,
+      marker: releaseEvaluation.marker,
+    },
   };
 
   fs.mkdirSync(path.dirname(evidencePath), {recursive: true});
