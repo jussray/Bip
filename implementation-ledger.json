@@ -89,8 +89,8 @@
       },
       "verification": {
         "state": "partial",
-        "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
-        "blocker": "Exact-head CI, Playwright, and deployed style-version telemetry must pass before this can advance to verified or released."
+        "evidence": "https://github.com/jussray/Sekret-Bip/pull/360",
+        "blocker": "Exact-head CI, Companion Lab, and Playwright passed; production deployment and observed live style-version telemetry remain before verified or released status."
       },
       "rollback": "Revert the runtime-activation merge commit; the existing sekret-reply brain remains intact behind the wrapper and no database migration is introduced."
     },
@@ -134,6 +134,31 @@
       "rollback": "Remove the founder route entry and keep operational tables intact; do not expose Control Room routes to teen or parent navigation."
     },
     {
+      "id": "supabase-authorization-proof",
+      "name": "Supabase authorization Phase 0 inventory and denial harness",
+      "status": "contract",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/344",
+      "acceptanceCriteria": [
+        "Live RLS, table grants, SECURITY DEFINER functions, Edge Function JWT settings, and migration parity are classified by trust boundary.",
+        "A rollback-contained live probe proves owner access, cross-user read and update denial, anonymous denial, and zero synthetic residue.",
+        "No production DDL or broad policy rewrite is applied before focused trust-boundary review.",
+        "L4 persistence remains blocked until the authorization boundary it will use has reviewed migrations and denial tests."
+      ],
+      "contractPaths": [
+        "security/supabase-authorization-baseline.json",
+        "docs/security/SUPABASE_AUTHORIZATION_PHASE0.md",
+        "supabase/probes/authorization_phase0.sql"
+      ],
+      "testPaths": [
+        "test/supabase-authorization-phase0.test.mjs"
+      ],
+      "verification": {
+        "state": "passed",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/344",
+        "blocker": "Phase 0 proof passed; Phase 1 must still apply and verify small trust-boundary fixes before L4 activation."
+      }
+    },
+    {
       "id": "l4-continuity-memory",
       "name": "L4 continuity memory, goals, and reflection",
       "status": "planned",
@@ -147,7 +172,7 @@
       "verification": {
         "state": "not-run",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
-        "blocker": "Live Supabase does not contain agent_memories, agent_goals, or reflection_runs. Authorization Phase 0 on issue #344 must precede schema activation."
+        "blocker": "Authorization Phase 0 is now evidenced, but high-blast-radius policy and RPC trust boundaries still need focused Phase 1 migrations and denial proof before L4 schema activation."
       }
     }
   ]
