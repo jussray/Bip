@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-12",
+  "updatedAt": "2026-07-13",
   "statusOrder": [
     "planned",
     "contract",
@@ -48,14 +48,14 @@
       "verification": {
         "state": "blocked",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/270#issuecomment-4953018790",
-        "blocker": "Replace the invalid GitHub cloudflare-production API token, deploy the reviewed Worker, and repeat the controlled two-account proof."
+        "blocker": "Deploy the reviewed Worker through the canonical Cloudflare path and repeat the controlled two-account proof."
       },
       "rollback": "Keep BRIDGE_SUMMARIES_ROLLOUT disabled; revert the Worker deployment or merge commit if the controlled proof fails."
     },
     {
       "id": "sekret-identity-and-companion-style",
       "name": "Se’kret identity boundary and named-companion style engine",
-      "status": "contract",
+      "status": "integrated",
       "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/357",
       "acceptanceCriteria": [
         "Se’kret never appears as a selectable named companion.",
@@ -69,14 +69,30 @@
         "src/features/sekret/companionStyleEngine.ts",
         "docs/CONTROL_ROOM_ARCHITECTURE.md"
       ],
-      "testPaths": [
-        "test/sekret-control-room-contracts.test.mjs"
+      "runtimePaths": [
+        "worker/runtime-style.ts",
+        "worker/index.ts"
       ],
+      "testPaths": [
+        "test/sekret-control-room-contracts.test.mjs",
+        "test/runtime-style-activation.test.mjs"
+      ],
+      "telemetryPaths": [
+        "worker/observed-index.ts",
+        "worker/telemetry.ts",
+        "worker/audit/persist-event.ts"
+      ],
+      "rollout": {
+        "state": "controlled",
+        "controlPath": "worker/index.ts",
+        "controlKey": "authenticated /api/sekret/reply and /api/sekret/voice runtime wrapper"
+      },
       "verification": {
-        "state": "not-run",
-        "evidence": "https://github.com/jussray/Sekret-Bip/pull/346",
-        "blocker": "The contract layer is merged, but worker/sekret-reply.ts and the TTS path do not consume it yet."
-      }
+        "state": "partial",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
+        "blocker": "Exact-head CI, Playwright, and deployed style-version telemetry must pass before this can advance to verified or released."
+      },
+      "rollback": "Revert the runtime-activation merge commit; the existing sekret-reply brain remains intact behind the wrapper and no database migration is introduced."
     },
     {
       "id": "control-room-operational-observability",
