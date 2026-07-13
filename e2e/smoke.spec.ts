@@ -106,4 +106,5 @@ test('authorization evidence and secret identifiers stay out of the public web s
   expect(visibleText).not.toContain('SAFETY_SCAN_SECRET');
   expect(visibleText).not.toContain('app_private_config');
   expect(visibleText).not.toContain('app_config');
+  expect(visibleText).not.toContain('harden_config_table_grants');
 });
