@@ -141,21 +141,23 @@
       "acceptanceCriteria": [
         "Live RLS, table grants, SECURITY DEFINER functions, Edge Function JWT settings, and migration parity are classified by trust boundary.",
         "A rollback-contained live probe proves owner access, cross-user read and update denial, anonymous denial, and zero synthetic residue.",
-        "No production DDL or broad policy rewrite is applied before focused trust-boundary review.",
+        "Server-owned configuration tables expose no client table privileges and preserve their rows and service-role access.",
         "L4 persistence remains blocked until the authorization boundary it will use has reviewed migrations and denial tests."
       ],
       "contractPaths": [
         "security/supabase-authorization-baseline.json",
         "docs/security/SUPABASE_AUTHORIZATION_PHASE0.md",
-        "supabase/probes/authorization_phase0.sql"
+        "supabase/probes/authorization_phase0.sql",
+        "supabase/migrations/20260713011803_harden_config_table_grants.sql"
       ],
       "testPaths": [
-        "test/supabase-authorization-phase0.test.mjs"
+        "test/supabase-authorization-phase0.test.mjs",
+        "test/supabase-config-grants.test.mjs"
       ],
       "verification": {
         "state": "passed",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/344",
-        "blocker": "Phase 0 proof passed; Phase 1 must still apply and verify small trust-boundary fixes before L4 activation."
+        "blocker": "Phase 0 and config-table grant hardening passed; authenticated RPC denial suites, stale release-health cleanup, retired functions, and Auth leaked-password protection remain before L4 activation."
       }
     },
     {
@@ -172,7 +174,7 @@
       "verification": {
         "state": "not-run",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
-        "blocker": "Authorization Phase 0 is now evidenced, but high-blast-radius policy and RPC trust boundaries still need focused Phase 1 migrations and denial proof before L4 schema activation."
+        "blocker": "Config-table grants are hardened; high-blast-radius authenticated RPCs, stale release-health evidence, retired functions, and Auth leaked-password protection still require focused Phase 1 proof before L4 schema activation."
       }
     }
   ]
