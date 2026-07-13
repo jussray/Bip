@@ -1,23 +1,10 @@
 /**
- * src/services/ai/workerClient.ts
- *
- * Typed fetch client for the Se'kret Cloudflare Worker.
- * All companion AI traffic (reply, TTS, STT) routes through here.
- *
- * Endpoints mirrored from worker/index.ts:
- *   POST /reply       → CompanionReply
- *   POST /voice       → { audioBase64: string }
- *   POST /transcribe  → { text: string }
- *   GET  /health      → { ok: boolean; version?: string }
- *
- * Usage:
- *   import { workerClient } from '@/services/ai/workerClient';
- *   const reply = await workerClient.sendReply({ characterId: 'raylene', ... });
+ * Founder-facing client for the canonical Se'kret backend Worker.
+ * The route and authorization contracts mirror src/utils/api.ts.
  */
 
-import Constants from 'expo-constants';
-
-// ─── Types (mirror worker/sekret-reply.ts) ──────────────────────────────────
+import { backendAuthHeaders } from '@/utils/backendAuth';
+import { BACKEND_URL } from '@/utils/env';
 
 export type CharacterId =
   | 'raylene'
@@ -47,7 +34,7 @@ export interface SendReplyParams {
   userText: string;
   history?: ConversationTurn[];
   mood?: string;
-  memory?: string;
+  memory?: Record<string, unknown> | string;
   parentSharingEnabled?: boolean;
   userName?: string;
   displayName?: string;
@@ -82,22 +69,16 @@ export interface WorkerHealthResult {
   url: string;
 }
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
-const WORKER_BASE_URL: string =
-  (Constants.expoConfig?.extra?.workerBaseUrl as string | undefined) ??
-  process.env.EXPO_PUBLIC_WORKER_BASE_URL ??
-  'https://sekret-backend.sekretbip.workers.dev';
-
+const WORKER_BASE_URL = BACKEND_URL.replace(/\/$/, '');
 const DEFAULT_TIMEOUT_MS = 12_000;
-
-// ─── Core fetch helper ────────────────────────────────────────────────────────
 
 async function workerFetch<T>(
   path: string,
   options: RequestInit,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<T> {
+  if (!WORKER_BASE_URL) throw new WorkerError(0, 'EXPO_PUBLIC_BACKEND_URL is not configured');
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -108,14 +89,7 @@ async function workerFetch<T>(
     });
 
     if (!res.ok) {
-      let detail = '';
-      try {
-        const body = await res.json();
-        detail = JSON.stringify(body);
-      } catch {
-        detail = await res.text().catch(() => '');
-      }
-      throw new WorkerError(res.status, `Worker ${path} → ${res.status}: ${detail}`);
+      throw new WorkerError(res.status, `Worker ${path} returned ${res.status}`);
     }
 
     return res.json() as Promise<T>;
@@ -130,8 +104,6 @@ async function workerFetch<T>(
   }
 }
 
-// ─── Error class ─────────────────────────────────────────────────────────────
-
 export class WorkerError extends Error {
   constructor(
     public readonly status: number,
@@ -142,56 +114,36 @@ export class WorkerError extends Error {
   }
 }
 
-// ─── Client ──────────────────────────────────────────────────────────────────
-
 const workerClient = {
-  /**
-   * POST /reply
-   * Main companion reply. Returns structured CompanionReply.
-   * Throws WorkerError on network failure, timeout, or non-2xx.
-   */
   async sendReply(params: SendReplyParams): Promise<CompanionReply> {
-    return workerFetch<CompanionReply>('/reply', {
+    return workerFetch<CompanionReply>('/api/sekret/reply', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(params),
     });
   },
 
-  /**
-   * POST /voice
-   * Text-to-speech for a companion reply.
-   * Returns { audioBase64: string }.
-   */
   async synthesizeVoice(
     params: SendVoiceParams,
   ): Promise<{ audioBase64: string }> {
-    return workerFetch<{ audioBase64: string }>('/voice', {
+    return workerFetch<{ audioBase64: string }>('/api/sekret/voice', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(params),
     });
   },
 
-  /**
-   * POST /transcribe
-   * Speech-to-text for voice input.
-   * Returns { text: string }.
-   */
   async transcribeAudio(
     params: TranscribeParams,
   ): Promise<{ text: string }> {
-    return workerFetch<{ text: string }>('/transcribe', {
+    const result = await workerFetch<{ transcript?: string; text?: string }>('/api/sekret/transcribe', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await backendAuthHeaders(),
       body: JSON.stringify(params),
     });
+    return { text: result.transcript ?? result.text ?? '' };
   },
 
-  /**
-   * GET /health
-   * Founder / Control Room: live Worker reachability + latency.
-   */
   async ping(): Promise<WorkerHealthResult> {
     const start = Date.now();
     try {
@@ -206,7 +158,7 @@ const workerClient = {
         version: result.version,
         url: WORKER_BASE_URL,
       };
-    } catch (err) {
+    } catch {
       return {
         ok: false,
         latencyMs: Date.now() - start,
