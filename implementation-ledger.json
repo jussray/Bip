@@ -139,8 +139,7 @@
       ],
       "telemetryPaths": [
         "src/features/activity/events.ts",
-        "public.bip_events",
-        "public.point_transactions"
+        "supabase/migrations/20260713052511_restore_bip_events_points_trigger.sql"
       ],
       "rollout": {
         "state": "internal",
