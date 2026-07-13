@@ -16,25 +16,14 @@ function clean(value: string | undefined): string {
   return value?.trim() ?? '';
 }
 
-// These are public browser credentials, not server secrets. Supabase publishable
-// keys are intended for web/mobile clients and remain constrained by Auth + RLS.
-// Cloudflare/Expo environment variables still override these defaults so the
-// project can rotate or target another Supabase environment without a code edit.
-const PRODUCTION_SUPABASE_URL = 'https://tbsevonvegdnlyjgplmm.supabase.co';
-const PRODUCTION_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_F57sxdjeDJGZuIZdix_UKg_zGKDvNTk';
-
 // ── Resolved values ──────────────────────────────────────────────────────────
-export const SUPABASE_URL =
-  clean(env.EXPO_PUBLIC_SUPABASE_URL)
-  || PRODUCTION_SUPABASE_URL;
+export const SUPABASE_URL = clean(env.EXPO_PUBLIC_SUPABASE_URL);
 
-// Prefer the modern publishable-key variable, retain the legacy env name for
-// existing EAS/Cloudflare configuration, then fall back to the production-safe
-// public key so a Pages build cannot silently disable Auth and cloud sync.
+// Prefer Supabase's modern publishable-key variable while retaining the legacy
+// anon-key name for older EAS and Cloudflare environments.
 export const SUPABASE_ANON =
   clean(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
-  || clean(env.EXPO_PUBLIC_SUPABASE_ANON_KEY)
-  || PRODUCTION_SUPABASE_PUBLISHABLE_KEY;
+  || clean(env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
 
 export const BACKEND_URL   = clean(env.EXPO_PUBLIC_BACKEND_URL);
 /**
@@ -68,8 +57,7 @@ const isDev = process.env.NODE_ENV === 'development';
 /**
  * validateEnv()
  *
- * Missing SUPABASE vars  → bundled public production defaults keep Auth and
- *                          cloud sync available; deployment vars may override.
+ * Missing SUPABASE vars  → cloud sync disabled, AsyncStorage only.
  * Missing BACKEND_URL    → AI replies fall back to pre-written companion
  *                          replies (see fallbackReply() in ./api). Fine for
  *                          local dev; deploy the Worker before real launch.
@@ -83,14 +71,14 @@ export function validateEnv(): void {
   // ── Required for cloud sync ──────────────────────────────────────────────
   if (!SUPABASE_URL) {
     console.warn(
-      "[Se'kret Bip] ⚠️  Supabase URL is unavailable.\n" +
-      '   Cloud sync is disabled. Configure EXPO_PUBLIC_SUPABASE_URL.'
+      "[Se'kret Bip] ⚠️  EXPO_PUBLIC_SUPABASE_URL is not set.\n" +
+      '   Cloud sync is disabled. Add it to the deployment environment.'
     );
   }
   if (!SUPABASE_ANON) {
     console.warn(
-      "[Se'kret Bip] ⚠️  Supabase publishable key is unavailable.\n" +
-      '   Cloud sync is disabled. Configure EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.'
+      "[Se'kret Bip] ⚠️  Supabase publishable key is not set.\n" +
+      '   Configure EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or the legacy EXPO_PUBLIC_SUPABASE_ANON_KEY).'
     );
   }
 
