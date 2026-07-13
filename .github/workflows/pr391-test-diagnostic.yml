@@ -1,0 +1,38 @@
+name: PR 391 Unit Test Diagnostic
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.env.production'
+      - '.env.example'
+      - 'src/utils/env.ts'
+      - 'test/public-supabase-config.test.mjs'
+      - '.github/workflows/pr391-test-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Print only failing unit-test diagnostics
+        shell: bash
+        run: |
+          set +e
+          npm test > unit-test.log 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo 'UNIT_TEST_DIAGNOSTIC_BEGIN'
+            grep -n -E 'not ok|AssertionError|ERR_ASSERTION|failureType|error:|expected:|actual:|operator:|test:' unit-test.log | tail -n 120 || true
+            echo 'UNIT_TEST_DIAGNOSTIC_END'
+          fi
+          exit "$status"
