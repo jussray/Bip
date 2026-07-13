@@ -16,8 +16,8 @@ Cloudflare's native Git integration is the production deployment authority for t
 - `Cloudflare Pages` deploys the `sekret-bip` Pages project from pushes to `main`.
 - `Workers Builds: sekret-backend` deploys the canonical backend Worker from pushes to `main`.
 - GitHub Actions does **not** upload code to Cloudflare and does not require a `CLOUDFLARE_API_TOKEN`.
-- `.github/workflows/deploy-cloudflare.yml` waits for both Cloudflare check runs on the exact commit, verifies backend health, and runs the production Playwright suite against `https://sekretbip.net`.
-- A release is not considered deployed when only one Cloudflare check succeeds.
+- `.github/workflows/deploy-cloudflare.yml` verifies the latest `main` release rather than creating a competing deployment.
+- Older verification runs are cancelled when a newer `main` commit arrives, because a superseded commit cannot honestly be called the current production release.
 
 This removes the duplicate token-based deployment path that could disagree with the already-connected Cloudflare GitHub App. Two deployment authorities are how configuration drift acquires a pension plan.
 
@@ -63,6 +63,8 @@ The Worker must validate authenticated identity for private routes and must not 
 
 The canonical Pages project is `sekret-bip`, deployed by the Cloudflare GitHub App after a push to `main`.
 
+Cloudflare Pages injects `CF_PAGES_COMMIT_SHA` and `CF_PAGES_BRANCH` during the build. `npm run build:web` writes those values to the public, non-sensitive `dist/release.json` file after Expo export. The deployed marker proves which commit is actually serving traffic instead of trusting a check run that may remain stale after a superseded build.
+
 Manual local direct upload remains an emergency administrator fallback:
 
 ```bash
@@ -73,21 +75,22 @@ Configure only the required public client variables in the Pages build environme
 
 ## Production verification
 
-The automatic verifier requires both native Cloudflare check runs to complete successfully on the exact `main` commit:
+The automatic verifier proves the current `main` commit through independent runtime evidence:
 
-```text
-Workers Builds: sekret-backend
-Cloudflare Pages
-```
-
-It then verifies:
+1. The exact commit has a successful `Workers Builds: sekret-backend` check.
+2. `https://sekretbip.net/release.json` reports the exact same commit SHA and `main` branch.
+3. The canonical Worker health endpoint responds successfully.
+4. Read-only production Playwright verifies the release marker and protected teen and parent routes.
 
 ```bash
 curl --fail https://sekret-backend.mcgill-raylene.workers.dev/health
+curl --fail https://sekretbip.net/release.json
 npm run test:e2e:production
 ```
 
-The verifier stores commit-scoped Cloudflare check URLs and Playwright output as a GitHub Actions artifact.
+The Cloudflare Pages check is retained as useful diagnostic evidence, but the release marker is the authoritative Pages proof because it observes the deployed artifact itself.
+
+The verifier stores commit-scoped Worker check evidence, the Pages release marker, and Playwright output as a GitHub Actions artifact.
 
 ## Native builds
 
