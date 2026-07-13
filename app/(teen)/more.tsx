@@ -4,6 +4,7 @@ import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
 import { MoreScreen } from '@screens/MoreScreen';
 import { routeForSide } from '@/shared/routes';
+import { TEEN_ROUTES } from '@/teen/routes';
 
 export default function MoreRoute() {
   const { theme, mood, selectedSekret, userSide, setUserSide } = useAppContext();
@@ -15,6 +16,10 @@ export default function MoreRoute() {
       router.push('/(parent)/room' as any);
     } else if (screen === 'home') {
       router.push('/(teen)/room' as any);
+    } else if (screen === 'bridge') {
+      router.push(TEEN_ROUTES.bridge as any);
+    } else if (screen === 'l4' || screen === 'continuity') {
+      router.push(TEEN_ROUTES.l4 as any);
     } else if (screen === 'dev-control-room') {
       router.push('/(dev)/control-room' as any);
     } else if (screen === 'dev-split-view') {
