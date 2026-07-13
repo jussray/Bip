@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-13",
+  "project": {
+    "name": "Se'kret Bip",
+    "ref": "tbsevonvegdnlyjgplmm",
+    "region": "us-east-1",
+    "status": "ACTIVE_HEALTHY",
+    "latestLiveMigration": {
+      "version": "20260712184711",
+      "name": "optimize_circle_policy_plans"
+    }
+  },
+  "scope": {
+    "productionDdlApplied": false,
+    "productionDataRetained": false,
+    "purpose": "Phase 0 inventory and rollback-contained authorization proof before any L4 persistence or broad policy changes"
+  },
+  "advisorSnapshot": {
+    "rlsEnabledNoPolicy": [
+      {
+        "table": "app_config",
+        "classification": "intentional_deny_with_excess_client_grants",
+        "rlsEnabled": true,
+        "policyCount": 0,
+        "anonHasTablePrivileges": true,
+        "authenticatedHasTablePrivileges": true,
+        "serviceRoleHasTablePrivileges": true,
+        "nextAction": "Revoke anon and authenticated table privileges in a separate reviewed migration, preserving service-role access."
+      },
+      {
+        "table": "app_private_config",
+        "classification": "intentional_deny_with_excess_client_grants",
+        "rlsEnabled": true,
+        "policyCount": 0,
+        "anonHasTablePrivileges": true,
+        "authenticatedHasTablePrivileges": true,
+        "serviceRoleHasTablePrivileges": true,
+        "nextAction": "Revoke anon and authenticated table privileges in a separate reviewed migration, preserving service-role access."
+      },
+      {
+        "table": "guardian_verification_reviews",
+        "classification": "service_role_only",
+        "rlsEnabled": true,
+        "policyCount": 0,
+        "anonHasTablePrivileges": false,
+        "authenticatedHasTablePrivileges": false,
+        "serviceRoleHasTablePrivileges": true,
+        "nextAction": "Document and scanner-verify the service-role-only boundary; do not add a client policy."
+      },
+      {
+        "table": "notification_deliveries",
+        "classification": "service_role_only",
+        "rlsEnabled": true,
+        "policyCount": 0,
+        "anonHasTablePrivileges": false,
+        "authenticatedHasTablePrivileges": false,
+        "serviceRoleHasTablePrivileges": true,
+        "nextAction": "Keep the existing service-role-only boundary and regression proof."
+      }
+    ],
+    "anonymousCapablePolicyWarning": {
+      "classification": "requires_predicate_proof_not_blanket_rewrite",
+      "highSensitivityExamples": [
+        "journal_entries",
+        "mood_history",
+        "voice_notes",
+        "room_memory",
+        "bridge_share_requests",
+        "bridge_summaries",
+        "parent_links",
+        "safety_alerts",
+        "audit_events"
+      ],
+      "verifiedProbeTables": [
+        "journal_entries",
+        "mood_history",
+        "voice_notes",
+        "room_memory"
+      ],
+      "nextAction": "Expand rollback-contained anonymous and two-user denial probes by trust boundary before changing policy roles or predicates."
+    },
+    "leakedPasswordProtection": {
+      "enabled": false,
+      "classification": "auth_configuration_gap",
+      "nextAction": "Enable only after signup, login, reset, and existing-account regression planning is ready."
+    }
+  },
+  "securityDefiner": {
+    "totalReviewed": 35,
+    "anonExecutable": [],
+    "authenticatedExecutable": [
+      "apply_inactivity_point_adjustment",
+      "can_manage_guardian_reviews",
+      "claim_push_token",
+      "create_bridge_share_request",
+      "create_parent_link_invite",
+      "disable_push_token",
+      "get_public_circle_profiles",
+      "is_founder",
+      "list_guardian_verification_queue",
+      "log_control_room_runtime_event",
+      "react_to_public_circle_post",
+      "redeem_crew_invite",
+      "redeem_parent_link_invite",
+      "report_own_audit_event_issue",
+      "request_reward_redemption",
+      "review_guardian_verification",
+      "review_reward_redemption",
+      "review_task_submission",
+      "revoke_bridge_share_request",
+      "revoke_parent_link",
+      "submit_bip_task",
+      "submit_guardian_verification",
+      "upsert_control_room_issue",
+      "upsert_own_bip_profile"
+    ],
+    "serviceRoleOnlyOrTriggerInternal": [
+      "apply_point_transaction",
+      "auto_resolve_issue_on_event_resolve",
+      "award_points_for_app_activity",
+      "enforce_circle_anonymity",
+      "handle_bip_event_points",
+      "initialize_account_verification",
+      "initialize_app_profile",
+      "refresh_control_room_release_health",
+      "refresh_parent_mood_summary",
+      "rls_auto_enable",
+      "trigger_safety_scan"
+    ],
+    "commonControlsObserved": [
+      "anon EXECUTE denied on every reviewed SECURITY DEFINER function",
+      "explicit search_path configured on every reviewed SECURITY DEFINER function",
+      "authenticated RPCs use auth.uid(), is_founder(), or can_manage_guardian_reviews() as an internal authorization boundary"
+    ],
+    "nextAction": "Classify and behavior-test each authenticated RPC by trust boundary before revoking or changing EXECUTE grants."
+  },
+  "edgeFunctions": {
+    "activeCount": 18,
+    "verifyJwtFalse": [
+      {
+        "slug": "account-delete",
+        "classification": "custom_shared_secret",
+        "control": "x-account-deletion-secret must match ACCOUNT_DELETION_PROCESS_SECRET"
+      },
+      {
+        "slug": "safety-scan",
+        "classification": "postgres_trigger_shared_secret",
+        "control": "x-scan-secret must match SAFETY_SCAN_SECRET"
+      },
+      {
+        "slug": "release-health",
+        "classification": "custom_github_oidc_but_stale_configuration",
+        "control": "GitHub OIDC issuer and audience verification",
+        "gap": "Source still expects repository jussray/Bip and deploy-cloudflare.yml, so it is not valid evidence for the current jussray/Sekret-Bip native deployment path."
+      },
+      {
+        "slug": "bridge-e2e-probe",
+        "classification": "retired_http_410",
+        "control": "Always returns probe_retired with HTTP 410"
+      },
+      {
+        "slug": "github-workflow-status",
+        "classification": "retired_http_410",
+        "control": "Always returns probe_retired with HTTP 410"
+      }
+    ],
+    "nextAction": "Repair or replace release-health for the canonical repository/workflow and remove retired functions after confirming no callers remain."
+  },
+  "liveProof": {
+    "probePath": "supabase/probes/authorization_phase0.sql",
+    "transactionOutcome": "rolled_back",
+    "checks": [
+      {
+        "name": "authenticated_reads_own_private_rows",
+        "passed": true
+      },
+      {
+        "name": "authenticated_denied_cross_user_reads",
+        "passed": true
+      },
+      {
+        "name": "authenticated_denied_cross_user_update",
+        "passed": true
+      },
+      {
+        "name": "anon_denied_private_rows",
+        "passed": true
+      }
+    ],
+    "cleanup": {
+      "phase0Users": 0,
+      "phase0Journals": 0,
+      "phase0Moods": 0,
+      "phase0VoiceNotes": 0
+    }
+  },
+  "releaseGate": {
+    "l4SchemaAllowed": false,
+    "reason": "Phase 0 evidence is established, but high-blast-radius policy and RPC classifications still require small reviewed trust-boundary fixes before L4 persistence can be activated."
+  }
+}
