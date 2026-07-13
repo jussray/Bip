@@ -99,6 +99,8 @@ export function routeForSide(side: 'teen' | 'parent' | null | undefined, key: st
     growth: TEEN_ROUTES.growth,
     mindReset: TEEN_ROUTES.mindReset,
     bodyReset: TEEN_ROUTES.bodyReset,
+    l4: TEEN_ROUTES.l4,
+    continuity: TEEN_ROUTES.l4,
     resources: TEEN_ROUTES.resources,
   };
   return teenMap[key] ?? missingRoute('teen', key);
