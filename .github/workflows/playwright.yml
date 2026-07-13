@@ -10,7 +10,9 @@ on:
       - 'worker/**'
       - 'e2e/**'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'scripts/write-release-metadata.mjs'
       - 'test/cloudflare-native-deploy.test.mjs'
+      - 'test/release-metadata.test.mjs'
       - 'docs/VISION.md'
       - 'docs/GUARDRAILS.md'
       - 'DEPLOYMENT.md'
@@ -45,8 +47,8 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
-      - name: Run Cloudflare native verifier unit tests
-        run: node --test test/cloudflare-native-deploy.test.mjs
+      - name: Run exact-release unit tests
+        run: node --test test/cloudflare-native-deploy.test.mjs test/release-metadata.test.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
