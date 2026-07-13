@@ -1,0 +1,41 @@
+name: Temporary Lint Diagnostic
+
+on:
+  push:
+    branches:
+      - implementation/unify-worker-contracts
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Capture lint output
+        shell: bash
+        run: |
+          set +e
+          npm run lint > lint-output.txt 2>&1
+          status=$?
+          echo "$status" > lint-status.txt
+          cat lint-output.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: temporary-lint-diagnostic
+          path: |
+            lint-output.txt
+            lint-status.txt
+          if-no-files-found: error
+          retention-days: 1
