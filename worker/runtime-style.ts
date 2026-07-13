@@ -1,3 +1,4 @@
+import type { CompanionAvatarState } from '../src/contracts/sekretApi';
 import type { NamedCompanionId } from '../src/features/sekret/identityContract';
 import {
   buildCompanionStyleRequest,
@@ -32,6 +33,7 @@ export interface RuntimeStyleContract {
 export interface StyledResponseMetadata {
   actorId: ReplyActorId;
   actorRole: RuntimeActorRole;
+  avatarState: CompanionAvatarState;
   textStyleVersion: string;
   speechStyleVersion: string;
   questionBudget: number;
@@ -67,6 +69,28 @@ const FORBIDDEN_REPLACEMENTS: readonly (readonly [RegExp, string])[] = [
   [/\bi remember when you told me\b/gi, 'Something in this conversation stands out'],
   [/\boracle\b/gi, "Se'kret"],
 ] as const;
+
+const AVATAR_STATES: readonly CompanionAvatarState[] = [
+  'neutral',
+  'listening',
+  'thinking',
+  'comforting',
+  'happy',
+  'concerned',
+  'responding',
+] as const;
+
+function isAvatarState(value: unknown): value is CompanionAvatarState {
+  return typeof value === 'string' && AVATAR_STATES.includes(value as CompanionAvatarState);
+}
+
+function resolveAvatarState(data: Record<string, unknown>): CompanionAvatarState {
+  if (data.safetyFlag === true) return 'concerned';
+  if (isAvatarState(data.avatarState)) return data.avatarState;
+  if (typeof data.suggestedComfortTool === 'string' && data.suggestedComfortTool.trim()) return 'comforting';
+  if (data.tone === 'playful' || data.tone === 'happy' || data.detectedIntent === 'joking') return 'happy';
+  return 'responding';
+}
 
 export function normalizeReplyActor(value: unknown): ReplyActorId | null {
   if (typeof value !== 'string') return null;
@@ -207,6 +231,7 @@ export function enforceRuntimeStyleResponse(
     ...data,
     actorId: style.actorId,
     actorRole: style.role,
+    avatarState: resolveAvatarState(data),
     textStyleVersion: style.textStyleVersion,
     speechStyleVersion: style.speechStyleVersion,
     questionBudget: style.maxQuestions,
