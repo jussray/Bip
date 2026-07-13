@@ -24,6 +24,7 @@ export const TEEN_ROUTES = {
   mindReset: '/(teen)/mind-body-reset?mode=mindReset',
   bodyReset: '/(teen)/mind-body-reset?mode=bodyReset',
   bodyWorkout: '/(teen)/body-workout',
+  l4: '/(teen)/l4',
   parentLinkVerify: '/(auth)/parent-link-verify',
   resources: '/(teen)/resources',
 } as const;
