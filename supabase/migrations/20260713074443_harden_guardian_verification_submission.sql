@@ -28,6 +28,9 @@ begin
     raise exception 'completed parent profile required' using errcode = '42501';
   end if;
 
+  -- The review queue requires a guardian Circle identity. Enforce the same
+  -- invariant before transitioning state so malformed clients cannot create
+  -- pending records that the founder/admin queue can never display.
   select account_type into v_circle_account_type
   from public.circle_profiles
   where user_id = v_user_id;
