@@ -32,7 +32,7 @@ jobs:
           npm test > unit-test.log 2>&1
           status=$?
           if [ "$status" -ne 0 ]; then
-            grep -n -E 'not ok|AssertionError|ERR_ASSERTION|failureType|error:|expected:|actual:|operator:|test:' unit-test.log | tail -n 160 > unit-test-diagnostic.txt || true
+            tail -n 160 unit-test.log > unit-test-diagnostic.txt
           else
             echo 'all unit tests passed' > unit-test-diagnostic.txt
           fi
