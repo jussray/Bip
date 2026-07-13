@@ -91,7 +91,10 @@ test('parent-link RPC grants are explicit and anonymous execution stays denied',
     );
   }
 
-  assert.match(migration, /set search_path = public, auth/gi);
+  assert.equal(
+    [...migration.matchAll(/set search_path = public, auth/gi)].length,
+    2,
+  );
 });
 
 test('relationship consent remains independent from guardian identity review', () => {
@@ -128,7 +131,10 @@ test('parent-link proof covers all high-blast behavior outcomes', () => {
 
   assert.match(probe, /exception when insufficient_privilege/gi);
   assert.match(probe, /exception when others/gi);
-  assert.match(probe, /select count\(\*\)::text from public\.redeem_parent_link_invite/i);
+  assert.match(
+    probe,
+    /select count\(\*\)::text[\s\S]*?from public\.redeem_parent_link_invite/i,
+  );
 });
 
 test('existing client treats an empty expired redemption response as unavailable', () => {
