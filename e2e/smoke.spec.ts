@@ -104,4 +104,6 @@ test('authorization evidence and secret identifiers stay out of the public web s
   expect(visibleText).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
   expect(visibleText).not.toContain('ACCOUNT_DELETION_PROCESS_SECRET');
   expect(visibleText).not.toContain('SAFETY_SCAN_SECRET');
+  expect(visibleText).not.toContain('app_private_config');
+  expect(visibleText).not.toContain('app_config');
 });
