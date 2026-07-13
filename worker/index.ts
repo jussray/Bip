@@ -53,7 +53,7 @@ function corsHeaders(request: Request, env: Env): Record<string, string> {
   }
   return {
     'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     Vary: 'Origin',
   };
@@ -65,6 +65,11 @@ function originRejected(request: Request, env: Env, cors: Record<string, string>
   const origin = request.headers.get('Origin');
   if (!origin || allowed.includes(origin)) return null;
   return json({ error: 'origin not allowed' }, 403, cors);
+}
+
+function hasJsonContentType(request: Request): boolean {
+  const contentType = request.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+  return contentType === 'application/json' || contentType.endsWith('+json');
 }
 
 const CHARACTER_FALLBACKS: Record<ReplyActorId, string[]> = {
@@ -328,7 +333,16 @@ export default {
     if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
+
+    if (request.method === 'GET' && path === '/health') {
+      return json({ ok: true, worker: 'sekret-backend', router: 'observed-index' }, 200, cors);
+    }
+
     let principal: Principal | null = null;
+
+    if (request.method === 'POST' && path.includes('/api/') && !hasJsonContentType(request)) {
+      return json({ error: 'content-type must be application/json' }, 415, cors);
+    }
 
     if (request.method === 'POST' && path.includes('/api/')) {
       const auth = await authenticate(request, env);
@@ -345,12 +359,14 @@ export default {
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
+      if (!principal) return json({ error: 'authentication required' }, 401, cors);
       const body = await readJsonBody(request);
       if (!body) return json({ error: 'Invalid JSON' }, 400, cors);
       return handleStyledVoice(body, env, cors);
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/reply')) {
+      if (!principal) return json({ error: 'authentication required' }, 401, cors);
       const body = await readJsonBody(request);
       if (!body) return json({ error: 'Invalid JSON' }, 400, cors);
 
