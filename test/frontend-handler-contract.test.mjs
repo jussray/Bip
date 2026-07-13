@@ -31,5 +31,6 @@ test('active Calm controls have real handlers instead of null or empty actions',
   assert.doesNotMatch(source, /action: null/);
   assert.match(source, /reset plan ↺/);
   assert.match(source, /Calm Picks for You[\s\S]*onOpenBreathe/);
+  assert.match(source, /MORE_BREATHING[\s\S]*TouchableOpacity/);
   assert.match(source, /CALM_PLAYLIST[\s\S]*TouchableOpacity/);
 });

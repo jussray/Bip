@@ -291,7 +291,11 @@ export function CalmScreen({
 
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>More Breathing Exercises</Text>
         {MORE_BREATHING.map(item => (
-          <View key={item.label} style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}>
+          <TouchableOpacity
+            key={item.label}
+            style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}
+            onPress={() => onOpenBreathe ? onOpenBreathe() : Alert.alert('Breathing exercises', 'Open the full breathing screen to choose this exercise.')}
+          >
             <Image source={CLOUD_HEADPHONES} style={styles.listRowIcon} resizeMode="contain" />
             <View style={{ flex: 1 }}>
               <Text style={[styles.listRowTitle, { color: '#fff' }]}>{item.label}</Text>
@@ -299,7 +303,7 @@ export function CalmScreen({
             </View>
             <Text style={[styles.listRowDur, { color: t.soft }]}>{item.duration}</Text>
             <Text style={{ color: t.soft }}>›</Text>
-          </View>
+          </TouchableOpacity>
         ))}
 
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>Calm Playlist ✦</Text>
