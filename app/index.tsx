@@ -10,6 +10,10 @@ import {
   type AccountProfile,
   type AccountSide,
 } from '@/features/identity/accountProfile';
+import {
+  resolveParentEntryState,
+  routeForParentEntryState,
+} from '@/services/parentEntryState';
 
 function getBuildSide(): AccountSide | null {
   const variant = process.env.EXPO_PUBLIC_APP_VARIANT;
@@ -88,31 +92,42 @@ export default function Index() {
       || bootstrapError
     ) return;
 
+    let active = true;
     setRouted(true);
 
-    if (!accountProfile?.onboardingComplete) {
+    async function route() {
+      if (!accountProfile?.onboardingComplete) {
+        router.replace(
+          effectiveSide === 'parent'
+            ? '/(onboarding)/parent-welcome'
+            : '/(onboarding)/welcome',
+        );
+        return;
+      }
+
+      if (accountProfile.accountSide === 'parent') {
+        try {
+          const parentEntry = await resolveParentEntryState();
+          if (active) router.replace(routeForParentEntryState(parentEntry) as never);
+        } catch (error) {
+          if (active) {
+            setBootstrapError(error instanceof Error ? error.message : 'Unable to verify Parent Side access.');
+          }
+        }
+        return;
+      }
+
       router.replace(
-        effectiveSide === 'parent'
-          ? '/(onboarding)/parent-welcome'
-          : '/(onboarding)/welcome',
+        verificationState === 'VERIFIED_TEEN'
+          ? '/(teen)/room'
+          : '/(auth)/limited-mode',
       );
-      return;
     }
 
-    if (accountProfile.accountSide === 'parent') {
-      router.replace(
-        verificationState === 'VERIFIED_GUARDIAN'
-          ? '/(parent)/room'
-          : '/(auth)/guardian-verification',
-      );
-      return;
-    }
-
-    router.replace(
-      verificationState === 'VERIFIED_TEEN'
-        ? '/(teen)/room'
-        : '/(auth)/limited-mode',
-    );
+    void route();
+    return () => {
+      active = false;
+    };
   }, [
     accountProfile,
     authChecked,
