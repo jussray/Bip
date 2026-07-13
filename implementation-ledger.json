@@ -1,6 +1,22 @@
 {
   "schemaVersion": 1,
   "updatedAt": "2026-07-13",
+  "documentationReview": {
+    "reviewedAt": "2026-07-13",
+    "baseCommit": "1a011a6c735efe07e81c009ad316622d1887e7c9",
+    "scope": [
+      "repository identity and setup",
+      "current product and wiring state",
+      "Cloudflare production ownership and exact-release evidence",
+      "Supabase authorization and retired Edge Functions",
+      "companion identity/style integration",
+      "Bridge controlled rollout",
+      "L4 planned-only boundary",
+      "agent architecture and Worker guardrails",
+      "historical audit labeling"
+    ],
+    "rule": "Markdown describes only the evidence state recorded in this ledger or explicitly labels historical snapshots."
+  },
   "statusOrder": [
     "planned",
     "contract",
