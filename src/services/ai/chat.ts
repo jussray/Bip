@@ -2,6 +2,9 @@
  * Core chat message function.
  * Sends a message to the Cloudflare Worker with companion and Oracle context.
  */
+import type { CompanionReplyRequest } from '@/contracts/sekretApi';
+import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
+import { logRuntimeAuditEvent } from '@/services/runtimeAudit';
 import type { PersonalityId } from '@/types';
 import {
   learnTeenRelationshipStyle,
@@ -11,7 +14,6 @@ import {
   type TeenRelationshipProfile,
 } from '../../../services/oracleRelationship';
 import {
-  getArrivalReply,
   getConversationPhase,
   isArrivalMessage,
   keepSekretReply,
@@ -19,8 +21,6 @@ import {
   buildConversationPhaseInstruction,
   type ConversationPhase,
 } from '../../../services/sekretVoice';
-import { backendAuthHeaders } from '../../utils/backendAuth';
-import { logRuntimeAuditEvent } from '@/services/runtimeAudit';
 
 export interface ChatMessage {
   id: string;
@@ -58,13 +58,11 @@ export interface SendMessageResult {
   reply: string;
   /** Where the reply actually came from. */
   replySource: 'worker' | 'local-fallback' | 'safety';
-  /** True whenever we did NOT get a usable Worker response. */
+  /** True when either the Worker or the client had to use fallback behavior. */
   fallbackUsed: boolean;
   /** Human-readable reason a fallback was used, or null when Worker succeeded. */
   fallbackReason: string | null;
 }
-
-const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
 
 function mayMirrorProfanity(profile: TeenRelationshipProfile): boolean {
   return profile.profanityPreference === 'light-mirroring';
@@ -72,9 +70,8 @@ function mayMirrorProfanity(profile: TeenRelationshipProfile): boolean {
 
 /**
  * Local fallback reply — used ONLY when the Worker is unreachable or returns
- * a non-OK status. The arrival-greeting branch has been removed: greeting
- * messages now travel to the Worker like any other message so the Worker can
- * shape the opening tone with full phaseInstruction context.
+ * a non-OK status. Greeting messages still travel to the Worker so the Worker
+ * can shape the opening tone with full phaseInstruction context.
  */
 function localFallback(
   personalityId: PersonalityId,
@@ -92,43 +89,43 @@ function localFallback(
   if (isShortContinuation) {
     if (personalityId === 'rylane') return "Aight, I'm here. Talk.";
     if (personalityId === 'cloud') return "Hey. No pressure — whatever you want to say, or nothing at all.";
-    if (personalityId === 'night') return "Still here. No rush.";
-    return "Hey! Random or did something actually happen?";
+    if (personalityId === 'night') return 'Still here. No rush.';
+    return 'Hey! Random or did something actually happen?';
   }
 
   if (personalityId === 'rylane') {
     if (angry) return mirror
-      ? "Yeah, that shit would set anybody off. Before you move on it, what line got crossed?"
-      : "Yeah, that would set anybody off. Before you move on it, what line got crossed?";
-    if (sad) return "That sounds heavy for real. You do not have to dress it up — what part is hitting hardest?";
+      ? 'Yeah, that shit would set anybody off. Before you move on it, what line got crossed?'
+      : 'Yeah, that would set anybody off. Before you move on it, what line got crossed?';
+    if (sad) return 'That sounds heavy for real. You do not have to dress it up — what part is hitting hardest?';
     return relationship.nicknameComfort === 'dislikes'
-      ? "Say the real version. What is going on?"
-      : "Aight, say the real version. What is going on?";
+      ? 'Say the real version. What is going on?'
+      : 'Aight, say the real version. What is going on?';
   }
 
   if (personalityId === 'cloud') {
-    if (sad) return "We can make this smaller first. One breath, then one sentence — or no sentence yet.";
-    return "No rush. Start with the smallest piece that feels safe to say.";
+    if (sad) return 'We can make this smaller first. One breath, then one sentence — or no sentence yet.';
+    return 'No rush. Start with the smallest piece that feels safe to say.';
   }
 
   if (personalityId === 'night') {
-    if (planning) return "Hold up — that idea has something. What is the goal, and what is one step you can set up tonight?";
-    if (reset) return "One off day is not your identity. What made the plan fall apart, and what changes this time?";
-    if (sad) return "We can sit with it for a minute. Then we decide whether tonight needs rest, reflection, or one small move forward.";
-    return "Are we trying to understand this, plan it, create something, or finish one small part?";
+    if (planning) return 'Hold up — that idea has something. What is the goal, and what is one step you can set up tonight?';
+    if (reset) return 'One off day is not your identity. What made the plan fall apart, and what changes this time?';
+    if (sad) return 'We can sit with it for a minute. Then we decide whether tonight needs rest, reflection, or one small move forward.';
+    return 'Are we trying to understand this, plan it, create something, or finish one small part?';
   }
 
   if (personalityId === 'oracle') {
-    return "What does this keep revealing about who you are, what you value, or what you are trying to become?";
+    return 'What does this keep revealing about who you are, what you value, or what you are trying to become?';
   }
 
   if (angry) return mirror
-    ? "Okay, that shit really got under your skin. What happened right before it shifted?"
-    : "Okay, that really got under your skin. What happened right before it shifted?";
-  if (sad) return "Tell me the part you keep trying to make sound smaller.";
+    ? 'Okay, that shit really got under your skin. What happened right before it shifted?'
+    : 'Okay, that really got under your skin. What happened right before it shifted?';
+  if (sad) return 'Tell me the part you keep trying to make sound smaller.';
   return relationship.nicknameComfort === 'dislikes'
-    ? "Okay. What really happened?"
-    : "Girl, okay. What really happened?";
+    ? 'Okay. What really happened?'
+    : 'Girl, okay. What really happened?';
 }
 
 // ── Overload signatures (keep public API backward-compatible) ─────────────
@@ -167,11 +164,6 @@ export async function sendMessage(
   const learnedRelationship = learnTeenRelationshipStyle(text, currentRelationship);
   await saveTeenRelationshipProfile(learnedRelationship);
 
-  // isArrivalMessage is still used to inform phaseInstruction sent to the
-  // Worker — but we NO LONGER short-circuit here and skip the Worker call.
-  // Greeting messages now reach the Worker so it can shape the opening tone
-  // with full context. The pre-Worker arrival return has been removed.
-
   const phase: ConversationPhase = getConversationPhase(historyLength);
   const phaseInstruction = buildConversationPhaseInstruction(phase, historyLength, personalityId);
   const isArrival = isArrivalMessage(text, historyLength);
@@ -187,8 +179,7 @@ export async function sendMessage(
                 : context === 'parentCoach' ? 'parentCoach'
                   : 'journal');
 
-  // ── No backend URL ───────────────────────────────────────────────────────
-  if (!BASE_URL) {
+  if (!WORKER_BASE_URL) {
     const fallbackText = personalityId === 'parentCoach'
       ? "Hey. Glad you're here. What's going on at home?"
       : localFallback(personalityId, text, learnedRelationship);
@@ -206,15 +197,15 @@ export async function sendMessage(
     };
   }
 
-  const workerHistory = history.map((m) => ({
-    role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
-    content: m.text,
+  const workerHistory = history.map((message) => ({
+    role: message.role === 'assistant' ? 'assistant' as const : 'user' as const,
+    content: message.text,
   }));
 
-  const payload = {
+  const payload: CompanionReplyRequest = {
     userText: text,
-    characterId: personalityId,
-    surface: normalizedSurface,
+    characterId: personalityId === 'oracle' ? 'sekret' : personalityId,
+    surface: normalizedSurface ?? 'journal',
     mood,
     history: workerHistory,
     parentSharingEnabled: parentSharingEnabled ?? false,
@@ -232,9 +223,9 @@ export async function sendMessage(
 
   if (__DEV__) {
     console.log('[sendMessage] → Worker', {
-      companion: personalityId,
-      surface: normalizedSurface,
-      url: `${BASE_URL}/api/sekret/reply`,
+      companion: payload.characterId,
+      surface: payload.surface,
+      url: `${WORKER_BASE_URL}/api/sekret/reply`,
       isArrival,
       phase,
       payloadBytes: JSON.stringify(payload).length,
@@ -244,92 +235,65 @@ export async function sendMessage(
     });
   }
 
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method: 'POST',
-      headers: await backendAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-
-    if (__DEV__) {
-      console.log('[sendMessage] ← Worker', {
-        companion: personalityId,
-        surface: normalizedSurface,
-        status: res.status,
-        ok: res.ok,
-      });
-    }
-
-    if (!res.ok) {
-      const reason = `Worker responded ${res.status}`;
-      console.error(`[sendMessage] ${reason}`);
-      const fallbackText = localFallback(personalityId, text, learnedRelationship);
-      return {
-        reply: fallbackText,
-        replySource: 'local-fallback',
-        fallbackUsed: true,
-        fallbackReason: reason,
-      };
-    }
-
-    const data = await res.json() as { reply?: string; replySource?: string; detectedIntent?: string };
-    const rawReply = data.reply ?? '';
-
-    if (!rawReply) {
-      const reason = 'Worker returned empty reply';
-      console.error(`[sendMessage] ${reason}, using fallback`);
-      const fallbackText = localFallback(personalityId, text, learnedRelationship);
-      return {
-        reply: fallbackText,
-        replySource: 'local-fallback',
-        fallbackUsed: true,
-        fallbackReason: reason,
-      };
-    }
-
-    const sekretFallback = getSekretFallback(personalityId, text);
-    const guardedReply = keepSekretReply(rawReply, sekretFallback);
-    const guardBlocked = guardedReply !== rawReply.trim();
-
-    if (__DEV__ && guardBlocked) {
-      console.warn('[sendMessage] keepSekretReply blocked Worker reply — substituted character fallback.', {
-        companion: personalityId,
-        blocked: rawReply.slice(0, 80),
-        substituted: guardedReply.slice(0, 80),
-      });
-    }
-
-    // ── Retention: log every successful companion chat (fire-and-forget) ──
-    logRuntimeAuditEvent('manual', {
-      event_type: 'companion_chat_sent',
-      screen: normalizedSurface ?? 'chat',
-      severity: 'info',
-      metadata: {
-        companion: personalityId,
-        surface: normalizedSurface,
-        reply_source: data.replySource ?? 'worker',
-        history_length: historyLength,
-        fallback_used: false,
-      },
-    }).catch(() => {/* silent — never block the reply */});
-
-    return {
-      reply: guardedReply,
-      replySource: 'worker',
-      fallbackUsed: false,
-      fallbackReason: null,
-    };
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    console.error('[sendMessage] Worker fetch failed:', reason);
+  const result = await sekretClient.sendReply(payload);
+  if (!result.ok) {
+    const reason = `${result.error.code}${result.error.status ? ` (${result.error.status})` : ''}`;
+    console.error('[sendMessage] Worker request failed:', reason, result.error.traceId ?? 'no-trace');
     const fallbackText = localFallback(personalityId, text, learnedRelationship);
     return {
       reply: fallbackText,
       replySource: 'local-fallback',
       fallbackUsed: true,
-      fallbackReason: `fetch error: ${reason}`,
+      fallbackReason: reason,
     };
   }
+
+  const data = result.data;
+  const rawReply = data.reply ?? '';
+  if (!rawReply) {
+    const fallbackText = localFallback(personalityId, text, learnedRelationship);
+    return {
+      reply: fallbackText,
+      replySource: 'local-fallback',
+      fallbackUsed: true,
+      fallbackReason: 'Worker returned empty reply',
+    };
+  }
+
+  const sekretFallback = getSekretFallback(personalityId, text);
+  const guardedReply = keepSekretReply(rawReply, sekretFallback);
+  const guardBlocked = guardedReply !== rawReply.trim();
+
+  if (__DEV__ && guardBlocked) {
+    console.warn('[sendMessage] keepSekretReply blocked Worker reply — substituted character fallback.', {
+      companion: personalityId,
+      blocked: rawReply.slice(0, 80),
+      substituted: guardedReply.slice(0, 80),
+      traceId: data.traceId ?? result.meta.traceId,
+    });
+  }
+
+  logRuntimeAuditEvent('manual', {
+    event_type: 'companion_chat_sent',
+    screen: normalizedSurface ?? 'chat',
+    severity: 'info',
+    metadata: {
+      companion: personalityId,
+      surface: normalizedSurface,
+      reply_source: data.replySource ?? 'worker',
+      history_length: historyLength,
+      fallback_used: result.meta.fallbackUsed,
+      trace_id: data.traceId ?? result.meta.traceId ?? null,
+      avatar_state: data.avatarState ?? null,
+    },
+  }).catch(() => {/* silent — never block the reply */});
+
+  return {
+    reply: guardedReply,
+    replySource: data.safetyFlag ? 'safety' : 'worker',
+    fallbackUsed: result.meta.fallbackUsed,
+    fallbackReason: result.meta.fallbackUsed ? 'Worker served fallback response' : null,
+  };
 }
 
 function makeMessageId(role: ChatMessage['role']): string {
