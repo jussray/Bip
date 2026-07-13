@@ -27,6 +27,10 @@ const STORAGE_KEYS = {
   crewMembers: 'crewMembers', crewCheckIns: 'crewCheckIns',
   parentCrewMembers: 'parentCrewMembers', parentCrewCheckIns: 'parentCrewCheckIns',
   roomMemory: 'roomMemory',
+  parentProfileData: 'parent_profile_data',
+  parentProfileDone: 'parent_profile_done',
+  linkedTeenId: 'linked_teen_id',
+  devTestFamilyV1: 'dev_test_family_v1',
 };
 
 const JSON_KEYS = new Set([
@@ -37,6 +41,7 @@ const JSON_KEYS = new Set([
   'comfortSessions', 'crewMembers', 'crewCheckIns',
   'parentCrewMembers', 'parentCrewCheckIns',
   'roomMemory', 'periodDays',
+  'parent_profile_data', 'dev_test_family_v1',
 ]);
 
 const PRIVATE_ACCOUNT_KEYS = [
@@ -72,6 +77,10 @@ const PRIVATE_ACCOUNT_KEYS = [
   STORAGE_KEYS.parentCrewMembers,
   STORAGE_KEYS.parentCrewCheckIns,
   STORAGE_KEYS.roomMemory,
+  STORAGE_KEYS.parentProfileData,
+  STORAGE_KEYS.parentProfileDone,
+  STORAGE_KEYS.linkedTeenId,
+  STORAGE_KEYS.devTestFamilyV1,
   'sekretbip_first_visit_done',
   'parent_bridge_pending',
   'sekret_self_discovery_profile',
