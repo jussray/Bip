@@ -5,10 +5,21 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const migrationPath = path.join(
-  root,
-  'supabase',
-  'migrations',
+const migrationsDir = path.join(root, 'supabase', 'migrations');
+const helperMigrationPath = path.join(
+  migrationsDir,
+  '20260713024231_harden_founder_helper_anonymous_guard.sql',
+);
+const policyMigrationPath = path.join(
+  migrationsDir,
+  '20260713024245_harden_audit_control_room_policies.sql',
+);
+const grantMigrationPath = path.join(
+  migrationsDir,
+  '20260713024253_remove_anon_audit_control_room_grants.sql',
+);
+const obsoleteCombinedMigrationPath = path.join(
+  migrationsDir,
   '20260713023500_harden_founder_guardian_authorization.sql',
 );
 const probePath = path.join(
@@ -18,7 +29,9 @@ const probePath = path.join(
   'authorization_founder_guardian_phase1.sql',
 );
 
-const migration = fs.readFileSync(migrationPath, 'utf8');
+const helperMigration = fs.readFileSync(helperMigrationPath, 'utf8');
+const policyMigration = fs.readFileSync(policyMigrationPath, 'utf8');
+const grantMigration = fs.readFileSync(grantMigrationPath, 'utf8');
 const probe = fs.readFileSync(probePath, 'utf8');
 
 const controlRoomTables = [
@@ -29,34 +42,42 @@ const controlRoomTables = [
   'control_room_releases',
 ];
 
+test('repository migration history matches the three exact live migration versions', () => {
+  assert.equal(fs.existsSync(helperMigrationPath), true);
+  assert.equal(fs.existsSync(policyMigrationPath), true);
+  assert.equal(fs.existsSync(grantMigrationPath), true);
+  assert.equal(fs.existsSync(obsoleteCombinedMigrationPath), false);
+});
+
 test('founder helper rejects anonymous-authenticated sessions and has a fixed search path', () => {
-  assert.match(migration, /create or replace function public\.is_founder\(\)/i);
-  assert.match(migration, /security definer/i);
-  assert.match(migration, /set search_path = public, auth/i);
+  assert.match(helperMigration, /create or replace function public\.is_founder\(\)/i);
+  assert.match(helperMigration, /security definer/i);
+  assert.match(helperMigration, /set search_path = public, auth/i);
   assert.match(
-    migration,
+    helperMigration,
     /coalesce\(\(\(select auth\.jwt\(\)\) ->> 'is_anonymous'\)::boolean, false\) = false/i,
   );
-  assert.match(migration, /p\.user_id = \(select auth\.uid\(\)\)/i);
+  assert.match(helperMigration, /p\.user_id = \(select auth\.uid\(\)\)/i);
 });
 
 test('founder helper execute grants are explicit', () => {
-  assert.match(migration, /revoke all on function public\.is_founder\(\) from public;/i);
-  assert.match(migration, /revoke all on function public\.is_founder\(\) from anon;/i);
+  assert.match(helperMigration, /revoke all on function public\.is_founder\(\) from public;/i);
+  assert.match(helperMigration, /revoke all on function public\.is_founder\(\) from anon;/i);
   assert.match(
-    migration,
+    helperMigration,
     /grant execute on function public\.is_founder\(\) to authenticated, service_role;/i,
   );
 });
 
 test('unauthenticated anon table privileges are removed from audit and Control Room tables', () => {
-  assert.match(migration, /revoke all privileges on table public\.audit_events from anon;/i);
+  assert.match(grantMigration, /revoke all privileges on table public\.audit_events from anon;/i);
   for (const table of controlRoomTables) {
     assert.match(
-      migration,
+      grantMigration,
       new RegExp(`revoke all privileges on table public\\.${table} from anon;`, 'i'),
     );
   }
+  assert.doesNotMatch(grantMigration, /\bgrant\b/i);
 });
 
 test('direct audit policies reject anonymous sessions', () => {
@@ -66,11 +87,11 @@ test('direct audit policies reject anonymous sessions', () => {
     'audit_events_update_founder',
     'audit_events_delete_founder',
   ]) {
-    assert.match(migration, new RegExp(`create policy ${policy}`, 'i'));
+    assert.match(policyMigration, new RegExp(`create policy ${policy}`, 'i'));
   }
 
-  const anonymousChecks = migration.match(/is_anonymous'\)::boolean, false\) = false/gi) ?? [];
-  assert.ok(anonymousChecks.length >= 5, 'expected founder helper plus four audit policy checks');
+  const anonymousChecks = policyMigration.match(/is_anonymous'\)::boolean, false\) = false/gi) ?? [];
+  assert.ok(anonymousChecks.length >= 4, 'expected an anonymous-session guard on every audit policy');
 });
 
 test('Control Room policies target authenticated callers rather than PUBLIC', () => {
@@ -81,15 +102,15 @@ test('Control Room policies target authenticated callers rather than PUBLIC', ()
     'control_room_issues_founder',
   ]) {
     assert.match(
-      migration,
+      policyMigration,
       new RegExp(`create policy ${policy}[\\s\\S]*?to authenticated[\\s\\S]*?public\\.is_founder\\(\\)`, 'i'),
     );
   }
   assert.match(
-    migration,
+    policyMigration,
     /create policy "Founder: releases"[\s\S]*?to authenticated[\s\S]*?public\.is_founder\(\)/i,
   );
-  assert.doesNotMatch(migration, /create policy[\s\S]{0,180}\bto public\b/i);
+  assert.doesNotMatch(policyMigration, /create policy[\s\S]{0,180}\bto public\b/i);
 });
 
 test('Phase 1 probe is rollback-contained and does not manufacture auth users', () => {
