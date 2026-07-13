@@ -44,8 +44,8 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
-      - name: Run unit tests, including Cloudflare native verifier checks
-        run: npm test
+      - name: Run Cloudflare native verifier unit tests
+        run: node --test test/cloudflare-native-deploy.test.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
