@@ -103,7 +103,7 @@ export function MindBodyResetScreen({
       durationSecs,
       routineId: tool.id,
       resetMode: tool.mode,
-      completionKind: tool.kind,
+      completionKind: tool.kind === 'breath' ? 'breath' : 'guided',
     });
     onComplete?.();
   };
