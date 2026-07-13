@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260713090000_harden_parent_link_rpc_behavior.sql',
+  '20260713154809_harden_parent_link_rpc_behavior.sql',
 );
 const probePath = path.join(
   root,
@@ -17,11 +17,31 @@ const probePath = path.join(
   'probes',
   'authorization_parent_link_rpc_phase1.sql',
 );
+const evidencePath = path.join(
+  root,
+  'security',
+  'parent-link-rpc-hardening.json',
+);
 const clientPath = path.join(root, 'src', 'utils', 'parentLink.ts');
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const probe = fs.readFileSync(probePath, 'utf8');
+const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
 const client = fs.readFileSync(clientPath, 'utf8');
+
+test('repository records the exact live parent-link migration', () => {
+  assert.equal(evidence.schemaVersion, 1);
+  assert.equal(evidence.projectRef, 'tbsevonvegdnlyjgplmm');
+  assert.equal(evidence.migration.version, '20260713154809');
+  assert.equal(evidence.migration.name, 'harden_parent_link_rpc_behavior');
+  assert.equal(
+    evidence.migration.repositoryPath,
+    'supabase/migrations/20260713154809_harden_parent_link_rpc_behavior.sql',
+  );
+  assert.equal(evidence.migration.applied, true);
+  assert.equal(evidence.migration.repositoryAndLiveMigrationParity, true);
+  assert.equal(fs.existsSync(migrationPath), true);
+});
 
 test('teen invite creation requires a completed permanent teen profile', () => {
   assert.match(migration, /v_user_id uuid := auth\.uid\(\)/i);
@@ -102,6 +122,8 @@ test('relationship consent remains independent from guardian identity review', (
   assert.doesNotMatch(migration, /PENDING_GUARDIAN_REVIEW/);
   assert.doesNotMatch(migration, /guardian_verification_reviews/);
   assert.match(migration, /Guardian identity review remains independent/i);
+  assert.equal(evidence.scope.guardianIdentityContractChanged, false);
+  assert.equal(evidence.scope.bridgeVisibilityChanged, false);
 });
 
 test('parent-link proof is rollback-contained and contains no real identities', () => {
@@ -135,6 +157,34 @@ test('parent-link proof covers all high-blast behavior outcomes', () => {
     probe,
     /select count\(\*\)::text[\s\S]*?from public\.redeem_parent_link_invite/i,
   );
+});
+
+test('live proof records ten passes and zero retained synthetic data', () => {
+  assert.equal(evidence.preDeployDefects.transactionOutcome, 'rolled_back');
+  assert.equal(evidence.preDeployDefects.parentProfileCouldCreateTeenInvite, true);
+  assert.equal(evidence.preDeployDefects.profilelessPermanentAccountCouldCreateTeenInvite, true);
+  assert.equal(evidence.preDeployDefects.inviteRegenerationConflictedWithCanonicalTeenRow, true);
+  assert.equal(evidence.preDeployDefects.expiredRedemptionRolledBackItsOwnExpiration, true);
+
+  assert.equal(evidence.postDeployProof.transactionOutcome, 'rolled_back');
+  assert.equal(evidence.postDeployProof.passedChecks, 10);
+  assert.equal(evidence.postDeployProof.failedChecks, 0);
+  assert.equal(evidence.postDeployProof.retainedSyntheticUsers, 0);
+  assert.equal(evidence.postDeployProof.retainedParentLinks, 0);
+  assert.equal(evidence.postDeployProof.retainedVerificationRows, 0);
+});
+
+test('advisor warning is classified as an intentional proved client API', () => {
+  assert.equal(
+    evidence.advisorClassification.createParentLinkInvite,
+    'intentional_authenticated_security_definer_api_with_behavior_proof',
+  );
+  assert.equal(
+    evidence.advisorClassification.redeemParentLinkInvite,
+    'intentional_authenticated_security_definer_api_with_behavior_proof',
+  );
+  assert.equal(evidence.advisorClassification.warningExpectedToRemain, true);
+  assert.equal(evidence.releaseGate.authenticatedFunctionBlockerComplete, false);
 });
 
 test('existing client treats an empty expired redemption response as unavailable', () => {
