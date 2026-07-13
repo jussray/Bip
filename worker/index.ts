@@ -1,5 +1,5 @@
 import worker from './sekret-reply';
-import { synthesizeWithPiper, type PiperTtsEnv } from './piper-tts';
+import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './piper-tts';
 import { authenticate, type AuthEnv, type Principal } from './auth';
 import { handleBridgeSummaryGenerate } from './bridge-summary';
 import { getModels } from './config/models';
@@ -34,17 +34,10 @@ interface Env extends PiperTtsEnv, AuthEnv {
   NIGHT_VOICE_ID?: string;
   SEKRET_VOICE_ID?: string;
   PARENT_COACH_VOICE_ID?: string;
-  /** Per-key request limiter; when unbound, rate limiting is skipped. */
   SEKRET_RATE_LIMITER?: RateLimit;
-  /**
-   * Comma-separated browser origins allowed via CORS. When unset (or '*'),
-   * the permissive wildcard is preserved. Native mobile sends no Origin and
-   * is unaffected either way; this gates cross-origin browser callers.
-   */
   ALLOWED_ORIGINS?: string;
 }
 
-/** Parsed ALLOWED_ORIGINS allowlist, or null when unset/'*' (wildcard). */
 function allowedOriginList(env: Env): string[] | null {
   const configured = env.ALLOWED_ORIGINS?.trim();
   if (!configured || configured === '*') return null;
@@ -66,11 +59,6 @@ function corsHeaders(request: Request, env: Env): Record<string, string> {
   };
 }
 
-/**
- * Reject disallowed browser origins BEFORE any auth/delegation. This closes the
- * CORS bypass where a simple cross-origin POST skips preflight and would
- * otherwise reach the delegated wildcard-CORS handler.
- */
 function originRejected(request: Request, env: Env, cors: Record<string, string>): Response | null {
   const allowed = allowedOriginList(env);
   if (!allowed) return null;
@@ -231,10 +219,6 @@ function prepareStyledReply(
   return { request: requestWithJsonBody(request, styledBody), style };
 }
 
-/**
- * Enforce the per-key rate limit. Keys by authenticated user when available,
- * otherwise by client IP. Fails open if the limiter itself errors.
- */
 async function enforceRateLimit(
   request: Request,
   env: Env,
@@ -279,7 +263,7 @@ async function handleStyledVoice(
 
   if (env.PIPER_TTS_URL?.trim()) {
     try {
-      const audio = await synthesizeWithPiper({ text, characterId: actorId, env });
+      const audio = await synthesizeWithPiper({ text, characterId: actorId as PiperCharacterId, env });
       if (audio) {
         return json({
           ...styleMetadata(style),
@@ -298,14 +282,20 @@ async function handleStyledVoice(
     }
   }
 
-  if (!env.OPENAI_API_KEY) return json({ error: 'voice unavailable' }, 503, cors);
+  const openAiKey = env.OPENAI_API_KEY;
+  if (!openAiKey) return json({ error: 'voice unavailable' }, 503, cors);
 
   const format = normalizeAudioFormat(body.format);
   const selectedVoice = getOpenAIVoice(actorId, env);
-  const model = getModels(env).tts;
+  const model = getModels({
+    OPENAI_API_KEY: openAiKey,
+    OPENAI_CHAT_MODEL: env.OPENAI_CHAT_MODEL,
+    OPENAI_TTS_MODEL: env.OPENAI_TTS_MODEL,
+    OPENAI_STT_MODEL: env.OPENAI_STT_MODEL,
+  }).tts;
   const response = await fetch('https://api.openai.com/v1/audio/speech', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openAiKey}` },
     body: JSON.stringify({
       model,
       voice: selectedVoice.voice,
