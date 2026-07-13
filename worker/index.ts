@@ -3,7 +3,7 @@ import { synthesizeWithPiper, type PiperTtsEnv, type PiperCharacterId } from './
 import { authenticate, type AuthEnv, type Principal } from './auth';
 import { handleBridgeSummaryGenerate } from './bridge-summary';
 
-type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
+type CharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret' | 'parentCoach';
 
 /** Cloudflare Workers Rate Limiting binding (GA). See wrangler.toml [[ratelimits]]. */
 interface RateLimit {
@@ -39,7 +39,7 @@ function corsHeaders(request: Request, env: Env): Record<string, string> {
   }
   return {
     'Access-Control-Allow-Origin': allowOrigin,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     Vary: 'Origin',
   };
@@ -59,6 +59,11 @@ function originRejected(request: Request, env: Env, cors: Record<string, string>
   const origin = request.headers.get('Origin');
   if (!origin || allowed.includes(origin)) return null;
   return json({ error: 'origin not allowed' }, 403, cors);
+}
+
+function hasJsonContentType(request: Request): boolean {
+  const contentType = request.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+  return contentType === 'application/json' || contentType.endsWith('+json');
 }
 
 const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
@@ -97,10 +102,18 @@ const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
     "You showed up. That means something. What's the thing?",
     "There's something circling. What is it?",
   ],
+  parentCoach: [
+    "Start with what happened, not what you think it means yet.",
+    "Parenting a teenager can turn one moment into ten fears. What do you actually know right now?",
+    "You showed up before reacting again. That matters. What part needs a calmer second try?",
+    "What did you want them to hear, and what might they have heard instead?",
+    "We can work through your side without making you the villain. What happened?",
+  ],
 };
 
 function normalizeCharacter(value: unknown): CharacterId {
   const raw = typeof value === 'string' ? value.toLowerCase().replace(/[’']/g, '') : '';
+  if (raw.includes('parentcoach') || raw.includes('parent_coach') || raw.includes('parent-coach')) return 'parentCoach';
   if (raw.includes('rylane')) return 'rylane';
   if (raw.includes('cloud')) return 'cloud';
   if (raw.includes('night')) return 'night';
@@ -109,8 +122,6 @@ function normalizeCharacter(value: unknown): CharacterId {
 }
 
 function normalizePiperCharacter(value: unknown): PiperCharacterId {
-  const raw = typeof value === 'string' ? value.toLowerCase().replace(/[’']/g, '') : '';
-  if (raw.includes('parentcoach') || raw.includes('parent_coach') || raw.includes('parent-coach')) return 'parentCoach';
   return normalizeCharacter(value);
 }
 
@@ -170,7 +181,19 @@ export default {
     if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
+
+    if (request.method === 'GET' && path === '/health') {
+      return json({ ok: true, worker: 'sekret-backend', router: 'observed-index' }, 200, cors);
+    }
+
     let principal: Principal | null = null;
+
+    // Every protected API endpoint currently accepts a JSON request body. Reject
+    // browser-simple text/plain posts before auth/body parsing so the contract is
+    // explicit and identical across delegated handlers.
+    if (request.method === 'POST' && path.includes('/api/') && !hasJsonContentType(request)) {
+      return json({ error: 'content-type must be application/json' }, 415, cors);
+    }
 
     // Gate every authenticated API route behind shared-token auth + rate
     // limiting. Non-/api routes (e.g. GET /health reachability checks) pass
@@ -190,6 +213,7 @@ export default {
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice') && env.PIPER_TTS_URL?.trim()) {
+      if (!principal) return json({ error: 'authentication required' }, 401, cors);
       let body: Record<string, unknown>;
       try {
         body = await request.clone().json() as Record<string, unknown>;
@@ -224,6 +248,7 @@ export default {
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/reply') && !env.OPENAI_API_KEY) {
+      if (!principal) return json({ error: 'authentication required' }, 401, cors);
       let body: Record<string, unknown>;
       try {
         body = await request.clone().json() as Record<string, unknown>;
@@ -247,7 +272,7 @@ export default {
 
       return json({
         reply: options[start],
-        tone: 'casual',
+        tone: characterId === 'parentCoach' ? 'parent-coach' : 'casual',
         safetyFlag: false,
         parentShareSummary: null,
         suggestedComfortTool: null,
