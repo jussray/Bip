@@ -28,7 +28,10 @@ begin
     raise exception 'authentication required' using errcode = '42501';
   end if;
 
-  if p_account_side not in ('teen', 'parent') then
+  -- Nullable input needs explicit rejection. SQL NOT IN returns NULL for NULL
+  -- operands, and IF NULL does not enter the rejection branch.
+  if p_account_side is null
+     or p_account_side not in ('teen', 'parent') then
     raise exception 'invalid account side' using errcode = '22023';
   end if;
 
@@ -63,15 +66,20 @@ begin
   end if;
 
   if v_requested_complete and p_account_side = 'teen' and (
-    p_age_range not in ('13-15', '16-17', '18-19')
+    p_age_range is null
+    or p_age_range not in ('13-15', '16-17', '18-19')
+    or p_gender is null
     or p_gender not in ('girl', 'boy', 'other')
+    or p_selected_companion is null
     or p_selected_companion not in ('raylene', 'rylane', 'cloud', 'night')
   ) then
     raise exception 'incomplete teen profile' using errcode = '22023';
   end if;
 
   if v_requested_complete and p_account_side = 'parent' and (
-    p_parent_room_style not in ('mom', 'dad')
+    p_parent_room_style is null
+    or p_parent_room_style not in ('mom', 'dad')
+    or p_parent_focus is null
     or p_parent_focus not in ('support', 'listen', 'repair', 'learn')
   ) then
     raise exception 'incomplete parent profile' using errcode = '22023';
@@ -158,6 +166,6 @@ comment on function public.upsert_own_bip_profile(
   text,
   text
 ) is
-  'Self-scoped permanent-account profile writer. Account side may pivot only before onboarding completion; completed side and completion state are immutable, while role and capability columns remain outside the RPC write set.';
+  'Self-scoped permanent-account profile writer. Nullable identity inputs are explicitly rejected; account side may pivot only before onboarding completion; completed side and completion state are immutable, while role and capability columns remain outside the RPC write set.';
 
 commit;
