@@ -122,7 +122,7 @@ The retired `release-health` Supabase function is not a production release oracl
 
 ## Remaining wiring gates
 
-- exact-head CI and device/browser QA for Mind + Body Reset;
+- physical iOS/Android plus manual timer, accessibility, and movement-safety QA for Mind + Body Reset;
 - controlled Bridge production proof;
 - account deletion and storage cleanup proof;
 - behavior tests for authenticated database functions with broad operational impact;

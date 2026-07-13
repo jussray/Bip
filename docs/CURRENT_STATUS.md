@@ -34,7 +34,7 @@ This page is the human-readable status summary. `implementation-ledger.json` is 
 - Guided mind tools, guided body regulation, and four real bodyweight routines are wired through teen-only hidden routes.
 - Work/rest timers, low-impact alternatives, pause, skip, stop, progress, safety guidance, and meaningful-completion thresholds are implemented.
 - Minimal routine metadata uses the existing `bip_events` pipeline; raw emotional text is not written by the reset flow.
-- Exact-head CI plus iOS, Android, web, accessibility, and movement-safety QA remain before verified or released status.
+- Exact-head CI, Expo web export, and Playwright passed; physical iOS/Android plus manual timer, accessibility, and movement-safety QA remain before verified or released status.
 
 ### Parent and Bridge
 
