@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260713160000_preserve_safety_state_on_parent_link_revoke.sql',
+  '20260713155855_preserve_safety_state_on_parent_link_revoke.sql',
 );
 const probePath = path.join(
   root,
@@ -17,14 +17,34 @@ const probePath = path.join(
   'probes',
   'authorization_parent_link_revoke_phase1.sql',
 );
+const evidencePath = path.join(
+  root,
+  'security',
+  'parent-link-revoke-hardening.json',
+);
 const clientPath = path.join(root, 'src', 'utils', 'parentLink.ts');
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const probe = fs.readFileSync(probePath, 'utf8');
+const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
 const client = fs.readFileSync(clientPath, 'utf8');
 const revokeClient = client.match(
   /export async function revokeParentLink\(\): Promise<boolean> \{[\s\S]*?^\}/m,
 )?.[0] ?? '';
+
+test('repository records the exact live parent-link revoke migration', () => {
+  assert.equal(evidence.schemaVersion, 1);
+  assert.equal(evidence.projectRef, 'tbsevonvegdnlyjgplmm');
+  assert.equal(evidence.migration.version, '20260713155855');
+  assert.equal(evidence.migration.name, 'preserve_safety_state_on_parent_link_revoke');
+  assert.equal(
+    evidence.migration.repositoryPath,
+    'supabase/migrations/20260713155855_preserve_safety_state_on_parent_link_revoke.sql',
+  );
+  assert.equal(evidence.migration.applied, true);
+  assert.equal(evidence.migration.repositoryAndLiveMigrationParity, true);
+  assert.equal(fs.existsSync(migrationPath), true);
+});
 
 test('parent-link revoke remains permanent-session and relationship scoped', () => {
   assert.match(migration, /v_user_id uuid := auth\.uid\(\)/i);
@@ -42,6 +62,7 @@ test('relationship row is fully revoked without deleting historical ownership', 
   assert.match(migration, /expires_at = null/i);
   assert.match(migration, /where id = v_link\.id/i);
   assert.doesNotMatch(migration, /delete from public\.parent_links/i);
+  assert.equal(evidence.controls.relationshipHistoryRetained, true);
 });
 
 test('suspended and manual-review verification states and reasons are preserved', () => {
@@ -55,6 +76,9 @@ test('suspended and manual-review verification states and reasons are preserved'
   );
   assert.match(migration, /parent_link_state = 'revoked'/i);
   assert.match(migration, /where user_id = v_link\.teen_user_id/i);
+  assert.equal(evidence.controls.suspendedStatePreserved, true);
+  assert.equal(evidence.controls.manualReviewStatePreserved, true);
+  assert.equal(evidence.controls.protectedVerificationReasonPreserved, true);
 });
 
 test('revoke RPC grants are explicit and anonymous execution stays denied', () => {
@@ -99,6 +123,30 @@ test('revoke proof covers ownership, retry, and protected-state outcomes', () =>
   assert.match(probe, /verification_reason = 'manual_case'/i);
 });
 
+test('live proof records ten passes and zero retained synthetic data', () => {
+  assert.equal(evidence.preDeployDefect.transactionOutcome, 'rolled_back');
+  assert.equal(evidence.preDeployDefect.suspendedStateWasOverwritten, true);
+  assert.equal(evidence.preDeployDefect.manualReviewStateWasOverwritten, true);
+  assert.equal(evidence.preDeployDefect.protectedReasonWasOverwritten, true);
+
+  assert.equal(evidence.postDeployProof.transactionOutcome, 'rolled_back');
+  assert.equal(evidence.postDeployProof.proofParts.length, 2);
+  assert.equal(evidence.postDeployProof.passedChecks, 10);
+  assert.equal(evidence.postDeployProof.failedChecks, 0);
+  assert.equal(evidence.postDeployProof.retainedSyntheticUsers, 0);
+  assert.equal(evidence.postDeployProof.retainedParentLinks, 0);
+  assert.equal(evidence.postDeployProof.retainedVerificationRows, 0);
+});
+
+test('advisor warning is classified as an intentional proved client API', () => {
+  assert.equal(
+    evidence.advisorClassification.classification,
+    'intentional_authenticated_security_definer_api_with_behavior_proof',
+  );
+  assert.equal(evidence.advisorClassification.warningExpectedToRemain, true);
+  assert.equal(evidence.releaseGate.authenticatedFunctionBlockerComplete, false);
+});
+
 test('existing client uses the guarded RPC and treats no active link as false', () => {
   assert.match(revokeClient, /export async function revokeParentLink\(\): Promise<boolean>/);
   assert.match(revokeClient, /rpc\('revoke_parent_link'\)/);
@@ -112,4 +160,6 @@ test('migration is transactional and documents consent versus safety state', () 
   assert.match(migration, /commit;\s*$/i);
   assert.match(migration, /Revocation removes relationship consent/i);
   assert.match(migration, /must not erase a safety or[\s\S]*manual-review decision/i);
+  assert.equal(evidence.scope.bridgeVisibilityChanged, false);
+  assert.equal(evidence.scope.guardianIdentityChanged, false);
 });
