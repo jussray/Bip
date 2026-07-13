@@ -9,10 +9,14 @@ on:
       - 'src/**'
       - 'worker/**'
       - 'e2e/**'
+      - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'test/cloudflare-native-deploy.test.mjs'
       - 'docs/VISION.md'
       - 'docs/GUARDRAILS.md'
+      - 'DEPLOYMENT.md'
       - 'wrangler.toml'
       - 'playwright.config.ts'
+      - 'playwright.production.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/deploy-cloudflare.yml'
@@ -39,6 +43,9 @@ jobs:
 
       - name: Install repository dependencies
         run: npm ci
+
+      - name: Run unit tests, including Cloudflare native verifier checks
+        run: npm test
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
