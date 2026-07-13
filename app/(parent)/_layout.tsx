@@ -1,12 +1,18 @@
-import { Tabs } from 'expo-router';
-import { Text, View } from 'react-native';
+import { Redirect, Tabs } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
+import {
+  resolveParentEntryState,
+  routeForParentEntryState,
+  type ParentEntryState,
+} from '@/services/parentEntryState';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
 }
 
-export default function ParentLayout() {
+function ParentTabs() {
   return (
     <View style={{ flex: 1 }}>
       <Tabs
@@ -46,3 +52,69 @@ export default function ParentLayout() {
     </View>
   );
 }
+
+export default function ParentLayout() {
+  const [entryState, setEntryState] = useState<ParentEntryState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setEntryState(null);
+    setError(null);
+
+    void resolveParentEntryState()
+      .then(state => {
+        if (active) setEntryState(state);
+      })
+      .catch(cause => {
+        if (active) {
+          setError(cause instanceof Error ? cause.message : 'Unable to verify Parent Side access.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [attempt]);
+
+  if (error) {
+    return (
+      <View style={styles.guardRoot}>
+        <Text style={styles.guardTitle}>We could not verify Parent Side.</Text>
+        <Text style={styles.guardBody}>{error}</Text>
+        <TouchableOpacity style={styles.retry} onPress={() => setAttempt(value => value + 1)}>
+          <Text style={styles.retryText}>Try again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (!entryState) {
+    return (
+      <View style={styles.guardRoot}>
+        <ActivityIndicator color="#a7f3d0" />
+      </View>
+    );
+  }
+
+  if (entryState.state !== 'ready') {
+    return <Redirect href={routeForParentEntryState(entryState) as never} />;
+  }
+
+  return <ParentTabs />;
+}
+
+const styles = StyleSheet.create({
+  guardRoot: {
+    flex: 1,
+    backgroundColor: '#08140f',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  guardTitle: { color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 10 },
+  guardBody: { color: '#9fb6aa', fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: 22 },
+  retry: { minWidth: 160, height: 52, borderRadius: 16, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
+  retryText: { color: '#062015', fontSize: 15, fontWeight: '900' },
+});
