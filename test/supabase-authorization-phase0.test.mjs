@@ -13,16 +13,17 @@ const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
 const probe = fs.readFileSync(probePath, 'utf8');
 const doc = fs.readFileSync(docPath, 'utf8');
 
-test('Phase 0 baseline is scoped to evidence and applies no production DDL', () => {
+test('authorization baseline records the verified live migration and keeps L4 closed', () => {
   assert.equal(baseline.schemaVersion, 1);
   assert.equal(baseline.project.ref, 'tbsevonvegdnlyjgplmm');
-  assert.equal(baseline.project.latestLiveMigration.version, '20260712184711');
-  assert.equal(baseline.scope.productionDdlApplied, false);
+  assert.equal(baseline.project.latestLiveMigration.version, '20260713011803');
+  assert.equal(baseline.project.latestLiveMigration.name, 'harden_config_table_grants');
+  assert.equal(baseline.scope.productionDdlApplied, true);
   assert.equal(baseline.scope.productionDataRetained, false);
   assert.equal(baseline.releaseGate.l4SchemaAllowed, false);
 });
 
-test('no-policy tables are classified by grants rather than treated as one finding', () => {
+test('all no-policy configuration and operational tables are explicitly service-role-only', () => {
   const byTable = new Map(
     baseline.advisorSnapshot.rlsEnabledNoPolicy.map((item) => [item.table, item]),
   );
@@ -30,15 +31,37 @@ test('no-policy tables are classified by grants rather than treated as one findi
   assert.equal(byTable.size, 4);
   assert.equal(byTable.get('guardian_verification_reviews').classification, 'service_role_only');
   assert.equal(byTable.get('notification_deliveries').classification, 'service_role_only');
-  assert.equal(byTable.get('guardian_verification_reviews').authenticatedHasTablePrivileges, false);
-  assert.equal(byTable.get('notification_deliveries').anonHasTablePrivileges, false);
+  assert.equal(byTable.get('app_config').classification, 'service_role_only_after_grant_hardening');
+  assert.equal(byTable.get('app_private_config').classification, 'service_role_only_after_grant_hardening');
 
+  for (const item of byTable.values()) {
+    assert.equal(item.rlsEnabled, true);
+    assert.equal(item.policyCount, 0);
+    assert.equal(item.anonHasTablePrivileges, false);
+    assert.equal(item.authenticatedHasTablePrivileges, false);
+    assert.equal(item.serviceRoleHasTablePrivileges, true);
+  }
+});
+
+test('live config grant hardening preserves rows and removes all client grants', () => {
+  const hardening = baseline.phase1ConfigGrantHardening;
+  assert.equal(hardening.migrationVersion, '20260713011803');
   assert.equal(
-    byTable.get('app_config').classification,
-    'intentional_deny_with_excess_client_grants',
+    hardening.repositoryMigrationPath,
+    'supabase/migrations/20260713011803_harden_config_table_grants.sql',
   );
-  assert.equal(byTable.get('app_config').authenticatedHasTablePrivileges, true);
-  assert.equal(byTable.get('app_private_config').anonHasTablePrivileges, true);
+  assert.equal(hardening.applied, true);
+  assert.equal(hardening.verified, true);
+  assert.equal(hardening.tables.length, 2);
+
+  for (const table of hardening.tables) {
+    assert.equal(table.rlsEnabled, true);
+    assert.equal(table.policyCount, 0);
+    assert.equal(table.clientGrantCount, 0);
+    assert.equal(table.serviceRoleGrantCount, 7);
+    assert.equal(table.rowCountBefore, 2);
+    assert.equal(table.rowCountAfter, 2);
+  }
 });
 
 test('SECURITY DEFINER inventory has no anonymous executable functions', () => {
@@ -107,11 +130,12 @@ test('SQL probe is rollback-contained and exercises owner, cross-user, update, a
   assert.match(probe, /phase0@sekret\.invalid/);
 });
 
-test('Phase 0 documentation refuses to certify all authorization or activate L4', () => {
-  assert.match(doc, /not a migration bundle/i);
+test('authorization documentation refuses to certify all boundaries or activate L4', () => {
   assert.match(doc, /does not certify every table/i);
   assert.match(doc, /Begin L4 schema design only after/i);
-  assert.match(doc, /left no synthetic records/i);
+  assert.match(doc, /zero synthetic users/i);
+  assert.match(doc, /\| `app_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
+  assert.match(doc, /\| `app_private_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
 });
 
 test('baseline contains no secret values or real email addresses', () => {

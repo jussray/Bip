@@ -7,36 +7,36 @@
     "region": "us-east-1",
     "status": "ACTIVE_HEALTHY",
     "latestLiveMigration": {
-      "version": "20260712184711",
-      "name": "optimize_circle_policy_plans"
+      "version": "20260713011803",
+      "name": "harden_config_table_grants"
     }
   },
   "scope": {
-    "productionDdlApplied": false,
+    "productionDdlApplied": true,
     "productionDataRetained": false,
-    "purpose": "Phase 0 inventory and rollback-contained authorization proof before any L4 persistence or broad policy changes"
+    "purpose": "Phase 0 authorization evidence plus verified Phase 1 hardening of server-owned configuration table grants before L4 persistence"
   },
   "advisorSnapshot": {
     "rlsEnabledNoPolicy": [
       {
         "table": "app_config",
-        "classification": "intentional_deny_with_excess_client_grants",
+        "classification": "service_role_only_after_grant_hardening",
         "rlsEnabled": true,
         "policyCount": 0,
-        "anonHasTablePrivileges": true,
-        "authenticatedHasTablePrivileges": true,
+        "anonHasTablePrivileges": false,
+        "authenticatedHasTablePrivileges": false,
         "serviceRoleHasTablePrivileges": true,
-        "nextAction": "Revoke anon and authenticated table privileges in a separate reviewed migration, preserving service-role access."
+        "nextAction": "Preserve the server-only boundary and reject any client grant unless a reviewed user-facing policy and use case are added together."
       },
       {
         "table": "app_private_config",
-        "classification": "intentional_deny_with_excess_client_grants",
+        "classification": "service_role_only_after_grant_hardening",
         "rlsEnabled": true,
         "policyCount": 0,
-        "anonHasTablePrivileges": true,
-        "authenticatedHasTablePrivileges": true,
+        "anonHasTablePrivileges": false,
+        "authenticatedHasTablePrivileges": false,
         "serviceRoleHasTablePrivileges": true,
-        "nextAction": "Revoke anon and authenticated table privileges in a separate reviewed migration, preserving service-role access."
+        "nextAction": "Preserve the server-only boundary and reject any client grant unless a reviewed user-facing policy and use case are added together."
       },
       {
         "table": "guardian_verification_reviews",
@@ -85,6 +85,32 @@
       "classification": "auth_configuration_gap",
       "nextAction": "Enable only after signup, login, reset, and existing-account regression planning is ready."
     }
+  },
+  "phase1ConfigGrantHardening": {
+    "migrationVersion": "20260713011803",
+    "repositoryMigrationPath": "supabase/migrations/20260713011803_harden_config_table_grants.sql",
+    "applied": true,
+    "verified": true,
+    "tables": [
+      {
+        "table": "app_config",
+        "rlsEnabled": true,
+        "policyCount": 0,
+        "clientGrantCount": 0,
+        "serviceRoleGrantCount": 7,
+        "rowCountBefore": 2,
+        "rowCountAfter": 2
+      },
+      {
+        "table": "app_private_config",
+        "rlsEnabled": true,
+        "policyCount": 0,
+        "clientGrantCount": 0,
+        "serviceRoleGrantCount": 7,
+        "rowCountBefore": 2,
+        "rowCountAfter": 2
+      }
+    ]
   },
   "securityDefiner": {
     "totalReviewed": 35,
@@ -197,6 +223,6 @@
   },
   "releaseGate": {
     "l4SchemaAllowed": false,
-    "reason": "Phase 0 evidence is established, but high-blast-radius policy and RPC classifications still require small reviewed trust-boundary fixes before L4 persistence can be activated."
+    "reason": "Config-table grants are hardened, but high-blast-radius authenticated RPCs, stale release-health evidence, retired functions, and Auth leaked-password protection still require focused Phase 1 proof before L4 persistence can be activated."
   }
 }
