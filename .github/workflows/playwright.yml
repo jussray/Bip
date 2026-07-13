@@ -1,6 +1,30 @@
 name: Playwright Smoke and Guardrails
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'screens/**'
+      - 'src/**'
+      - 'worker/**'
+      - 'e2e/**'
+      - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'scripts/write-release-metadata.mjs'
+      - 'test/cloudflare-native-deploy.test.mjs'
+      - 'test/release-metadata.test.mjs'
+      - 'docs/VISION.md'
+      - 'docs/GUARDRAILS.md'
+      - 'DEPLOYMENT.md'
+      - 'wrangler.toml'
+      - 'playwright.config.ts'
+      - 'playwright.production.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/ci.yml'
+      - '.github/workflows/deploy-cloudflare.yml'
+      - '.github/workflows/playwright.yml'
   pull_request:
     paths:
       - 'app/**'
@@ -38,7 +62,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Check out current PR head
+      - name: Check out current workflow head
         uses: actions/checkout@v4
 
       - name: Set up Node
