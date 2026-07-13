@@ -49,6 +49,7 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
         <Tabs.Screen name="points" options={{ href: null }} />
         <Tabs.Screen name="chores" options={{ href: null }} />
         <Tabs.Screen name="history" options={{ href: null }} />
+        <Tabs.Screen name="continuity" options={{ href: null }} />
         <Tabs.Screen name="bridge" options={{ href: null }} />
         <Tabs.Screen name="s2tell" options={{ href: null }} />
         <Tabs.Screen name="period-calendar" options={{ href: null }} />

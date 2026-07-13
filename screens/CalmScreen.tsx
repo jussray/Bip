@@ -79,7 +79,7 @@ const CALM_TOOLS = [
   { emoji: '🌿', label: 'Ground\nYourself',  sub: '3–7 min',         action: 'mindReset' },
   { emoji: '☁️', label: 'Cloud\nThoughts',  sub: 'say what\'s heavy',    action: 'cloud' },
   { emoji: '📝', label: 'Release\nIt Out',   sub: 'write + let go',       action: 'pages' },
-  { emoji: '🌙', label: 'Sleep\nBetter',     sub: 'stories + sounds',     action: null },
+  { emoji: '🌙', label: 'Sleep\nBetter',     sub: 'stories + sounds',     action: 'breathe' },
   { emoji: '🚨', label: 'SOS\nCalm Now',     sub: '30 sec reset',         action: 'comfort' },
 ];
 
@@ -224,7 +224,11 @@ export function CalmScreen({
 
   async function handlePickPlay(label: string, uri: string) {
     if (!uri) {
-      Alert.alert('Coming soon 💜', 'Audio tracks will be available in the next update.');
+      if (onOpenBreathe) {
+        onOpenBreathe();
+        return;
+      }
+      Alert.alert('Audio library', 'Open the full breathing screen to use available calm tools.');
       return;
     }
     if (activePick === label) {
@@ -301,7 +305,11 @@ export function CalmScreen({
         <Text style={[styles.sectionTitle, { color: '#fff' }]}>Calm Playlist ✦</Text>
         <Text style={[styles.sectionSub, { color: t.soft }]}>music + sounds to relax</Text>
         {CALM_PLAYLIST.map(item => (
-          <View key={item.label} style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}>
+          <TouchableOpacity
+            key={item.label}
+            style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}
+            onPress={() => onOpenBreathe ? onOpenBreathe() : Alert.alert('Audio library', 'Open the full breathing screen to use available calm tools.')}
+          >
             <Text style={styles.playlistEmoji}>{item.emoji}</Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.listRowTitle, { color: '#fff' }]}>{item.label}</Text>
@@ -309,7 +317,7 @@ export function CalmScreen({
             </View>
             <Text style={[styles.listRowDur, { color: t.soft }]}>{item.duration}</Text>
             <Text style={{ color: t.soft }}>›</Text>
-          </View>
+          </TouchableOpacity>
         ))}
 
         <View style={[styles.reminderCard, { backgroundColor: t.card, borderColor: t.accent }]}>
@@ -317,7 +325,7 @@ export function CalmScreen({
           <Text style={[styles.reminderSub, { color: t.soft }]}>set a gentle reminder to breathe</Text>
           <TouchableOpacity
             style={[styles.addReminderBtn, { borderColor: t.accent }]}
-            onPress={() => Alert.alert('Breathe Reminder', "Reminder set. You'll get a gentle nudge to breathe. 💜")}
+            onPress={() => onOpenBreathe ? onOpenBreathe() : Alert.alert('Breathe Reminder', 'Open the full breathing screen to schedule a reminder.')}
           >
             <Text style={[styles.addReminderText, { color: t.soft }]}>+ Add Reminder</Text>
           </TouchableOpacity>
@@ -457,8 +465,8 @@ export function CalmScreen({
         <Animated.View style={cardAnim(3)}>
           <View style={styles.toolsHeader}>
             <Text style={[styles.sectionTitle, { color: t.accent }]}>Today's Calm Plan 💜</Text>
-            <TouchableOpacity>
-              <Text style={[styles.seeAll, { color: t.soft }]}>edit plan ✏️</Text>
+            <TouchableOpacity onPress={() => setPlan(DEFAULT_PLAN.map(item => ({ ...item, done: false })))}>
+              <Text style={[styles.seeAll, { color: t.soft }]}>reset plan ↺</Text>
             </TouchableOpacity>
           </View>
           <Text style={[styles.sectionSub, { color: t.soft }]}>small steps. big difference.</Text>
@@ -507,7 +515,7 @@ export function CalmScreen({
         {/* Calm Picks */}
         <View style={styles.toolsHeader}>
           <Text style={[styles.sectionTitle, { color: t.accent }]}>Calm Picks for You ✦</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => onOpenBreathe ? onOpenBreathe() : setShowBreathe(true)}>
             <Text style={[styles.seeAll, { color: t.soft }]}>see all</Text>
           </TouchableOpacity>
         </View>
