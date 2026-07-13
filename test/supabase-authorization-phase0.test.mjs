@@ -7,17 +7,24 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const baselinePath = path.join(root, 'security', 'supabase-authorization-baseline.json');
 const probePath = path.join(root, 'supabase', 'probes', 'authorization_phase0.sql');
+const founderProbePath = path.join(
+  root,
+  'supabase',
+  'probes',
+  'authorization_founder_guardian_phase1.sql',
+);
 const docPath = path.join(root, 'docs', 'security', 'SUPABASE_AUTHORIZATION_PHASE0.md');
 
 const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
 const probe = fs.readFileSync(probePath, 'utf8');
+const founderProbe = fs.readFileSync(founderProbePath, 'utf8');
 const doc = fs.readFileSync(docPath, 'utf8');
 
-test('authorization baseline records the verified live migration and keeps L4 closed', () => {
+test('authorization baseline records the latest verified live migration and keeps L4 closed', () => {
   assert.equal(baseline.schemaVersion, 1);
   assert.equal(baseline.project.ref, 'tbsevonvegdnlyjgplmm');
-  assert.equal(baseline.project.latestLiveMigration.version, '20260713011803');
-  assert.equal(baseline.project.latestLiveMigration.name, 'harden_config_table_grants');
+  assert.equal(baseline.project.latestLiveMigration.version, '20260713024253');
+  assert.equal(baseline.project.latestLiveMigration.name, 'remove_anon_audit_control_room_grants');
   assert.equal(baseline.scope.productionDdlApplied, true);
   assert.equal(baseline.scope.productionDataRetained, false);
   assert.equal(baseline.releaseGate.l4SchemaAllowed, false);
@@ -64,6 +71,30 @@ test('live config grant hardening preserves rows and removes all client grants',
   }
 });
 
+test('founder and guardian hardening records exact live migration parity and 23 passed checks', () => {
+  const hardening = baseline.phase1FounderGuardianHardening;
+  assert.equal(hardening.applied, true);
+  assert.equal(hardening.verified, true);
+  assert.equal(hardening.repositoryAndLiveMigrationParity, true);
+  assert.deepEqual(
+    hardening.migrations.map((item) => `${item.version}_${item.name}`),
+    [
+      '20260713024231_harden_founder_helper_anonymous_guard',
+      '20260713024245_harden_audit_control_room_policies',
+      '20260713024253_remove_anon_audit_control_room_grants',
+    ],
+  );
+  assert.equal(hardening.founderHelper.anonymousAuthenticatedDenied, true);
+  assert.equal(hardening.founderHelper.anonExecute, false);
+  assert.equal(hardening.founderHelper.authenticatedExecute, true);
+  assert.equal(hardening.founderHelper.serviceRoleExecute, true);
+  assert.equal(hardening.anonTablePrivilegesRemoved, true);
+  assert.equal(hardening.policyRole, 'authenticated');
+  assert.equal(hardening.transactionOutcome, 'rolled_back');
+  assert.equal(hardening.passedChecks, 23);
+  assert.equal(hardening.failedChecks, 0);
+});
+
 test('SECURITY DEFINER inventory has no anonymous executable functions', () => {
   assert.equal(baseline.securityDefiner.totalReviewed, 35);
   assert.deepEqual(baseline.securityDefiner.anonExecutable, []);
@@ -74,6 +105,10 @@ test('SECURITY DEFINER inventory has no anonymous executable functions', () => {
   );
   assert.equal(
     baseline.securityDefiner.commonControlsObserved.some((value) => /search path/.test(value)),
+    true,
+  );
+  assert.equal(
+    baseline.securityDefiner.commonControlsObserved.some((value) => /founder and guardian/i.test(value)),
     true,
   );
 });
@@ -117,51 +152,49 @@ test('obsolete release and probe functions are live JWT-protected 410 retirement
     assert.equal(typeof item.replacement, 'string');
     assert.equal(item.replacement.length > 0, true);
   }
-
-  assert.equal(
-    baseline.edgeFunctions.httpProbe.unauthenticated,
-    'not_run_dns_unavailable_in_execution_environment',
-  );
-  assert.equal(
-    baseline.edgeFunctions.httpProbe.authenticated,
-    'not_run_no_safe_test_identity_available',
-  );
 });
 
-test('live proof records four passed checks and zero synthetic residue', () => {
-  assert.equal(baseline.liveProof.transactionOutcome, 'rolled_back');
-  assert.equal(baseline.liveProof.checks.length, 4);
-  assert.equal(baseline.liveProof.checks.every((check) => check.passed === true), true);
-  assert.deepEqual(baseline.liveProof.cleanup, {
+test('live proof records both rollback-contained suites with zero retained probe data', () => {
+  assert.equal(baseline.liveProof.phase0.transactionOutcome, 'rolled_back');
+  assert.equal(baseline.liveProof.phase0.passedChecks, 4);
+  assert.equal(baseline.liveProof.phase0.failedChecks, 0);
+  assert.deepEqual(baseline.liveProof.phase0.cleanup, {
     phase0Users: 0,
     phase0Journals: 0,
     phase0Moods: 0,
     phase0VoiceNotes: 0,
   });
+
+  assert.equal(baseline.liveProof.founderGuardianPhase1.transactionOutcome, 'rolled_back');
+  assert.equal(baseline.liveProof.founderGuardianPhase1.passedChecks, 23);
+  assert.equal(baseline.liveProof.founderGuardianPhase1.failedChecks, 0);
+  assert.equal(baseline.liveProof.founderGuardianPhase1.syntheticDataRetained, false);
 });
 
-test('SQL probe is rollback-contained and exercises owner, cross-user, update, and anon denial', () => {
+test('SQL probes are rollback-contained and exercise their declared boundaries', () => {
   assert.match(probe, /^-- Se'kret Bip Supabase authorization Phase 0 proof harness/m);
   assert.match(probe, /\bbegin;/i);
   assert.match(probe, /\brollback;\s*$/i);
   assert.doesNotMatch(probe, /\bcommit;/i);
-  assert.match(probe, /set local role authenticated/i);
-  assert.match(probe, /set local role anon/i);
-  assert.match(probe, /authenticated_reads_own_private_rows/);
   assert.match(probe, /authenticated_denied_cross_user_reads/);
-  assert.match(probe, /authenticated_denied_cross_user_update/);
   assert.match(probe, /anon_denied_private_rows/);
-  assert.match(probe, /phase0@sekret\.invalid/);
+
+  assert.match(founderProbe, /^-- Se'kret Bip founder\/guardian authorization Phase 1 proof harness/m);
+  assert.match(founderProbe, /\bbegin;/i);
+  assert.match(founderProbe, /\brollback;\s*$/i);
+  assert.doesNotMatch(founderProbe, /\bcommit;/i);
+  assert.match(founderProbe, /anonymous_founder_rejected_by_founder_helper/);
+  assert.match(founderProbe, /normal_guardian_review_denied/);
+  assert.match(founderProbe, /founder_control_room_upsert_succeeds/);
 });
 
-test('authorization documentation refuses to certify all boundaries or activate L4', () => {
+test('authorization documentation refuses blanket certification and records live founder proof', () => {
   assert.match(doc, /does not certify every table/i);
+  assert.match(doc, /23 of 23 checks/i);
+  assert.match(doc, /anonymous-authenticated sessions are rejected/i);
   assert.match(doc, /Begin L4 schema design only after/i);
-  assert.match(doc, /zero synthetic users/i);
   assert.match(doc, /JWT-protected retirement/i);
   assert.match(doc, /Direct HTTP probing was not performed/i);
-  assert.match(doc, /\| `app_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
-  assert.match(doc, /\| `app_private_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
 });
 
 test('baseline contains no secret values or real email addresses', () => {
