@@ -112,6 +112,8 @@ test('authorization evidence and retired internals stay out of the public web su
   expect(visibleText).not.toContain('github-workflow-status');
   expect(visibleText).not.toContain('retirement-manifest.json');
   expect(visibleText).not.toContain('function_retired');
-  expect(visibleText).not.toContain('harden_founder_guardian_authorization');
+  expect(visibleText).not.toContain('harden_founder_helper_anonymous_guard');
+  expect(visibleText).not.toContain('harden_audit_control_room_policies');
+  expect(visibleText).not.toContain('remove_anon_audit_control_room_grants');
   expect(visibleText).not.toContain('authorization_founder_guardian_phase1.sql');
 });
