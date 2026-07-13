@@ -1,9 +1,12 @@
 name: Temporary Lint Diagnostic
 
 on:
-  push:
-    branches:
-      - implementation/unify-worker-contracts
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'worker/**'
+      - 'test/**'
+      - '.github/workflows/temporary-lint-diagnostic.yml'
 
 permissions:
   contents: read
