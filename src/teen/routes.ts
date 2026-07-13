@@ -23,6 +23,7 @@ export const TEEN_ROUTES = {
   growth: '/(teen)/growth',
   mindReset: '/(teen)/mind-body-reset?mode=mindReset',
   bodyReset: '/(teen)/mind-body-reset?mode=bodyReset',
+  bodyWorkout: '/(teen)/body-workout',
   parentLinkVerify: '/(auth)/parent-link-verify',
   resources: '/(teen)/resources',
 } as const;

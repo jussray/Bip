@@ -3,13 +3,14 @@
   "updatedAt": "2026-07-13",
   "documentationReview": {
     "reviewedAt": "2026-07-13",
-    "baseCommit": "1a011a6c735efe07e81c009ad316622d1887e7c9",
+    "baseCommit": "cc40f863cfd8d2b4e80b295a9dd88fdf3b7a70bb",
     "scope": [
       "repository identity and setup",
       "current product and wiring state",
       "Cloudflare production ownership and exact-release evidence",
       "Supabase authorization and retired Edge Functions",
       "companion identity/style integration",
+      "Mind and Body Reset guided tools and workouts",
       "Bridge controlled rollout",
       "L4 planned-only boundary",
       "agent architecture and Worker guardrails",
@@ -109,6 +110,48 @@
         "blocker": "Exact-head CI, Companion Lab, and Playwright passed; production deployment and observed live style-version telemetry remain before verified or released status."
       },
       "rollback": "Revert the runtime-activation merge commit; the existing reply brain remains intact behind the wrapper and no database migration is introduced."
+    },
+    {
+      "id": "mind-body-reset-workouts",
+      "name": "Mind and Body Reset guided regulation and bodyweight workouts",
+      "status": "integrated",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/374",
+      "acceptanceCriteria": [
+        "Mind Reset provides guided breathing, grounding, panoramic vision, bilateral tapping, and Brain Dump routing.",
+        "Body Reset provides guided somatic regulation plus real one-, three-, five-, and classic twelve-move bodyweight routines.",
+        "Workout flows include work and rest timers, low-impact alternatives, pause, skip, stop, progress, safety guidance, and completion states.",
+        "Only minimal routine metadata is written to the existing activity ledger, and instant skipping does not earn a completion event.",
+        "The existing Supabase event-to-points trigger is restored without adding a parallel workout or points table."
+      ],
+      "contractPaths": [
+        "src/features/reset/catalog.ts",
+        "src/features/activity/events.ts",
+        "supabase/migrations/20260713052511_restore_bip_events_points_trigger.sql"
+      ],
+      "runtimePaths": [
+        "screens/MindBodyResetScreen.tsx",
+        "src/features/reset/ResetFlows.tsx",
+        "app/(teen)/mind-body-reset.tsx",
+        "app/(teen)/body-workout.tsx"
+      ],
+      "testPaths": [
+        "test/body-reset-workouts.test.mjs"
+      ],
+      "telemetryPaths": [
+        "src/features/activity/events.ts",
+        "supabase/migrations/20260713052511_restore_bip_events_points_trigger.sql"
+      ],
+      "rollout": {
+        "state": "internal",
+        "controlPath": "app/(teen)/_layout.tsx",
+        "controlKey": "teen-only hidden reset routes"
+      },
+      "verification": {
+        "state": "partial",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/374",
+        "blocker": "Source contract tests and live trigger inspection passed. Exact-head CI plus iOS, Android, web timer, accessibility, and movement-safety QA remain before verified or released status."
+      },
+      "rollback": "Revert the feature merge and drop public.bip_events_award_points only if the restored award path regresses. Existing bip_events rows and points tables remain intact."
     },
     {
       "id": "control-room-operational-observability",
