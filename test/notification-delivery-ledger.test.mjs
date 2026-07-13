@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260713054000_harden_notification_delivery_ledger.sql',
+  '20260713052603_harden_notification_delivery_ledger.sql',
 );
 const sendPushPath = path.join(root, 'supabase', 'functions', 'send-push', 'index.ts');
 

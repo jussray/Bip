@@ -7,14 +7,14 @@
     "region": "us-east-1",
     "status": "ACTIVE_HEALTHY",
     "latestLiveMigration": {
-      "version": "20260713024253",
-      "name": "remove_anon_audit_control_room_grants"
+      "version": "20260713052603",
+      "name": "harden_notification_delivery_ledger"
     }
   },
   "scope": {
     "productionDdlApplied": true,
     "productionDataRetained": false,
-    "purpose": "Authorization evidence plus verified config-grant hardening, JWT-protected retirement of obsolete Edge Functions, and founder/guardian authorization proof before L4 persistence"
+    "purpose": "Authorization evidence plus verified config-grant hardening, JWT-protected retirement of obsolete Edge Functions, founder/guardian authorization proof, notification delivery ledger hardening, and live migration parity before L4 persistence"
   },
   "advisorSnapshot": {
     "rlsEnabledNoPolicy": [
@@ -38,15 +38,6 @@
       },
       {
         "table": "guardian_verification_reviews",
-        "classification": "service_role_only",
-        "rlsEnabled": true,
-        "policyCount": 0,
-        "anonHasTablePrivileges": false,
-        "authenticatedHasTablePrivileges": false,
-        "serviceRoleHasTablePrivileges": true
-      },
-      {
-        "table": "notification_deliveries",
         "classification": "service_role_only",
         "rlsEnabled": true,
         "policyCount": 0,
@@ -154,6 +145,65 @@
       "no probe rows or private data were retained"
     ]
   },
+  "phase1NotificationLedgerHardening": {
+    "migrationVersion": "20260713052603",
+    "migrationName": "harden_notification_delivery_ledger",
+    "repositoryMigrationPath": "supabase/migrations/20260713052603_harden_notification_delivery_ledger.sql",
+    "applied": true,
+    "verified": true,
+    "repositoryAndLiveMigrationParity": true,
+    "table": "notification_deliveries",
+    "rlsEnabled": true,
+    "policyCount": 1,
+    "denyPolicy": "notification_deliveries_deny_clients",
+    "anonHasTablePrivileges": false,
+    "authenticatedHasTablePrivileges": false,
+    "serviceRoleTablePrivileges": [
+      "INSERT",
+      "SELECT"
+    ],
+    "serviceRoleSequencePrivileges": [
+      "USAGE"
+    ],
+    "serviceRoleUpdateAllowed": false,
+    "serviceRoleDeleteAllowed": false,
+    "deployedConsumer": "send-push",
+    "deployedOperations": [
+      "SELECT",
+      "INSERT"
+    ],
+    "advisorNoPolicyFindingCleared": true,
+    "transactionOutcome": "rolled_back",
+    "serviceRoleInsertProof": "passed",
+    "syntheticUsersRetained": 0,
+    "notificationRowsRetained": 0
+  },
+  "migrationParity": {
+    "verified": true,
+    "restoredRepositoryMigrations": [
+      {
+        "version": "20260704014518",
+        "name": "create_bip_event_points_function",
+        "repositoryPath": "supabase/migrations/20260704014518_create_bip_event_points_function.sql"
+      },
+      {
+        "version": "20260713052511",
+        "name": "restore_bip_events_points_trigger",
+        "repositoryPath": "supabase/migrations/20260713052511_restore_bip_events_points_trigger.sql"
+      },
+      {
+        "version": "20260713052603",
+        "name": "harden_notification_delivery_ledger",
+        "repositoryPath": "supabase/migrations/20260713052603_harden_notification_delivery_ledger.sql"
+      }
+    ],
+    "pointsTrigger": {
+      "table": "bip_events",
+      "trigger": "bip_events_award_points",
+      "function": "handle_bip_event_points",
+      "idempotencyKey": "point_transactions(user_id, source_type, source_id)"
+    }
+  },
   "securityDefiner": {
     "totalReviewed": 35,
     "anonExecutable": [],
@@ -239,10 +289,18 @@
       "passedChecks": 23,
       "failedChecks": 0,
       "syntheticDataRetained": false
+    },
+    "notificationLedgerPhase1": {
+      "transactionOutcome": "rolled_back",
+      "passedChecks": 8,
+      "failedChecks": 0,
+      "serviceRoleInsertProof": true,
+      "syntheticUsersRetained": 0,
+      "notificationRowsRetained": 0
     }
   },
   "releaseGate": {
     "l4SchemaAllowed": false,
-    "reason": "Config grants, obsolete Edge Function exposure, and founder/guardian authorization are hardened. Remaining blockers are additional authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection regression evidence."
+    "reason": "Config grants, obsolete Edge Function exposure, founder/guardian authorization, notification delivery ledger access, and live migration parity are hardened. Remaining blockers are additional authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection regression evidence."
   }
 }
