@@ -3,12 +3,7 @@ import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
 import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
 import { getModels, type WorkerEnv } from './config/models';
 
-/**
- * Minimal shape of Cloudflare's ExecutionContext. Declared locally instead of
- * depending on @cloudflare/workers-types (not installed in this project) —
- * the real object the Workers runtime passes in has more methods, which is
- * fine, since this only narrows what we call on it (`waitUntil`).
- */
+/** Minimal shape of Cloudflare's ExecutionContext. */
 interface MinimalExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
 }
@@ -21,17 +16,11 @@ function operationForPath(path: string): string {
   return 'unknown';
 }
 
-/**
- * Fallback model label when the response body doesn't carry its own `model`
- * field (e.g. auth/rate-limit failures that never reached OpenAI). Reads from
- * getModels(env) so this stays in sync with wrangler.toml [vars] — no more
- * hardcoded strings that drift when the active model is rotated.
- */
 function modelForOperation(operation: string, env: WorkerEnv): string | undefined {
   const models = getModels(env);
   if (operation === 'reply') return models.chat;
-  if (operation === 'tts')   return models.tts;
-  if (operation === 'stt')   return models.stt;
+  if (operation === 'tts') return models.tts;
+  if (operation === 'stt') return models.stt;
   return undefined;
 }
 
@@ -43,7 +32,7 @@ function fingerprintFor(status: number, operation: string, fallbackUsed: boolean
   if (status === 429) return 'worker_rate_limit';
   if (status >= 500) {
     if (operation === 'tts') return 'openai_tts_failure';
-    if (operation === 'sst') return 'openai_stt_failure';
+    if (operation === 'stt') return 'openai_stt_failure';
     if (operation === 'bridge_summary') return 'bridge_summary_failure';
     return 'openai_reply_failure';
   }
@@ -58,6 +47,7 @@ function fingerprintFor(status: number, operation: string, fallbackUsed: boolean
 
 interface SafeResponseMetadata {
   characterId?: string;
+  actorRole?: string;
   fallbackUsed: boolean;
   voiceSource?: string;
   model?: string;
@@ -71,6 +61,11 @@ interface SafeResponseMetadata {
   promptVersion?: string;
   policyVersion?: string;
   traceId?: string;
+  textStyleVersion?: string;
+  speechStyleVersion?: string;
+  questionBudget?: number;
+  styleRepaired?: boolean;
+  styleViolationCodes?: string[];
 }
 
 async function readSafeResponseMetadata(response: Response, operation: string): Promise<SafeResponseMetadata> {
@@ -80,8 +75,10 @@ async function readSafeResponseMetadata(response: Response, operation: string): 
   try {
     const data = await response.clone().json() as Record<string, unknown>;
     const usage = data.usage as Record<string, unknown> | undefined;
+    const styleDecision = data.styleDecision === 'repair' ? 'repair' : undefined;
     return {
       characterId: typeof data.characterId === 'string' ? data.characterId : undefined,
+      actorRole: typeof data.actorRole === 'string' ? data.actorRole : undefined,
       fallbackUsed: data.replySource === 'fallback' || data.usedFallback === true,
       voiceSource: typeof data.voiceSource === 'string' ? data.voiceSource : undefined,
       model: typeof data.model === 'string' ? data.model : undefined,
@@ -89,12 +86,19 @@ async function readSafeResponseMetadata(response: Response, operation: string): 
       outputTokens: typeof usage?.outputTokens === 'number' ? usage.outputTokens : undefined,
       totalTokens: typeof usage?.totalTokens === 'number' ? usage.totalTokens : undefined,
       estimatedCostUsd: typeof data.estimatedCostUsd === 'number' ? data.estimatedCostUsd : undefined,
-      decision: typeof data.decision === 'string' ? data.decision : undefined,
+      decision: styleDecision || (typeof data.decision === 'string' ? data.decision : undefined),
       violationCodes: Array.isArray(data.violationCodes) ? data.violationCodes.filter((v): v is string => typeof v === 'string') : undefined,
       schemaValid: typeof data.schemaValid === 'boolean' ? data.schemaValid : undefined,
       promptVersion: typeof data.promptVersion === 'string' ? data.promptVersion : undefined,
       policyVersion: typeof data.policyVersion === 'string' ? data.policyVersion : undefined,
       traceId: typeof data.traceId === 'string' ? data.traceId : undefined,
+      textStyleVersion: typeof data.textStyleVersion === 'string' ? data.textStyleVersion : undefined,
+      speechStyleVersion: typeof data.speechStyleVersion === 'string' ? data.speechStyleVersion : undefined,
+      questionBudget: typeof data.questionBudget === 'number' ? data.questionBudget : undefined,
+      styleRepaired: data.styleRepaired === true,
+      styleViolationCodes: Array.isArray(data.styleViolationCodes)
+        ? data.styleViolationCodes.filter((v): v is string => typeof v === 'string')
+        : undefined,
     };
   } catch {
     return { fallbackUsed: false };
@@ -122,11 +126,17 @@ export default {
         provider: operation === 'unknown' || operation === 'bridge_summary' ? 'cloudflare' : 'openai',
         operation,
         character_id: metadata.characterId,
+        actor_role: metadata.actorRole,
         request_id: requestId,
         model: metadata.model || modelForOperation(operation, typedEnv),
         fallback_used: metadata.fallbackUsed,
         retry_count: metadata.decision === 'retry' ? 1 : 0,
         voice_source: metadata.voiceSource,
+        text_style_version: metadata.textStyleVersion,
+        speech_style_version: metadata.speechStyleVersion,
+        question_budget: metadata.questionBudget,
+        style_repaired: metadata.styleRepaired,
+        style_violation_codes: metadata.styleViolationCodes,
         trace_id: metadata.traceId || traceIdFallback,
         input_tokens: metadata.inputTokens,
         output_tokens: metadata.outputTokens,
