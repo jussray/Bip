@@ -7,14 +7,14 @@
     "region": "us-east-1",
     "status": "ACTIVE_HEALTHY",
     "latestLiveMigration": {
-      "version": "20260713011803",
-      "name": "harden_config_table_grants"
+      "version": "20260713024253",
+      "name": "remove_anon_audit_control_room_grants"
     }
   },
   "scope": {
     "productionDdlApplied": true,
     "productionDataRetained": false,
-    "purpose": "Authorization evidence plus verified config-grant hardening and JWT-protected retirement of obsolete Edge Functions before L4 persistence"
+    "purpose": "Authorization evidence plus verified config-grant hardening, JWT-protected retirement of obsolete Edge Functions, and founder/guardian authorization proof before L4 persistence"
   },
   "advisorSnapshot": {
     "rlsEnabledNoPolicy": [
@@ -61,9 +61,15 @@
         "journal_entries",
         "mood_history",
         "voice_notes",
-        "room_memory"
+        "room_memory",
+        "audit_events",
+        "control_room_fingerprints",
+        "control_room_issue_events",
+        "control_room_issue_history",
+        "control_room_issues",
+        "control_room_releases"
       ],
-      "nextAction": "Expand rollback-contained anonymous and two-user denial probes by trust boundary before changing policy roles or predicates."
+      "nextAction": "Expand rollback-contained anonymous and two-user denial probes by trust boundary before changing remaining policy roles or predicates."
     },
     "leakedPasswordProtection": {
       "enabled": false,
@@ -97,6 +103,57 @@
       }
     ]
   },
+  "phase1FounderGuardianHardening": {
+    "applied": true,
+    "verified": true,
+    "repositoryAndLiveMigrationParity": true,
+    "migrations": [
+      {
+        "version": "20260713024231",
+        "name": "harden_founder_helper_anonymous_guard",
+        "repositoryPath": "supabase/migrations/20260713024231_harden_founder_helper_anonymous_guard.sql"
+      },
+      {
+        "version": "20260713024245",
+        "name": "harden_audit_control_room_policies",
+        "repositoryPath": "supabase/migrations/20260713024245_harden_audit_control_room_policies.sql"
+      },
+      {
+        "version": "20260713024253",
+        "name": "remove_anon_audit_control_room_grants",
+        "repositoryPath": "supabase/migrations/20260713024253_remove_anon_audit_control_room_grants.sql"
+      }
+    ],
+    "founderHelper": {
+      "anonymousAuthenticatedDenied": true,
+      "anonExecute": false,
+      "authenticatedExecute": true,
+      "serviceRoleExecute": true,
+      "fixedSearchPath": true
+    },
+    "auditAndControlRoomTables": [
+      "audit_events",
+      "control_room_fingerprints",
+      "control_room_issue_events",
+      "control_room_issue_history",
+      "control_room_issues",
+      "control_room_releases"
+    ],
+    "anonTablePrivilegesRemoved": true,
+    "policyRole": "authenticated",
+    "probePath": "supabase/probes/authorization_founder_guardian_phase1.sql",
+    "transactionOutcome": "rolled_back",
+    "passedChecks": 23,
+    "failedChecks": 0,
+    "proofSummary": [
+      "normal authenticated users cannot access founder or guardian administration paths",
+      "non-anonymous founder access remains functional",
+      "anonymous-authenticated sessions are denied founder, guardian, audit, and Control Room access",
+      "elevated Control Room writes are denied to normal and anonymous-authenticated sessions",
+      "guardian review authorization fails before target validation for unauthorized callers",
+      "no probe rows or private data were retained"
+    ]
+  },
   "securityDefiner": {
     "totalReviewed": 35,
     "anonExecutable": [],
@@ -105,9 +162,10 @@
     "commonControlsObserved": [
       "anonymous execution denied on every reviewed function",
       "explicit search path configured on every reviewed function",
-      "authenticated functions use owner, founder, or guardian authorization helpers"
+      "authenticated functions use owner, founder, or guardian authorization helpers",
+      "founder and guardian administrative paths reject anonymous-authenticated sessions"
     ],
-    "nextAction": "Classify and behavior-test each authenticated function by trust boundary before changing execution grants."
+    "nextAction": "Continue behavior-testing authenticated functions by trust boundary, especially parent-link, Bridge, push-token, task/reward review, and remaining Control Room ingestion paths."
   },
   "edgeFunctions": {
     "activeCount": 18,
@@ -160,38 +218,31 @@
       "authenticated": "not_run_no_safe_test_identity_available",
       "evidenceUsed": "Supabase deployment registry plus deployed source retrieval"
     },
-    "nextAction": "Keep the two remaining custom-auth functions under focused negative tests and remove retired registrations when supported deletion tooling is available."
+    "nextAction": "Add focused negative-auth tests for account-delete and safety-scan and remove retired registrations when supported deletion tooling is available."
   },
   "liveProof": {
-    "probePath": "supabase/probes/authorization_phase0.sql",
-    "transactionOutcome": "rolled_back",
-    "checks": [
-      {
-        "name": "authenticated_reads_own_private_rows",
-        "passed": true
-      },
-      {
-        "name": "authenticated_denied_cross_user_reads",
-        "passed": true
-      },
-      {
-        "name": "authenticated_denied_cross_user_update",
-        "passed": true
-      },
-      {
-        "name": "anon_denied_private_rows",
-        "passed": true
+    "phase0": {
+      "probePath": "supabase/probes/authorization_phase0.sql",
+      "transactionOutcome": "rolled_back",
+      "passedChecks": 4,
+      "failedChecks": 0,
+      "cleanup": {
+        "phase0Users": 0,
+        "phase0Journals": 0,
+        "phase0Moods": 0,
+        "phase0VoiceNotes": 0
       }
-    ],
-    "cleanup": {
-      "phase0Users": 0,
-      "phase0Journals": 0,
-      "phase0Moods": 0,
-      "phase0VoiceNotes": 0
+    },
+    "founderGuardianPhase1": {
+      "probePath": "supabase/probes/authorization_founder_guardian_phase1.sql",
+      "transactionOutcome": "rolled_back",
+      "passedChecks": 23,
+      "failedChecks": 0,
+      "syntheticDataRetained": false
     }
   },
   "releaseGate": {
     "l4SchemaAllowed": false,
-    "reason": "Config-table grants and obsolete Edge Function exposure are hardened, but authenticated database functions and password-breach protection still require focused proof before L4 persistence can be activated."
+    "reason": "Config grants, obsolete Edge Function exposure, and founder/guardian authorization are hardened. Remaining blockers are additional authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection regression evidence."
   }
 }
