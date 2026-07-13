@@ -1,9 +1,8 @@
 const RETIREMENT = Object.freeze({
   error: 'function_retired',
-  function: 'release-health',
-  replacement: 'GitHub Cloudflare-native deployment verification',
-  evidencePath: 'artifacts/cloudflare-native-deploy.json',
-  documentation: 'DEPLOYMENT.md',
+  function: 'bridge-e2e-probe',
+  replacement: 'Issue #270 controlled two-account proof and repository Playwright guardrails',
+  documentation: 'docs/security/SUPABASE_AUTHORIZATION_PHASE0.md',
 });
 
 Deno.serve(() => new Response(JSON.stringify(RETIREMENT), {
