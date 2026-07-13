@@ -22,6 +22,9 @@ const clientPath = path.join(root, 'src', 'utils', 'parentLink.ts');
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const probe = fs.readFileSync(probePath, 'utf8');
 const client = fs.readFileSync(clientPath, 'utf8');
+const revokeClient = client.match(
+  /export async function revokeParentLink\(\): Promise<boolean> \{[\s\S]*?^\}/m,
+)?.[0] ?? '';
 
 test('parent-link revoke remains permanent-session and relationship scoped', () => {
   assert.match(migration, /v_user_id uuid := auth\.uid\(\)/i);
@@ -97,10 +100,11 @@ test('revoke proof covers ownership, retry, and protected-state outcomes', () =>
 });
 
 test('existing client uses the guarded RPC and treats no active link as false', () => {
-  assert.match(client, /export async function revokeParentLink\(\): Promise<boolean>/);
-  assert.match(client, /rpc\('revoke_parent_link'\)/);
-  assert.match(client, /return data === true;/);
-  assert.doesNotMatch(client, /from\('parent_links'\)[\s\S]*delete\(/i);
+  assert.match(revokeClient, /export async function revokeParentLink\(\): Promise<boolean>/);
+  assert.match(revokeClient, /rpc\('revoke_parent_link'\)/);
+  assert.match(revokeClient, /return data === true;/);
+  assert.doesNotMatch(revokeClient, /\.from\('parent_links'\)/i);
+  assert.doesNotMatch(revokeClient, /\.delete\(\)/i);
 });
 
 test('migration is transactional and documents consent versus safety state', () => {
