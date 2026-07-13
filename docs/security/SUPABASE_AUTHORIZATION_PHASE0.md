@@ -6,7 +6,11 @@
 
 ## Decision
 
-Phase 0 established the live authorization inventory and rollback-contained denial harness. Phase 1 has now applied the first narrow trust-boundary fix: server-owned configuration tables no longer retain client table privileges.
+Authorization work now has three durable evidence layers:
+
+1. a rollback-contained two-user and anonymous denial probe;
+2. live server-config grant hardening;
+3. JWT-protected retirement of obsolete release and probe Edge Functions.
 
 The machine-readable evidence is `security/supabase-authorization-baseline.json`. The reusable denial probe is `supabase/probes/authorization_phase0.sql`.
 
@@ -34,20 +38,11 @@ Migration `20260713011803_harden_config_table_grants.sql` was applied and verifi
 | `app_config` | enabled | 0 | 0 | 7 | 2 | 2 |
 | `app_private_config` | enabled | 0 | 0 | 7 | 2 | 2 |
 
-The migration:
-
-- revoked all table privileges from `PUBLIC`, `anon`, and `authenticated`;
-- preserved explicit `service_role` privileges;
-- kept RLS enabled;
-- added no policies;
-- modified no rows;
-- documented server-only intent on both tables.
-
-The earlier live migration generated version `20260713011803`. Repository migration history has been aligned to that exact version so a future replay does not attempt a duplicate migration.
+The migration revoked client and public table privileges, preserved service-role access, added no policies, and modified no rows. Repository migration history matches the exact live version.
 
 ## RLS-enabled tables with no policies
 
-The four advisor findings now share the same clear server-only grant shape:
+The four advisor findings now share a clear server-only grant shape:
 
 | Table | Client grants | Service role | Classification |
 |---|---:|---:|---|
@@ -66,37 +61,43 @@ The correct response remains behavioral proof by trust boundary, not a mass role
 
 ## SECURITY DEFINER inventory
 
-Thirty-five public `SECURITY DEFINER` functions were reviewed for EXECUTE grants, explicit `search_path`, and owner/founder/guardian authorization checks.
+Thirty-five public `SECURITY DEFINER` functions were reviewed for execution grants, explicit search paths, and owner/founder/guardian authorization checks.
 
 - no reviewed function is executable by `anon`;
-- every reviewed function has explicit `search_path` configuration;
+- every reviewed function has explicit search-path configuration;
 - twenty-four are executable by `authenticated` and use an owner, founder, or guardian boundary;
 - eleven are service-role-only, trigger-only, or internal maintenance functions.
 
 This is not a blanket certification. Each authenticated RPC still needs positive owner access and negative anonymous, cross-user, and unauthorized-role tests before grants or bodies change.
 
-## Edge Functions with `verify_jwt: false`
+## Edge Function retirement evidence
 
-Five live functions use custom boundaries:
+Only two live functions now keep platform JWT verification disabled, both with intentional server-to-server authentication:
 
 | Function | Boundary | Classification |
 |---|---|---|
-| `account-delete` | `x-account-deletion-secret` | intentional server operation |
-| `safety-scan` | `x-scan-secret` from Postgres trigger | intentional trigger operation |
-| `release-health` | GitHub OIDC | stale repository/workflow expectations; not valid current release evidence |
-| `bridge-e2e-probe` | always HTTP 410 | retired endpoint |
-| `github-workflow-status` | always HTTP 410 | retired endpoint |
+| `account-delete` | dedicated deletion header | intentional server operation |
+| `safety-scan` | dedicated database-trigger header | intentional trigger operation |
 
-`release-health` still expects `jussray/Bip` and `deploy-cloudflare.yml`. The canonical repository is `jussray/Sekret-Bip`, and the deployment path is now Cloudflare native verification. Repair or replace it before using it as release evidence.
+Three obsolete functions were source-controlled as side-effect-free HTTP 410 retirements and redeployed with `verify_jwt: true`:
+
+| Function | Live version | JWT | Source hash | Replacement |
+|---|---:|---|---|---|
+| `release-health` | 2 | required | `318a684a...e3157a` | Cloudflare-native verifier and exact-release evidence |
+| `bridge-e2e-probe` | 3 | required | `0a1af7dc...45f7e7` | issue #270 controlled proof and Playwright |
+| `github-workflow-status` | 4 | required | `5acdefc5...51c108` | GitHub Actions and Cloudflare-native evidence |
+
+Supabase deployment registry and deployed-source retrieval verified each version, JWT setting, source, and hash. Direct HTTP probing was not performed because the execution environment could not resolve the project hostname and no safe authenticated test identity was available. That limitation is recorded rather than converted into imaginary evidence.
+
+Repository tests reject executable callers, network/database side effects, missing replacements, disabled JWT expectations, and any status other than 410. The public Playwright guardrail rejects these internal names and manifest identifiers from the browser surface.
 
 ## Remaining Phase 1 work
 
 1. Add focused behavior tests for high-blast-radius authenticated RPCs: guardian review, founder/Control Room ingestion, parent linking, Bridge, push tokens, and reward/task review.
-2. Repair or retire `release-health`.
-3. Remove the two HTTP 410 probe functions after confirming no callers remain.
-4. Plan and test leaked-password protection before changing Auth configuration.
-5. Begin L4 schema design only after the trust boundary it will use has an approved migration and denial suite.
+2. Add focused negative tests for the two intentional custom-auth functions.
+3. Plan and test leaked-password protection before changing Auth configuration.
+4. Begin L4 schema design only after the trust boundary it will use has an approved migration and denial suite.
 
 ## Rollback
 
-The Phase 0 probe ends in `ROLLBACK`. The config grant migration can only be reversed through a reviewed migration that grants the minimum privileges required by a documented client use case and matching RLS policy. Broad client grants must not be restored as a generic access fix.
+The Phase 0 probe ends in `ROLLBACK`. The config grant migration can only be reversed through a reviewed minimum-privilege migration. Retired Edge Functions may only be restored after documenting a real caller, reviewed authentication model, tests, rollout, and rollback. Broad grants or stale release oracles must not be restored as generic access fixes.
