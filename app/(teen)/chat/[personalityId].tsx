@@ -29,6 +29,12 @@ const VALID_IDS: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'orac
 
 const TAB_BAR_HEIGHT = 68;
 const KB_OFFSET = Platform.OS === 'ios' ? TAB_BAR_HEIGHT : 0;
+const WRITING_FONT = Platform.select({
+  ios: 'Bradley Hand',
+  android: 'cursive',
+  web: '"Bradley Hand", "Segoe Print", "Comic Sans MS", cursive',
+  default: undefined,
+});
 
 export default function PersonalityChatScreen() {
   const { personalityId } = useLocalSearchParams<{ personalityId: string }>();
@@ -153,7 +159,7 @@ export default function PersonalityChatScreen() {
               <Text
                 style={[
                   styles.bubbleText,
-                  msg.role === 'user' && styles.userBubbleText,
+                  msg.role === 'user' ? styles.userBubbleText : styles.assistantWritingText,
                 ]}
               >
                 {msg.text}
@@ -225,6 +231,7 @@ const styles = StyleSheet.create({
   userBubble:      { alignSelf: 'flex-end', backgroundColor: '#1E293B' },
   assistBubble:    { alignSelf: 'flex-start', backgroundColor: '#111827', borderWidth: 1 },
   bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22 },
+  assistantWritingText: { fontFamily: WRITING_FONT, fontSize: 17, lineHeight: 25 },
   userBubbleText:  { color: '#fff' },
   inputRow:        {
     flexDirection:   'row',
