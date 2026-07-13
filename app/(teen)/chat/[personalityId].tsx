@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   assistBubble:    { alignSelf: 'flex-start', backgroundColor: '#111827', borderWidth: 1 },
   bubbleText:      { color: '#D1D5DB', fontSize: 15, lineHeight: 22 },
   assistantWritingText: { fontFamily: WRITING_FONT, fontSize: 17, lineHeight: 25 },
-  userBubbleText:  { color: '#fff' },
+  userBubbleText:  { color: '#fff', fontFamily: WRITING_FONT },
   inputRow:        {
     flexDirection:   'row',
     alignItems:      'flex-end',
@@ -252,6 +252,7 @@ const styles = StyleSheet.create({
     fontSize:          15,
     maxHeight:         120,
     marginRight:       10,
+    fontFamily:        WRITING_FONT,
   },
   sendBtn:         { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },

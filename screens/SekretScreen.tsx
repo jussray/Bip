@@ -11,6 +11,7 @@
 //   • Scrapbook sticky-note quiet line
 //   • Gradient overlay on hero
 //
+// Scope: backend + Pages UX only. No companion chat logic here.
 // Props interface UNCHANGED — index.tsx call site untouched.
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -51,7 +52,6 @@ function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
 }
 
 // ── Per-character UI copy ──────────────────────────────────────────────────
-// Each character must sound like itself at every surface — not like Raylene.
 interface CharacterCopy {
   heroTitle:   string;
   heroSub:     string;
@@ -90,7 +90,6 @@ function copyFor(profileKey: string, profileName: string): CharacterCopy {
         placeholder: `Talk to ${profileName}… the night hears you`,
         greeting:    'rough night?',
       };
-    // 'soft' (Raylene) and any unknown key both land here
     default:
       return {
         heroTitle:   'Drop a Bip 💜',
@@ -113,7 +112,7 @@ interface SekretScreenProps {
   userSide:           'teen' | 'parent';
   setScreen:          (screen: string) => void;
   BottomNav:          React.ReactNode;
-  privateProfile?:     OracleProfile;
+  privateProfile?:    OracleProfile;
 }
 
 export function SekretScreen({
@@ -121,13 +120,11 @@ export function SekretScreen({
   selectedProfile, setSelectedProfile, userSide, setScreen, BottomNav, privateProfile,
 }: SekretScreenProps) {
 
-  // Internal state — kept exactly as before
   const [sekretMessage,  setSekretMessage]  = useState('');
   const [sekretReply,    setSekretReply]    = useState('');
   const [isSekretTyping, setIsSekretTyping] = useState(false);
   const [lastSent,       setLastSent]       = useState('');
 
-  // Safe profile fallback
   const profile   = currentSekret ?? SEKRET_PROFILES[selectedProfile] ?? SEKRET_PROFILES.soft;
   const charKey   = normalizeCharacterKey(selectedProfile);
   const glow      = glowFor(mood);
@@ -135,10 +132,8 @@ export function SekretScreen({
   const bgSource  = useMemo(() => getRoomBg(charKey, tod), [charKey, tod]);
   const characterArt = AVATARS[charKey]?.fullbody;
 
-  // Per-character copy — no single isRylane gate
   const copy = copyFor(selectedProfile, profile.name);
 
-  // Respect profile-level greeting override if the loaded profile has one
   const greetingDisplay =
     (currentSekret?.greeting && currentSekret.greeting !== SEKRET_PROFILES.soft.greeting)
       ? currentSekret.greeting
@@ -186,18 +181,16 @@ export function SekretScreen({
   const handleSend = async () => {
     const text = sekretMessage.trim();
     if (!text) return;
-
     setLastSent(text);
     setSekretMessage('');
     setIsSekretTyping(true);
     setSekretReply('');
-
     const reply = await fetchSekretReply(text, 'chat', mood, selectedProfile, undefined, privateProfile, userSide);
     setSekretReply(reply);
     setIsSekretTyping(false);
   };
 
-  // ── Parent side (preserved) ─────────────────────────────────────────────
+  // ── Parent side ────────────────────────────────────────────────────────────
   if (userSide === 'parent') return (
     <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
       <LinearGradient
@@ -239,8 +232,6 @@ export function SekretScreen({
         <Animated.View style={{ opacity: fadeHero, transform: [{ translateY: transHero }] }}>
           <Text style={styles.logo}>{copy.heroTitle}</Text>
           <Text style={styles.subtitle}>{copy.heroSub}</Text>
-
-          {/* Companion presence pill */}
           <Animated.View style={[
             styles.companion,
             { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', shadowColor: glow,
@@ -252,7 +243,7 @@ export function SekretScreen({
           </Animated.View>
         </Animated.View>
 
-        {/* Profile card with breathing emoji */}
+        {/* Profile card */}
         <Animated.View style={{ opacity: fadeProf, transform: [{ translateY: transProf }] }}>
           <View style={[styles.characterStage, { borderColor: glow + '88', shadowColor: glow }]}>
             {characterArt ? <Animated.Image
@@ -265,8 +256,6 @@ export function SekretScreen({
               <Text style={styles.characterRole}>{profile.title} · {profile.vibe}</Text>
             </LinearGradient>
           </View>
-
-          {/* Scrapbook sticky-note */}
           <View style={styles.sticky}>
             <Text style={styles.stickyText}>{copy.stickyLine}</Text>
           </View>
@@ -277,14 +266,12 @@ export function SekretScreen({
           {(lastSent || sekretReply || isSekretTyping) ? (
             <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '88', shadowColor: glow }]}>
               {lastSent ? (
-                <Text style={[styles.entryText, { color: '#E2E8F0' }]}>
+                <Text style={[styles.entryText, styles.userWritingText, { color: '#E2E8F0' }]}>
                   You: {lastSent}
                 </Text>
               ) : null}
               <Text style={[styles.entryText, styles.companionWritingText, { color: t.soft, marginTop: 8 }]}>
-                {isSekretTyping
-                  ? `${profile.name} is typing… ☁️`
-                  : sekretReply}
+                {isSekretTyping ? `${profile.name} is typing… ☁️` : sekretReply}
               </Text>
             </View>
           ) : (
@@ -337,7 +324,6 @@ export function SekretScreen({
         </Animated.View>
 
       </ScrollView>
-
       {BottomNav}
     </ImageBackground>
   );
@@ -357,10 +343,11 @@ const styles = StyleSheet.create({
   cardText:       { fontSize: 17, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
   entryText:      { fontSize: 14, marginBottom: 6, lineHeight: 20 },
   companionWritingText: { fontFamily: WRITING_FONT, fontSize: 16, lineHeight: 24 },
+  userWritingText:      { fontFamily: WRITING_FONT },
   miniText:       { color: '#CBD5E1', fontSize: 12, textAlign: 'center' },
   button:         { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center', shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
   buttonText:     { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
-  journalInput:   { padding: 16, borderRadius: 18, minHeight: 130, textAlignVertical: 'top', marginBottom: 16, borderWidth: 1, fontSize: 14, lineHeight: 22 },
+  journalInput:   { padding: 16, borderRadius: 18, minHeight: 130, textAlignVertical: 'top', marginBottom: 16, borderWidth: 1, fontSize: 14, lineHeight: 22, fontFamily: WRITING_FONT },
   choiceButton:   { backgroundColor: 'rgba(30,41,59,0.7)', padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
   sticky:         { alignSelf: 'center', backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 18, transform: [{ rotate: '-2deg' }] },
   stickyText:     { color: '#3b1f6b', fontFamily: WRITING_FONT, fontStyle: 'italic', fontSize: 14 },
