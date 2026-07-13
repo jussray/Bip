@@ -12,6 +12,7 @@ export const TEEN_ROUTES = {
   points: '/(teen)/points',
   chores: '/(teen)/chores',
   history: '/(teen)/history',
+  continuity: '/(teen)/continuity',
   bridge: '/(teen)/bridge',
   s2tell: '/(teen)/bridge?compose=true',
   periodCalendar: '/(teen)/period-calendar',

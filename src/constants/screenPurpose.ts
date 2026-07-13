@@ -53,6 +53,7 @@ export const TEEN_MORE_GROUPS: FeatureDrawerGroup[] = [
   ] },
   { title: 'ACCOUNT & SAFETY', items: [
     { emoji: '🔗', label: 'Parent Link', route: 'parent-link-verify', description: 'Manage verification and the trusted connection.' },
+    { emoji: '🧠', label: 'Memory & Continuity', route: 'l4', description: 'See what Bip remembers now and what stays protected until long-term memory is ready.' },
     { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Theme, companion, privacy, notifications, and account.' },
     { emoji: '🛟', label: 'Help & Safety', route: 'resources', description: 'Support, safety tools, and legal information.' },
     { emoji: '🚪', label: 'Sign out', route: 'logout', description: 'Securely sign out and clear private device state.' },
