@@ -62,7 +62,25 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run verify:bundle
+      - name: Verify Expo web bundle
+        id: verify_bundle
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p artifacts/ci
+          set -o pipefail
+          npm run verify:bundle 2>&1 | tee artifacts/ci/verify-bundle.log
+      - name: Upload Expo bundle diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-bundle-diagnostics
+          path: artifacts/ci/verify-bundle.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce Expo bundle result
+        if: steps.verify_bundle.outcome != 'success'
+        run: exit 1
 
   audit:
     name: Control Room audits
