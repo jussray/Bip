@@ -149,7 +149,7 @@
       "verification": {
         "state": "partial",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/374",
-        "blocker": "Source contract tests and live trigger inspection passed. Exact-head CI plus iOS, Android, web timer, accessibility, and movement-safety QA remain before verified or released status."
+        "blocker": "Exact-head CI, Expo web export, Playwright, source contract tests, and live trigger inspection passed. Physical iOS/Android plus manual timer, accessibility, and movement-safety QA remain before verified or released status."
       },
       "rollback": "Revert the feature merge and drop public.bip_events_award_points only if the restored award path regresses. Existing bip_events rows and points tables remain intact."
     },
