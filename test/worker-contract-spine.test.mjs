@@ -35,11 +35,7 @@ test('legacy API and main chat route through the shared client instead of direct
   const chat = read('src/services/ai/chat.ts');
   const founderAdapter = read('src/services/ai/workerClient.ts');
 
-  for (const [name, source] of [
-    ['api', api],
-    ['chat', chat],
-    ['founder adapter', founderAdapter],
-  ]) {
+  for (const source of [api, chat, founderAdapter]) {
     assert.match(source, /sekretClient/);
     assert.doesNotMatch(source, /backendAuthHeaders/);
     assert.doesNotMatch(source, /fetch\(`\$\{[^}]*BASE_URL\}\/api\/sekret/);
