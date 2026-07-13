@@ -187,11 +187,13 @@ test('advisor warning is classified as an intentional proved client API', () => 
   assert.equal(evidence.releaseGate.authenticatedFunctionBlockerComplete, false);
 });
 
-test('existing client treats an empty expired redemption response as unavailable', () => {
-  assert.match(client, /extractRedeemedTeenId\(data\)/);
-  assert.match(client, /if \(!teenId\)/);
+test('client treats empty redemption as expired and validates the complete active relationship', () => {
+  assert.match(client, /Array\.isArray\(data\) && data\.length === 0/);
   assert.match(client, /code: 'expired_or_used'/);
-  assert.match(client, /invalid, expired, or already used/i);
+  assert.match(client, /validateRedeemedParentLink\(data, userId\)/);
+  assert.match(client, /row\.parent_user_id !== expectedParentId/);
+  assert.match(client, /row\.status !== 'active'/);
+  assert.match(client, /code: 'invalid_response'/);
 });
 
 test('migration is transactional and explains both repaired defects', () => {

@@ -15,36 +15,35 @@ import { router } from 'expo-router';
 import {
   PARENT_INVITE_CODE_LENGTH,
   normalizeParentInviteCode,
-  redeemInviteCodeResult as redeemInviteCode,
+  redeemInviteCodeResult,
 } from '@/utils/parentLink';
 import { useAppContext } from '@/context/AppContext';
 import {
   createDevTestFamily,
   isDevTestFamilyEnabled,
 } from '@/features/testing/devTestFamily';
+import {
+  resolveParentEntryState,
+  routeForParentEntryState,
+} from '@/services/parentEntryState';
 
 export default function ParentLinkOnboarding() {
   const { setUserSide } = useAppContext();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [needsCodeHelp, setNeedsCodeHelp] = useState(false);
   const showFounderTools = isDevTestFamilyEnabled();
 
   const normalized = normalizeParentInviteCode(code);
   const ready = normalized.length === PARENT_INVITE_CODE_LENGTH && !loading;
 
-  async function completeParentLinkStep(linkedTeenId?: string) {
+  async function completeVerifiedParentLink(linkedTeenId: string) {
     setUserSide('parent');
+    await AsyncStorage.setItem('linked_teen_id', linkedTeenId);
 
-    if (linkedTeenId) {
-      await AsyncStorage.setItem('linked_teen_id', linkedTeenId);
-    } else {
-      await AsyncStorage.removeItem('linked_teen_id');
-    }
-
-    // A teen link is consent to share, not proof of guardian identity and not
-    // completion of the Parent profile. The guardian gate decides what follows.
-    router.replace('/(auth)/guardian-verification');
+    const parentEntry = await resolveParentEntryState();
+    router.replace(routeForParentEntryState(parentEntry) as never);
   }
 
   async function handleLink() {
@@ -57,14 +56,16 @@ export default function ParentLinkOnboarding() {
     setError('');
 
     try {
-      const result = await redeemInviteCode(normalized);
+      const result = await redeemInviteCodeResult(normalized);
       if (!result.ok) {
+        await AsyncStorage.removeItem('linked_teen_id');
         setError(result.message);
         return;
       }
 
-      await completeParentLinkStep(result.value);
+      await completeVerifiedParentLink(result.value.teenUserId);
     } catch {
+      await AsyncStorage.removeItem('linked_teen_id');
       setError('Could not connect right now. Check your connection and try again.');
     } finally {
       setLoading(false);
@@ -76,7 +77,9 @@ export default function ParentLinkOnboarding() {
     setLoading(true);
     setError('');
     try {
-      await completeParentLinkStep();
+      setUserSide('parent');
+      await AsyncStorage.removeItem('linked_teen_id');
+      router.replace('/(auth)/guardian-verification');
     } finally {
       setLoading(false);
     }
@@ -111,7 +114,7 @@ export default function ParentLinkOnboarding() {
         <Text style={styles.kicker}>LINK YOUR TEEN</Text>
         <Text style={styles.title}>Enter their private code.</Text>
         <Text style={styles.body}>
-          Connect now with the eight-character code from your teen, or finish your parent account and link them later.
+          Connect now with the eight-character code from your teen, or complete guardian verification first and link them afterward.
         </Text>
 
         <View style={styles.codeWrap}>
@@ -120,6 +123,7 @@ export default function ParentLinkOnboarding() {
             onChangeText={text => {
               setCode(text);
               setError('');
+              setNeedsCodeHelp(false);
             }}
             placeholder="AB12CD34"
             placeholderTextColor="#355246"
@@ -136,6 +140,15 @@ export default function ParentLinkOnboarding() {
         <Text style={styles.privacy}>
           This code only establishes the trusted teen-parent connection. You will only see what your teen intentionally sends through Bridge.
         </Text>
+
+        {needsCodeHelp ? (
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>Need a code?</Text>
+            <Text style={styles.helpBody}>
+              Ask your teen to open their account-verification screen and create a fresh eight-character code. Stay here and enter it when they share it with you.
+            </Text>
+          </View>
+        ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -162,11 +175,22 @@ export default function ParentLinkOnboarding() {
           </View>
         ) : null}
 
-        <TouchableOpacity disabled={loading} onPress={handleLinkLater} style={styles.help}>
+        <TouchableOpacity
+          disabled={loading}
+          onPress={() => {
+            setNeedsCodeHelp(true);
+            setError('');
+          }}
+          style={styles.help}
+        >
+          <Text style={styles.helpText}>I do not have a code yet</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity disabled={loading} onPress={handleLinkLater} style={styles.linkLater}>
           {loading && !ready ? (
             <ActivityIndicator color="#789082" />
           ) : (
-            <Text style={styles.helpText}>Link a teen later</Text>
+            <Text style={styles.helpText}>Continue to guardian verification</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -185,6 +209,9 @@ const styles = StyleSheet.create({
   codeWrap: { borderRadius: 22, borderWidth: 1.5, borderColor: '#a7f3d044', backgroundColor: '#ffffff08', paddingHorizontal: 20, marginBottom: 18 },
   codeInput: { height: 86, color: '#fff', fontSize: 30, fontWeight: '900', letterSpacing: 6, textAlign: 'center' },
   privacy: { color: '#789082', fontSize: 12, lineHeight: 18, marginBottom: 18 },
+  helpCard: { borderRadius: 18, borderWidth: 1, borderColor: '#a7f3d033', backgroundColor: '#a7f3d010', padding: 14, marginBottom: 14 },
+  helpTitle: { color: '#a7f3d0', fontSize: 13, fontWeight: '900', marginBottom: 6 },
+  helpBody: { color: '#8aaf9c', fontSize: 12, lineHeight: 18 },
   error: { color: '#fca5a5', fontSize: 13, lineHeight: 19, textAlign: 'center', marginBottom: 14 },
   primary: { height: 60, borderRadius: 20, backgroundColor: '#a7f3d0', alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.35 },
@@ -194,6 +221,7 @@ const styles = StyleSheet.create({
   devBody: { color: '#d7c9a1', fontSize: 12, lineHeight: 18, marginBottom: 12 },
   devButton: { minHeight: 50, borderRadius: 15, backgroundColor: '#f59e0b', alignItems: 'center', justifyContent: 'center' },
   devButtonText: { color: '#2b1700', fontSize: 14, fontWeight: '900' },
-  help: { alignItems: 'center', paddingVertical: 22 },
+  help: { alignItems: 'center', paddingTop: 20, paddingBottom: 8 },
+  linkLater: { alignItems: 'center', paddingVertical: 12 },
   helpText: { color: '#789082', fontSize: 13, fontWeight: '700' },
 });

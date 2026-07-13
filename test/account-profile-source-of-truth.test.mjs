@@ -6,6 +6,7 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), '
 
 const profileService = read('src/features/identity/accountProfile.ts');
 const indexScreen = read('app/index.tsx');
+const parentEntryState = read('src/services/parentEntryState.ts');
 const teenOnboarding = read('app/(onboarding)/reflection.tsx');
 const parentOnboarding = read('app/(onboarding)/parent-setup.tsx');
 const verificationTypes = read('src/types/verification.ts');
@@ -104,13 +105,20 @@ test('guardian states are recognized end to end instead of collapsing to UNVERIF
   }
 });
 
-test('parent routes fail closed unless the account is VERIFIED_GUARDIAN', () => {
+test('parent routes fail closed unless the account is a verified guardian with an active link', () => {
   assert.match(routeAccess, /area === '\(parent\)'/);
   assert.match(routeAccess, /!isGuardianVerified\(options\.verificationState\)/);
   assert.match(routeAccess, /redirectTo: '\/\(auth\)\/guardian-verification'/);
   assert.match(routeAccess, /guardian_verification_required/);
   assert.doesNotMatch(routeAccess, /parentLinkState/);
-  assert.match(indexScreen, /verificationState === 'VERIFIED_GUARDIAN'/);
+
+  assert.match(indexScreen, /resolveParentEntryState\(\)/);
+  assert.match(indexScreen, /routeForParentEntryState\(parentEntry\)/);
+  assert.match(parentEntryState, /verification_state !== 'VERIFIED_GUARDIAN'/);
+  assert.match(parentEntryState, /\.from\('parent_links'\)/);
+  assert.match(parentEntryState, /\.eq\('status', 'active'\)/);
+  assert.match(parentEntryState, /\.eq\('is_active', true\)/);
+  assert.doesNotMatch(parentEntryState, /AsyncStorage\.(getItem|multiGet)/);
 });
 
 test('guardian review and teen parent-link consent remain separate state machines', () => {

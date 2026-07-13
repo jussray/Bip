@@ -15,13 +15,16 @@ test('parent setup completes without requiring a teen invite code', async () => 
   assert.match(source, /No invite code required/);
 });
 
-test('parent link screen stores consent state without completing guardian identity', async () => {
+test('parent link screen validates consent before resolving backend entry state', async () => {
   const source = await read('app/(onboarding)/parent-link.tsx');
-  assert.match(source, /redeemInviteCode\(normalized\)/);
+  assert.match(source, /redeemInviteCodeResult\(normalized\)/);
+  assert.match(source, /result\.value\.teenUserId/);
+  assert.match(source, /completeVerifiedParentLink/);
+  assert.match(source, /resolveParentEntryState\(\)/);
+  assert.match(source, /routeForParentEntryState\(parentEntry\)/);
   assert.match(source, /linked_teen_id/);
   assert.match(source, /handleLinkLater/);
-  assert.match(source, /Link a teen later/);
-  assert.match(source, /completeParentLinkStep/);
+  assert.match(source, /Continue to guardian verification/);
   assert.match(source, /router\.replace\('\/\(auth\)\/guardian-verification'\)/);
   assert.doesNotMatch(source, /parent_profile_done/);
 });
