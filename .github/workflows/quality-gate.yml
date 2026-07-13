@@ -44,6 +44,26 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  implementation-evidence:
+    name: "Implementation Evidence"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify implementation claims
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [[ -n "$BASE_REF" ]]; then
+            npm run verify:implementation-ledger -- --changed-since "origin/$BASE_REF"
+          else
+            npm run verify:implementation-ledger
+          fi
+
   rls-audit:
     name: "RLS Audit"
     runs-on: ubuntu-latest

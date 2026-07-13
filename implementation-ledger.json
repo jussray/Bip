@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-07-12",
+  "statusOrder": [
+    "planned",
+    "contract",
+    "integrated",
+    "verified",
+    "released"
+  ],
+  "features": [
+    {
+      "id": "bridge-summaries",
+      "name": "Parent–Teen Bridge summaries",
+      "status": "integrated",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/270",
+      "acceptanceCriteria": [
+        "A teen explicitly previews and confirms selected source content before sharing.",
+        "A linked parent can read only the generated summary and never raw source content.",
+        "Revocation removes access immediately and re-share does not expose stale sources or summaries.",
+        "The deployed Worker path is verified with two controlled accounts and cleanup evidence."
+      ],
+      "contractPaths": [
+        "supabase/migrations/20260705010000_bridge_summary_contract.sql",
+        "src/services/bridgeSummaryService.ts"
+      ],
+      "runtimePaths": [
+        "app/(teen)/pages/index.tsx",
+        "app/(parent)/bridge.tsx",
+        "worker/bridge-summary.ts",
+        "worker/bridge-summary-store.ts",
+        "worker/bridge-privacy-validator.ts"
+      ],
+      "testPaths": [
+        "test/bridge-privacy-validator.test.mjs",
+        "test/bridge-summary-store.test.mjs",
+        "test/bridge-summary-worker.test.mjs",
+        "e2e/smoke.spec.ts"
+      ],
+      "telemetryPaths": [
+        "worker/observed-index.ts"
+      ],
+      "rollout": {
+        "state": "disabled",
+        "controlPath": "wrangler.toml",
+        "controlKey": "BRIDGE_SUMMARIES_ROLLOUT"
+      },
+      "verification": {
+        "state": "blocked",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/270#issuecomment-4953018790",
+        "blocker": "Replace the invalid GitHub cloudflare-production API token, deploy the reviewed Worker, and repeat the controlled two-account proof."
+      },
+      "rollback": "Keep BRIDGE_SUMMARIES_ROLLOUT disabled; revert the Worker deployment or merge commit if the controlled proof fails."
+    },
+    {
+      "id": "sekret-identity-and-companion-style",
+      "name": "Se’kret identity boundary and named-companion style engine",
+      "status": "contract",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/357",
+      "acceptanceCriteria": [
+        "Se’kret never appears as a selectable named companion.",
+        "The real Worker and TTS paths consume one canonical versioned style source.",
+        "Oracle never appears in user-visible text, speech, archives, notifications, or accessibility labels.",
+        "Companion Lab and Playwright prove distinct voices and question-budget enforcement."
+      ],
+      "contractPaths": [
+        "src/features/sekret/identityContract.ts",
+        "src/features/sekret/styleProfiles.ts",
+        "src/features/sekret/companionStyleEngine.ts",
+        "docs/CONTROL_ROOM_ARCHITECTURE.md"
+      ],
+      "testPaths": [
+        "test/sekret-control-room-contracts.test.mjs"
+      ],
+      "verification": {
+        "state": "not-run",
+        "evidence": "https://github.com/jussray/Sekret-Bip/pull/346",
+        "blocker": "The contract layer is merged, but worker/sekret-reply.ts and the TTS path do not consume it yet."
+      }
+    },
+    {
+      "id": "control-room-operational-observability",
+      "name": "Founder Control Room operational observability",
+      "status": "integrated",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/357",
+      "acceptanceCriteria": [
+        "Founder-gated screens load real operational records rather than decorative success states.",
+        "Every panel displays source freshness and an honest empty or unavailable state.",
+        "No raw teen content or raw user identifiers appear in observer panels.",
+        "Identity, style, voice, and L4 panels are added only after their runtime or data sources exist."
+      ],
+      "contractPaths": [
+        "docs/CONTROL_ROOM.md",
+        "src/types/controlRoomOs.ts"
+      ],
+      "runtimePaths": [
+        "app/(dev)/control-room.tsx",
+        "src/screens/DevControlRoomWorkspace.tsx",
+        "src/services/controlRoomAnalytics.ts",
+        "src/services/controlRoomIssues.ts"
+      ],
+      "testPaths": [
+        "test/control-room-os.test.mjs"
+      ],
+      "telemetryPaths": [
+        "src/services/controlRoomAnalytics.ts"
+      ],
+      "rollout": {
+        "state": "internal",
+        "controlPath": "src/config/controlRoomPlacement.ts",
+        "controlKey": "founder-only route placement"
+      },
+      "verification": {
+        "state": "partial",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
+        "blocker": "Operational data sources exist, but identity/style/L4 observer adapters and freshness evidence are not complete."
+      },
+      "rollback": "Remove the founder route entry and keep operational tables intact; do not expose Control Room routes to teen or parent navigation."
+    },
+    {
+      "id": "l4-continuity-memory",
+      "name": "L4 continuity memory, goals, and reflection",
+      "status": "planned",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/357",
+      "acceptanceCriteria": [
+        "Memory, goal, and reflection records have ownership, provenance, correction, expiry, and deletion semantics.",
+        "RLS and executable denial tests prevent cross-user, parent, anonymous, and unintended service access.",
+        "One real user-visible continuity path consumes reviewed memory before broad dashboards are built.",
+        "Relationship phase is derived from persisted evidence and never manufactured from empty counters."
+      ],
+      "verification": {
+        "state": "not-run",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
+        "blocker": "Live Supabase does not contain agent_memories, agent_goals, or reflection_runs. Authorization Phase 0 on issue #344 must precede schema activation."
+      }
+    }
+  ]
+}

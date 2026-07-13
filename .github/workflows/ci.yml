@@ -62,7 +62,24 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - run: npm run verify:bundle
+      - name: Export Expo web bundle
+        id: bundle
+        shell: bash
+        run: |
+          set +e
+          npm run verify:bundle > expo-bundle.log 2>&1
+          status=$?
+          set -e
+          tail -n 160 expo-bundle.log
+          exit "$status"
+      - name: Upload Expo bundle diagnostics
+        if: failure() && steps.bundle.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: expo-bundle-diagnostics
+          path: expo-bundle.log
+          retention-days: 7
+          if-no-files-found: error
 
   audit:
     name: Control Room audits
