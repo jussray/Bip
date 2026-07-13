@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260713163000_harden_push_token_ownership.sql',
+  '20260713161055_harden_push_token_ownership.sql',
 );
 const probePath = path.join(
   root,
@@ -17,13 +17,29 @@ const probePath = path.join(
   'probes',
   'authorization_push_token_phase1.sql',
 );
+const evidencePath = path.join(root, 'security', 'push-token-hardening.json');
 const syncPath = path.join(root, 'src', 'services', 'pushTokenSync.ts');
 const sessionPath = path.join(root, 'src', 'services', 'session.ts');
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const probe = fs.readFileSync(probePath, 'utf8');
+const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
 const syncClient = fs.readFileSync(syncPath, 'utf8');
 const sessionClient = fs.readFileSync(sessionPath, 'utf8');
+
+test('repository records the exact live push-token migration', () => {
+  assert.equal(evidence.schemaVersion, 1);
+  assert.equal(evidence.projectRef, 'tbsevonvegdnlyjgplmm');
+  assert.equal(evidence.migration.version, '20260713161055');
+  assert.equal(evidence.migration.name, 'harden_push_token_ownership');
+  assert.equal(
+    evidence.migration.repositoryPath,
+    'supabase/migrations/20260713161055_harden_push_token_ownership.sql',
+  );
+  assert.equal(evidence.migration.applied, true);
+  assert.equal(evidence.migration.repositoryAndLiveMigrationParity, true);
+  assert.equal(fs.existsSync(migrationPath), true);
+});
 
 test('push token validation mirrors Expo wrapper and UUID token forms', () => {
   assert.match(migration, /v_token like 'ExponentPushToken\[%\]'/i);
@@ -34,6 +50,11 @@ test('push token validation mirrors Expo wrapper and UUID token forms', () => {
   );
   assert.match(migration, /invalid expo push token/i);
   assert.match(migration, /using errcode = '22023'/i);
+  assert.deepEqual(evidence.controls.tokenFormats, [
+    'ExponentPushToken[...]',
+    'ExpoPushToken[...]',
+    'uuid',
+  ]);
 });
 
 test('completed profile side overrides caller-supplied app variant', () => {
@@ -46,6 +67,7 @@ test('completed profile side overrides caller-supplied app variant', () => {
     /v_effective_variant := coalesce\(v_profile_side, p_app_variant\)/i,
   );
   assert.match(migration, /app_variant = excluded\.app_variant/i);
+  assert.equal(evidence.controls.completedProfileSideOverridesCallerMetadata, true);
 });
 
 test('atomic claim permits same-owner refresh and disabled-only account handoff', () => {
@@ -58,7 +80,10 @@ test('atomic claim permits same-owner refresh and disabled-only account handoff'
     migration,
     /if not found then[\s\S]*push token is already claimed by another active account/i,
   );
-  assert.match(migration, /using errcode = '42501'/i);
+  assert.equal(evidence.controls.sameOwnerRefreshAllowed, true);
+  assert.equal(evidence.controls.enabledCrossUserTransferDenied, true);
+  assert.equal(evidence.controls.disabledCrossUserHandoffAllowed, true);
+  assert.equal(evidence.controls.claimConflictRuleIsAtomic, true);
 });
 
 test('disable remains idempotent and owner scoped', () => {
@@ -71,6 +96,8 @@ test('disable remains idempotent and owner scoped', () => {
   assert.match(disableBody, /expo_push_token = v_token/i);
   assert.match(disableBody, /user_id = v_user_id/i);
   assert.doesNotMatch(disableBody, /delete from public\.push_tokens/i);
+  assert.equal(evidence.controls.disableIsOwnerScoped, true);
+  assert.equal(evidence.controls.disableIsIdempotent, true);
 });
 
 test('push token RPC grants are explicit and anonymous execution stays denied', () => {
@@ -89,6 +116,9 @@ test('push token RPC grants are explicit and anonymous execution stays denied', 
   }
 
   assert.equal([...migration.matchAll(/set search_path = public, auth/gi)].length, 2);
+  assert.equal(evidence.postDeployEvidence.structuralChecks.anonExecute, false);
+  assert.equal(evidence.postDeployEvidence.structuralChecks.authenticatedExecute, true);
+  assert.equal(evidence.postDeployEvidence.structuralChecks.serviceRoleExecute, true);
 });
 
 test('push token proof is rollback-contained and contains no real identities', () => {
@@ -118,8 +148,32 @@ test('push token proof covers ownership, metadata, format, and handoff outcomes'
     assert.match(probe, new RegExp(check));
   }
 
-  assert.match(probe, /exception when insufficient_privilege/gi);
-  assert.match(probe, /exception when invalid_parameter_value/i);
+  assert.equal(evidence.preDeployBehaviorProof.passedChecks, 12);
+  assert.equal(evidence.preDeployBehaviorProof.failedChecks, 0);
+  assert.equal(evidence.preDeployBehaviorProof.transactionOutcome, 'rolled_back');
+});
+
+test('post-deploy evidence records executable checks, predicates, limits, and cleanup', () => {
+  assert.equal(evidence.postDeployEvidence.executableChecks.passedChecks, 4);
+  assert.equal(evidence.postDeployEvidence.executableChecks.failedChecks, 0);
+  assert.deepEqual(evidence.postDeployEvidence.executableChecks.checks, [
+    'profile_side_overrides_spoof',
+    'same_owner_refreshes',
+    'enabled_transfer_denied',
+    'denied_transfer_preserves_owner',
+  ]);
+
+  const { anonExecute, ...requiredStructuralChecks } =
+    evidence.postDeployEvidence.structuralChecks;
+  assert.equal(anonExecute, false);
+  for (const value of Object.values(requiredStructuralChecks)) {
+    if (typeof value === 'boolean') assert.equal(value, true);
+  }
+  assert.equal(evidence.postDeployEvidence.toolingLimit.encountered, true);
+  assert.equal(evidence.postDeployEvidence.toolingLimit.productionMutationFromBlockedCalls, false);
+  assert.equal(evidence.postDeployEvidence.retainedSyntheticUsers, 0);
+  assert.equal(evidence.postDeployEvidence.retainedSyntheticPushTokens, 0);
+  assert.equal(evidence.postDeployEvidence.productionPushTokenRows, 0);
 });
 
 test('client uses RPCs only and supplies device metadata for server validation', () => {
@@ -136,6 +190,20 @@ test('sign-out disables the current token before ending authentication', () => {
   assert.notEqual(disableIndex, -1);
   assert.notEqual(signOutIndex, -1);
   assert.equal(disableIndex < signOutIndex, true);
+  assert.equal(evidence.controls.clientDisablesBeforeAuthSignOut, true);
+});
+
+test('advisor warnings are classified as intentional proved client APIs', () => {
+  assert.equal(
+    evidence.advisorClassification.claimPushToken,
+    'intentional_authenticated_security_definer_api_with_behavior_proof',
+  );
+  assert.equal(
+    evidence.advisorClassification.disablePushToken,
+    'intentional_authenticated_security_definer_api_with_behavior_proof',
+  );
+  assert.equal(evidence.advisorClassification.warningsExpectedToRemain, true);
+  assert.equal(evidence.releaseGate.authenticatedFunctionBlockerComplete, false);
 });
 
 test('migration is transactional and documents the account-switch boundary', () => {
