@@ -23,21 +23,21 @@ const doc = fs.readFileSync(docPath, 'utf8');
 test('authorization baseline records the latest verified live migration and keeps L4 closed', () => {
   assert.equal(baseline.schemaVersion, 1);
   assert.equal(baseline.project.ref, 'tbsevonvegdnlyjgplmm');
-  assert.equal(baseline.project.latestLiveMigration.version, '20260713024253');
-  assert.equal(baseline.project.latestLiveMigration.name, 'remove_anon_audit_control_room_grants');
+  assert.equal(baseline.project.latestLiveMigration.version, '20260713052603');
+  assert.equal(baseline.project.latestLiveMigration.name, 'harden_notification_delivery_ledger');
   assert.equal(baseline.scope.productionDdlApplied, true);
   assert.equal(baseline.scope.productionDataRetained, false);
   assert.equal(baseline.releaseGate.l4SchemaAllowed, false);
 });
 
-test('all no-policy configuration and operational tables are explicitly service-role-only', () => {
+test('remaining no-policy configuration and operational tables are explicitly service-role-only', () => {
   const byTable = new Map(
     baseline.advisorSnapshot.rlsEnabledNoPolicy.map((item) => [item.table, item]),
   );
 
-  assert.equal(byTable.size, 4);
+  assert.equal(byTable.size, 3);
+  assert.equal(byTable.has('notification_deliveries'), false);
   assert.equal(byTable.get('guardian_verification_reviews').classification, 'service_role_only');
-  assert.equal(byTable.get('notification_deliveries').classification, 'service_role_only');
   assert.equal(byTable.get('app_config').classification, 'service_role_only_after_grant_hardening');
   assert.equal(byTable.get('app_private_config').classification, 'service_role_only_after_grant_hardening');
 
@@ -93,6 +93,57 @@ test('founder and guardian hardening records exact live migration parity and 23 
   assert.equal(hardening.transactionOutcome, 'rolled_back');
   assert.equal(hardening.passedChecks, 23);
   assert.equal(hardening.failedChecks, 0);
+});
+
+test('notification ledger hardening records least-privilege live proof and advisor clearance', () => {
+  const hardening = baseline.phase1NotificationLedgerHardening;
+  assert.equal(hardening.migrationVersion, '20260713052603');
+  assert.equal(hardening.migrationName, 'harden_notification_delivery_ledger');
+  assert.equal(
+    hardening.repositoryMigrationPath,
+    'supabase/migrations/20260713052603_harden_notification_delivery_ledger.sql',
+  );
+  assert.equal(hardening.applied, true);
+  assert.equal(hardening.verified, true);
+  assert.equal(hardening.repositoryAndLiveMigrationParity, true);
+  assert.equal(hardening.rlsEnabled, true);
+  assert.equal(hardening.policyCount, 1);
+  assert.equal(hardening.denyPolicy, 'notification_deliveries_deny_clients');
+  assert.equal(hardening.anonHasTablePrivileges, false);
+  assert.equal(hardening.authenticatedHasTablePrivileges, false);
+  assert.deepEqual(hardening.serviceRoleTablePrivileges, ['INSERT', 'SELECT']);
+  assert.deepEqual(hardening.serviceRoleSequencePrivileges, ['USAGE']);
+  assert.equal(hardening.serviceRoleUpdateAllowed, false);
+  assert.equal(hardening.serviceRoleDeleteAllowed, false);
+  assert.deepEqual(hardening.deployedOperations, ['SELECT', 'INSERT']);
+  assert.equal(hardening.advisorNoPolicyFindingCleared, true);
+  assert.equal(hardening.serviceRoleInsertProof, 'passed');
+  assert.equal(hardening.syntheticUsersRetained, 0);
+  assert.equal(hardening.notificationRowsRetained, 0);
+});
+
+test('repository migration history matches the restored live points and notification chain', () => {
+  const parity = baseline.migrationParity;
+  assert.equal(parity.verified, true);
+  assert.deepEqual(
+    parity.restoredRepositoryMigrations.map((item) => `${item.version}_${item.name}`),
+    [
+      '20260704014518_create_bip_event_points_function',
+      '20260713052511_restore_bip_events_points_trigger',
+      '20260713052603_harden_notification_delivery_ledger',
+    ],
+  );
+
+  for (const item of parity.restoredRepositoryMigrations) {
+    assert.equal(fs.existsSync(path.join(root, item.repositoryPath)), true);
+  }
+
+  assert.deepEqual(parity.pointsTrigger, {
+    table: 'bip_events',
+    trigger: 'bip_events_award_points',
+    function: 'handle_bip_event_points',
+    idempotencyKey: 'point_transactions(user_id, source_type, source_id)',
+  });
 });
 
 test('SECURITY DEFINER inventory has no anonymous executable functions', () => {
@@ -154,7 +205,7 @@ test('obsolete release and probe functions are live JWT-protected 410 retirement
   }
 });
 
-test('live proof records both rollback-contained suites with zero retained probe data', () => {
+test('live proof records rollback-contained suites with zero retained probe data', () => {
   assert.equal(baseline.liveProof.phase0.transactionOutcome, 'rolled_back');
   assert.equal(baseline.liveProof.phase0.passedChecks, 4);
   assert.equal(baseline.liveProof.phase0.failedChecks, 0);
@@ -169,6 +220,13 @@ test('live proof records both rollback-contained suites with zero retained probe
   assert.equal(baseline.liveProof.founderGuardianPhase1.passedChecks, 23);
   assert.equal(baseline.liveProof.founderGuardianPhase1.failedChecks, 0);
   assert.equal(baseline.liveProof.founderGuardianPhase1.syntheticDataRetained, false);
+
+  assert.equal(baseline.liveProof.notificationLedgerPhase1.transactionOutcome, 'rolled_back');
+  assert.equal(baseline.liveProof.notificationLedgerPhase1.passedChecks, 8);
+  assert.equal(baseline.liveProof.notificationLedgerPhase1.failedChecks, 0);
+  assert.equal(baseline.liveProof.notificationLedgerPhase1.serviceRoleInsertProof, true);
+  assert.equal(baseline.liveProof.notificationLedgerPhase1.syntheticUsersRetained, 0);
+  assert.equal(baseline.liveProof.notificationLedgerPhase1.notificationRowsRetained, 0);
 });
 
 test('SQL probes are rollback-contained and exercise their declared boundaries', () => {
