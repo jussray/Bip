@@ -68,33 +68,23 @@ test('SECURITY DEFINER inventory has no anonymous executable functions', () => {
   assert.equal(baseline.securityDefiner.totalReviewed, 35);
   assert.deepEqual(baseline.securityDefiner.anonExecutable, []);
   assert.equal(
-    baseline.securityDefiner.authenticatedExecutable.length
-      + baseline.securityDefiner.serviceRoleOnlyOrTriggerInternal.length,
+    baseline.securityDefiner.authenticatedExecutableCount
+      + baseline.securityDefiner.serviceRoleOnlyOrTriggerInternalCount,
     baseline.securityDefiner.totalReviewed,
   );
   assert.equal(
-    baseline.securityDefiner.commonControlsObserved.some((value) => /search_path/.test(value)),
+    baseline.securityDefiner.commonControlsObserved.some((value) => /search path/.test(value)),
     true,
   );
 });
 
-test('every verify_jwt false Edge Function has an explicit classification', () => {
+test('only two intentional custom-auth Edge Functions keep platform JWT verification disabled', () => {
   const functions = baseline.edgeFunctions.verifyJwtFalse;
-  assert.equal(functions.length, 5);
+  assert.equal(functions.length, 2);
   assert.deepEqual(
     functions.map((item) => item.slug).sort(),
-    [
-      'account-delete',
-      'bridge-e2e-probe',
-      'github-workflow-status',
-      'release-health',
-      'safety-scan',
-    ],
+    ['account-delete', 'safety-scan'],
   );
-
-  const releaseHealth = functions.find((item) => item.slug === 'release-health');
-  assert.equal(releaseHealth.classification, 'custom_github_oidc_but_stale_configuration');
-  assert.match(releaseHealth.gap, /jussray\/Bip/);
 
   for (const item of functions) {
     assert.equal(typeof item.classification, 'string');
@@ -102,6 +92,40 @@ test('every verify_jwt false Edge Function has an explicit classification', () =
     assert.equal(typeof item.control, 'string');
     assert.equal(item.control.length > 0, true);
   }
+});
+
+test('obsolete release and probe functions are live JWT-protected 410 retirements', () => {
+  const retirements = baseline.edgeFunctions.jwtProtectedRetirements;
+  assert.deepEqual(
+    retirements.map((item) => item.slug).sort(),
+    ['bridge-e2e-probe', 'github-workflow-status', 'release-health'],
+  );
+
+  const expectedVersions = new Map([
+    ['release-health', 2],
+    ['bridge-e2e-probe', 3],
+    ['github-workflow-status', 4],
+  ]);
+
+  for (const item of retirements) {
+    assert.equal(item.version, expectedVersions.get(item.slug));
+    assert.equal(item.status, 'ACTIVE');
+    assert.equal(item.verifyJwt, true);
+    assert.equal(item.expectedAuthenticatedStatus, 410);
+    assert.equal(item.sourceVerified, true);
+    assert.match(item.sha256, /^[a-f0-9]{64}$/);
+    assert.equal(typeof item.replacement, 'string');
+    assert.equal(item.replacement.length > 0, true);
+  }
+
+  assert.equal(
+    baseline.edgeFunctions.httpProbe.unauthenticated,
+    'not_run_dns_unavailable_in_execution_environment',
+  );
+  assert.equal(
+    baseline.edgeFunctions.httpProbe.authenticated,
+    'not_run_no_safe_test_identity_available',
+  );
 });
 
 test('live proof records four passed checks and zero synthetic residue', () => {
@@ -134,14 +158,16 @@ test('authorization documentation refuses to certify all boundaries or activate 
   assert.match(doc, /does not certify every table/i);
   assert.match(doc, /Begin L4 schema design only after/i);
   assert.match(doc, /zero synthetic users/i);
+  assert.match(doc, /JWT-protected retirement/i);
+  assert.match(doc, /Direct HTTP probing was not performed/i);
   assert.match(doc, /\| `app_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
   assert.match(doc, /\| `app_private_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
 });
 
 test('baseline contains no secret values or real email addresses', () => {
   const raw = fs.readFileSync(baselinePath, 'utf8');
-  assert.doesNotMatch(raw, /SUPABASE_SERVICE_ROLE_KEY\s*[:=]/i);
-  assert.doesNotMatch(raw, /OPENAI_API_KEY\s*[:=]/i);
+  assert.doesNotMatch(raw, /service[_-]?role[_-]?key\s*[:=]/i);
+  assert.doesNotMatch(raw, /openai[_-]?api[_-]?key\s*[:=]/i);
   assert.doesNotMatch(raw, /sk-[a-z0-9_-]{10,}/i);
   assert.doesNotMatch(raw, /@[a-z0-9.-]+\.(com|net|org|edu)\b/i);
 });
