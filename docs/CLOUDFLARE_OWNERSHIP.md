@@ -1,12 +1,14 @@
 # Cloudflare Ownership
 
+Last reviewed: 2026-07-13
+
 ## Canonical split
 
-Se'kret Bip uses two distinct Cloudflare deployment targets.
+Se'kret Bip uses two distinct Cloudflare deployment targets, both deployed from `main` through Cloudflare native Git integration.
 
 ### `sekret-backend` — backend Worker
 
-Verified in `wrangler.toml`, EAS profiles, the Worker identity contract, and Cloudflare preview deployments:
+Verified by `wrangler.toml`, Worker identity tests, and Cloudflare Workers Builds:
 
 - Worker name: `sekret-backend`
 - Entry point: `worker/observed-index.ts`
@@ -14,74 +16,88 @@ Verified in `wrangler.toml`, EAS profiles, the Worker identity contract, and Clo
 
 Responsibilities:
 
-- authenticated API routes
-- Supabase access and authorization checks
-- OpenAI requests
-- Se'kret reply generation
-- Bridge Summary generation
-- safety scanning
-- Oracle and voice services
-- push and other backend business logic
+- authenticated API routes;
+- Supabase access and authorization checks;
+- AI reply generation and canonical identity/style enforcement;
+- transcription and TTS relay;
+- Bridge summary generation;
+- safety, push, and backend business logic;
+- metadata-only telemetry.
 
-The mobile and web clients call this backend through `EXPO_PUBLIC_BACKEND_URL`.
+Mobile and web clients call this backend through `EXPO_PUBLIC_BACKEND_URL`.
 
-### `sekret` — frontend Cloudflare Pages project
+### `sekret-bip` — frontend Cloudflare Pages project
 
-Owner-confirmed role:
+Canonical responsibilities:
 
-- host the Expo web export
-- serve the purchased custom domain
-- deliver frontend routes and static assets
-- bootstrap the React Native Web application
+- host the Expo web export;
+- serve the custom domain;
+- deliver frontend routes and static assets;
+- bootstrap the React Native Web application;
+- expose the public non-sensitive `release.json` commit marker.
 
-The repository deploys the frontend through `.github/workflows/deploy-cloudflare.yml` using:
-
-- `npm run build:web`
-- `wrangler pages deploy dist`
-- repository variable `CLOUDFLARE_PAGES_PROJECT_NAME`
-
-The production value of `CLOUDFLARE_PAGES_PROJECT_NAME` must be verified as `sekret` in GitHub and Cloudflare before release. The repository does not contain that dashboard value.
+Cloudflare Pages builds from `main` through the GitHub App. GitHub Actions does not run a second production upload.
 
 ## Request flow
 
 ```text
-Custom domain
+sekretbip.net
     |
     v
-Cloudflare Pages project: sekret
+Cloudflare Pages project: sekret-bip
     |
     v
-Expo web frontend
+Expo web frontend + release.json
     |
     v
 Cloudflare Worker: sekret-backend
     |
     +--> Supabase
-    +--> OpenAI
+    +--> AI / voice providers
     +--> Bridge
-    +--> Safety
-    +--> Oracle / Voice
+    +--> Safety / push
 ```
 
 ## Ownership rules
 
-- Frontend assets, Expo routes, and browser delivery belong to the `sekret` Pages project.
-- API routes, secrets, database access, and business logic belong to the `sekret-backend` Worker.
-- Never place service-role credentials or OpenAI credentials in the frontend deployment.
-- Never rename the backend Worker to `sekret` merely to match the domain or frontend project.
-- Before changing deployment code, verify both the repository configuration and the actual Cloudflare/GitHub environment values.
+- Frontend assets, Expo routes, and browser delivery belong to `sekret-bip`.
+- API routes, secrets, database access, and business logic belong to `sekret-backend`.
+- Service-role credentials, AI provider credentials, and server-only shared secrets must never enter the frontend bundle.
+- Do not rename either target to match the custom domain or an old project name.
+- Do not create a second token-based production deployment path alongside Cloudflare native Git integration.
+- Verify repository configuration and deployed runtime evidence before changing ownership claims.
 
-## Release verification
+## Exact-release verification
 
-Backend:
+Production verification requires independent evidence for the exact expected `main` commit:
+
+1. `Workers Builds: sekret-backend` succeeds for that commit.
+2. `https://sekretbip.net/release.json` reports the same commit SHA and branch.
+3. `https://sekret-backend.mcgill-raylene.workers.dev/health` succeeds.
+4. read-only production Playwright verifies the release marker and protected routes.
+5. the evidence artifact is retained by GitHub Actions.
 
 ```bash
-npx wrangler deployments list --name sekret-backend
+curl --fail https://sekret-backend.mcgill-raylene.workers.dev/health
+curl --fail https://sekretbip.net/release.json
+npm run test:e2e:production
 ```
 
-Frontend:
+A stale Pages check or historical deployment function is not sufficient proof of what is serving traffic.
 
-- confirm `CLOUDFLARE_PAGES_PROJECT_NAME=sekret`
-- confirm the custom domain is attached to the `sekret` Pages project
-- confirm the deployed Pages commit matches the intended repository commit
-- confirm `EXPO_PUBLIC_BACKEND_URL` points to `https://sekret-backend.mcgill-raylene.workers.dev`
+## Retired release path
+
+The Supabase `release-health` Edge Function is retired as a JWT-protected HTTP 410 endpoint. It must not be used as deployment authority, release telemetry, or proof of the current commit.
+
+Canonical evidence comes from `.github/workflows/deploy-cloudflare.yml`, `scripts/verify-cloudflare-native-deploy.mjs`, the deployed release marker, Worker health, and production Playwright.
+
+## Emergency manual fallback
+
+Manual Worker or Pages upload is an administrator-only fallback documented in `DEPLOYMENT.md`. Any emergency use must record:
+
+- exact source commit;
+- command and target;
+- credentials scope;
+- validation performed;
+- rollback;
+- immediate repository reconciliation.

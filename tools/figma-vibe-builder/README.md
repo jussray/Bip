@@ -11,7 +11,7 @@ Open this file in the Figma desktop app before running the plugin:
 - File key: `ETppMmGn15qigJnHPHghTs`
 - Starting node: `18:2`
 - The plugin does not use the REST API or store a personal access token.
-- It runs only inside whichever Figma file is currently open, so make sure the file above is active.
+- It runs only inside the Figma file currently open.
 
 ## What it builds
 
@@ -24,27 +24,24 @@ Open this file in the Figma desktop app before running the plugin:
 
 Each frame includes:
 
-- atmosphere placeholder and scrim
-- nav bar
-- hero card
-- input field
-- primary and secondary buttons
-- privacy and verification badges
-- journal card
-- Circle post card
-- parent-boundary preview
+- atmosphere placeholder and scrim;
+- nav bar;
+- hero card;
+- input field;
+- primary and secondary buttons;
+- privacy and verification badges;
+- journal card;
+- Circle post card;
+- parent-boundary preview.
 
-The values mirror `constants/vibeDesignTokens.ts` and `constants/vibeColors.ts`.
+The values mirror `constants/vibeDesignTokens.ts` and `constants/vibeColors.ts` in the canonical `jussray/Sekret-Bip` repository.
 
 ## Install locally in Figma
 
-1. Clone or download the `jussray/Bip` repository to your computer.
+1. Clone or download `jussray/Sekret-Bip`.
 2. Open the canonical Bip Figma file above in the Figma desktop app.
 3. Open **Plugins → Development → Import plugin from manifest…**
-4. Select:
-
-   `tools/figma-vibe-builder/manifest.json`
-
+4. Select `tools/figma-vibe-builder/manifest.json`.
 5. Run **Plugins → Development → Bip Vibe Frame Builder**.
 
 The plugin creates or reuses a page called `Bip Vibe Frames`, removes only prior frames whose names begin with `Vibe —`, and rebuilds all six frames.
@@ -54,6 +51,7 @@ The plugin creates or reuses a page called `Bip Vibe Frames`, removes only prior
 - No Figma personal access token is used.
 - No network requests are allowed by the manifest.
 - The plugin runs only inside the open Figma file.
+- Generated design frames do not replace runtime privacy, authorization, or rollout controls.
 
 ## Regeneration rule
 
@@ -62,8 +60,10 @@ When vibe values change, update both:
 - `constants/vibeDesignTokens.ts`
 - `tools/figma-vibe-builder/code.js`
 
-Then rerun the plugin. Existing generated frames are replaced in place on the `Bip Vibe Frames` page.
+Then rerun the plugin and validate the app implementation separately. Existing generated frames are replaced in place on the `Bip Vibe Frames` page.
 
 ## Notes
 
-The 320px atmosphere area is a styled placeholder. Replace it with the approved room or atmosphere image after the frames are generated. The overlay and all UI surfaces remain token-driven.
+The 320px atmosphere area is a styled placeholder. Replace it with the approved room or atmosphere image after frames are generated. The overlay and UI surfaces remain token-driven.
+
+Figma output is design evidence, not proof that a screen is integrated, verified, or released. Product status remains governed by `implementation-ledger.json` and repository tests.

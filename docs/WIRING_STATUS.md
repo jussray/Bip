@@ -1,22 +1,24 @@
 # Se'kret Bip — Backend Wiring Status
 
-Last reviewed: 2026-07-04
+Last reviewed: 2026-07-13
 
-## Implemented
+`implementation-ledger.json` is the machine-checked status source. This page describes the current runtime and data wiring in human-readable form.
+
+## Implemented runtime paths
 
 - Supabase authentication and persisted sessions
-- Local-first AsyncStorage restore and cloud merge
+- Local-first AsyncStorage restore and cloud synchronization
 - Teen Circle and Parent Circle data flows
 - Bip Crew members, invites, connection states, and check-ins
-- Points snapshots and rewards infrastructure
-- Voice Bip recording, transcription, reply, and speech playback
-- Oracle profile/session persistence paths
-- Parent-link invites and redemption
-- Safety tables, triggers, alerts, and Edge Function scaffolding
+- Points, rewards, and activity-ledger infrastructure
+- Voice Bip recording, transcription, reply, TTS, and playback
+- Parent-link invites, redemption, revocation, and relationship-aware data
+- Safety tables, triggers, alerts, and Edge Functions
 - Period-calendar synchronization
-- Explicit splash entry controls
-- Bridge signals and linked-account messages
-- Founder Control Room ingestion and release-health systems
+- Bridge signals, messages, summaries, consent, and revocation contracts
+- Founder Control Room operational ingestion and metadata-only telemetry
+- Canonical Se'kret identity and companion-style wrapper in Worker reply and voice paths
+- Exact-production-release verification for Worker and Pages deployments
 
 ## Current route model
 
@@ -24,68 +26,106 @@ The app uses Expo Router route groups:
 
 - teen routes: `app/(teen)/`
 - parent routes: `app/(parent)/`
+- founder/internal routes: `app/(dev)/`
 
-Older references to `app/(main)/`, `app/parent/`, or a global string router are historical and should not be used for new work.
+Older references to `app/(main)/`, `app/parent/`, or a global string router are historical and must not be used for new work.
 
 ## Database source of truth
 
 `supabase/migrations/` is the schema source of truth.
-
-Fresh projects should use:
 
 ```bash
 npx supabase link --project-ref <project-ref>
 npx supabase db push
 ```
 
-Do not rely on missing `0003_*` files or a separate full-bootstrap SQL file. Migration ordering must remain safe for an empty database.
+Do not use a second bootstrap schema. Migration ordering must remain replay-safe for an empty database, and repository migration versions must match the versions recorded by the live project.
+
+## Authorization state
+
+Verified live evidence currently includes:
+
+- sampled owner access for private rows;
+- cross-user read and update denial;
+- anonymous denial;
+- zero synthetic probe residue;
+- server-only configuration tables with no client grants;
+- `notification_deliveries` documented and verified as service-role-only;
+- three obsolete Edge Functions retired behind platform JWT verification.
+
+Only `account-delete` and `safety-scan` intentionally remain outside platform JWT verification because they use dedicated server-to-server boundaries. They still require focused negative-auth tests.
+
+See `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md` and `security/supabase-authorization-baseline.json`.
 
 ## Parent and Bridge status
 
-The linked-account data model is implemented, including parent links, Bridge signals, Bridge messages, and relationship-aware RLS.
+The linked-account data model is implemented, including parent links, Bridge signals, Bridge messages, summary contracts, revocation, and relationship-aware RLS.
 
-The parent product remains an enforced release gate. It is not production/demo-complete until issue #212 verifies:
+The parent product remains an enforced release gate. It is not production-complete until evidence covers:
 
-- canonical Parent Bridge tabs
-- parent splash and onboarding
-- pending, active, expired, revoked, and blocked states
-- Parent Circle privacy validation
-- Parent Coach memory boundaries
-- period-sharing permissions
-- minimal-content notifications
-- end-to-end relationship and privacy tests
+- parent splash and onboarding;
+- pending, active, expired, revoked, blocked, and deleted states;
+- controlled two-account Bridge production journeys;
+- Parent Circle privacy validation;
+- Parent Coach boundaries;
+- period-sharing permissions;
+- minimal-content notifications;
+- complete relationship and privacy tests.
+
+Bridge remains under controlled rollout. A runtime path existing is not permission to broaden parent visibility.
 
 ## Companion status
 
-Current companion maturity is L2:
+Current companion runtime includes:
 
-- unified reply payloads
-- short-term conversation history
-- supplied RoomMemory and Oracle context
-- metadata-only provider telemetry
+- unified reply payloads;
+- short-term conversation history;
+- approved RoomMemory and conversation context;
+- canonical actor identity and style profiles;
+- deterministic question-budget and forbidden-identity enforcement;
+- Worker and TTS style-version metadata;
+- metadata-only provider telemetry.
 
-Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are not implemented and must not be demoed as complete. See `AGENT_L4_ARCHITECTURE.md`.
+Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are not implemented. L4 remains blocked until its ownership, provenance, correction, expiry, deletion, RLS, denial-test, rollout, and rollback contracts are approved.
 
-## Deployment checks still required
+## Deployment status
 
-These are enforced release gates, not optional notes:
+Production authority is Cloudflare native Git integration:
 
-- confirm current Cloudflare Worker and web deployment secrets
-- verify the safety-scan Edge Function is deployed in the active Supabase project
-- verify Worker CORS and authenticated request handling
-- verify fresh migration replay
-- run the repository validation scripts before release
-- resolve or formally document the `notification_deliveries` RLS scanner warning
+- Pages project: `sekret-bip`
+- Worker: `sekret-backend`
+- branch: `main`
+
+The release verifier requires:
+
+1. a successful exact-commit Worker build;
+2. a deployed `release.json` marker matching the exact `main` SHA;
+3. a healthy canonical Worker endpoint;
+4. read-only production Playwright against protected teen and parent routes.
+
+The retired `release-health` Supabase function is not a production release oracle. It now returns HTTP 410 behind JWT verification. Canonical deployment evidence comes from the Cloudflare-native verifier and its artifacts.
+
+## Remaining wiring gates
+
+- controlled Bridge production proof;
+- account deletion and storage cleanup proof;
+- behavior tests for authenticated database functions with broad operational impact;
+- negative tests for the two remaining custom-auth Edge Functions;
+- password-breach protection planning and Auth regressions;
+- production observation of companion style-version telemetry;
+- legal, moderation, accessibility, and app-store readiness.
 
 ## Validation
 
 ```bash
 npm run type-check
 npm test
-npm run test:device-sync
+npm run lint
+npm run verify:bundle
 npm run audit:control-room
 npm run validate:companions
+npm run test:e2e
 npm run verify:prepush
 ```
 
-Do not mark a path complete merely because code exists. Completion requires the route, service, database policy, and tests to agree.
+Do not mark a path complete merely because code exists. Completion requires the route, service, authorization boundary, tests, rollout, telemetry, and rollback to agree.

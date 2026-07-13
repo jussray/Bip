@@ -1,184 +1,149 @@
 # Se'kret Bip — Current Sprint State
 
-This file records volatile project state. Read it at the start of a working session, then verify material claims with GitHub, Supabase, Cloudflare, and the relevant tests before acting.
-
-Update this file only after verification when PR, deployment, migration, backend, release, or blocker state changes. Do not store private user data or unverified dashboard claims here.
-
----
+This file records volatile project state. Verify material claims with GitHub, Supabase, Cloudflare, and the relevant tests before acting.
 
 ## Verification
 
-**Last verified:** 2026-07-12  
+**Last verified:** 2026-07-13  
 **Repository:** `jussray/Sekret-Bip`  
 **Default branch:** `main`  
-**Verified main commit:** `85624c99429a1356a7aa192133d7635cbb1e0c80`
+**Verified main commit:** `1a011a6c735efe07e81c009ad316622d1887e7c9`
 
-Query GitHub before relying on PR or workflow state. This file is a handoff, not a magical synchronization layer.
+`implementation-ledger.json` is the machine-checked feature-status source. This file is an execution handoff, not a magical synchronization layer.
 
----
+## Current baseline
 
-## Main Baseline
+### Implementation Evidence
 
-### #339 — Green CI and Worker baseline
+Merged and active on `main`:
 
-Established Companion Lab scripts and CI, `sekret-backend` as the canonical Cloudflare Worker, `sekret` as the frontend Pages project, and deterministic repository quality gates.
+- feature states: `planned -> contract -> integrated -> verified -> released`;
+- architecture, roadmap, current-status, and agent-skill changes require ledger reconciliation;
+- integrated features require runtime paths, telemetry, rollout controls, and rollback;
+- verified/released claims require passed evidence and production proof.
 
-### #340 — Living state and operational agent layer
+### Identity and companion style
 
-Added current-state, Companion Lab, Supabase guardian, and founder-reasoning operating instructions.
+The canonical identity/style contract is integrated into Worker reply and TTS paths.
 
-### #346 — Se'kret identity, style, and L4 contracts
+Current state:
 
-Added identity, companion-style, relationship-phase, and future L4 contracts. These are contracts, not proof that every screen, Worker path, TTS flow, memory write, or Control Room panel is live.
+- exact-head CI, Companion Lab, and Playwright passed;
+- Se'kret continuity identity and named-companion distinctions are enforced;
+- question budgets and deterministic repair exist;
+- telemetry records version metadata without private content;
+- production style-version observation remains before promotion to verified/released.
 
-### #348 — Supabase-backed feature hardening
+### Supabase authorization
 
-Merged durable account hydration, owner-scoped Teen and Parent Pages, Circle correctness and RLS/RPC hardening, navigation consolidation, production migrations, and rollback-contained cross-account probes. Crew remains gated pending accepted-connection beta.
+Completed live slices:
 
-### #349 — Product guardrails and Playwright verification
+- rollback-contained owner/cross-user/anonymous denial proof;
+- zero synthetic residue;
+- config tables hardened to service-role-only with zero client grants and preserved rows;
+- migration-history parity at `20260713011803`;
+- `notification_deliveries` verified as service-role-only;
+- `release-health`, `bridge-e2e-probe`, and `github-workflow-status` retired as JWT-protected HTTP 410 functions with recorded versions and hashes.
 
-Merged at `85624c99429a1356a7aa192133d7635cbb1e0c80` after Playwright Smoke and Guardrails, Type Check, Pre-Push Checks, Regression Tests, Quality Gate, and CI passed.
+Remaining before L4 activation:
 
-Added the canonical product vision, executable privacy/consent/identity/auth/isolation/AI/memory/safety/secret guardrails, a public-safe runtime snapshot, and browser verification.
+- behavior tests for high-blast-radius authenticated database functions;
+- negative-auth tests for `account-delete` and `safety-scan`;
+- password-breach protection planning and Auth regressions.
 
----
+### Production deployment
 
-## Current Priority: #259 Teen-to-Parent V1 Proof
+Canonical deployment authority:
 
-The required proof remains:
+- Worker: `sekret-backend` through Cloudflare Workers Builds;
+- Pages: `sekret-bip` through Cloudflare Pages;
+- branch: `main`;
+- GitHub Actions verifies production but does not upload code.
 
-1. teen signs up and verifies;
-2. parent signs up and verifies;
+Exact-release proof requires:
+
+1. Worker build success for the expected commit;
+2. deployed `release.json` matching the expected SHA;
+3. healthy Worker endpoint;
+4. read-only production Playwright;
+5. retained artifact.
+
+The retired Supabase `release-health` function is not deployment evidence.
+
+## Current product priority
+
+### Teen-to-parent Bridge proof
+
+The required complete journey remains:
+
+1. teen creates and verifies an account;
+2. parent creates and verifies an account;
 3. relationship is linked through the intended two-party flow;
 4. teen creates private source content;
 5. teen previews and confirms an eligible Bridge share;
 6. Worker generates a privacy-safe parent summary;
 7. parent sees only the generated summary;
 8. teen revokes and parent access disappears;
-9. relationship unlink removes relationship access;
-10. deletion and second-user isolation remain correct.
+9. re-share creates fresh generation without stale exposure;
+10. unlink and deletion remove relationship access;
+11. second-user isolation remains correct.
 
-Steps 1–4 and 8–10 have existing implementation and contract coverage, but the entire journey has not yet been proven against a deployed Worker with two real Supabase accounts.
+Contracts, runtime paths, and rollback controls exist. Bridge summary rollout remains disabled/controlled until the complete deployed journey passes with cleanup evidence.
 
-### PR #350 — Bridge summary preparation and privacy hardening
+### Account deletion
 
-**State:** Open; query GitHub for the latest head and checks.
+Deletion remains a release blocker. Proof must include:
 
-Implemented on `claude/bip-v1-production-proof-nx6222`:
+- database rows;
+- Storage objects;
+- parent-link revocation;
+- local private caches;
+- retry/idempotency behavior;
+- second-user restore isolation.
 
-- Bridge summary UI remains internal-only until deployed two-account proof passes;
-- confirmation discloses that selected text is sent to an external AI provider;
-- revoke → re-share is supported instead of ending in a dead UI state;
-- selected journal and mood content is fetched only for the authenticated teen;
-- missing, stale, unsupported, or partially resolved sources fail explicitly;
-- raw source text is used only as ephemeral model input and is not stored in `bridge_summaries`;
-- OpenAI Structured Outputs use a strict JSON schema;
-- deterministic privacy validation enforces count and length bounds, blocks clinical language in parent-facing content, and rejects seven-word near-verbatim source overlap;
-- one corrective model retry is allowed before a static safe fallback;
-- server-side rollout control is independent of the client bundle;
-- rollout fails closed when unset and is explicitly `disabled` in `wrangler.toml`;
-- activation requires either `enabled` or a comma-separated teen-user cohort;
-- Supabase data access was extracted into an injected-fetch store and is covered by behavioral tests for owner scoping, headers, status writes, summary persistence, complete source resolution, partial-source rejection, unsupported sources, upstream failures, and missing configuration;
-- Quality Gate uses Node 22 and the repository's real test command rather than pretending the custom runner understands unrelated coverage flags.
+### Parent completion
 
-### Verified live Supabase boundaries
+Parent routes and data contracts exist, but product completion still requires:
 
-Production project `tbsevonvegdnlyjgplmm` was checked directly on 2026-07-12:
+- onboarding and guardian verification journey;
+- relationship lifecycle states;
+- Parent Circle privacy;
+- Parent Coach boundaries;
+- minimal-content notifications;
+- physical-device and end-to-end privacy verification.
 
-- Bridge request, source, and summary policies are teen/parent relationship scoped;
-- parent summary visibility requires ready/viewed status, no revocation, no expiry, and an active parent link;
-- journal and mood source tables remain owner scoped;
-- `notification_deliveries` has RLS enabled, no policies, no grants for `anon` or `authenticated`, and table privileges only for `service_role`;
-- the no-policy shape of `notification_deliveries` is therefore an intentional server-only boundary, not a missing client policy.
+## L4 continuity memory
 
-A rollback-contained two-principal production-schema probe passed seven checks:
+L4 is still planned, not integrated.
 
-- teen could read only the temporary teen-owned journal row;
-- linked parent could not read the raw journal row;
-- linked parent could read the ready generated summary;
-- linked parent could not read source references;
-- revocation removed parent summary access immediately;
-- re-share reused the same idempotent request;
-- reactivated request returned to `pending` for fresh generation.
+Do not create broad memory dashboards before the first approved runtime path includes:
 
-Cleanup was verified after the probe: no temporary users, parent links, Bridge requests, or proof journals remained.
+- ownership and provenance;
+- correction and deletion;
+- expiration/retention;
+- RLS and denial tests;
+- one real consumer;
+- rollout, telemetry, and rollback.
 
-The repository RLS scanner now verifies the `notification_deliveries` exception only when both RLS and migration-level client-role revocation are present.
+## Control Room
 
-### Still not production proof
+Current Control Room operational sources are integrated. Additional panels must remain evidence-driven:
 
-The following remain separate activation/release gates:
+- identity/style observers require real version telemetry;
+- voice observers require real runtime metadata;
+- L4 observers wait for L4 storage and runtime;
+- every panel needs freshness and honest unavailable states;
+- no raw teen content or raw user identifiers.
 
-- deployed Worker test with two real teen/parent accounts;
-- real OpenAI summary generation and fallback observation;
-- parent view, revoke, re-share, unlink, and delete in the same real relationship;
-- physical-device verification;
-- deliberate OpenAI retention/account configuration decision;
-- production rollout variable change from `disabled` to a controlled cohort or `enabled`.
+## Next execution order
 
-Merging PR #350 does not activate the feature in production and does not certify the full V1 journey.
+1. Complete authenticated database-function behavior tests.
+2. Add negative-auth tests for the two custom-auth Edge Functions.
+3. Complete account deletion and Storage cleanup proof.
+4. Run the controlled Bridge two-account production journey.
+5. Observe companion style-version telemetry in production.
+6. Plan password-breach protection with Auth regression coverage.
+7. Design the smallest safe L4 schema and one real runtime consumer.
+8. Add Control Room observers only after their sources exist.
 
----
-
-## #344 — Supabase Authorization Hardening
-
-**State:** Open.
-
-Continue phased, test-first review of:
-
-- `app_config`, `app_private_config`, and `guardian_verification_reviews` access intent;
-- anonymous-capable roles on private tables;
-- SECURITY DEFINER grants and search paths;
-- leaked-password protection;
-- denial tests before broad policy changes.
-
-Do not mass-rewrite production policies merely to reduce advisory counts. `notification_deliveries` is now documented and scanner-verified as service-role-only.
-
----
-
-## Control Room AI Rollout
-
-1. **PR B — observers:** read-only identity, style, voice, L4, and MCP panels with privacy-safe adapters.
-2. **PR C — runtime activation:** connect identity/style contracts to actual screens, reply requests, accessibility, archives, notifications, and TTS; add identity-leak and Companion Lab evaluations.
-3. **PR D — L4 persistence:** reviewed memory, goal, and reflection storage with ownership, provenance, correction, expiry, deletion, and denial tests.
-
-The old `control-room-architecture` branch is not a merge candidate. Reuse ideas only through scoped branches from current main.
-
----
-
-## Cloudflare / OpenAI
-
-- **Backend Worker:** `sekret-backend`
-- **Worker entrypoint:** `worker/observed-index.ts`
-- **Frontend Pages project:** `sekret`
-- **Bridge summary rollout default:** `disabled`
-- **Model configuration:** Worker environment-backed
-- **Production AI health:** requires authenticated live proof; repository code and CI alone are insufficient
-- **TTS:** contracts exist, but production Se'kret/companion TTS activation is not certified
-
-Do not rename the Worker, change production rollout, or deploy from an unrelated task.
-
----
-
-## Supabase
-
-- **Project:** Se'kret Bip
-- **Project ref:** `tbsevonvegdnlyjgplmm`
-- **Status:** `ACTIVE_HEALTHY`
-- **Region:** `us-east-1`
-- **Schema source of truth:** `supabase/migrations/`
-- **Project health alone does not certify schema parity or user journeys**
-
----
-
-## Next Execution Order
-
-1. Finish PR #350 checks, including Playwright, unit tests, typecheck, lint, build, regression, and RLS audit.
-2. Merge PR #350 only after all required checks pass, with public UI and Worker rollout still disabled.
-3. Deploy separately under explicit deployment approval.
-4. Run issue #259's complete two-account journey using a controlled rollout cohort.
-5. Record failures, repair them, and repeat until revoke, re-share, unlink, delete, and privacy boundaries pass.
-6. Complete issue #344 denial-test inventory before broad authorization changes.
-7. Continue Control Room observer work only after the V1 proof path is stable.
-
-A green PR is permission to integrate reviewed code. It is not evidence that a teenager and parent completed the real production journey. Computers remain annoyingly literal about this distinction.
+A green PR proves reviewed integration. It does not prove production behavior unless the deployed artifact and user journey were observed. Computers remain deeply committed to this inconvenient distinction.

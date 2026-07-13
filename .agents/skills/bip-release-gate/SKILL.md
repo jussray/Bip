@@ -1,18 +1,24 @@
 # bip-release-gate
 
+Last reviewed: 2026-07-13
+
 ## Trigger
-Before any merge to `main`. Run this last, after all task-specific skills.
+
+Before any merge to `main`. Run this last, after task-specific review skills.
 
 ## Rule
-Discover the current release machinery from the repository. Do not rely on a remembered or
-hardcoded workflow list. Required checks depend on changed paths, target environment, and release type.
 
-A workflow that did not trigger is not automatically passed. Classify it as:
-- REQUIRED — must run and pass before merge.
-- NOT APPLICABLE — explain why the changed paths and release target do not require it.
-- MANUAL GATE — requires external verification that CI cannot prove.
+Discover the current release machinery from the repository. Do not rely on a remembered workflow list, deployment target, or dashboard value.
 
-## Step 0 — Discover, Don't Assume
+Classify each possible gate as:
+
+- **REQUIRED** — must run and pass on the current head;
+- **NOT APPLICABLE** — explain why the changed paths and target do not require it;
+- **MANUAL GATE** — requires external verification that CI cannot prove.
+
+An untriggered workflow is not automatically passed. A green check from an older SHA is decorative nostalgia.
+
+## Step 0 — Discover, do not assume
 
 ```bash
 find .github/workflows -maxdepth 1 -type f -print | sort
@@ -20,119 +26,173 @@ git diff --name-only origin/main...HEAD
 git rev-parse HEAD
 ```
 
-Read current workflow triggers, path filters, jobs, required secrets, and branch conditions.
-When available, inspect branch protection and required-check configuration too.
+Read current workflow triggers, path filters, jobs, required secrets, concurrency, and branch conditions. When available, inspect branch protection and required checks.
 
-Read `docs/CLOUDFLARE_OWNERSHIP.md` for deployment ownership:
-- backend Worker: `bip`
-- frontend Cloudflare Pages project: owner-confirmed `sekret`, configured through `CLOUDFLARE_PAGES_PROJECT_NAME`
+Read:
 
-## Release Gate Checklist
+- `implementation-ledger.json`
+- `DEPLOYMENT.md`
+- `docs/CLOUDFLARE_OWNERSHIP.md`
+- `docs/DEMO_READINESS_ENFORCEMENT.md`
 
-### 1. Change Classification
-Classify the change as one or more of:
-- app/UI-only
-- backend Worker/API (`bip`)
-- web frontend/Cloudflare Pages (`sekret`)
-- Supabase migration/RLS
-- Supabase Edge Function
-- native dependency/config
-- assets/content
-- CI/tooling
-- documentation/agent-instructions only
+Canonical production targets:
 
-State the target: PR merge only, beta/preview build, staging deploy, or production release.
+- backend Worker: `sekret-backend`;
+- frontend Pages project: `sekret-bip`;
+- deployment authority: Cloudflare native Git integration from `main`;
+- release verification: GitHub Actions exact-release verifier, not a second upload path.
 
-### 2. Applicable CI Status
-- [ ] Discover current workflows from `.github/workflows/`.
-- [ ] Identify workflows whose event and path filters apply.
-- [ ] Confirm every applicable required check ran on the current HEAD SHA and passed.
-- [ ] Confirm no required check is pending, unexpectedly skipped, stale, or attached to an older SHA.
-- [ ] Explain every NOT APPLICABLE workflow; never silently skip it.
+## Release gate checklist
 
-"Not triggered" is not "passed." A green check from an older commit is not evidence for the current head.
+### 1. Classify the change
 
-### 3. Migration Safety — when `supabase/` changed
-- [ ] Run `supabase migration list` against the intended environment.
-- [ ] Run `supabase db diff` and account for schema drift.
-- [ ] Confirm migration ordering and object dependencies.
-- [ ] Review concurrency, idempotency, indexes, backfills, locks, and `SECURITY DEFINER` functions.
-- [ ] Run `bip-privacy-redteam` and applicable migration contract tests.
-- [ ] Confirm a rollback or forward-fix strategy for production-impacting changes.
+Classify as one or more of:
 
-If the target environment is unavailable, mark the verification as BLOCKED or MANUAL GATE.
-Do not describe it as passed.
+- app/UI;
+- backend Worker/API (`sekret-backend`);
+- web frontend/Cloudflare Pages (`sekret-bip`);
+- Supabase migration/RLS/database function;
+- Supabase Edge Function;
+- native dependency/config;
+- assets/content;
+- CI/tooling;
+- documentation/agent instructions.
 
-### 4. Backend Worker Deploy Readiness — when `worker/`, `wrangler.toml`, or bindings changed
-- [ ] Confirm changed Worker entry points compile.
-- [ ] Confirm `wrangler.toml` still names the production backend Worker `bip`.
-- [ ] Compare Wrangler bindings with all changed secret/config references.
-- [ ] Confirm elevated credentials are not client-exposed or logged.
-- [ ] Run `bip-worker-guardian`.
-- [ ] Confirm the applicable deploy workflow or documented manual deployment path.
+State the target: PR merge only, preview/beta, controlled production deployment, or public release.
 
-If a configured staging Worker exists, validate there before production. If staging does not exist,
-do not invent it as a gate: document the available local/preview path, run applicable tests, and
-require explicit production-deploy approval.
+### 2. Applicable CI
 
-### 5. Web Frontend / Cloudflare Pages Readiness — when Expo web or Pages deployment changed
-- [ ] Run the web export and Playwright smoke tests.
-- [ ] Confirm `.github/workflows/deploy-cloudflare.yml` deploys `dist` to Cloudflare Pages.
-- [ ] Verify repository variable `CLOUDFLARE_PAGES_PROJECT_NAME` is set to the intended frontend project; owner-confirmed production target is `sekret`.
-- [ ] Verify the purchased custom domain is attached to that Pages project.
-- [ ] Verify `EXPO_PUBLIC_BACKEND_URL` points to the backend `bip` Worker endpoint.
-- [ ] Confirm no backend secret is exposed in the client bundle.
+- [ ] Discover workflows from `.github/workflows/`.
+- [ ] Identify event and path filters that apply.
+- [ ] Confirm every required check ran on the current HEAD SHA and passed.
+- [ ] Confirm no required check is pending, stale, unexpectedly skipped, or attached to an older SHA.
+- [ ] Explain each NOT APPLICABLE workflow.
+- [ ] Confirm Implementation Evidence passes when architecture, roadmap, status, or agent-skill files changed.
+- [ ] Run Playwright when user-visible routes, privacy guardrails, deployment evidence, or public-surface isolation changed.
 
-Do not treat a successful `bip` Worker deployment as proof that the `sekret` frontend deployed, or vice versa.
+### 3. Supabase migration and authorization safety
 
-### 6. Environment Variable Completeness — when configuration changed
-- [ ] Compare code references against current example/config files.
-- [ ] Confirm each new variable is documented and provisioned in the target environment.
-- [ ] Confirm secrets are not hardcoded, committed, printed, or bundled client-side.
-- [ ] Confirm client-exposed variables contain only intentionally public values.
+When `supabase/`, security baselines, RLS, grants, or database functions changed:
 
-### 7. Expo/EAS Readiness — when app config, native modules, or release metadata changed
-- [ ] Confirm the applicable EAS profile and platform.
-- [ ] Confirm version/build-number policy for beta or production.
-- [ ] Confirm native changes receive a new native build rather than OTA-only delivery.
-- [ ] Confirm affected auth, route, and privacy journeys are covered by relevant tests.
+- [ ] compare repository migration history with the target project;
+- [ ] account for schema drift;
+- [ ] review ordering, dependencies, locks, backfills, indexes, and idempotency;
+- [ ] review `SECURITY DEFINER` search paths and execution grants;
+- [ ] run positive owner/role tests and negative anonymous/cross-user tests;
+- [ ] preserve a rollback or forward-fix strategy;
+- [ ] reconcile live migration versions and evidence back into the repository.
 
-Documentation-only, agent-instruction-only, or server-only PRs do not require EAS unless repository
-policy explicitly says otherwise.
+If the target environment is unavailable, classify the proof as BLOCKED or MANUAL GATE. Do not pronounce it passed through interpretive dance.
 
-### 8. Conditional Product Gates
-- [ ] Supabase/data boundary changes: `bip-privacy-redteam` passed.
-- [ ] Worker endpoint changes: `bip-worker-guardian` passed.
-- [ ] AI/prompt/summary changes: `bip-ai-review` passed.
-- [ ] User-facing copy changes: `bip-voice-guard` passed.
-- [ ] Beta/release candidate: `bip-beta-checklist` passed for affected journeys.
+### 4. Worker readiness
 
-### 9. Deployment Reality Check — deploys/releases only
-Verify actual target state rather than assuming merge equals deploy:
-- Backend Worker: `wrangler deployments list --name bip`.
-- Web frontend: verify the Cloudflare Pages deployment for project `sekret` and its deployed commit.
-- Supabase: migration/function state for the target project.
-- Expo/EAS: build/update state for the intended channel.
+When `worker/`, `wrangler.toml`, bindings, AI, TTS, or authenticated API behavior changed:
 
-Record deployed commit/version and timestamp when available.
+- [ ] confirm Worker entry points compile;
+- [ ] confirm `wrangler.toml` names `sekret-backend`;
+- [ ] compare bindings with changed secret/config references;
+- [ ] confirm elevated credentials are not bundled or logged;
+- [ ] run `bip-worker-guardian`;
+- [ ] test authentication before protected data access;
+- [ ] test identity/style, Bridge, or safety boundaries affected by the change;
+- [ ] confirm rollout, telemetry, and rollback.
 
-## Pass Criteria
-Return READY TO MERGE only when:
+Use a real staging environment when one exists. Do not invent one when it does not.
+
+### 5. Pages and web readiness
+
+When Expo web, public routes, assets, or Pages deployment changed:
+
+- [ ] run the Expo web export;
+- [ ] run Playwright smoke and guardrail tests;
+- [ ] confirm Cloudflare native Git integration remains the production authority;
+- [ ] confirm the target Pages project is `sekret-bip`;
+- [ ] confirm the custom domain is attached to the canonical project;
+- [ ] confirm `EXPO_PUBLIC_BACKEND_URL` points to `sekret-backend`;
+- [ ] confirm no backend secret appears in the client bundle;
+- [ ] confirm the build writes a valid public `release.json` marker.
+
+Do not treat Worker deployment as proof that Pages deployed, or vice versa.
+
+### 6. Exact production evidence
+
+For deployment or release claims, verify the exact expected commit through:
+
+1. successful `Workers Builds: sekret-backend` check;
+2. deployed `release.json` matching the expected `main` SHA;
+3. successful Worker health endpoint;
+4. read-only production Playwright;
+5. retained GitHub Actions evidence artifact.
+
+The retired Supabase `release-health` function is a JWT-protected HTTP 410 endpoint and must not be used as release evidence.
+
+### 7. Environment variables
+
+When configuration changed:
+
+- [ ] compare code references with example/config files;
+- [ ] document and provision every new variable in the correct environment;
+- [ ] keep secrets out of source, logs, and public bundles;
+- [ ] confirm Expo public variables contain only intentionally public values;
+- [ ] confirm server-only authentication headers remain server-side.
+
+### 8. Expo/EAS readiness
+
+When native config, app identifiers, native modules, or release metadata changed:
+
+- [ ] confirm EAS profile and platform;
+- [ ] confirm version/build-number policy;
+- [ ] require a native build for native changes rather than OTA-only delivery;
+- [ ] test affected auth, route, storage, and privacy journeys.
+
+Documentation-only or server-only PRs do not require EAS unless repository policy says otherwise.
+
+### 9. Conditional product gates
+
+- [ ] Supabase/data boundary: privacy red-team and denial tests passed.
+- [ ] Worker endpoint: `bip-worker-guardian` passed.
+- [ ] AI/prompt/summary: AI review and Companion Lab passed.
+- [ ] User-facing copy: voice guard passed.
+- [ ] Parent/Bridge: controlled relationship and revocation proof is current.
+- [ ] Beta/release candidate: affected user journeys and legal checklist are complete.
+- [ ] L4: remains blocked unless authorization, deletion, provenance, retention, runtime use, rollout, and rollback are evidenced.
+
+### 10. Documentation reality
+
+When Markdown or agent skills changed:
+
+- [ ] current status matches `implementation-ledger.json`;
+- [ ] historical audits are labeled as snapshots;
+- [ ] old repository names and deployment targets are removed from active instructions;
+- [ ] integrated features are not described as verified or released;
+- [ ] resolved findings are not still labeled release-blocking;
+- [ ] remaining blockers are concrete and owned.
+
+## Pass criteria
+
+Return `READY TO MERGE` only when:
+
 - all applicable checks passed on the current head;
-- each non-applicable check has a defensible reason;
-- no known safety, privacy, migration, or release blocker remains.
+- every non-applicable check has a defensible reason;
+- no known safety, privacy, migration, evidence, or release blocker applies to the requested merge.
 
-Return READY TO DEPLOY only after deployment-specific manual gates are satisfied.
+Return `READY TO DEPLOY` only after deployment-specific manual and exact-release gates are satisfied.
 
 ## Output
-Return one of: READY TO MERGE | READY TO DEPLOY | BLOCKED
+
+Return one of:
+
+- `READY TO MERGE`
+- `READY TO DEPLOY`
+- `BLOCKED`
 
 Include:
+
 - current head SHA;
 - change classification and target;
 - applicable checks with status;
 - NOT APPLICABLE checks with reasons;
-- manual gates still required;
-- exact blocker file/workflow when blocked.
+- manual gates;
+- exact blocker file, workflow, or environment when blocked.
 
-Never recommend merging with a known failure. Never describe an untriggered, skipped, or stale check as passed.
+Never recommend merging with a known failure. Never describe an untriggered, skipped, stale, or older-SHA check as passed.
