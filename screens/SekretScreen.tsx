@@ -11,7 +11,6 @@
 //   • Scrapbook sticky-note quiet line
 //   • Gradient overlay on hero
 //
-// Scope: backend + Pages UX only. No companion chat logic here.
 // Props interface UNCHANGED — index.tsx call site untouched.
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -112,7 +111,7 @@ interface SekretScreenProps {
   userSide:           'teen' | 'parent';
   setScreen:          (screen: string) => void;
   BottomNav:          React.ReactNode;
-  privateProfile?:    OracleProfile;
+  privateProfile?:     OracleProfile;
 }
 
 export function SekretScreen({
@@ -177,20 +176,22 @@ export function SekretScreen({
   const breathScale   = breath.interpolate({ inputRange: [0, 1], outputRange: [1,    1.04] });
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.82, 1   ] });
 
-  // ── Send handler ───────────────────────────────────────────────────────────
+  // ── Send handler ────────────────────────────────────────────────────────
   const handleSend = async () => {
     const text = sekretMessage.trim();
     if (!text) return;
+
     setLastSent(text);
     setSekretMessage('');
     setIsSekretTyping(true);
     setSekretReply('');
+
     const reply = await fetchSekretReply(text, 'chat', mood, selectedProfile, undefined, privateProfile, userSide);
     setSekretReply(reply);
     setIsSekretTyping(false);
   };
 
-  // ── Parent side ────────────────────────────────────────────────────────────
+  // ── Parent side (preserved) ─────────────────────────────────────────────
   if (userSide === 'parent') return (
     <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
       <LinearGradient
@@ -271,7 +272,9 @@ export function SekretScreen({
                 </Text>
               ) : null}
               <Text style={[styles.entryText, styles.companionWritingText, { color: t.soft, marginTop: 8 }]}>
-                {isSekretTyping ? `${profile.name} is typing… ☁️` : sekretReply}
+                {isSekretTyping
+                  ? `${profile.name} is typing… ☁️`
+                  : sekretReply}
               </Text>
             </View>
           ) : (
@@ -324,6 +327,7 @@ export function SekretScreen({
         </Animated.View>
 
       </ScrollView>
+
       {BottomNav}
     </ImageBackground>
   );
