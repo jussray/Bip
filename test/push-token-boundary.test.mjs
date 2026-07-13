@@ -163,10 +163,12 @@ test('post-deploy evidence records executable checks, predicates, limits, and cl
     'denied_transfer_preserves_owner',
   ]);
 
-  for (const value of Object.values(evidence.postDeployEvidence.structuralChecks)) {
+  const { anonExecute, ...requiredStructuralChecks } =
+    evidence.postDeployEvidence.structuralChecks;
+  assert.equal(anonExecute, false);
+  for (const value of Object.values(requiredStructuralChecks)) {
     if (typeof value === 'boolean') assert.equal(value, true);
   }
-  assert.equal(evidence.postDeployEvidence.structuralChecks.anonExecute, false);
   assert.equal(evidence.postDeployEvidence.toolingLimit.encountered, true);
   assert.equal(evidence.postDeployEvidence.toolingLimit.productionMutationFromBlockedCalls, false);
   assert.equal(evidence.postDeployEvidence.retainedSyntheticUsers, 0);
