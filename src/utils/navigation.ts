@@ -23,6 +23,8 @@ export const SCREEN_MAP: Record<string, string> = {
   voicebip: routeForSide('teen', 'voicebip'),
   bridge: routeForSide('teen', 'bridge'),
   parentBridge: routeForSide('parent', 'parentBridge'),
+  l4: routeForSide('teen', 'l4'),
+  continuity: routeForSide('teen', 'continuity'),
   cloudThoughts: routeForSide('teen', 'cloudThoughts'),
   discover: routeForSide('teen', 'discover'),
   settings: routeForSide('teen', 'settings'),
