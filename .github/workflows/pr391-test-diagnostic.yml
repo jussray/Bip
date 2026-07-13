@@ -24,15 +24,27 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
-      - name: Print only failing unit-test diagnostics
+      - name: Capture focused unit-test diagnostics
+        id: unit_tests
         shell: bash
         run: |
           set +e
           npm test > unit-test.log 2>&1
           status=$?
           if [ "$status" -ne 0 ]; then
-            echo 'UNIT_TEST_DIAGNOSTIC_BEGIN'
-            grep -n -E 'not ok|AssertionError|ERR_ASSERTION|failureType|error:|expected:|actual:|operator:|test:' unit-test.log | tail -n 120 || true
-            echo 'UNIT_TEST_DIAGNOSTIC_END'
+            grep -n -E 'not ok|AssertionError|ERR_ASSERTION|failureType|error:|expected:|actual:|operator:|test:' unit-test.log | tail -n 160 > unit-test-diagnostic.txt || true
+          else
+            echo 'all unit tests passed' > unit-test-diagnostic.txt
           fi
-          exit "$status"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload focused diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr391-unit-test-diagnostic
+          path: unit-test-diagnostic.txt
+          if-no-files-found: error
+          retention-days: 1
+      - name: Preserve unit-test result
+        if: steps.unit_tests.outputs.status != '0'
+        run: exit 1
