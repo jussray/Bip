@@ -59,14 +59,14 @@ const PARENT_COACH_STYLE: RuntimeStyleContract = Object.freeze({
   ]),
 });
 
-const FORBIDDEN_REPLACEMENTS: ReadonlyArray<[RegExp, string]> = Object.freeze([
+const FORBIDDEN_REPLACEMENTS: readonly (readonly [RegExp, string])[] = [
   [/\bas an ai language model\b/gi, ''],
   [/\bthat(?:’|'| i)s a great question\b/gi, ''],
   [/\bhow can i assist you today\b/gi, 'Tell me what is happening today'],
   [/\bi understand your concern\b/gi, 'That matters'],
   [/\bi remember when you told me\b/gi, 'Something in this conversation stands out'],
   [/\boracle\b/gi, "Se'kret"],
-]);
+] as const;
 
 export function normalizeReplyActor(value: unknown): ReplyActorId | null {
   if (typeof value !== 'string') return null;
