@@ -1,4 +1,4 @@
-name = "bip-mail"
+name = "sekret-bip"
 main = "worker/email-router.ts"
 compatibility_date = "2026-07-11"
 
