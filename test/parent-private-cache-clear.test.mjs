@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const source = fs.readFileSync(new URL('../src/utils/storage.ts', import.meta.url), 'utf8');
+const jsonKeysBlock = source.match(/const JSON_KEYS = new Set\(\[([\s\S]*?)\]\);/)?.[1] ?? '';
 
 const required = [
   ['parentProfileData', 'parent_profile_data'],
@@ -19,9 +20,10 @@ test('parent entry cache keys are canonical storage keys and private-account dat
 });
 
 test('only structured parent cache values are parsed as JSON', () => {
-  assert.match(source, /'parent_profile_data', 'dev_test_family_v1'/);
-  assert.doesNotMatch(source, /'parent_profile_done'[^\]]*JSON_KEYS/);
-  assert.doesNotMatch(source, /'linked_teen_id'[^\]]*JSON_KEYS/);
+  assert.match(jsonKeysBlock, /'parent_profile_data'/);
+  assert.match(jsonKeysBlock, /'dev_test_family_v1'/);
+  assert.doesNotMatch(jsonKeysBlock, /'parent_profile_done'/);
+  assert.doesNotMatch(jsonKeysBlock, /'linked_teen_id'/);
 });
 
 test('clearPrivateAccountCache removes the complete canonical private list', () => {
