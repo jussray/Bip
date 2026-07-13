@@ -11,6 +11,7 @@ Last reviewed: 2026-07-13
 - Teen Circle and Parent Circle data flows
 - Bip Crew members, invites, connection states, and check-ins
 - Points, rewards, and activity-ledger infrastructure
+- Mind + Body Reset guided tools, timed bodyweight routines, and minimal completion events
 - Voice Bip recording, transcription, reply, TTS, and playback
 - Parent-link invites, redemption, revocation, and relationship-aware data
 - Safety tables, triggers, alerts, and Edge Functions
@@ -28,6 +29,8 @@ The app uses Expo Router route groups:
 - parent routes: `app/(parent)/`
 - founder/internal routes: `app/(dev)/`
 
+Mind + Body Reset uses `app/(teen)/mind-body-reset.tsx` as the hub and the hidden `app/(teen)/body-workout.tsx` route for timer-driven movement routines.
+
 Older references to `app/(main)/`, `app/parent/`, or a global string router are historical and must not be used for new work.
 
 ## Database source of truth
@@ -41,6 +44,17 @@ npx supabase db push
 
 Do not use a second bootstrap schema. Migration ordering must remain replay-safe for an empty database, and repository migration versions must match the versions recorded by the live project.
 
+## Activity and reset wiring
+
+Reset completions use the existing activity path:
+
+1. Guided or workout UI requires meaningful elapsed participation before completion is emitted.
+2. `src/features/activity/events.ts` writes only minimal routine metadata to `public.bip_events`.
+3. `public.bip_events_award_points` invokes the existing `public.handle_bip_event_points()` trigger function.
+4. Eligible events create server-owned point transactions through the existing points model.
+
+No workout-history table, raw mood-content column, or second point ledger is introduced.
+
 ## Authorization state
 
 Verified live evidence currently includes:
@@ -51,7 +65,8 @@ Verified live evidence currently includes:
 - zero synthetic probe residue;
 - server-only configuration tables with no client grants;
 - `notification_deliveries` documented and verified as service-role-only;
-- three obsolete Edge Functions retired behind platform JWT verification.
+- three obsolete Edge Functions retired behind platform JWT verification;
+- live inspection of the restored `bip_events` trigger.
 
 Only `account-delete` and `safety-scan` intentionally remain outside platform JWT verification because they use dedicated server-to-server boundaries. They still require focused negative-auth tests.
 
@@ -107,6 +122,7 @@ The retired `release-health` Supabase function is not a production release oracl
 
 ## Remaining wiring gates
 
+- exact-head CI and device/browser QA for Mind + Body Reset;
 - controlled Bridge production proof;
 - account deletion and storage cleanup proof;
 - behavior tests for authenticated database functions with broad operational impact;

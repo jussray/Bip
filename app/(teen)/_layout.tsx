@@ -61,6 +61,7 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
         <Tabs.Screen name="bippin2/manhood" options={{ href: null }} />
         <Tabs.Screen name="growth" options={{ href: null }} />
         <Tabs.Screen name="mind-body-reset" options={{ href: null }} />
+        <Tabs.Screen name="body-workout" options={{ href: null }} />
         <Tabs.Screen name="companion-chat" options={{ href: null }} />
         <Tabs.Screen name="pages/[id]" options={{ href: null }} />
         <Tabs.Screen name="pages/history" options={{ href: null }} />
@@ -109,7 +110,6 @@ export default function TeenLayout() {
     profileComplete &&
     (effectiveUserSide === 'teen' || getDevSplitViewSideOverride() != null);
 
-  // Fire session_start once per app mount when teen is confirmed active
   useEffect(() => {
     if (isTeenActive && !sessionLogged.current) {
       sessionLogged.current = true;

@@ -12,6 +12,7 @@ This page is the human-readable status summary. `implementation-ledger.json` is 
 - Cloudflare Pages project `sekret-bip`
 - Companion reply, transcription, speech, and metadata-only telemetry flows
 - Versioned Se'kret identity and companion-style runtime wrapper in Worker and TTS paths
+- Mind + Body Reset guided regulation tools and timer-driven bodyweight workouts
 - Bridge account-link, consent, summary, revocation, and controlled-rollout contracts
 - Founder Control Room operational data sources
 - Exact-release production verification using the Worker check, deployed `release.json`, health verification, and read-only Playwright
@@ -24,8 +25,16 @@ This page is the human-readable status summary. `implementation-ledger.json` is 
 - `notification_deliveries` verified as an intentional service-role-only table rather than an unresolved user-policy gap
 - `release-health`, `bridge-e2e-probe`, and `github-workflow-status` retired as JWT-protected, side-effect-free HTTP 410 functions with replacement evidence
 - Repository migration history aligned with the live Supabase migration version for config-grant hardening
+- The existing `bip_events` event-to-points trigger restored and inspected live without adding a parallel workout or reward table
 
 ## Integrated but not yet fully verified or released
+
+### Mind + Body Reset
+
+- Guided mind tools, guided body regulation, and four real bodyweight routines are wired through teen-only hidden routes.
+- Work/rest timers, low-impact alternatives, pause, skip, stop, progress, safety guidance, and meaningful-completion thresholds are implemented.
+- Minimal routine metadata uses the existing `bip_events` pipeline; raw emotional text is not written by the reset flow.
+- Exact-head CI plus iOS, Android, web, accessibility, and movement-safety QA remain before verified or released status.
 
 ### Parent and Bridge
 
