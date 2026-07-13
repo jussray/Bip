@@ -1,8 +1,7 @@
 const RETIREMENT = Object.freeze({
   error: 'function_retired',
-  function: 'release-health',
-  replacement: 'GitHub Cloudflare-native deployment verification',
-  evidencePath: 'artifacts/cloudflare-native-deploy.json',
+  function: 'github-workflow-status',
+  replacement: 'GitHub Actions checks and Cloudflare-native deployment evidence',
   documentation: 'DEPLOYMENT.md',
 });
 
