@@ -14,7 +14,7 @@
   "scope": {
     "productionDdlApplied": true,
     "productionDataRetained": false,
-    "purpose": "Phase 0 authorization evidence plus verified Phase 1 hardening of server-owned configuration table grants before L4 persistence"
+    "purpose": "Authorization evidence plus verified config-grant hardening and JWT-protected retirement of obsolete Edge Functions before L4 persistence"
   },
   "advisorSnapshot": {
     "rlsEnabledNoPolicy": [
@@ -25,8 +25,7 @@
         "policyCount": 0,
         "anonHasTablePrivileges": false,
         "authenticatedHasTablePrivileges": false,
-        "serviceRoleHasTablePrivileges": true,
-        "nextAction": "Preserve the server-only boundary and reject any client grant unless a reviewed user-facing policy and use case are added together."
+        "serviceRoleHasTablePrivileges": true
       },
       {
         "table": "app_private_config",
@@ -35,8 +34,7 @@
         "policyCount": 0,
         "anonHasTablePrivileges": false,
         "authenticatedHasTablePrivileges": false,
-        "serviceRoleHasTablePrivileges": true,
-        "nextAction": "Preserve the server-only boundary and reject any client grant unless a reviewed user-facing policy and use case are added together."
+        "serviceRoleHasTablePrivileges": true
       },
       {
         "table": "guardian_verification_reviews",
@@ -45,8 +43,7 @@
         "policyCount": 0,
         "anonHasTablePrivileges": false,
         "authenticatedHasTablePrivileges": false,
-        "serviceRoleHasTablePrivileges": true,
-        "nextAction": "Document and scanner-verify the service-role-only boundary; do not add a client policy."
+        "serviceRoleHasTablePrivileges": true
       },
       {
         "table": "notification_deliveries",
@@ -55,23 +52,11 @@
         "policyCount": 0,
         "anonHasTablePrivileges": false,
         "authenticatedHasTablePrivileges": false,
-        "serviceRoleHasTablePrivileges": true,
-        "nextAction": "Keep the existing service-role-only boundary and regression proof."
+        "serviceRoleHasTablePrivileges": true
       }
     ],
     "anonymousCapablePolicyWarning": {
       "classification": "requires_predicate_proof_not_blanket_rewrite",
-      "highSensitivityExamples": [
-        "journal_entries",
-        "mood_history",
-        "voice_notes",
-        "room_memory",
-        "bridge_share_requests",
-        "bridge_summaries",
-        "parent_links",
-        "safety_alerts",
-        "audit_events"
-      ],
       "verifiedProbeTables": [
         "journal_entries",
         "mood_history",
@@ -115,51 +100,14 @@
   "securityDefiner": {
     "totalReviewed": 35,
     "anonExecutable": [],
-    "authenticatedExecutable": [
-      "apply_inactivity_point_adjustment",
-      "can_manage_guardian_reviews",
-      "claim_push_token",
-      "create_bridge_share_request",
-      "create_parent_link_invite",
-      "disable_push_token",
-      "get_public_circle_profiles",
-      "is_founder",
-      "list_guardian_verification_queue",
-      "log_control_room_runtime_event",
-      "react_to_public_circle_post",
-      "redeem_crew_invite",
-      "redeem_parent_link_invite",
-      "report_own_audit_event_issue",
-      "request_reward_redemption",
-      "review_guardian_verification",
-      "review_reward_redemption",
-      "review_task_submission",
-      "revoke_bridge_share_request",
-      "revoke_parent_link",
-      "submit_bip_task",
-      "submit_guardian_verification",
-      "upsert_control_room_issue",
-      "upsert_own_bip_profile"
-    ],
-    "serviceRoleOnlyOrTriggerInternal": [
-      "apply_point_transaction",
-      "auto_resolve_issue_on_event_resolve",
-      "award_points_for_app_activity",
-      "enforce_circle_anonymity",
-      "handle_bip_event_points",
-      "initialize_account_verification",
-      "initialize_app_profile",
-      "refresh_control_room_release_health",
-      "refresh_parent_mood_summary",
-      "rls_auto_enable",
-      "trigger_safety_scan"
-    ],
+    "authenticatedExecutableCount": 24,
+    "serviceRoleOnlyOrTriggerInternalCount": 11,
     "commonControlsObserved": [
-      "anon EXECUTE denied on every reviewed SECURITY DEFINER function",
-      "explicit search_path configured on every reviewed SECURITY DEFINER function",
-      "authenticated RPCs use auth.uid(), is_founder(), or can_manage_guardian_reviews() as an internal authorization boundary"
+      "anonymous execution denied on every reviewed function",
+      "explicit search path configured on every reviewed function",
+      "authenticated functions use owner, founder, or guardian authorization helpers"
     ],
-    "nextAction": "Classify and behavior-test each authenticated RPC by trust boundary before revoking or changing EXECUTE grants."
+    "nextAction": "Classify and behavior-test each authenticated function by trust boundary before changing execution grants."
   },
   "edgeFunctions": {
     "activeCount": 18,
@@ -167,31 +115,52 @@
       {
         "slug": "account-delete",
         "classification": "custom_shared_secret",
-        "control": "x-account-deletion-secret must match ACCOUNT_DELETION_PROCESS_SECRET"
+        "control": "dedicated server-to-server deletion header"
       },
       {
         "slug": "safety-scan",
         "classification": "postgres_trigger_shared_secret",
-        "control": "x-scan-secret must match SAFETY_SCAN_SECRET"
-      },
+        "control": "dedicated database-trigger scan header"
+      }
+    ],
+    "jwtProtectedRetirements": [
       {
         "slug": "release-health",
-        "classification": "custom_github_oidc_but_stale_configuration",
-        "control": "GitHub OIDC issuer and audience verification",
-        "gap": "Source still expects repository jussray/Bip and deploy-cloudflare.yml, so it is not valid evidence for the current jussray/Sekret-Bip native deployment path."
+        "version": 2,
+        "status": "ACTIVE",
+        "verifyJwt": true,
+        "expectedAuthenticatedStatus": 410,
+        "sourceVerified": true,
+        "sha256": "318a684a363ebc2a4b9229e10f89c4327ddf4cb13d7ffe64f3a201dc44e3157a",
+        "replacement": "Cloudflare-native deployment verifier and exact-release evidence"
       },
       {
         "slug": "bridge-e2e-probe",
-        "classification": "retired_http_410",
-        "control": "Always returns probe_retired with HTTP 410"
+        "version": 3,
+        "status": "ACTIVE",
+        "verifyJwt": true,
+        "expectedAuthenticatedStatus": 410,
+        "sourceVerified": true,
+        "sha256": "0a1af7dc23df5a581318cfc2dcefc4e163c3f649c7a570607e0fb8dfd145f7e7",
+        "replacement": "Issue #270 controlled two-account proof and Playwright guardrails"
       },
       {
         "slug": "github-workflow-status",
-        "classification": "retired_http_410",
-        "control": "Always returns probe_retired with HTTP 410"
+        "version": 4,
+        "status": "ACTIVE",
+        "verifyJwt": true,
+        "expectedAuthenticatedStatus": 410,
+        "sourceVerified": true,
+        "sha256": "5acdefc5a133b0d8384f41a247b4f2c9af656c003ebaa2e60714faa7e451c108",
+        "replacement": "GitHub Actions checks and Cloudflare-native deployment evidence"
       }
     ],
-    "nextAction": "Repair or replace release-health for the canonical repository/workflow and remove retired functions after confirming no callers remain."
+    "httpProbe": {
+      "unauthenticated": "not_run_dns_unavailable_in_execution_environment",
+      "authenticated": "not_run_no_safe_test_identity_available",
+      "evidenceUsed": "Supabase deployment registry plus deployed source retrieval"
+    },
+    "nextAction": "Keep the two remaining custom-auth functions under focused negative tests and remove retired registrations when supported deletion tooling is available."
   },
   "liveProof": {
     "probePath": "supabase/probes/authorization_phase0.sql",
@@ -223,6 +192,6 @@
   },
   "releaseGate": {
     "l4SchemaAllowed": false,
-    "reason": "Config-table grants are hardened, but high-blast-radius authenticated RPCs, stale release-health evidence, retired functions, and Auth leaked-password protection still require focused Phase 1 proof before L4 persistence can be activated."
+    "reason": "Config-table grants and obsolete Edge Function exposure are hardened, but authenticated database functions and password-breach protection still require focused proof before L4 persistence can be activated."
   }
 }
