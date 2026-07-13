@@ -1,0 +1,270 @@
+exit_status=1
+
+=== failure markers ===
+16:✔ guardian review decisions fail closed and require a rejection reason (0.232767ms)
+41:✔ parent routes fail closed unless the account is a verified guardian with an active link (0.34591ms)
+78:✔ isBridgeSummariesRolloutAllowed fails closed when unset or blank (0.143689ms)
+100:✔ patchRequestStatus remains owner-scoped and records explicit failure codes (0.734138ms)
+103:✔ fetchSourceContent fails closed when any selected source is missing (1.001611ms)
+105:✔ fetchSourceContent reports upstream Supabase lookup failures separately (0.446428ms)
+106:✔ store fails before any network call when Supabase is not configured (0.28196ms)
+115:✔ missing and partial sources fail explicitly instead of producing a ready fallback (0.403428ms)
+120:✔ fails closed on a completed unsuccessful Worker check (0.258025ms)
+137:✔ connector and worker registries preserve fallbacks for provider failure (0.337935ms)
+231:✔ persistAuditEvent never lets a Supabase failure escape (0.345509ms)
+301:✔ entry states fail closed for wrong side, incomplete profile, unverified guardian, and no link (0.20796ms)
+306:✔ failed redemption clears only the relationship hint, not completed profile identity (0.940496ms)
+312:✔ unknown and blank errors fail closed as server errors (0.285496ms)
+313:✔ error codes distinguish eligibility, active-link, self-link, and invalid response failures (0.289854ms)
+362:✔ link helpers return actionable failures without Supabase or auth (0.194135ms)
+450:✔ parent-link failures use sanitized runtime audit telemetry (1.32596ms)
+544:✔ pullAll uses Promise.allSettled so a single table failure does not abort restore (0.248646ms)
+602:✔ enforcement is gated on SEKRET_CLIENT_TOKEN (fail-open preserved) (0.212409ms)
+635:ℹ fail 1
+641:✖ failing tests:
+645:  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window/. Input:
+881:    '      // Network failure: local experience unaffected\n' +
+903:    code: 'ERR_ASSERTION',
+904:    actual: '// screens/BridgeScreen.tsx\n// Se\'kret Bip — Bridge Screen (Teen Side)\n// Phase 1 polish: time-of-day backdrop, char-aware tone, mood glow,\n// staggered entrance, breath badge, sticky note, send confirmation glow.\n//\n// P6: handleSend now writes a signal row to `bridge_signals` in Supabase.\n// MESSAGE CONTENT IS NEVER STORED — only share_type, conv_mode, char_key,\n// and a timestamp leave the device. AsyncStorage flag kept as instant\n// parent-side nudge even when offline.\n\nimport React, { useState, useRef, useEffect, useMemo } from \'react\';\nimport {\n  View,\n  Text,\n  TextInput,\n  TouchableOpacity,\n  ScrollView,\n  ImageBackground,\n  Animated,\n  StyleSheet,\n  Platform,\n  Alert,\n  Easing,\n} from \'react-native\';\nimport { AmbientWeatherOverlay } from \'../components/AmbientWeatherOverlay\';\nimport { LinearGradient } from \'expo-linear-gradient\';\nimport AsyncStorage from \'@react-native-async-storage/async-storage\';\nimport { getRoomBg, TimeOfDay } from \'../constants/theme\';\nimport {\n  sendBridgeSignal,\n  fetchParentNotes,\n  markParentNoteSeen,\n  subscribeToParentNotes,\n  type ParentNote,\n} from \'@/utils/sync\';\nimport { getSupabase } from \'@/utils/supabase\';\nimport { fetchBridgeSignals, type BridgeSignal } from \'@/utils/parentBridgeCompat\';\nimport { fetchBridgeShares, type BridgeShare } from \'@/features/bridge/bridgeShareCompat\';\nimport {\n  fetchTeenBridgeShareHistory,\n  revokeBridgeShareRequest,\n} from \'@/services/bridgeSummaryService\';\nimport type { BridgeSummaryListItem } from \'@/types/bridgeSummary\';\n\ninterface BridgeScreenProps {\n  t:             Record<string, any>;\n  currentSekret: Record<string, any>;\n  setScreen:     (screen: string) => void;\n  BottomNav:     React.ReactNode;\n  selectedSekret?: string;\n  mood?:         string;\n}\n\nconst SHARE_TYPES = [\n  { id: \'mood\',    emoji: \'💜\', label: \'My Mood\',     placeholder: "tell them how you\'re feeling…" },\n  { id: \'thought\', emoji: \'💭\', label: \'A Thought\',    placeholder: \'something on your mind…\' },\n  { id: \'need\',    emoji: \'🌿\', label: \'Something I Need\', placeholder: \'what would help right now…\' },\n  { id: \'win\',     emoji: \'⚡\', label: \'A Win\',         placeholder: \'something good that happened…\' },\n];\n\nconst CONV_MODES = [\n  { id: \'soft\',     emoji: \'🌸\', label: \'Soft Start\',     hint: \'Ease in gently — no pressure to say it all.\',          tone: \'soft\' },\n  { id: \'honest\',   emoji: \'💜\', label: \'Honest Version\',  hint: \'Say the full truth. No editing, no softening.\',        tone: \'direct\' },\n  { id: \'boundary\', emoji: \'🛡️\', label: \'Calm Boundary\',   hint: \'Set a limit with kindness — you stay in control.\',     tone: \'firm\' },\n  { id: \'safety\',   emoji: \'🫶\', label: \'Safety Check\',    hint: \'Check that your message lands the way you mean it.\',   tone: \'check\' },\n] as const;\ntype ConvModeId = (typeof CONV_MODES)[number][\'id\'];\n\nconst getTimeOfDay = (): TimeOfDay => {\n  const h = new Date().getHours();\n  if (h >= 5 && h < 11) return \'morning\';\n  if (h >= 11 && h < 17) return \'day\';\n  if (h >= 17 && h < 21) return \'evening\';\n  return \'night\';\n};\n\nconst moodGlow = (mood?: string): string => {\n  const m = (mood || \'\').toLowerCase();\n  if (m === \'happy\') return \'#fbbf24\';\n  if (m === \'sad\' || m === \'anxious\') return \'#7dd3fc\';\n  if (m === \'angry\' || m === \'overwhelmed\' || m === \'stressed\') return \'#f472b6\';\n  if (m === \'tired\') return \'#6d28d9\';\n  if (m === \'calm\') return \'#c4b5fd\';\n  return \'#c4b5fd\';\n};\n\nexport function BridgeScreen({\n  t, currentSekret, setScreen, BottomNav, selectedSekret, mood,\n}: BridgeScreenProps) {\n  const [shareType, setShareType]   = useState<string | null>(null);\n  const [convMode, setConvMode]     = useState<ConvModeId | null>(null);\n  const [message, setMessage]       = useState(\'\');\n  const [sent, setSent]             = useState(false);\n  const [sending, setSending]       = useState(false);\n  const [parentNotes, setParentNotes] = useState<ParentNote[]>([]);\n  const [view, setView]             = useState<\'share\' | \'history\'>(\'share\');\n  const [mySignals, setMySignals]   = useState<BridgeSignal[]>([]);\n  const [myShares, setMyShares]     = useState<BridgeShare[]>([]);\n  const [historyLoaded, setHistoryLoaded] = useState(false);\n  const [bridgeSummaryHistory, setBridgeSummaryHistory] = useState<BridgeSummaryListItem[]>([]);\n  const [bridgeStatus, setBridgeStatus] = useState<string | null>(null);\n\n  const selectedType = SHARE_TYPES.find(s => s.id === shareType);\n  const isRylane = selectedSekret === \'rylane\';\n  const charLabel = isRylane ? \'rylane\' : \'raylene\';\n  const charKey: \'raylene\' | \'rylane\' = isRylane ? \'rylane\' : \'raylene\';\n\n  const time = useMemo(() => getTimeOfDay(), []);\n  const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);\n  const glow = useMemo(() => moodGlow(mood), [mood]);\n\n  const fade1 = useRef(new Animated.Value(0)).current;\n  const fade2 = useRef(new Animated.Value(0)).current;\n  const fade3 = useRef(new Animated.Value(0)).current;\n  const breath = useRef(new Animated.Value(0)).current;\n\n  useEffect(() => {\n    const stagger = (val: Animated.Value, delay: number) =>\n      Animated.timing(val, {\n        toValue: 1, duration: 380, delay,\n        easing: Easing.out(Easing.cubic), useNativeDriver: true,\n      });\n    Animated.parallel([stagger(fade1, 0), stagger(fade2, 160), stagger(fade3, 320)]).start();\n\n    const loop = Animated.loop(\n      Animated.sequence([\n        Animated.timing(breath, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),\n        Animated.timing(breath, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),\n      ])\n    );\n    loop.start();\n\n    // Load parent notes + subscribe to new ones via Realtime\n    fetchParentNotes().then(setParentNotes);\n    let unsub = () => {};\n    subscribeToParentNotes((note) => {\n      setParentNotes(prev => [note, ...prev]);\n    }).then(fn => { unsub = fn; });\n\n    return () => { loop.stop(); unsub(); };\n  }, [fade1, fade2, fade3, breath]);\n\n  useEffect(() => {\n    if (view !== \'history\' || historyLoaded) return;\n    (async () => {\n      const sb = getSupabase();\n      const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };\n      const myId = data.user?.id;\n      if (!myId) { setHistoryLoaded(true); return; }\n      const [signals, shares, summaryHistory] = await Promise.all([\n        fetchBridgeSignals(myId),\n        fetchBridgeShares(myId),\n        fetchTeenBridgeShareHistory(),\n      ]);\n      setMySignals(signals);\n      setMyShares(shares);\n      if (summaryHistory.ok) setBridgeSummaryHistory(summaryHistory.value);\n      setHistoryLoaded(true);\n    })();\n  }, [view, historyLoaded]);\n\n  type HistoryItem = { id: string; emoji: string; label: string; detail?: string; timestamp: string };\n  const historyItems: HistoryItem[] = [\n    ...mySignals.map(sig => ({\n      id: `signal-${sig.id}`,\n      emoji: sig.share_type === \'mood\' ? \'💜\' : sig.share_type === \'thought\' ? \'💭\' : sig.share_type === \'need\' ? \'🌿\' : \'⚡\',\n      label: \'You sent a signal\',\n      detail: sig.share_type === \'mood\' ? \'My Mood\' : sig.share_type === \'thought\' ? \'A Thought\' : sig.share_type === \'need\' ? \'Something I Need\' : \'A Win\',\n      timestamp: sig.sent_at,\n    })),\n    ...bridgeSummaryHistory.map(item => ({\n      id: `summary-${item.requestId}`,\n      emoji: item.status === \'revoked\' ? \'🔒\' : \'🌉\',\n      label: item.status === \'revoked\' ? \'Bridge Summary revoked\' : \'Bridge Summary share\',\n      detail: item.summary?.themes?.length ? item.summary.themes.join(\', \') : `Status: ${item.status}`,\n      timestamp: item.generatedAt ?? new Date().toISOString(),\n    })),\n    ...myShares.map(share => ({\n      id: `share-${share.id}`,\n      emoji: \'🌉\',\n      label: \'You sent an S2Tell share\',\n      detail: share.payload.rewrite ?? share.payload.text,\n      timestamp: share.shared_at,\n    })),\n    ...parentNotes.map(note => ({\n      id: `note-${note.id}`,\n      emoji: \'💌\',\n      label: \'From your person\',\n      detail: note.content,\n      timestamp: note.sent_at,\n    })),\n  ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));\n\n  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });\n  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });\n  const cardStyle = (val: Animated.Value) => ({\n    opacity: val,\n    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],\n  });\n\n  const refreshBridgeSummaryHistory = async () => {\n    const result = await fetchTeenBridgeShareHistory();\n    if (result.ok) setBridgeSummaryHistory(result.value);\n  };\n\n  const handleCreateBridgeSummary = () => {\n    setBridgeStatus(\'Opening Pages so you can choose what to share. Nothing is sent until you preview and confirm it there.\');\n    setScreen(\'pages\');\n  };\n\n  const handleRevokeBridgeSummary = async (requestId: string) => {\n    setBridgeStatus(\'Revoking Bridge Summary access…\');\n    const result = await revokeBridgeShareRequest(requestId);\n    if (!result.ok) {\n      setBridgeStatus(result.message);\n      return;\n    }\n    setBridgeStatus(result.value.revoked ? \'Bridge Summary access revoked.\' : \'That share could not be revoked.\');\n    await refreshBridgeSummaryHistory();\n  };\n\n  const handleSend = async () => {\n    if (!shareType || !message.trim()) {\n      Alert.alert(\'almost there\', \'pick a share type and write your message first.\');\n      return;\n    }\n\n    setSending(true);\n    try {\n      // Local flag for instant offline feedback\n      await AsyncStorage.setItem(\'parent_bridge_pending\', \'true\');\n      // Cloud: metadata signal only — message content stays on device\n      await sendBridgeSignal({ shareType, convMode, charKey });\n    } catch {\n      // Network failure: local experience unaffected\n    } finally {\n      setSending(false);\n    }\n\n    setSent(true);\n    setMessage(\'\');\n    setShareType(null);\n    setConvMode(null);\n  };\n\n  const heroCopy = isRylane\n    ? "share something with your person. no pressu'... 16316 more characters,
+
+=== final 240 lines ===
+    '  Easing,\n' +
+    "} from 'react-native';\n" +
+    "import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';\n" +
+    "import { LinearGradient } from 'expo-linear-gradient';\n" +
+    "import AsyncStorage from '@react-native-async-storage/async-storage';\n" +
+    "import { getRoomBg, TimeOfDay } from '../constants/theme';\n" +
+    'import {\n' +
+    '  sendBridgeSignal,\n' +
+    '  fetchParentNotes,\n' +
+    '  markParentNoteSeen,\n' +
+    '  subscribeToParentNotes,\n' +
+    '  type ParentNote,\n' +
+    "} from '@/utils/sync';\n" +
+    "import { getSupabase } from '@/utils/supabase';\n" +
+    "import { fetchBridgeSignals, type BridgeSignal } from '@/utils/parentBridgeCompat';\n" +
+    "import { fetchBridgeShares, type BridgeShare } from '@/features/bridge/bridgeShareCompat';\n" +
+    'import {\n' +
+    '  fetchTeenBridgeShareHistory,\n' +
+    '  revokeBridgeShareRequest,\n' +
+    "} from '@/services/bridgeSummaryService';\n" +
+    "import type { BridgeSummaryListItem } from '@/types/bridgeSummary';\n" +
+    '\n' +
+    'interface BridgeScreenProps {\n' +
+    '  t:             Record<string, any>;\n' +
+    '  currentSekret: Record<string, any>;\n' +
+    '  setScreen:     (screen: string) => void;\n' +
+    '  BottomNav:     React.ReactNode;\n' +
+    '  selectedSekret?: string;\n' +
+    '  mood?:         string;\n' +
+    '}\n' +
+    '\n' +
+    'const SHARE_TYPES = [\n' +
+    `  { id: 'mood',    emoji: '💜', label: 'My Mood',     placeholder: "tell them how you're feeling…" },\n` +
+    "  { id: 'thought', emoji: '💭', label: 'A Thought',    placeholder: 'something on your mind…' },\n" +
+    "  { id: 'need',    emoji: '🌿', label: 'Something I Need', placeholder: 'what would help right now…' },\n" +
+    "  { id: 'win',     emoji: '⚡', label: 'A Win',         placeholder: 'something good that happened…' },\n" +
+    '];\n' +
+    '\n' +
+    'const CONV_MODES = [\n' +
+    "  { id: 'soft',     emoji: '🌸', label: 'Soft Start',     hint: 'Ease in gently — no pressure to say it all.',          tone: 'soft' },\n" +
+    "  { id: 'honest',   emoji: '💜', label: 'Honest Version',  hint: 'Say the full truth. No editing, no softening.',        tone: 'direct' },\n" +
+    "  { id: 'boundary', emoji: '🛡️', label: 'Calm Boundary',   hint: 'Set a limit with kindness — you stay in control.',     tone: 'firm' },\n" +
+    "  { id: 'safety',   emoji: '🫶', label: 'Safety Check',    hint: 'Check that your message lands the way you mean it.',   tone: 'check' },\n" +
+    '] as const;\n' +
+    "type ConvModeId = (typeof CONV_MODES)[number]['id'];\n" +
+    '\n' +
+    'const getTimeOfDay = (): TimeOfDay => {\n' +
+    '  const h = new Date().getHours();\n' +
+    "  if (h >= 5 && h < 11) return 'morning';\n" +
+    "  if (h >= 11 && h < 17) return 'day';\n" +
+    "  if (h >= 17 && h < 21) return 'evening';\n" +
+    "  return 'night';\n" +
+    '};\n' +
+    '\n' +
+    'const moodGlow = (mood?: string): string => {\n' +
+    "  const m = (mood || '').toLowerCase();\n" +
+    "  if (m === 'happy') return '#fbbf24';\n" +
+    "  if (m === 'sad' || m === 'anxious') return '#7dd3fc';\n" +
+    "  if (m === 'angry' || m === 'overwhelmed' || m === 'stressed') return '#f472b6';\n" +
+    "  if (m === 'tired') return '#6d28d9';\n" +
+    "  if (m === 'calm') return '#c4b5fd';\n" +
+    "  return '#c4b5fd';\n" +
+    '};\n' +
+    '\n' +
+    'export function BridgeScreen({\n' +
+    '  t, currentSekret, setScreen, BottomNav, selectedSekret, mood,\n' +
+    '}: BridgeScreenProps) {\n' +
+    '  const [shareType, setShareType]   = useState<string | null>(null);\n' +
+    '  const [convMode, setConvMode]     = useState<ConvModeId | null>(null);\n' +
+    "  const [message, setMessage]       = useState('');\n" +
+    '  const [sent, setSent]             = useState(false);\n' +
+    '  const [sending, setSending]       = useState(false);\n' +
+    '  const [parentNotes, setParentNotes] = useState<ParentNote[]>([]);\n' +
+    "  const [view, setView]             = useState<'share' | 'history'>('share');\n" +
+    '  const [mySignals, setMySignals]   = useState<BridgeSignal[]>([]);\n' +
+    '  const [myShares, setMyShares]     = useState<BridgeShare[]>([]);\n' +
+    '  const [historyLoaded, setHistoryLoaded] = useState(false);\n' +
+    '  const [bridgeSummaryHistory, setBridgeSummaryHistory] = useState<BridgeSummaryListItem[]>([]);\n' +
+    '  const [bridgeStatus, setBridgeStatus] = useState<string | null>(null);\n' +
+    '\n' +
+    '  const selectedType = SHARE_TYPES.find(s => s.id === shareType);\n' +
+    "  const isRylane = selectedSekret === 'rylane';\n" +
+    "  const charLabel = isRylane ? 'rylane' : 'raylene';\n" +
+    "  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';\n" +
+    '\n' +
+    '  const time = useMemo(() => getTimeOfDay(), []);\n' +
+    '  const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);\n' +
+    '  const glow = useMemo(() => moodGlow(mood), [mood]);\n' +
+    '\n' +
+    '  const fade1 = useRef(new Animated.Value(0)).current;\n' +
+    '  const fade2 = useRef(new Animated.Value(0)).current;\n' +
+    '  const fade3 = useRef(new Animated.Value(0)).current;\n' +
+    '  const breath = useRef(new Animated.Value(0)).current;\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    '    const stagger = (val: Animated.Value, delay: number) =>\n' +
+    '      Animated.timing(val, {\n' +
+    '        toValue: 1, duration: 380, delay,\n' +
+    '        easing: Easing.out(Easing.cubic), useNativeDriver: true,\n' +
+    '      });\n' +
+    '    Animated.parallel([stagger(fade1, 0), stagger(fade2, 160), stagger(fade3, 320)]).start();\n' +
+    '\n' +
+    '    const loop = Animated.loop(\n' +
+    '      Animated.sequence([\n' +
+    '        Animated.timing(breath, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),\n' +
+    '        Animated.timing(breath, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),\n' +
+    '      ])\n' +
+    '    );\n' +
+    '    loop.start();\n' +
+    '\n' +
+    '    // Load parent notes + subscribe to new ones via Realtime\n' +
+    '    fetchParentNotes().then(setParentNotes);\n' +
+    '    let unsub = () => {};\n' +
+    '    subscribeToParentNotes((note) => {\n' +
+    '      setParentNotes(prev => [note, ...prev]);\n' +
+    '    }).then(fn => { unsub = fn; });\n' +
+    '\n' +
+    '    return () => { loop.stop(); unsub(); };\n' +
+    '  }, [fade1, fade2, fade3, breath]);\n' +
+    '\n' +
+    '  useEffect(() => {\n' +
+    "    if (view !== 'history' || historyLoaded) return;\n" +
+    '    (async () => {\n' +
+    '      const sb = getSupabase();\n' +
+    '      const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };\n' +
+    '      const myId = data.user?.id;\n' +
+    '      if (!myId) { setHistoryLoaded(true); return; }\n' +
+    '      const [signals, shares, summaryHistory] = await Promise.all([\n' +
+    '        fetchBridgeSignals(myId),\n' +
+    '        fetchBridgeShares(myId),\n' +
+    '        fetchTeenBridgeShareHistory(),\n' +
+    '      ]);\n' +
+    '      setMySignals(signals);\n' +
+    '      setMyShares(shares);\n' +
+    '      if (summaryHistory.ok) setBridgeSummaryHistory(summaryHistory.value);\n' +
+    '      setHistoryLoaded(true);\n' +
+    '    })();\n' +
+    '  }, [view, historyLoaded]);\n' +
+    '\n' +
+    '  type HistoryItem = { id: string; emoji: string; label: string; detail?: string; timestamp: string };\n' +
+    '  const historyItems: HistoryItem[] = [\n' +
+    '    ...mySignals.map(sig => ({\n' +
+    '      id: `signal-${sig.id}`,\n' +
+    "      emoji: sig.share_type === 'mood' ? '💜' : sig.share_type === 'thought' ? '💭' : sig.share_type === 'need' ? '🌿' : '⚡',\n" +
+    "      label: 'You sent a signal',\n" +
+    "      detail: sig.share_type === 'mood' ? 'My Mood' : sig.share_type === 'thought' ? 'A Thought' : sig.share_type === 'need' ? 'Something I Need' : 'A Win',\n" +
+    '      timestamp: sig.sent_at,\n' +
+    '    })),\n' +
+    '    ...bridgeSummaryHistory.map(item => ({\n' +
+    '      id: `summary-${item.requestId}`,\n' +
+    "      emoji: item.status === 'revoked' ? '🔒' : '🌉',\n" +
+    "      label: item.status === 'revoked' ? 'Bridge Summary revoked' : 'Bridge Summary share',\n" +
+    "      detail: item.summary?.themes?.length ? item.summary.themes.join(', ') : `Status: ${item.status}`,\n" +
+    '      timestamp: item.generatedAt ?? new Date().toISOString(),\n' +
+    '    })),\n' +
+    '    ...myShares.map(share => ({\n' +
+    '      id: `share-${share.id}`,\n' +
+    "      emoji: '🌉',\n" +
+    "      label: 'You sent an S2Tell share',\n" +
+    '      detail: share.payload.rewrite ?? share.payload.text,\n' +
+    '      timestamp: share.shared_at,\n' +
+    '    })),\n' +
+    '    ...parentNotes.map(note => ({\n' +
+    '      id: `note-${note.id}`,\n' +
+    "      emoji: '💌',\n" +
+    "      label: 'From your person',\n" +
+    '      detail: note.content,\n' +
+    '      timestamp: note.sent_at,\n' +
+    '    })),\n' +
+    '  ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));\n' +
+    '\n' +
+    '  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });\n' +
+    '  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });\n' +
+    '  const cardStyle = (val: Animated.Value) => ({\n' +
+    '    opacity: val,\n' +
+    '    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],\n' +
+    '  });\n' +
+    '\n' +
+    '  const refreshBridgeSummaryHistory = async () => {\n' +
+    '    const result = await fetchTeenBridgeShareHistory();\n' +
+    '    if (result.ok) setBridgeSummaryHistory(result.value);\n' +
+    '  };\n' +
+    '\n' +
+    '  const handleCreateBridgeSummary = () => {\n' +
+    "    setBridgeStatus('Opening Pages so you can choose what to share. Nothing is sent until you preview and confirm it there.');\n" +
+    "    setScreen('pages');\n" +
+    '  };\n' +
+    '\n' +
+    '  const handleRevokeBridgeSummary = async (requestId: string) => {\n' +
+    "    setBridgeStatus('Revoking Bridge Summary access…');\n" +
+    '    const result = await revokeBridgeShareRequest(requestId);\n' +
+    '    if (!result.ok) {\n' +
+    '      setBridgeStatus(result.message);\n' +
+    '      return;\n' +
+    '    }\n' +
+    "    setBridgeStatus(result.value.revoked ? 'Bridge Summary access revoked.' : 'That share could not be revoked.');\n" +
+    '    await refreshBridgeSummaryHistory();\n' +
+    '  };\n' +
+    '\n' +
+    '  const handleSend = async () => {\n' +
+    '    if (!shareType || !message.trim()) {\n' +
+    "      Alert.alert('almost there', 'pick a share type and write your message first.');\n" +
+    '      return;\n' +
+    '    }\n' +
+    '\n' +
+    '    setSending(true);\n' +
+    '    try {\n' +
+    '      // Local flag for instant offline feedback\n' +
+    "      await AsyncStorage.setItem('parent_bridge_pending', 'true');\n" +
+    '      // Cloud: metadata signal only — message content stays on device\n' +
+    '      await sendBridgeSignal({ shareType, convMode, charKey });\n' +
+    '    } catch {\n' +
+    '      // Network failure: local experience unaffected\n' +
+    '    } finally {\n' +
+    '      setSending(false);\n' +
+    '    }\n' +
+    '\n' +
+    '    setSent(true);\n' +
+    "    setMessage('');\n" +
+    '    setShareType(null);\n' +
+    '    setConvMode(null);\n' +
+    '  };\n' +
+    '\n' +
+    '  const heroCopy = isRylane\n' +
+    '    ? "share something with your person. no pressu'... 16316 more characters
+  
+      at TestContext.<anonymous> (file:///home/runner/work/Sekret-Bip/Sekret-Bip/test/bridge-summary-service.test.mjs:49:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1325:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:911:18)
+      at Test.postRun (node:internal/test_runner/test:1465:19)
+      at Test.run (node:internal/test_runner/test:1390:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:911:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '// screens/BridgeScreen.tsx\n// Se\'kret Bip — Bridge Screen (Teen Side)\n// Phase 1 polish: time-of-day backdrop, char-aware tone, mood glow,\n// staggered entrance, breath badge, sticky note, send confirmation glow.\n//\n// P6: handleSend now writes a signal row to `bridge_signals` in Supabase.\n// MESSAGE CONTENT IS NEVER STORED — only share_type, conv_mode, char_key,\n// and a timestamp leave the device. AsyncStorage flag kept as instant\n// parent-side nudge even when offline.\n\nimport React, { useState, useRef, useEffect, useMemo } from \'react\';\nimport {\n  View,\n  Text,\n  TextInput,\n  TouchableOpacity,\n  ScrollView,\n  ImageBackground,\n  Animated,\n  StyleSheet,\n  Platform,\n  Alert,\n  Easing,\n} from \'react-native\';\nimport { AmbientWeatherOverlay } from \'../components/AmbientWeatherOverlay\';\nimport { LinearGradient } from \'expo-linear-gradient\';\nimport AsyncStorage from \'@react-native-async-storage/async-storage\';\nimport { getRoomBg, TimeOfDay } from \'../constants/theme\';\nimport {\n  sendBridgeSignal,\n  fetchParentNotes,\n  markParentNoteSeen,\n  subscribeToParentNotes,\n  type ParentNote,\n} from \'@/utils/sync\';\nimport { getSupabase } from \'@/utils/supabase\';\nimport { fetchBridgeSignals, type BridgeSignal } from \'@/utils/parentBridgeCompat\';\nimport { fetchBridgeShares, type BridgeShare } from \'@/features/bridge/bridgeShareCompat\';\nimport {\n  fetchTeenBridgeShareHistory,\n  revokeBridgeShareRequest,\n} from \'@/services/bridgeSummaryService\';\nimport type { BridgeSummaryListItem } from \'@/types/bridgeSummary\';\n\ninterface BridgeScreenProps {\n  t:             Record<string, any>;\n  currentSekret: Record<string, any>;\n  setScreen:     (screen: string) => void;\n  BottomNav:     React.ReactNode;\n  selectedSekret?: string;\n  mood?:         string;\n}\n\nconst SHARE_TYPES = [\n  { id: \'mood\',    emoji: \'💜\', label: \'My Mood\',     placeholder: "tell them how you\'re feeling…" },\n  { id: \'thought\', emoji: \'💭\', label: \'A Thought\',    placeholder: \'something on your mind…\' },\n  { id: \'need\',    emoji: \'🌿\', label: \'Something I Need\', placeholder: \'what would help right now…\' },\n  { id: \'win\',     emoji: \'⚡\', label: \'A Win\',         placeholder: \'something good that happened…\' },\n];\n\nconst CONV_MODES = [\n  { id: \'soft\',     emoji: \'🌸\', label: \'Soft Start\',     hint: \'Ease in gently — no pressure to say it all.\',          tone: \'soft\' },\n  { id: \'honest\',   emoji: \'💜\', label: \'Honest Version\',  hint: \'Say the full truth. No editing, no softening.\',        tone: \'direct\' },\n  { id: \'boundary\', emoji: \'🛡️\', label: \'Calm Boundary\',   hint: \'Set a limit with kindness — you stay in control.\',     tone: \'firm\' },\n  { id: \'safety\',   emoji: \'🫶\', label: \'Safety Check\',    hint: \'Check that your message lands the way you mean it.\',   tone: \'check\' },\n] as const;\ntype ConvModeId = (typeof CONV_MODES)[number][\'id\'];\n\nconst getTimeOfDay = (): TimeOfDay => {\n  const h = new Date().getHours();\n  if (h >= 5 && h < 11) return \'morning\';\n  if (h >= 11 && h < 17) return \'day\';\n  if (h >= 17 && h < 21) return \'evening\';\n  return \'night\';\n};\n\nconst moodGlow = (mood?: string): string => {\n  const m = (mood || \'\').toLowerCase();\n  if (m === \'happy\') return \'#fbbf24\';\n  if (m === \'sad\' || m === \'anxious\') return \'#7dd3fc\';\n  if (m === \'angry\' || m === \'overwhelmed\' || m === \'stressed\') return \'#f472b6\';\n  if (m === \'tired\') return \'#6d28d9\';\n  if (m === \'calm\') return \'#c4b5fd\';\n  return \'#c4b5fd\';\n};\n\nexport function BridgeScreen({\n  t, currentSekret, setScreen, BottomNav, selectedSekret, mood,\n}: BridgeScreenProps) {\n  const [shareType, setShareType]   = useState<string | null>(null);\n  const [convMode, setConvMode]     = useState<ConvModeId | null>(null);\n  const [message, setMessage]       = useState(\'\');\n  const [sent, setSent]             = useState(false);\n  const [sending, setSending]       = useState(false);\n  const [parentNotes, setParentNotes] = useState<ParentNote[]>([]);\n  const [view, setView]             = useState<\'share\' | \'history\'>(\'share\');\n  const [mySignals, setMySignals]   = useState<BridgeSignal[]>([]);\n  const [myShares, setMyShares]     = useState<BridgeShare[]>([]);\n  const [historyLoaded, setHistoryLoaded] = useState(false);\n  const [bridgeSummaryHistory, setBridgeSummaryHistory] = useState<BridgeSummaryListItem[]>([]);\n  const [bridgeStatus, setBridgeStatus] = useState<string | null>(null);\n\n  const selectedType = SHARE_TYPES.find(s => s.id === shareType);\n  const isRylane = selectedSekret === \'rylane\';\n  const charLabel = isRylane ? \'rylane\' : \'raylene\';\n  const charKey: \'raylene\' | \'rylane\' = isRylane ? \'rylane\' : \'raylene\';\n\n  const time = useMemo(() => getTimeOfDay(), []);\n  const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);\n  const glow = useMemo(() => moodGlow(mood), [mood]);\n\n  const fade1 = useRef(new Animated.Value(0)).current;\n  const fade2 = useRef(new Animated.Value(0)).current;\n  const fade3 = useRef(new Animated.Value(0)).current;\n  const breath = useRef(new Animated.Value(0)).current;\n\n  useEffect(() => {\n    const stagger = (val: Animated.Value, delay: number) =>\n      Animated.timing(val, {\n        toValue: 1, duration: 380, delay,\n        easing: Easing.out(Easing.cubic), useNativeDriver: true,\n      });\n    Animated.parallel([stagger(fade1, 0), stagger(fade2, 160), stagger(fade3, 320)]).start();\n\n    const loop = Animated.loop(\n      Animated.sequence([\n        Animated.timing(breath, { toValue: 1, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),\n        Animated.timing(breath, { toValue: 0, duration: 1900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),\n      ])\n    );\n    loop.start();\n\n    // Load parent notes + subscribe to new ones via Realtime\n    fetchParentNotes().then(setParentNotes);\n    let unsub = () => {};\n    subscribeToParentNotes((note) => {\n      setParentNotes(prev => [note, ...prev]);\n    }).then(fn => { unsub = fn; });\n\n    return () => { loop.stop(); unsub(); };\n  }, [fade1, fade2, fade3, breath]);\n\n  useEffect(() => {\n    if (view !== \'history\' || historyLoaded) return;\n    (async () => {\n      const sb = getSupabase();\n      const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };\n      const myId = data.user?.id;\n      if (!myId) { setHistoryLoaded(true); return; }\n      const [signals, shares, summaryHistory] = await Promise.all([\n        fetchBridgeSignals(myId),\n        fetchBridgeShares(myId),\n        fetchTeenBridgeShareHistory(),\n      ]);\n      setMySignals(signals);\n      setMyShares(shares);\n      if (summaryHistory.ok) setBridgeSummaryHistory(summaryHistory.value);\n      setHistoryLoaded(true);\n    })();\n  }, [view, historyLoaded]);\n\n  type HistoryItem = { id: string; emoji: string; label: string; detail?: string; timestamp: string };\n  const historyItems: HistoryItem[] = [\n    ...mySignals.map(sig => ({\n      id: `signal-${sig.id}`,\n      emoji: sig.share_type === \'mood\' ? \'💜\' : sig.share_type === \'thought\' ? \'💭\' : sig.share_type === \'need\' ? \'🌿\' : \'⚡\',\n      label: \'You sent a signal\',\n      detail: sig.share_type === \'mood\' ? \'My Mood\' : sig.share_type === \'thought\' ? \'A Thought\' : sig.share_type === \'need\' ? \'Something I Need\' : \'A Win\',\n      timestamp: sig.sent_at,\n    })),\n    ...bridgeSummaryHistory.map(item => ({\n      id: `summary-${item.requestId}`,\n      emoji: item.status === \'revoked\' ? \'🔒\' : \'🌉\',\n      label: item.status === \'revoked\' ? \'Bridge Summary revoked\' : \'Bridge Summary share\',\n      detail: item.summary?.themes?.length ? item.summary.themes.join(\', \') : `Status: ${item.status}`,\n      timestamp: item.generatedAt ?? new Date().toISOString(),\n    })),\n    ...myShares.map(share => ({\n      id: `share-${share.id}`,\n      emoji: \'🌉\',\n      label: \'You sent an S2Tell share\',\n      detail: share.payload.rewrite ?? share.payload.text,\n      timestamp: share.shared_at,\n    })),\n    ...parentNotes.map(note => ({\n      id: `note-${note.id}`,\n      emoji: \'💌\',\n      label: \'From your person\',\n      detail: note.content,\n      timestamp: note.sent_at,\n    })),\n  ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));\n\n  const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });\n  const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });\n  const cardStyle = (val: Animated.Value) => ({\n    opacity: val,\n    transform: [{ translateY: val.interpolate({ inputRange: [0, 1], outputRange: [10, 0] }) }],\n  });\n\n  const refreshBridgeSummaryHistory = async () => {\n    const result = await fetchTeenBridgeShareHistory();\n    if (result.ok) setBridgeSummaryHistory(result.value);\n  };\n\n  const handleCreateBridgeSummary = () => {\n    setBridgeStatus(\'Opening Pages so you can choose what to share. Nothing is sent until you preview and confirm it there.\');\n    setScreen(\'pages\');\n  };\n\n  const handleRevokeBridgeSummary = async (requestId: string) => {\n    setBridgeStatus(\'Revoking Bridge Summary access…\');\n    const result = await revokeBridgeShareRequest(requestId);\n    if (!result.ok) {\n      setBridgeStatus(result.message);\n      return;\n    }\n    setBridgeStatus(result.value.revoked ? \'Bridge Summary access revoked.\' : \'That share could not be revoked.\');\n    await refreshBridgeSummaryHistory();\n  };\n\n  const handleSend = async () => {\n    if (!shareType || !message.trim()) {\n      Alert.alert(\'almost there\', \'pick a share type and write your message first.\');\n      return;\n    }\n\n    setSending(true);\n    try {\n      // Local flag for instant offline feedback\n      await AsyncStorage.setItem(\'parent_bridge_pending\', \'true\');\n      // Cloud: metadata signal only — message content stays on device\n      await sendBridgeSignal({ shareType, convMode, charKey });\n    } catch {\n      // Network failure: local experience unaffected\n    } finally {\n      setSending(false);\n    }\n\n    setSent(true);\n    setMessage(\'\');\n    setShareType(null);\n    setConvMode(null);\n  };\n\n  const heroCopy = isRylane\n    ? "share something with your person. no pressu'... 16316 more characters,
+    expected: /Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window/,
+    operator: 'match',
+    diff: 'simple'
+  }
