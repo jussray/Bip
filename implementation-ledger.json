@@ -75,7 +75,7 @@
       "id": "frontend-worker-contract-spine",
       "name": "Unified frontend-to-Worker request, response, and failure contract",
       "status": "integrated",
-      "ownerIssue": "https://github.com/jussray/Sekret-Bip/pull/398",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/402",
       "acceptanceCriteria": [
         "One typed frontend client owns companion reply, speech, transcription, and health routes.",
         "Authentication headers, timeouts, trace IDs, stable error codes, Worker fallback, and local fallback are represented consistently.",
