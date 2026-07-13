@@ -1,8 +1,13 @@
 # Cloudflare Email Routing for Se'kret Bip
 
-The dedicated Email Worker lives at `worker/email-router.ts` and forwards approved custom-domain addresses to `sekretbip@gmail.com`.
+Incoming Bip email is handled by the existing Cloudflare Worker named `sekret-backend`.
 
-The main Bip API Worker continues to use the root `wrangler.toml`. The email Worker has its own configuration at `wrangler.email.toml` so deploying mail cannot replace or rename the `sekret-backend` API Worker.
+The Worker entry point remains `worker/observed-index.ts`. It exports both:
+
+- `fetch()` for the Bip HTTP/API backend;
+- `email()` for inbound email processing through `worker/email-router.ts`.
+
+There is no second mail Worker and no second Wrangler configuration.
 
 ## Supported inbox aliases
 
@@ -16,30 +21,28 @@ The main Bip API Worker continues to use the root `wrangler.toml`. The email Wor
 
 Unknown aliases are rejected rather than silently forwarded.
 
-## Deploy the dedicated Email Worker
+## Deploy the Worker
 
-From the repository root, run:
+From the repository root, use the existing root configuration:
 
 ```bash
-npx wrangler deploy --config wrangler.email.toml
+npx wrangler deploy
 ```
 
-This deploys `worker/email-router.ts` as the Email Worker named `sekret-bip`.
-
-Do not replace the existing root `wrangler.toml` with the mail configuration. The root file belongs to the main Bip API Worker, `sekret-backend`.
+The root `wrangler.toml` deploys `worker/observed-index.ts` as `sekret-backend`. Do not deploy `worker/email-router.ts` directly under the same Worker name, because that would replace the HTTP/API entry point.
 
 ## Cloudflare setup
 
 1. In Cloudflare, open **Email Routing** for the Bip domain.
 2. Add `sekretbip@gmail.com` as a destination address.
 3. Open that Gmail inbox and complete Cloudflare's verification email.
-4. Deploy the dedicated Email Worker with the command above.
-5. Create routing rules for each supported alias and choose `sekret-bip` as the Worker action.
+4. Deploy `sekret-backend` from the repository root.
+5. Create routing rules for each supported alias and choose `sekret-backend` as the Worker action.
 6. Send a test message to each alias and confirm it reaches `sekretbip@gmail.com`.
 
 ## Privacy behavior
 
-The worker does not store message bodies, invoke AI, or write email content to Supabase. It only:
+The email handler does not store message bodies, invoke AI, or write email content to Supabase. It only:
 
 - validates the destination alias;
 - adds `X-Bip-*` classification headers;
@@ -50,4 +53,4 @@ Safety and security aliases are marked `urgent`; privacy and legal aliases are m
 
 ## Deployment note
 
-Cloudflare Email Routing rules must still be configured in the Cloudflare dashboard after `sekret-bip` is deployed. The Worker deployment creates the processing Worker, while Email Routing decides which custom addresses send messages to it.
+Cloudflare Email Routing rules must still be configured in the Cloudflare dashboard after `sekret-backend` is deployed. The Worker contains the email-processing handler; Email Routing decides which custom addresses send messages to it.

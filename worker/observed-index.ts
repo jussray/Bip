@@ -1,4 +1,5 @@
 import worker from './index';
+import emailRouter from './email-router';
 import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
 import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
 import { getModels, type WorkerEnv } from './config/models';
@@ -171,5 +172,9 @@ export default {
       ctx.waitUntil(persistAuditEvent(event, env as AuditPersistEnv));
       throw error;
     }
+  },
+
+  async email(message: Parameters<typeof emailRouter.email>[0]): Promise<void> {
+    await emailRouter.email(message);
   },
 };
