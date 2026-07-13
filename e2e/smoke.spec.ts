@@ -89,3 +89,19 @@ test('Parent Bridge fails closed until guardian verification is complete', async
   await expect(page.getByText(/No journal, voice note, or private source is shared automatically/)).toBeVisible();
   await expect(page.getByText('Submit for guardian review')).toBeVisible();
 });
+
+test('authorization evidence and secret identifiers stay out of the public web surface', async ({ page }) => {
+  await page.goto('/');
+
+  const splashButton = page.getByRole('button', {
+    name: "Se'kret Bip — enter your safe space",
+  });
+  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+
+  const visibleText = await page.locator('body').innerText();
+  expect(visibleText).not.toContain('authorization_phase0.sql');
+  expect(visibleText).not.toContain('supabase-authorization-baseline.json');
+  expect(visibleText).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
+  expect(visibleText).not.toContain('ACCOUNT_DELETION_PROCESS_SECRET');
+  expect(visibleText).not.toContain('SAFETY_SCAN_SECRET');
+});
