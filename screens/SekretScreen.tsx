@@ -34,6 +34,13 @@ const SEKRET_PROFILES: Record<string, any> = {
   night:  { name: "Night Se'kret",  emoji: '🌙', title: 'The Light Left On',   vibe: 'Presence. Not conversation.',                       greeting: 'rough night?' },
 };
 
+const WRITING_FONT = Platform.select({
+  ios: 'Bradley Hand',
+  android: 'cursive',
+  web: '"Bradley Hand", "Segoe Print", "Comic Sans MS", cursive',
+  default: undefined,
+});
+
 // ── Mood glow palette ──────────────────────────────────────────────────────
 function timeOfDay(): 'morning' | 'day' | 'evening' | 'night' {
   const h = new Date().getHours();
@@ -274,7 +281,7 @@ export function SekretScreen({
                   You: {lastSent}
                 </Text>
               ) : null}
-              <Text style={[styles.entryText, { color: t.soft, marginTop: 8 }]}>
+              <Text style={[styles.entryText, styles.companionWritingText, { color: t.soft, marginTop: 8 }]}>
                 {isSekretTyping
                   ? `${profile.name} is typing… ☁️`
                   : sekretReply}
@@ -282,7 +289,7 @@ export function SekretScreen({
             </View>
           ) : (
             <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.78)', borderColor: glow + '88', shadowColor: glow }]}>
-              <Text style={[styles.entryText, { color: t.soft }]}>
+              <Text style={[styles.entryText, styles.companionWritingText, { color: t.soft }]}>
                 {greetingDisplay}
               </Text>
             </View>
@@ -349,13 +356,14 @@ const styles = StyleSheet.create({
   cardEmoji:      { fontSize: 36, marginBottom: 8, textAlign: 'center' },
   cardText:       { fontSize: 17, fontWeight: '600', marginBottom: 8, textAlign: 'center' },
   entryText:      { fontSize: 14, marginBottom: 6, lineHeight: 20 },
+  companionWritingText: { fontFamily: WRITING_FONT, fontSize: 16, lineHeight: 24 },
   miniText:       { color: '#CBD5E1', fontSize: 12, textAlign: 'center' },
   button:         { padding: 16, borderRadius: 18, marginBottom: 12, alignItems: 'center', shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
   buttonText:     { color: '#fff', fontSize: 16, fontWeight: 'bold', textAlign: 'center' },
   journalInput:   { padding: 16, borderRadius: 18, minHeight: 130, textAlignVertical: 'top', marginBottom: 16, borderWidth: 1, fontSize: 14, lineHeight: 22 },
   choiceButton:   { backgroundColor: 'rgba(30,41,59,0.7)', padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 1, borderColor: '#334155' },
   sticky:         { alignSelf: 'center', backgroundColor: '#fff8e7', borderColor: '#7c3aed', borderWidth: 1, borderStyle: 'dashed', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 18, transform: [{ rotate: '-2deg' }] },
-  stickyText:     { color: '#3b1f6b', fontStyle: 'italic', fontSize: 13 },
+  stickyText:     { color: '#3b1f6b', fontFamily: WRITING_FONT, fontStyle: 'italic', fontSize: 14 },
   characterStage: { height: 260, borderRadius: 24, overflow: 'hidden', borderWidth: 1, marginBottom: 12, backgroundColor: 'rgba(20,12,38,0.78)', shadowOpacity: 0.45, shadowRadius: 18, shadowOffset: { width: 0, height: 0 } },
   characterArt:   { width: '100%', height: '100%' },
   characterCaption: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 50, paddingHorizontal: 18, paddingBottom: 16 },
