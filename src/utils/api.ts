@@ -1,24 +1,24 @@
 /**
  * src/utils/api.ts
  *
- * Canonical backend API helpers. OpenAI is called only by the secure backend;
- * the Expo app sends teen-safe request context and never receives or stores an
- * OPENAI_API_KEY.
+ * Backward-compatible Se'kret API helpers. Network transport now flows through
+ * the shared typed Worker client so every surface receives the same auth,
+ * timeout, status-code, and trace behavior.
  */
-import { backendAuthHeaders } from './backendAuth';
-
-const BASE_URL = ((process.env as Record<string, string | undefined>).EXPO_PUBLIC_BACKEND_URL ?? '').replace(/\/$/, '');
+import type {
+  CompanionAvatarState,
+  CompanionHistoryTurn,
+  CompanionReplyRequest,
+  CompanionReplySource,
+} from '@/contracts/sekretApi';
+import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
 
 export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
 export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
 export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
-export type SekretAvatarState = 'neutral' | 'listening' | 'thinking' | 'comforting' | 'happy' | 'concerned' | 'responding';
-export type SekretReplySource = 'openai' | 'fallback';
-
-export interface SekretHistoryTurn {
-  role: 'user' | 'assistant';
-  content: string;
-}
+export type SekretAvatarState = CompanionAvatarState;
+export type SekretReplySource = CompanionReplySource;
+export type SekretHistoryTurn = CompanionHistoryTurn;
 
 export interface SekretBrainResponse {
   reply: string;
@@ -28,12 +28,14 @@ export interface SekretBrainResponse {
   parentShareSummary: string | null;
   suggestedComfortTool: string | null;
   replySource: SekretReplySource;
+  traceId?: string;
 }
 
 export interface SekretVoiceResponse {
   audioBase64: string;
   contentType: string;
   characterId: SekretCharacterId;
+  traceId?: string;
 }
 
 export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'raylene'): SekretCharacterId {
@@ -156,68 +158,54 @@ export async function fetchSekretBrainReply(input: {
   phaseInstruction?: string;
   isArrival?: boolean;
 }): Promise<SekretBrainResponse> {
-  if (!BASE_URL) return fallbackReply(input.characterId, input.userText);
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/reply`, {
-      method: 'POST',
-      headers: await backendAuthHeaders(),
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) throw new Error(`api error ${res.status}`);
-    const data = await res.json() as Partial<SekretBrainResponse>;
-    const fallback = fallbackReply(input.characterId, input.userText);
-    return {
-      reply: data.reply || fallback.reply,
-      tone: data.tone || input.characterId,
-      avatarState: normalizeAvatarState(data.avatarState),
-      safetyFlag: Boolean(data.safetyFlag),
-      parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
-      suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
-      replySource: normalizeReplySource(data.replySource),
-    };
-  } catch {
-    return fallbackReply(input.characterId, input.userText);
-  }
+  if (!WORKER_BASE_URL) return fallbackReply(input.characterId, input.userText);
+
+  const request: CompanionReplyRequest = input;
+  const result = await sekretClient.sendReply(request);
+  if (!result.ok) return fallbackReply(input.characterId, input.userText);
+
+  const data = result.data;
+  const fallback = fallbackReply(input.characterId, input.userText);
+  return {
+    reply: data.reply || fallback.reply,
+    tone: data.tone || input.characterId,
+    avatarState: normalizeAvatarState(data.avatarState),
+    safetyFlag: Boolean(data.safetyFlag),
+    parentShareSummary: typeof data.parentShareSummary === 'string' ? data.parentShareSummary : null,
+    suggestedComfortTool: typeof data.suggestedComfortTool === 'string' ? data.suggestedComfortTool : null,
+    replySource: normalizeReplySource(data.replySource),
+    traceId: data.traceId ?? result.meta.traceId,
+  };
 }
 
 export async function fetchSekretVoice(input: {
   reply: string;
   characterId: SekretCharacterId;
 }): Promise<SekretVoiceResponse | null> {
-  if (!BASE_URL || !input.reply.trim()) return null;
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/voice`, {
-      method: 'POST',
-      headers: await backendAuthHeaders(),
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) throw new Error(`voice api error ${res.status}`);
-    const data = await res.json() as Partial<SekretVoiceResponse>;
-    if (!data.audioBase64 || !data.contentType) return null;
-    return { audioBase64: data.audioBase64, contentType: data.contentType, characterId: normalizeSekretCharacter(data.characterId, input.characterId) };
-  } catch {
-    return null;
-  }
+  if (!WORKER_BASE_URL || !input.reply.trim()) return null;
+  const result = await sekretClient.synthesizeVoice(input);
+  if (!result.ok || !result.data.audioBase64 || !result.data.contentType) return null;
+  return {
+    audioBase64: result.data.audioBase64,
+    contentType: result.data.contentType,
+    characterId: normalizeSekretCharacter(result.data.characterId, input.characterId),
+    traceId: result.data.traceId ?? result.meta.traceId,
+  };
 }
 
 export async function fetchSekretTranscribe(input: {
   audioBase64: string;
   contentType: string;
 }): Promise<string | null> {
-  if (!BASE_URL || !input.audioBase64) return null;
-  try {
-    const res = await fetch(`${BASE_URL}/api/sekret/transcribe`, {
-      method: 'POST',
-      headers: await backendAuthHeaders(),
-      body: JSON.stringify(input),
-    });
-    if (!res.ok) return null;
-    const data = await res.json() as { transcript?: string };
-    const transcript = typeof data.transcript === 'string' ? data.transcript.trim() : '';
-    return transcript || null;
-  } catch {
-    return null;
-  }
+  if (!WORKER_BASE_URL || !input.audioBase64) return null;
+  const result = await sekretClient.transcribeAudio(input);
+  if (!result.ok) return null;
+  const transcript = typeof result.data.transcript === 'string'
+    ? result.data.transcript.trim()
+    : typeof result.data.text === 'string'
+      ? result.data.text.trim()
+      : '';
+  return transcript || null;
 }
 
 export async function fetchSekretReply(
