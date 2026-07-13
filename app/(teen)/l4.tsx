@@ -71,6 +71,7 @@ export default function L4StatusRoute() {
           style={styles.primaryButton}
           onPress={() => router.push(TEEN_ROUTES.pages as any)}
           accessibilityRole="button"
+          accessibilityLabel="Open my private Pages"
         >
           <Text style={styles.primaryButtonText}>Open my private Pages</Text>
         </TouchableOpacity>
@@ -78,13 +79,10 @@ export default function L4StatusRoute() {
           style={styles.secondaryButton}
           onPress={() => router.push(TEEN_ROUTES.bridge as any)}
           accessibilityRole="button"
+          accessibilityLabel="Open Bridge"
         >
           <Text style={styles.secondaryButtonText}>Open Bridge</Text>
         </TouchableOpacity>
-
-        <Text style={styles.footer}>
-          Status screens are less glamorous than fake memory. They are also considerably less likely to betray somebody later.
-        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -254,13 +252,5 @@ const styles = StyleSheet.create({
     color: '#ddd6fe',
     fontSize: 14,
     fontWeight: '900',
-  },
-  footer: {
-    color: '#776b84',
-    fontSize: 11,
-    lineHeight: 17,
-    textAlign: 'center',
-    marginTop: 22,
-    paddingHorizontal: 16,
   },
 });
