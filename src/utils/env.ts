@@ -12,10 +12,20 @@
 
 const env = process.env as Record<string, string | undefined>;
 
+function clean(value: string | undefined): string {
+  return value?.trim() ?? '';
+}
+
 // ── Resolved values ──────────────────────────────────────────────────────────
-export const SUPABASE_URL  = env.EXPO_PUBLIC_SUPABASE_URL      ?? '';
-export const SUPABASE_ANON = env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
-export const BACKEND_URL   = env.EXPO_PUBLIC_BACKEND_URL       ?? '';
+export const SUPABASE_URL = clean(env.EXPO_PUBLIC_SUPABASE_URL);
+
+// Prefer Supabase's modern publishable-key variable while retaining the legacy
+// anon-key name for older EAS and Cloudflare environments.
+export const SUPABASE_ANON =
+  clean(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY)
+  || clean(env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+
+export const BACKEND_URL   = clean(env.EXPO_PUBLIC_BACKEND_URL);
 /**
  * Shared client token for the Cloudflare Worker backend. Sent as
  * `Authorization: Bearer <token>` by backendHeaders(). Safe to ship in the
@@ -23,7 +33,7 @@ export const BACKEND_URL   = env.EXPO_PUBLIC_BACKEND_URL       ?? '';
  * the Worker enforces it only when its matching SEKRET_CLIENT_TOKEN secret is
  * set. Leave unset and the app calls the backend unauthenticated as before.
  */
-export const BACKEND_TOKEN = env.EXPO_PUBLIC_BACKEND_TOKEN     ?? '';
+export const BACKEND_TOKEN = clean(env.EXPO_PUBLIC_BACKEND_TOKEN);
 
 /**
  * Canonical headers for Worker backend calls. Always JSON; attaches `token` as
@@ -62,13 +72,13 @@ export function validateEnv(): void {
   if (!SUPABASE_URL) {
     console.warn(
       "[Se'kret Bip] ⚠️  EXPO_PUBLIC_SUPABASE_URL is not set.\n" +
-      '   Cloud sync is disabled. Add it to .env.local (see .env.example).'
+      '   Cloud sync is disabled. Add it to the deployment environment.'
     );
   }
   if (!SUPABASE_ANON) {
     console.warn(
-      "[Se'kret Bip] ⚠️  EXPO_PUBLIC_SUPABASE_ANON_KEY is not set.\n" +
-      '   Cloud sync is disabled. Add it to .env.local (see .env.example).'
+      "[Se'kret Bip] ⚠️  Supabase publishable key is not set.\n" +
+      '   Configure EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or the legacy EXPO_PUBLIC_SUPABASE_ANON_KEY).'
     );
   }
 
