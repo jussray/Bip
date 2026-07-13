@@ -23,7 +23,7 @@ export default function BodyWorkoutRoute() {
 
   const returnToBodyReset = () => {
     router.replace({
-      pathname: '/(teen)/mind-body-reset',
+      pathname: '/(teen)/mind-body-reset' as any,
       params: { mode: 'bodyReset' },
     });
   };
