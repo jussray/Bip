@@ -3,8 +3,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DevControlRoomWorkspace from './DevControlRoomWorkspace';
 import PromptOsPanel from '@/features/control-room/PromptOsPanel';
 import GuardianReviewsPanel from '@/features/control-room/GuardianReviewsPanel';
+import WorkerPanel from '@/features/control-room/WorkerPanel';
 
-type ControlRoomSurface = 'operations' | 'guardian-reviews' | 'prompt-os';
+type ControlRoomSurface = 'operations' | 'guardian-reviews' | 'prompt-os' | 'worker';
 
 export default function DevControlRoomScreen() {
   const [surface, setSurface] = useState<ControlRoomSurface>('operations');
@@ -20,13 +21,18 @@ export default function DevControlRoomScreen() {
       <TouchableOpacity style={[styles.button, surface === 'prompt-os' && styles.active]} onPress={() => setSurface('prompt-os')}>
         <Text style={[styles.label, surface === 'prompt-os' && styles.activeLabel]}>Prompt OS</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={[styles.button, surface === 'worker' && styles.active]} onPress={() => setSurface('worker')}>
+        <Text style={[styles.label, surface === 'worker' && styles.activeLabel]}>Worker</Text>
+      </TouchableOpacity>
     </View>
     <View style={styles.content}>
       {surface === 'operations'
         ? <DevControlRoomWorkspace />
         : surface === 'guardian-reviews'
           ? <GuardianReviewsPanel />
-          : <PromptOsPanel />}
+          : surface === 'prompt-os'
+            ? <PromptOsPanel />
+            : <WorkerPanel />}
     </View>
   </View>;
 }
