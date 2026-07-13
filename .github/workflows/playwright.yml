@@ -19,6 +19,7 @@ on:
       - 'playwright.production.config.ts'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/ci.yml'
       - '.github/workflows/deploy-cloudflare.yml'
       - '.github/workflows/playwright.yml'
   workflow_dispatch:
