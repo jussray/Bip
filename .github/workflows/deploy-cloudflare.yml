@@ -13,6 +13,9 @@ permissions:
   contents: read
   checks: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   verify-native-deployment:
     name: Verify exact Worker and Pages release
