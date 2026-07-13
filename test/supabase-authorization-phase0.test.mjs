@@ -134,7 +134,8 @@ test('authorization documentation refuses to certify all boundaries or activate 
   assert.match(doc, /does not certify every table/i);
   assert.match(doc, /Begin L4 schema design only after/i);
   assert.match(doc, /zero synthetic users/i);
-  assert.match(doc, /client grants\s*\|\s*0/i);
+  assert.match(doc, /\| `app_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
+  assert.match(doc, /\| `app_private_config` \| enabled \| 0 \| 0 \| 7 \| 2 \| 2 \|/);
 });
 
 test('baseline contains no secret values or real email addresses', () => {
