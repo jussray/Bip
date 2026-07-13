@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "1.0",
+  "repository": "jussray/Sekret-Bip",
+  "portfolioHub": "jussray/founder-control-room",
+  "role": "product-control-room",
+  "authority": {
+    "sourceOfTruth": "Repository implementation ledger plus Supabase project tbsevonvegdnlyjgplmm and canonical Cloudflare deployment evidence",
+    "portfolioMode": "sanitized-read-only-observer",
+    "productionMutation": "separate-founder-gate"
+  },
+  "controlRoom": {
+    "localSurface": true,
+    "surfaces": [
+      "app/(dev)/control-room.tsx",
+      "src/screens/DevControlRoomWorkspace.tsx",
+      "src/services/controlRoomAnalytics.ts",
+      "implementation-ledger.json"
+    ],
+    "privateContentAllowed": false
+  },
+  "evidence": {
+    "status": "integrated",
+    "commit": "7f1ab6e8561ef9b88f039db33e207036ffecd810",
+    "observedAt": "2026-07-12",
+    "proofRefs": [
+      "implementation-ledger.json",
+      "security/supabase-authorization-baseline.json",
+      "supabase/probes/authorization_founder_guardian_phase1.sql"
+    ]
+  },
+  "risk": {
+    "level": "high",
+    "blockers": [
+      "Production Worker and Pages exact-release proof remains required for current main",
+      "Bridge two-account production proof remains incomplete",
+      "L4 persistence remains blocked by unfinished authorization and Auth configuration gates"
+    ]
+  },
+  "nextGate": "Complete exact-release production verification and remaining authorization denial suites before expanding memory or portfolio observer scope."
+}
