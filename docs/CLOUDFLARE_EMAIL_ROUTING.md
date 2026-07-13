@@ -2,7 +2,7 @@
 
 The dedicated Email Worker lives at `worker/email-router.ts` and forwards approved custom-domain addresses to `sekretbip@gmail.com`.
 
-The main Bip API Worker continues to use the root `wrangler.toml`. The email Worker has its own configuration at `wrangler.email.toml` so deploying mail cannot replace or rename the `sekret` API Worker.
+The main Bip API Worker continues to use the root `wrangler.toml`. The email Worker has its own configuration at `wrangler.email.toml` so deploying mail cannot replace or rename the `sekret-backend` API Worker.
 
 ## Supported inbox aliases
 
@@ -24,9 +24,9 @@ From the repository root, run:
 npx wrangler deploy --config wrangler.email.toml
 ```
 
-This deploys `worker/email-router.ts` as a separate Worker named `bip-mail`.
+This deploys `worker/email-router.ts` as the Email Worker named `sekret-bip`.
 
-Do not replace the existing root `wrangler.toml` with the mail configuration. The root file belongs to the main Bip API Worker.
+Do not replace the existing root `wrangler.toml` with the mail configuration. The root file belongs to the main Bip API Worker, `sekret-backend`.
 
 ## Cloudflare setup
 
@@ -34,7 +34,7 @@ Do not replace the existing root `wrangler.toml` with the mail configuration. Th
 2. Add `sekretbip@gmail.com` as a destination address.
 3. Open that Gmail inbox and complete Cloudflare's verification email.
 4. Deploy the dedicated Email Worker with the command above.
-5. Create routing rules for each supported alias and choose `bip-mail` as the Worker action.
+5. Create routing rules for each supported alias and choose `sekret-bip` as the Worker action.
 6. Send a test message to each alias and confirm it reaches `sekretbip@gmail.com`.
 
 ## Privacy behavior
@@ -50,4 +50,4 @@ Safety and security aliases are marked `urgent`; privacy and legal aliases are m
 
 ## Deployment note
 
-Cloudflare Email Routing rules must still be configured in the Cloudflare dashboard after `bip-mail` is deployed. The Worker deployment creates the processing Worker, while Email Routing decides which custom addresses send messages to it.
+Cloudflare Email Routing rules must still be configured in the Cloudflare dashboard after `sekret-bip` is deployed. The Worker deployment creates the processing Worker, while Email Routing decides which custom addresses send messages to it.
