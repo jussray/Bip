@@ -12,7 +12,7 @@ export default function MindBodyResetRoute() {
 
   const changeMode = (nextMode: 'mindReset' | 'bodyReset') => {
     router.replace({
-      pathname: '/(teen)/mind-body-reset',
+      pathname: '/(teen)/mind-body-reset' as any,
       params: { mode: nextMode },
     });
   };
@@ -27,7 +27,7 @@ export default function MindBodyResetRoute() {
       onChangeMode={changeMode}
       onStartWorkout={(routineId: string) => {
         router.push({
-          pathname: '/(teen)/body-workout',
+          pathname: '/(teen)/body-workout' as any,
           params: { routineId },
         });
       }}
