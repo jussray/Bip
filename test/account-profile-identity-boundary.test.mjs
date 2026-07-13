@@ -66,6 +66,23 @@ test('profile completion is monotonic while incomplete onboarding may still pivo
   );
 });
 
+test('nullable identity values are explicitly rejected before enum validation', () => {
+  assert.match(
+    migration,
+    /p_account_side is null[\s\S]*p_account_side not in \('teen', 'parent'\)/i,
+  );
+  for (const field of [
+    'p_age_range',
+    'p_gender',
+    'p_selected_companion',
+    'p_parent_room_style',
+    'p_parent_focus',
+  ]) {
+    assert.match(migration, new RegExp(`${field} is null`, 'i'));
+  }
+  assert.match(migration, /SQL NOT IN returns NULL for NULL/i);
+});
+
 test('completed side-specific fields remain validated', () => {
   assert.match(migration, /v_requested_complete and p_account_side = 'teen'/i);
   assert.match(migration, /p_age_range not in \('13-15', '16-17', '18-19'\)/i);
@@ -147,4 +164,5 @@ test('migration is transactional and documents the identity transition reason', 
   assert.match(migration, /stale cache, alternate binary, or crafted client request/i);
   assert.match(migration, /Completion is monotonic/i);
   assert.match(migration, /role and capability columns remain outside the RPC write set/i);
+  assert.match(migration, /Nullable identity inputs are explicitly rejected/i);
 });
