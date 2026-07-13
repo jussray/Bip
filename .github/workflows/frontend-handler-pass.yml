@@ -1,0 +1,130 @@
+name: One-time frontend handler pass
+
+on:
+  push:
+    branches:
+      - agent/frontend-handler-contracts
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/frontend-handler-contracts
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Patch active frontend handlers
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected one match, found {count}: {old[:80]!r}')
+              p.write_text(text.replace(old, new, 1))
+
+          # Bridge: route the CTA to the existing consent/preview source flow in Pages.
+          replace_once(
+              'screens/BridgeScreen.tsx',
+              """  const handleCreateBridgeSummary = () => {\n    setBridgeStatus('Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window.');\n  };""",
+              """  const handleCreateBridgeSummary = () => {\n    setBridgeStatus('Opening Pages so you can choose what to share. Nothing is sent until you preview and confirm it there.');\n    setScreen('pages');\n  };""",
+          )
+          replace_once(
+              'screens/BridgeScreen.tsx',
+              'Bridge Summaries become available when you share a journal, check-in, or reflection with your Parent Window.',
+              'Choose an existing journal, check-in, or reflection in Pages. You preview exactly what will be shared before anything can leave your private space.',
+          )
+          replace_once(
+              'screens/BridgeScreen.tsx',
+              'summary sharing not ready here yet',
+              'choose something in Pages →',
+          )
+
+          # Calm: remove active null/no-op controls without inventing missing audio assets.
+          replace_once(
+              'screens/CalmScreen.tsx',
+              "  { emoji: '🌙', label: 'Sleep\\nBetter',     sub: 'stories + sounds',     action: null },",
+              "  { emoji: '🌙', label: 'Sleep\\nBetter',     sub: 'stories + sounds',     action: 'breathe' },",
+          )
+          replace_once(
+              'screens/CalmScreen.tsx',
+              """  async function handlePickPlay(label: string, uri: string) {\n    if (!uri) {\n      Alert.alert('Coming soon 💜', 'Audio tracks will be available in the next update.');\n      return;\n    }""",
+              """  async function handlePickPlay(label: string, uri: string) {\n    if (!uri) {\n      if (onOpenBreathe) {\n        onOpenBreathe();\n        return;\n      }\n      Alert.alert('Audio library', 'Open the full breathing screen to use available calm tools.');\n      return;\n    }""",
+          )
+          replace_once(
+              'screens/CalmScreen.tsx',
+              """            <TouchableOpacity>\n              <Text style={[styles.seeAll, { color: t.soft }]}>edit plan ✏️</Text>\n            </TouchableOpacity>""",
+              """            <TouchableOpacity onPress={() => setPlan(DEFAULT_PLAN.map(item => ({ ...item, done: false })))}>\n              <Text style={[styles.seeAll, { color: t.soft }]}>reset plan ↺</Text>\n            </TouchableOpacity>""",
+          )
+          replace_once(
+              'screens/CalmScreen.tsx',
+              """        <View style={styles.toolsHeader}>\n          <Text style={[styles.sectionTitle, { color: t.accent }]}>Calm Picks for You ✦</Text>\n          <TouchableOpacity>\n            <Text style={[styles.seeAll, { color: t.soft }]}>see all</Text>\n          </TouchableOpacity>\n        </View>""",
+              """        <View style={styles.toolsHeader}>\n          <Text style={[styles.sectionTitle, { color: t.accent }]}>Calm Picks for You ✦</Text>\n          <TouchableOpacity onPress={() => onOpenBreathe ? onOpenBreathe() : setShowBreathe(true)}>\n            <Text style={[styles.seeAll, { color: t.soft }]}>see all</Text>\n          </TouchableOpacity>\n        </View>""",
+          )
+          replace_once(
+              'screens/CalmScreen.tsx',
+              """        {CALM_PLAYLIST.map(item => (\n          <View key={item.label} style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}>\n            <Text style={styles.playlistEmoji}>{item.emoji}</Text>\n            <View style={{ flex: 1 }}>\n              <Text style={[styles.listRowTitle, { color: '#fff' }]}>{item.label}</Text>\n              <Text style={[styles.listRowSub, { color: t.soft }]}>{item.sub}</Text>\n            </View>\n            <Text style={[styles.listRowDur, { color: t.soft }]}>{item.duration}</Text>\n            <Text style={{ color: t.soft }}>›</Text>\n          </View>\n        ))}""",
+              """        {CALM_PLAYLIST.map(item => (\n          <TouchableOpacity\n            key={item.label}\n            style={[styles.listRow, { backgroundColor: t.card, borderColor: t.accent }]}\n            onPress={() => onOpenBreathe ? onOpenBreathe() : Alert.alert('Audio library', 'Open the full breathing screen to use available calm tools.')}\n          >\n            <Text style={styles.playlistEmoji}>{item.emoji}</Text>\n            <View style={{ flex: 1 }}>\n              <Text style={[styles.listRowTitle, { color: '#fff' }]}>{item.label}</Text>\n              <Text style={[styles.listRowSub, { color: t.soft }]}>{item.sub}</Text>\n            </View>\n            <Text style={[styles.listRowDur, { color: t.soft }]}>{item.duration}</Text>\n            <Text style={{ color: t.soft }}>›</Text>\n          </TouchableOpacity>\n        ))}""",
+          )
+          replace_once(
+              'screens/CalmScreen.tsx',
+              """            onPress={() => Alert.alert('Breathe Reminder', \"Reminder set. You'll get a gentle nudge to breathe. 💜\")}""",
+              """            onPress={() => onOpenBreathe ? onOpenBreathe() : Alert.alert('Breathe Reminder', 'Open the full breathing screen to schedule a reminder.')}""",
+          )
+
+          # Route registry: L4 gets an honest frontend handler, not a backend bypass.
+          replace_once(
+              'src/teen/routes.ts',
+              "  history: '/(teen)/history',\n",
+              "  history: '/(teen)/history',\n  continuity: '/(teen)/continuity',\n",
+          )
+          replace_once(
+              'src/shared/routes.ts',
+              "    history: TEEN_ROUTES.history,\n",
+              "    history: TEEN_ROUTES.history,\n    continuity: TEEN_ROUTES.continuity,\n    memory: TEEN_ROUTES.continuity,\n    l4: TEEN_ROUTES.continuity,\n",
+          )
+          replace_once(
+              'app/(teen)/_layout.tsx',
+              '        <Tabs.Screen name="history" options={{ href: null }} />\n',
+              '        <Tabs.Screen name="history" options={{ href: null }} />\n        <Tabs.Screen name="continuity" options={{ href: null }} />\n',
+          )
+          replace_once(
+              'src/constants/screenPurpose.ts',
+              """    { emoji: '🔗', label: 'Parent Link', route: 'parent-link-verify', description: 'Manage verification and the trusted connection.' },\n    { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Theme, companion, privacy, notifications, and account.' },""",
+              """    { emoji: '🔗', label: 'Parent Link', route: 'parent-link-verify', description: 'Manage verification and the trusted connection.' },\n    { emoji: '🧠', label: 'Memory & Continuity', route: 'l4', description: 'See what Bip remembers now and what stays protected until long-term memory is ready.' },\n    { emoji: '⚙️', label: 'Settings', route: 'settings', description: 'Theme, companion, privacy, notifications, and account.' },""",
+          )
+
+          Path('app/(teen)/continuity.tsx').write_text("""import React from 'react';\nimport { router } from 'expo-router';\nimport { LinearGradient } from 'expo-linear-gradient';\nimport { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';\nimport { useAppContext } from '@/context/AppContext';\n\nexport default function ContinuityRoute() {\n  const { entries, moodHistory, selectedSekret } = useAppContext();\n  const companion = selectedSekret ? selectedSekret[0].toUpperCase() + selectedSekret.slice(1) : 'Raylene';\n\n  return (\n    <View style={styles.root}>\n      <LinearGradient colors={['#0d0518', '#1a0b32', '#0d0518']} style={StyleSheet.absoluteFill} />\n      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>\n        <TouchableOpacity onPress={() => router.back()} style={styles.back}>\n          <Text style={styles.backText}>← More</Text>\n        </TouchableOpacity>\n\n        <Text style={styles.kicker}>MEMORY & CONTINUITY</Text>\n        <Text style={styles.title}>What Bip remembers now</Text>\n        <Text style={styles.subtitle}>A clear view of saved app history without quietly turning on long-term AI memory.</Text>\n\n        <View style={styles.statusCard}>\n          <Text style={styles.statusLabel}>L4 STATUS</Text>\n          <Text style={styles.statusTitle}>Protected, not active</Text>\n          <Text style={styles.body}>Durable continuity stays off until ownership, correction, expiration, deletion, privacy rules, and denial tests are approved. This screen does not bypass that gate.</Text>\n        </View>\n\n        <View style={styles.card}>\n          <Text style={styles.cardTitle}>Saved in your app today</Text>\n          <View style={styles.row}><Text style={styles.rowLabel}>Pages entries</Text><Text style={styles.rowValue}>{entries.length}</Text></View>\n          <View style={styles.row}><Text style={styles.rowLabel}>Mood check-ins</Text><Text style={styles.rowValue}>{moodHistory.length}</Text></View>\n          <View style={styles.row}><Text style={styles.rowLabel}>Current companion</Text><Text style={styles.rowValue}>{companion}</Text></View>\n          <Text style={styles.note}>These are ordinary app records. They are not permission for a model to build a hidden permanent profile.</Text>\n        </View>\n\n        <TouchableOpacity style={styles.primary} onPress={() => router.push('/(teen)/history' as any)}>\n          <Text style={styles.primaryText}>Open my history</Text>\n        </TouchableOpacity>\n        <TouchableOpacity style={styles.secondary} onPress={() => router.push('/(teen)/pages' as any)}>\n          <Text style={styles.secondaryText}>Open Pages</Text>\n        </TouchableOpacity>\n        <TouchableOpacity style={styles.secondary} onPress={() => router.push('/(teen)/settings' as any)}>\n          <Text style={styles.secondaryText}>Review privacy settings</Text>\n        </TouchableOpacity>\n      </ScrollView>\n    </View>\n  );\n}\n\nconst styles = StyleSheet.create({\n  root: { flex: 1, backgroundColor: '#0d0518' },\n  scroll: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 60 : 40, paddingBottom: 80, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },\n  back: { alignSelf: 'flex-start', marginBottom: 24 },\n  backText: { color: '#c4b5fd', fontSize: 14, fontWeight: '700' },\n  kicker: { color: '#a78bfa', fontSize: 10, fontWeight: '900', letterSpacing: 2.2, marginBottom: 8 },\n  title: { color: '#fff', fontSize: 30, fontWeight: '900', marginBottom: 8 },\n  subtitle: { color: '#cbb6f7', fontSize: 14, lineHeight: 21, marginBottom: 22 },\n  statusCard: { borderWidth: 1, borderColor: '#facc1555', backgroundColor: 'rgba(66,45,10,0.34)', borderRadius: 20, padding: 18, marginBottom: 16 },\n  statusLabel: { color: '#facc15', fontSize: 10, fontWeight: '900', letterSpacing: 1.8, marginBottom: 6 },\n  statusTitle: { color: '#fff', fontSize: 20, fontWeight: '900', marginBottom: 8 },\n  body: { color: '#e5ddf5', fontSize: 13, lineHeight: 20 },\n  card: { borderWidth: 1, borderColor: '#a78bfa55', backgroundColor: 'rgba(30,18,55,0.88)', borderRadius: 20, padding: 18, marginBottom: 18 },\n  cardTitle: { color: '#fff', fontSize: 17, fontWeight: '900', marginBottom: 12 },\n  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ffffff18', paddingVertical: 10 },\n  rowLabel: { color: '#cbb6f7', fontSize: 13 },\n  rowValue: { color: '#fff', fontSize: 14, fontWeight: '800' },\n  note: { color: '#9f91b5', fontSize: 12, lineHeight: 18, marginTop: 14 },\n  primary: { minHeight: 52, borderRadius: 16, backgroundColor: '#8b5cf6', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },\n  primaryText: { color: '#fff', fontSize: 15, fontWeight: '900' },\n  secondary: { minHeight: 50, borderRadius: 16, borderWidth: 1, borderColor: '#a78bfa66', backgroundColor: 'rgba(30,18,55,0.7)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },\n  secondaryText: { color: '#ddd6fe', fontSize: 14, fontWeight: '800' },\n});\n""")
+
+          Path('test/frontend-handler-contract.test.mjs').write_text("""import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport { readFile } from 'node:fs/promises';\n\nconst read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');\n\ntest('Bridge summary CTA opens the existing Pages consent path', async () => {\n  const source = await read('screens/BridgeScreen.tsx');\n  assert.match(source, /handleCreateBridgeSummary[\\s\\S]*setScreen\\('pages'\\)/);\n  assert.match(source, /choose something in Pages/);\n  assert.doesNotMatch(source, /summary sharing not ready here yet/);\n});\n\ntest('L4 has an honest frontend handler without claiming durable memory is active', async () => {\n  const routes = await read('src/shared/routes.ts');\n  const teenRoutes = await read('src/teen/routes.ts');\n  const more = await read('src/constants/screenPurpose.ts');\n  const layout = await read('app/(teen)/_layout.tsx');\n  const screen = await read('app/(teen)/continuity.tsx');\n\n  assert.match(routes, /l4: TEEN_ROUTES\\.continuity/);\n  assert.match(teenRoutes, /continuity: '\\/\\(teen\\)\\/continuity'/);\n  assert.match(more, /Memory & Continuity/);\n  assert.match(layout, /name=\"continuity\"/);\n  assert.match(screen, /Protected, not active/);\n  assert.match(screen, /does not bypass that gate/);\n});\n\ntest('active Calm controls have real handlers instead of null or empty actions', async () => {\n  const source = await read('screens/CalmScreen.tsx');\n  assert.doesNotMatch(source, /action: null/);\n  assert.match(source, /reset plan ↺/);\n  assert.match(source, /Calm Picks for You[\\s\\S]*onOpenBreathe/);\n  assert.match(source, /CALM_PLAYLIST[\\s\\S]*TouchableOpacity/);\n});\n""")
+          PY
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+      - name: Validate handler contracts
+        run: node --test test/frontend-handler-contract.test.mjs test/screen-purpose-parity.test.mjs
+      - name: Type check
+        run: npm run type-check
+      - name: Commit patched frontend
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/frontend-handler-pass.yml
+          git add app/'(teen)'/_layout.tsx app/'(teen)'/continuity.tsx screens/BridgeScreen.tsx screens/CalmScreen.tsx src/constants/screenPurpose.ts src/shared/routes.ts src/teen/routes.ts test/frontend-handler-contract.test.mjs
+          git commit -m "fix: wire protected frontend feature handlers"
+          git push origin HEAD:agent/frontend-handler-contracts
