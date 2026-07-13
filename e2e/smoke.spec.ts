@@ -90,7 +90,7 @@ test('Parent Bridge fails closed until guardian verification is complete', async
   await expect(page.getByText('Submit for guardian review')).toBeVisible();
 });
 
-test('authorization evidence and secret identifiers stay out of the public web surface', async ({ page }) => {
+test('authorization evidence and retired internals stay out of the public web surface', async ({ page }) => {
   await page.goto('/');
 
   const splashButton = page.getByRole('button', {
@@ -107,4 +107,7 @@ test('authorization evidence and secret identifiers stay out of the public web s
   expect(visibleText).not.toContain('app_private_config');
   expect(visibleText).not.toContain('app_config');
   expect(visibleText).not.toContain('harden_config_table_grants');
+  expect(visibleText).not.toContain('release-health');
+  expect(visibleText).not.toContain('bridge-e2e-probe');
+  expect(visibleText).not.toContain('github-workflow-status');
 });
