@@ -45,6 +45,7 @@ const runtimePath = compile(
 );
 
 const runtime = await import(pathToFileURL(runtimePath).href);
+const runtimeSource = fs.readFileSync(path.join(root, 'worker/runtime-style.ts'), 'utf8');
 const indexSource = fs.readFileSync(path.join(root, 'worker/index.ts'), 'utf8');
 const observedSource = fs.readFileSync(path.join(root, 'worker/observed-index.ts'), 'utf8');
 
@@ -127,7 +128,7 @@ test('production Worker wrapper injects, enforces, voices, and returns style evi
   assert.match(indexSource, /enforceRuntimeStyleResponse/);
   assert.match(indexSource, /instructions: style\.speechInstructions/);
   assert.match(indexSource, /styleDecision/);
-  assert.match(indexSource, /parentCoach actor requires the parentCoach surface/);
+  assert.match(runtimeSource, /parentCoach actor requires the parentCoach surface/);
 });
 
 test('observed Worker forwards style versions and repair evidence to telemetry', () => {
