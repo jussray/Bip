@@ -60,6 +60,7 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
         <Tabs.Screen name="bippin2/womanhood" options={{ href: null }} />
         <Tabs.Screen name="bippin2/manhood" options={{ href: null }} />
         <Tabs.Screen name="growth" options={{ href: null }} />
+        <Tabs.Screen name="l4" options={{ href: null }} />
         <Tabs.Screen name="mind-body-reset" options={{ href: null }} />
         <Tabs.Screen name="body-workout" options={{ href: null }} />
         <Tabs.Screen name="companion-chat" options={{ href: null }} />
