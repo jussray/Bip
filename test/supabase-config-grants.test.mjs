@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260713012000_harden_config_table_grants.sql',
+  '20260713011803_harden_config_table_grants.sql',
 );
 const sql = fs.readFileSync(migrationPath, 'utf8');
 
