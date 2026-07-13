@@ -3,12 +3,14 @@
   "updatedAt": "2026-07-13",
   "documentationReview": {
     "reviewedAt": "2026-07-13",
-    "baseCommit": "cc40f863cfd8d2b4e80b295a9dd88fdf3b7a70bb",
+    "baseCommit": "3b9673add18108bacf6de9d500ddccbdefa8e844",
     "scope": [
       "repository identity and setup",
       "current product and wiring state",
       "Cloudflare production ownership and exact-release evidence",
+      "unified frontend-to-Worker contract spine",
       "Supabase authorization and retired Edge Functions",
+      "private self-data permanent-account hardening",
       "companion identity/style integration",
       "Mind and Body Reset guided tools and workouts",
       "Bridge controlled rollout",
@@ -16,7 +18,7 @@
       "agent architecture and Worker guardrails",
       "historical audit labeling"
     ],
-    "rule": "Markdown describes only the evidence state recorded in this ledger or explicitly labels historical snapshots."
+    "rule": "Markdown describes only the evidence state recorded in this ledger or explicitly labels historical snapshots. Status documentation is updated only after the implementation merges and the tested main content is verified."
   },
   "statusOrder": [
     "planned",
@@ -68,6 +70,47 @@
         "blocker": "Deploy the reviewed Worker through the canonical Cloudflare path and repeat the controlled two-account proof."
       },
       "rollback": "Keep BRIDGE_SUMMARIES_ROLLOUT disabled; revert the Worker deployment or merge commit if the controlled proof fails."
+    },
+    {
+      "id": "frontend-worker-contract-spine",
+      "name": "Unified frontend-to-Worker request, response, and failure contract",
+      "status": "integrated",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/402",
+      "acceptanceCriteria": [
+        "One typed frontend client owns companion reply, speech, transcription, and health routes.",
+        "Authentication headers, timeouts, trace IDs, stable error codes, Worker fallback, and local fallback are represented consistently.",
+        "The Worker always returns a visual avatar state that the frontend can render truthfully.",
+        "Migrated chat, legacy API, and founder surfaces do not create independent direct Worker fetch paths."
+      ],
+      "contractPaths": [
+        "src/contracts/sekretApi.ts"
+      ],
+      "runtimePaths": [
+        "src/services/backend/sekretClient.ts",
+        "src/services/ai/chat.ts",
+        "src/services/ai/workerClient.ts",
+        "src/utils/api.ts",
+        "worker/runtime-style.ts"
+      ],
+      "testPaths": [
+        "test/worker-contract-spine.test.mjs",
+        "e2e/smoke.spec.ts"
+      ],
+      "telemetryPaths": [
+        "src/services/runtimeAudit.ts",
+        "worker/telemetry.ts"
+      ],
+      "rollout": {
+        "state": "controlled",
+        "controlPath": "src/services/backend/sekretClient.ts",
+        "controlKey": "authenticated Worker transport with local fallback"
+      },
+      "verification": {
+        "state": "partial",
+        "evidence": "https://github.com/jussray/Sekret-Bip/pull/398",
+        "blocker": "Exact-head CI, Type Check, Quality Gate, Regression, Pre-Push, Companion Lab, and Playwright passed and the tested content merged. Exact-production-release observation plus user-facing 401, 403, 429, timeout, offline, safety, and voice-unavailable state proof remain before verified or released status."
+      },
+      "rollback": "Revert merge commit 044d72ca4028c30401dd44c9948e4e51e8e51d3b. No database rollback is required."
     },
     {
       "id": "sekret-identity-and-companion-style",
@@ -196,23 +239,26 @@
       "id": "supabase-authorization-proof",
       "name": "Supabase authorization inventory and denial harness",
       "status": "contract",
-      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/344",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/399",
       "acceptanceCriteria": [
         "Live RLS, table grants, database functions, Edge Function JWT settings, and migration parity are classified by trust boundary.",
         "Rollback-contained live probes prove owner access, cross-user denial, anonymous denial, founder and guardian administration boundaries, and zero retained synthetic data.",
         "Server-owned configuration tables expose no client table privileges and preserve their rows and service-role access.",
         "Obsolete Edge Functions require platform JWT verification, return side-effect-free HTTP 410 responses, and have no executable callers.",
-        "Anonymous-authenticated sessions cannot obtain founder, Control Room, audit-review, or guardian-administration authority even if a privileged profile row exists."
+        "Anonymous-authenticated sessions cannot obtain founder, Control Room, audit-review, guardian-administration, comfort-session, or room-memory authority even when they receive an authenticated database role and UID."
       ],
       "contractPaths": [
         "security/supabase-authorization-baseline.json",
+        "security/private-self-data-hardening.json",
         "docs/security/SUPABASE_AUTHORIZATION_PHASE0.md",
         "supabase/probes/authorization_phase0.sql",
         "supabase/probes/authorization_founder_guardian_phase1.sql",
+        "supabase/probes/authorization_private_self_data_phase1.sql",
         "supabase/migrations/20260713011803_harden_config_table_grants.sql",
         "supabase/migrations/20260713024231_harden_founder_helper_anonymous_guard.sql",
         "supabase/migrations/20260713024245_harden_audit_control_room_policies.sql",
         "supabase/migrations/20260713024253_remove_anon_audit_control_room_grants.sql",
+        "supabase/migrations/20260713230600_harden_private_self_data_permanent_accounts.sql",
         "supabase/functions/retirement-manifest.json",
         "supabase/functions/release-health/index.ts",
         "supabase/functions/bridge-e2e-probe/index.ts",
@@ -222,13 +268,14 @@
         "test/supabase-authorization-phase0.test.mjs",
         "test/supabase-config-grants.test.mjs",
         "test/supabase-founder-guardian-authorization.test.mjs",
+        "test/private-self-data-hardening.test.mjs",
         "test/retired-edge-functions.test.mjs",
         "e2e/smoke.spec.ts"
       ],
       "verification": {
         "state": "passed",
-        "evidence": "https://github.com/jussray/Sekret-Bip/issues/344",
-        "blocker": "Phase 0, config grants, retired Edge Functions, and founder/guardian authorization passed. Parent-link, Bridge, push-token, task/reward-review, remaining Control Room RPCs, custom-auth Edge Functions, and password-breach protection still require focused proof before L4 activation."
+        "evidence": "https://github.com/jussray/Sekret-Bip/pull/400",
+        "blocker": "Phase 0, config grants, retired Edge Functions, founder/guardian authorization, and permanent-account denial for comfort_sessions and room_memory passed. Parent-link, Bridge, activity, points/rewards, task-review, remaining Control Room RPCs, other anonymous-auth policy surfaces, custom-auth Edge Functions, and password-breach protection still require focused proof before L4 activation."
       }
     },
     {
@@ -245,7 +292,7 @@
       "verification": {
         "state": "not-run",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
-        "blocker": "Additional authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection require focused proof before L4 schema activation."
+        "blocker": "Additional anonymous-auth policy and authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection require focused proof before L4 schema activation."
       }
     }
   ]

@@ -35,6 +35,16 @@ Update `SPRINT.md` when:
 - Supabase migrations or Edge Functions change
 - the next committed task changes
 
+For implementation and fix claims, use this order:
+
+1. implement the scoped change;
+2. run exact-head PR checks and the system-specific proof;
+3. merge only the tested head;
+4. verify the merged `main` content and the correct production authority;
+5. update `implementation-ledger.json`, `SPRINT.md`, `docs/CURRENT_STATUS.md`, and `docs/WIRING_STATUS.md` in a separate truth-only change.
+
+Do not update status documentation before merge merely because a branch exists or an agent reports success. Cloudflare evidence proves Worker/Pages deployment; Supabase migration parity and authorization probes prove database boundaries. Do not substitute one witness for another.
+
 Do not write guesses, planned architecture, secrets, API keys, personal data,
 or unverified deployment claims into `SPRINT.md`.
 
@@ -45,6 +55,7 @@ or unverified deployment claims into `SPRINT.md`.
 - Do not edit Worker configuration from unrelated PRs
 - Do not modify companion asset or continuity tests unless their contracts change
 - Do not add runtime, screen, or database work to tooling-only PRs
+- Do not mix implementation changes into a post-merge current-state documentation PR
 
 ## Output
 
