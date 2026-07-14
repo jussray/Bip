@@ -2,6 +2,7 @@ import { Redirect, Tabs } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SideSafeBackButton } from '@/components/SideSafeBackButton';
+import { isFounderPreviewEnabled } from '@/constants/founderPreview';
 import {
   resolveParentEntryState,
   routeForParentEntryState,
@@ -57,6 +58,7 @@ export default function ParentLayout() {
   const [entryState, setEntryState] = useState<ParentEntryState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const founderPreview = isFounderPreviewEnabled();
 
   useEffect(() => {
     let active = true;
@@ -77,6 +79,11 @@ export default function ParentLayout() {
       active = false;
     };
   }, [attempt]);
+
+  // Development Founder Preview makes every built parent route inspectable.
+  // Screen-level RLS, linkage, consent, account, and safety requirements still
+  // apply to actual reads and writes.
+  if (founderPreview) return <ParentTabs />;
 
   if (error) {
     return (
