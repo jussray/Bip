@@ -119,17 +119,26 @@ test('navigation exposes Bridge and canonicalizes duplicate Room paths', () => {
   assert.equal(points.includes('comfortSessions={comfortSessions}'), true);
 });
 
-test('Crew keeps accepted-connection rules and uses local-only founder sample data', () => {
+test('Crew uses unlimited accepted-account identity and local-only founder samples', () => {
   const circleRoute = read('app/(teen)/circle/index.tsx');
-  const crew = read('src/screens/CrewAccountabilityScreen.tsx');
+  const screenEntry = read('src/screens/CrewAccountabilityScreen.tsx');
+  const screen = read('src/screens/CrewAccountabilityScreenV3.tsx');
+  const serviceEntry = read('src/services/crewAccountabilityService.ts');
+  const service = read('src/services/crewAccountabilityServiceV2.ts');
+
   assert.equal(circleRoute.includes('BipCrewScreen'), false);
   assert.equal(circleRoute.includes('CrewAccountabilityScreen'), true);
-  assert.equal(crew.includes("isRelationshipFeatureAvailable('crewAccountability'"), true);
-  assert.equal(crew.includes(".eq('connection_status', 'accepted')"), true);
-  assert.equal(crew.includes("rpc('get_public_circle_profiles'"), true);
-  assert.equal(crew.includes(".from('circle_profiles')"), false);
-  assert.equal(crew.includes('PREVIEW_MEMBERS'), true);
-  assert.equal(crew.includes('if (previewSample)'), true);
-  assert.equal(crew.includes('without writing anything to Supabase'), true);
-  assert.equal(crew.includes('Placeholder invite codes are not real connections.'), true);
+  assert.equal(screenEntry.includes('CrewAccountabilityScreenV3'), true);
+  assert.equal(serviceEntry.includes('crewAccountabilityServiceV2'), true);
+  assert.equal(screen.includes("isRelationshipFeatureAvailable('crewAccountability'"), true);
+  assert.equal(screen.includes(".eq('connection_status', 'accepted')"), true);
+  assert.equal(screen.includes("rpc('get_crew_connection_profiles'"), true);
+  assert.equal(screen.includes("rpc('get_public_circle_profiles'"), false);
+  assert.equal(screen.includes('select all'), true);
+  assert.equal(screen.includes('leave Crew'), true);
+  assert.equal(screen.includes('block'), true);
+  assert.equal(screen.includes('PREVIEW_PROFILES'), true);
+  assert.equal(screen.includes('Nothing is written to Supabase.'), true);
+  assert.equal(service.includes("rpc('create_crew_check_in'"), true);
+  assert.equal(service.includes('MAX_SHARES'), false);
 });

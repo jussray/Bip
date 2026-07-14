@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('Bridge summary CTA opens the existing Pages consent path', async () => {
   const source = await read('screens/BridgeScreen.tsx');
@@ -18,8 +18,8 @@ test('L4 has an honest frontend handler without claiming durable memory is activ
   const layout = await read('app/(teen)/_layout.tsx');
   const screen = await read('app/(teen)/continuity.tsx');
 
-  assert.match(routes, /l4: TEEN_ROUTES\.continuity/);
-  assert.match(teenRoutes, /continuity: '\/\(teen\)\/continuity'/);
+  assert.match(routes, /l4:\s*TEEN_ROUTES\.continuity/);
+  assert.match(teenRoutes, /continuity:\s*'\/\(teen\)\/continuity'/);
   assert.match(more, /Memory & Continuity/);
   assert.match(layout, /name="continuity"/);
   assert.match(screen, /Protected, not active/);
