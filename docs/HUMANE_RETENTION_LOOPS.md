@@ -88,7 +88,13 @@ The teen wants support → use Circle, Crew, or Bridge → receive relevant conn
 
 ### Circle boundary
 
-Public Circle keeps supportive reactions but hides public reaction totals. The author’s vulnerability cannot become a ranked popularity object. There is no trending-vulnerability mechanic.
+Public Circle keeps supportive reactions without turning them into a public score. The canonical feed RPC returns:
+
+- the viewer’s own selected reaction;
+- aggregate support totals only when the viewer owns the post;
+- no aggregate totals for anybody else’s post.
+
+Direct client `SELECT` access to `public_circle_posts` is revoked so a modified app cannot bypass the owner-only response contract and download the cached counts. The post owner sees a private “only you” support summary. Other viewers see only the actions they can take and whether their own support was sent. The author’s vulnerability cannot become a ranked popularity object, and there is no trending-vulnerability mechanic.
 
 ### Bridge response request
 
@@ -152,7 +158,7 @@ All new local receipt, adjustment, and Bridge-preference keys are included in pr
 Reject any future change that:
 
 - subtracts Bip Tickets or unlocked rewards for inactivity;
-- makes public reaction totals visible on teen Circle;
+- makes public reaction totals visible or downloadable for somebody else’s teen Circle post;
 - ranks vulnerable posts by engagement;
 - uses private content in return notifications;
 - lets parent linkage unlock private teen content;
@@ -167,7 +173,7 @@ Integrated:
 - Supabase migrations applied to the Se’kret Bip project;
 - Room return overlay;
 - active-day History route;
-- Circle reaction-total removal;
+- Circle owner-only reaction-total contract and private author summary;
 - Bridge response-preference contract and parent card;
 - intentional Bip Energy fade restored;
 - source-contract test coverage;
@@ -178,6 +184,7 @@ Still required before `verified` or `released`:
 - exact-head CI and type-check evidence;
 - physical iOS and Android layout/accessibility QA;
 - controlled two-account Bridge proof;
+- controlled two-account Circle proof that only the post owner receives aggregate totals;
 - confirmation that the parent receives the selected response request;
 - return-copy usability testing with adults and appropriately governed teen research;
 - production-release observation and rollback evidence.
