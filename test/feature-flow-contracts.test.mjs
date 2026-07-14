@@ -119,12 +119,17 @@ test('navigation exposes Bridge and canonicalizes duplicate Room paths', () => {
   assert.equal(points.includes('comfortSessions={comfortSessions}'), true);
 });
 
-test('placeholder Crew is not exposed as a real connection flow', () => {
+test('Crew keeps accepted-connection rules and uses local-only founder sample data', () => {
   const circleRoute = read('app/(teen)/circle/index.tsx');
   const crew = read('src/screens/CrewAccountabilityScreen.tsx');
   assert.equal(circleRoute.includes('BipCrewScreen'), false);
   assert.equal(circleRoute.includes('CrewAccountabilityScreen'), true);
   assert.equal(crew.includes("isRelationshipFeatureAvailable('crewAccountability'"), true);
   assert.equal(crew.includes(".eq('connection_status', 'accepted')"), true);
-  assert.equal(crew.includes('Placeholder invite codes are no longer treated as real connections.'), true);
+  assert.equal(crew.includes("rpc('get_public_circle_profiles'"), true);
+  assert.equal(crew.includes(".from('circle_profiles')"), false);
+  assert.equal(crew.includes('PREVIEW_MEMBERS'), true);
+  assert.equal(crew.includes('if (previewSample)'), true);
+  assert.equal(crew.includes('without writing anything to Supabase'), true);
+  assert.equal(crew.includes('Placeholder invite codes are not real connections.'), true);
 });

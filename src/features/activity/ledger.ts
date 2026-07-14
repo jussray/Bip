@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react';
+import {
+  FOUNDER_PREVIEW_POINTS,
+  isFounderPreviewEnabled,
+} from '@/constants/founderPreview';
 import { getSupabase } from '@/utils/supabase';
 import { applyBipEnergyFade } from './bipEnergy';
 import { subscribeToEvents, type ActivityEventType } from './events';
@@ -52,6 +56,10 @@ export interface PointsLedger {
   tier: Tier;
   breakdown: BreakdownRow[];
   isLoaded: boolean;
+  /** True only when the UI is using a display-only founder preview balance. */
+  isPreview?: boolean;
+  /** The real server-owned balance remains available for honest diagnostics. */
+  actualTotal?: number;
 }
 
 const BREAKDOWN_TEMPLATE: Omit<BreakdownRow, 'count' | 'pts'>[] = [
@@ -86,6 +94,18 @@ const DEFAULT_LEDGER: PointsLedger = {
   breakdown: BREAKDOWN_TEMPLATE.map(row => ({ ...row, count: 0, pts: 0 })),
   isLoaded: false,
 };
+
+function withFounderPreview(ledger: PointsLedger): PointsLedger {
+  if (!isFounderPreviewEnabled()) return ledger;
+  const previewTotal = Math.max(ledger.total, FOUNDER_PREVIEW_POINTS);
+  return {
+    ...ledger,
+    total: previewTotal,
+    tier: tierFor(previewTotal),
+    isPreview: true,
+    actualTotal: ledger.total,
+  };
+}
 
 async function currentUserId(): Promise<string | null> {
   const supabase = getSupabase();
@@ -188,5 +208,5 @@ export function usePoints(): PointsLedger {
     };
   }, []);
 
-  return ledger;
+  return withFounderPreview(ledger);
 }
