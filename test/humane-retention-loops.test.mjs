@@ -7,16 +7,22 @@ const root = process.cwd();
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 test('Bip Energy fade keeps the intentional bounded contract', () => {
-  const migration = read('supabase/migrations/20260714045500_restore_intentional_bip_energy_fade.sql');
+  const restoreMigration = read('supabase/migrations/20260714045500_restore_intentional_bip_energy_fade.sql');
+  const finalMigration = read('supabase/migrations/20260714051500_align_bip_energy_with_bip_events.sql');
   const ledger = read('src/features/activity/ledger.ts');
+  const overlay = read('components/retention/BipReturnOverlay.tsx');
 
-  assert.match(migration, /v_days_away <= 1/);
-  assert.match(migration, /least\(v_balance, least\(5, greatest\(1, v_days_away - 1\)\)\)/);
-  assert.match(migration, /once per day|max five|never below zero/i);
-  assert.match(migration, /source_type[\s\S]*'inactivity_adjustment'/);
-  assert.match(migration, /when 'streak_milestone' then 3/);
+  assert.match(finalMigration, /v_days_away <= 1/);
+  assert.match(finalMigration, /least\(v_balance, least\(5, greatest\(1, v_days_away - 1\)\)\)/);
+  assert.match(finalMigration, /once per day|max five|never below zero/i);
+  assert.match(finalMigration, /source_type[\s\S]*'inactivity_adjustment'/);
+  assert.match(finalMigration, /from public\.bip_events/);
+  assert.match(finalMigration, /event_type not in \('app_opened', 'streak_milestone'\)/);
+  assert.doesNotMatch(finalMigration, /from public\.activity_events/);
+  assert.match(restoreMigration, /when 'streak_milestone' then 3/);
   assert.match(ledger, /void applyBipEnergyFade\(\)/);
   assert.match(ledger, /Bip Tickets and redeemed room items[\s\S]*never removed/);
+  assert.match(overlay, /await applyBipEnergyFade\(\)/);
   assert.doesNotMatch(ledger, /disabled_no_guilt_retention/);
 });
 
