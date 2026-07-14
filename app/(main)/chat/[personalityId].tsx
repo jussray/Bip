@@ -28,6 +28,15 @@ import {
   Platform,
   SafeAreaView,
 } from 'react-native';
+
+const MOOD_CHIPS = [
+  { key: 'okay',        emoji: '😊' },
+  { key: 'sad',         emoji: '😔' },
+  { key: 'tired',       emoji: '😴' },
+  { key: 'overwhelmed', emoji: '😰' },
+  { key: 'anxious',     emoji: '😬' },
+  { key: 'angry',       emoji: '😤' },
+];
 import { useLocalSearchParams, router } from 'expo-router';
 import {
   sendMessage,
@@ -58,8 +67,10 @@ export default function PersonalityChatScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     makeAssistantMessage(config.greeting),
   ]);
-  const [input, setInput]     = useState('');
-  const [loading, setLoading] = useState(false);
+  const [input, setInput]         = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [showArrival, setShowArrival] = useState(true);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const scrollRef             = useRef<ScrollView>(null);
   const messagesRef           = useRef<ChatMessage[]>(messages);
   const moodRef               = useRef(mood);
@@ -119,8 +130,14 @@ export default function PersonalityChatScreen() {
     const text = input.trim();
     if (!text || loading) return;
 
+    // Dismiss arrival banner on first send
+    if (showArrival) setShowArrival(false);
+
+    // Prepend mood context so companion can tailor its response
+    const fullText = selectedMood ? `[feeling ${selectedMood}] ${text}` : text;
+
     hadActivity.current = true;
-    const userMsg = makeUserMessage(text);
+    const userMsg = makeUserMessage(fullText);
     const nextMessages = [...messages, userMsg];
     setMessages(nextMessages);
     setInput('');
@@ -128,7 +145,7 @@ export default function PersonalityChatScreen() {
     scrollRef.current?.scrollToEnd({ animated: true });
 
     // Pass full history so AI has conversation context
-    const reply     = await sendMessage(id, text, 'chat', mood, nextMessages);
+    const reply     = await sendMessage(id, fullText, 'chat', mood, nextMessages);
     const assistMsg = makeAssistantMessage(reply);
 
     setMessages(m => [...m, assistMsg]);
@@ -151,6 +168,19 @@ export default function PersonalityChatScreen() {
           <Text style={styles.headerTitle}>{config.title}</Text>
         </View>
       </View>
+
+      {/* Arrival intercept banner */}
+      {showArrival && (
+        <TouchableOpacity
+          style={[styles.arrivalBanner, { borderLeftColor: config.accentColor }]}
+          onPress={() => setShowArrival(false)}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.arrivalText, { color: config.accentColor }]}>
+            {'✨ '}{config.name}: {config.greeting}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Messages */}
       <KeyboardAvoidingView
@@ -193,6 +223,28 @@ export default function PersonalityChatScreen() {
           )}
         </ScrollView>
 
+        {/* Mood picker */}
+        <View style={styles.moodWrap}>
+          <Text style={styles.moodLabel}>How's your heart right now?</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.moodRow}
+          >
+            {MOOD_CHIPS.map(({ key, emoji }) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.moodChip, selectedMood === key && { borderColor: config.accentColor + '88', backgroundColor: config.accentColor + '18' }]}
+                onPress={() => setSelectedMood(prev => prev === key ? null : key)}
+              >
+                <Text style={[styles.moodChipText, selectedMood === key && { color: config.accentColor, fontWeight: '700' }]}>
+                  {emoji} {key}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
         {/* Input row */}
         <View style={styles.inputRow}>
           <TextInput
@@ -226,6 +278,31 @@ export default function PersonalityChatScreen() {
 const styles = StyleSheet.create({
   safe:            { flex: 1 },
   flex:            { flex: 1 },
+  // Arrival intercept
+  arrivalBanner:   {
+    marginHorizontal: 16,
+    marginTop:        8,
+    marginBottom:     4,
+    backgroundColor:  'rgba(255,255,255,0.04)',
+    borderLeftWidth:  2,
+    borderRadius:     8,
+    paddingVertical:  9,
+    paddingHorizontal: 12,
+  },
+  arrivalText:     { fontSize: 13, fontStyle: 'italic', lineHeight: 18, opacity: 0.9 },
+  // Mood picker
+  moodWrap:        { paddingHorizontal: 14, paddingBottom: 6, paddingTop: 4 },
+  moodLabel:       { color: '#64748b', fontSize: 11, fontWeight: '600', letterSpacing: 0.4, marginBottom: 6 },
+  moodRow:         { gap: 6, paddingBottom: 2 },
+  moodChip:        {
+    backgroundColor:   'rgba(255,255,255,0.05)',
+    borderWidth:       1,
+    borderColor:       'rgba(255,255,255,0.12)',
+    borderRadius:      20,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+  },
+  moodChipText:    { color: '#94a3b8', fontSize: 12, fontWeight: '500' },
   header:          {
     flexDirection:     'row',
     alignItems:        'center',
