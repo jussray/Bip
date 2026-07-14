@@ -23,11 +23,13 @@
     "figma": {
       "role": "motion-and-hitbox-spec",
       "workspaceUrlEnv": "ROOM_FOREMAN_FIGMA_URL",
+      "importBlueprint": "design-handoff/figma/night-room-runtime-blueprint.svg",
       "requiredStatus": "approved"
     },
     "leonardo": {
       "role": "production-art-generation",
       "workspaceUrlEnv": "ROOM_FOREMAN_LEONARDO_URL",
+      "promptPack": "config/leonardo/night-asset-prompt-pack.json",
       "requiredStatus": "approved"
     },
     "github": {
