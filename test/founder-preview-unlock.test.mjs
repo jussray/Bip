@@ -77,18 +77,25 @@ test('route visibility opens in development while screen safety boundaries remai
   assert.match(parentLayout, /Screen-level RLS, linkage, consent, account, and safety requirements/);
 });
 
-test('Crew preview is interactive local state and the live path uses guarded profiles', () => {
-  const crew = read('src/screens/CrewAccountabilityScreen.tsx');
+test('Crew preview is local-only and the live path uses accepted-only identity', () => {
+  const entry = read('src/screens/CrewAccountabilityScreen.tsx');
+  const crew = read('src/screens/CrewAccountabilityScreenV3.tsx');
+  const service = read('src/services/crewAccountabilityServiceV2.ts');
 
-  assert.match(crew, /PREVIEW_MEMBERS/);
+  assert.match(entry, /CrewAccountabilityScreenV3/);
+  assert.match(crew, /PREVIEW_PROFILES/);
   assert.match(crew, /PREVIEW_MINE/);
   assert.match(crew, /PREVIEW_FEED/);
   assert.match(crew, /if \(previewSample\)/);
   assert.match(crew, /setMyCheckIns/);
   assert.match(crew, /setFeed/);
-  assert.match(crew, /rpc\('get_public_circle_profiles'/);
+  assert.match(crew, /rpc\('get_crew_connection_profiles'/);
+  assert.doesNotMatch(crew, /get_public_circle_profiles/);
   assert.doesNotMatch(crew, /\.from\('circle_profiles'\)/);
-  assert.match(crew, /without writing anything to Supabase/);
+  assert.match(crew, /Nothing is written to Supabase/);
+  assert.match(crew, /leave Crew/);
+  assert.match(service, /rpc\('create_crew_check_in'/);
+  assert.doesNotMatch(service, /MAX_SHARES/);
 });
 
 test('Bridge and Scrapbook samples are labeled and do not pretend to be backend proof', () => {
@@ -116,6 +123,8 @@ test('OpenAI and Anthropic share one truthful preview handoff', () => {
   assert.match(handoff, /age verification/);
   assert.match(handoff, /Row Level Security/);
   assert.match(handoff, /fake preview points/);
+  assert.match(handoff, /get_crew_connection_profiles/);
+  assert.match(handoff, /no numeric Crew cap/i);
 });
 
 test('both More screens expose the all-features launcher only in Founder Preview', () => {
