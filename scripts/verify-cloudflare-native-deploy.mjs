@@ -70,6 +70,16 @@ export function evaluateReleaseMarker(marker, expectedSha) {
   };
 }
 
+export function classifyCloudflareReadiness(checkEvaluation, releaseEvaluation) {
+  if (checkEvaluation.failed.length > 0) return 'worker-failed';
+  if (checkEvaluation.unsuccessful.length > 0) return 'worker-unsuccessful';
+  if (checkEvaluation.missing.length > 0) return 'worker-missing';
+  if (checkEvaluation.pending.length > 0) return 'worker-pending';
+  if (!releaseEvaluation.actualSha) return 'pages-marker-missing';
+  if (!releaseEvaluation.complete) return 'pages-marker-stale';
+  return 'ready';
+}
+
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -126,6 +136,73 @@ function publicCheckEvidence(run) {
   };
 }
 
+export function buildCloudflareEvidence({
+  repository,
+  sha,
+  releaseUrl,
+  checkEvaluation,
+  releaseEvaluation,
+  allCheckRuns = [],
+  startedAtMs,
+  observedAtMs,
+  status,
+  observerError = null,
+}) {
+  const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation);
+  const complete = checkEvaluation.complete && releaseEvaluation.complete;
+  const optionalChecks = Object.fromEntries(
+    OPTIONAL_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(selectNewestCheck(allCheckRuns, name))]),
+  );
+
+  return {
+    version: 3,
+    repository,
+    commitSha: sha,
+    expectedSha: String(sha ?? '').trim().toLowerCase(),
+    status,
+    complete,
+    readinessState,
+    startedAt: new Date(startedAtMs).toISOString(),
+    observedAt: new Date(observedAtMs).toISOString(),
+    elapsedMs: Math.max(0, observedAtMs - startedAtMs),
+    verifiedAt: complete ? new Date(observedAtMs).toISOString() : null,
+    deploymentMode: 'cloudflare-native-git-integration',
+    apiTokenRequiredInGitHub: false,
+    observerError,
+    checkSummary: {
+      missing: [...checkEvaluation.missing],
+      pending: [...checkEvaluation.pending],
+      failed: [...checkEvaluation.failed],
+      unsuccessful: [...checkEvaluation.unsuccessful],
+    },
+    requiredChecks: Object.fromEntries(
+      REQUIRED_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(checkEvaluation.selected[name])]),
+    ),
+    optionalChecks,
+    pagesRelease: {
+      url: releaseUrl,
+      commitSha: releaseEvaluation.actualSha,
+      expectedSha: releaseEvaluation.expectedSha,
+      complete: releaseEvaluation.complete,
+      marker: releaseEvaluation.marker,
+    },
+  };
+}
+
+function writeEvidence(evidencePath, evidence) {
+  fs.mkdirSync(path.dirname(evidencePath), {recursive: true});
+  fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+}
+
+function waitingFor(checkEvaluation, releaseEvaluation) {
+  return [
+    ...checkEvaluation.missing,
+    ...checkEvaluation.pending,
+    ...checkEvaluation.unsuccessful,
+    ...(releaseEvaluation.complete ? [] : [`Pages release marker ${releaseEvaluation.actualSha ?? 'missing'} -> ${releaseEvaluation.expectedSha}`]),
+  ];
+}
+
 async function verifyCloudflareNativeDeploy() {
   const repository = process.env.GITHUB_REPOSITORY;
   const sha = process.env.GITHUB_SHA;
@@ -139,65 +216,99 @@ async function verifyCloudflareNativeDeploy() {
     throw new Error('GITHUB_REPOSITORY, GITHUB_SHA, and GITHUB_TOKEN are required.');
   }
 
-  const deadline = Date.now() + timeoutMs;
-  let checkEvaluation;
+  const startedAtMs = Date.now();
+  const deadline = startedAtMs + timeoutMs;
+  let checkEvaluation = evaluateCloudflareChecks([]);
   let releaseEvaluation = evaluateReleaseMarker(null, sha);
   let allCheckRuns = [];
+  let latestEvidence = buildCloudflareEvidence({
+    repository,
+    sha,
+    releaseUrl,
+    checkEvaluation,
+    releaseEvaluation,
+    allCheckRuns,
+    startedAtMs,
+    observedAtMs: startedAtMs,
+    status: 'starting',
+  });
+  writeEvidence(evidencePath, latestEvidence);
 
   while (Date.now() < deadline) {
-    allCheckRuns = await fetchCheckRuns({repository, sha, token});
-    checkEvaluation = evaluateCloudflareChecks(allCheckRuns);
-
-    if (checkEvaluation.failed.length > 0) {
-      throw new Error(`Cloudflare Worker deployment failed: ${checkEvaluation.failed.join(', ')}`);
+    const observedAtMs = Date.now();
+    try {
+      allCheckRuns = await fetchCheckRuns({repository, sha, token});
+    } catch (error) {
+      latestEvidence = buildCloudflareEvidence({
+        repository,
+        sha,
+        releaseUrl,
+        checkEvaluation,
+        releaseEvaluation,
+        allCheckRuns,
+        startedAtMs,
+        observedAtMs,
+        status: 'observer-failed',
+        observerError: error instanceof Error ? error.message : String(error),
+      });
+      writeEvidence(evidencePath, latestEvidence);
+      throw error;
     }
 
+    checkEvaluation = evaluateCloudflareChecks(allCheckRuns);
     const marker = await fetchReleaseMarker(releaseUrl).catch(() => null);
     releaseEvaluation = evaluateReleaseMarker(marker, sha);
+    const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation);
+    const complete = checkEvaluation.complete && releaseEvaluation.complete;
 
-    if (checkEvaluation.complete && releaseEvaluation.complete) break;
+    latestEvidence = buildCloudflareEvidence({
+      repository,
+      sha,
+      releaseUrl,
+      checkEvaluation,
+      releaseEvaluation,
+      allCheckRuns,
+      startedAtMs,
+      observedAtMs,
+      status: complete ? 'succeeded' : checkEvaluation.failed.length > 0 ? 'failed' : 'observing',
+    });
+    writeEvidence(evidencePath, latestEvidence);
 
-    const waitingFor = [
-      ...checkEvaluation.missing,
-      ...checkEvaluation.pending,
-      ...checkEvaluation.unsuccessful,
-      ...(releaseEvaluation.complete ? [] : [`Pages release marker ${releaseEvaluation.actualSha ?? 'missing'} -> ${sha}`]),
-    ];
-    console.log(`Waiting for exact production release: ${[...new Set(waitingFor)].join(', ')}`);
+    if (checkEvaluation.failed.length > 0) {
+      throw new Error(
+        `Cloudflare Worker deployment failed (${readinessState}): ${checkEvaluation.failed.join(', ')}`,
+      );
+    }
+
+    if (complete) {
+      console.log(JSON.stringify(latestEvidence, null, 2));
+      return;
+    }
+
+    const blockers = [...new Set(waitingFor(checkEvaluation, releaseEvaluation))];
+    console.log(
+      `Waiting for exact production release [${readinessState}] after ${latestEvidence.elapsedMs}ms: ${blockers.join(', ')}`,
+    );
     await sleep(pollMs);
   }
 
-  if (!checkEvaluation?.complete || !releaseEvaluation.complete) {
-    throw new Error(
-      `Timed out waiting for the exact production release. Worker missing: ${checkEvaluation?.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation?.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation?.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; expected: ${sha}`,
-    );
-  }
-
-  const optionalChecks = Object.fromEntries(
-    OPTIONAL_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(selectNewestCheck(allCheckRuns, name))]),
-  );
-
-  const evidence = {
-    version: 2,
+  const observedAtMs = Date.now();
+  latestEvidence = buildCloudflareEvidence({
     repository,
-    commitSha: sha,
-    verifiedAt: new Date().toISOString(),
-    deploymentMode: 'cloudflare-native-git-integration',
-    apiTokenRequiredInGitHub: false,
-    requiredChecks: Object.fromEntries(
-      REQUIRED_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(checkEvaluation.selected[name])]),
-    ),
-    optionalChecks,
-    pagesRelease: {
-      url: releaseUrl,
-      commitSha: releaseEvaluation.actualSha,
-      marker: releaseEvaluation.marker,
-    },
-  };
+    sha,
+    releaseUrl,
+    checkEvaluation,
+    releaseEvaluation,
+    allCheckRuns,
+    startedAtMs,
+    observedAtMs,
+    status: 'timed-out',
+  });
+  writeEvidence(evidencePath, latestEvidence);
 
-  fs.mkdirSync(path.dirname(evidencePath), {recursive: true});
-  fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
-  console.log(JSON.stringify(evidence, null, 2));
+  throw new Error(
+    `Timed out waiting for the exact production release [${latestEvidence.readinessState}]. Worker missing: ${checkEvaluation.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; expected: ${sha}; evidence: ${evidencePath}`,
+  );
 }
 
 const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
