@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { BridgeScreen } from '@screens/BridgeScreen';
-import { BridgeResponsePreferenceDock } from '@/components/bridge/BridgeResponsePreferenceDock';
+import { BridgeResponsePreferenceDock } from '../../components/bridge/BridgeResponsePreferenceDock';
 import { useAppContext } from '@/context/AppContext';
 import { navigateTo } from '@/utils/navigation';
 import { THEME_PACKS, SEKRET_PROFILES } from '@/constants/theme';
