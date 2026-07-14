@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -15,6 +15,7 @@ import {
   type PreviewFeatureStatus,
 } from '@/constants/founderPreview';
 import { useAppContext } from '@/context/AppContext';
+import { logEvent } from '@/services/logEvent';
 
 const STATUS_COPY: Record<PreviewFeatureStatus, { label: string; color: string }> = {
   live: { label: 'OPEN NOW', color: '#86efac' },
@@ -38,6 +39,14 @@ export default function FounderFeaturePreviewRoute() {
   const { setUserSide } = useAppContext();
   const enabled = isFounderPreviewEnabled();
   const grouped = useMemo(() => groupFeatures(FOUNDER_PREVIEW_FEATURES), []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    void logEvent('founder_preview_opened', {
+      catalogVersion: 'v1',
+      featureCount: FOUNDER_PREVIEW_FEATURES.length,
+    });
+  }, [enabled]);
 
   if (!enabled) {
     return (
