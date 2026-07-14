@@ -54,14 +54,26 @@ test('Room and History use meaningful return value rather than streak shame', ()
   assert.doesNotMatch(receipts, /journalText|messageContent|transcript/);
 });
 
-test('public Circle keeps support actions but hides popularity totals', () => {
+test('public Circle keeps support actions and makes totals owner-only', () => {
   const circle = read('app/(teen)/circle/feed-v2.tsx');
+  const repository = read('src/features/circle/circleRepository.ts');
+  const migration = read('supabase/migrations/20260714054500_make_circle_support_counts_owner_only.sql');
 
-  assert.match(circle, /Support is visible without popularity totals/);
+  assert.match(circle, /Only the person who posted can see their private totals/);
+  assert.match(circle, /support on your bip · only you/);
+  assert.match(circle, /item\.isOwnPost/);
+  assert.match(circle, /item\.viewerReaction === reaction\.key/);
   assert.match(circle, /accessibilityLabel={`Support with \$\{reaction\.label\}`}/);
-  assert.match(circle, /selected \? 'sent' : reaction\.label/);
   assert.doesNotMatch(circle, /const count = item\.reactions\[reaction\.key\]/);
   assert.doesNotMatch(circle, /busy \? '…' : count/);
+
+  assert.match(repository, /rpc\('get_public_circle_feed'/);
+  assert.match(repository, /row\.is_own_post \? normalizeReactions/);
+  assert.doesNotMatch(repository, /select\('id,user_id,text,post_mood,media_kind,reactions,created_at'\)/);
+
+  assert.match(migration, /case when p\.user_id = v_user then p\.reactions else null end/);
+  assert.match(migration, /return jsonb_build_object\('saved', true, 'reaction', p_emoji\)/);
+  assert.match(migration, /revoke select on table public\.public_circle_posts from anon, authenticated/);
 });
 
 test('Bridge carries a teen-selected response request without private content', () => {
