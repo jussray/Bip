@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 import {
   PASSWORD_RECOVERY_PATH,
@@ -9,6 +10,12 @@ import {
   validateNewPassword,
   validateRecoveryEmail,
 } from '../src/features/auth/passwordRecovery.ts';
+
+const loginSource = fs.readFileSync('app/(auth)/login.tsx', 'utf8');
+const forgotSource = fs.readFileSync('app/(auth)/forgot-password.tsx', 'utf8');
+const resetSource = fs.readFileSync('app/(auth)/reset-password.tsx', 'utf8');
+const appConfig = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+const setupDoc = fs.readFileSync('docs/PASSWORD_RECOVERY.md', 'utf8');
 
 test('normalizes and validates recovery emails without changing account semantics', () => {
   assert.equal(normalizeRecoveryEmail('  Teen@Example.COM  '), 'teen@example.com');
@@ -95,4 +102,24 @@ test('validates new password length and confirmation exactly', () => {
   assert.equal(validateNewPassword('short', 'short'), 'Password must be at least 8 characters.');
   assert.equal(validateNewPassword('password1', 'password2'), "Passwords don't match.");
   assert.equal(validateNewPassword(' password ', ' password '), null);
+});
+
+test('wires the public request and recovery screens without account enumeration', () => {
+  assert.match(loginSource, /Forgot password\?/);
+  assert.match(loginSource, /\/(auth\)\/forgot-password/);
+  assert.match(forgotSource, /resetPasswordForEmail/);
+  assert.match(forgotSource, /If an account matches that email/);
+  assert.doesNotMatch(forgotSource, /We sent a password-reset link to/);
+  assert.match(resetSource, /PASSWORD_RECOVERY/);
+  assert.match(resetSource, /exchangeCodeForSession/);
+  assert.match(resetSource, /window\.history\.replaceState/);
+  assert.doesNotMatch(resetSource, /auth\.getSession\(\)/);
+  assert.doesNotMatch(`${forgotSource}\n${resetSource}`, /console\.(log|warn|error)/);
+});
+
+test('native scheme and hosted redirect requirements remain explicit', () => {
+  assert.equal(appConfig.expo.scheme, 'sekret');
+  assert.match(setupDoc, /https:\/\/sekretbip\.net\/reset-password/);
+  assert.match(setupDoc, /sekret:\/\/reset-password/);
+  assert.match(setupDoc, /never logs? recovery tokens|never logged/i);
 });
