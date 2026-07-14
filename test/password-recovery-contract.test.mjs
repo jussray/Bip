@@ -106,7 +106,7 @@ test('validates new password length and confirmation exactly', () => {
 
 test('wires the public request and recovery screens without account enumeration', () => {
   assert.match(loginSource, /Forgot password\?/);
-  assert.match(loginSource, /\/(auth\)\/forgot-password/);
+  assert.match(loginSource, /\/\(auth\)\/forgot-password/);
   assert.match(forgotSource, /resetPasswordForEmail/);
   assert.match(forgotSource, /If an account matches that email/);
   assert.doesNotMatch(forgotSource, /We sent a password-reset link to/);
