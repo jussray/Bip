@@ -7,7 +7,7 @@ const sourceMigration = fs.readFileSync(
   'utf8',
 );
 const hardeningMigration = fs.readFileSync(
-  'supabase/migrations/20260714221500_revoke_bridge_signal_trigger_execute.sql',
+  'supabase/migrations/20260714221745_revoke_bridge_signal_trigger_execute.sql',
   'utf8',
 );
 
