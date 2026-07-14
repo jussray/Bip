@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 const REQUIRED_STATUS_ORDER = ['planned', 'contract', 'integrated', 'verified', 'released'];
 const VERIFICATION_STATES = new Set(['not-run', 'partial', 'blocked', 'passed']);
 const RELEASED_ROLLOUT_STATES = new Set(['controlled', 'enabled', 'released']);
+const LEDGER_EXTENSION_DIR = 'implementation-ledger.extensions';
 
 export function isTrackedDesignPath(filePath) {
   const normalized = filePath.replaceAll('\\', '/');
@@ -178,6 +179,44 @@ export function validateImplementationLedger(ledger, { rootDir = process.cwd() }
   return [...new Set(errors)];
 }
 
+function parseExtensionFeatures(extension, filename) {
+  if (Array.isArray(extension)) return extension;
+  if (extension && typeof extension === 'object' && Array.isArray(extension.features)) {
+    return extension.features;
+  }
+  if (extension && typeof extension === 'object' && isNonEmptyString(extension.id)) {
+    return [extension];
+  }
+  throw new Error(`${filename} must be a feature object, a feature array, or an object with a features array.`);
+}
+
+export function loadImplementationLedger({ rootDir = process.cwd() } = {}) {
+  const ledgerPath = path.join(rootDir, 'implementation-ledger.json');
+  if (!fs.existsSync(ledgerPath)) {
+    throw new Error('implementation-ledger.json is missing.');
+  }
+
+  const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
+  const extensionDir = path.join(rootDir, LEDGER_EXTENSION_DIR);
+  if (!fs.existsSync(extensionDir)) return ledger;
+
+  const extensionFiles = fs.readdirSync(extensionDir)
+    .filter(filename => filename.endsWith('.json'))
+    .sort();
+
+  const extensionFeatures = [];
+  for (const filename of extensionFiles) {
+    const extensionPath = path.join(extensionDir, filename);
+    const parsed = JSON.parse(fs.readFileSync(extensionPath, 'utf8'));
+    extensionFeatures.push(...parseExtensionFeatures(parsed, filename));
+  }
+
+  return {
+    ...ledger,
+    features: [...(ledger.features ?? []), ...extensionFeatures],
+  };
+}
+
 export function changedFilesSince(ref, { rootDir = process.cwd() } = {}) {
   const output = execFileSync('git', ['diff', '--name-only', `${ref}...HEAD`], {
     cwd: rootDir,
@@ -190,12 +229,15 @@ export function changedFilesSince(ref, { rootDir = process.cwd() } = {}) {
 export function validateChangedDesignFiles(changedFiles) {
   const trackedDesignChanges = changedFiles.filter(isTrackedDesignPath);
   if (trackedDesignChanges.length === 0) return [];
-  if (changedFiles.includes('implementation-ledger.json')) return [];
+
+  const hasLedgerEvidence = changedFiles.includes('implementation-ledger.json')
+    || changedFiles.some(filePath => /^implementation-ledger\.extensions\/.+\.json$/.test(filePath));
+  if (hasLedgerEvidence) return [];
 
   return [
-    'Architecture, roadmap, status, or agent-skill files changed without implementation-ledger.json.',
+    'Architecture, roadmap, status, or agent-skill files changed without implementation-ledger evidence.',
     ...trackedDesignChanges.map((filePath) => `  - ${filePath}`),
-    'Update the ledger with the honest evidence state, or remove the unsupported implementation claim.',
+    'Update implementation-ledger.json or add a validated extension entry, or remove the unsupported implementation claim.',
   ];
 }
 
@@ -212,18 +254,13 @@ function parseArgs(argv) {
 
 function main() {
   const rootDir = process.cwd();
-  const ledgerPath = path.join(rootDir, 'implementation-ledger.json');
   const errors = [];
 
-  if (!fs.existsSync(ledgerPath)) {
-    errors.push('implementation-ledger.json is missing.');
-  } else {
-    try {
-      const ledger = JSON.parse(fs.readFileSync(ledgerPath, 'utf8'));
-      errors.push(...validateImplementationLedger(ledger, { rootDir }));
-    } catch (error) {
-      errors.push(`implementation-ledger.json is invalid JSON: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  try {
+    const ledger = loadImplementationLedger({ rootDir });
+    errors.push(...validateImplementationLedger(ledger, { rootDir }));
+  } catch (error) {
+    errors.push(`implementation ledger is invalid: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   const { changedSince } = parseArgs(process.argv.slice(2));
