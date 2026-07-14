@@ -6,6 +6,7 @@ const expectedServerNames = [
   'cloudflare-builds',
   'cloudflare-docs',
   'cloudflare-observability',
+  'context7',
   'figma',
   'github',
   'playwright',
@@ -14,6 +15,7 @@ const expectedServerNames = [
 
 const expectedRemoteUrls = {
   github: 'https://api.githubcopilot.com/mcp/',
+  context7: 'https://mcp.context7.com/mcp',
   figma: 'https://mcp.figma.com/mcp',
   'cloudflare-docs': 'https://docs.mcp.cloudflare.com/mcp',
   'cloudflare-builds': 'https://builds.mcp.cloudflare.com/mcp',
@@ -67,6 +69,14 @@ function validateRemoteServers(relativePath, servers) {
     githubHeaders['X-MCP-Lockdown'] === 'true',
     `${relativePath}:github lockdown mode must remain enabled`,
   );
+  assert(
+    githubHeaders['X-MCP-Insiders'] === undefined,
+    `${relativePath}:github insiders mode must remain a private opt-in`,
+  );
+  assert(
+    githubHeaders.Authorization === undefined,
+    `${relativePath}:github authentication must not be committed`,
+  );
 }
 
 function validateSupabase(relativePath, server, expectedProjectRef) {
@@ -116,6 +126,7 @@ function assertNoCommittedSecrets(relativePath, parsed) {
     /Bearer\s+[A-Za-z0-9._-]{12,}/i,
     /SUPABASE_ACCESS_TOKEN/,
     /CLOUDFLARE_API_TOKEN/,
+    /NETDATA_CLOUD_API_TOKEN/,
   ];
 
   for (const pattern of secretPatterns) {
@@ -149,6 +160,10 @@ validatePlaywright('.vscode/mcp.json', vscodeServers.playwright, true);
 
 assert(!projectServers['cloudflare-api'], '.mcp.json must not enable the broad Cloudflare API server');
 assert(!vscodeServers['cloudflare-api'], '.vscode/mcp.json must not enable the broad Cloudflare API server');
+assert(!projectServers['netdata-cloud'], '.mcp.json must not enable Netdata without persistent Bip-owned hosts');
+assert(!vscodeServers['netdata-cloud'], '.vscode/mcp.json must not enable Netdata without persistent Bip-owned hosts');
+assert(!projectServers.dbhub, '.mcp.json must use the scoped Supabase server instead of generic DBHub access');
+assert(!vscodeServers.dbhub, '.vscode/mcp.json must use the scoped Supabase server instead of generic DBHub access');
 
 assertNoCommittedSecrets('.mcp.json', projectConfig);
 assertNoCommittedSecrets('.mcp.example.json', exampleConfig);
