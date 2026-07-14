@@ -27,10 +27,13 @@ test('the catalog covers every canonical Teen and Parent route', () => {
   const preview = read('src/constants/founderPreview.ts');
   const teenRoutes = routeValues(read('src/teen/routes.ts'));
   const parentRoutes = routeValues(read('src/parent/routes.ts'));
-  const allowedCanonicalRedirects = new Set(['/(teen)/user-room']);
+  const parameterizedOrCanonicalRedirects = new Set([
+    '/(teen)/user-room',
+    '/(teen)/companion-chat',
+  ]);
 
   for (const route of [...teenRoutes, ...parentRoutes]) {
-    if (allowedCanonicalRedirects.has(route)) continue;
+    if (parameterizedOrCanonicalRedirects.has(route)) continue;
     assert.equal(preview.includes(route), true, `Founder Preview catalog is missing ${route}`);
   }
 
