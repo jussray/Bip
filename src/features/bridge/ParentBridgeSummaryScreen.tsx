@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import { ParentBridgeResponseRequestCard } from '@/components/bridge/ParentBridgeResponseRequestCard';
+import { ParentBridgeResponseRequestCard } from '../../../components/bridge/ParentBridgeResponseRequestCard';
 import { ParentBridgeSummaryInbox } from '@/features/bridge/ParentBridgeSummaryInbox';
 
 export function ParentBridgeSummaryScreen() {
