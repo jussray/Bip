@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   isTrackedDesignPath,
+  loadImplementationLedger,
   validateChangedDesignFiles,
   validateImplementationLedger,
 } from '../scripts/verify-implementation-ledger.mjs';
@@ -112,6 +113,25 @@ test('accepts honest planned work without invented runtime paths', () => {
   });
 });
 
+test('loads validated feature extensions without rewriting the base ledger', () => {
+  withTempRepo((rootDir) => {
+    fs.writeFileSync(
+      path.join(rootDir, 'implementation-ledger.json'),
+      JSON.stringify(ledger([baseFeature()]), null, 2),
+    );
+    fs.mkdirSync(path.join(rootDir, 'implementation-ledger.extensions'), { recursive: true });
+    fs.writeFileSync(
+      path.join(rootDir, 'implementation-ledger.extensions', 'extra.json'),
+      JSON.stringify({ features: [baseFeature({ id: 'extension-feature' })] }, null, 2),
+    );
+
+    const combined = loadImplementationLedger({ rootDir });
+    assert.equal(combined.features.length, 2);
+    assert.equal(combined.features[1].id, 'extension-feature');
+    assert.deepEqual(validateImplementationLedger(combined, { rootDir }), []);
+  });
+});
+
 test('tracks architecture, roadmap, sprint, and agent-skill documents', () => {
   assert.equal(isTrackedDesignPath('docs/CONTROL_ROOM_ARCHITECTURE.md'), true);
   assert.equal(isTrackedDesignPath('docs/COMPANION_ENGINE_DESIGN.md'), true);
@@ -120,7 +140,7 @@ test('tracks architecture, roadmap, sprint, and agent-skill documents', () => {
   assert.equal(isTrackedDesignPath('docs/legal/privacy-policy.md'), false);
 });
 
-test('requires ledger updates when tracked design files change', () => {
+test('requires ledger evidence when tracked design files change', () => {
   const errors = validateChangedDesignFiles([
     'docs/CONTROL_ROOM_ARCHITECTURE.md',
     'worker/sekret-reply.ts',
@@ -130,5 +150,10 @@ test('requires ledger updates when tracked design files change', () => {
   assert.deepEqual(validateChangedDesignFiles([
     'docs/CONTROL_ROOM_ARCHITECTURE.md',
     'implementation-ledger.json',
+  ]), []);
+
+  assert.deepEqual(validateChangedDesignFiles([
+    'docs/CONTROL_ROOM_ARCHITECTURE.md',
+    'implementation-ledger.extensions/humane-retention-loops.json',
   ]), []);
 });

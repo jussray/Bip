@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getSupabase } from '@/utils/supabase';
+import { applyBipEnergyFade } from './bipEnergy';
 import { subscribeToEvents, type ActivityEventType } from './events';
 
 export const POINTS_PER_EVENT: Partial<Record<ActivityEventType, number>> = {
@@ -12,6 +13,8 @@ export const POINTS_PER_EVENT: Partial<Record<ActivityEventType, number>> = {
   crew_checkin: 6,
   goal_completed: 4,
   streak_milestone: 3,
+  bridge_shared: 5,
+  bippin2_step_completed: 4,
 };
 
 export interface Tier {
@@ -52,14 +55,16 @@ export interface PointsLedger {
 }
 
 const BREAKDOWN_TEMPLATE: Omit<BreakdownRow, 'count' | 'pts'>[] = [
-  { key: 'mood', label: 'mood logs', each: POINTS_PER_EVENT.mood_logged!, emoji: '💭' },
-  { key: 'journal', label: 'journal entries', each: POINTS_PER_EVENT.journal_saved!, emoji: '📓' },
+  { key: 'mood', label: 'mood check-ins', each: POINTS_PER_EVENT.mood_logged!, emoji: '💭' },
+  { key: 'journal', label: 'pages written', each: POINTS_PER_EVENT.journal_saved!, emoji: '📓' },
   { key: 'voice', label: 'voice bips', each: POINTS_PER_EVENT.voice_completed!, emoji: '🎤' },
   { key: 'circle', label: 'circle drops', each: POINTS_PER_EVENT.circle_post!, emoji: '🌫️' },
-  { key: 'comfort', label: 'comfort sessions', each: POINTS_PER_EVENT.comfort_completed!, emoji: '🤍' },
+  { key: 'comfort', label: 'comfort and resets', each: POINTS_PER_EVENT.comfort_completed!, emoji: '🤍' },
   { key: 'crew', label: 'crew check-ins', each: POINTS_PER_EVENT.crew_checkin!, emoji: '🤝' },
-  { key: 'growth', label: 'growth tracks', each: POINTS_PER_EVENT.goal_completed!, emoji: '🌱' },
-  { key: 'streak', label: 'streak days', each: POINTS_PER_EVENT.streak_milestone!, emoji: '🌙' },
+  { key: 'growth', label: 'growth steps', each: POINTS_PER_EVENT.goal_completed!, emoji: '🌱' },
+  { key: 'rhythm', label: 'return rhythm bonuses', each: POINTS_PER_EVENT.streak_milestone!, emoji: '🌙' },
+  { key: 'bridge', label: 'intentional shares', each: POINTS_PER_EVENT.bridge_shared!, emoji: '🌉' },
+  { key: 'learning', label: 'Bippin 2 steps', each: POINTS_PER_EVENT.bippin2_step_completed!, emoji: '⭐' },
 ];
 
 const KEY_TO_EVENTS: Record<string, ActivityEventType[]> = {
@@ -70,7 +75,9 @@ const KEY_TO_EVENTS: Record<string, ActivityEventType[]> = {
   comfort: ['comfort_completed', 'breathe_completed'],
   crew: ['crew_checkin'],
   growth: ['goal_completed'],
-  streak: ['streak_milestone'],
+  rhythm: ['streak_milestone'],
+  bridge: ['bridge_shared'],
+  learning: ['bippin2_step_completed'],
 };
 
 const DEFAULT_LEDGER: PointsLedger = {
@@ -88,17 +95,6 @@ async function currentUserId(): Promise<string | null> {
     return data.user?.id ?? null;
   } catch {
     return null;
-  }
-}
-
-async function applyInactivityAdjustment(): Promise<void> {
-  const supabase = getSupabase();
-  if (!supabase) return;
-  try {
-    const { error } = await supabase.rpc('apply_inactivity_point_adjustment');
-    if (error && __DEV__) console.warn('[ledger] inactivity adjustment failed:', error.message);
-  } catch (error) {
-    if (__DEV__) console.warn('[ledger] inactivity adjustment threw:', error);
   }
 }
 
@@ -156,12 +152,13 @@ export interface InitialCounts {
  * Initializes the server-owned points economy.
  *
  * The database trigger awards app-action points after a bip_events insert.
- * The client never writes directly to point_transactions, preventing duplicate
- * awards and keeping chore bonuses, inactivity adjustments, and redemptions in
- * the same authoritative wallet.
+ * On teen login/session restore, Bip Energy may fade after time away using the
+ * existing one-day grace, once-per-day, max-five, never-below-zero contract.
+ * Bip Tickets and redeemed room items are separate permanent value and are
+ * never removed by this adjustment.
  */
 export function initPointLedger(_initialCounts?: InitialCounts): () => void {
-  void applyInactivityAdjustment();
+  void applyBipEnergyFade();
   return () => {};
 }
 

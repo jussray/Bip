@@ -5,6 +5,7 @@
  * payloads stay minimal and must never contain private journal or mood text.
  */
 import { getSupabase } from '@/utils/supabase';
+import { recordMeaningfulReturnReceipt } from '@/features/retention/meaningfulReturn';
 import { bumpStreak } from '../../../services/sekretMemory';
 
 export type ActivityEventType =
@@ -19,6 +20,9 @@ export type ActivityEventType =
   | 'companion_message'
   | 'app_opened'
   | 'goal_completed'
+  | 'bridge_shared'
+  | 'memory_reviewed'
+  | 'bippin2_step_completed'
   | 'streak_milestone';
 
 export interface ActivityEvent {
@@ -41,6 +45,10 @@ export interface ActivityEventMeta {
   completionKind?: 'guided' | 'breath' | 'workout';
   exerciseCount?: number;
   intensity?: 'light' | 'medium' | 'high';
+  route?: string;
+  receiptKey?: string;
+  category?: 'understand' | 'express' | 'regulate' | 'connect' | 'grow';
+  responsePreference?: 'listen' | 'comfort' | 'help_plan' | 'check_later' | 'give_space';
 }
 
 type Subscriber = (event: ActivityEvent) => void;
@@ -79,6 +87,10 @@ async function persistEvent(userId: string, event: ActivityEvent): Promise<void>
 export function emitEvent(type: ActivityEventType, meta?: ActivityEventMeta): void {
   const event: ActivityEvent = { type, occurredAt: new Date().toISOString(), meta };
   notifySubscribers(event);
+  void recordMeaningfulReturnReceipt(event);
+
+  // Keep the legacy counter for compatibility while new product surfaces use
+  // active days and meaningful actions. Missing a day never removes points.
   void bumpStreak();
 
   void (async () => {
@@ -89,7 +101,7 @@ export function emitEvent(type: ActivityEventType, meta?: ActivityEventMeta): vo
       const userId = data?.user?.id;
       if (userId) await persistEvent(userId, event);
     } catch {
-      // The reset must keep working offline or during an expired session.
+      // Meaningful actions must keep working offline or during an expired session.
     }
   })();
 }

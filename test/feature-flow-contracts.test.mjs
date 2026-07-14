@@ -23,14 +23,26 @@ test('canonical state hydrates durable feature records after the offline cache',
   assert.equal(state.includes('mergeById'), true);
 });
 
-test('public Circle reconciles saved rows and loads identities through the guarded RPC', () => {
+test('public Circle uses owner-only support totals and guarded identity RPCs', () => {
   const repository = read('src/features/circle/circleRepository.ts');
   const screen = read('app/(teen)/circle/feed-v2.tsx');
-  assert.equal(repository.includes(".select('id,user_id,text,post_mood,media_kind,reactions,created_at')"), true);
+  const ownerOnlyMigration = read('supabase/migrations/20260714054500_make_circle_support_counts_owner_only.sql');
+
+  assert.equal(repository.includes("rpc('get_public_circle_feed'"), true);
+  assert.equal(repository.includes("rpc('create_public_circle_post'"), true);
+  assert.equal(repository.includes(".select('id,user_id,text,post_mood,media_kind,reactions,created_at')"), false);
+  assert.equal(repository.includes('row.is_own_post ? normalizeReactions'), true);
   assert.equal(repository.includes('react_to_public_circle_post'), true);
   assert.equal(repository.includes('get_public_circle_profiles'), true);
   assert.equal(repository.includes(".from('circle_profiles')"), false);
+
+  assert.equal(ownerOnlyMigration.includes('get_public_circle_feed'), true);
+  assert.equal(ownerOnlyMigration.includes('case when p.user_id = v_user then p.reactions else null end'), true);
+  assert.equal(ownerOnlyMigration.includes('revoke select on table public.public_circle_posts from anon, authenticated'), true);
+
   assert.equal(screen.includes('createPublicCirclePost'), true);
+  assert.equal(screen.includes('support on your bip · only you'), true);
+  assert.equal(screen.includes('item.viewerReaction === reaction.key'), true);
   assert.equal(screen.includes('Date.now()'), false);
   assert.equal(screen.includes('For You'), false);
   assert.equal(screen.includes('Following'), false);

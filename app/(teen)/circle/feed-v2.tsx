@@ -116,12 +116,9 @@ export default function PublicCircleFeedV2() {
     setBusyReaction(key);
     setError(null);
     try {
-      const counts = await reactToPublicCirclePost(item.id, reaction);
+      const savedReaction = await reactToPublicCirclePost(item.id, reaction);
       setItems(current => current.map(post => post.id === item.id
-        ? { ...post, reactions: counts }
-        : post));
-      setCirclePosts(current => current.map(post => post.id === item.id
-        ? { ...post, reactions: counts }
+        ? { ...post, viewerReaction: savedReaction }
         : post));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The reaction was not saved.');
@@ -159,7 +156,9 @@ export default function PublicCircleFeedV2() {
       <View style={styles.truthCard}>
         <View style={{ flex: 1 }}>
           <Text style={styles.truthTitle}>Newest bips</Text>
-          <Text style={styles.truthBody}>One real feed. Anonymous names stay separate from private accounts.</Text>
+          <Text style={styles.truthBody}>
+            Support has no public score. Only the person who posted can see their private totals.
+          </Text>
         </View>
         <View style={styles.switchWrap}>
           <Text style={styles.switchLabel}>hide heavy</Text>
@@ -246,19 +245,40 @@ export default function PublicCircleFeedV2() {
 
             <Text style={styles.body}>{item.text}</Text>
 
+            {item.isOwnPost ? (
+              <View style={styles.privateSupportCard} accessibilityLabel="Private support totals, visible only to you">
+                <Text style={styles.privateSupportTitle}>🔒 support on your bip · only you</Text>
+                <View style={styles.privateSupportRow}>
+                  {REACTIONS.map(reaction => (
+                    <View key={reaction.key} style={styles.privateSupportPill}>
+                      <Text style={styles.privateSupportText}>
+                        {reaction.emoji} {item.reactions[reaction.key]}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
             <View style={styles.reactions}>
               {REACTIONS.map(reaction => {
-                const count = item.reactions[reaction.key];
-                const busy = busyReaction === `${item.id}:${reaction.key}`;
+                const supportKey = `${item.id}:${reaction.key}`;
+                const busy = busyReaction === supportKey;
+                const selected = item.viewerReaction === reaction.key;
                 return (
                   <TouchableOpacity
                     key={reaction.key}
                     disabled={Boolean(busyReaction)}
                     onPress={() => void react(item, reaction.key)}
-                    style={styles.reaction}
+                    style={[styles.reaction, selected && styles.reactionSelected]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Support with ${reaction.label}`}
+                    accessibilityState={{ selected, busy }}
                   >
-                    <Text style={styles.reactionText}>{reaction.emoji} {busy ? '…' : count}</Text>
-                    <Text style={styles.reactionLabel}>{reaction.label}</Text>
+                    <Text style={styles.reactionText}>{busy ? '…' : reaction.emoji}</Text>
+                    <Text style={[styles.reactionLabel, selected && styles.reactionLabelSelected]}>
+                      {selected ? 'sent' : reaction.label}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -299,10 +319,17 @@ const styles = StyleSheet.create({
   meta: { color: '#695579', fontSize: 9, marginTop: 2 },
   report: { color: '#695579', fontSize: 15, padding: 4 },
   body: { color: '#f0e6ff', fontSize: 16, lineHeight: 25, marginBottom: 14 },
+  privateSupportCard: { borderRadius: 14, borderWidth: 1, borderColor: '#a78bfa33', backgroundColor: '#100520', padding: 10, marginBottom: 10 },
+  privateSupportTitle: { color: '#9f8bb6', fontSize: 9, fontWeight: '900', letterSpacing: 0.5, marginBottom: 7 },
+  privateSupportRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  privateSupportPill: { borderRadius: 999, backgroundColor: '#211036', paddingHorizontal: 8, paddingVertical: 4 },
+  privateSupportText: { color: '#d8cdf0', fontSize: 10, fontWeight: '800' },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  reaction: { borderRadius: 16, borderWidth: 1, borderColor: '#2e1250', backgroundColor: '#1e0a30', paddingHorizontal: 9, paddingVertical: 7 },
-  reactionText: { color: '#c4b5fd', fontSize: 11, fontWeight: '800' },
+  reaction: { minWidth: 62, alignItems: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#2e1250', backgroundColor: '#1e0a30', paddingHorizontal: 9, paddingVertical: 7 },
+  reactionSelected: { borderColor: '#a78bfa88', backgroundColor: '#321252' },
+  reactionText: { color: '#c4b5fd', fontSize: 15, fontWeight: '800' },
   reactionLabel: { color: '#695579', fontSize: 8, marginTop: 2 },
+  reactionLabelSelected: { color: '#c4b5fd' },
   empty: { alignItems: 'center', paddingVertical: 52 },
   emptyEmoji: { fontSize: 34, marginBottom: 10 },
   emptyText: { color: '#8f7aa6', textAlign: 'center', fontSize: 13 },
