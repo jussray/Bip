@@ -11,21 +11,30 @@ import {
 } from 'react-native';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
+import {
+  PASSWORD_RECOVERY_PATH,
+  buildRecoveryRedirectUrl,
+  normalizeRecoveryEmail,
+  validateRecoveryEmail,
+} from '@/features/auth/passwordRecovery';
 import { getSupabase } from '@/utils/supabase';
 
 function recoveryRedirectUrl(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    return `${window.location.origin}/reset-password`;
+    return buildRecoveryRedirectUrl({ webOrigin: window.location.origin });
   }
-  return Linking.createURL('/reset-password');
+  return buildRecoveryRedirectUrl({ nativeUrl: Linking.createURL(PASSWORD_RECOVERY_PATH) });
 }
 
 function readableAuthError(error: unknown): string {
-  if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+  if (error instanceof TypeError && message.includes('failed to fetch')) {
     return 'Could not reach the account server. Check your connection and try again.';
   }
-  if (error instanceof Error && error.message) return error.message;
-  return 'Could not send the reset email. Please try again.';
+  if (message.includes('rate') || message.includes('too many')) {
+    return 'Too many reset requests. Wait a little, then try again.';
+  }
+  return 'Could not send a reset email right now. Please try again.';
 }
 
 export default function ForgotPasswordScreen() {
@@ -35,11 +44,10 @@ export default function ForgotPasswordScreen() {
   const [loading, setLoading] = useState(false);
 
   async function handleResetRequest() {
-    const normalizedEmail = email.trim();
     setError('');
-
-    if (!normalizedEmail) {
-      setError('Enter the email connected to your Bip account.');
+    const validationError = validateRecoveryEmail(email);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -51,11 +59,12 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const { error: resetError } = await sb.auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: recoveryRedirectUrl(),
-      });
+      const { error: resetError } = await sb.auth.resetPasswordForEmail(
+        normalizeRecoveryEmail(email),
+        { redirectTo: recoveryRedirectUrl() },
+      );
       if (resetError) {
-        setError(resetError.message);
+        setError(readableAuthError(resetError));
         return;
       }
       setSent(true);
@@ -73,10 +82,23 @@ export default function ForgotPasswordScreen() {
           <Text style={styles.logo}>📧</Text>
           <Text style={styles.title}>Check your email</Text>
           <Text style={styles.body}>
-            We sent a password-reset link to {email.trim()}. Open it on this device to choose a new password.
+            If an account matches that email, a secure reset link is on the way. Check spam or junk too.
           </Text>
-          <TouchableOpacity style={styles.btn} onPress={() => router.replace('/(auth)/login')}>
+          <TouchableOpacity
+            style={styles.btn}
+            onPress={() => router.replace('/(auth)/login')}
+            accessibilityRole="button"
+            accessibilityLabel="Back to Sign In"
+          >
             <Text style={styles.btnText}>Back to Sign In</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => { setSent(false); setError(''); }}
+            style={styles.link}
+            accessibilityRole="link"
+            accessibilityLabel="Try another email or resend"
+          >
+            <Text style={styles.linkText}>Try another email or resend</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -90,8 +112,10 @@ export default function ForgotPasswordScreen() {
     >
       <View style={styles.inner}>
         <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
-        <Text style={styles.title}>Reset your password</Text>
-        <Text style={styles.body}>Enter your account email and we’ll send you a secure reset link.</Text>
+        <Text style={styles.title}>Forgot your password?</Text>
+        <Text style={styles.body}>
+          Enter the email connected to your account. We’ll send a secure link to choose a new password.
+        </Text>
 
         <TextInput
           style={styles.input}
@@ -99,17 +123,21 @@ export default function ForgotPasswordScreen() {
           placeholderTextColor="#555"
           autoCapitalize="none"
           autoComplete="email"
+          autoCorrect={false}
           keyboardType="email-address"
+          textContentType="emailAddress"
           value={email}
+          editable={!loading}
           onChangeText={value => { setEmail(value); setError(''); }}
           onSubmitEditing={handleResetRequest}
           returnKeyType="send"
+          accessibilityLabel="Account email"
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
         <TouchableOpacity
-          style={styles.btn}
+          style={[styles.btn, loading && styles.btnDisabled]}
           onPress={handleResetRequest}
           disabled={loading}
           accessibilityRole="button"
@@ -118,7 +146,12 @@ export default function ForgotPasswordScreen() {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Send Reset Link</Text>}
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => router.back()} style={styles.link} accessibilityRole="link">
+        <TouchableOpacity
+          onPress={() => router.replace('/(auth)/login')}
+          style={styles.link}
+          accessibilityRole="link"
+          accessibilityLabel="Back to Sign In"
+        >
           <Text style={styles.linkText}>Back to Sign In</Text>
         </TouchableOpacity>
       </View>
@@ -142,6 +175,7 @@ const styles = StyleSheet.create({
     width: '100%', backgroundColor: '#6d28d9', borderRadius: 16,
     paddingVertical: 17, alignItems: 'center', marginTop: 4, marginBottom: 18,
   },
+  btnDisabled: { opacity: 0.55 },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   link: { paddingVertical: 8 },
   linkText: { color: '#c4b5fd', fontSize: 14 },
