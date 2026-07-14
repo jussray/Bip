@@ -111,11 +111,11 @@ test('OpenAI and Anthropic share one truthful preview handoff', () => {
   assert.match(handoff, /OpenAI \+ Anthropic Handoff/);
   assert.match(handoff, /OpenAI implementation boundary/);
   assert.match(handoff, /Anthropic implementation boundary/);
-  assert.match(handoff, /Claude Code may edit this repository, but “Anthropic coding agent” and “Anthropic runtime provider” are separate decisions/);
-  assert.match(handoff, /Never set it to `enabled` merely so the founder can test/);
+  assert.match(handoff, /Claude Code as a coding agent and Anthropic as a runtime provider are separate decisions/);
+  assert.match(handoff, /Never set it to `enabled` merely for founder testing/);
   assert.match(handoff, /age verification/);
   assert.match(handoff, /Row Level Security/);
-  assert.match(handoff, /fake founder-preview points/);
+  assert.match(handoff, /fake preview points/);
 });
 
 test('both More screens expose the all-features launcher only in Founder Preview', () => {
