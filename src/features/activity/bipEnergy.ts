@@ -19,13 +19,20 @@ type RpcRow = {
   message_key?: string;
 };
 
-export async function applyBipEnergyFade(): Promise<BipEnergyAdjustment | null> {
+let inFlightCheck: Promise<BipEnergyAdjustment | null> | null = null;
+let cachedUserId: string | null = null;
+let cachedResult: BipEnergyAdjustment | null = null;
+
+async function runBipEnergyFade(): Promise<BipEnergyAdjustment | null> {
   const supabase = getSupabase();
   if (!supabase) return null;
 
   try {
     const { data: authData } = await supabase.auth.getUser();
-    if (!authData.user || authData.user.is_anonymous) return null;
+    const user = authData.user;
+    if (!user || user.is_anonymous) return null;
+
+    if (cachedUserId === user.id) return cachedResult;
 
     const { data, error } = await supabase.rpc('apply_inactivity_point_adjustment');
     if (error || !data || typeof data !== 'object') return null;
@@ -39,6 +46,9 @@ export async function applyBipEnergyFade(): Promise<BipEnergyAdjustment | null> 
       checkedAt: new Date().toISOString(),
     };
 
+    cachedUserId = user.id;
+    cachedResult = result;
+
     if (result.adjusted > 0) {
       await AsyncStorage.setItem(BIP_ENERGY_ADJUSTMENT_KEY, JSON.stringify(result));
     }
@@ -48,6 +58,19 @@ export async function applyBipEnergyFade(): Promise<BipEnergyAdjustment | null> 
     if (__DEV__) console.warn('[bip-energy] inactivity adjustment failed', error);
     return null;
   }
+}
+
+/**
+ * Runs at most one RPC per signed-in user for the current JS session.
+ * App startup and the Room may ask at nearly the same time; both callers share
+ * the same promise and result so the welcome-back receipt cannot lose a race.
+ */
+export function applyBipEnergyFade(): Promise<BipEnergyAdjustment | null> {
+  if (inFlightCheck) return inFlightCheck;
+  inFlightCheck = runBipEnergyFade().finally(() => {
+    inFlightCheck = null;
+  });
+  return inFlightCheck;
 }
 
 export async function loadUnseenBipEnergyAdjustment(): Promise<BipEnergyAdjustment | null> {
