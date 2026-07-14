@@ -8,9 +8,28 @@
         "X-MCP-Lockdown": "true"
       }
     },
+    "bright-data": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@brightdata/mcp"
+      ],
+      "env": {
+        "API_TOKEN": "<YOUR_BRIGHT_DATA_API_TOKEN>",
+        "GROUPS": "code"
+      }
+    },
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=YOUR_PROJECT_REF&read_only=true&features=database,docs"
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     },
     "figma": {
       "type": "http",

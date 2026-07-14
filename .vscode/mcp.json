@@ -1,4 +1,12 @@
 {
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "brightdata_api_token",
+      "description": "Bright Data API Token",
+      "password": true
+    }
+  ],
   "servers": {
     "github": {
       "type": "http",
@@ -8,9 +16,29 @@
         "X-MCP-Lockdown": "true"
       }
     },
+    "bright-data": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@brightdata/mcp"
+      ],
+      "env": {
+        "API_TOKEN": "${input:brightdata_api_token}",
+        "GROUPS": "code"
+      }
+    },
+    "microsoft-learn": {
+      "type": "http",
+      "url": "https://learn.microsoft.com/api/mcp"
+    },
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=tbsevonvegdnlyjgplmm&read_only=true&features=database,docs"
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     },
     "figma": {
       "type": "http",
