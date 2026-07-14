@@ -11,6 +11,10 @@ import {
   type AccountSide,
 } from '@/features/identity/accountProfile';
 import {
+  isPendingUpgradeForEmail,
+  loadPendingAccountUpgradeEmail,
+} from '@/features/identity/accountUpgrade';
+import {
   resolveParentEntryState,
   routeForParentEntryState,
 } from '@/services/parentEntryState';
@@ -44,14 +48,24 @@ export default function Index() {
         if (isSupabaseConfigured) {
           const sb = getSupabase();
           if (!sb) throw new Error('Supabase account service is unavailable.');
-          const { data, error } = await sb.auth.getSession();
+          const [{ data, error }, pendingUpgradeEmail] = await Promise.all([
+            sb.auth.getSession(),
+            loadPendingAccountUpgradeEmail(),
+          ]);
           if (error) throw error;
           const user = data.session?.user;
           if (!user) {
             router.replace('/(auth)/login');
             return;
           }
-          if (user.is_anonymous) {
+
+          // An attached email is not yet a recoverable account until the email
+          // is verified and the password is added. Resume that exact flow before
+          // onboarding or private cloud data can continue.
+          if (
+            user.is_anonymous
+            || isPendingUpgradeForEmail(pendingUpgradeEmail, user.email)
+          ) {
             router.replace('/(auth)/signup');
             return;
           }
