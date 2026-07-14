@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   REQUIRED_CLOUDFLARE_CHECKS,
+  buildCloudflareEvidence,
+  classifyCloudflareReadiness,
   evaluateCloudflareChecks,
   evaluateReleaseMarker,
 } from '../scripts/verify-cloudflare-native-deploy.mjs';
@@ -13,6 +15,16 @@ const workerSuccess = {
   started_at: '2026-07-12T23:00:00Z',
   completed_at: '2026-07-12T23:01:00Z',
 };
+
+const expectedSha = 'abcdef0123456789abcdef0123456789abcdef01';
+const matchingRelease = evaluateReleaseMarker({commitSha: expectedSha}, expectedSha);
+
+function classify(checkRuns, marker = {commitSha: expectedSha}) {
+  return classifyCloudflareReadiness(
+    evaluateCloudflareChecks(checkRuns),
+    evaluateReleaseMarker(marker, expectedSha),
+  );
+}
 
 test('requires the exact native Worker deployment check', () => {
   assert.deepEqual(REQUIRED_CLOUDFLARE_CHECKS, [
@@ -72,4 +84,75 @@ test('requires the deployed Pages marker to match the exact commit', () => {
   const missing = evaluateReleaseMarker(null, sha);
   assert.equal(missing.complete, false);
   assert.equal(missing.actualSha, null);
+});
+
+test('classifies every exact-release blocker without weakening the gate', () => {
+  assert.equal(classify([workerSuccess]), 'ready');
+  assert.equal(classify([]), 'worker-missing');
+  assert.equal(
+    classify([{...workerSuccess, status: 'in_progress', conclusion: null}]),
+    'worker-pending',
+  );
+  assert.equal(
+    classify([{...workerSuccess, conclusion: 'failure'}]),
+    'worker-failed',
+  );
+  assert.equal(classify([workerSuccess], null), 'pages-marker-missing');
+  assert.equal(
+    classify([workerSuccess], {commitSha: '1111111111111111111111111111111111111111'}),
+    'pages-marker-stale',
+  );
+});
+
+test('failure evidence retains blocker state and exact SHA details', () => {
+  const checkEvaluation = evaluateCloudflareChecks([]);
+  const releaseEvaluation = evaluateReleaseMarker(
+    {commitSha: '1111111111111111111111111111111111111111'},
+    expectedSha,
+  );
+  const evidence = buildCloudflareEvidence({
+    repository: 'jussray/Sekret-Bip',
+    sha: expectedSha,
+    releaseUrl: 'https://sekretbip.net/release.json',
+    checkEvaluation,
+    releaseEvaluation,
+    startedAtMs: Date.parse('2026-07-14T22:00:00Z'),
+    observedAtMs: Date.parse('2026-07-14T22:05:00Z'),
+    status: 'observing',
+  });
+
+  assert.equal(evidence.version, 3);
+  assert.equal(evidence.complete, false);
+  assert.equal(evidence.readinessState, 'worker-missing');
+  assert.equal(evidence.elapsedMs, 300_000);
+  assert.equal(evidence.expectedSha, expectedSha);
+  assert.equal(evidence.pagesRelease.commitSha, '1111111111111111111111111111111111111111');
+  assert.deepEqual(evidence.checkSummary.missing, ['Workers Builds: sekret-backend']);
+  assert.equal(evidence.requiredChecks['Workers Builds: sekret-backend'], null);
+  assert.equal(evidence.verifiedAt, null);
+});
+
+test('successful evidence preserves the existing production witness fields', () => {
+  const checkEvaluation = evaluateCloudflareChecks([workerSuccess]);
+  const evidence = buildCloudflareEvidence({
+    repository: 'jussray/Sekret-Bip',
+    sha: expectedSha,
+    releaseUrl: 'https://sekretbip.net/release.json',
+    checkEvaluation,
+    releaseEvaluation: matchingRelease,
+    allCheckRuns: [workerSuccess],
+    startedAtMs: Date.parse('2026-07-14T22:00:00Z'),
+    observedAtMs: Date.parse('2026-07-14T22:01:00Z'),
+    status: 'succeeded',
+  });
+
+  assert.equal(evidence.complete, true);
+  assert.equal(evidence.readinessState, 'ready');
+  assert.equal(evidence.repository, 'jussray/Sekret-Bip');
+  assert.equal(evidence.commitSha, expectedSha);
+  assert.equal(evidence.deploymentMode, 'cloudflare-native-git-integration');
+  assert.equal(evidence.apiTokenRequiredInGitHub, false);
+  assert.equal(evidence.requiredChecks['Workers Builds: sekret-backend'].conclusion, 'success');
+  assert.equal(evidence.pagesRelease.commitSha, expectedSha);
+  assert.equal(evidence.verifiedAt, '2026-07-14T22:01:00.000Z');
 });
