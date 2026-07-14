@@ -31,6 +31,16 @@ export const CONTROL_ROOM_MISSIONS: ControlRoomMission[] = [
     requiresNetwork: false,
   },
   {
+    id: 'verify-frontend',
+    title: 'Verify Frontend',
+    category: 'verify',
+    founderPrompt: 'Run the Playwright browser smoke suite against the local Expo web build and retain a machine-readable report.',
+    primaryAction: 'npm run control-room:mission:verify-frontend',
+    localAgentMission: 'verify-frontend',
+    recoveryPath: 'If Playwright or Chromium is unavailable, run npm run verify:local and report the fallback explicitly instead of claiming browser proof.',
+    requiresNetwork: false,
+  },
+  {
     id: 'ship-release',
     title: 'Ship Release',
     category: 'release',
@@ -80,7 +90,7 @@ export const CONTROL_ROOM_WORKERS: ControlRoomWorker[] = [
     id: 'local-agent',
     label: 'Local Agent',
     health: 'healthy',
-    capabilities: ['launch-bip', 'verify-local', 'tests', 'build'],
+    capabilities: ['launch-bip', 'verify-local', 'browser-test', 'tests', 'build'],
     localFirst: true,
   },
 ];
@@ -92,7 +102,7 @@ export const CONTROL_ROOM_CONNECTORS: ControlRoomConnector[] = [
     health: 'healthy',
     capabilities: ['local-reports', 'repo-files', 'build-artifacts'],
     fallback: 'Local git and reports/control-room remain available without hosted providers.',
-    availableMissions: ['continue-yesterday', 'verify-local', 'recover-system'],
+    availableMissions: ['continue-yesterday', 'verify-local', 'verify-frontend', 'recover-system'],
     requiresAuthentication: false,
   },
   {
@@ -130,6 +140,15 @@ export const CONTROL_ROOM_CONNECTORS: ControlRoomConnector[] = [
     fallback: 'Write reports locally and send when the connector is authenticated again.',
     availableMissions: ['ship-release', 'recover-system'],
     requiresAuthentication: true,
+  },
+  {
+    id: 'playwright',
+    label: 'Playwright',
+    health: 'healthy',
+    capabilities: ['browser-test', 'phone-width-smoke', 'route-guard-proof'],
+    fallback: 'Run npm run verify:local and record that browser proof was unavailable; never silently downgrade the evidence claim.',
+    availableMissions: ['verify-frontend'],
+    requiresAuthentication: false,
   },
 ];
 
