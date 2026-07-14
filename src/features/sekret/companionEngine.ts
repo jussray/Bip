@@ -32,6 +32,7 @@ import { buildSekretPresence } from '../../../services/sekretPresence';
 import { buildReplyRequest } from '@/services/ai/buildReplyRequest';
 import { emitEvent } from '@/features/activity/events';
 import { COMPANION_CURRICULUM } from '@/config/companionCurriculum';
+import type { CompanionReplySource } from '@/contracts/sekretApi';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -70,6 +71,10 @@ export interface CompanionReplyResult {
   tone: string;
   parentShareSummary: string | null;
   suggestedComfortTool: string | null;
+  /** Whether the reply came from OpenAI or the on-device fallback path. */
+  replySource: CompanionReplySource;
+  /** Questions the companion has left this session (0 = no more questions). */
+  questionBudget?: number;
 }
 
 export interface CompanionProfile {
@@ -204,6 +209,8 @@ export async function sendCompanionMessage(
     tone:                 result.tone,
     parentShareSummary:   result.parentShareSummary,
     suggestedComfortTool: result.suggestedComfortTool,
+    replySource:          (result.replySource ?? 'openai') as CompanionReplySource,
+    questionBudget:       typeof result.questionBudget === 'number' ? result.questionBudget : undefined,
   };
 }
 
