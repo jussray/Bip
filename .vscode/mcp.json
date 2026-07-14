@@ -1,5 +1,5 @@
 {
-  "mcpServers": {
+  "servers": {
     "github": {
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",
@@ -10,7 +10,7 @@
     },
     "supabase": {
       "type": "http",
-      "url": "https://mcp.supabase.com/mcp?project_ref=YOUR_PROJECT_REF&read_only=true&features=database,docs"
+      "url": "https://mcp.supabase.com/mcp?project_ref=tbsevonvegdnlyjgplmm&read_only=true&features=database,docs"
     },
     "figma": {
       "type": "http",
@@ -29,6 +29,7 @@
       "url": "https://observability.mcp.cloudflare.com/mcp"
     },
     "playwright": {
+      "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
