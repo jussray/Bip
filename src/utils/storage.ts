@@ -33,6 +33,8 @@ const STORAGE_KEYS = {
   devTestFamilyV1: 'dev_test_family_v1',
   meaningfulReturnReceipts: 'sekretbip_meaningful_return_receipts_v1',
   meaningfulReturnSeen: 'sekretbip_meaningful_return_seen_v1',
+  bipEnergyAdjustment: 'sekretbip_bip_energy_adjustment_v1',
+  bipEnergyAdjustmentSeen: 'sekretbip_bip_energy_adjustment_seen_v1',
 };
 
 const JSON_KEYS = new Set([
@@ -45,6 +47,7 @@ const JSON_KEYS = new Set([
   'roomMemory', 'periodDays',
   'parent_profile_data', 'dev_test_family_v1',
   'sekretbip_meaningful_return_receipts_v1',
+  'sekretbip_bip_energy_adjustment_v1',
 ]);
 
 const PRIVATE_ACCOUNT_KEYS = [
@@ -86,6 +89,8 @@ const PRIVATE_ACCOUNT_KEYS = [
   STORAGE_KEYS.devTestFamilyV1,
   STORAGE_KEYS.meaningfulReturnReceipts,
   STORAGE_KEYS.meaningfulReturnSeen,
+  STORAGE_KEYS.bipEnergyAdjustment,
+  STORAGE_KEYS.bipEnergyAdjustmentSeen,
   'sekretbip_first_visit_done',
   'parent_bridge_pending',
   'sekret_self_discovery_profile',
