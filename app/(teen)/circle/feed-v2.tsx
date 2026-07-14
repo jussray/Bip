@@ -54,6 +54,7 @@ export default function PublicCircleFeedV2() {
   const [refreshing, setRefreshing] = useState(false);
   const [posting, setPosting] = useState(false);
   const [busyReaction, setBusyReaction] = useState<string | null>(null);
+  const [mySupport, setMySupport] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [hideHeavy, setHideHeavy] = useState(false);
 
@@ -123,6 +124,7 @@ export default function PublicCircleFeedV2() {
       setCirclePosts(current => current.map(post => post.id === item.id
         ? { ...post, reactions: counts }
         : post));
+      setMySupport(current => ({ ...current, [key]: true }));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'The reaction was not saved.');
     } finally {
@@ -159,7 +161,9 @@ export default function PublicCircleFeedV2() {
       <View style={styles.truthCard}>
         <View style={{ flex: 1 }}>
           <Text style={styles.truthTitle}>Newest bips</Text>
-          <Text style={styles.truthBody}>One real feed. Anonymous names stay separate from private accounts.</Text>
+          <Text style={styles.truthBody}>
+            Anonymous names stay separate from private accounts. Support is visible without popularity totals.
+          </Text>
         </View>
         <View style={styles.switchWrap}>
           <Text style={styles.switchLabel}>hide heavy</Text>
@@ -248,17 +252,23 @@ export default function PublicCircleFeedV2() {
 
             <View style={styles.reactions}>
               {REACTIONS.map(reaction => {
-                const count = item.reactions[reaction.key];
-                const busy = busyReaction === `${item.id}:${reaction.key}`;
+                const supportKey = `${item.id}:${reaction.key}`;
+                const busy = busyReaction === supportKey;
+                const selected = Boolean(mySupport[supportKey]);
                 return (
                   <TouchableOpacity
                     key={reaction.key}
                     disabled={Boolean(busyReaction)}
                     onPress={() => void react(item, reaction.key)}
-                    style={styles.reaction}
+                    style={[styles.reaction, selected && styles.reactionSelected]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Support with ${reaction.label}`}
+                    accessibilityState={{ selected, busy }}
                   >
-                    <Text style={styles.reactionText}>{reaction.emoji} {busy ? '…' : count}</Text>
-                    <Text style={styles.reactionLabel}>{reaction.label}</Text>
+                    <Text style={styles.reactionText}>{busy ? '…' : reaction.emoji}</Text>
+                    <Text style={[styles.reactionLabel, selected && styles.reactionLabelSelected]}>
+                      {selected ? 'sent' : reaction.label}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -300,9 +310,11 @@ const styles = StyleSheet.create({
   report: { color: '#695579', fontSize: 15, padding: 4 },
   body: { color: '#f0e6ff', fontSize: 16, lineHeight: 25, marginBottom: 14 },
   reactions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  reaction: { borderRadius: 16, borderWidth: 1, borderColor: '#2e1250', backgroundColor: '#1e0a30', paddingHorizontal: 9, paddingVertical: 7 },
-  reactionText: { color: '#c4b5fd', fontSize: 11, fontWeight: '800' },
+  reaction: { minWidth: 62, alignItems: 'center', borderRadius: 16, borderWidth: 1, borderColor: '#2e1250', backgroundColor: '#1e0a30', paddingHorizontal: 9, paddingVertical: 7 },
+  reactionSelected: { borderColor: '#a78bfa88', backgroundColor: '#321252' },
+  reactionText: { color: '#c4b5fd', fontSize: 15, fontWeight: '800' },
   reactionLabel: { color: '#695579', fontSize: 8, marginTop: 2 },
+  reactionLabelSelected: { color: '#c4b5fd' },
   empty: { alignItems: 'center', paddingVertical: 52 },
   emptyEmoji: { fontSize: 34, marginBottom: 10 },
   emptyText: { color: '#8f7aa6', textAlign: 'center', fontSize: 13 },
