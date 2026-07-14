@@ -2,18 +2,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const expectedServerNames = [
+const expectedProjectServerNames = [
   'cloudflare-builds',
   'cloudflare-docs',
   'cloudflare-observability',
   'figma',
   'github',
+  'microsoft-learn',
+  'playwright',
+  'supabase',
+];
+const expectedCredentialedServerNames = [
+  'bright-data',
+  'cloudflare-builds',
+  'cloudflare-docs',
+  'cloudflare-observability',
+  'figma',
+  'github',
+  'microsoft-learn',
   'playwright',
   'supabase',
 ];
 
 const expectedRemoteUrls = {
   github: 'https://api.githubcopilot.com/mcp/',
+  'microsoft-learn': 'https://learn.microsoft.com/api/mcp',
   figma: 'https://mcp.figma.com/mcp',
   'cloudflare-docs': 'https://docs.mcp.cloudflare.com/mcp',
   'cloudflare-builds': 'https://builds.mcp.cloudflare.com/mcp',
@@ -23,6 +36,7 @@ const expectedRemoteUrls = {
 const expectedGithubToolsets =
   'repos,issues,pull_requests,actions,code_security,secret_protection';
 const pinnedPlaywrightPackage = '@playwright/mcp@0.0.78';
+const pinnedBrightDataPackage = '@brightdata/mcp';
 
 function fail(message) {
   throw new Error(`[verify:mcp] ${message}`);
@@ -45,7 +59,7 @@ function sortedKeys(value) {
   return Object.keys(value ?? {}).sort();
 }
 
-function validateServerSet(relativePath, servers) {
+function validateServerSet(relativePath, servers, expectedServerNames) {
   assert(
     JSON.stringify(sortedKeys(servers)) === JSON.stringify(expectedServerNames),
     `${relativePath} must contain exactly: ${expectedServerNames.join(', ')}`,
@@ -107,6 +121,39 @@ function validatePlaywright(relativePath, server, requireStdioType = false) {
   );
 }
 
+function validateBrightData(relativePath, server, expectedApiToken, requireStdioType = false) {
+  if (requireStdioType) {
+    assert(server?.type === 'stdio', `${relativePath}:bright-data must use stdio`);
+  }
+  assert(server?.command === 'npx', `${relativePath}:bright-data command must be npx`);
+  assert(Array.isArray(server?.args), `${relativePath}:bright-data args are missing`);
+  assert(server.args.includes('-y'), `${relativePath}:bright-data must use non-interactive npx`);
+  assert(
+    server.args.includes(pinnedBrightDataPackage),
+    `${relativePath}:bright-data must use ${pinnedBrightDataPackage}`,
+  );
+  assert(
+    server?.env?.API_TOKEN === expectedApiToken,
+    `${relativePath}:bright-data API token reference drifted`,
+  );
+  assert(
+    server?.env?.GROUPS === 'code',
+    `${relativePath}:bright-data must remain restricted to GROUPS=code`,
+  );
+  assert(!('PRO_MODE' in (server?.env ?? {})), `${relativePath}:bright-data Pro Mode is forbidden`);
+  assert(!('TOOLS' in (server?.env ?? {})), `${relativePath}:bright-data explicit tools are forbidden`);
+}
+
+function validateVscodeInput(config) {
+  const input = (config.inputs ?? []).find((entry) => entry.id === 'brightdata_api_token');
+  assert(input?.type === 'promptString', '.vscode/mcp.json Bright Data input must be promptString');
+  assert(input?.password === true, '.vscode/mcp.json Bright Data input must be masked');
+  assert(
+    input?.description === 'Bright Data API Token',
+    '.vscode/mcp.json Bright Data input description drifted',
+  );
+}
+
 function assertNoCommittedSecrets(relativePath, parsed) {
   const serialized = JSON.stringify(parsed);
   const secretPatterns = [
@@ -131,9 +178,9 @@ const projectServers = projectConfig.mcpServers;
 const exampleServers = exampleConfig.mcpServers;
 const vscodeServers = vscodeConfig.servers;
 
-validateServerSet('.mcp.json', projectServers);
-validateServerSet('.mcp.example.json', exampleServers);
-validateServerSet('.vscode/mcp.json', vscodeServers);
+validateServerSet('.mcp.json', projectServers, expectedProjectServerNames);
+validateServerSet('.mcp.example.json', exampleServers, expectedCredentialedServerNames);
+validateServerSet('.vscode/mcp.json', vscodeServers, expectedCredentialedServerNames);
 
 validateRemoteServers('.mcp.json', projectServers);
 validateRemoteServers('.mcp.example.json', exampleServers);
@@ -146,6 +193,20 @@ validateSupabase('.vscode/mcp.json', vscodeServers.supabase, 'tbsevonvegdnlyjgpl
 validatePlaywright('.mcp.json', projectServers.playwright);
 validatePlaywright('.mcp.example.json', exampleServers.playwright);
 validatePlaywright('.vscode/mcp.json', vscodeServers.playwright, true);
+
+assert(!projectServers['bright-data'], '.mcp.json must remain credential-free and omit bright-data');
+validateBrightData(
+  '.mcp.example.json',
+  exampleServers['bright-data'],
+  '<YOUR_BRIGHT_DATA_API_TOKEN>',
+);
+validateBrightData(
+  '.vscode/mcp.json',
+  vscodeServers['bright-data'],
+  '${input:brightdata_api_token}',
+  true,
+);
+validateVscodeInput(vscodeConfig);
 
 assert(!projectServers['cloudflare-api'], '.mcp.json must not enable the broad Cloudflare API server');
 assert(!vscodeServers['cloudflare-api'], '.vscode/mcp.json must not enable the broad Cloudflare API server');
