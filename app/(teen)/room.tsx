@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { UserRoomScreen } from '@screens/UserRoomScreen';
-import { BipReturnOverlay } from '@/components/retention/BipReturnOverlay';
+import { BipReturnOverlay } from '../../components/retention/BipReturnOverlay';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
