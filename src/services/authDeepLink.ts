@@ -29,7 +29,7 @@ export async function createSessionFromAuthUrl(rawUrl: string): Promise<AuthLink
   if (!supabase) throw new Error('Supabase Auth is unavailable.');
 
   const url = new URL(rawUrl);
-  const errorDescription = readAuthParam(url, 'error_description');
+  const errorDescription = readAuthParam(url, 'error_description')
     || readAuthParam(url, 'error');
   if (errorDescription) throw new Error(errorDescription.replace(/\+/g, ' '));
 
