@@ -14,7 +14,11 @@ test('Bip Energy fade keeps the intentional bounded contract', () => {
 
   assert.match(finalMigration, /v_days_away <= 1/);
   assert.match(finalMigration, /least\(v_balance, least\(5, greatest\(1, v_days_away - 1\)\)\)/);
-  assert.match(finalMigration, /once per day|max five|never below zero/i);
+  assert.match(finalMigration, /on conflict do nothing/);
+  assert.match(finalMigration, /v_balance <= 0/);
+  assert.match(finalMigration, /'grace_days', 1/);
+  assert.match(finalMigration, /'daily_cap', 5/);
+  assert.match(finalMigration, /'never_below_zero', true/);
   assert.match(finalMigration, /source_type[\s\S]*'inactivity_adjustment'/);
   assert.match(finalMigration, /from public\.bip_events/);
   assert.match(finalMigration, /event_type not in \('app_opened', 'streak_milestone'\)/);
