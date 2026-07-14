@@ -10,13 +10,14 @@
         "History emphasizes active days and meaningful actions while streak bonuses remain positive and absence does not erase the teen's growth record.",
         "Public Circle support reactions remain usable without exposing public reaction totals or ranked vulnerability.",
         "Bridge persists the teen's requested response and the linked parent can see that request without gaining access to journals, chats, mood history, voice notes, or other private content.",
-        "Bip Energy keeps the intentional one-day grace, once-per-day, maximum-five, never-below-zero fade while Bip Tickets, redeemed rewards, and unlocked room items remain permanent."
+        "Bip Energy keeps the intentional one-day grace, once-per-day, maximum-five, never-below-zero fade against the canonical bip_events ledger while Bip Tickets, redeemed rewards, and unlocked room items remain permanent."
       ],
       "contractPaths": [
         "docs/HUMANE_RETENTION_LOOPS.md",
         "src/features/bridge/responsePreference.ts",
         "supabase/migrations/20260714043000_humane_retention_loops.sql",
-        "supabase/migrations/20260714045500_restore_intentional_bip_energy_fade.sql"
+        "supabase/migrations/20260714045500_restore_intentional_bip_energy_fade.sql",
+        "supabase/migrations/20260714051500_align_bip_energy_with_bip_events.sql"
       ],
       "runtimePaths": [
         "app/(teen)/room.tsx",
@@ -41,7 +42,8 @@
       "telemetryPaths": [
         "src/features/activity/events.ts",
         "src/features/retention/meaningfulReturn.ts",
-        "supabase/migrations/20260714043000_humane_retention_loops.sql"
+        "supabase/migrations/20260714043000_humane_retention_loops.sql",
+        "supabase/migrations/20260714051500_align_bip_energy_with_bip_events.sql"
       ],
       "rollout": {
         "state": "internal",
