@@ -9,7 +9,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getSupabase } from '@/utils/supabase';
 
 function readableAuthError(error: unknown): string {
@@ -21,6 +21,8 @@ function readableAuthError(error: unknown): string {
 }
 
 export default function LoginScreen() {
+  const params = useLocalSearchParams<{ passwordReset?: string }>();
+  const passwordReset = params.passwordReset === '1';
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
@@ -29,7 +31,7 @@ export default function LoginScreen() {
   async function handleSignIn() {
     setError('');
     const e = email.trim();
-    const p = password.trim();
+    const p = password;
     if (!e || !p) { setError('Email and password are required.'); return; }
 
     setLoading(true);
@@ -60,15 +62,25 @@ export default function LoginScreen() {
         <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
         <Text style={styles.tagline}>welcome back</Text>
 
+        {passwordReset ? (
+          <Text style={styles.success} accessibilityRole="alert">
+            Password updated. Sign in with your new password.
+          </Text>
+        ) : null}
+
         <TextInput
           style={styles.input}
           placeholder="email"
           placeholderTextColor="#555"
           autoCapitalize="none"
           autoComplete="email"
+          autoCorrect={false}
           keyboardType="email-address"
+          textContentType="emailAddress"
           value={email}
+          editable={!loading}
           onChangeText={t => { setEmail(t); setError(''); }}
+          accessibilityLabel="Email"
         />
         <TextInput
           style={styles.input}
@@ -76,10 +88,13 @@ export default function LoginScreen() {
           placeholderTextColor="#555"
           secureTextEntry
           autoComplete="current-password"
+          textContentType="password"
           value={password}
+          editable={!loading}
           onChangeText={t => { setPassword(t); setError(''); }}
           onSubmitEditing={handleSignIn}
           returnKeyType="go"
+          accessibilityLabel="Password"
         />
 
         <TouchableOpacity
@@ -91,10 +106,10 @@ export default function LoginScreen() {
           <Text style={styles.forgotText}>Forgot password?</Text>
         </TouchableOpacity>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
         <TouchableOpacity
-          style={styles.btn}
+          style={[styles.btn, loading && styles.btnDisabled]}
           onPress={handleSignIn}
           disabled={loading}
           accessibilityRole="button"
@@ -124,7 +139,12 @@ const styles = StyleSheet.create({
   root:     { flex: 1, backgroundColor: '#0d0d0d' },
   inner:    { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   logo:     { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 6 },
-  tagline:  { color: '#6d28d9', fontSize: 15, marginBottom: 40 },
+  tagline:  { color: '#6d28d9', fontSize: 15, marginBottom: 24 },
+  success: {
+    width: '100%', color: '#c4b5fd', backgroundColor: '#1f1630', borderWidth: 1,
+    borderColor: '#6d28d9', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
+    textAlign: 'center', fontSize: 14, marginBottom: 16,
+  },
   input: {
     width: '100%', borderWidth: 1, borderColor: '#2a2a2a', borderRadius: 14,
     paddingVertical: 14, paddingHorizontal: 18, color: '#fff', fontSize: 15,
@@ -137,6 +157,7 @@ const styles = StyleSheet.create({
     width: '100%', backgroundColor: '#6d28d9', borderRadius: 16,
     paddingVertical: 17, alignItems: 'center', marginTop: 4, marginBottom: 18,
   },
+  btnDisabled: { opacity: 0.55 },
   btnText:  { color: '#fff', fontWeight: '700', fontSize: 16 },
   link:     { marginBottom: 28 },
   linkText: { color: '#c4b5fd', fontSize: 14 },
