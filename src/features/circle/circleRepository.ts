@@ -14,17 +14,21 @@ export interface PublicCircleFeedItem {
   postMood: string | null;
   mediaKind: string | null;
   reactions: CircleReactionCounts;
+  viewerReaction: CircleReactionKey | null;
+  isOwnPost: boolean;
   createdAt: string;
 }
 
-type PublicPostRow = {
-  id: number;
-  user_id: string;
-  text: string;
+type PublicFeedRpcRow = {
+  post_id: number;
+  author_user_id: string;
+  post_text: string;
   post_mood: string | null;
   media_kind: string | null;
-  reactions: Partial<CircleReactionCounts> | null;
   created_at: string;
+  reaction_counts: Partial<CircleReactionCounts> | null;
+  viewer_reaction: string | null;
+  is_own_post: boolean;
 };
 
 type CircleProfileRow = {
@@ -51,6 +55,12 @@ function normalizeReactions(value: unknown): CircleReactionCounts {
     proud: Number(source.proud ?? 0),
     stay: Number(source.stay ?? 0),
   };
+}
+
+function normalizeViewerReaction(value: unknown): CircleReactionKey | null {
+  return value === 'felt' || value === 'comfort' || value === 'proud' || value === 'stay'
+    ? value
+    : null;
 }
 
 async function currentPermanentUser(): Promise<{ id: string } | null> {
@@ -85,19 +95,22 @@ async function loadProfileMap(userIds: string[]): Promise<Map<string, CircleProf
 }
 
 function mapFeedItem(
-  row: PublicPostRow,
+  row: PublicFeedRpcRow,
   profiles: Map<string, CircleProfileRow>,
 ): PublicCircleFeedItem {
-  const profile = profiles.get(row.user_id);
+  const profile = profiles.get(row.author_user_id);
   return {
-    id: Number(row.id),
-    userId: row.user_id,
+    id: Number(row.post_id),
+    userId: row.author_user_id,
     nickname: profile?.nickname?.trim() || 'anonymous bip',
     avatarEmoji: profile?.avatar_emoji?.trim() || '🌙',
-    text: row.text,
+    text: row.post_text,
     postMood: row.post_mood,
     mediaKind: row.media_kind,
-    reactions: normalizeReactions(row.reactions),
+    // The RPC returns aggregate counts only when the viewer owns the post.
+    reactions: row.is_own_post ? normalizeReactions(row.reaction_counts) : EMPTY_REACTIONS,
+    viewerReaction: normalizeViewerReaction(row.viewer_reaction),
+    isOwnPost: row.is_own_post === true,
     createdAt: row.created_at,
   };
 }
@@ -106,17 +119,17 @@ export async function loadPublicCircleFeed(limit = 40): Promise<PublicCircleFeed
   const supabase = getSupabase();
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from('public_circle_posts')
-    .select('id,user_id,text,post_mood,media_kind,reactions,created_at')
-    .eq('safety_flagged', false)
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  const user = await currentPermanentUser();
+  if (!user) throw new Error('Create a permanent Bip account before opening Circle.');
+
+  const { data, error } = await supabase.rpc('get_public_circle_feed', {
+    p_limit: limit,
+  });
 
   if (error) throw error;
 
-  const rows = (data ?? []) as PublicPostRow[];
-  const profiles = await loadProfileMap(rows.map(row => row.user_id));
+  const rows = (data ?? []) as PublicFeedRpcRow[];
+  const profiles = await loadProfileMap(rows.map(row => row.author_user_id));
   return rows.map(row => mapFeedItem(row, profiles));
 }
 
@@ -130,30 +143,23 @@ export async function createPublicCirclePost(
   const user = await currentPermanentUser();
   if (!user) throw new Error('Create a permanent Bip account before posting to Circle.');
 
-  const { data, error } = await supabase
-    .from('public_circle_posts')
-    .insert({
-      user_id: user.id,
-      text: text.trim(),
-      post_mood: postMood ?? null,
-      media_kind: null,
-      reactions: EMPTY_REACTIONS,
-    })
-    .select('id,user_id,text,post_mood,media_kind,reactions,created_at')
-    .single();
+  const { data, error } = await supabase.rpc('create_public_circle_post', {
+    p_text: text.trim(),
+    p_post_mood: postMood ?? null,
+  });
 
-  if (error || !data) throw error ?? new Error('Circle did not return the saved post.');
+  const row = ((data ?? []) as PublicFeedRpcRow[])[0];
+  if (error || !row) throw error ?? new Error('Circle did not return the saved post.');
 
   emitEvent('circle_post');
-  const row = data as PublicPostRow;
-  const profiles = await loadProfileMap([row.user_id]);
+  const profiles = await loadProfileMap([row.author_user_id]);
   return mapFeedItem(row, profiles);
 }
 
 export async function reactToPublicCirclePost(
   postId: number,
   reaction: CircleReactionKey,
-): Promise<CircleReactionCounts> {
+): Promise<CircleReactionKey> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Circle reactions are unavailable while offline.');
 
@@ -166,8 +172,15 @@ export async function reactToPublicCirclePost(
   });
 
   if (error) throw error;
-  emitEvent('circle_reaction', { reactionKey: reaction });
-  return normalizeReactions(data);
+  const savedReaction = normalizeViewerReaction(
+    data && typeof data === 'object' && !Array.isArray(data)
+      ? (data as { reaction?: unknown }).reaction
+      : null,
+  );
+  if (!savedReaction) throw new Error('Circle did not confirm the support reaction.');
+
+  emitEvent('circle_reaction', { reactionKey: savedReaction });
+  return savedReaction;
 }
 
 export async function reportPublicCirclePost(postId: number): Promise<void> {
