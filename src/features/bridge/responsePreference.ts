@@ -1,5 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { BridgeResponsePreference } from '@/utils/parentBridgeCompat';
+
+export type BridgeResponsePreference =
+  | 'listen'
+  | 'comfort'
+  | 'help_plan'
+  | 'check_later'
+  | 'give_space';
 
 export const BRIDGE_RESPONSE_PREFERENCE_KEY = 'sekretbip_bridge_response_preference_v1';
 
