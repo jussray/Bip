@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { router } from 'expo-router';
 import { UserRoomScreen } from '@screens/UserRoomScreen';
+import { BipReturnOverlay } from '@/components/retention/BipReturnOverlay';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import { routeForSide } from '@/shared/routes';
@@ -51,16 +53,19 @@ export default function TeenRoomRoute() {
   };
 
   return (
-    <UserRoomScreen
-      mood={mood}
-      selectedSekret={selectedSekret}
-      setSelectedSekret={setSelectedSekret}
-      setScreen={handleScreen}
-      t={t}
-      vibe={vibe}
-      BottomNav={null}
-      sekretMode={selectedSekret}
-      updateRoomMemory={updateRoomMemory}
-    />
+    <View style={{ flex: 1 }}>
+      <UserRoomScreen
+        mood={mood}
+        selectedSekret={selectedSekret}
+        setSelectedSekret={setSelectedSekret}
+        setScreen={handleScreen}
+        t={t}
+        vibe={vibe}
+        BottomNav={null}
+        sekretMode={selectedSekret}
+        updateRoomMemory={updateRoomMemory}
+      />
+      <BipReturnOverlay onNavigate={handleScreen} />
+    </View>
   );
 }
