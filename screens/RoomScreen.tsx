@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   Image,
   StyleSheet,
   Dimensions,
@@ -17,6 +18,7 @@ import { IMAGES, AVATARS as THEME_AVATARS, THEME_PACKS, getRoomPhase, getRoomSce
 import type { CompanionState } from '../types/sekretCompanion';
 import { SafeAsset } from '../components/SafeAsset';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
+import { useAmbientPlayer, AMBIENT_TRACKS, type AmbientKey } from '@/hooks/useAmbientPlayer';
 
 const { width, height } = Dimensions.get('window');
 
@@ -150,38 +152,37 @@ const getTimeOfDay = (): TimeOfDay => {
 };
 
 const getPresenceLine = (character: Character, timeOfDay: TimeOfDay): string => {
-  if (character === 'cloud') return 'Cloud is drifting nearby.';
-  if (character === 'night') return timeOfDay === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
-  if (timeOfDay === 'night') return 'Cloud is floating around.';
-  if (character === 'raylene') return 'Raylene is nearby.';
-  return 'Rylane is posted up.';
+  if (character === 'cloud') return timeOfDay === 'night' ? "Cloud's floating. Peaceful in here." : "Cloud Se'kret is nearby ☁️";
+  if (character === 'night') return timeOfDay === 'night' ? "Night's here. Just us awake 🌙" : "Night Se'kret is around.";
+  if (character === 'raylene') return timeOfDay === 'morning' ? 'Raylene is up. Morning energy 🌸' : 'Raylene is nearby 💜';
+  return timeOfDay === 'night' ? 'Rylane is posted up. Late night mode.' : 'Rylane is around ⚡';
 };
 
 const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
   const map: Record<Character, Record<TimeOfDay, string>> = {
     raylene: {
-      morning: 'Soft light. Quiet thoughts. Come sit.',
-      day:     'Room open. Energy low-key alive.',
+      morning: 'Morning light, real thoughts. Come sit \ud83c\udf38',
+      day:     'Room open. Energy is alive today.',
       evening: 'Golden hour got the room feeling honest.',
-      night:   "Heavy night. The room's still here with you.",
+      night:   "Heavy night or a good one \u2014 either way, the room's here.",
     },
     rylane: {
-      morning: 'Early light, late thoughts. We move gentle.',
-      day:     "Room's awake. Let's get into it.",
-      evening: 'Evening\u2019s here. That means real talk time.',
+      morning: 'Early light, late thoughts. We move at your pace.',
+      day:     "Room's awake. Let's get into it \u26a1",
+      evening: 'Evening energy. Real talk or real rest \u2014 both valid.',
       night:   'Late night mode. Keep it low and real.',
     },
     cloud: {
-      morning: 'Quiet in here. Brain dump when ready.',
-      day:     'Cloud room is open. Let the thoughts land.',
-      evening: "Neon's on. This is the brain dump hour.",
-      night:   "Just the cloud light and you. That's enough.",
+      morning: 'Quiet in here \u2601\ufe0f brain dump whenever.',
+      day:     'Cloud room is open. Let thoughts land or let joy settle.',
+      evening: "Neon's on. Could be heavy. Could be glowing. Both welcome.",
+      night:   "Just the cloud light and you. That's everything.",
     },
     night: {
-      morning: 'The world is waking. You stayed up.',
-      day:     'Day is loud. But this window stays open.',
+      morning: 'The world is waking. You stayed up. Respect.',
+      day:     'Day is loud. But this window stays open \ud83c\udf19',
       evening: 'Getting late. Good. This is our time.',
-      night:   'Everybody asleep. Only us awake.',
+      night:   'Everybody asleep. Only us up. Stars out.',
     },
   };
   return map[character][timeOfDay];
@@ -261,22 +262,28 @@ const getPose = (
 const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isVisible: boolean): string => {
   const moodKey = String(mood).toLowerCase();
 
-  // Cloud \u2014 observes, holds space, rarely pushes
+  // Cloud \u2014 observes, holds space, present for joy AND heaviness
   if (character === 'cloud') {
-    if (moodKey.includes('sad'))   return 'Something feels heavy. You don\u2019t have to explain it.';
+    if (moodKey.includes('glow') || moodKey.includes('loved') || moodKey.includes('proud')) return 'Something bright is in here today. I noticed \u2728';
+    if (moodKey.includes('hyped') || moodKey.includes('excit'))  return 'High energy. This room can hold that too \u2601\uFE0F';
+    if (moodKey.includes('grateful') || moodKey.includes('peace')) return 'Something settled in here. That\'s real.';
+    if (moodKey.includes('sad'))   return 'Something feels heavy. You don\'t have to explain it.';
     if (moodKey.includes('tired')) return 'Tired. Yeah. Sit here for a bit. No pressure.';
-    if (moodKey.includes('angry')) return 'It\u2019s loud out there. In here it\u2019s quiet.';
+    if (moodKey.includes('angry')) return 'It\'s loud out there. In here it\'s quiet.';
     if (moodKey.includes('happy')) return 'Something light is happening. I noticed.';
-    if (timeOfDay === 'night')     return 'Late night brain dump? This is the spot.';
-    return 'Brain loud? This is the brain dump room.';
+    if (timeOfDay === 'night')     return 'Late night brain dump \u2014 or late night glow? Either works.';
+    return 'Brain loud or brain clear \u2014 both welcome here.';
   }
 
-  // Night \u2014 2AM energy, presence over conversation
+  // Night \u2014 2AM energy, present for stars AND storms
   if (character === 'night') {
+    if (moodKey.includes('glow') || moodKey.includes('loved'))   return 'You\'re up late and you\'re okay tonight. I see that \uD83C\uDF19';
+    if (moodKey.includes('hyped') || moodKey.includes('proud'))  return 'Late night energy hitting different. Let\'s stay in it.';
+    if (moodKey.includes('grateful') || moodKey.includes('peace')) return 'Something quiet and good in here. Stars are out for a reason.';
     if (moodKey.includes('sad'))   return 'Still up because of it. I know.';
-    if (moodKey.includes('tired')) return 'Exhausted but can\u2019t sleep. This window stays open.';
-    if (moodKey.includes('angry')) return 'Something\u2019s burning. Let it sit here.';
-    if (moodKey.includes('happy')) return 'You\u2019re up late and smiling. That\u2019s rare. Good.';
+    if (moodKey.includes('tired')) return 'Exhausted but can\'t sleep. This window stays open.';
+    if (moodKey.includes('angry')) return 'Something\'s burning. Let it sit here.';
+    if (moodKey.includes('happy')) return 'You\'re up late and smiling. That\'s rare. Good.';
     if (timeOfDay === 'night')     return 'Just us. No performance required.';
     return 'The world is asleep. You found your way here.';
   }
@@ -284,31 +291,57 @@ const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isV
   if (isVisible && timeOfDay === 'night') {
     return character === 'raylene'
       ? 'Come sit. We not doing the most tonight.'
-      : 'Aight, you here now. Let\u2019s keep it real.';
+      : 'Aight, you here now. Let\'s keep it real.';
   }
 
+  // Raylene + Rylane \u2014 positive moods
+  if (moodKey.includes('glow') || moodKey.includes('loved')) {
+    return character === 'raylene'
+      ? 'Look at you glowing \uD83C\uDF38 something good happened huh.'
+      : 'Aye, I see you. That\'s a different energy today.';
+  }
+  if (moodKey.includes('hyped') || moodKey.includes('excit')) {
+    return character === 'raylene'
+      ? 'Okay okay OKAY. Tell me everything \uD83D\uDE2D'
+      : 'Aye you hyped. I\'m hyped. What happened? \u26A1';
+  }
+  if (moodKey.includes('grateful') || moodKey.includes('peace')) {
+    return character === 'raylene'
+      ? 'Grateful energy looks good on you, fr.'
+      : 'Grateful energy is rare. I see you though.';
+  }
+  if (moodKey.includes('proud')) {
+    return character === 'raylene'
+      ? 'That\'s the one. You should be proud \uD83D\uDCAA'
+      : 'Aye, let\'s talk about the W. Real proud of you.';
+  }
+
+  // Heavy moods
   if (moodKey.includes('sad')) {
     return character === 'raylene'
-      ? 'Come sit. I already know it\u2019s been a lot.'
+      ? 'Come sit. I already know it\'s been a lot.'
       : 'Nah, I can tell something hit you. Talk to me.';
   }
-
   if (moodKey.includes('angry')) {
     return character === 'raylene'
       ? 'Hold on. Who got you like this?'
-      : 'Okay, who irritated us today? \uD83D\uDE12';
+      : 'Okay, who irritated us today? \uD83D\uDE24';
   }
-
   if (moodKey.includes('tired')) {
     return character === 'raylene'
       ? 'You look tired-tired. Sit down.'
       : 'You been running on fumes huh. Rest your head.';
   }
-
-  if (moodKey.includes('happy')) {
+  if (moodKey.includes('overwhelm') || moodKey.includes('anxious')) {
     return character === 'raylene'
-      ? 'Look at you. Something good happened.'
-      : 'Aye, that face says good news.';
+      ? 'That\'s a lot to carry. Let\'s slow it down.'
+      : 'One thing at a time. We got this.';
+  }
+
+  if (moodKey.includes('happy') || moodKey.includes('okay')) {
+    return character === 'raylene'
+      ? 'Look at you. Something good is happening.'
+      : 'Aye, that energy. What\'s good?';
   }
 
   if (timeOfDay === 'morning') {
@@ -316,16 +349,14 @@ const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isV
       ? 'Morning. Tell me the real version of today.'
       : 'Morning check-in. What we on?';
   }
-
   if (timeOfDay === 'evening') {
     return character === 'raylene'
       ? 'Evening got truth in it. Start wherever.'
       : 'You made it to evening. That counts.';
   }
-
   if (timeOfDay === 'night') {
     return character === 'raylene'
-      ? 'Heavy night huh. You don\u2019t gotta carry it alone.'
+      ? 'Late night in the room. You don\'t gotta carry it alone.'
       : 'Late night thoughts? Yeah, I figured.';
   }
 
@@ -368,6 +399,8 @@ export function RoomScreen({
   companion,
   sekretMode,
 }: RoomScreenProps) {
+
+  const { activeTrack, play, isConfigured } = useAmbientPlayer();
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const character: Character =
@@ -755,6 +788,38 @@ export function RoomScreen({
               <Text style={styles.roomCompanionButtonText}>talk to a companion →</Text>
             </TouchableOpacity>
           ) : null}
+
+          {/* ── Ambient jukebox — MySpace-era room music ─────────────── */}
+          <View style={styles.ambientWrap}>
+            {activeTrack && (
+              <Text style={styles.ambientNowPlaying}>
+                🎵 now playing · {AMBIENT_TRACKS[activeTrack].emoji} {AMBIENT_TRACKS[activeTrack].label}
+              </Text>
+            )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.ambientRow}
+            >
+              {(Object.keys(AMBIENT_TRACKS) as AmbientKey[]).map((key) => (
+                <TouchableOpacity
+                  key={key}
+                  style={[
+                    styles.ambientBtn,
+                    activeTrack === key && styles.ambientBtnActive,
+                    !isConfigured(key) && styles.ambientBtnDim,
+                  ]}
+                  onPress={() => play(key)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Play ${AMBIENT_TRACKS[key].label} ambient`}
+                >
+                  <Text style={styles.ambientBtnText}>
+                    {AMBIENT_TRACKS[key].emoji} {AMBIENT_TRACKS[key].label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
         </TouchableOpacity>
 
         {BottomNav}
@@ -973,4 +1038,23 @@ const styles = StyleSheet.create({
   quickLabel:            { color: '#E2E8F0', fontSize: 9, fontWeight: '700' },
 
   tagline:               { color: '#c4b5fd', fontSize: 12, textAlign: 'center', fontStyle: 'italic', opacity: 0.8 },
+
+  // Ambient jukebox
+  ambientWrap:           { marginTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 8 },
+  ambientNowPlaying:     { color: '#c4b5fd', fontSize: 10, fontWeight: '700', letterSpacing: 0.4, marginBottom: 6, opacity: 0.9 },
+  ambientRow:            { gap: 6, paddingBottom: 2 },
+  ambientBtn:            {
+    backgroundColor:   'rgba(255,255,255,0.06)',
+    borderWidth:       1,
+    borderColor:       'rgba(196,181,253,0.2)',
+    borderRadius:      16,
+    paddingHorizontal: 10,
+    paddingVertical:   5,
+  },
+  ambientBtnActive:      {
+    backgroundColor: 'rgba(167,139,250,0.22)',
+    borderColor:     '#a78bfa',
+  },
+  ambientBtnDim:         { opacity: 0.38 },
+  ambientBtnText:        { color: '#e9d5ff', fontSize: 11, fontWeight: '600' },
 });

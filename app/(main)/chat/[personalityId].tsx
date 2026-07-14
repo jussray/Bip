@@ -30,7 +30,15 @@ import {
 } from 'react-native';
 
 const MOOD_CHIPS = [
+  // — positive spectrum —
   { key: 'okay',        emoji: '😊' },
+  { key: 'loved',       emoji: '🥰' },
+  { key: 'hyped',       emoji: '⚡' },
+  { key: 'grateful',    emoji: '🙏' },
+  { key: 'proud',       emoji: '💪' },
+  { key: 'glowing',     emoji: '✨' },
+  { key: 'peaceful',    emoji: '🌿' },
+  // — heavy spectrum —
   { key: 'sad',         emoji: '😔' },
   { key: 'tired',       emoji: '😴' },
   { key: 'overwhelmed', emoji: '😰' },
