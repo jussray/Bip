@@ -1,25 +1,19 @@
 // app/(teen)/sekret.tsx
 // Entry point for the teen's safe space.
 //
-// Background: uses the same getRoomBg() + getRoomPhase() system as companion-chat.tsx
-// and room.tsx so the teen always feels like they are inside their companion's world,
-// not looking at a generic splash screen.
-//
-// ROUTING RULE:
-//   Se'kret Bip button → /(teen)/pages (with companion param)
-//   companion-chat.tsx is backend/service logic — NOT a user-facing destination.
-//   Do not push to /(teen)/companion-chat from this screen.
+// The canonical theme helper currently returns a room color rather than an
+// ImageSource. Keep the same time-aware world treatment without pretending a
+// color string is an ImageBackground asset.
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  View,
+  Animated,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  ImageBackground,
-  Animated,
-  StatusBar,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -38,68 +32,70 @@ import type { PersonalityId } from '@/types';
 const PERSONALITY_ORDER: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
 
 const TEEN_SHORTCUTS = [
-  { label: 'Write It Out', emoji: '✏️', route: TEEN_ROUTES.pages    },
-  { label: 'Voice Bip',   emoji: '🎙️', route: TEEN_ROUTES.voiceBip },
-  { label: 'Calm Me',     emoji: '☁️', route: TEEN_ROUTES.calm      },
-  { label: 'Circle',      emoji: '👥', route: TEEN_ROUTES.circle     },
+  { label: 'Write It Out', emoji: '✏️', route: TEEN_ROUTES.pages },
+  { label: 'Voice Bip', emoji: '🎙️', route: TEEN_ROUTES.voiceBip },
+  { label: 'Calm Me', emoji: '☁️', route: TEEN_ROUTES.calm },
+  { label: 'Circle', emoji: '👥', route: TEEN_ROUTES.circle },
 ] as const;
 
 export default function TeenSekretRoute() {
   const { selectedSekret } = useAppContext();
-
-  // ── Room background — same resolution logic as companion-chat.tsx & room.tsx ──
   const charKey = useMemo(
     () => normalizeCharacterKey(selectedSekret ?? 'raylene'),
     [selectedSekret],
   );
-  const roomPhase = useMemo(() => getRoomPhase(), []);
-  const bgSource  = useMemo(() => getRoomBg(charKey, roomPhase), [charKey, roomPhase]);
+  const roomPhase = useMemo(() => getRoomPhase(new Date().getHours()), []);
+  const backgroundColor = useMemo(() => getRoomBg(charKey), [charKey]);
 
-  // ── Picker overlay state ───────────────────────────────────────────────────────
   const [pickerVisible, setPickerVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   function openPicker() {
     setPickerVisible(true);
-    Animated.timing(fadeAnim, { toValue: 1, duration: 320, useNativeDriver: true }).start();
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 320,
+      useNativeDriver: true,
+    }).start();
   }
 
   function closePicker() {
-    Animated.timing(fadeAnim, { toValue: 0, duration: 220, useNativeDriver: true }).start(() =>
-      setPickerVisible(false),
-    );
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => setPickerVisible(false));
   }
 
   function handleCompanionSelect(id: PersonalityId) {
     closePicker();
-    // Route to Pages with the selected companion so Pages opens on the right tab.
-    // companion-chat.tsx is backend logic — never the user-facing destination.
     router.push({
       pathname: TEEN_ROUTES.pages,
-      params: { companion: id === 'oracle' ? 'oracle' : id },
-    } as any);
+      params: { companion: id },
+    } as never);
   }
 
   return (
-    <View style={s.root}>
+    <View style={[s.root, { backgroundColor }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Room background — same world as companion-chat.tsx ── */}
-      <ImageBackground source={bgSource} style={StyleSheet.absoluteFill} resizeMode="cover">
+      <View style={[StyleSheet.absoluteFill, { backgroundColor }]}>
         <LinearGradient
-          colors={['rgba(20,10,40,0.30)', 'rgba(10,5,25,0.82)']}
+          colors={
+            roomPhase === 'day'
+              ? ['rgba(255,255,255,0.05)', 'rgba(10,5,25,0.72)']
+              : roomPhase === 'evening'
+                ? ['rgba(91,51,122,0.22)', 'rgba(10,5,25,0.80)']
+                : ['rgba(20,10,40,0.30)', 'rgba(10,5,25,0.88)']
+          }
           style={StyleSheet.absoluteFill}
         />
-      </ImageBackground>
+      </View>
 
-      {/* ── Main HUD ── */}
       <SafeAreaView style={s.safe} edges={['top', 'left', 'right', 'bottom']}>
         <View style={s.flex}>
-
-          {/* Spacer pushes CTA toward bottom */}
           <View style={s.spacer} />
 
-          {/* CTA block */}
           <View style={s.ctaBlock}>
             <Text style={s.ctaLabel}>Press Se'kret Bip</Text>
             <Text style={s.ctaSub}>to enter your safe space</Text>
@@ -108,13 +104,12 @@ export default function TeenSekretRoute() {
             </TouchableOpacity>
           </View>
 
-          {/* Shortcut bar — glassmorphic over the room bg */}
           <View style={s.shortcutBar}>
             {TEEN_SHORTCUTS.map(item => (
               <TouchableOpacity
                 key={item.label}
                 style={s.shortcutItem}
-                onPress={() => router.push(item.route as any)}
+                onPress={() => router.push(item.route as never)}
                 activeOpacity={0.8}
               >
                 <Text style={s.shortcutEmoji}>{item.emoji}</Text>
@@ -127,8 +122,7 @@ export default function TeenSekretRoute() {
         </View>
       </SafeAreaView>
 
-      {/* ── Companion picker overlay ── */}
-      {pickerVisible && (
+      {pickerVisible ? (
         <Animated.View style={[s.pickerOverlay, { opacity: fadeAnim }]}>
           <SafeAreaView style={s.pickerSafe} edges={['top', 'left', 'right', 'bottom']}>
             <ScrollView
@@ -137,26 +131,31 @@ export default function TeenSekretRoute() {
             >
               <View style={s.pickerHeader}>
                 <Text style={s.pickerHeading}>Se'kret 💜</Text>
-                <TouchableOpacity onPress={closePicker} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+                <TouchableOpacity
+                  onPress={closePicker}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
                   <Text style={s.pickerClose}>✕</Text>
                 </TouchableOpacity>
               </View>
               <Text style={s.pickerSub}>Choose who you want to talk to.</Text>
 
               {PERSONALITY_ORDER.map(id => {
-                const p = PERSONALITY_CONFIG[id];
+                const personality = PERSONALITY_CONFIG[id];
                 return (
                   <TouchableOpacity
                     key={id}
-                    style={[s.card, { borderColor: p.accentColor + '40' }]}
+                    style={[s.card, { borderColor: `${personality.accentColor}40` }]}
                     onPress={() => handleCompanionSelect(id)}
                     activeOpacity={0.85}
                   >
-                    <Text style={s.emoji}>{p.emoji}</Text>
+                    <Text style={s.emoji}>{personality.emoji}</Text>
                     <View style={s.cardBody}>
-                      <Text style={[s.name, { color: p.accentColor }]}>{p.name}</Text>
-                      <Text style={s.title}>{p.title}</Text>
-                      <Text style={s.vibe}>{p.vibe}</Text>
+                      <Text style={[s.name, { color: personality.accentColor }]}>
+                        {personality.name}
+                      </Text>
+                      <Text style={s.personalityTitle}>{personality.title}</Text>
+                      <Text style={s.vibe}>{personality.vibe}</Text>
                     </View>
                   </TouchableOpacity>
                 );
@@ -164,19 +163,16 @@ export default function TeenSekretRoute() {
             </ScrollView>
           </SafeAreaView>
         </Animated.View>
-      )}
+      ) : null}
     </View>
   );
 }
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0d0015' },
-
-  safe:    { flex: 1 },
-  flex:    { flex: 1, justifyContent: 'flex-end' },
-  spacer:  { flex: 1 },
-
-  // ── CTA ──────────────────────────────────────────────────────────────────────
+  safe: { flex: 1 },
+  flex: { flex: 1, justifyContent: 'flex-end' },
+  spacer: { flex: 1 },
   ctaBlock: {
     alignItems: 'center',
     paddingHorizontal: 32,
@@ -212,8 +208,6 @@ const s = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-
-  // ── Shortcut bar — glass layer over room bg ───────────────────────────────────
   shortcutBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -226,11 +220,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
   },
-  shortcutItem: {
-    alignItems: 'center',
-    gap: 4,
-    minWidth: 64,
-  },
+  shortcutItem: { alignItems: 'center', gap: 4, minWidth: 64 },
   shortcutEmoji: { fontSize: 22 },
   shortcutLabel: {
     color: 'rgba(255,255,255,0.75)',
@@ -238,7 +228,6 @@ const s = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-
   tagline: {
     color: 'rgba(255,255,255,0.30)',
     fontSize: 11,
@@ -246,14 +235,16 @@ const s = StyleSheet.create({
     paddingBottom: 12,
     letterSpacing: 0.3,
   },
-
-  // ── Companion picker overlay ──────────────────────────────────────────────────
   pickerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(8,4,20,0.95)',
     zIndex: 99,
   },
-  pickerSafe:    { flex: 1 },
+  pickerSafe: { flex: 1 },
   pickerContent: { padding: 24, paddingBottom: 48 },
   pickerHeader: {
     flexDirection: 'row',
@@ -261,11 +252,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 4,
   },
-  pickerHeading: {
-    color: '#fff',
-    fontSize: 26,
-    fontWeight: '800',
-  },
+  pickerHeading: { color: '#fff', fontSize: 26, fontWeight: '800' },
   pickerClose: {
     color: 'rgba(255,255,255,0.55)',
     fontSize: 20,
@@ -278,7 +265,6 @@ const s = StyleSheet.create({
     fontSize: 14,
     marginBottom: 28,
   },
-
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -289,9 +275,13 @@ const s = StyleSheet.create({
     padding: 18,
     marginBottom: 14,
   },
-  emoji:    { fontSize: 36 },
+  emoji: { fontSize: 36 },
   cardBody: { flex: 1, gap: 3 },
-  name:     { fontSize: 18, fontWeight: '700' },
-  title:    { color: 'rgba(255,255,255,0.70)', fontSize: 13, fontWeight: '500' },
-  vibe:     { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
+  name: { fontSize: 18, fontWeight: '700' },
+  personalityTitle: {
+    color: 'rgba(255,255,255,0.70)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  vibe: { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
 });
