@@ -33,10 +33,18 @@ export async function fetchLinkedTeenId(): Promise<string | null> {
   return fetchLinkedTeenIdBase();
 }
 
+export type BridgeResponsePreference =
+  | 'listen'
+  | 'comfort'
+  | 'help_plan'
+  | 'check_later'
+  | 'give_space';
+
 export interface BridgeSignal {
   id: number;
   share_type: string;
   conv_mode: string | null;
+  response_preference: BridgeResponsePreference | null;
   char_key: string;
   sent_at: string;
   created_at: string;
@@ -59,6 +67,7 @@ export interface ParentEngagement {
 export async function sendBridgeSignal(params: {
   shareType: string;
   convMode: string | null;
+  responsePreference: BridgeResponsePreference;
   charKey: 'raylene' | 'rylane';
 }): Promise<void> {
   const sb = getSupabase();
@@ -69,6 +78,7 @@ export async function sendBridgeSignal(params: {
     char_key: params.charKey,
     share_type: params.shareType,
     conv_mode: params.convMode ?? null,
+    response_preference: params.responsePreference,
     sent_at: new Date().toISOString(),
   });
 }
@@ -124,7 +134,7 @@ export async function fetchBridgeSignals(teenId: string): Promise<BridgeSignal[]
   if (!sb || !teenId) return [];
   const { data } = await sb
     .from('bridge_signals')
-    .select('id, share_type, conv_mode, char_key, sent_at, created_at')
+    .select('id, share_type, conv_mode, response_preference, char_key, sent_at, created_at')
     .eq('teen_user_id', teenId)
     .order('sent_at', { ascending: false })
     .limit(30);
