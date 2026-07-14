@@ -1,1 +1,1 @@
-export { CrewAccountabilityScreen } from './CrewAccountabilityScreenV2';
+export { CrewAccountabilityScreen } from './CrewAccountabilityScreenV3';
