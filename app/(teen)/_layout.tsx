@@ -10,6 +10,7 @@ import { toCompanionId } from '@/features/sekret/companionEngine';
 import { hydrateAccountProfile } from '@/features/identity/accountProfile';
 import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 import { logEvent } from '@/services/logEvent';
+import { isFounderPreviewEnabled } from '@/constants/founderPreview';
 
 function TabIcon({ emoji }: { emoji: string }) {
   return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
@@ -82,6 +83,7 @@ export default function TeenLayout() {
   const [profileChecked, setProfileChecked] = useState(false);
   const [profileComplete, setProfileComplete] = useState(false);
   const sessionLogged = useRef(false);
+  const founderPreview = isFounderPreviewEnabled();
 
   useEffect(() => {
     let active = true;
@@ -105,11 +107,12 @@ export default function TeenLayout() {
   }, []);
 
   const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
-  const isTeenActive =
+  const isTeenActive = founderPreview || (
     !isLoading &&
     profileChecked &&
     profileComplete &&
-    (effectiveUserSide === 'teen' || getDevSplitViewSideOverride() != null);
+    (effectiveUserSide === 'teen' || getDevSplitViewSideOverride() != null)
+  );
 
   useEffect(() => {
     if (isTeenActive && !sessionLogged.current) {
@@ -117,6 +120,11 @@ export default function TeenLayout() {
       logEvent('session_start');
     }
   }, [isTeenActive]);
+
+  // Founder Preview bypasses only route/onboarding visibility in development.
+  // Individual screens still enforce authentication, consent, accepted links,
+  // RLS, microphone permissions, and safety checks.
+  if (founderPreview) return <TeenTabs selectedSekret={selectedSekret ?? 'raylene'} />;
 
   if (isLoading || !profileChecked) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
   if (effectiveUserSide === 'parent') return <Redirect href="/(parent)/room" />;
