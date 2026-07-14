@@ -31,6 +31,8 @@ const STORAGE_KEYS = {
   parentProfileDone: 'parent_profile_done',
   linkedTeenId: 'linked_teen_id',
   devTestFamilyV1: 'dev_test_family_v1',
+  meaningfulReturnReceipts: 'sekretbip_meaningful_return_receipts_v1',
+  meaningfulReturnSeen: 'sekretbip_meaningful_return_seen_v1',
 };
 
 const JSON_KEYS = new Set([
@@ -42,6 +44,7 @@ const JSON_KEYS = new Set([
   'parentCrewMembers', 'parentCrewCheckIns',
   'roomMemory', 'periodDays',
   'parent_profile_data', 'dev_test_family_v1',
+  'sekretbip_meaningful_return_receipts_v1',
 ]);
 
 const PRIVATE_ACCOUNT_KEYS = [
@@ -81,6 +84,8 @@ const PRIVATE_ACCOUNT_KEYS = [
   STORAGE_KEYS.parentProfileDone,
   STORAGE_KEYS.linkedTeenId,
   STORAGE_KEYS.devTestFamilyV1,
+  STORAGE_KEYS.meaningfulReturnReceipts,
+  STORAGE_KEYS.meaningfulReturnSeen,
   'sekretbip_first_visit_done',
   'parent_bridge_pending',
   'sekret_self_discovery_profile',
