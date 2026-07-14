@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import {
+  applyBipEnergyFade,
   loadUnseenBipEnergyAdjustment,
   markBipEnergyAdjustmentSeen,
   type BipEnergyAdjustment,
@@ -51,15 +52,20 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([
-      loadMeaningfulReturnSnapshot(),
-      loadUnseenBipEnergyAdjustment(),
-    ]).then(([nextSnapshot, nextAdjustment]) => {
+    void (async () => {
+      // The point RPC is once-per-day and idempotent. Waiting here ensures the
+      // same Room visit can show the result instead of making the teen return
+      // again just to learn that Bip Energy faded.
+      await applyBipEnergyFade();
+      const [nextSnapshot, nextAdjustment] = await Promise.all([
+        loadMeaningfulReturnSnapshot(),
+        loadUnseenBipEnergyAdjustment(),
+      ]);
       if (!active) return;
       setSnapshot(nextSnapshot);
       setEnergyAdjustment(nextAdjustment);
       setOpen(nextSnapshot.isNew || Boolean(nextAdjustment));
-    });
+    })();
     return () => { active = false; };
   }, []);
 
