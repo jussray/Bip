@@ -10,14 +10,15 @@ function routeValues(source) {
   return [...source.matchAll(/:\s*'([^']+)'/g)].map(match => match[1]);
 }
 
-test('Founder Preview is development-only and cannot be enabled in production', () => {
+test('Founder Preview is native-development first and cannot be enabled in production', () => {
   const preview = read('src/constants/founderPreview.ts');
   const env = read('.env.example');
 
   assert.match(preview, /const isDevelopment = typeof __DEV__ !== 'undefined' && __DEV__/);
   assert.match(preview, /if \(!isDevelopment\) return false/);
-  assert.match(preview, /EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW !== 'false'/);
-  assert.doesNotMatch(preview, /if \(explicit === 'true'\) return true/);
+  assert.match(preview, /if \(explicit === 'false'\) return false/);
+  assert.match(preview, /if \(explicit === 'true'\) return true/);
+  assert.match(preview, /return Platform\.OS !== 'web'/);
   assert.match(env, /EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW=true/);
   assert.match(env, /Production builds always ignore this flag and remain closed/);
 });
