@@ -8,6 +8,11 @@ import {
   View,
 } from 'react-native';
 import {
+  loadUnseenBipEnergyAdjustment,
+  markBipEnergyAdjustmentSeen,
+  type BipEnergyAdjustment,
+} from '@/features/activity/bipEnergy';
+import {
   loadMeaningfulReturnSnapshot,
   markMeaningfulReturnSeen,
   type MeaningfulReturnSnapshot,
@@ -41,14 +46,19 @@ const NEEDS = [
 
 export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
   const [snapshot, setSnapshot] = useState<MeaningfulReturnSnapshot | null>(null);
+  const [energyAdjustment, setEnergyAdjustment] = useState<BipEnergyAdjustment | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
-    void loadMeaningfulReturnSnapshot().then(next => {
+    void Promise.all([
+      loadMeaningfulReturnSnapshot(),
+      loadUnseenBipEnergyAdjustment(),
+    ]).then(([nextSnapshot, nextAdjustment]) => {
       if (!active) return;
-      setSnapshot(next);
-      setOpen(next.isNew);
+      setSnapshot(nextSnapshot);
+      setEnergyAdjustment(nextAdjustment);
+      setOpen(nextSnapshot.isNew || Boolean(nextAdjustment));
     });
     return () => { active = false; };
   }, []);
@@ -59,7 +69,10 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
   );
 
   async function close() {
-    if (snapshot?.latest) await markMeaningfulReturnSeen(snapshot.latest.id);
+    await Promise.all([
+      snapshot?.latest ? markMeaningfulReturnSeen(snapshot.latest.id) : Promise.resolve(),
+      energyAdjustment ? markBipEnergyAdjustmentSeen(energyAdjustment.checkedAt) : Promise.resolve(),
+    ]);
     setOpen(false);
   }
 
@@ -77,9 +90,9 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
         accessibilityLabel="Open your Bip return receipt and choose what you need"
         activeOpacity={0.86}
       >
-        <Text style={styles.floatingIcon}>{snapshot?.latest?.icon ?? '💜'}</Text>
+        <Text style={styles.floatingIcon}>{energyAdjustment ? '✨' : snapshot?.latest?.icon ?? '💜'}</Text>
         <Text style={styles.floatingText}>
-          {snapshot?.latest ? 'your Bip story' : 'what do you need?'}
+          {energyAdjustment ? 'welcome back' : snapshot?.latest ? 'your Bip story' : 'what do you need?'}
         </Text>
       </TouchableOpacity>
 
@@ -88,6 +101,21 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
           <Pressable style={styles.sheet} onPress={event => event.stopPropagation()}>
             <View style={styles.handle} />
             <Text style={styles.kicker}>YOUR BIP STORY</Text>
+
+            {energyAdjustment ? (
+              <View style={styles.energyCard}>
+                <Text style={styles.energyIcon}>✨</Text>
+                <View style={styles.receiptTextWrap}>
+                  <Text style={styles.energyTitle}>Your Bip Energy faded a little.</Text>
+                  <Text style={styles.energyBody}>
+                    {energyAdjustment.adjusted} point{energyAdjustment.adjusted === 1 ? '' : 's'} eased back after {energyAdjustment.daysAway} days away. Welcome back. Small steps still count.
+                  </Text>
+                  <Text style={styles.energyPromise}>
+                    Bip Tickets, redeemed rewards, and unlocked room items stay yours.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
 
             {snapshot?.latest ? (
               <View style={styles.receiptCard}>
@@ -107,7 +135,7 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
               <Text style={styles.rhythmNumber}>{snapshot?.activeDays30 ?? 0}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rhythmLabel}>days you checked in this month</Text>
-                <Text style={styles.rhythmSub}>Active days, not a streak you can lose.</Text>
+                <Text style={styles.rhythmSub}>Your active-day story stays even when a streak resets.</Text>
               </View>
             </View>
 
@@ -194,6 +222,20 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     marginBottom: 10,
   },
+  energyCard: {
+    flexDirection: 'row',
+    gap: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.38)',
+    backgroundColor: 'rgba(120,53,15,0.18)',
+    padding: 15,
+    marginBottom: 12,
+  },
+  energyIcon: { fontSize: 28 },
+  energyTitle: { color: '#fef3c7', fontSize: 15, fontWeight: '900', lineHeight: 21 },
+  energyBody: { color: '#e7d6ae', fontSize: 12, lineHeight: 18, marginTop: 4 },
+  energyPromise: { color: '#f5cf73', fontSize: 10, lineHeight: 15, fontWeight: '800', marginTop: 7 },
   receiptCard: {
     flexDirection: 'row',
     gap: 12,
