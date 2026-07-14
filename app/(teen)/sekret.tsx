@@ -5,7 +5,10 @@
 // and room.tsx so the teen always feels like they are inside their companion's world,
 // not looking at a generic splash screen.
 //
-// The companion picker overlay is a full-screen dark sheet layered on top.
+// ROUTING RULE:
+//   Se'kret Bip button → /(teen)/pages (with companion param)
+//   companion-chat.tsx is backend/service logic — NOT a user-facing destination.
+//   Do not push to /(teen)/companion-chat from this screen.
 
 import React, { useState, useRef, useMemo } from 'react';
 import {
@@ -69,11 +72,11 @@ export default function TeenSekretRoute() {
 
   function handleCompanionSelect(id: PersonalityId) {
     closePicker();
-    // Always route to the canonical companion-chat screen.
-    // 'oracle' maps to 'sekret' inside companionEngine's CompanionId union.
+    // Route to Pages with the selected companion so Pages opens on the right tab.
+    // companion-chat.tsx is backend logic — never the user-facing destination.
     router.push({
-      pathname: '/(teen)/companion-chat',
-      params: { companion: id === 'oracle' ? 'sekret' : id },
+      pathname: TEEN_ROUTES.pages,
+      params: { companion: id === 'oracle' ? 'oracle' : id },
     } as any);
   }
 
@@ -219,57 +222,76 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(10,0,20,0.55)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.10)',
   },
-  shortcutItem:  { alignItems: 'center', flex: 1 },
-  shortcutEmoji: { fontSize: 22, marginBottom: 5 },
+  shortcutItem: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 64,
+  },
+  shortcutEmoji: { fontSize: 22 },
   shortcutLabel: {
-    color: '#f9a8d4',
-    fontSize: 10,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
   },
 
   tagline: {
-    color: '#c084fc',
+    color: 'rgba(255,255,255,0.30)',
     fontSize: 11,
     textAlign: 'center',
-    paddingBottom: 10,
+    paddingBottom: 12,
+    letterSpacing: 0.3,
   },
 
-  // ── Picker overlay ─────────────────────────────────────────────────────────────
+  // ── Companion picker overlay ──────────────────────────────────────────────────
   pickerOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: '#0d0015',
-    zIndex: 10,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8,4,20,0.95)',
+    zIndex: 99,
   },
   pickerSafe:    { flex: 1 },
-  pickerContent: { padding: 24, paddingTop: 16, paddingBottom: 48 },
-  pickerHeader:  {
+  pickerContent: { padding: 24, paddingBottom: 48 },
+  pickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
   },
-  pickerHeading: { color: '#fff', fontSize: 24, fontWeight: '800' },
-  pickerClose:   { color: '#888', fontSize: 20, padding: 4 },
-  pickerSub:     { color: '#666', fontSize: 14, marginBottom: 28 },
+  pickerHeading: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '800',
+  },
+  pickerClose: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 20,
+    fontWeight: '600',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  pickerSub: {
+    color: 'rgba(255,255,255,0.50)',
+    fontSize: 14,
+    marginBottom: 28,
+  },
 
   card: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#111827',
-    borderRadius: 20,
+    alignItems: 'center',
+    gap: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderRadius: 18,
     padding: 18,
     marginBottom: 14,
-    borderWidth: 1,
   },
-  emoji:    { fontSize: 32, marginTop: 2, marginRight: 14 },
-  cardBody: { flex: 1 },
-  name:     { fontSize: 17, fontWeight: '700', marginBottom: 2 },
-  title:    { color: '#888', fontSize: 12, marginBottom: 6 },
-  vibe:     { color: '#555', fontSize: 13, lineHeight: 18 },
+  emoji:    { fontSize: 36 },
+  cardBody: { flex: 1, gap: 3 },
+  name:     { fontSize: 18, fontWeight: '700' },
+  title:    { color: 'rgba(255,255,255,0.70)', fontSize: 13, fontWeight: '500' },
+  vibe:     { color: 'rgba(255,255,255,0.45)', fontSize: 12 },
 });
