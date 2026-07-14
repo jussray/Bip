@@ -20,7 +20,8 @@
         "supabase/migrations/20260714183200_guard_crew_invite_acceptance.sql",
         "supabase/migrations/20260714183300_accepted_crew_identity_rpc.sql",
         "supabase/migrations/20260714183400_unlimited_crew_check_in_rpc.sql",
-        "supabase/migrations/20260714183500_harden_crew_membership_paths.sql"
+        "supabase/migrations/20260714183500_harden_crew_membership_paths.sql",
+        "supabase/migrations/20260714183600_lock_crew_function_search_paths.sql"
       ],
       "runtimePaths": [
         "src/services/crewAccountabilityService.ts",
