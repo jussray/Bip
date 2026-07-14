@@ -130,6 +130,6 @@ test('Crew keeps accepted-connection rules and uses local-only founder sample da
   assert.equal(crew.includes(".from('circle_profiles')"), false);
   assert.equal(crew.includes('PREVIEW_MEMBERS'), true);
   assert.equal(crew.includes('if (previewSample)'), true);
-  assert.equal(crew.includes('writes nothing to Supabase'), true);
+  assert.equal(crew.includes('without writing anything to Supabase'), true);
   assert.equal(crew.includes('Placeholder invite codes are not real connections.'), true);
 });
