@@ -33,8 +33,8 @@ test('the catalog covers every canonical Teen and Parent route', () => {
     assert.equal(preview.includes(route), true, `Founder Preview catalog is missing ${route}`);
   }
 
-  assert.match(preview, /\/(dev)\/feature-preview/);
-  assert.match(preview, /\/(dev)\/scrapbook-preview/);
+  assert.match(preview, /\/\(dev\)\/feature-preview/);
+  assert.match(preview, /\/\(dev\)\/scrapbook-preview/);
   assert.match(preview, /Bridge AI Summaries/);
   assert.match(preview, /Approved Companion Memory/);
 });
@@ -125,7 +125,7 @@ test('both More screens expose the all-features launcher only in Founder Preview
   assert.match(teenMore, /Open every Bip feature/);
   assert.match(teenMore, /founderPreview \?/);
   assert.match(teenRoute, /dev-feature-preview/);
-  assert.match(teenRoute, /\/(dev)\/feature-preview/);
+  assert.match(teenRoute, /\/\(dev\)\/feature-preview/);
   assert.match(parentMore, /Open every Bip feature/);
-  assert.match(parentMore, /\/(dev)\/feature-preview/);
+  assert.match(parentMore, /\/\(dev\)\/feature-preview/);
 });
