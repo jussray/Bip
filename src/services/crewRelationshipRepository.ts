@@ -89,7 +89,8 @@ export async function loadOwnedCrewRelationships(): Promise<CrewRelationship[]> 
   });
 }
 
-export async function setCrewRelationshipStatus(
+/** Owner-side action for pending or accepted rows they created. */
+export async function setOwnedCrewRelationshipStatus(
   id: string | number,
   status: 'blocked' | 'removed',
 ): Promise<boolean> {
@@ -102,4 +103,19 @@ export async function setCrewRelationshipStatus(
     .eq('user_id', user.id)
     .eq('id', id);
   return !error;
+}
+
+/** Either participant can block or leave an accepted relationship. */
+export async function setAcceptedCrewConnectionStatus(
+  otherUserId: string,
+  status: 'blocked' | 'removed',
+): Promise<boolean> {
+  const { supabase, user } = await permanentSession();
+  if (!supabase || !user || !otherUserId || otherUserId === user.id) return false;
+
+  const { data, error } = await supabase.rpc('set_crew_connection_status', {
+    p_other_user_id: otherUserId,
+    p_status: status,
+  });
+  return !error && data === true;
 }
