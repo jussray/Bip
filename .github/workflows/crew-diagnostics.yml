@@ -1,0 +1,65 @@
+name: Crew Diagnostics
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'screens/BipCrewScreen*.tsx'
+      - 'src/screens/CrewAccountabilityScreen*.tsx'
+      - 'src/services/crew*.ts'
+      - 'supabase/migrations/20260714183*.sql'
+      - 'test/*crew*.test.mjs'
+      - 'test/feature-flow-contracts.test.mjs'
+      - 'test/founder-preview-unlock.test.mjs'
+      - '.github/workflows/crew-diagnostics.yml'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --silent
+      - name: Capture focused failures
+        id: capture
+        shell: bash
+        run: |
+          set +e
+          npm run type-check > /tmp/typecheck.log 2>&1
+          TYPE_STATUS=$?
+          node --test test/unlimited-crew-identity-privacy.test.mjs test/feature-flow-contracts.test.mjs test/founder-preview-unlock.test.mjs > /tmp/tests.log 2>&1
+          TEST_STATUS=$?
+          echo "type_status=$TYPE_STATUS" >> "$GITHUB_OUTPUT"
+          echo "test_status=$TEST_STATUS" >> "$GITHUB_OUTPUT"
+      - name: Post diagnostics
+        uses: actions/github-script@v7
+        env:
+          TYPE_STATUS: ${{ steps.capture.outputs.type_status }}
+          TEST_STATUS: ${{ steps.capture.outputs.test_status }}
+        with:
+          script: |
+            const fs = require('fs');
+            const trim = value => value.length > 14000 ? value.slice(-14000) : value;
+            const typeOutput = trim(fs.readFileSync('/tmp/typecheck.log', 'utf8'));
+            const testOutput = trim(fs.readFileSync('/tmp/tests.log', 'utf8'));
+            const marker = '<!-- crew-diagnostics -->';
+            const body = `${marker}\n## Crew diagnostics\n\n**Type check:** ${process.env.TYPE_STATUS === '0' ? 'passed' : 'failed'}\n\n\`\`\`text\n${typeOutput || '(no output)'}\n\`\`\`\n\n**Focused tests:** ${process.env.TEST_STATUS === '0' ? 'passed' : 'failed'}\n\n\`\`\`text\n${testOutput || '(no output)'}\n\`\`\``;
+            const { data: comments } = await github.rest.issues.listComments({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number });
+            const existing = comments.find(comment => comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }
+      - name: Enforce result
+        shell: bash
+        run: |
+          test "${{ steps.capture.outputs.type_status }}" = "0"
+          test "${{ steps.capture.outputs.test_status }}" = "0"
