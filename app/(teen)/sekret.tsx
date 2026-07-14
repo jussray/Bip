@@ -37,6 +37,16 @@ export default function TeenSekretRoute() {
     router.push(route as any);
   }
 
+  function handleCompanionSelect(id: PersonalityId) {
+    closePicker();
+    // Always route through the canonical companion-chat screen.
+    // chat/[personalityId] is retired — companion-chat owns all chat rendering.
+    router.push({
+      pathname: '/(teen)/companion-chat',
+      params: { companion: id === 'oracle' ? 'sekret' : id },
+    } as any);
+  }
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
@@ -89,7 +99,7 @@ export default function TeenSekretRoute() {
                   <TouchableOpacity
                     key={id}
                     style={[styles.card, { borderColor: p.accentColor + '40' }]}
-                    onPress={() => router.push(`/(teen)/chat/${id}` as any)}
+                    onPress={() => handleCompanionSelect(id)}
                     activeOpacity={0.85}
                   >
                     <Text style={styles.emoji}>{p.emoji}</Text>
