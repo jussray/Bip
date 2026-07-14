@@ -112,8 +112,9 @@ test('Bridge and Scrapbook samples are labeled and do not pretend to be backend 
   assert.doesNotMatch(wrangler, /BRIDGE_SUMMARIES_ROLLOUT = "enabled"/);
 });
 
-test('OpenAI and Anthropic share one truthful preview handoff', () => {
+test('OpenAI and Anthropic share one truthful preview handoff and Crew addendum', () => {
   const handoff = read('docs/OPENAI_ANTHROPIC_FOUNDER_PREVIEW.md');
+  const crewAddendum = read('docs/OPENAI_ANTHROPIC_CREW_ADDENDUM.md');
 
   assert.match(handoff, /OpenAI \+ Anthropic Handoff/);
   assert.match(handoff, /OpenAI implementation boundary/);
@@ -123,8 +124,12 @@ test('OpenAI and Anthropic share one truthful preview handoff', () => {
   assert.match(handoff, /age verification/);
   assert.match(handoff, /Row Level Security/);
   assert.match(handoff, /fake preview points/);
-  assert.match(handoff, /get_crew_connection_profiles/);
-  assert.match(handoff, /no numeric Crew cap/i);
+
+  assert.match(crewAddendum, /supersedes its older Crew sample paragraph/);
+  assert.match(crewAddendum, /get_crew_connection_profiles/);
+  assert.match(crewAddendum, /There is no numeric Crew cap/);
+  assert.match(crewAddendum, /create_crew_check_in/);
+  assert.match(crewAddendum, /set_crew_connection_status/);
 });
 
 test('both More screens expose the all-features launcher only in Founder Preview', () => {
