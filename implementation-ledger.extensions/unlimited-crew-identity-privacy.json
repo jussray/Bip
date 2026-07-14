@@ -15,6 +15,7 @@
       "contractPaths": [
         "docs/UNLIMITED_CREW_IDENTITY_PRIVACY.md",
         "docs/PHASE2_CREW_ACCOUNTABILITY.md",
+        "docs/OPENAI_ANTHROPIC_CREW_ADDENDUM.md",
         "supabase/migrations/20260714183100_remove_crew_caps_and_guard_relationships.sql",
         "supabase/migrations/20260714183200_guard_crew_invite_acceptance.sql",
         "supabase/migrations/20260714183300_accepted_crew_identity_rpc.sql",
@@ -32,7 +33,8 @@
       ],
       "testPaths": [
         "test/unlimited-crew-identity-privacy.test.mjs",
-        "test/feature-flow-contracts.test.mjs"
+        "test/feature-flow-contracts.test.mjs",
+        "test/founder-preview-unlock.test.mjs"
       ],
       "telemetryPaths": [
         "src/services/crewAccountabilityServiceV2.ts",
