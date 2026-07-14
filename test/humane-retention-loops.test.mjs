@@ -10,6 +10,7 @@ test('Bip Energy fade keeps the intentional bounded contract', () => {
   const restoreMigration = read('supabase/migrations/20260714045500_restore_intentional_bip_energy_fade.sql');
   const finalMigration = read('supabase/migrations/20260714051500_align_bip_energy_with_bip_events.sql');
   const ledger = read('src/features/activity/ledger.ts');
+  const energyService = read('src/features/activity/bipEnergy.ts');
   const overlay = read('components/retention/BipReturnOverlay.tsx');
 
   assert.match(finalMigration, /v_days_away <= 1/);
@@ -26,6 +27,9 @@ test('Bip Energy fade keeps the intentional bounded contract', () => {
   assert.match(restoreMigration, /when 'streak_milestone' then 3/);
   assert.match(ledger, /void applyBipEnergyFade\(\)/);
   assert.match(ledger, /Bip Tickets and redeemed room items[\s\S]*never removed/);
+  assert.match(energyService, /let inFlightCheck/);
+  assert.match(energyService, /if \(inFlightCheck\) return inFlightCheck/);
+  assert.match(energyService, /cachedUserId === user\.id/);
   assert.match(overlay, /await applyBipEnergyFade\(\)/);
   assert.doesNotMatch(ledger, /disabled_no_guilt_retention/);
 });
