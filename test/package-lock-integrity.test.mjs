@@ -38,3 +38,13 @@ test('every direct dependency has a concrete installed-package lock entry', () =
     }
   }
 });
+
+test('React Native URL polyfill remains installable in clean Expo builds', () => {
+  assert.equal(manifest.dependencies?.['react-native-url-polyfill'], '^2.0.0');
+  assert.equal(lock.packages?.['node_modules/react-native-url-polyfill']?.version, '2.0.0');
+  assert.equal(
+    lock.packages?.['node_modules/react-native-url-polyfill']?.dependencies?.['whatwg-url-without-unicode'],
+    '8.0.0-3',
+  );
+  assert.ok(lock.packages?.['node_modules/whatwg-url-without-unicode']);
+});
