@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export type PreviewFeatureStatus =
   | 'live'
   | 'needs_setup'
@@ -18,8 +20,9 @@ export interface FounderPreviewFeature {
 }
 
 /**
- * Founder Preview is development-only. Expo Go and local development builds
- * open it by default unless EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW=false.
+ * Founder Preview defaults ON for native development clients such as Expo Go.
+ * Web development remains fail-closed unless explicitly enabled, preserving
+ * blank-browser onboarding and authorization guardrail tests.
  *
  * Production builds always remain closed, even if somebody accidentally leaves
  * EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW=true in a release environment.
@@ -27,7 +30,12 @@ export interface FounderPreviewFeature {
 export function isFounderPreviewEnabled(): boolean {
   const isDevelopment = typeof __DEV__ !== 'undefined' && __DEV__;
   if (!isDevelopment) return false;
-  return process.env.EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW !== 'false';
+
+  const explicit = process.env.EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW;
+  if (explicit === 'false') return false;
+  if (explicit === 'true') return true;
+
+  return Platform.OS !== 'web';
 }
 
 export function founderPreviewAudience(): 'founder' | 'public' {
