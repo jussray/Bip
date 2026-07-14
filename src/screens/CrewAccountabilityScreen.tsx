@@ -8,6 +8,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import {
+  founderPreviewAudience,
+  isFounderPreviewEnabled,
+} from '@/constants/founderPreview';
 import { isRelationshipFeatureAvailable } from '@/constants/relationshipFeatureFlags';
 import {
   createCheckIn,
@@ -20,7 +24,8 @@ import {
 import { getSupabase } from '@/utils/supabase';
 import type { CrewCheckinEmoji } from '@/types/relationshipLayer';
 
-const AUDIENCE = 'public' as const;
+const AUDIENCE = founderPreviewAudience();
+const PREVIEW = isFounderPreviewEnabled();
 const EMOJIS: CrewCheckinEmoji[] = ['great', 'okay', 'low', 'need_support', 'resting'];
 const ENCOURAGEMENTS = [
   { key: 'with_you', label: 'with you 💜' },
@@ -39,6 +44,38 @@ type CircleProfileRow = {
   nickname: string | null;
   avatar_emoji: string | null;
 };
+
+const PREVIEW_MEMBERS: AcceptedCrewMember[] = [
+  { userId: 'preview-crew-jay', nickname: 'Jay', avatarEmoji: '🌙' },
+  { userId: 'preview-crew-kai', nickname: 'Kai', avatarEmoji: '☁️' },
+];
+
+const PREVIEW_MINE: CrewCheckInItem[] = [
+  {
+    id: 'preview-mine-1',
+    ownerUserId: 'preview-founder',
+    localDate: new Date().toISOString().slice(0, 10),
+    emoji: 'okay',
+    note: 'I showed up even though today felt noisy.',
+    status: 'active',
+    createdAt: new Date().toISOString(),
+    shares: [{ sharedWith: 'preview-crew-jay', status: 'active' }],
+  },
+];
+
+const PREVIEW_FEED: CrewFeedItem[] = [
+  {
+    checkInId: 'preview-feed-checkin-1',
+    shareId: 'preview-feed-share-1',
+    ownerUserId: 'preview-crew-jay',
+    localDate: new Date().toISOString().slice(0, 10),
+    emoji: 'need_support',
+    note: 'Could use a little encouragement today.',
+    createdAt: new Date().toISOString(),
+    encouragementCount: 1,
+    myEncouragementKey: null,
+  },
+];
 
 async function loadAcceptedCrew(): Promise<AcceptedCrewMember[]> {
   const supabase = getSupabase();
@@ -64,10 +101,11 @@ async function loadAcceptedCrew(): Promise<AcceptedCrewMember[]> {
   )];
   if (userIds.length === 0) return [];
 
-  const { data: profiles, error: profileError } = await supabase
-    .from('circle_profiles')
-    .select('user_id,nickname,avatar_emoji')
-    .in('user_id', userIds);
+  // Circle profiles are intentionally not directly readable. Reuse the guarded
+  // public-profile RPC so opening Crew does not weaken Circle privacy.
+  const { data: profiles, error: profileError } = await supabase.rpc('get_public_circle_profiles', {
+    p_user_ids: userIds,
+  });
   if (profileError) throw profileError;
 
   const profileMap = new Map<string, CircleProfileRow>(
@@ -95,6 +133,7 @@ export function CrewAccountabilityScreen() {
   const [loading, setLoading] = useState(available);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewSample, setPreviewSample] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!available) return;
@@ -106,13 +145,32 @@ export function CrewAccountabilityScreen() {
         fetchMyCheckIns(AUDIENCE),
         fetchCrewFeed(AUDIENCE),
       ]);
+
+      const hasLiveData = accepted.length > 0 || (mine.ok && mine.value.length > 0) || (shared.ok && shared.value.length > 0);
+      if (PREVIEW && !hasLiveData) {
+        setMembers(PREVIEW_MEMBERS);
+        setMyCheckIns(PREVIEW_MINE);
+        setFeed(PREVIEW_FEED);
+        setPreviewSample(true);
+        return;
+      }
+
+      setPreviewSample(false);
       setMembers(accepted);
       if (mine.ok) setMyCheckIns(mine.value);
       else setError(mine.message);
       if (shared.ok) setFeed(shared.value);
       else setError(current => current ?? shared.message);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Crew could not load.');
+      if (PREVIEW) {
+        setMembers(PREVIEW_MEMBERS);
+        setMyCheckIns(PREVIEW_MINE);
+        setFeed(PREVIEW_FEED);
+        setPreviewSample(true);
+        setError(null);
+      } else {
+        setError(caught instanceof Error ? caught.message : 'Crew could not load.');
+      }
     } finally {
       setLoading(false);
     }
@@ -140,6 +198,26 @@ export function CrewAccountabilityScreen() {
     if (selectedIds.size === 0 || saving) return;
     setSaving(true);
     setError(null);
+
+    if (previewSample) {
+      const now = new Date();
+      const previewItem: CrewCheckInItem = {
+        id: `preview-${now.getTime()}`,
+        ownerUserId: 'preview-founder',
+        localDate: now.toISOString().slice(0, 10),
+        emoji,
+        note: note.trim() || null,
+        status: 'active',
+        createdAt: now.toISOString(),
+        shares: [...selectedIds].map(sharedWith => ({ sharedWith, status: 'active' as const })),
+      };
+      setMyCheckIns(current => [previewItem, ...current]);
+      setNote('');
+      setSelectedIds(new Set());
+      setSaving(false);
+      return;
+    }
+
     const result = await createCheckIn({
       localDate: new Date().toISOString().slice(0, 10),
       emoji,
@@ -159,6 +237,18 @@ export function CrewAccountabilityScreen() {
 
   async function encourage(item: CrewFeedItem, presetKey: string) {
     setError(null);
+
+    if (previewSample) {
+      setFeed(current => current.map(entry => entry.shareId === item.shareId
+        ? {
+            ...entry,
+            encouragementCount: entry.myEncouragementKey ? entry.encouragementCount : entry.encouragementCount + 1,
+            myEncouragementKey: presetKey,
+          }
+        : entry));
+      return;
+    }
+
     const result = await sendEncouragement({
       checkInId: item.checkInId,
       recipientUserId: item.ownerUserId,
@@ -178,7 +268,7 @@ export function CrewAccountabilityScreen() {
         <Text style={styles.previewEmoji}>🤝</Text>
         <Text style={styles.previewTitle}>Private Crew is being prepared.</Text>
         <Text style={styles.previewBody}>
-          Crew will open only after real Bip-ID connections, acceptance, revocation, and shared check-ins are enabled together. Placeholder invite codes are no longer treated as real connections.
+          Crew opens only after real Bip-ID connections, acceptance, revocation, and shared check-ins are enabled together. Placeholder invite codes are not real connections.
         </Text>
       </View>
     );
@@ -193,6 +283,13 @@ export function CrewAccountabilityScreen() {
       <Text style={styles.kicker}>PRIVATE ACCOUNTABILITY</Text>
       <Text style={styles.title}>Bip Crew</Text>
       <Text style={styles.subtitle}>Only accepted Crew members can receive a check-in.</Text>
+
+      {previewSample ? (
+        <View style={styles.previewBanner}>
+          <Text style={styles.previewBannerTitle}>FOUNDER PREVIEW SAMPLE</Text>
+          <Text style={styles.previewBannerBody}>These people and check-ins are local demo data. Try selecting, sharing, and encouraging without writing anything to Supabase.</Text>
+        </View>
+      ) : null}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -256,9 +353,9 @@ export function CrewAccountabilityScreen() {
                 <TouchableOpacity
                   key={preset.key}
                   onPress={() => void encourage(item, preset.key)}
-                  style={styles.encouragement}
+                  style={[styles.encouragement, item.myEncouragementKey === preset.key && styles.encouragementSelected]}
                 >
-                  <Text style={styles.encouragementText}>{preset.label}</Text>
+                  <Text style={styles.encouragementText}>{item.myEncouragementKey === preset.key ? 'sent ✓' : preset.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -289,6 +386,9 @@ const styles = StyleSheet.create({
   previewEmoji: { fontSize: 42, marginBottom: 14 },
   previewTitle: { color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 10 },
   previewBody: { color: '#9b8aaa', fontSize: 13, lineHeight: 20, textAlign: 'center', maxWidth: 420 },
+  previewBanner: { borderRadius: 16, borderWidth: 1, borderColor: '#f59e0b66', backgroundColor: '#4a230a66', padding: 12, marginBottom: 14 },
+  previewBannerTitle: { color: '#fde68a', fontSize: 9, fontWeight: '900', letterSpacing: 1.1 },
+  previewBannerBody: { color: '#d7c29a', fontSize: 10, lineHeight: 16, marginTop: 4 },
   kicker: { color: '#8b5cf6', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginBottom: 6 },
   title: { color: '#fff', fontSize: 30, fontWeight: '900' },
   subtitle: { color: '#9b8aaa', fontSize: 13, marginTop: 5, marginBottom: 18 },
@@ -316,5 +416,6 @@ const styles = StyleSheet.create({
   feedNote: { color: '#f1e9fa', fontSize: 13, lineHeight: 19 },
   feedMeta: { color: '#806f90', fontSize: 10, marginTop: 4, marginBottom: 8 },
   encouragement: { borderRadius: 12, backgroundColor: '#2d1450', paddingHorizontal: 9, paddingVertical: 6 },
+  encouragementSelected: { backgroundColor: '#5b21b6' },
   encouragementText: { color: '#d8c7ea', fontSize: 10, fontWeight: '700' },
 });
