@@ -6,7 +6,7 @@
       "status": "integrated",
       "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/406",
       "acceptanceCriteria": [
-        "Expo Go and development builds expose one catalog containing every canonical Teen and Parent route plus founder tools, while production builds always return Founder Preview disabled.",
+        "Expo Go and native development builds expose one catalog containing every canonical Teen and Parent route plus founder tools; web development requires explicit enablement and production always remains disabled.",
         "Point-gated companions open through a display-only preview balance without changing point balances, transactions, Tickets, rewards, or permanent unlocks.",
         "Implemented Crew and Bridge surfaces open in development, with local sample states when real linked-account data is absent, and sample interactions do not write to Supabase.",
         "Age, authentication, consent, accepted relationship, RLS, privacy, moderation, device permission, and server rollout boundaries remain enforced.",
@@ -42,7 +42,7 @@
       "rollout": {
         "state": "development_only",
         "controlPath": "src/constants/founderPreview.ts",
-        "controlKey": "__DEV__ && EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW !== false"
+        "controlKey": "__DEV__ && (explicit true || native platform default)"
       },
       "verification": {
         "state": "partial",
