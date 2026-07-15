@@ -12,7 +12,7 @@ const deleteFunction = fs.readFileSync(new URL('../supabase/functions/account-de
 const sweepScript = fs.readFileSync(new URL('../scripts/sweep-account-deletions.mjs', import.meta.url), 'utf8');
 const sweepWorkflow = fs.readFileSync(new URL('../.github/workflows/account-deletion-sweep.yml', import.meta.url), 'utf8');
 
-test('client uses deployed account deletion function names', () => {
+ test('client uses deployed account deletion function names', () => {
   assert.match(service, /functions\.invoke\('account-deletion-request'/);
   assert.match(service, /functions\.invoke\('account-request-cancel'/);
 });
@@ -30,9 +30,13 @@ test('account deletion retains the seven-day grace and cancel path', () => {
   assert.match(cancelFunction, /\.eq\('status', 'pending'\)/);
 });
 
-test('delayed processor removes private files and auth user', () => {
-  assert.match(deleteFunction, /PRIVATE_BUCKETS/);
+test('delayed processor discovers live private storage, leaves a receipt, and deletes auth', () => {
+  assert.match(deleteFunction, /admin\.storage\.listBuckets\(\)/);
+  assert.match(deleteFunction, /bucket\.public !== true/);
+  assert.doesNotMatch(deleteFunction, /const PRIVATE_BUCKETS/);
   assert.match(deleteFunction, /removePrivateFiles/);
+  assert.match(deleteFunction, /account_deletion_receipts/);
+  assert.match(deleteFunction, /await sha256\(userId\)/);
   assert.match(deleteFunction, /admin\.auth\.admin\.deleteUser\(userId\)/);
   assert.match(deleteFunction, /grace_period_active/);
 });
