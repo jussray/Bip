@@ -12,15 +12,14 @@ const sprintPath = path.join(root, 'SPRINT.md');
 const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
 const sprint = fs.readFileSync(sprintPath, 'utf8');
 
-const migrationFiles = fs
+const migrations = fs
   .readdirSync(migrationsRoot)
   .filter((name) => name.endsWith('.sql'))
-  .sort();
-
-const migrations = migrationFiles.map((file) => ({
-  file,
-  sql: fs.readFileSync(path.join(migrationsRoot, file), 'utf8'),
-}));
+  .sort()
+  .map((file) => ({
+    file,
+    sql: fs.readFileSync(path.join(migrationsRoot, file), 'utf8'),
+  }));
 
 function unquoteIdentifier(value) {
   return value.trim().replace(/^"|"$/g, '').replace(/""/g, '');
@@ -196,6 +195,28 @@ function collectEvents(file, rawSql) {
     });
   }
 
+  const functionAlterRegex = /\balter\s+function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s+([\s\S]*?);/gi;
+  for (const match of sql.matchAll(functionAlterRegex)) {
+    const clause = match[3];
+    const searchPathMatch = clause.match(/\bset\s+search_path\s*=\s*([^;\r\n]+)/i);
+    const resetSearchPath = /\breset\s+search_path\b/i.test(clause);
+    const securityModeMatch = clause.match(/\bsecurity\s+(definer|invoker)\b/i);
+
+    if (!searchPathMatch && !resetSearchPath && !securityModeMatch) continue;
+
+    events.push({
+      kind: 'function-alter',
+      index: match.index,
+      file,
+      signature: functionSignature(match[1], match[2]),
+      hasSearchPathChange: Boolean(searchPathMatch || resetSearchPath),
+      searchPath: searchPathMatch ? normalizeSearchPath(searchPathMatch[1]) : null,
+      securityDefiner: securityModeMatch
+        ? securityModeMatch[1].toLowerCase() === 'definer'
+        : undefined,
+    });
+  }
+
   const functionDropRegex = /\bdrop\s+function\s+(?:if\s+exists\s+)?((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)[^;]*;/gi;
   for (const match of sql.matchAll(functionDropRegex)) {
     events.push({
@@ -274,6 +295,18 @@ function buildEffectiveState(inputMigrations) {
         continue;
       }
 
+      if (event.kind === 'function-alter') {
+        const definition = functions.get(event.signature);
+        if (!definition) continue;
+        functions.set(event.signature, {
+          ...definition,
+          file: event.file,
+          searchPath: event.hasSearchPathChange ? event.searchPath : definition.searchPath,
+          securityDefiner: event.securityDefiner ?? definition.securityDefiner,
+        });
+        continue;
+      }
+
       if (event.kind === 'function-drop') {
         functions.delete(event.signature);
         privileges.delete(event.signature);
@@ -281,7 +314,7 @@ function buildEffectiveState(inputMigrations) {
       }
 
       if (event.kind === 'privilege') {
-        const state = privileges.get(event.signature) ?? {
+        const privilege = privileges.get(event.signature) ?? {
           public: true,
           anon: false,
           authenticated: false,
@@ -290,11 +323,11 @@ function buildEffectiveState(inputMigrations) {
         const enabled = event.action === 'grant';
         for (const role of event.roles) {
           if (role === 'public' || role === 'anon' || role === 'authenticated') {
-            state[role] = enabled;
+            privilege[role] = enabled;
           }
         }
-        state.evidenceFiles.add(event.file);
-        privileges.set(event.signature, state);
+        privilege.evidenceFiles.add(event.file);
+        privileges.set(event.signature, privilege);
         continue;
       }
 
@@ -323,7 +356,7 @@ const baselineAttachments = new Map(
   ]),
 );
 
-test('SQL parser ignores commented declarations and applies later definitions and trigger drops', () => {
+test('SQL parser ignores comments and applies later definitions, ALTER FUNCTION hardening, and drops', () => {
   const fixture = buildEffectiveState([
     {
       file: '001.sql',
@@ -342,12 +375,7 @@ test('SQL parser ignores commented declarations and applies later definitions an
     {
       file: '002.sql',
       sql: `
-        create or replace function public.example()
-          returns trigger
-          language plpgsql
-          security definer
-          set search_path = pg_catalog, pg_temp
-        as $$ begin return new; end $$;
+        alter function public.example() set search_path = pg_catalog, pg_temp;
         drop trigger if exists example_trigger on public.examples;
         revoke all on function public.example() from public, anon, authenticated;
       `,
@@ -457,9 +485,9 @@ test('reviewed SECURITY DEFINER trigger attachments contain no duplicate effecti
       attachment.timing,
       [...attachment.events].sort().join('|'),
     ].join('::');
-    const prior = tuples.get(tuple) ?? [];
-    prior.push(attachment.trigger);
-    tuples.set(tuple, prior);
+    const triggerNames = tuples.get(tuple) ?? [];
+    triggerNames.push(attachment.trigger);
+    tuples.set(tuple, triggerNames);
   }
 
   const duplicates = [...tuples.entries()]
@@ -471,11 +499,10 @@ test('reviewed SECURITY DEFINER trigger attachments contain no duplicate effecti
 });
 
 test('the safety scanner retains the dynamic NEW-row regression fix', () => {
-  const safetyFixPath = path.join(
-    migrationsRoot,
-    '20260701030000_fix_trigger_safety_scan_dynamic_field_access.sql',
+  const safetyFix = fs.readFileSync(
+    path.join(migrationsRoot, '20260701030000_fix_trigger_safety_scan_dynamic_field_access.sql'),
+    'utf8',
   );
-  const safetyFix = fs.readFileSync(safetyFixPath, 'utf8');
 
   assert.match(safetyFix, /_row\s*:=\s*to_jsonb\(NEW\)/i);
   assert.match(safetyFix, /_content\s*:=\s*_row\s*->>\s*_col_name/i);
