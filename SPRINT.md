@@ -86,8 +86,20 @@ Remaining before L4 activation:
 
 - additional anonymous-auth policy hardening for Bridge, activity, points/rewards, tasks, relationships, and other private surfaces;
 - behavior tests for high-blast-radius authenticated database functions;
+- SECURITY DEFINER trigger assurance: structural migration-history coverage now, then live catalog and behavioral proof;
 - negative-auth tests for `account-delete` and `safety-scan`;
 - password-breach protection planning and Auth regressions.
+
+#### SECURITY DEFINER trigger assurance
+
+- **Status:** tracked authorization and data-correctness gap. The initial baseline is structural only and must not be represented as behavioral verification.
+- Keep a reviewed inventory of application-owned SECURITY DEFINER trigger functions and effective trigger attachments, with latest-definition wins, comment stripping, drop handling, explicit `search_path` pinning, client-role EXECUTE revocation evidence, and duplicate/orphan detection.
+- Preserve regression coverage for the dynamic `NEW` row fix in `trigger_safety_scan`; the prior static field access caused the child-safety trigger to silently no-op until a live rollback-contained probe exposed it.
+- Run read-only live catalog parity before behavioral writes and compare function configuration, ACLs, attachments, and definition fingerprints with the reviewed repository baseline.
+- Build an external-effect-safe behavioral harness before exercising triggers that call `pg_net`, Edge Functions, notification systems, queues, or other effects that may escape a database rollback.
+- Behavioral probes must cover owner, cross-user, anonymous-session, alternate-row-shape, idempotency, duplicate-trigger, and cleanup cases for safety, identity, crew relationships, points, Control Room issue resolution, Bridge activity, and auth-profile initialization.
+- Require rollback-contained database checks plus explicit external-effect cleanup evidence and zero retained synthetic rows.
+- Do not mark trigger assurance verified until both live catalog parity and the external-effect-safe behavioral suite pass against the intended Supabase target.
 
 ### Production deployment
 
@@ -179,12 +191,13 @@ Current Control Room operational sources are integrated. Additional panels must 
 
 1. Continue issue #399 with the next bounded anonymous-auth policy slice: Bridge relationship/share tables first, then activity and points/rewards.
 2. Add positive and negative behavior tests for remaining high-blast-radius authenticated RPCs instead of blindly revoking client-callable functions.
-3. Add negative-auth tests for the two custom-auth Edge Functions.
-4. Complete account deletion and Storage cleanup proof.
-5. Run the controlled Bridge two-account production journey.
-6. Observe companion style-version and shared Worker-contract telemetry in production.
-7. Plan password-breach protection with Auth regression coverage.
-8. Design the smallest safe L4 schema and one real runtime consumer.
-9. Add Control Room observers only after their sources exist.
+3. Complete the SECURITY DEFINER trigger structural audit and read-only live catalog parity, then build the external-effect-safe rollback-contained behavior probes.
+4. Add negative-auth tests for the two custom-auth Edge Functions.
+5. Complete account deletion and Storage cleanup proof.
+6. Run the controlled Bridge two-account production journey.
+7. Observe companion style-version and shared Worker-contract telemetry in production.
+8. Plan password-breach protection with Auth regression coverage.
+9. Design the smallest safe L4 schema and one real runtime consumer.
+10. Add Control Room observers only after their sources exist.
 
 A green PR proves reviewed integration. It does not prove production behavior unless the correct system witness, deployed artifact, and user journey were observed. Computers remain deeply committed to this inconvenient distinction.
