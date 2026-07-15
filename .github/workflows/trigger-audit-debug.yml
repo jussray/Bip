@@ -1,0 +1,26 @@
+name: Trigger Audit
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'SPRINT.md'
+      - 'security/supabase-trigger-baseline.json'
+      - 'supabase/migrations/**'
+      - 'supabase/probes/security_definer_trigger_catalog_phase1.sql'
+      - 'test/supabase-trigger-structure.test.mjs'
+      - '.github/workflows/trigger-audit-debug.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  structural-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run focused trigger structural audit
+        run: node --test test/supabase-trigger-structure.test.mjs
