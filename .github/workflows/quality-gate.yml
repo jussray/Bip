@@ -49,6 +49,18 @@ jobs:
       - run: npm ci
       - run: npm test
 
+  runtime-truth-contracts:
+    name: "Runtime Truth Contracts"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: node --test test/runtime-truth-contract.test.mjs
+
   implementation-evidence:
     name: "Implementation Evidence"
     runs-on: ubuntu-latest
