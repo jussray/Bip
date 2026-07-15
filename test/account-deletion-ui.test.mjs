@@ -12,7 +12,7 @@ const deleteFunction = fs.readFileSync(new URL('../supabase/functions/account-de
 const sweepScript = fs.readFileSync(new URL('../scripts/sweep-account-deletions.mjs', import.meta.url), 'utf8');
 const sweepWorkflow = fs.readFileSync(new URL('../.github/workflows/account-deletion-sweep.yml', import.meta.url), 'utf8');
 
- test('client uses deployed account deletion function names', () => {
+test('client uses deployed account deletion function names', () => {
   assert.match(service, /functions\.invoke\('account-deletion-request'/);
   assert.match(service, /functions\.invoke\('account-request-cancel'/);
 });
