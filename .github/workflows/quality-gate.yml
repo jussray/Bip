@@ -47,7 +47,27 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
-      - run: npm test
+      - name: Run unit tests with concise failure evidence
+        shell: bash
+        run: |
+          set +e
+          npm test > unit-test-output.log 2>&1
+          status=$?
+          if [[ $status -ne 0 ]]; then
+            echo "::group::Unit test failure tail"
+            tail -n 240 unit-test-output.log
+            echo "::endgroup::"
+            exit $status
+          fi
+          cat unit-test-output.log
+      - name: Upload unit test failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-failure-evidence
+          path: unit-test-output.log
+          if-no-files-found: error
+          retention-days: 14
 
   runtime-truth-contracts:
     name: "Runtime Truth Contracts"
