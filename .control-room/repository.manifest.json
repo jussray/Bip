@@ -1,0 +1,155 @@
+{
+  "schemaVersion": "1.0",
+  "projectId": "sekret-bip",
+  "repository": {
+    "provider": "github",
+    "identifier": "jussray/Sekret-Bip",
+    "defaultBranch": "main"
+  },
+  "verification": {
+    "requiredSignals": [
+      {
+        "id": "typecheck",
+        "name": "Typecheck",
+        "required": true
+      },
+      {
+        "id": "lint",
+        "name": "Lint",
+        "required": true
+      },
+      {
+        "id": "unit-tests",
+        "name": "Unit Tests",
+        "required": true
+      },
+      {
+        "id": "rls-audit",
+        "name": "RLS Audit",
+        "required": true
+      },
+      {
+        "id": "runtime-truth",
+        "name": "Runtime Truth Contracts",
+        "required": true
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "id": "private-account-and-identity-boundary",
+      "description": "Keeps private identity separate from anonymous Circle identity and gates cloud sync behind account completion.",
+      "status": "active",
+      "evidencePaths": [
+        "src/features/identity/accountProfile.ts",
+        "src/utils/sync.ts",
+        "scripts/test-device-sync.mjs"
+      ],
+      "requiredSignals": [
+        "typecheck",
+        "unit-tests",
+        "rls-audit"
+      ]
+    },
+    {
+      "id": "teen-controlled-parent-bridge",
+      "description": "Shares only explicit teen-approved Bridge data through active parent links with revocation support.",
+      "status": "active",
+      "evidencePaths": [
+        "screens/BridgeScreen.tsx",
+        "src/utils/parentLink.ts",
+        "src/utils/parentBridgeCompat.ts",
+        "supabase/functions/bridge-share-create/index.ts",
+        "supabase/functions/bridge-share-revoke/index.ts"
+      ],
+      "requiredSignals": [
+        "typecheck",
+        "unit-tests",
+        "rls-audit"
+      ]
+    },
+    {
+      "id": "consent-audit-runtime-truth",
+      "description": "Records consent state and immutable audit evidence atomically through an authenticated database RPC.",
+      "status": "active",
+      "evidencePaths": [
+        "services/consentService.ts",
+        "supabase/migrations/20260715060000_harden_consent_and_deletion_runtime_truth.sql",
+        "test/runtime-truth-contract.test.mjs"
+      ],
+      "requiredSignals": [
+        "typecheck",
+        "runtime-truth"
+      ]
+    },
+    {
+      "id": "verifiable-account-deletion",
+      "description": "Discovers live private Storage buckets, clears deletion blockers, deletes the account, and leaves a service-role receipt.",
+      "status": "active",
+      "evidencePaths": [
+        "supabase/functions/account-delete/index.ts",
+        "supabase/migrations/20260715060000_harden_consent_and_deletion_runtime_truth.sql",
+        "test/runtime-truth-contract.test.mjs"
+      ],
+      "requiredSignals": [
+        "runtime-truth",
+        "rls-audit"
+      ]
+    },
+    {
+      "id": "companion-reply-contract",
+      "description": "Runs named Se’kret companion personalities through the worker contract with memory and safety boundaries.",
+      "status": "active",
+      "evidencePaths": [
+        "src/utils/api.ts",
+        "src/services/worker/invokeWorker.ts",
+        "worker/config/policy.ts",
+        "test/supabase-worker-ai-reply-contract.test.mjs"
+      ],
+      "requiredSignals": [
+        "typecheck",
+        "unit-tests"
+      ]
+    }
+  ],
+  "buildAssist": {
+    "enabled": true,
+    "preferredBuilder": "codex",
+    "riskLevel": "high"
+  },
+  "privacy": {
+    "allowlistedPacketFields": [
+      "projectId",
+      "repository.provider",
+      "repository.identifier",
+      "commitSha",
+      "branch",
+      "manifestHash",
+      "generatedAt",
+      "runner.provider",
+      "runner.runId",
+      "runner.detailsUrl",
+      "checks.id",
+      "checks.name",
+      "checks.required",
+      "checks.status",
+      "checks.detailsUrl",
+      "capabilities.id",
+      "capabilities.claimedStatus",
+      "capabilities.observedStatus",
+      "capabilities.evidencePaths",
+      "capabilities.reason"
+    ],
+    "forbiddenData": [
+      "journal text",
+      "voice transcripts or recordings",
+      "teen or parent names",
+      "email addresses",
+      "Circle post content",
+      "private messages",
+      "Supabase service-role keys",
+      "OpenAI keys",
+      "raw product database rows"
+    ]
+  }
+}
