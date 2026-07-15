@@ -48,6 +48,7 @@ export const TABLES = {
   bipPoints:          'bip_points',
   circlePosts:        'circle_posts',
   parentCirclePosts:  'parent_circle_posts',
+  dailyIntentions:    'daily_intentions',
   // ── Shared Circle V1 tables (0002_circle_v1.sql) ────────────────────────
   publicCirclePosts:   'public_circle_posts',
   friendsCirclePosts:  'friends_circle_posts',
