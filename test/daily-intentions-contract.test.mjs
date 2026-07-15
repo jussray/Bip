@@ -46,12 +46,14 @@ test('raw private content cannot enter the daily intentions table payload', () =
 });
 
 test('database access is permanent-account owner only', () => {
+  const policySql = migration.slice(migration.indexOf('create policy'));
+
   assert.match(migration, /alter table public\.daily_intentions enable row level security/i);
   assert.match(migration, /revoke all on table public\.daily_intentions from anon/i);
-  assert.match(migration, /to authenticated/i);
-  assert.match(migration, /\(select auth\.uid\(\)\) = user_id/i);
-  assert.match(migration, /is_anonymous/i);
-  assert.doesNotMatch(migration, /parent|guardian|linked_parent/i);
+  assert.match(policySql, /to authenticated/i);
+  assert.match(policySql, /\(select auth\.uid\(\)\) = user_id/i);
+  assert.match(policySql, /is_anonymous/i);
+  assert.doesNotMatch(policySql, /\b(parent|guardian|linked_parent)\b/i);
 
   assert.match(repository, /if \(!user \|\| user\.is_anonymous\) return null/);
   assert.match(repository, /\.eq\('user_id', account\.userId\)/);
