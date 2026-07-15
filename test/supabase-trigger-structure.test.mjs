@@ -11,7 +11,6 @@ const sprintPath = path.join(root, 'SPRINT.md');
 
 const baseline = JSON.parse(fs.readFileSync(baselinePath, 'utf8'));
 const sprint = fs.readFileSync(sprintPath, 'utf8');
-
 const migrations = fs
   .readdirSync(migrationsRoot)
   .filter((name) => name.endsWith('.sql'))
@@ -22,7 +21,11 @@ const migrations = fs
   }));
 
 function unquoteIdentifier(value) {
-  return value.trim().replace(/^"|"$/g, '').replace(/""/g, '');
+  return value
+    .trim()
+    .replace(/^"|"$/g, '')
+    .replace(/^'|'$/g, '')
+    .replace(/""/g, '');
 }
 
 function normalizeQualifiedName(value, defaultSchema = 'public') {
@@ -45,6 +48,10 @@ function normalizeSearchPath(value) {
     .map((part) => unquoteIdentifier(part).trim().toLowerCase())
     .filter(Boolean)
     .join(', ');
+}
+
+function triggerKey(table, trigger) {
+  return `${table}::${trigger}`;
 }
 
 function stripSqlComments(source) {
@@ -108,8 +115,8 @@ function stripSqlComments(source) {
       if (source.startsWith(dollarTag, index)) {
         result += dollarTag;
         index += dollarTag.length;
-        state = 'normal';
         dollarTag = null;
+        state = 'normal';
       } else {
         result += char;
         index += 1;
@@ -123,32 +130,28 @@ function stripSqlComments(source) {
       state = 'line-comment';
       continue;
     }
-
     if (char === '/' && next === '*') {
       result += '  ';
       index += 2;
       state = 'block-comment';
       continue;
     }
-
     if (char === "'") {
       result += char;
       index += 1;
       state = 'single-quote';
       continue;
     }
-
     if (char === '"') {
       result += char;
       index += 1;
       state = 'double-quote';
       continue;
     }
-
     if (char === '$') {
-      const tagMatch = source.slice(index).match(/^\$[a-z_][a-z0-9_]*\$|^\$\$/i);
-      if (tagMatch) {
-        dollarTag = tagMatch[0];
+      const match = source.slice(index).match(/^\$[a-z_][a-z0-9_]*\$|^\$\$/i);
+      if (match) {
+        dollarTag = match[0];
         result += dollarTag;
         index += dollarTag.length;
         state = 'dollar-quote';
@@ -170,20 +173,15 @@ function parseRoles(value) {
     .filter(Boolean);
 }
 
-function triggerKey(table, trigger) {
-  return `${table}::${trigger}`;
-}
-
 function collectEvents(file, rawSql) {
   const sql = stripSqlComments(rawSql);
   const events = [];
 
-  const functionCreateRegex = /\bcreate\s+(or\s+replace\s+)?function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s*([\s\S]*?)\bas\s+(\$[a-z_][a-z0-9_]*\$|\$\$)/gi;
-  for (const match of sql.matchAll(functionCreateRegex)) {
+  const createFunction = /\bcreate\s+(or\s+replace\s+)?function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s*([\s\S]*?)\bas\s+(\$[a-z_][a-z0-9_]*\$|\$\$)/gi;
+  for (const match of sql.matchAll(createFunction)) {
     const [, replaceToken, name, args, header] = match;
     if (!/\breturns\s+trigger\b/i.test(header)) continue;
-
-    const searchPathMatch = header.match(/\bset\s+search_path\s*=\s*([^;\r\n]+)/i);
+    const searchPath = header.match(/\bset\s+search_path\s*(?:=|to)\s*([^;\r\n]+)/i);
     events.push({
       kind: 'function-create',
       index: match.index,
@@ -191,34 +189,33 @@ function collectEvents(file, rawSql) {
       signature: functionSignature(name, args),
       replace: Boolean(replaceToken),
       securityDefiner: /\bsecurity\s+definer\b/i.test(header),
-      searchPath: searchPathMatch ? normalizeSearchPath(searchPathMatch[1]) : null,
+      searchPath: searchPath ? normalizeSearchPath(searchPath[1]) : null,
     });
   }
 
-  const functionAlterRegex = /\balter\s+function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s+([\s\S]*?);/gi;
-  for (const match of sql.matchAll(functionAlterRegex)) {
+  const alterFunction = /\balter\s+function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s+([\s\S]*?);/gi;
+  for (const match of sql.matchAll(alterFunction)) {
     const clause = match[3];
-    const searchPathMatch = clause.match(/\bset\s+search_path\s*=\s*([^;\r\n]+)/i);
+    const searchPath = clause.match(/\bset\s+search_path\s*(?:=|to)\s*([^;\r\n]+)/i);
     const resetSearchPath = /\breset\s+search_path\b/i.test(clause);
-    const securityModeMatch = clause.match(/\bsecurity\s+(definer|invoker)\b/i);
-
-    if (!searchPathMatch && !resetSearchPath && !securityModeMatch) continue;
+    const securityMode = clause.match(/\bsecurity\s+(definer|invoker)\b/i);
+    if (!searchPath && !resetSearchPath && !securityMode) continue;
 
     events.push({
       kind: 'function-alter',
       index: match.index,
       file,
       signature: functionSignature(match[1], match[2]),
-      hasSearchPathChange: Boolean(searchPathMatch || resetSearchPath),
-      searchPath: searchPathMatch ? normalizeSearchPath(searchPathMatch[1]) : null,
-      securityDefiner: securityModeMatch
-        ? securityModeMatch[1].toLowerCase() === 'definer'
+      hasSearchPathChange: Boolean(searchPath || resetSearchPath),
+      searchPath: searchPath ? normalizeSearchPath(searchPath[1]) : null,
+      securityDefiner: securityMode
+        ? securityMode[1].toLowerCase() === 'definer'
         : undefined,
     });
   }
 
-  const functionDropRegex = /\bdrop\s+function\s+(?:if\s+exists\s+)?((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)[^;]*;/gi;
-  for (const match of sql.matchAll(functionDropRegex)) {
+  const dropFunction = /\bdrop\s+function\s+(?:if\s+exists\s+)?((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)[^;]*;/gi;
+  for (const match of sql.matchAll(dropFunction)) {
     events.push({
       kind: 'function-drop',
       index: match.index,
@@ -227,8 +224,8 @@ function collectEvents(file, rawSql) {
     });
   }
 
-  const privilegeRegex = /\b(grant|revoke)\s+(?:all(?:\s+privileges)?|execute)\s+on\s+function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s+(?:to|from)\s+([^;]+);/gi;
-  for (const match of sql.matchAll(privilegeRegex)) {
+  const privilege = /\b(grant|revoke)\s+(?:all(?:\s+privileges)?|execute)\s+on\s+function\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^)]*)\)\s+(?:to|from)\s+([^;]+);/gi;
+  for (const match of sql.matchAll(privilege)) {
     events.push({
       kind: 'privilege',
       index: match.index,
@@ -239,13 +236,13 @@ function collectEvents(file, rawSql) {
     });
   }
 
-  const triggerCreateRegex = /\bcreate\s+(?:constraint\s+)?trigger\s+("?[a-z_][\w$]*"?)\s+([\s\S]*?)\bon\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s+([\s\S]*?)\bexecute\s+(?:function|procedure)\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^;]*)\)\s*;/gi;
-  for (const match of sql.matchAll(triggerCreateRegex)) {
+  const createTrigger = /\bcreate\s+(?:constraint\s+)?trigger\s+("?[a-z_][\w$]*"?)\s+([\s\S]*?)\bon\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s+([\s\S]*?)\bexecute\s+(?:function|procedure)\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)\s*\(([^;]*)\)\s*;/gi;
+  for (const match of sql.matchAll(createTrigger)) {
     const [, triggerName, beforeOn, tableName, afterOn, functionName] = match;
     const timing = beforeOn.match(/\b(before|after|instead\s+of)\b/i)?.[1]
       ?.replace(/\s+/g, ' ')
-      .toUpperCase();
-    const eventsFound = [...beforeOn.matchAll(/\b(insert|update|delete|truncate)\b/gi)]
+      .toUpperCase() ?? null;
+    const triggerEvents = [...beforeOn.matchAll(/\b(insert|update|delete|truncate)\b/gi)]
       .map((eventMatch) => eventMatch[1].toUpperCase());
 
     events.push({
@@ -255,14 +252,14 @@ function collectEvents(file, rawSql) {
       trigger: unquoteIdentifier(triggerName).toLowerCase(),
       table: normalizeQualifiedName(tableName),
       function: functionSignature(functionName),
-      timing: timing ?? null,
-      events: [...new Set(eventsFound)],
+      timing,
+      events: [...new Set(triggerEvents)],
       rowLevel: /\bfor\s+each\s+row\b/i.test(afterOn),
     });
   }
 
-  const triggerDropRegex = /\bdrop\s+trigger\s+(?:if\s+exists\s+)?("?[a-z_][\w$]*"?)\s+on\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)[^;]*;/gi;
-  for (const match of sql.matchAll(triggerDropRegex)) {
+  const dropTrigger = /\bdrop\s+trigger\s+(?:if\s+exists\s+)?("?[a-z_][\w$]*"?)\s+on\s+((?:"?[a-z_][\w$]*"?\.)?"?[a-z_][\w$]*"?)[^;]*;/gi;
+  for (const match of sql.matchAll(dropTrigger)) {
     events.push({
       kind: 'trigger-drop',
       index: match.index,
@@ -296,13 +293,13 @@ function buildEffectiveState(inputMigrations) {
       }
 
       if (event.kind === 'function-alter') {
-        const definition = functions.get(event.signature);
-        if (!definition) continue;
+        const existing = functions.get(event.signature);
+        if (!existing) continue;
         functions.set(event.signature, {
-          ...definition,
+          ...existing,
           file: event.file,
-          searchPath: event.hasSearchPathChange ? event.searchPath : definition.searchPath,
-          securityDefiner: event.securityDefiner ?? definition.securityDefiner,
+          searchPath: event.hasSearchPathChange ? event.searchPath : existing.searchPath,
+          securityDefiner: event.securityDefiner ?? existing.securityDefiner,
         });
         continue;
       }
@@ -314,7 +311,7 @@ function buildEffectiveState(inputMigrations) {
       }
 
       if (event.kind === 'privilege') {
-        const privilege = privileges.get(event.signature) ?? {
+        const existing = privileges.get(event.signature) ?? {
           public: true,
           anon: false,
           authenticated: false,
@@ -323,11 +320,11 @@ function buildEffectiveState(inputMigrations) {
         const enabled = event.action === 'grant';
         for (const role of event.roles) {
           if (role === 'public' || role === 'anon' || role === 'authenticated') {
-            privilege[role] = enabled;
+            existing[role] = enabled;
           }
         }
-        privilege.evidenceFiles.add(event.file);
-        privileges.set(event.signature, privilege);
+        existing.evidenceFiles.add(event.file);
+        privileges.set(event.signature, existing);
         continue;
       }
 
@@ -346,27 +343,28 @@ function buildEffectiveState(inputMigrations) {
 }
 
 const state = buildEffectiveState(migrations);
-const baselineFunctions = new Map(
-  baseline.functions.map((item) => [item.signature.toLowerCase(), item]),
+const repositoryFunctions = new Map(
+  baseline.functions
+    .filter((item) => item.repositoryExpected !== false)
+    .map((item) => [item.signature.toLowerCase(), item]),
 );
-const baselineAttachments = new Map(
-  baseline.attachments.map((item) => [
-    triggerKey(item.table.toLowerCase(), item.trigger.toLowerCase()),
-    item,
-  ]),
+const repositoryAttachments = new Map(
+  baseline.attachments
+    .filter((item) => item.repositoryExpected !== false)
+    .map((item) => [
+      triggerKey(item.table.toLowerCase(), item.trigger.toLowerCase()),
+      item,
+    ]),
 );
 
-test('SQL parser ignores comments and applies later definitions, ALTER FUNCTION hardening, and drops', () => {
+test('parser applies comments, ALTER FUNCTION hardening, privilege changes, and drops in order', () => {
   const fixture = buildEffectiveState([
     {
       file: '001.sql',
       sql: `
         -- create function public.fake() returns trigger language plpgsql security definer as $$ begin return new; end $$;
         create function public.example()
-          returns trigger
-          language plpgsql
-          security definer
-          set search_path = public
+          returns trigger language plpgsql security definer set search_path = public
         as $$ begin return new; end $$;
         create trigger example_trigger after insert on public.examples
           for each row execute function public.example();
@@ -395,7 +393,7 @@ test('SQL parser ignores comments and applies later definitions, ALTER FUNCTION 
   );
 });
 
-test('baseline is explicitly structural and records the read-only live catalog observation', () => {
+test('baseline separates repository truth, live catalog observation, and behavior proof', () => {
   assert.equal(baseline.schemaVersion, 1);
   assert.equal(baseline.status, 'structural_only');
   assert.equal(baseline.projectRef, 'tbsevonvegdnlyjgplmm');
@@ -404,16 +402,32 @@ test('baseline is explicitly structural and records the read-only live catalog o
   assert.equal(baseline.verification.liveBehaviorVerified, false);
   assert.equal(baseline.verification.externalEffectsSafelyStubbed, false);
   assert.equal(baseline.functions.length, 11);
+  assert.equal(repositoryFunctions.size, 10);
   assert.equal(baseline.attachments.length, 14);
+  assert.equal(repositoryAttachments.size, 13);
 });
 
-test('all migration-defined public SECURITY DEFINER trigger functions are reviewed in the baseline', () => {
+test('live-only legacy points trigger drift is explicit and remains unresolved', () => {
+  assert.deepEqual(baseline.catalogDrift.map((item) => item.kind), [
+    'live_only_legacy_trigger_path',
+  ]);
+  const drift = baseline.catalogDrift[0];
+  assert.equal(drift.status, 'open');
+  assert.equal(drift.liveMigration, '20260704012007_award_points_for_app_actions');
+  assert.equal(drift.function, 'public.award_points_for_app_activity()');
+  assert.equal(drift.trigger, 'activity_events_award_points');
+  assert.match(drift.repositoryCanonicalPath, /bip_events/);
+  assert.match(drift.currentClientWriter, /bip_events only/);
+  assert.match(drift.requiredResolution, /Do not mutate production/i);
+});
+
+test('all repository-defined public SECURITY DEFINER trigger functions are reviewed', () => {
   const discovered = [...state.functions.values()]
     .filter((definition) => definition.signature.startsWith('public.'))
     .filter((definition) => definition.securityDefiner)
     .map((definition) => definition.signature)
     .sort();
-  const reviewed = [...baselineFunctions.keys()].sort();
+  const reviewed = [...repositoryFunctions.keys()].sort();
 
   assert.deepEqual(
     discovered,
@@ -422,8 +436,8 @@ test('all migration-defined public SECURITY DEFINER trigger functions are review
   );
 });
 
-test('reviewed SECURITY DEFINER trigger functions pin search_path and keep client EXECUTE revoked', () => {
-  for (const [signature, reviewed] of baselineFunctions) {
+test('reviewed repository trigger functions pin search_path and revoke client EXECUTE', () => {
+  for (const [signature, reviewed] of repositoryFunctions) {
     const definition = state.functions.get(signature);
     assert.ok(definition, `missing migration definition for ${signature}`);
     assert.equal(definition.securityDefiner, true, `${signature} must remain SECURITY DEFINER`);
@@ -440,15 +454,12 @@ test('reviewed SECURITY DEFINER trigger functions pin search_path and keep clien
     assert.equal(privilege.public, false, `${signature} is executable through PUBLIC`);
     assert.equal(privilege.anon, false, `${signature} is executable by anon`);
     assert.equal(privilege.authenticated, false, `${signature} is executable by authenticated`);
-    assert.ok(
-      privilege.evidenceFiles.size > 0,
-      `${signature} has no explicit migration privilege evidence`,
-    );
+    assert.ok(privilege.evidenceFiles.size > 0, `${signature} lacks explicit privilege evidence`);
   }
 });
 
-test('reviewed trigger attachments match effective migration timing, events, tables, and functions', () => {
-  for (const [key, reviewed] of baselineAttachments) {
+test('reviewed repository trigger attachments match effective migration wiring', () => {
+  for (const [key, reviewed] of repositoryAttachments) {
     const attachment = state.triggers.get(key);
     assert.ok(attachment, `missing effective trigger attachment ${key}`);
     assert.equal(attachment.function, reviewed.function.toLowerCase());
@@ -457,44 +468,38 @@ test('reviewed trigger attachments match effective migration timing, events, tab
     assert.equal(attachment.rowLevel, true, `${key} must remain FOR EACH ROW`);
   }
 
-  for (const signature of baselineFunctions.keys()) {
+  for (const signature of repositoryFunctions.keys()) {
     const effective = [...state.triggers.values()]
       .filter((attachment) => attachment.function === signature)
       .map((attachment) => triggerKey(attachment.table, attachment.trigger))
       .sort();
-    const reviewed = [...baselineAttachments.entries()]
+    const reviewed = [...repositoryAttachments.entries()]
       .filter(([, attachment]) => attachment.function.toLowerCase() === signature)
       .map(([key]) => key)
       .sort();
-    assert.deepEqual(
-      effective,
-      reviewed,
-      `${signature} effective attachments changed without baseline review`,
-    );
+    assert.deepEqual(effective, reviewed, `${signature} attachment set changed`);
   }
 });
 
-test('reviewed SECURITY DEFINER trigger attachments contain no duplicate effective side-effect path', () => {
+test('repository trigger wiring contains no duplicate effective side-effect path', () => {
   const tuples = new Map();
-
   for (const attachment of state.triggers.values()) {
-    if (!baselineFunctions.has(attachment.function)) continue;
+    if (!repositoryFunctions.has(attachment.function)) continue;
     const tuple = [
       attachment.table,
       attachment.function,
       attachment.timing,
       [...attachment.events].sort().join('|'),
     ].join('::');
-    const triggerNames = tuples.get(tuple) ?? [];
-    triggerNames.push(attachment.trigger);
-    tuples.set(tuple, triggerNames);
+    const names = tuples.get(tuple) ?? [];
+    names.push(attachment.trigger);
+    tuples.set(tuple, names);
   }
 
   const duplicates = [...tuples.entries()]
-    .filter(([, triggerNames]) => triggerNames.length > 1)
-    .map(([tuple, triggerNames]) => `${tuple} => ${triggerNames.sort().join(', ')}`)
+    .filter(([, names]) => names.length > 1)
+    .map(([tuple, names]) => `${tuple} => ${names.sort().join(', ')}`)
     .sort();
-
   assert.deepEqual(duplicates, []);
 });
 
@@ -503,7 +508,6 @@ test('the safety scanner retains the dynamic NEW-row regression fix', () => {
     path.join(migrationsRoot, '20260701030000_fix_trigger_safety_scan_dynamic_field_access.sql'),
     'utf8',
   );
-
   assert.match(safetyFix, /_row\s*:=\s*to_jsonb\(NEW\)/i);
   assert.match(safetyFix, /_content\s*:=\s*_row\s*->>\s*_col_name/i);
   assert.match(
@@ -514,7 +518,7 @@ test('the safety scanner retains the dynamic NEW-row regression fix', () => {
   assert.doesNotMatch(safetyFix, /when\s+'body'\s+then\s+NEW\.body/i);
 });
 
-test('SPRINT tracks structural coverage separately from live behavioral verification', () => {
+test('SPRINT tracks structural, catalog, drift, and behavioral gates separately', () => {
   assert.match(sprint, /SECURITY DEFINER trigger assurance/i);
   assert.match(sprint, /structural migration-history coverage/i);
   assert.match(sprint, /read-only live catalog parity/i);
