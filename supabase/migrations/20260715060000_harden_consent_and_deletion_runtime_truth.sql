@@ -97,12 +97,7 @@ create or replace function public.record_user_consent(
   p_granted boolean,
   p_version text default '1.0.0'
 )
-returns table (
-  category text,
-  granted boolean,
-  timestamp timestamptz,
-  version text
-)
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
@@ -168,11 +163,12 @@ begin
     p_version
   );
 
-  return query
-  select uc.category, uc.granted, uc.timestamp, uc.version
-  from public.user_consents uc
-  where uc.user_id = v_user_id
-    and uc.category = p_category;
+  return jsonb_build_object(
+    'category', p_category,
+    'granted', p_granted,
+    'timestamp', v_timestamp,
+    'version', p_version
+  );
 end;
 $$;
 
