@@ -16,6 +16,19 @@
     "liveBehaviorVerified": false,
     "externalEffectsSafelyStubbed": false
   },
+  "catalogDrift": [
+    {
+      "kind": "live_only_legacy_trigger_path",
+      "status": "open",
+      "liveMigration": "20260704012007_award_points_for_app_actions",
+      "function": "public.award_points_for_app_activity()",
+      "trigger": "activity_events_award_points",
+      "table": "public.activity_events",
+      "repositoryCanonicalPath": "public.bip_events -> public.handle_bip_event_points()",
+      "currentClientWriter": "src/features/activity/events.ts writes public.bip_events only",
+      "requiredResolution": "Create and verify a bounded Supabase migration that retires the legacy trigger/function, or document a real remaining producer before preserving it. Do not mutate production from this structural-audit PR."
+    }
+  ],
   "functions": [
     {
       "signature": "public.apply_point_transaction()",
@@ -37,8 +50,10 @@
       "signature": "public.award_points_for_app_activity()",
       "searchPath": "public",
       "risk": "high",
-      "rationale": "Creates derived point transactions from application activity events.",
+      "rationale": "Live-only legacy path that creates derived point transactions from activity_events.",
       "clientExecuteRevokedLive": true,
+      "repositoryExpected": false,
+      "catalogDrift": "live_only",
       "behaviorVerified": false
     },
     {
@@ -126,7 +141,9 @@
       "table": "public.activity_events",
       "function": "public.award_points_for_app_activity()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "catalogDrift": "live_only"
     },
     {
       "trigger": "crew_members_cleanup_access",
