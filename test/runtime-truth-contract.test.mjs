@@ -8,13 +8,18 @@ const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf
 
 const consentService = read('services/consentService.ts');
 const accountDelete = read('supabase/functions/account-delete/index.ts');
+const runtimeHealth = read('supabase/functions/runtime-contract-health/index.ts');
 const migrationPath = 'supabase/migrations/20260715060000_harden_consent_and_deletion_runtime_truth.sql';
+const markerMigrationPath = 'supabase/migrations/20260715063000_register_runtime_contract_version.sql';
 const migration = read(migrationPath);
+const markerMigration = read(markerMigrationPath);
 const packageJson = JSON.parse(read('package.json'));
 const qualityGate = read('.github/workflows/quality-gate.yml');
+const deploymentGate = read('.github/workflows/deploy-cloudflare.yml');
 
-test('runtime migrations use a Supabase-compatible timestamp prefix', () => {
+test('runtime migrations use Supabase-compatible timestamp prefixes', () => {
   assert.match(path.basename(migrationPath), /^\d{14}_[a-z0-9_]+\.sql$/);
+  assert.match(path.basename(markerMigrationPath), /^\d{14}_[a-z0-9_]+\.sql$/);
 });
 
 test('consent state and audit history are written by one authenticated RPC', () => {
@@ -24,6 +29,7 @@ test('consent state and audit history are written by one authenticated RPC', () 
   assert.match(consentService, /const record = await persistConsent\([\s\S]*?cache\.set\(category, record\)/);
 
   assert.match(migration, /create or replace function public\.record_user_consent/);
+  assert.match(migration, /returns jsonb/);
   assert.match(migration, /insert into public\.user_consents/);
   assert.match(migration, /insert into public\.consent_audit_log/);
   assert.match(migration, /security definer/);
@@ -44,6 +50,18 @@ test('account deletion leaves a durable service-role receipt', () => {
   assert.match(accountDelete, /status: 'processing'/);
   assert.match(accountDelete, /status: 'completed'/);
   assert.match(accountDelete, /await sha256\(userId\)/);
+});
+
+test('production deploy verification checks the live Supabase contract marker', () => {
+  assert.match(markerMigration, /create table if not exists public\.runtime_contract_versions/);
+  assert.match(markerMigration, /consent_deletion_runtime_truth/);
+  assert.match(markerMigration, /20260715060000/);
+  assert.match(runtimeHealth, /runtime_contract_versions/);
+  assert.match(runtimeHealth, /healthy: missing\.length === 0/);
+  assert.match(deploymentGate, /SUPABASE_RUNTIME_HEALTH_URL:/);
+  assert.match(deploymentGate, /runtime-contract-health/);
+  assert.match(deploymentGate, /Verify Supabase runtime contracts/);
+  assert.match(deploymentGate, /curl --fail-with-body/);
 });
 
 test('local and hosted gates both run runtime truth contracts', () => {
