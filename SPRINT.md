@@ -165,6 +165,18 @@ Do not create broad memory dashboards before the first approved runtime path inc
 - one real consumer;
 - rollout, telemetry, and rollback.
 
+## L5 cross-companion synthesis
+
+L5 is planned, defined, and blocked — see `docs/AGENT_L4_ARCHITECTURE.md` and
+`implementation-ledger.json`'s `l5-cross-companion-synthesis` entry. It is
+cross-companion memory synthesis under explicit consent plus autonomous goal
+proposal, not a relabeling of L4.
+
+Do not start L5 contract work — schema, services, or a consent flow — before
+`l4-continuity-memory` reaches `verified`. Cross-companion reads without an
+explicit consent contract are an automatic blocker per
+`.agents/skills/bip-l4-memory/SKILL.md`.
+
 ## Control Room
 
 Current Control Room operational sources are integrated. Additional panels must remain evidence-driven:
@@ -186,5 +198,7 @@ Current Control Room operational sources are integrated. Additional panels must 
 7. Plan password-breach protection with Auth regression coverage.
 8. Design the smallest safe L4 schema and one real runtime consumer.
 9. Add Control Room observers only after their sources exist.
+10. Only after item 8 reaches `verified`: design the L5 consent contract for
+    cross-companion synthesis and autonomous goal proposal.
 
 A green PR proves reviewed integration. It does not prove production behavior unless the correct system witness, deployed artifact, and user journey were observed. Computers remain deeply committed to this inconvenient distinction.
