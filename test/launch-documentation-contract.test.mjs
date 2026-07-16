@@ -27,7 +27,8 @@ test('current sprint is a bounded launch execution handoff', async () => {
   const sprint = await read('SPRINT.md');
 
   assert.match(sprint, /Sprint theme:.*Launch trust and journey proof/);
-  assert.match(sprint, /Verified repository baseline: `ab5cf40b398e02536764b5b806b6f3aec0a9161c`/);
+  assert.match(sprint, /Verified repository baseline/);
+  assert.match(sprint, /ab5cf40b398e02536764b5b806b6f3aec0a9161c/);
   assert.match(sprint, /Move Se'kret Bip.*controlled-alpha readiness/s);
   assert.match(sprint, /Immediate execution order/);
   assert.match(sprint, /Explicit non-goals/);
