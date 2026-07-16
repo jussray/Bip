@@ -40,9 +40,13 @@ function routeForBootstrap(
  * Fetches the signed-in account facts that routing depends on after login,
  * signup, email confirmation, or account restoration. The caller must wait for
  * this result instead of navigating on the auth response alone.
+ *
+ * Root boot may pass a profile it already hydrated from Supabase so the durable
+ * profile is fetched once. Auth screens omit it and use the canonical hydrator.
  */
 export async function fetchPostAuthBootstrap(
   preferredSide?: AccountSide | null,
+  prehydratedProfile?: AccountProfile | null,
 ): Promise<PostAuthBootstrapResult> {
   const supabase = getSupabase();
   if (!supabase) throw new Error('Supabase account service is unavailable.');
@@ -53,7 +57,9 @@ export async function fetchPostAuthBootstrap(
   if (!user || user.is_anonymous) throw new Error('A permanent signed-in account is required.');
 
   const requestedSide = await resolvePreferredSide(preferredSide);
-  const profile = await hydrateAccountProfile(requestedSide);
+  const profile = prehydratedProfile === undefined
+    ? await hydrateAccountProfile(requestedSide)
+    : prehydratedProfile;
   const accountSide = profile?.accountSide ?? requestedSide;
 
   await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, accountSide);
