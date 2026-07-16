@@ -31,7 +31,7 @@ export default function AgeScreen() {
       [ONBOARDING_SIDE_KEY, 'teen'],
     ]);
     setUserSide('teen');
-    router.push('/(auth)/signup?side=teen');
+    router.push('/(auth)/signup?side=teen' as never);
   }
 
   async function handleParent() {
