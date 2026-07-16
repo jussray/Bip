@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { useVerificationContext } from '@/context/VerificationContext';
+import type { AccountSide } from '@/features/identity/accountProfile';
+import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
 
 function readableAuthError(error: unknown): string {
@@ -20,9 +23,19 @@ function readableAuthError(error: unknown): string {
   return 'Something went wrong while signing in. Please try again.';
 }
 
+function normalizeSide(value: string | undefined): AccountSide | undefined {
+  return value === 'parent' || value === 'teen' ? value : undefined;
+}
+
+function authRoute(path: '/(auth)/signup' | '/(auth)/login', side?: AccountSide): string {
+  return side ? `${path}?side=${side}` : path;
+}
+
 export default function LoginScreen() {
-  const params = useLocalSearchParams<{ passwordReset?: string }>();
+  const params = useLocalSearchParams<{ passwordReset?: string; side?: string }>();
   const passwordReset = params.passwordReset === '1';
+  const preferredSide = normalizeSide(params.side);
+  const { refreshVerification } = useVerificationContext();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [error, setError]       = useState('');
@@ -45,7 +58,13 @@ export default function LoginScreen() {
     try {
       const { error: authErr } = await sb.auth.signInWithPassword({ email: e, password: p });
       if (authErr) { setError(authErr.message); return; }
-      router.replace('/');
+
+      // The auth response alone is not enough to route safely. Fetch the live
+      // profile and required-consent state, then refresh verification before
+      // entering any teen or parent surface.
+      const bootstrap = await fetchPostAuthBootstrap(preferredSide);
+      await refreshVerification();
+      router.replace(bootstrap.nextRoute as never);
     } catch (caught) {
       setError(readableAuthError(caught));
     } finally {
@@ -123,7 +142,7 @@ export default function LoginScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.push('/(auth)/signup')}
+          onPress={() => router.push(authRoute('/(auth)/signup', preferredSide) as never)}
           style={styles.link}
           accessibilityRole="link"
           accessibilityLabel="New here? Create an account"
