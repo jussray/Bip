@@ -153,17 +153,18 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     void refreshVerification();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const permanentSession = Boolean(session && !session.user.is_anonymous);
+      const user = session?.user;
+      const permanentSession = Boolean(user && !user.is_anonymous);
       setAuthResolved(true);
       setAuthenticated(permanentSession);
       removeVerificationChannel();
 
-      if (!permanentSession) {
+      if (!user || user.is_anonymous) {
         setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
         setError(null);
         setLoading(false);
       } else {
-        subscribeToVerificationSignal(session.user.id);
+        subscribeToVerificationSignal(user.id);
         void refreshVerification();
       }
     });
