@@ -22,6 +22,16 @@ The first redteam attacks the product premise and evidence. L99 drives implement
 
 Provider boundaries and handoffs are documented in [`docs/PROVIDERS.md`](./docs/PROVIDERS.md). Project-local rules below may be stricter; they may not weaken privacy, security, evidence, approval, provenance, rollback, or truthfulness.
 
+## MCP-to-skill routing
+
+MCP connectivity and Bip skill activation are separate requirements. Before invoking any MCP server, read [`config/mcp-skill-routing.json`](./config/mcp-skill-routing.json), load every skill mapped to that server, and also load every skill in `alwaysLoad`.
+
+- Never use an MCP merely because it is configured.
+- The mapped skill defines the product boundary; the MCP supplies a scoped tool.
+- If a mapped skill file is missing, stop rather than silently continuing without the guardrail.
+- Use `npm run verify:mcp` to prove that configured servers, authority boundaries, and skill files remain aligned.
+- Auth, login, consent, verification, parent linking, or onboarding work must activate `.agents/skills/bip-auth-onboarding/SKILL.md` in addition to the server-specific mappings.
+
 ## OODA Workflow
 
 Every agent must execute the full founder stack above, then follow this repository OODA workflow before changing anything.
