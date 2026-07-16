@@ -1,0 +1,34 @@
+{
+  "id": "auth-onboarding-runtime",
+  "name": "Permanent-account onboarding, consent, and verification signal contract",
+  "status": "contract",
+  "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/451",
+  "acceptanceCriteria": [
+    "Signed-out users can reach Splash and the age/account-side choice before permanent account creation or sign-in.",
+    "Login, signup, email confirmation, and account restore wait for canonical profile, required consent, and verification facts before routing.",
+    "Required Privacy Policy and Terms consent is explicit, persisted, auditable, and never inferred from continuing onboarding.",
+    "One global own-row Realtime subscription refreshes account verification without duplicate screen subscriptions.",
+    "Every configured MCP server activates its mapped Bip skills and authority boundary through a machine-verified routing contract.",
+    "Synthetic teen, parent, account-switch, and second-user journeys pass before public rollout."
+  ],
+  "contractPaths": [
+    ".agents/skills/bip-auth-onboarding/SKILL.md",
+    "config/mcp-skill-routing.json",
+    "src/services/auth/postAuthBootstrap.ts"
+  ],
+  "runtimePaths": [
+    "app/(auth)/login.tsx",
+    "app/(auth)/signup.tsx",
+    "app/(onboarding)/consent.tsx",
+    "src/context/VerificationContext.tsx"
+  ],
+  "testPaths": [
+    "test/auth-onboarding-runtime.test.mjs",
+    "test/parent-link-realtime.test.mjs",
+    "scripts/verify-mcp-config.mjs"
+  ],
+  "verification": {
+    "state": "not-run",
+    "evidence": "https://github.com/jussray/Sekret-Bip/pull/455"
+  }
+}
