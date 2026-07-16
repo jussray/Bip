@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "alwaysLoad": [
+    "bip-repo-truth"
+  ],
+  "servers": {
+    "github": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-release-gate"
+      ],
+      "boundary": "Repository, pull-request, Actions, and security evidence only. Verify exact branch and commit before claims or writes."
+    },
+    "supabase": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-supabase-guardian",
+        "bip-privacy-redteam",
+        "bip-auth-onboarding"
+      ],
+      "boundary": "Project-scoped read-only inspection. Schema changes remain migration-first, reviewed, denied by default, and separately applied with proof."
+    },
+    "context7": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-ai-review"
+      ],
+      "boundary": "Current public library documentation only. Never send private Bip content or treat documentation as runtime proof."
+    },
+    "microsoft-learn": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-ai-review"
+      ],
+      "boundary": "Official public technical documentation only. Repository versions and tests remain authoritative."
+    },
+    "figma": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-companion-style-engine",
+        "bip-sekret-identity",
+        "bip-privacy-redteam"
+      ],
+      "boundary": "Design inspection and handoff only. Use live app tokens and never expose Oracle, private identities, or user content."
+    },
+    "cloudflare-docs": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-worker-guardian"
+      ],
+      "boundary": "Public Cloudflare documentation only."
+    },
+    "cloudflare-builds": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-worker-guardian",
+        "bip-release-gate"
+      ],
+      "boundary": "Read build and deployment evidence. Deployment remains separately approved and exact-release verified."
+    },
+    "cloudflare-observability": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-worker-guardian",
+        "bip-privacy-redteam",
+        "bip-release-gate"
+      ],
+      "boundary": "Inspect minimized operational telemetry only. Never copy raw teen or parent content into prompts or reports."
+    },
+    "playwright": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-auth-onboarding",
+        "bip-beta-checklist",
+        "bip-release-gate",
+        "bip-privacy-redteam"
+      ],
+      "boundary": "Synthetic browser verification in an isolated profile. Never submit real account or private user data."
+    },
+    "bright-data": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-ai-review",
+        "bip-privacy-redteam"
+      ],
+      "boundary": "Code-package metadata only through GROUPS=code. Browser, scraping, ecommerce, and broad web-data modes remain forbidden."
+    }
+  }
+}
