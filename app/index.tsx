@@ -6,7 +6,6 @@ import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import {
-  hydrateAccountProfile,
   type AccountProfile,
   type AccountSide,
 } from '@/features/identity/accountProfile';
@@ -28,9 +27,9 @@ export default function Index() {
   const [authChecked, setAuthChecked] = useState(false);
   const [profileResolved, setProfileResolved] = useState(false);
   const [accountProfile, setAccountProfile] = useState<AccountProfile | null>(null);
-  const [hasPermanentSession, setHasPermanentSession] = useState(!isSupabaseConfigured);
+  const [hasPermanentSession, setHasPermanentSession] = useState(false);
   const [requiresAccountUpgrade, setRequiresAccountUpgrade] = useState(false);
-  const [requiredConsentsComplete, setRequiredConsentsComplete] = useState(!isSupabaseConfigured);
+  const [requiredConsentsComplete, setRequiredConsentsComplete] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [splashEntered, setSplashEntered] = useState(false);
@@ -46,52 +45,50 @@ export default function Index() {
       setProfileResolved(false);
       setRequiresAccountUpgrade(false);
       try {
-        if (isSupabaseConfigured) {
-          const sb = getSupabase();
-          if (!sb) throw new Error('Supabase account service is unavailable.');
-          const { data, error } = await sb.auth.getSession();
-          if (error) throw error;
-          const user = data.session?.user;
-
-          if (!user) {
-            if (!cancelled) {
-              setHasPermanentSession(false);
-              setRequiredConsentsComplete(false);
-              setAccountProfile(null);
-            }
-            return;
+        // Missing account infrastructure must never be treated as a completed
+        // permanent session. Keep only public Splash/onboarding reachable.
+        if (!isSupabaseConfigured) {
+          if (!cancelled) {
+            setHasPermanentSession(false);
+            setRequiredConsentsComplete(false);
+            setAccountProfile(null);
+            if (buildSide && buildSide !== userSide) setUserSide(buildSide);
           }
-
-          if (user.is_anonymous) {
-            if (!cancelled) {
-              setHasPermanentSession(false);
-              setRequiresAccountUpgrade(true);
-              setRequiredConsentsComplete(false);
-              setAccountProfile(null);
-              router.replace('/(auth)/signup');
-            }
-            return;
-          }
-
-          const result = await fetchPostAuthBootstrap(buildSide);
-          if (cancelled) return;
-          setHasPermanentSession(true);
-          setRequiredConsentsComplete(result.requiredConsentsComplete);
-          setAccountProfile(result.profile);
-          if (result.accountSide !== userSide) setUserSide(result.accountSide);
           return;
         }
 
-        const profile = await hydrateAccountProfile(buildSide);
-        if (cancelled) return;
-        setAccountProfile(profile);
-        setHasPermanentSession(true);
-        setRequiredConsentsComplete(true);
-        if (profile?.accountSide && profile.accountSide !== userSide) {
-          setUserSide(profile.accountSide);
-        } else if (!profile && buildSide && buildSide !== userSide) {
-          setUserSide(buildSide);
+        const sb = getSupabase();
+        if (!sb) throw new Error('Supabase account service is unavailable.');
+        const { data, error } = await sb.auth.getSession();
+        if (error) throw error;
+        const user = data.session?.user;
+
+        if (!user) {
+          if (!cancelled) {
+            setHasPermanentSession(false);
+            setRequiredConsentsComplete(false);
+            setAccountProfile(null);
+          }
+          return;
         }
+
+        if (user.is_anonymous) {
+          if (!cancelled) {
+            setHasPermanentSession(false);
+            setRequiresAccountUpgrade(true);
+            setRequiredConsentsComplete(false);
+            setAccountProfile(null);
+            router.replace('/(auth)/signup');
+          }
+          return;
+        }
+
+        const result = await fetchPostAuthBootstrap(buildSide);
+        if (cancelled) return;
+        setHasPermanentSession(true);
+        setRequiredConsentsComplete(result.requiredConsentsComplete);
+        setAccountProfile(result.profile);
+        if (result.accountSide !== userSide) setUserSide(result.accountSide);
       } catch (error) {
         if (!cancelled) {
           setBootstrapError(error instanceof Error ? error.message : 'Unable to load your Bip profile.');
