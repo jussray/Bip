@@ -118,20 +118,61 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    let active = true;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const removeVerificationChannel = () => {
+      if (channel) void supabase.removeChannel(channel);
+      channel = null;
+    };
+
+    const subscribeToVerificationSignal = (userId: string) => {
+      removeVerificationChannel();
+      channel = supabase
+        .channel(`account-verification-context-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'account_verification',
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            void refreshVerification();
+          },
+        )
+        .subscribe();
+    };
+
+    void supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      const user = data.session?.user;
+      if (user && !user.is_anonymous) subscribeToVerificationSignal(user.id);
+    });
     void refreshVerification();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const permanentSession = Boolean(session && !session.user.is_anonymous);
       setAuthResolved(true);
       setAuthenticated(permanentSession);
+      removeVerificationChannel();
+
       if (!permanentSession) {
         setSnapshot(INITIAL_VERIFICATION_SNAPSHOT);
         setError(null);
         setLoading(false);
       } else {
+        subscribeToVerificationSignal(session.user.id);
         void refreshVerification();
       }
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      active = false;
+      removeVerificationChannel();
+      subscription.unsubscribe();
+    };
   }, [refreshVerification]);
 
   const value = useMemo<Value>(() => ({
