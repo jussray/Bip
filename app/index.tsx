@@ -68,6 +68,7 @@ export default function Index() {
               setRequiresAccountUpgrade(true);
               setRequiredConsentsComplete(false);
               setAccountProfile(null);
+              router.replace('/(auth)/signup');
             }
             return;
           }
