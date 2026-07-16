@@ -64,13 +64,13 @@ export default function ParentWelcome() {
         <TouchableOpacity
           style={styles.btn}
           activeOpacity={0.85}
-          onPress={() => router.push('/(auth)/signup?side=parent')}
+          onPress={() => router.push('/(auth)/signup?side=parent' as never)}
         >
           <Text style={styles.btnText}>Create my Parent account →</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.signIn}
-          onPress={() => router.push('/(auth)/login?side=parent')}
+          onPress={() => router.push('/(auth)/login?side=parent' as never)}
         >
           <Text style={styles.signInText}>I already have an account</Text>
         </TouchableOpacity>
