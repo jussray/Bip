@@ -37,12 +37,12 @@ test('age and account side survive into permanent account creation', () => {
 
 test('login and signup wait for the same post-auth fetch contract before routing', () => {
   const signInIndex = login.indexOf('signInWithPassword');
-  const loginBootstrapIndex = login.indexOf('fetchPostAuthBootstrap');
-  const loginRouteIndex = login.indexOf('router.replace(bootstrap.nextRoute');
+  const loginBootstrapIndex = login.indexOf('const bootstrap = await fetchPostAuthBootstrap', signInIndex);
+  const loginRouteIndex = login.indexOf('router.replace(bootstrap.nextRoute', loginBootstrapIndex);
   assert.ok(signInIndex >= 0 && loginBootstrapIndex > signInIndex && loginRouteIndex > loginBootstrapIndex);
 
   const signUpIndex = signup.indexOf('sb.auth.signUp');
-  const signupBootstrapIndex = signup.indexOf('fetchPostAuthBootstrap');
+  const signupBootstrapIndex = signup.indexOf('const bootstrap = await fetchPostAuthBootstrap');
   assert.ok(signUpIndex >= 0 && signupBootstrapIndex >= 0);
   assert.match(signup, /await refreshVerification\(\)/);
 
