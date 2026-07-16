@@ -12,6 +12,7 @@ import {
   type Companion,
   type ProfileGender,
 } from '@/features/identity/accountProfile';
+import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 
 const QUESTIONS: Record<string, string> = {
   '13-15': 'What do you wish somebody understood about you?',
@@ -34,7 +35,7 @@ function isCompanion(value: string): value is Companion {
 
 export default function ReflectionScreen() {
   const { setSelectedSekret, setUserSide } = useAppContext();
-  const { verificationState } = useVerificationContext();
+  const { verificationState, refreshVerification } = useVerificationContext();
   const [question, setQuestion] = useState(QUESTIONS.default);
   const [name, setName] = useState('');
   const [answer, setAnswer] = useState('');
@@ -64,6 +65,12 @@ export default function ReflectionScreen() {
     setSaving(true);
     setError(null);
     try {
+      const bootstrap = await fetchPostAuthBootstrap('teen');
+      if (!bootstrap.requiredConsentsComplete) {
+        router.replace(bootstrap.nextRoute as never);
+        return;
+      }
+
       const trimmed = answer.trim();
       const values = await AsyncStorage.multiGet([
         'bip_onboarding_age',
@@ -93,7 +100,8 @@ export default function ReflectionScreen() {
         ['sekret_self_discovery_profile', JSON.stringify({ reflection: trimmed, updatedAt: new Date().toISOString() })],
       ]);
       setUserSide('teen');
-      setSelectedSekret(choice === 'raylene' ? 'soft' : choice);
+      setSelectedSekret(choice);
+      await refreshVerification();
       router.replace(
         verificationState === 'VERIFIED_TEEN'
           ? '/(teen)/room'
