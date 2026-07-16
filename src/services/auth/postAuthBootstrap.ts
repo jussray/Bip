@@ -1,0 +1,70 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { hydrateAccountProfile, type AccountProfile, type AccountSide } from '@/features/identity/accountProfile';
+import { getSupabase } from '@/utils/supabase';
+import { consentService } from '../../../services/consentService';
+
+export const ONBOARDING_SIDE_KEY = 'bip_onboarding_side';
+
+export interface PostAuthBootstrapResult {
+  userId: string;
+  profile: AccountProfile | null;
+  accountSide: AccountSide;
+  requiredConsentsComplete: boolean;
+  nextRoute: string;
+}
+
+function isAccountSide(value: unknown): value is AccountSide {
+  return value === 'teen' || value === 'parent';
+}
+
+async function resolvePreferredSide(preferredSide?: AccountSide | null): Promise<AccountSide> {
+  if (preferredSide) return preferredSide;
+  const stored = await AsyncStorage.getItem(ONBOARDING_SIDE_KEY);
+  return isAccountSide(stored) ? stored : 'teen';
+}
+
+function routeForBootstrap(
+  side: AccountSide,
+  profile: AccountProfile | null,
+  requiredConsentsComplete: boolean,
+): string {
+  if (!requiredConsentsComplete) return `/(onboarding)/consent?side=${side}`;
+  if (!profile?.onboardingComplete) {
+    return side === 'parent' ? '/(onboarding)/parent-setup' : '/(onboarding)/name';
+  }
+  return '/';
+}
+
+/**
+ * Fetches the signed-in account facts that routing depends on after login,
+ * signup, email confirmation, or account restoration. The caller must wait for
+ * this result instead of navigating on the auth response alone.
+ */
+export async function fetchPostAuthBootstrap(
+  preferredSide?: AccountSide | null,
+): Promise<PostAuthBootstrapResult> {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error('Supabase account service is unavailable.');
+
+  const { data, error } = await supabase.auth.getSession();
+  if (error) throw error;
+  const user = data.session?.user;
+  if (!user || user.is_anonymous) throw new Error('A permanent signed-in account is required.');
+
+  const requestedSide = await resolvePreferredSide(preferredSide);
+  const profile = await hydrateAccountProfile(requestedSide);
+  const accountSide = profile?.accountSide ?? requestedSide;
+
+  await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, accountSide);
+  await consentService.load(user.id);
+  const requiredConsentsComplete = consentService.hasCompletedOnboarding();
+
+  return {
+    userId: user.id,
+    profile,
+    accountSide,
+    requiredConsentsComplete,
+    nextRoute: routeForBootstrap(accountSide, profile, requiredConsentsComplete),
+  };
+}
