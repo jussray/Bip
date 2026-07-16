@@ -10,6 +10,7 @@ import {
   type AccountProfile,
   type AccountSide,
 } from '@/features/identity/accountProfile';
+import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 import {
   resolveParentEntryState,
   routeForParentEntryState,
@@ -27,6 +28,9 @@ export default function Index() {
   const [authChecked, setAuthChecked] = useState(false);
   const [profileResolved, setProfileResolved] = useState(false);
   const [accountProfile, setAccountProfile] = useState<AccountProfile | null>(null);
+  const [hasPermanentSession, setHasPermanentSession] = useState(!isSupabaseConfigured);
+  const [requiresAccountUpgrade, setRequiresAccountUpgrade] = useState(false);
+  const [requiredConsentsComplete, setRequiredConsentsComplete] = useState(!isSupabaseConfigured);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [splashEntered, setSplashEntered] = useState(false);
@@ -40,6 +44,7 @@ export default function Index() {
     async function bootstrap() {
       setBootstrapError(null);
       setProfileResolved(false);
+      setRequiresAccountUpgrade(false);
       try {
         if (isSupabaseConfigured) {
           const sb = getSupabase();
@@ -47,19 +52,40 @@ export default function Index() {
           const { data, error } = await sb.auth.getSession();
           if (error) throw error;
           const user = data.session?.user;
+
           if (!user) {
-            router.replace('/(auth)/login');
+            if (!cancelled) {
+              setHasPermanentSession(false);
+              setRequiredConsentsComplete(false);
+              setAccountProfile(null);
+            }
             return;
           }
+
           if (user.is_anonymous) {
-            router.replace('/(auth)/signup');
+            if (!cancelled) {
+              setHasPermanentSession(false);
+              setRequiresAccountUpgrade(true);
+              setRequiredConsentsComplete(false);
+              setAccountProfile(null);
+            }
             return;
           }
+
+          const result = await fetchPostAuthBootstrap(buildSide);
+          if (cancelled) return;
+          setHasPermanentSession(true);
+          setRequiredConsentsComplete(result.requiredConsentsComplete);
+          setAccountProfile(result.profile);
+          if (result.accountSide !== userSide) setUserSide(result.accountSide);
+          return;
         }
 
         const profile = await hydrateAccountProfile(buildSide);
         if (cancelled) return;
         setAccountProfile(profile);
+        setHasPermanentSession(true);
+        setRequiredConsentsComplete(true);
         if (profile?.accountSide && profile.accountSide !== userSide) {
           setUserSide(profile.accountSide);
         } else if (!profile && buildSide && buildSide !== userSide) {
@@ -79,7 +105,7 @@ export default function Index() {
 
     void bootstrap();
     return () => { cancelled = true; };
-  }, [bootstrapAttempt, buildSide]);
+  }, [bootstrapAttempt, buildSide, setUserSide, userSide]);
 
   useEffect(() => {
     if (
@@ -96,11 +122,25 @@ export default function Index() {
     setRouted(true);
 
     async function route() {
+      if (!hasPermanentSession) {
+        if (requiresAccountUpgrade) {
+          router.replace(`/(auth)/signup?side=${effectiveSide}` as never);
+        } else {
+          router.replace(buildSide === 'parent' ? '/(onboarding)/parent-splash' : '/(onboarding)/welcome');
+        }
+        return;
+      }
+
+      if (!requiredConsentsComplete) {
+        router.replace(`/(onboarding)/consent?side=${effectiveSide}` as never);
+        return;
+      }
+
       if (!accountProfile?.onboardingComplete) {
         router.replace(
           effectiveSide === 'parent'
-            ? '/(onboarding)/parent-welcome'
-            : '/(onboarding)/welcome',
+            ? '/(onboarding)/parent-setup'
+            : '/(onboarding)/name',
         );
         return;
       }
@@ -132,10 +172,14 @@ export default function Index() {
     accountProfile,
     authChecked,
     bootstrapError,
+    buildSide,
     effectiveSide,
+    hasPermanentSession,
     isLoading,
     isVerificationLoading,
     profileResolved,
+    requiredConsentsComplete,
+    requiresAccountUpgrade,
     routed,
     splashEntered,
     verificationState,
@@ -162,7 +206,7 @@ export default function Index() {
   if (!isLoading && !isVerificationLoading && authChecked && profileResolved && !splashEntered) {
     return (
       <SplashScreen
-        userSide={effectiveSide}
+        userSide={hasPermanentSession ? effectiveSide : buildSide ?? 'teen'}
         setScreen={() => setSplashEntered(true)}
       />
     );
