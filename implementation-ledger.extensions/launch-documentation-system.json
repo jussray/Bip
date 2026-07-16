@@ -5,7 +5,7 @@
   "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/456",
   "acceptanceCriteria": [
     "One canonical visual launch roadmap distinguishes repository integration, production verification, controlled alpha, launch clearance, public launch, and future non-launch lanes.",
-    "SPRINT.md contains only the current verified baseline, sprint outcome, active workstreams, execution order, non-goals, blockers, and definition of done.",
+    "SPRINT.md contains only the reviewed implementation baseline, sprint outcome, active workstreams, execution order, non-goals, blockers, and definition of done.",
     "A documentation authority map identifies canonical live truth, architecture contracts, evidence, research, and the required handling of stale planning documents.",
     "README.md, CURRENT_STATUS.md, and strategy documentation point to the same launch roadmap without promoting planned L4 or L5 work into launch scope.",
     "Automated contract tests fail when canonical launch links, privacy boundaries, evidence distinctions, or L4/L5 gates disappear."
@@ -23,8 +23,7 @@
     "test/implementation-ledger.test.mjs"
   ],
   "verification": {
-    "state": "partial",
-    "evidence": "https://github.com/jussray/Sekret-Bip/issues/456",
-    "blocker": "Merge the reviewed documentation contract after implementation-evidence, unit, lint, and link-shape checks pass on the exact branch head."
+    "state": "passed",
+    "evidence": "https://github.com/jussray/Sekret-Bip/pull/457"
   }
 }

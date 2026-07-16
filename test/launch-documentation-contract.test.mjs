@@ -27,7 +27,7 @@ test('current sprint is a bounded launch execution handoff', async () => {
   const sprint = await read('SPRINT.md');
 
   assert.match(sprint, /Sprint theme:.*Launch trust and journey proof/);
-  assert.match(sprint, /Verified repository baseline/);
+  assert.match(sprint, /Verified implementation baseline reviewed/);
   assert.match(sprint, /ab5cf40b398e02536764b5b806b6f3aec0a9161c/);
   assert.match(sprint, /Move Se'kret Bip.*controlled-alpha readiness/s);
   assert.match(sprint, /Immediate execution order/);
@@ -69,13 +69,14 @@ test('founder entry points all point to the same roadmap system', async () => {
   assert.match(strategy, /Launch-roadmap placement/);
 });
 
-test('ledger extension records the documentation contract without claiming release', async () => {
+test('ledger extension records the verified documentation contract', async () => {
   const extension = JSON.parse(await read('implementation-ledger.extensions/launch-documentation-system.json'));
 
   assert.equal(extension.id, 'launch-documentation-system');
   assert.equal(extension.status, 'contract');
   assert.equal(extension.ownerIssue, 'https://github.com/jussray/Sekret-Bip/issues/456');
-  assert.equal(extension.verification.state, 'partial');
+  assert.equal(extension.verification.state, 'passed');
+  assert.equal(extension.verification.evidence, 'https://github.com/jussray/Sekret-Bip/pull/457');
   assert.ok(extension.contractPaths.includes('docs/LAUNCH_ROADMAP.md'));
   assert.ok(extension.contractPaths.includes('docs/DOCUMENTATION_MAP.md'));
   assert.ok(extension.testPaths.includes('test/launch-documentation-contract.test.mjs'));
