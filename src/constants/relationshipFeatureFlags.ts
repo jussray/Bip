@@ -7,6 +7,7 @@ export const RELATIONSHIP_FEATURE_FLAGS: Readonly<RelationshipFeatureFlagMap> = 
   // Public behavior remains fail-closed. Founder Preview may open only the
   // implemented features below inside Expo Go/development.
   bridgeSummaries: 'internal',
+  bridgeLearning: 'internal',
   crewAccountability: 'disabled',
   emotionalScrapbook: 'disabled',
   companionMemory: 'disabled',
@@ -14,6 +15,7 @@ export const RELATIONSHIP_FEATURE_FLAGS: Readonly<RelationshipFeatureFlagMap> = 
 
 const FOUNDER_PREVIEWABLE_FEATURES = new Set<RelationshipFeature>([
   'bridgeSummaries',
+  'bridgeLearning',
   'crewAccountability',
 ]);
 
