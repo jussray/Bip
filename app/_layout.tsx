@@ -15,6 +15,12 @@ import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 void validateEnv();
 
 const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew', 'discover']);
+const PUBLIC_ONBOARDING_SEGMENTS = new Set([
+  'welcome',
+  'age',
+  'parent-splash',
+  'parent-welcome',
+]);
 
 function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
@@ -57,7 +63,11 @@ function RouteBoundary() {
     if (!isAuthResolved || isLoading || isVerificationLoading) return;
 
     if (isSupabaseConfigured && !isAuthenticated) {
-      if (first !== '(auth)') router.replace('/(auth)/login');
+      const isPublicRoot = first === '';
+      const isPublicOnboarding = first === '(onboarding)' && PUBLIC_ONBOARDING_SEGMENTS.has(second);
+      if (!isPublicRoot && first !== '(auth)' && !isPublicOnboarding) {
+        router.replace('/(auth)/login');
+      }
       return;
     }
 
