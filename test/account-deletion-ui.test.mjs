@@ -30,9 +30,13 @@ test('account deletion retains the seven-day grace and cancel path', () => {
   assert.match(cancelFunction, /\.eq\('status', 'pending'\)/);
 });
 
-test('delayed processor removes private files and auth user', () => {
-  assert.match(deleteFunction, /PRIVATE_BUCKETS/);
+test('delayed processor discovers live private storage, leaves a receipt, and deletes auth', () => {
+  assert.match(deleteFunction, /admin\.storage\.listBuckets\(\)/);
+  assert.match(deleteFunction, /bucket\.public !== true/);
+  assert.doesNotMatch(deleteFunction, /const PRIVATE_BUCKETS/);
   assert.match(deleteFunction, /removePrivateFiles/);
+  assert.match(deleteFunction, /account_deletion_receipts/);
+  assert.match(deleteFunction, /await sha256\(userId\)/);
   assert.match(deleteFunction, /admin\.auth\.admin\.deleteUser\(userId\)/);
   assert.match(deleteFunction, /grace_period_active/);
 });

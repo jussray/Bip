@@ -10,6 +10,7 @@ import { View } from 'react-native';
 import { router } from 'expo-router';
 import { UserRoomScreen } from '@screens/UserRoomScreen';
 import { BipReturnOverlay } from '../../components/retention/BipReturnOverlay';
+import { DailyIntentionsCard } from '../../components/intentions/DailyIntentionsCard';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
@@ -34,6 +35,10 @@ export default function TeenRoomRoute() {
     setSelectedSekret,
     theme,
     updateRoomMemory,
+    entries,
+    comfortSessions,
+    voiceNotes,
+    isLoading,
   } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.raylene;
   const vibe = resolveRoomVibe(theme);
@@ -74,6 +79,14 @@ export default function TeenRoomRoute() {
         BottomNav={null}
         sekretMode={selectedSekret}
         updateRoomMemory={updateRoomMemory}
+      />
+      <DailyIntentionsCard
+        mood={mood}
+        companionKey={companionKey}
+        entries={entries}
+        comfortSessions={comfortSessions}
+        voiceNotes={voiceNotes}
+        isLoading={isLoading}
       />
       <BipReturnOverlay onNavigate={handleScreen} />
     </View>
