@@ -6,6 +6,7 @@ import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import {
+  hydrateAccountProfile,
   type AccountProfile,
   type AccountSide,
 } from '@/features/identity/accountProfile';
@@ -83,12 +84,19 @@ export default function Index() {
           return;
         }
 
-        const result = await fetchPostAuthBootstrap(buildSide);
+        // Explicit second-device restore: hydrate the durable Supabase profile,
+        // then reuse it in the post-auth bootstrap so it is fetched only once.
+        const profile = await hydrateAccountProfile(buildSide);
+        const result = await fetchPostAuthBootstrap(profile?.accountSide ?? buildSide, profile);
         if (cancelled) return;
         setHasPermanentSession(true);
         setRequiredConsentsComplete(result.requiredConsentsComplete);
         setAccountProfile(result.profile);
-        if (result.accountSide !== userSide) setUserSide(result.accountSide);
+        if (profile?.accountSide && profile.accountSide !== userSide) {
+          setUserSide(profile.accountSide);
+        } else if (result.accountSide !== userSide) {
+          setUserSide(result.accountSide);
+        }
       } catch (error) {
         if (!cancelled) {
           setBootstrapError(error instanceof Error ? error.message : 'Unable to load your Bip profile.');
