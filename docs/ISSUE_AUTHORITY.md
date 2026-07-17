@@ -4,15 +4,35 @@
 
 This document prevents duplicate trackers from splitting implementation evidence. The most detailed evidence-backed issue owns the work. Shorter template duplicates should close with a link to the canonical tracker.
 
-## Canonical trust trackers
+## Canonical Trust chain
 
-| Trust area | Canonical issue | Duplicate closed |
+The `Trust-01` through `Trust-09` identifiers are reserved for issues #412–#420. Supporting work must use descriptive titles rather than reusing those Trust numbers.
+
+| Trust area | Canonical issue | Duplicate or legacy tracker |
 |---|---:|---:|
-| Consent and onboarding disclosures | #413 | #422 |
-| Persistent crisis-support surface | #414 | #423 |
-| Safety-trigger detection and supportive response | #415 | #424 |
+| Privacy inventory and data map | #412 | #421 closed previously; its closure does not complete #412 |
+| Consent and onboarding disclosures | #413 | #422 closed as duplicate |
+| Persistent crisis-support surface | #414 | #423 closed as duplicate |
+| Safety-trigger detection and supportive response | #415 | #424 closed as duplicate |
+| Bridge consent integrity and parent boundary | #416 | — |
+| Complete and verifiable account deletion | #417 | #426 remains open as supporting export and settings work |
+| COPPA, GDPR, age policy, and jurisdiction posture | #418 | #427 closed as duplicate; parent disclosures remain in #413 and parent visibility remains in #416 |
+| AI companion boundary hardening | #419 | #428 remains open as separate accessibility and store-quality work |
+| App Store and Google Play submission readiness | #420 | #429 remains open as the supporting claims-and-copy audit |
 
-The canonical issues remain open until their own acceptance criteria and production or journey evidence are satisfied. Closing a duplicate does not mark the underlying trust work complete.
+The canonical issues remain open until their own acceptance criteria and production, device, legal, policy, or journey evidence are satisfied. Closing or renaming another tracker does not mark the underlying Trust work complete.
+
+## Supporting launch trackers
+
+| Issue | Owned outcome | Relationship to canonical work |
+|---:|---|---|
+| #399 | Anonymous-session RLS and exposed `SECURITY DEFINER` RPC release gate | Cross-cutting security evidence used by multiple Trust issues |
+| #425 | Auth, session, endpoint, logging, device-access, threat-model, and dependency hardening | Supporting security checklist; canonical Trust-05 remains #416 |
+| #426 | User-facing data export and deletion controls | Supports #417 but retains export scope not fully owned by #417 |
+| #428 | Accessibility and store-quality sweep | Separate QA gate; canonical Trust-08 remains #419 |
+| #429 | Claims and copy audit | Supporting evidence for #420; canonical Trust-09 remains #420 |
+| #430 | Incident and breach response plan | Distinct launch-operations gate |
+| #451 | Explicit onboarding action wired to the atomic consent service | Focused implementation gate under #413 |
 
 ## Completed implementation trackers
 
@@ -27,6 +47,8 @@ Before opening a new issue:
 
 1. Search existing open and recently closed issues for the same outcome.
 2. Prefer extending the issue with the strongest acceptance criteria and evidence model.
-3. Close true duplicates with GitHub's `duplicate` reason and a comment pointing to the canonical issue.
-4. Close implementation issues as `completed` only when the required code, tests, and declared evidence gates exist.
-5. Do not treat duplicate cleanup as product completion.
+3. Reserve `Trust-01` through `Trust-09` for #412–#420.
+4. Use descriptive titles for supporting security, privacy, accessibility, copy, and operations work.
+5. Close true duplicates with GitHub's `duplicate` reason and a comment pointing to every canonical owner needed to preserve scope.
+6. Close implementation issues as `completed` only when the required code, tests, and declared evidence gates exist.
+7. Do not treat duplicate cleanup or title normalization as product completion.
