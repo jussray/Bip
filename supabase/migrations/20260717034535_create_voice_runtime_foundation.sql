@@ -12,8 +12,7 @@ begin;
 create table if not exists public.voice_sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  client_session_id text null
-    check (client_session_id is null or char_length(client_session_id) between 8 and 128),
+  client_session_id uuid null,
   companion_id text not null
     check (companion_id in ('raylene', 'rylane', 'cloud', 'night', 'sekret')),
   surface text not null
@@ -34,7 +33,7 @@ create table if not exists public.voice_sessions (
 comment on table public.voice_sessions is
   'Server-written lifecycle metadata for shared voice runtime sessions. Contains no raw audio, transcript text, prompts, replies, or private message content.';
 comment on column public.voice_sessions.client_session_id is
-  'Optional client idempotency/reconnect key. It must not contain an email, Bip ID, transcript, or other private content.';
+  'Optional opaque UUID used only for client idempotency or reconnect correlation. Human-readable identifiers and private content cannot be stored in this column.';
 
 create table if not exists public.voice_turns (
   id uuid primary key default gen_random_uuid(),
@@ -58,6 +57,118 @@ comment on table public.voice_turns is
   'Per-turn timing and coarse metadata only. Transcript text and audio bytes are deliberately absent.';
 comment on column public.voice_turns.transcript_chars is
   'Character count only; not transcript content.';
+
+create or replace function public.voice_event_payload_is_safe(p_payload jsonb)
+returns boolean
+language plpgsql
+immutable
+set search_path = ''
+as $$
+declare
+  v_key text;
+  v_value jsonb;
+  v_text text;
+begin
+  if p_payload is null or jsonb_typeof(p_payload) <> 'object' then
+    return false;
+  end if;
+
+  if octet_length(p_payload::text) > 4096 then
+    return false;
+  end if;
+
+  for v_key, v_value in
+    select entry.key, entry.value
+    from pg_catalog.jsonb_each(p_payload) as entry(key, value)
+  loop
+    v_text := v_value #>> '{}';
+
+    case v_key
+      when 'silence_ms' then
+        if jsonb_typeof(v_value) <> 'number'
+          or v_text !~ '^[0-9]{1,6}$'
+          or v_text::integer > 600000 then
+          return false;
+        end if;
+      when 'retry_count' then
+        if jsonb_typeof(v_value) <> 'number'
+          or v_text !~ '^[0-9]{1,2}$'
+          or v_text::integer > 20 then
+          return false;
+        end if;
+      when 'sequence' then
+        if jsonb_typeof(v_value) <> 'number'
+          or v_text !~ '^[0-9]{1,7}$'
+          or v_text::integer > 1000000 then
+          return false;
+        end if;
+      when 'sample_rate_hz' then
+        if jsonb_typeof(v_value) <> 'number'
+          or v_text !~ '^[0-9]{4,6}$'
+          or v_text::integer not between 8000 and 192000 then
+          return false;
+        end if;
+      when 'channel_count' then
+        if jsonb_typeof(v_value) <> 'number'
+          or v_text !~ '^[12]$' then
+          return false;
+        end if;
+      when 'is_reconnect', 'was_cancelled' then
+        if jsonb_typeof(v_value) <> 'boolean' then
+          return false;
+        end if;
+      when 'network_state' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text not in ('ok', 'degraded', 'offline') then
+          return false;
+        end if;
+      when 'provider' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text not in ('openai', 'cloudflare', 'device', 'unknown') then
+          return false;
+        end if;
+      when 'transport' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text not in ('http', 'websocket', 'realtime', 'unknown') then
+          return false;
+        end if;
+      when 'reason' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text not in ('silence', 'barge_in', 'cancelled', 'completed', 'error', 'disconnect', 'timeout', 'unavailable') then
+          return false;
+        end if;
+      when 'codec' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text not in ('pcm16', 'wav', 'm4a', 'aac', 'opus', 'unknown') then
+          return false;
+        end if;
+      when 'error_code' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text !~ '^[A-Z0-9_]{1,64}$' then
+          return false;
+        end if;
+      when 'region' then
+        if jsonb_typeof(v_value) <> 'string'
+          or v_text !~ '^[a-z0-9-]{2,32}$' then
+          return false;
+        end if;
+      else
+        return false;
+    end case;
+  end loop;
+
+  return true;
+exception
+  when others then
+    return false;
+end;
+$$;
+
+revoke all on function public.voice_event_payload_is_safe(jsonb) from public, anon, authenticated;
+grant execute on function public.voice_event_payload_is_safe(jsonb) to service_role;
+
+comment on function public.voice_event_payload_is_safe(jsonb) is
+  'Validates a strict allowlist of primitive operational metadata. Unknown keys, nested values, free-form strings, and out-of-range numbers fail closed.';
 
 create table if not exists public.voice_events (
   id bigint generated always as identity primary key,
@@ -90,18 +201,12 @@ create table if not exists public.voice_events (
     foreign key (turn_id, session_id)
     references public.voice_turns(id, session_id)
     on delete cascade,
-  constraint voice_events_payload_object
-    check (jsonb_typeof(payload) = 'object'),
-  constraint voice_events_payload_size
-    check (octet_length(payload::text) <= 4096),
-  constraint voice_events_metadata_only
-    check (
-      payload::text !~* '"(audio|audio_base64|audio_url|transcript|text|content|message|prompt|response)"[[:space:]]*:'
-    )
+  constraint voice_events_payload_safe
+    check (public.voice_event_payload_is_safe(payload))
 );
 
 comment on table public.voice_events is
-  'High-level server-written voice events. Payload is bounded metadata and rejects obvious raw-content keys, including nested keys.';
+  'High-level server-written voice events. Payload accepts only allowlisted primitive operational metadata and rejects unknown or free-form content.';
 
 create table if not exists public.voice_latency_metrics (
   id uuid primary key default gen_random_uuid(),
@@ -171,6 +276,10 @@ grant select, insert, update, delete on table public.voice_turns to service_role
 grant select, insert, update, delete on table public.voice_events to service_role;
 grant select, insert, update, delete on table public.voice_latency_metrics to service_role;
 grant usage, select on sequence public.voice_events_id_seq to service_role;
+
+-- The helper is not a public API surface.
+revoke all on function public.voice_event_payload_is_safe(jsonb) from public, anon, authenticated;
+grant execute on function public.voice_event_payload_is_safe(jsonb) to service_role;
 
 drop policy if exists "voice_sessions_select_own" on public.voice_sessions;
 create policy "voice_sessions_select_own"
