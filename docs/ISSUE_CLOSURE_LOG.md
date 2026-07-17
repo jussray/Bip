@@ -39,6 +39,18 @@ These issues contained unique launch requirements and were not legitimately clos
   - Remains the canonical launch program and owns the complete teen/parent product loop and V1 definition of done.
 - **#323 — Allow parent-first onboarding without a teen code**
   - Remains open for a useful unlinked-parent dashboard, supported parent-first and teen-first link initiation, explicit handling of proposed QR/email/share-link channels, multiple-child scope, and isolation proof.
+- **#344 — Supabase Auth configuration and performance hardening**
+  - Renamed and narrowed from the original broad authorization campaign.
+  - Retains leaked-password/Auth configuration and bounded performance-advisor work.
+  - Historical Phase 0, config-table grant, Edge-retirement, and custom-auth test slices remain evidence but do not complete #399.
+- **#357 — Productization: L4 persistence, observers, and live style evidence**
+  - Renamed and rewritten around its unique remaining scope.
+  - PR #358 completed the implementation-evidence gate and PR #360 completed repository-level style integration.
+  - Remains open for live style evidence, privacy-reviewed L4 persistence after #399, and authoritative Control Room observers.
+- **#399 — Supabase authorization release gate: RLS and SECURITY DEFINER RPCs**
+  - Confirmed as the canonical live authorization gate.
+  - Owns private-table and Storage policy review, anonymous-session and cross-user denial, elevated-RPC classification, rollback-contained role matrices, and fresh advisor evidence.
+  - A fresh 2026-07-17 production advisor observation still reports broad unresolved finding classes, so closure is not justified.
 - **#402 — Verify and release unified frontend-to-Worker contract spine**
   - Remains open because PR #398 established repository integration, not the full exact-production-release, user-visible failure-state, retry, telemetry, privacy, and rollback evidence matrix.
 - **#270 — Bridge: controlled two-account production proof**
@@ -59,6 +71,8 @@ These issues contained unique launch requirements and were not legitimately clos
 - **#430 — Operations: incident and breach response plan**
   - Remains open for runbook ownership, containment, notification, audit evidence, and tabletop proof.
 
+This security/productization pass closed no issue. Reducing overlap by clarifying authority was more accurate than forcing #344, #357, or #399 closed while each retains unique unfinished acceptance criteria.
+
 The long-horizon relationship roadmap in #238 also remains open. Its phased Translation, Crew, Scrapbook, and persistent-memory scope is broader than the launch program and must not be collapsed into #259 or represented as V1-complete.
 
 ### Closed pull requests without merge
@@ -73,4 +87,4 @@ The canonical Trust and launch issues remain open. Their launch-critical accepta
 
 ## Closure standard
 
-Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge when their base is obsolete or their concerns are mixed; preserve unique work in a focused current-main tracker.
+Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge when their base is obsolete or their concerns are mixed; preserve unique work in a focused current-main tracker. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.
