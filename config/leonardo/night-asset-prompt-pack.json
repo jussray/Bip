@@ -40,6 +40,11 @@
       "prompt": "Neutral standing pose, relaxed shoulders, quiet eye contact, hands naturally at sides, calm guarded energy."
     },
     {
+      "id": "thinking",
+      "file": "assets/images/companions/night/night-thinking.png",
+      "prompt": "Quiet thinking pose, seated or standing with one hand near the chin, eyes angled slightly away, reflective rather than distressed, silhouette readable at mobile size."
+    },
+    {
       "id": "window",
       "file": "assets/images/companions/night/night-window.png",
       "prompt": "Three-quarter back view looking toward a window, one hand near hoodie pocket, reflective late-night posture."
