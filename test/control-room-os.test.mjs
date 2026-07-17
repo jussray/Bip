@@ -13,6 +13,10 @@ const localServer = fs.readFileSync('scripts/control-room-server.mjs', 'utf8');
 const localDev = fs.readFileSync('scripts/control-room-dev.mjs', 'utf8');
 const localClient = fs.readFileSync('src/services/controlRoomLocalAgent.ts', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+const repoSkillFiles = fs.readdirSync('.agents/skills', { withFileTypes: true })
+  .filter(entry => entry.isDirectory())
+  .map(entry => `.agents/skills/${entry.name}/SKILL.md`)
+  .filter(path => fs.existsSync(path));
 
 
 test('Control Room OS defines founder-first V1 missions inside the existing workspace', () => {
@@ -94,4 +98,20 @@ test('Control Room UI executes only authenticated loopback allowlisted missions'
   assert.match(workspace, /runLocalControlRoomMission/);
   assert.match(workspace, /Run \$\{mission\.title\}/);
   assert.match(workspace, /npm run control-room:dev/);
+});
+
+
+test('every repository skill applies the 5W1H operating contract', () => {
+  assert.ok(repoSkillFiles.length >= 19);
+  for (const path of repoSkillFiles) {
+    const skill = fs.readFileSync(path, 'utf8');
+    assert.match(skill, /## 5W1H operating contract/, path);
+    for (const question of ['Who', 'What', 'Where', 'When', 'Why', 'How']) {
+      assert.match(skill, new RegExp(`\\*\\*${question}\\*\\*`), `${path} is missing ${question}`);
+    }
+  }
+  const controlRoomSkill = fs.readFileSync('.agents/skills/bip-control-room/SKILL.md', 'utf8');
+  assert.match(controlRoomSkill, /npm run control-room:dev/);
+  assert.match(controlRoomSkill, /ship-release.*manual/is);
+  assert.match(controlRoomSkill, /127\.0\.0\.1/);
 });
