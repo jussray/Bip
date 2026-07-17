@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 1,
+  "project": "Se’kret Bip Living Companion Rooms",
+  "owner": "jussray",
+  "repository": "jussray/Sekret-Bip",
+  "policies": {
+    "bottomNavigation": ["Room", "Pages", "Calm", "Circle", "More"],
+    "bottomNavigationLocked": true,
+    "mockupCharactersAreReferencesOnly": true,
+    "canonicalCharactersOnly": true,
+    "userRoomOwnsDashboardCards": true,
+    "companionRoomsRejectDashboardCards": true,
+    "companionRoomsArePermanentDestinations": true,
+    "existingRoutesMustBePreserved": true
+  },
+  "creativeTools": {
+    "canva": {
+      "role": "approval-board",
+      "designId": "DAHPZ_MO8og",
+      "editUrl": "https://www.canva.com/d/Scu1kaawH_v_vVP",
+      "requiredStatus": "approved"
+    },
+    "figma": {
+      "role": "motion-and-hitbox-spec",
+      "workspaceUrlEnv": "ROOM_FOREMAN_FIGMA_URL",
+      "importBlueprint": "design-handoff/figma/night-room-runtime-blueprint.svg",
+      "requiredStatus": "approved"
+    },
+    "leonardo": {
+      "role": "production-art-generation",
+      "workspaceUrlEnv": "ROOM_FOREMAN_LEONARDO_URL",
+      "promptPack": "config/leonardo/night-asset-prompt-pack.json",
+      "requiredStatus": "approved"
+    },
+    "github": {
+      "role": "runtime-source-of-truth",
+      "branchPrefix": "feat/room-runtime-",
+      "requiredStatus": "verified"
+    }
+  },
+  "phases": ["day", "midday", "afternoon", "evening", "rain", "night", "deepNight"],
+  "characters": {
+    "raylene": {
+      "canonicalMaster": "assets/images/companions/raylene/raylene-master.png",
+      "requiredPoses": ["neutral", "happy", "thinking", "writing", "window", "listening", "protective", "resting"]
+    },
+    "rylane": {
+      "canonicalMaster": "assets/images/companions/rylane/rylane-master.png",
+      "requiredPoses": ["neutral", "happy", "thinking", "writing", "window", "listening", "focused", "resting"]
+    },
+    "night": {
+      "canonicalMaster": "assets/images/companions/night/night-master.png",
+      "requiredPoses": ["neutral", "thinking", "writing", "window", "listening", "headphones", "microphone", "moonChair", "resting"]
+    },
+    "cloud": {
+      "canonicalMaster": "assets/images/cloud.png",
+      "requiredPoses": ["neutral", "happy", "thinking", "listening", "sleepy", "stormy"]
+    }
+  },
+  "rooms": {
+    "raylene": {
+      "baseAsset": "assets/images/resized-bg/bg-raylene-room-day.jpg",
+      "anchors": ["door", "desk", "journal", "window", "bed", "floor", "headphones"],
+      "defaultAnchor": "desk"
+    },
+    "rylane": {
+      "baseAsset": "assets/images/resized-bg/bg-rylane-room-day.jpg",
+      "anchors": ["door", "desk", "journal", "window", "bed", "floor", "headphones"],
+      "defaultAnchor": "window"
+    },
+    "night": {
+      "baseAsset": "assets/images/resized-bg/bg-night-room-day.jpg",
+      "anchors": ["door", "desk", "journal", "window", "moonChair", "microphone", "recordPlayer", "floor"],
+      "defaultAnchor": "window",
+      "verticalSlice": true
+    },
+    "cloud": {
+      "baseAsset": "assets/images/resized-bg/bg-cloud-room-day.jpg",
+      "anchors": ["journal", "beanBag", "neonCloud", "desk", "recordPlayer", "window"],
+      "defaultAnchor": "beanBag"
+    }
+  },
+  "runtime": {
+    "actorStates": ["idle", "walking", "thinking", "writing", "listening", "usingHeadphones", "usingMicrophone", "lookingOutWindow", "resting", "talking"],
+    "memoryKeys": ["lastRoom", "lastAnchor", "lastActivity", "lastPose", "lastVisit"],
+    "reducedMotionFallback": "crossfade",
+    "missingAssetFallback": "canonical-neutral"
+  },
+  "screenReferenceMap": {
+    "calm": "existing Calm route visual target",
+    "circle": "existing Circle route visual target",
+    "pages": "existing Pages route visual target",
+    "bridgeTeen": "existing teen Bridge route visual target",
+    "bridgeParent": "existing parent Bridge route visual target",
+    "bippin2": "existing Bippin 2 route visual target",
+    "parentDashboard": "existing parent dashboard visual target",
+    "userRoom": "updates, streaks, reminders, rewards, customization and continue cards"
+  }
+}
