@@ -27,7 +27,7 @@ function canUseLocalAgent(): boolean {
   return typeof __DEV__ !== 'undefined' && __DEV__ && token.length >= 32;
 }
 
-async function request<T>(path: string, init?: RequestInit, timeoutMs = 12_000): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = 12_000, acceptMissionFailure = false): Promise<T> {
   if (!canUseLocalAgent()) throw new Error('local_agent_not_started');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -42,7 +42,7 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = 12_000):
       signal: controller.signal,
     });
     const body = await response.json() as T & { error?: string };
-    if (!response.ok) throw new Error(body.error || `local_agent_http_${response.status}`);
+    if (!response.ok && !acceptMissionFailure) throw new Error(body.error || `local_agent_http_${response.status}`);
     return body;
   } finally {
     clearTimeout(timer);
@@ -55,9 +55,14 @@ export async function getLocalControlRoomAgentHealth(): Promise<LocalAgentHealth
 
 export async function runLocalControlRoomMission(missionId: string): Promise<LocalMissionRun> {
   if (!/^[a-z0-9-]+$/.test(missionId)) throw new Error('invalid_mission_id');
-  return request<LocalMissionRun>(
+  const run = await request<LocalMissionRun & { error?: string }>(
     `/missions/${encodeURIComponent(missionId)}`,
     { method: 'POST', body: '{}' },
     11 * 60 * 1000,
+    true,
   );
+  if (!run.missionId || !['passed', 'failed', 'timed_out'].includes(run.status)) {
+    throw new Error(run.error || 'invalid_local_agent_response');
+  }
+  return run;
 }
