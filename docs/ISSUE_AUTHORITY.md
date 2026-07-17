@@ -34,13 +34,24 @@ The canonical issues remain open until their own acceptance criteria and product
 
 Closing #283 does not claim that the parent experience is complete. It removes a competing umbrella while retaining every material requirement in the canonical launch, Trust, device-quality, onboarding, relationship, and deletion trackers.
 
+## Security and productization hierarchy
+
+| Issue | Canonical authority | Scope boundary |
+|---:|---|---|
+| #399 | Supabase authorization release gate | Owns private-table and Storage policy review, anonymous-session and cross-user denial, authenticated `SECURITY DEFINER` RPC classification, role matrices, and fresh live advisor evidence |
+| #344 | Supabase Auth configuration and performance hardening | Owns leaked-password configuration and bounded performance-advisor classification or remediation; it no longer competes with #399 |
+| #357 | L4 persistence, evidence-backed observers, and live style evidence | Owns productization after authorization permits it; PR #358 completed the evidence gate and PR #360 completed repository-level style integration |
+| #402 | Unified frontend-to-Worker release matrix | Owns shared Worker production, failure-state, retry, telemetry, privacy, and rollback evidence rather than a second verification path inside #357 |
+
+All four issues remain open. This pass normalized authority rather than claiming completion. A fresh 2026-07-17 production advisor observation still leaves broad authorization findings under #399; #344 retains unique Auth/performance work, and #357 retains unique L4/observer/live-evidence work.
+
 ## Supporting launch trackers
 
 | Issue | Owned outcome | Relationship to canonical work |
 |---:|---|---|
 | #270 | Controlled two-account Bridge production proof | Exact deployed-SHA journey evidence for #416, #417, and launch readiness |
 | #271 | Relationship-settings status, unlink, retry, and device-state UI | Focused UI work supporting #416 and #270; deletion remains #417/#426 |
-| #399 | Anonymous-session RLS and exposed `SECURITY DEFINER` RPC release gate | Cross-cutting security evidence used by multiple Trust issues |
+| #399 | Supabase authorization release gate | Cross-cutting authorization evidence used by multiple Trust and productization issues |
 | #425 | Auth, session, endpoint, logging, device-access, threat-model, and dependency hardening | Supporting security checklist; canonical Trust-05 remains #416 |
 | #426 | User-facing data export and deletion controls | Supports #417 but retains export scope not fully owned by #417 |
 | #428 | Accessibility and store-quality sweep | Separate QA gate; canonical Trust-08 remains #419 |
@@ -74,4 +85,5 @@ Before opening a new issue:
 5. Close true duplicates with GitHub's `duplicate` reason and a comment pointing to every canonical owner needed to preserve scope.
 6. Close implementation issues as `completed` only when the required code, tests, and declared evidence gates exist.
 7. Close stale mixed PRs without merge; re-extract unique work into a focused branch from current `main`.
-8. Do not treat duplicate cleanup, title normalization, or PR closure as product completion.
+8. Normalize overlapping open issues when each retains unique unfinished scope; do not force a closure merely to reduce issue count.
+9. Do not treat duplicate cleanup, title normalization, body clarification, or PR closure as product completion.
