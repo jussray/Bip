@@ -189,6 +189,16 @@ Hydrate Git LFS assets before visual or archive validation:
 git lfs pull
 ```
 
+### Founder Control Room
+
+To start the founder-only Control Room with live, guarded local mission buttons:
+
+```bash
+npm run control-room:dev
+```
+
+The command starts Expo web and a loopback-only local agent with an ephemeral token. The UI can run only the documented allowlisted verification and recovery missions; release deployment remains a manual, exact-head gate. See `docs/CONTROL_ROOM.md`.
+
 ### Supabase
 
 ```bash
