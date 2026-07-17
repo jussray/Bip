@@ -89,46 +89,52 @@ function localFallback(
   const reset = /\b(failed|fell off|gave up|stopped|missed|behind|procrastinat)\w*\b/.test(lower);
   const mirror = mayMirrorProfanity(relationship);
 
+  if (personalityId === 'parentCoach') {
+    if (angry) return "Let's slow this down before anyone reacts. What happened right before things escalated?";
+    if (sad) return "That sounds hard for both of you. What happened, and what have you already tried?";
+    return 'Start with what happened at home and what you want to handle differently.';
+  }
+
   if (isShortContinuation) {
     if (personalityId === 'rylane') return "Aight, I'm here. Talk.";
     if (personalityId === 'cloud') return "Hey. No pressure — whatever you want to say, or nothing at all.";
-    if (personalityId === 'night') return "Still here. No rush.";
-    return "Hey! Random or did something actually happen?";
+    if (personalityId === 'night') return 'Still here. No rush.';
+    return 'Hey! Random or did something actually happen?';
   }
 
   if (personalityId === 'rylane') {
     if (angry) return mirror
-      ? "Yeah, that shit would set anybody off. Before you move on it, what line got crossed?"
-      : "Yeah, that would set anybody off. Before you move on it, what line got crossed?";
-    if (sad) return "That sounds heavy for real. You do not have to dress it up — what part is hitting hardest?";
+      ? 'Yeah, that shit would set anybody off. Before you move on it, what line got crossed?'
+      : 'Yeah, that would set anybody off. Before you move on it, what line got crossed?';
+    if (sad) return 'That sounds heavy for real. You do not have to dress it up — what part is hitting hardest?';
     return relationship.nicknameComfort === 'dislikes'
-      ? "Say the real version. What is going on?"
-      : "Aight, say the real version. What is going on?";
+      ? 'Say the real version. What is going on?'
+      : 'Aight, say the real version. What is going on?';
   }
 
   if (personalityId === 'cloud') {
-    if (sad) return "We can make this smaller first. One breath, then one sentence — or no sentence yet.";
-    return "No rush. Start with the smallest piece that feels safe to say.";
+    if (sad) return 'We can make this smaller first. One breath, then one sentence — or no sentence yet.';
+    return 'No rush. Start with the smallest piece that feels safe to say.';
   }
 
   if (personalityId === 'night') {
-    if (planning) return "Hold up — that idea has something. What is the goal, and what is one step you can set up tonight?";
-    if (reset) return "One off day is not your identity. What made the plan fall apart, and what changes this time?";
-    if (sad) return "We can sit with it for a minute. Then we decide whether tonight needs rest, reflection, or one small move forward.";
-    return "Are we trying to understand this, plan it, create something, or finish one small part?";
+    if (planning) return 'Hold up — that idea has something. What is the goal, and what is one step you can set up tonight?';
+    if (reset) return 'One off day is not your identity. What made the plan fall apart, and what changes this time?';
+    if (sad) return 'We can sit with it for a minute. Then we decide whether tonight needs rest, reflection, or one small move forward.';
+    return 'Are we trying to understand this, plan it, create something, or finish one small part?';
   }
 
   if (personalityId === 'oracle') {
-    return "What does this keep revealing about who you are, what you value, or what you are trying to become?";
+    return 'What does this keep revealing about who you are, what you value, or what you are trying to become?';
   }
 
   if (angry) return mirror
-    ? "Okay, that shit really got under your skin. What happened right before it shifted?"
-    : "Okay, that really got under your skin. What happened right before it shifted?";
-  if (sad) return "Tell me the part you keep trying to make sound smaller.";
+    ? 'Okay, that shit really got under your skin. What happened right before it shifted?'
+    : 'Okay, that really got under your skin. What happened right before it shifted?';
+  if (sad) return 'Tell me the part you keep trying to make sound smaller.';
   return relationship.nicknameComfort === 'dislikes'
-    ? "Okay. What really happened?"
-    : "Girl, okay. What really happened?";
+    ? 'Okay. What really happened?'
+    : 'Girl, okay. What really happened?';
 }
 
 // ── Overload signatures (keep public API backward-compatible) ─────────────
@@ -189,9 +195,7 @@ export async function sendMessage(
 
   // ── No backend URL ───────────────────────────────────────────────────────
   if (!BASE_URL) {
-    const fallbackText = personalityId === 'parentCoach'
-      ? "Hey. Glad you're here. What's going on at home?"
-      : localFallback(personalityId, text, learnedRelationship);
+    const fallbackText = localFallback(personalityId, text, learnedRelationship);
     if (__DEV__) {
       console.warn(
         '[sendMessage] No EXPO_PUBLIC_BACKEND_URL set — using local fallback.',
@@ -287,9 +291,23 @@ export async function sendMessage(
       };
     }
 
-    const sekretFallback = getSekretFallback(personalityId, text);
-    const guardedReply = keepSekretReply(rawReply, sekretFallback);
-    const guardBlocked = guardedReply !== rawReply.trim();
+    const isParentCoach = personalityId === 'parentCoach';
+    const sekretFallback = isParentCoach
+      ? localFallback(personalityId, text, learnedRelationship)
+      : getSekretFallback(personalityId, text);
+
+    // The teen-companion guard rejects em/en dashes because they are an AI tell
+    // for those voices. Parent Coach intentionally uses that punctuation in its
+    // canonical examples, so normalize only the punctuation for guard evaluation.
+    // If any other blocked language is present, the parent-safe fallback still wins.
+    const guardInput = isParentCoach
+      ? rawReply.replace(/[—–]/g, '-').replace(/ -- /g, ' - ')
+      : rawReply;
+    const guardedCandidate = keepSekretReply(guardInput, sekretFallback);
+    const guardBlocked = guardedCandidate !== guardInput.trim();
+    const guardedReply = isParentCoach && !guardBlocked
+      ? rawReply.trim()
+      : guardedCandidate;
 
     if (__DEV__ && guardBlocked) {
       console.warn('[sendMessage] keepSekretReply blocked Worker reply — substituted character fallback.', {
