@@ -11,6 +11,7 @@ const coordination = read('AI_COORDINATION.md');
 const globalAi = read('GLOBAL_AI.md');
 const agents = read('AGENTS.md');
 const providers = read('docs/PROVIDERS.md');
+const deepSeek = read('DeepSeek/deepseek-chat.md');
 
 test('founder Control Room exposes the social provisioning lab', () => {
   assert.match(screen, /SocialProvisioningLabPanel/);
@@ -73,6 +74,9 @@ test('all AI instruction layers point to one coordinated mission', () => {
   assert.match(agents, /Apply the \*\*one-writer rule\*\*/);
   assert.match(providers, /AI_COORDINATION\.md/);
   assert.match(providers, /Providers share one founder-defined mission/);
+  assert.match(deepSeek, /Canonical coordination contract: \[`\.\.\/AI_COORDINATION\.md`\]/);
+  assert.match(deepSeek, /DeepSeek owns adversarial second opinion/);
+  assert.match(deepSeek, /must not become a second active writer/);
 });
 
 test('provider lanes complement rather than silently overwrite one another', () => {
@@ -90,4 +94,13 @@ test('provider lanes complement rather than silently overwrite one another', () 
   assert.match(coordination, /must not overwrite the same artifact concurrently/);
   assert.match(agents, /Do not silently duplicate or overwrite work owned by another lane/);
   assert.match(providers, /must not duplicate another active implementation/);
+  assert.match(deepSeek, /When another lane owns the artifact, DeepSeek returns comments, risks, alternatives, or a bounded patch proposal/);
+});
+
+test('DeepSeek social provisioning review stops at the human gate', () => {
+  assert.match(deepSeek, /Social provisioning devil test/);
+  assert.match(deepSeek, /false live-account claims/);
+  assert.match(deepSeek, /credential or verification-code collection/);
+  assert.match(deepSeek, /The safe rehearsal endpoint is `human_required`, never `live`, `connected`, or `verified`/);
+  assert.match(deepSeek, /repository write authority/);
 });
