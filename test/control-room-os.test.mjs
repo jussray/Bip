@@ -65,4 +65,7 @@ test('DeepSeek is founder-only advisory capability with a fail-closed live adapt
   assert.match(deepseekContract, /must not receive raw teen content/i);
   assert.match(deepseekContract, /server-side adapter/i);
   assert.match(deepseekContract, /not implemented/i);
+  assert.match(deepseekContract, /must never store information about minors/i);
+  assert.match(deepseekContract, /Instruction memory is not teen continuity memory/i);
+  assert.match(deepseekContract, /None of these capabilities are available merely because/i);
 });
