@@ -22,8 +22,8 @@ The strongest idea in the pack is **one shared voice runtime instead of feature-
 
 The most important corrections are:
 
-1. Se'kret Bip already has a real request-response voice path through the canonical Cloudflare Worker. It is not accurate to describe live AI reply, transcription, or synthesis as absent.
-2. The current voice path records a complete clip, converts it to base64, transcribes it, generates a reply, and synthesizes speech sequentially. Streaming, VAD, endpointing, barge-in, and interruption-safe playback are not yet a shared runtime.
+1. Se'kret Bip has a repository-integrated request-response voice path through the canonical Cloudflare Worker. This proves the client and Worker route contracts exist; it does **not** prove that live AI reply, transcription, or synthesis is currently available in production without an exact runtime witness.
+2. The repository-integrated voice path is designed to record a complete clip, convert it to base64, transcribe it, generate a reply, and synthesize speech sequentially. Streaming, VAD, endpointing, barge-in, and interruption-safe playback are not yet a shared runtime.
 3. `hooks/useVoiceCompanion.ts` and `src/utils/voiceCompanion.ts` currently create a lightweight session/status object. They do not provide capture, transport, VAD, playback, persistence, or recovery orchestration.
 4. The proposed Supabase Edge Function WebSocket proxy would introduce a second AI/backend authority. The current sprint explicitly rejects a second backend or deployment authority. Any future realtime relay must preserve the canonical Cloudflare boundary unless the founder approves a deliberate architecture change.
 5. The proposed `voice_sessions`, `voice_turns`, `voice_events`, and `voice_latency_metrics` tables do not exist. `docs/RLS_POLICY_AUDIT.md` correctly records them as planned only.
@@ -41,7 +41,7 @@ The canonical client transport is `src/services/backend/sekretClient.ts`:
 - `/api/sekret/voice`
 - authenticated headers, timeouts, stable errors, trace IDs, and fallback metadata
 
-`screens/VoiceBipScreen.tsx` currently:
+`screens/VoiceBipScreen.tsx` currently wires this intended sequence:
 
 1. requests microphone permission;
 2. records with Expo AV;
@@ -52,7 +52,7 @@ The canonical client transport is `src/services/backend/sekretClient.ts`:
 7. sends the reply to the Worker voice-synthesis route;
 8. stores a lightweight `VoiceNote` reference rather than a full transcript in the screen-level record.
 
-This is a functioning request-response pipeline. It is not a low-latency conversational stream.
+This is a repository-integrated request-response pipeline, not proof of current production availability and not a low-latency conversational stream. Exact production observation, unavailable-voice behavior, and deployment-path verification remain separate evidence gates.
 
 ### Voice architecture placeholders
 
