@@ -22,6 +22,18 @@ The `Trust-01` through `Trust-09` identifiers are reserved for issues #412–#42
 
 The canonical issues remain open until their own acceptance criteria and production, device, legal, policy, or journey evidence are satisfied. Closing or renaming another tracker does not mark the underlying Trust work complete.
 
+## Launch-program hierarchy
+
+| Issue | Authority | Status relationship |
+|---:|---|---|
+| #259 | Canonical teen + parent V1 launch program | Owns the end-to-end launch loop and definition of V1 complete |
+| #238 | Long-horizon relationship-layer roadmap | Owns phased post-V1 Translation, Crew, Scrapbook, and persistent-memory outcomes; it is not a substitute for launch proof |
+| #283 | Legacy parent-parity umbrella | Closed as duplicate because its active scope is distributed across #259, #323, #270, #271, #413, #416, #417, #426, and #428 |
+| #323 | Parent-first onboarding without a teen code | Remains open for a useful unlinked-parent dashboard, supported link initiation, multiple-child scope, and end-to-end proof |
+| #402 | Unified frontend-to-Worker contract verification and release | Remains open because PR #398 proved integration, not the complete production/failure-state/telemetry matrix |
+
+Closing #283 does not claim that the parent experience is complete. It removes a competing umbrella while retaining every material requirement in the canonical launch, Trust, device-quality, onboarding, relationship, and deletion trackers.
+
 ## Supporting launch trackers
 
 | Issue | Owned outcome | Relationship to canonical work |
