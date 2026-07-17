@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const read = (file) => fs.readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
 
 const scanner = read('scripts/control-room-ingest-github-failures.mjs');
-const docs = read('docs/CONTROL_ROOM.md');
+const docs = read('docs/CONTROL_ROOM_GITHUB_FAILURES.md');
 const packageJson = JSON.parse(read('package.json'));
 
 test('GitHub failures route through Founder Control Room first', () => {
@@ -22,6 +22,7 @@ test('runner-startup failures are not mislabeled as code regressions', () => {
   assert.match(scanner, /workflow_step_failure/);
   assert.match(scanner, /A run with no executed steps or logs is infrastructure evidence, not proof of a code regression/);
   assert.match(scanner, /do not change application code until a real failing step or log exists/);
+  assert.match(docs, /This is infrastructure evidence\. It is not proof of a code regression/);
 });
 
 test('GitHub failure reports retain exact PR and head evidence', () => {
@@ -49,6 +50,7 @@ test('credentials stay server-side and out of issue metadata', () => {
   assert.doesNotMatch(scanner, /githubToken[,}]/);
   assert.doesNotMatch(scanner, /serviceRoleKey[,}]/);
   assert.match(scanner, /credentials are read only from server-side environment variables and are never written to reports or issue metadata/);
+  assert.match(docs, /Tokens and keys must never enter React Native, Expo public variables, reports, audit metadata, PR comments, or committed files/);
 });
 
 test('scan and ingest commands are explicitly exposed', () => {
