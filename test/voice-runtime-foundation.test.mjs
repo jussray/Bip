@@ -63,7 +63,16 @@ test('voice telemetry is server-written and owner-readable with top-level owner 
   assert.match(migration, /references public\.voice_sessions\(id\) on delete cascade/);
 });
 
-test('voice schema excludes raw content and bounds metadata payloads', async () => {
+test('client session correlation is an opaque UUID rather than free-form text', async () => {
+  const migration = await read(migrationPath);
+
+  assert.match(migration, /client_session_id uuid null/);
+  assert.doesNotMatch(migration, /client_session_id text/);
+  assert.doesNotMatch(migration, /char_length\(client_session_id\)/);
+  assert.match(migration, /Optional opaque UUID used only for client idempotency or reconnect correlation/);
+});
+
+test('voice event payloads use a strict primitive metadata allowlist', async () => {
   const migration = await read(migrationPath);
 
   assert.doesNotMatch(migration, /^\s*transcript\s+text\b/gm);
@@ -71,9 +80,32 @@ test('voice schema excludes raw content and bounds metadata payloads', async () 
   assert.doesNotMatch(migration, /^\s*(prompt|response|message|content)\s+text\b/gm);
 
   assert.match(migration, /transcript_chars integer/);
-  assert.match(migration, /octet_length\(payload::text\) <= 4096/);
-  assert.match(migration, /voice_events_metadata_only/);
-  assert.match(migration, /audio_base64\|audio_url\|transcript\|text\|content\|message\|prompt\|response/);
+  assert.match(migration, /create or replace function public\.voice_event_payload_is_safe/);
+  assert.match(migration, /constraint voice_events_payload_safe/);
+  assert.match(migration, /check \(public\.voice_event_payload_is_safe\(payload\)\)/);
+  assert.match(migration, /else\s+return false;/);
+  assert.match(migration, /Unknown keys, nested values, free-form strings, and out-of-range numbers fail closed/);
+  assert.match(migration, /revoke all on function public\.voice_event_payload_is_safe\(jsonb\) from public, anon, authenticated/);
+  assert.match(migration, /grant execute on function public\.voice_event_payload_is_safe\(jsonb\) to service_role/);
+
+  for (const allowedKey of [
+    'silence_ms',
+    'retry_count',
+    'sequence',
+    'sample_rate_hz',
+    'channel_count',
+    'is_reconnect',
+    'was_cancelled',
+    'network_state',
+    'provider',
+    'transport',
+    'reason',
+    'codec',
+    'error_code',
+    'region',
+  ]) {
+    assert.match(migration, new RegExp(`when '${allowedKey}'`));
+  }
 
   assert.doesNotMatch(migration, /storage\.buckets/);
   assert.doesNotMatch(migration, /storage\.objects/);
@@ -105,4 +137,6 @@ test('voice foundation documentation, ledger, and rollback probe preserve the ph
   assert.match(probe, /cross_user_reads_denied/);
   assert.match(probe, /owner_delete_cascades/);
   assert.match(probe, /raw_payload_rejected/);
+  assert.match(probe, /unknown_payload_key_rejected/);
+  assert.match(probe, /non_opaque_client_session_id_rejected/);
 });
