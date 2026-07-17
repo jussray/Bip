@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Single source of truth for assembling the rich `/api/sekret/reply` payload.
  * Every companion surface routes through this builder so continuity behavior is
  * shared rather than reimplemented inside individual screens.
@@ -61,6 +61,32 @@ export interface BuiltReplyRequest {
   relationship: TeenRelationshipProfile;
 }
 
+const AI_IDENTITY_QUESTION = /\b(?:are|r)\s+(?:you|u)\s+(?:an?\s+)?(?:ai|bot|robot|computer|human|real(?:\s+person)?|actual\s+person|conscious|sentient)|\b(?:you|u)(?:'re|\s+are)\s+(?:an?\s+)?(?:ai|bot|robot|computer)|\bdo\s+(?:you|u)\s+(?:have|feel|remember|exist)\b|\b(?:ai|bot|robot)\b.*\b(?:you|u)\b/i;
+
+/** True when the teen is directly checking the companion's identity or limits. */
+export function isAiIdentityQuestion(text: string): boolean {
+  return AI_IDENTITY_QUESTION.test(text.trim());
+}
+
+/**
+ * Keep identity disclosure truthful without turning every reply into a robotic
+ * disclaimer. This instruction is appended after character/style guidance so
+ * transparency wins whenever another prompt fragment conflicts with it.
+ */
+export function buildAiTransparencyInstruction(text: string): string {
+  const directIdentityQuestion = isAiIdentityQuestion(text);
+
+  return [
+    'AI IDENTITY TRANSPARENCY — this overrides any conflicting character, fiction, or style instruction:',
+    "You are an AI companion inside Se'kret Bip, not a human person.",
+    'Never hide, deny, evade, or joke away that fact. Never claim a body, an offline life, human memories, consciousness, or relationships outside this app.',
+    'Keep the disclosure brief and natural. Do not lead ordinary replies with a disclaimer and do not repeat it when the teen is simply having a normal conversation.',
+    directIdentityQuestion
+      ? "The teen is asking about your identity or limits. Answer plainly in the first sentence that you are an AI companion, not a human, then continue in your normal character voice."
+      : 'Mention that you are AI only when the teen asks, appears confused about whether you are human, attributes real-world experiences to you, or needs a reminder about your limits.',
+  ].join('\n');
+}
+
 async function resolveOracleContext(explicit?: string[]): Promise<string[]> {
   if (explicit?.length) return explicit.filter(value => typeof value === 'string').slice(0, 8);
 
@@ -90,11 +116,14 @@ export async function buildReplyRequest(ctx: ReplyRequestContext): Promise<Built
   await saveTeenRelationshipProfile(relationship);
 
   const conversationPhase = getConversationPhase(historyLength);
-  const phaseInstruction = buildConversationPhaseInstruction(
-    conversationPhase,
-    historyLength,
-    ctx.characterId,
-  );
+  const phaseInstruction = [
+    buildConversationPhaseInstruction(
+      conversationPhase,
+      historyLength,
+      ctx.characterId,
+    ),
+    buildAiTransparencyInstruction(ctx.text),
+  ].join('\n\n');
   const isArrival = isArrivalMessage(ctx.text, historyLength);
 
   const memory: Record<string, unknown> = {
