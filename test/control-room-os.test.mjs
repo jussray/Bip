@@ -8,6 +8,7 @@ const localRunner = fs.readFileSync('scripts/control-room-local.js', 'utf8');
 const verificationRegistry = JSON.parse(fs.readFileSync('src/config/controlRoomVerificationRegistry.json', 'utf8'));
 const placement = fs.readFileSync('src/config/controlRoomPlacement.ts', 'utf8');
 const workspace = fs.readFileSync('src/screens/DevControlRoomWorkspace.tsx', 'utf8');
+const deepseekContract = fs.readFileSync('DeepSeek/deepseek-chat.md', 'utf8');
 
 
 test('Control Room OS defines founder-first V1 missions inside the existing workspace', () => {
@@ -33,7 +34,7 @@ test('connector and worker registries preserve fallbacks for provider failure', 
   for (const connector of ['github', 'supabase', 'expo', 'gmail', 'filesystem', 'playwright']) {
     assert.match(config, new RegExp(`id: '${connector}'`));
   }
-  for (const worker of ['codex', 'chatgpt', 'claude', 'local-agent']) {
+  for (const worker of ['codex', 'chatgpt', 'claude', 'deepseek', 'local-agent']) {
     assert.match(config, new RegExp(`id: '${worker}'`));
   }
   assert.match(config, /browser-test/);
@@ -53,4 +54,15 @@ test('verification registry stays owned by Control Room config, not agent-local 
   assert.match(localRunner, /controlRoomVerificationRegistry\.json/);
   assert.match(localRunner, /path\.resolve\(__dirname, '\.\.'\)/);
   assert.match(placement, /\.agents\/verification-registry\.json/);
+});
+
+
+test('DeepSeek is founder-only advisory capability with a fail-closed live adapter boundary', () => {
+  assert.match(config, /id: 'deepseek'/);
+  assert.match(config, /fallbackWorkerId: 'codex'/);
+  assert.match(deepseekContract, /founder-only/i);
+  assert.match(deepseekContract, /advisory-only/i);
+  assert.match(deepseekContract, /must not receive raw teen content/i);
+  assert.match(deepseekContract, /server-side adapter/i);
+  assert.match(deepseekContract, /not implemented/i);
 });
