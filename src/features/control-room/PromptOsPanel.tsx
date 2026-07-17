@@ -75,7 +75,7 @@ export default function PromptOsPanel() {
       {panel === 'deployments' ? <>
         <View style={s.panel}><Text style={s.panelTitle}>Prompt lifecycle</Text><Text style={s.bodyText}>Create → test → lint → red-team → deploy → monitor → rollback.</Text></View>
         <View style={s.card}><Text style={s.cardTitle}>Deployment guard</Text><Text style={s.bodyText}>No prompt deployment is active from this screen yet. The first production deployment path must version the prompt, record the actor, preserve the prior version, and provide rollback.</Text></View>
-        <View style={s.card}><Text style={s.cardTitle}>Provider boundary</Text><Text style={s.bodyText}>Prompt OS owns behavior. Provider adapters own ChatGPT, Claude, Codex, Perplexity, or future model formatting.</Text></View>
+        <View style={s.card}><Text style={s.cardTitle}>Provider boundary</Text><Text style={s.bodyText}>Prompt OS owns behavior. Provider adapters own ChatGPT, Claude, Codex, DeepSeek, Perplexity, or future model formatting. DeepSeek remains advisory-only until an authenticated server adapter, output validation, telemetry, cost limits, and rollback are verified.</Text></View>
       </> : null}
     </ScrollView>
   </View>;
