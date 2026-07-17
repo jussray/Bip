@@ -24,6 +24,10 @@ Use only behind trusted Worker or server-side boundaries for model responses, vo
 
 Use only behind trusted server-side boundaries for model capability or repository assistance. Keep keys off clients. Conversation context is not durable teen memory, consent, or product state. Validate outputs before writes, user-visible safety decisions, or repository mutation.
 
+## DeepSeek
+
+Use as a founder-only advisory worker for second opinions, reasoning review, and red-team analysis through the existing Control Room. The canonical handoff contract is [`../DeepSeek/deepseek-chat.md`](../DeepSeek/deepseek-chat.md). DeepSeek is not a teen-facing runtime provider and must not receive raw teen content, parent-private content, authentication tokens, service-role credentials, or unminimized production data. Any live adapter must run behind an authenticated server boundary with explicit model versioning, timeouts, rate and cost limits, output validation, metadata-safe telemetry, provider-failure fallback, and rollback. A registered Control Room worker is a capability declaration, not proof that a live API adapter is deployed.
+
 ## Perplexity
 
 Use for current public research, official documentation discovery, policy and market research, and source gathering. It does not know private repository, Supabase, Worker, account, or production state unless explicitly connected and inspected.
