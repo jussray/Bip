@@ -23,17 +23,24 @@ This log records issue-hygiene decisions that affect repository authority. It is
 
 - **#248** → **#416** for Bridge consent/privacy behavior, **#270** for controlled deployed proof, **#399** for authorization evidence, and **#417** for deletion cleanup.
 - **#282** → canonical **#417** for complete deletion and live proof; **#426** retains user-facing export and deletion-controls scope.
+- **#283** → canonical **#259** for the teen + parent V1 program; **#323** retains parent-first onboarding, **#270/#271** retain deployed journey and relationship-settings proof, and **#413/#416/#417/#426/#428** retain consent, privacy, deletion, export, accessibility, and device-quality requirements.
 - **#422** → canonical **#413** for consent and onboarding disclosures.
 - **#423** → canonical **#414** for persistent crisis-support surfaces.
 - **#424** → canonical **#415** for tiered safety-trigger responses in journal and companion paths.
 - **#427** → canonical **#418** for age, COPPA/GDPR, jurisdiction, and store-rating decisions; **#413** retains parent onboarding disclosures and **#416** retains parent visibility and Bridge privacy boundaries.
 
-Closing #248 or #282 does not mark Bridge or deletion complete. Their unresolved production, journey, authorization, cleanup, and isolation evidence remains in the canonical issues.
+Closing #248, #282, or #283 does not mark Bridge, deletion, parent parity, or launch readiness complete. Their unresolved production, journey, authorization, cleanup, isolation, onboarding, accessibility, and device evidence remains in the canonical issues.
 
 ### Kept open and normalized
 
-These issues contained unique launch requirements and were not legitimately closable. Their titles or authority scopes were changed to remove ambiguity:
+These issues contained unique launch requirements and were not legitimately closable. Their titles or authority scopes were changed or clarified to remove ambiguity:
 
+- **#259 — OODA: preservation-first path to polished teen + parent V1**
+  - Remains the canonical launch program and owns the complete teen/parent product loop and V1 definition of done.
+- **#323 — Allow parent-first onboarding without a teen code**
+  - Remains open for a useful unlinked-parent dashboard, supported parent-first and teen-first link initiation, explicit handling of proposed QR/email/share-link channels, multiple-child scope, and isolation proof.
+- **#402 — Verify and release unified frontend-to-Worker contract spine**
+  - Remains open because PR #398 established repository integration, not the full exact-production-release, user-visible failure-state, retry, telemetry, privacy, and rollback evidence matrix.
 - **#270 — Bridge: controlled two-account production proof**
   - Remains open for exact deployed-SHA link, selected-source generation, summary-only parent visibility, raw-source denial, revoke, fresh re-share, unlink, deletion, isolation, and cleanup evidence.
   - The retired token-based deployment blocker is no longer the authority; Cloudflare native Git and exact-release observation are current.
@@ -51,6 +58,8 @@ These issues contained unique launch requirements and were not legitimately clos
   - Remains open as supporting evidence for canonical submission tracker #420.
 - **#430 — Operations: incident and breach response plan**
   - Remains open for runbook ownership, containment, notification, audit evidence, and tabletop proof.
+
+The long-horizon relationship roadmap in #238 also remains open. Its phased Translation, Crew, Scrapbook, and persistent-memory scope is broader than the launch program and must not be collapsed into #259 or represented as V1-complete.
 
 ### Closed pull requests without merge
 
