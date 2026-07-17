@@ -86,8 +86,24 @@ Remaining before L4 activation:
 
 - additional anonymous-auth policy hardening for Bridge, activity, points/rewards, tasks, relationships, and other private surfaces;
 - behavior tests for high-blast-radius authenticated database functions;
-- negative-auth tests for `account-delete` and `safety-scan`;
+- negative-auth tests for `account-delete` and `safety-scan` — done, `test/edge-function-auth-hardening.test.mjs`;
 - password-breach protection planning and Auth regressions.
+
+Trigger function hardening (adjacent, not previously tracked here): only
+`handle_bip_event_points` and `initialize_app_profile` had test coverage.
+`test/trigger-function-hardening.test.mjs` adds structural coverage for
+`enforce_circle_anonymity`, `guard_crew_member_write`,
+`cleanup_crew_relationship_access`, `apply_point_transaction`,
+`record_bridge_signal_activity`, and a regression guard for
+`trigger_safety_scan`'s historical dynamic-field-access bug (it silently
+never fired on any table until 20260701030000 fixed it — caught by live
+rollback-contained testing, not a repo test, since these are `returns
+trigger` functions Postgres won't invoke outside trigger context, so source
+review alone can miss real bugs). One real, currently-failing finding from
+writing this coverage: `auto_resolve_issue_on_event_resolve` is `SECURITY
+DEFINER` but has no `set search_path` pin, unlike every sibling trigger
+function. Needs a follow-up migration pinning it — not done here, since a
+live schema change wasn't in scope for adding tests.
 
 ### Production deployment
 
