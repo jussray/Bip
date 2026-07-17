@@ -80,7 +80,7 @@ with inserted as (
   )
   select
     user_id,
-    'voice-probe-' || label,
+    gen_random_uuid(),
     case label when 'user_a' then 'raylene' else 'rylane' end,
     'voice_bip',
     'active',
@@ -194,9 +194,61 @@ insert into voice_probe_results values
       and not has_sequence_privilege('authenticated', 'public.voice_events_id_seq', 'USAGE')
       and has_sequence_privilege('service_role', 'public.voice_events_id_seq', 'USAGE'),
     'only service_role can allocate voice event identity values'
+  ),
+  (
+    'payload_validator_is_server_only',
+    not has_function_privilege('anon', 'public.voice_event_payload_is_safe(jsonb)', 'EXECUTE')
+      and not has_function_privilege('authenticated', 'public.voice_event_payload_is_safe(jsonb)', 'EXECUTE')
+      and has_function_privilege('service_role', 'public.voice_event_payload_is_safe(jsonb)', 'EXECUTE'),
+    'only service_role can invoke the telemetry payload validator directly'
   );
 
--- Prove the metadata-only payload check catches nested raw-content keys.
+-- Prove a human-readable value cannot enter the opaque UUID correlation column.
+do $$
+declare
+  v_user_id uuid;
+begin
+  select user_id
+  into v_user_id
+  from voice_probe_ids
+  where label = 'user_b';
+
+  begin
+    insert into public.voice_sessions (
+      user_id,
+      client_session_id,
+      companion_id,
+      surface,
+      status,
+      transport,
+      region
+    ) values (
+      v_user_id,
+      'user@example.com',
+      'rylane',
+      'voice_bip',
+      'active',
+      'http',
+      'test'
+    );
+
+    insert into voice_probe_results values (
+      'non_opaque_client_session_id_rejected',
+      false,
+      'A human-readable identifier unexpectedly entered the UUID column'
+    );
+  exception
+    when invalid_text_representation then
+      insert into voice_probe_results values (
+        'non_opaque_client_session_id_rejected',
+        true,
+        'The UUID column rejected a human-readable identifier before storage'
+      );
+  end;
+end;
+$$;
+
+-- Prove nested raw-content-shaped payloads fail closed.
 do $$
 declare
   v_session_id uuid;
@@ -223,14 +275,54 @@ begin
     insert into voice_probe_results values (
       'raw_payload_rejected',
       false,
-      'Nested transcript metadata unexpectedly passed the check constraint'
+      'Nested transcript metadata unexpectedly passed the allowlist'
     );
   exception
     when check_violation then
       insert into voice_probe_results values (
         'raw_payload_rejected',
         true,
-        'Nested transcript key was rejected by voice_events_metadata_only'
+        'Nested transcript-shaped data was rejected by voice_events_payload_safe'
+      );
+  end;
+end;
+$$;
+
+-- Prove an unlisted key cannot smuggle free-form private content.
+do $$
+declare
+  v_session_id uuid;
+  v_turn_id uuid;
+begin
+  select session_id, turn_id
+  into v_session_id, v_turn_id
+  from voice_probe_sessions
+  where label = 'user_b';
+
+  begin
+    insert into public.voice_events (
+      session_id,
+      turn_id,
+      event_type,
+      payload
+    ) values (
+      v_session_id,
+      v_turn_id,
+      'session_failed',
+      '{"diagnostic":"synthetic private sentence"}'::jsonb
+    );
+
+    insert into voice_probe_results values (
+      'unknown_payload_key_rejected',
+      false,
+      'An unlisted free-form diagnostic key unexpectedly passed the allowlist'
+    );
+  exception
+    when check_violation then
+      insert into voice_probe_results values (
+        'unknown_payload_key_rejected',
+        true,
+        'An unlisted diagnostic key was rejected by voice_events_payload_safe'
       );
   end;
 end;
