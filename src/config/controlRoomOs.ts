@@ -87,6 +87,14 @@ export const CONTROL_ROOM_WORKERS: ControlRoomWorker[] = [
     localFirst: false,
   },
   {
+    id: 'deepseek',
+    label: 'DeepSeek Chat',
+    health: 'warning',
+    capabilities: ['advisory-review', 'reasoning', 'second-opinion', 'redteam'],
+    fallbackWorkerId: 'codex',
+    localFirst: false,
+  },
+  {
     id: 'local-agent',
     label: 'Local Agent',
     health: 'healthy',
