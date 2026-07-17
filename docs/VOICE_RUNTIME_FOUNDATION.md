@@ -15,16 +15,16 @@ The architecture direction came from the structural voice audit, but repository 
 
 | Table | Purpose | Content boundary |
 |---|---|---|
-| `voice_sessions` | Session lifecycle, surface, companion, transport, region, timestamps | No audio, transcript, prompt, reply, or message content |
+| `voice_sessions` | Session lifecycle, surface, companion, transport, region, timestamps | Optional reconnect/idempotency correlation is an opaque UUID; no human-readable identifier or conversation content |
 | `voice_turns` | Speaker, ordering, duration, language, end reason, transcript character count | Character count only; no transcript text |
-| `voice_events` | High-level events such as speech start/end, barge-in, first-token and playback state | Bounded metadata JSON; obvious raw-content keys are rejected, including nested keys |
+| `voice_events` | High-level events such as speech start/end, barge-in, first-token and playback state | Strict allowlist of primitive operational metadata; unknown keys, nested values, free-form strings, and out-of-range numbers fail closed |
 | `voice_latency_metrics` | VAD, STT, LLM, TTS, playback, and total latency slices | Integer timing values only |
 
 ## Authorization model
 
 ### `service_role`
 
-The future authenticated relay or Worker is the only writer. It receives explicit CRUD grants for the four tables and sequence access for `voice_events`.
+The future authenticated relay or Worker is the only writer. It receives explicit CRUD grants for the four tables and sequence access for `voice_events`. It is also the only role permitted to execute the payload validator directly.
 
 ### Permanent authenticated owner
 
@@ -37,7 +37,7 @@ A permanent authenticated user may not directly insert or update telemetry. The 
 
 ### Anonymous and anonymous-authenticated users
 
-- `anon` receives no table or sequence privileges.
+- `anon` receives no table, sequence, or payload-validator privileges.
 - Supabase anonymous-authenticated sessions fail the `public.is_non_anonymous_user()` policy predicate.
 - Cross-user reads and deletes fail closed.
 
@@ -52,6 +52,8 @@ This product handles youth-centered emotional data. Voice telemetry exists to an
 - Did the session fail or degrade?
 
 Those questions do not require storing what a teen said. Raw audio and transcripts would create materially higher breach, deletion, moderation, subpoena, support, and account-switch risk. They remain excluded until a separate founder-approved retention and consent contract proves why they are necessary.
+
+A denylist is not sufficient for this boundary. The event payload validator accepts only named operational keys with explicit primitive types, enums, patterns, and numeric limits. A key such as `diagnostic`, even if it looks operational, is rejected unless it is added through a separately reviewed schema change.
 
 ## Storage decision
 
@@ -77,10 +79,11 @@ A bucket without this contract would be unused attack surface, not a feature.
 1. Review `supabase/migrations/20260717034535_create_voice_runtime_foundation.sql`.
 2. Run repository unit, lint, TypeScript, migration-contract, RLS-audit, and implementation-evidence gates.
 3. Run `supabase/probes/voice_runtime_foundation.sql` against a development branch or approved administrator connection after applying the migration. The probe must end in `ROLLBACK` and leave no users or application rows.
-4. Run Supabase security and performance advisors.
-5. Apply the migration to production only under separate founder approval.
-6. Re-run catalog, grants, policy, owner/cross-user/anonymous denial, payload-check, and cascade-delete proof.
-7. Record the live migration version and evidence before changing this feature from `contract` to `integrated` or `verified`.
+4. Confirm the probe rejects a human-readable client correlation value, nested raw-content-shaped payloads, and an unlisted free-form payload key.
+5. Run Supabase security and performance advisors.
+6. Apply the migration to production only under separate founder approval.
+7. Re-run catalog, grants, policy, owner/cross-user/anonymous denial, payload-allowlist, and cascade-delete proof.
+8. Record the live migration version and evidence before changing this feature from `contract` to `integrated` or `verified`.
 
 ## Phase 2 prerequisites
 
@@ -89,7 +92,7 @@ An authenticated realtime relay and shared client runtime may begin only when:
 - the Phase 1 migration is applied and authorization proof passes;
 - the relay has an explicit JWT and permanent-account contract;
 - service credentials remain server-only;
-- reconnect and idempotency behavior are specified;
+- reconnect and idempotency behavior use opaque generated UUIDs;
 - VAD and barge-in events map to the Phase 1 event allowlist;
 - event payload sanitization is tested;
 - latency budgets and unavailable states are defined;
