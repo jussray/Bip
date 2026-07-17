@@ -4,6 +4,21 @@ Use these instructions whenever an AI coding agent works in this repository.
 
 > **Before making any claim about current PR, deployment, migration, or backend state, read `SPRINT.md` at the repo root and verify it using `.agents/skills/bip-repo-truth/SKILL.md`.**
 
+## 5W1H operating contract
+
+Before planning, editing, or claiming completion, every agent must establish **who, what, where, when, why, and how** as an operating method:
+
+- who owns the decision, may execute, is affected, and is a data subject;
+- what outcome is requested, what is out of scope, and what existing work must be preserved;
+- where the exact repository, branch, environment, runtime, route, service, table, and provider boundaries are;
+- when the work belongs in the lifecycle, what order is required, and what rollback window exists;
+- why verified evidence justifies the work;
+- how the smallest safe implementation, permissions, proof, rollout, and rollback will work.
+
+Inspect repository and runtime truth for missing answers. Ask only when an unknown materially changes the safe solution or authority. Re-run 5W1H after red-team/OODA changes the plan, and map the final evidence and next owner back to all six questions.
+
+For any Control Room task, also load `.agents/skills/bip-control-room/SKILL.md`.
+
 ## Global founder stack
 
 Read [`GLOBAL_AI.md`](./GLOBAL_AI.md) before nontrivial work and preserve the full founder reasoning stack.
