@@ -36,6 +36,7 @@ Architecture, roadmap, current-status, sprint, and agent-skill changes must reco
 - [`AGENTS.md`](AGENTS.md) — Codex, ChatGPT, and repository-agent instructions
 - [`CLAUDE.md`](CLAUDE.md) — verified design-system and Figma integration reference
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — provider boundaries
+- [`.agents/skills/bip-control-room/SKILL.md`](.agents/skills/bip-control-room/SKILL.md) — canonical 5W1H behavior and guarded Control Room execution boundary
 
 Shared founder stack:
 
