@@ -1,0 +1,39 @@
+{
+  "id": "social-provisioning-lab",
+  "title": "Founder-only social account provisioning rehearsal and multi-AI coordination",
+  "status": "integrated",
+  "owner": "founder-control-room",
+  "scope": [
+    "src/features/control-room/SocialProvisioningLabPanel.tsx",
+    "src/screens/DevControlRoomScreen.tsx",
+    "docs/SOCIAL_ACCOUNT_PROVISIONING_LAB.md",
+    "AI_COORDINATION.md",
+    "GLOBAL_AI.md",
+    "AGENTS.md",
+    "docs/PROVIDERS.md"
+  ],
+  "verification": {
+    "state": "partial",
+    "evidence": [
+      "test/social-provisioning-lab-contract.test.mjs",
+      "dry-run state machine has no live-account transition",
+      "no external network, credential collection, OAuth, terms acceptance, or signup submission"
+    ],
+    "remaining": [
+      "exact-head repository CI",
+      "founder opens the /dev Social panel and runs all five rehearsals",
+      "manual confirmation that each result terminates at human_required"
+    ]
+  },
+  "privacy": {
+    "storesCredentials": false,
+    "createsExternalAccounts": false,
+    "usesTeenOrParentData": false,
+    "liveAccountClaimAllowed": false
+  },
+  "rollout": {
+    "state": "founder-only",
+    "productionMutation": false
+  },
+  "rollback": "Revert the PR. No external account or credential cleanup is required because the lab performs no external mutation."
+}

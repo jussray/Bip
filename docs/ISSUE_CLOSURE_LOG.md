@@ -53,6 +53,14 @@ These issues contained unique launch requirements and were not legitimately clos
   - A fresh 2026-07-17 production advisor observation still reports broad unresolved finding classes, so closure is not justified.
 - **#402 — Verify and release unified frontend-to-Worker contract spine**
   - Remains open because PR #398 established repository integration, not the full exact-production-release, user-visible failure-state, retry, telemetry, privacy, and rollback evidence matrix.
+- **#460 — Voice runtime telemetry contract and environment proof**
+  - Renamed and updated to identify #479 as its only active implementation PR.
+  - Remains open because exact-head checks have not executed, founder merge approval is absent, and no environment migration or rollback-contained live proof exists.
+  - Cloudflare previews do not prove database application or realtime voice availability.
+- **#464 — Strategy intake: voice, RLS, and visual concepts**
+  - Renamed and updated to identify #478 as its only active documentation PR.
+  - Remains open until #478's exact-head checks actually execute and pass and the corrected documentation merges.
+  - It authorizes no runtime, schema, sprint, roadmap, deployment, or ledger-status change.
 - **#270 — Bridge: controlled two-account production proof**
   - Remains open for exact deployed-SHA link, selected-source generation, summary-only parent visibility, raw-source denial, revoke, fresh re-share, unlink, deletion, isolation, and cleanup evidence.
   - The retired token-based deployment blocker is no longer the authority; Cloudflare native Git and exact-release observation are current.
@@ -71,8 +79,6 @@ These issues contained unique launch requirements and were not legitimately clos
 - **#430 — Operations: incident and breach response plan**
   - Remains open for runbook ownership, containment, notification, audit evidence, and tabletop proof.
 
-This security/productization pass closed no issue. Reducing overlap by clarifying authority was more accurate than forcing #344, #357, or #399 closed while each retains unique unfinished acceptance criteria.
-
 The long-horizon relationship roadmap in #238 also remains open. Its phased Translation, Crew, Scrapbook, and persistent-memory scope is broader than the launch program and must not be collapsed into #259 or represented as V1-complete.
 
 ### Closed pull requests without merge
@@ -83,8 +89,22 @@ The long-horizon relationship roadmap in #238 also remains open. Its phased Tran
   - Its unmerged relationship-status prototype remains tracked by #271 and must be rebuilt on current `main`.
   - Its auth-redirect tests require reassessment against current routing before reuse.
 
+- **PR #465 — db: add privacy-safe voice runtime telemetry foundation**
+  - Closed as a stale-base predecessor to current-main PR #479.
+  - #479 preserves the exact architecture document, rollback probe, and contract test; retains the five-file scope; and strengthens implementation-ledger privacy criteria.
+  - The opaque UUID and strict payload-allowlist fixes from #465's review are preserved.
+  - #479 remains blocked because its workflows ended with no steps or logs and founder merge approval is still required.
+
+- **PR #466 — docs(strategy): red-team voice, RLS, and visual concept pack**
+  - Closed as a stale-base predecessor to current-main PR #478.
+  - Both corrected documentation files are byte-for-byte identical in #478.
+  - The repository-integrated/not-proven-live correction and all privacy, consent, RLS, Bridge, and future-scope boundaries remain intact.
+  - #478 remains blocked because its workflows ended with no steps or logs.
+
+Closing #465 or #466 does not complete #460 or #464, authorize merge, apply a database migration, prove live voice, or promote any roadmap or sprint scope.
+
 The canonical Trust and launch issues remain open. Their launch-critical acceptance criteria, physical/runtime evidence, policy review, and safety proof are not satisfied merely because duplicate trackers or stale branches were removed.
 
 ## Closure standard
 
-Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge when their base is obsolete or their concerns are mixed; preserve unique work in a focused current-main tracker. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.
+Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge only after confirming a current-main replacement preserves all unique reviewed work. Treat zero-step or no-log failures as infrastructure evidence rather than a pass or code diagnosis. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.
