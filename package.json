@@ -52,6 +52,8 @@
     "control-room:agent": "node scripts/control-room-agent.mjs",
     "control-room:dev": "node scripts/control-room-dev.mjs",
     "control-room:serve": "node scripts/control-room-server.mjs",
+    "control-room:github-status": "node scripts/control-room-github-route.mjs --json",
+    "control-room:github-route": "node scripts/control-room-github-route.mjs --ensure --fetch",
     "control-room:mission:continue-yesterday": "node scripts/control-room-agent.mjs continue-yesterday",
     "control-room:mission:launch-bip": "node scripts/control-room-agent.mjs launch-bip",
     "control-room:mission:verify-local": "node scripts/control-room-agent.mjs verify-local",
