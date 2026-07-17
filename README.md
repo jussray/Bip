@@ -36,6 +36,7 @@ Architecture, roadmap, current-status, sprint, and agent-skill changes must reco
 - [`AGENTS.md`](AGENTS.md) — Codex, ChatGPT, and repository-agent instructions
 - [`CLAUDE.md`](CLAUDE.md) — verified design-system and Figma integration reference
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — provider boundaries
+- [`.agents/skills/bip-control-room/SKILL.md`](.agents/skills/bip-control-room/SKILL.md) — canonical 5W1H behavior and guarded Control Room execution boundary
 
 Shared founder stack:
 
@@ -188,6 +189,16 @@ Hydrate Git LFS assets before visual or archive validation:
 ```bash
 git lfs pull
 ```
+
+### Founder Control Room
+
+To start the founder-only Control Room with live, guarded local mission buttons:
+
+```bash
+npm run control-room:dev
+```
+
+The command starts Expo web and a loopback-only local agent with an ephemeral token. The UI can run only the documented allowlisted verification and recovery missions; release deployment remains a manual, exact-head gate. See `docs/CONTROL_ROOM.md`.
 
 ### Supabase
 
