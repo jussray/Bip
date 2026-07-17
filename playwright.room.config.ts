@@ -9,31 +9,27 @@ const executablePath =
   (fs.existsSync(sandboxChromium) ? sandboxChromium : undefined);
 
 export default defineConfig({
-  testDir: './e2e',
-  // Production smoke requires real Supabase config and runs only through
-  // playwright.production.config.ts. Room production specs require the
-  // founder-preview environment defined by playwright.room.config.ts.
-  // Neither suite belongs in the default blank-Supabase development run.
-  testIgnore: [
-    '**/production-smoke.spec.ts',
-    '**/rooms/**',
-  ],
-  fullyParallel: true,
+  testDir: './e2e/rooms',
+  fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: process.env.CI
-    ? [['line'], ['html', { open: 'never' }]]
-    : 'html',
+    ? [['line'], ['html', { open: 'never', outputFolder: 'playwright-report/rooms' }]]
+    : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report/rooms' }]],
   use: {
     baseURL: BASE_URL,
+    ...devices['iPhone 13'],
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
     {
-      name: 'chromium',
+      name: 'room-contract-webkit-shape',
       use: {
-        ...devices['Desktop Chrome'],
+        ...devices['iPhone 13'],
+        browserName: 'chromium',
         ...(executablePath ? { launchOptions: { executablePath } } : {}),
       },
     },
@@ -46,6 +42,7 @@ export default defineConfig({
     env: {
       EXPO_PUBLIC_SUPABASE_URL: '',
       EXPO_PUBLIC_SUPABASE_ANON_KEY: '',
+      EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW: 'true',
     },
   },
 });
