@@ -8,6 +8,37 @@ GitHub Actions is useful, but it should not be the only engineering gate. When t
 
 The local Control Room path lets daily development continue without paid GitHub Actions minutes.
 
+## Live mission execution from the Control Room
+
+Start the founder workspace with one command:
+
+```bash
+npm run control-room:dev
+```
+
+This starts Expo web and an authenticated local mission server together. Open the founder Control Room, choose **Missions**, and use **Run** on an enabled mission.
+
+The UI currently executes these allowlisted local missions:
+
+- Continue Yesterday
+- Verify Local
+- Verify Frontend
+- Recover System
+
+Launch Bip is performed by the combined `control-room:dev` command itself. Ship Release intentionally remains a manual gate: a browser button cannot merge, deploy, or claim production readiness.
+
+The execution boundary is deliberately narrow:
+
+- the server binds only to `127.0.0.1`;
+- every launch creates a new random token;
+- only localhost origins and bearer-authenticated requests are accepted;
+- the server invokes fixed mission IDs, never arbitrary shell input;
+- only one mission runs at a time;
+- missions time out and return bounded output to the UI;
+- the token is local-development state and must never be reused as a production credential.
+
+Starting Expo with `npm run web` alone leaves mission buttons offline by design. Use `npm run control-room:dev` when live local execution is required.
+
 ## Local verification
 
 Run:
