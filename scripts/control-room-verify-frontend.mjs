@@ -6,4 +6,4 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultReportDir = path.join(root, 'reports', 'control-room');
-const default
+const defaultArtifactDir = path.join
