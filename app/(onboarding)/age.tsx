@@ -10,7 +10,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { hydrateAccountProfile } from '@/features/identity/accountProfile';
+import { ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
 
 const AGE_OPTIONS = [
   { id: '13-15' as const, label: '13 – 15' },
@@ -26,18 +26,17 @@ export default function AgeScreen() {
 
   async function handleNext() {
     if (!selected) return;
-    await AsyncStorage.setItem('bip_onboarding_age', selected);
+    await AsyncStorage.multiSet([
+      ['bip_onboarding_age', selected],
+      [ONBOARDING_SIDE_KEY, 'teen'],
+    ]);
     setUserSide('teen');
-    router.push('/(onboarding)/name');
+    router.push('/(auth)/signup?side=teen' as never);
   }
 
   async function handleParent() {
+    await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, 'parent');
     setUserSide('parent');
-    const profile = await hydrateAccountProfile('parent').catch(() => null);
-    if (profile?.accountSide === 'parent' && profile.onboardingComplete) {
-      router.replace('/(auth)/guardian-verification');
-      return;
-    }
     router.push('/(onboarding)/parent-splash');
   }
 
@@ -50,7 +49,7 @@ export default function AgeScreen() {
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={styles.step}>1 OF 3</Text>
+        <Text style={styles.step}>1 OF 4</Text>
         <Text style={styles.title}>How old are you?</Text>
         <Text style={styles.sub}>Helps your Se'kret know how to be with you.</Text>
 
@@ -77,7 +76,7 @@ export default function AgeScreen() {
           style={[styles.btn, !selected && styles.btnDisabled]}
           activeOpacity={0.85}
         >
-          <Text style={styles.btnText}>Continue →</Text>
+          <Text style={styles.btnText}>Create my account →</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={handleParent} style={styles.parentLink}>
           <Text style={styles.parentLinkText}>I'm a parent →</Text>

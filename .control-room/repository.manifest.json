@@ -8,31 +8,11 @@
   },
   "verification": {
     "requiredSignals": [
-      {
-        "id": "typecheck",
-        "name": "Typecheck",
-        "required": true
-      },
-      {
-        "id": "lint",
-        "name": "Lint",
-        "required": true
-      },
-      {
-        "id": "unit-tests",
-        "name": "Unit Tests",
-        "required": true
-      },
-      {
-        "id": "rls-audit",
-        "name": "RLS Audit",
-        "required": true
-      },
-      {
-        "id": "runtime-truth",
-        "name": "Runtime Truth Contracts",
-        "required": true
-      }
+      { "id": "typecheck", "name": "Typecheck", "required": true },
+      { "id": "lint", "name": "Lint", "required": true },
+      { "id": "unit-tests", "name": "Unit Tests", "required": true },
+      { "id": "rls-audit", "name": "RLS Audit", "required": true },
+      { "id": "runtime-truth", "name": "Runtime Truth Contracts", "required": true }
     ]
   },
   "capabilities": [
@@ -45,11 +25,7 @@
         "src/utils/sync.ts",
         "scripts/test-device-sync.mjs"
       ],
-      "requiredSignals": [
-        "typecheck",
-        "unit-tests",
-        "rls-audit"
-      ],
+      "requiredSignals": ["typecheck", "unit-tests", "rls-audit"],
       "usageAssertions": [
         {
           "id": "teen-onboarding-saves-private-profile",
@@ -82,11 +58,7 @@
         "supabase/functions/bridge-share-create/index.ts",
         "supabase/functions/bridge-share-revoke/index.ts"
       ],
-      "requiredSignals": [
-        "typecheck",
-        "unit-tests",
-        "rls-audit"
-      ],
+      "requiredSignals": ["typecheck", "unit-tests", "rls-audit"],
       "usageAssertions": [
         {
           "id": "bridge-screen-sends-metadata-signal",
@@ -114,13 +86,11 @@
       "status": "active",
       "evidencePaths": [
         "services/consentService.ts",
+        "app/(onboarding)/consent.tsx",
         "supabase/migrations/20260715060000_harden_consent_and_deletion_runtime_truth.sql",
         "test/runtime-truth-contract.test.mjs"
       ],
-      "requiredSignals": [
-        "typecheck",
-        "runtime-truth"
-      ],
+      "requiredSignals": ["typecheck", "runtime-truth"],
       "usageAssertions": [
         {
           "id": "consent-service-calls-atomic-rpc",
@@ -130,9 +100,9 @@
         },
         {
           "id": "onboarding-requires-explicit-consent-action",
-          "path": "app/(onboarding)/welcome.tsx",
-          "marker": "consentService",
-          "description": "Expected runtime onboarding consent wiring. This assertion remains failed until an explicit user consent step is implemented."
+          "path": "app/(onboarding)/consent.tsx",
+          "marker": "consentService.grant",
+          "description": "The onboarding UI records required consent only after explicit checkbox choices and a separate Continue action."
         }
       ]
     },
@@ -146,10 +116,7 @@
         "supabase/migrations/20260715060000_harden_consent_and_deletion_runtime_truth.sql",
         "test/runtime-truth-contract.test.mjs"
       ],
-      "requiredSignals": [
-        "runtime-truth",
-        "rls-audit"
-      ],
+      "requiredSignals": ["runtime-truth", "rls-audit"],
       "usageAssertions": [
         {
           "id": "settings-request-deletion",
@@ -188,10 +155,7 @@
         "app/(teen)/pages/[id].tsx",
         "test/supabase-worker-ai-reply-contract.test.mjs"
       ],
-      "requiredSignals": [
-        "typecheck",
-        "unit-tests"
-      ],
+      "requiredSignals": ["typecheck", "unit-tests"],
       "usageAssertions": [
         {
           "id": "pages-screen-calls-companion-api",

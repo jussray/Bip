@@ -9,8 +9,12 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useVerificationContext } from '@/context/VerificationContext';
+import type { AccountSide } from '@/features/identity/accountProfile';
+import { fetchPostAuthBootstrap, ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function readableAuthError(error: unknown): string {
   if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
@@ -21,7 +25,18 @@ function readableAuthError(error: unknown): string {
   return 'Something went wrong while creating your account. Please try again.';
 }
 
+function normalizeSide(value: string | undefined): AccountSide {
+  return value === 'parent' ? 'parent' : 'teen';
+}
+
+function loginRoute(side: AccountSide): string {
+  return `/(auth)/login?side=${side}`;
+}
+
 export default function SignupScreen() {
+  const params = useLocalSearchParams<{ side?: string }>();
+  const preferredSide = normalizeSide(params.side);
+  const { refreshVerification } = useVerificationContext();
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm]   = useState('');
@@ -29,14 +44,21 @@ export default function SignupScreen() {
   const [success, setSuccess]   = useState(false);
   const [loading, setLoading]   = useState(false);
 
+  async function finishAuthenticatedSignup() {
+    await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
+    const bootstrap = await fetchPostAuthBootstrap(preferredSide);
+    await refreshVerification();
+    router.replace(bootstrap.nextRoute as never);
+  }
+
   async function handleSignUp() {
     setError('');
     const e = email.trim();
-    const p = password.trim();
+    const p = password;
 
     if (!e || !p) { setError('Email and password are required.'); return; }
     if (p.length < 8) { setError('Password must be at least 8 characters.'); return; }
-    if (p !== confirm.trim()) { setError("Passwords don't match."); return; }
+    if (p !== confirm) { setError("Passwords don't match."); return; }
 
     setLoading(true);
     const sb = getSupabase();
@@ -47,6 +69,7 @@ export default function SignupScreen() {
     }
 
     try {
+      await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
       const { data: sessionData, error: sessionError } = await sb.auth.getSession();
       if (sessionError) {
         setError(sessionError.message);
@@ -81,7 +104,7 @@ export default function SignupScreen() {
 
         const { data: refreshed, error: refreshError } = await sb.auth.getSession();
         if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
-          router.replace('/');
+          await finishAuthenticatedSignup();
         } else {
           setSuccess(true);
         }
@@ -99,7 +122,7 @@ export default function SignupScreen() {
       }
 
       if (signUpData.session) {
-        router.replace('/');
+        await finishAuthenticatedSignup();
       } else {
         setSuccess(true);
       }
@@ -122,7 +145,7 @@ export default function SignupScreen() {
           </Text>
           <TouchableOpacity
             style={styles.btn}
-            onPress={() => router.replace('/(auth)/login')}
+            onPress={() => router.replace(loginRoute(preferredSide) as never)}
             accessibilityRole="button"
             accessibilityLabel="Go to Sign In"
           >
@@ -140,7 +163,7 @@ export default function SignupScreen() {
     >
       <View style={styles.inner}>
         <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
-        <Text style={styles.tagline}>create your space</Text>
+        <Text style={styles.tagline}>{preferredSide === 'parent' ? 'create your Parent Space' : 'create your space'}</Text>
 
         <TextInput
           style={styles.input}
@@ -173,10 +196,10 @@ export default function SignupScreen() {
           returnKeyType="go"
         />
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
         <TouchableOpacity
-          style={styles.btn}
+          style={[styles.btn, loading && styles.btnDisabled]}
           onPress={handleSignUp}
           disabled={loading}
           accessibilityRole="button"
@@ -190,7 +213,7 @@ export default function SignupScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={() => router.replace(loginRoute(preferredSide) as never)}
           style={styles.link}
           accessibilityRole="link"
           accessibilityLabel="Already have an account? Sign in"
@@ -217,6 +240,7 @@ const styles = StyleSheet.create({
     width: '100%', backgroundColor: '#6d28d9', borderRadius: 16,
     paddingVertical: 17, alignItems: 'center', marginTop: 4, marginBottom: 18,
   },
+  btnDisabled:  { opacity: 0.55 },
   btnText:      { color: '#fff', fontWeight: '700', fontSize: 16 },
   link:         { marginBottom: 28 },
   linkText:     { color: '#c4b5fd', fontSize: 14 },

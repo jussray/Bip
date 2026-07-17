@@ -10,6 +10,7 @@ import {
   type AccountProfile,
   type AccountSide,
 } from '@/features/identity/accountProfile';
+import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 import {
   resolveParentEntryState,
   routeForParentEntryState,
@@ -27,6 +28,9 @@ export default function Index() {
   const [authChecked, setAuthChecked] = useState(false);
   const [profileResolved, setProfileResolved] = useState(false);
   const [accountProfile, setAccountProfile] = useState<AccountProfile | null>(null);
+  const [hasPermanentSession, setHasPermanentSession] = useState(false);
+  const [requiresAccountUpgrade, setRequiresAccountUpgrade] = useState(false);
+  const [requiredConsentsComplete, setRequiredConsentsComplete] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [splashEntered, setSplashEntered] = useState(false);
@@ -40,30 +44,58 @@ export default function Index() {
     async function bootstrap() {
       setBootstrapError(null);
       setProfileResolved(false);
+      setRequiresAccountUpgrade(false);
       try {
-        if (isSupabaseConfigured) {
-          const sb = getSupabase();
-          if (!sb) throw new Error('Supabase account service is unavailable.');
-          const { data, error } = await sb.auth.getSession();
-          if (error) throw error;
-          const user = data.session?.user;
-          if (!user) {
-            router.replace('/(auth)/login');
-            return;
+        // Missing account infrastructure must never be treated as a completed
+        // permanent session. Keep only public Splash/onboarding reachable.
+        if (!isSupabaseConfigured) {
+          if (!cancelled) {
+            setHasPermanentSession(false);
+            setRequiredConsentsComplete(false);
+            setAccountProfile(null);
+            if (buildSide && buildSide !== userSide) setUserSide(buildSide);
           }
-          if (user.is_anonymous) {
-            router.replace('/(auth)/signup');
-            return;
-          }
+          return;
         }
 
+        const sb = getSupabase();
+        if (!sb) throw new Error('Supabase account service is unavailable.');
+        const { data, error } = await sb.auth.getSession();
+        if (error) throw error;
+        const user = data.session?.user;
+
+        if (!user) {
+          if (!cancelled) {
+            setHasPermanentSession(false);
+            setRequiredConsentsComplete(false);
+            setAccountProfile(null);
+          }
+          return;
+        }
+
+        if (user.is_anonymous) {
+          if (!cancelled) {
+            setHasPermanentSession(false);
+            setRequiresAccountUpgrade(true);
+            setRequiredConsentsComplete(false);
+            setAccountProfile(null);
+            router.replace('/(auth)/signup');
+          }
+          return;
+        }
+
+        // Explicit second-device restore: hydrate the durable Supabase profile,
+        // then reuse it in the post-auth bootstrap so it is fetched only once.
         const profile = await hydrateAccountProfile(buildSide);
+        const result = await fetchPostAuthBootstrap(profile?.accountSide ?? buildSide, profile);
         if (cancelled) return;
-        setAccountProfile(profile);
+        setHasPermanentSession(true);
+        setRequiredConsentsComplete(result.requiredConsentsComplete);
+        setAccountProfile(result.profile);
         if (profile?.accountSide && profile.accountSide !== userSide) {
           setUserSide(profile.accountSide);
-        } else if (!profile && buildSide && buildSide !== userSide) {
-          setUserSide(buildSide);
+        } else if (result.accountSide !== userSide) {
+          setUserSide(result.accountSide);
         }
       } catch (error) {
         if (!cancelled) {
@@ -79,7 +111,7 @@ export default function Index() {
 
     void bootstrap();
     return () => { cancelled = true; };
-  }, [bootstrapAttempt, buildSide]);
+  }, [bootstrapAttempt, buildSide, setUserSide, userSide]);
 
   useEffect(() => {
     if (
@@ -96,11 +128,25 @@ export default function Index() {
     setRouted(true);
 
     async function route() {
+      if (!hasPermanentSession) {
+        if (requiresAccountUpgrade) {
+          router.replace(`/(auth)/signup?side=${effectiveSide}` as never);
+        } else {
+          router.replace(buildSide === 'parent' ? '/(onboarding)/parent-splash' : '/(onboarding)/welcome');
+        }
+        return;
+      }
+
+      if (!requiredConsentsComplete) {
+        router.replace(`/(onboarding)/consent?side=${effectiveSide}` as never);
+        return;
+      }
+
       if (!accountProfile?.onboardingComplete) {
         router.replace(
           effectiveSide === 'parent'
-            ? '/(onboarding)/parent-welcome'
-            : '/(onboarding)/welcome',
+            ? '/(onboarding)/parent-setup'
+            : '/(onboarding)/name',
         );
         return;
       }
@@ -132,10 +178,14 @@ export default function Index() {
     accountProfile,
     authChecked,
     bootstrapError,
+    buildSide,
     effectiveSide,
+    hasPermanentSession,
     isLoading,
     isVerificationLoading,
     profileResolved,
+    requiredConsentsComplete,
+    requiresAccountUpgrade,
     routed,
     splashEntered,
     verificationState,
@@ -162,7 +212,7 @@ export default function Index() {
   if (!isLoading && !isVerificationLoading && authChecked && profileResolved && !splashEntered) {
     return (
       <SplashScreen
-        userSide={effectiveSide}
+        userSide={hasPermanentSession ? effectiveSide : buildSide ?? 'teen'}
         setScreen={() => setSplashEntered(true)}
       />
     );

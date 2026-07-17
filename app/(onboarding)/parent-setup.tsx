@@ -21,6 +21,7 @@ import {
   type ParentFocus,
   type ParentRoomStyle,
 } from '@/features/identity/accountProfile';
+import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 
 const FOCUS_OPTIONS: { id: ParentFocus; label: string; emoji: string }[] = [
   { id: 'support', label: 'Support', emoji: '🤝' },
@@ -66,6 +67,12 @@ export default function ParentSetup() {
     setError(null);
     Keyboard.dismiss();
     try {
+      const bootstrap = await fetchPostAuthBootstrap('parent');
+      if (!bootstrap.requiredConsentsComplete) {
+        router.replace(bootstrap.nextRoute as never);
+        return;
+      }
+
       await saveAccountProfile({
         accountSide: 'parent',
         privateDisplayName,

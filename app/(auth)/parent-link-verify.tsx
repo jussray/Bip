@@ -7,7 +7,6 @@ import {
   generateInviteCodeResult,
   PARENT_INVITE_CODE_LENGTH,
 } from '@/utils/parentLink';
-import { getSupabase } from '@/utils/supabase';
 import { useVerificationContext } from '@/context/VerificationContext';
 
 export default function ParentLinkVerifyScreen() {
@@ -30,43 +29,6 @@ export default function ParentLinkVerifyScreen() {
     });
     return () => { mounted = false; };
   }, []);
-
-  // VerificationContext owns auth-state refreshes but does not subscribe to
-  // account_verification row changes. This screen adds one narrowly scoped
-  // subscription while the teen is waiting for parent redemption.
-  useEffect(() => {
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    let active = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    void supabase.auth.getSession().then(({ data, error: sessionError }) => {
-      const user = data.session?.user;
-      if (!active || sessionError || !user || user.is_anonymous) return;
-
-      channel = supabase
-        .channel(`account-verification-${user.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'account_verification',
-            filter: `user_id=eq.${user.id}`,
-          },
-          () => {
-            void refreshVerification();
-          },
-        )
-        .subscribe();
-    });
-
-    return () => {
-      active = false;
-      if (channel) void supabase.removeChannel(channel);
-    };
-  }, [refreshVerification]);
 
   async function createCode() {
     setLoading(true);
