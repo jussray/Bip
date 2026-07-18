@@ -145,11 +145,17 @@ export default function FounderOperatorPanel() {
     await replaceActivePlan(next);
   }, [activePlan, replaceActivePlan]);
 
-  const founderVerifyArtifact = useCallback(async (artifact: FounderOperatorArtifact) => {
-    if (!activePlan || artifact.status !== 'human-required') return;
-    const next = updateFounderArtifactStatus(activePlan, artifact.id, 'verified');
+  const recordFounderApproval = useCallback(async (artifact: FounderOperatorArtifact) => {
+    if (!activePlan || artifact.status !== 'human-required' || artifact.approvalRecordedAt) return;
+    const next: FounderOperatorPlan = {
+      ...activePlan,
+      artifacts: activePlan.artifacts.map((item) => item.id === artifact.id
+        ? { ...item, approvalRecordedAt: new Date().toISOString() }
+        : item),
+    };
     await replaceActivePlan(next);
-  }, [activePlan, replaceActivePlan]);
+    if (localAgentStatus === 'online') await persistPlan(next);
+  }, [activePlan, localAgentStatus, persistPlan, replaceActivePlan]);
 
   const runSafeMission = useCallback(async (missionId: string, phaseId: string) => {
     if (!activePlan) return;
@@ -289,7 +295,9 @@ export default function FounderOperatorPanel() {
             <Text style={styles.muted}>Proof: {item.evidenceRequired.join(' · ')}</Text>
             {item.approvalGate ? <Text style={styles.warning}>{item.approvalGate}</Text> : null}
             {item.status === 'human-required'
-              ? <TouchableOpacity style={styles.approvalButton} onPress={() => void founderVerifyArtifact(item)}><Text style={styles.approvalText}>Founder marks reviewed</Text></TouchableOpacity>
+              ? item.approvalRecordedAt
+                ? <Text style={styles.approvalRecorded}>Founder approval recorded {new Date(item.approvalRecordedAt).toLocaleString()} · external action still pending</Text>
+                : <TouchableOpacity style={styles.approvalButton} onPress={() => void recordFounderApproval(item)}><Text style={styles.approvalText}>Founder records approval</Text></TouchableOpacity>
               : item.status !== 'verified'
                 ? <TouchableOpacity style={styles.linkButton} onPress={() => void advanceArtifact(item)}><Text style={styles.linkText}>Advance to {title(nextFounderArtifactStatus(item))}</Text></TouchableOpacity>
                 : null}
@@ -366,6 +374,7 @@ const styles = StyleSheet.create({
   warning: { color: '#fb923c', fontSize: 12, lineHeight: 18 },
   approvalButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: '#fb923c', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
   approvalText: { color: '#fdba74', fontSize: 11, fontWeight: '900' },
+  approvalRecorded: { color: '#fdba74', fontSize: 11, lineHeight: 17 },
   exitGate: { color: '#a7f3d0', fontSize: 12, lineHeight: 18, borderTopWidth: 1, borderTopColor: '#272238', paddingTop: 10 },
   output: { color: '#d6d1df', backgroundColor: '#050408', borderRadius: 10, padding: 10, fontFamily: 'monospace', fontSize: 11, lineHeight: 16 },
   listItem: { color: '#d6d1df', fontSize: 13, lineHeight: 20 },
