@@ -3,10 +3,10 @@ import { ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity, View }
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
-  fetchPendingInviteCode,
   generateInviteCodeResult,
   PARENT_INVITE_CODE_LENGTH,
 } from '@/utils/parentLink';
+import { fetchPendingInviteCodeResult } from '@/utils/pendingParentInvite';
 import { useVerificationContext } from '@/context/VerificationContext';
 
 export default function ParentLinkVerifyScreen() {
@@ -14,6 +14,7 @@ export default function ParentLinkVerifyScreen() {
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkingExisting, setCheckingExisting] = useState(true);
+  const [lookupFailed, setLookupFailed] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -24,11 +25,18 @@ export default function ParentLinkVerifyScreen() {
     let mounted = true;
 
     void (async () => {
-      const existingCode = await fetchPendingInviteCode();
+      const lookup = await fetchPendingInviteCodeResult();
       if (!mounted) return;
 
-      if (existingCode) {
-        setCode(existingCode);
+      if (!lookup.ok) {
+        setLookupFailed(true);
+        setError(lookup.message);
+        setCheckingExisting(false);
+        return;
+      }
+
+      if (lookup.value) {
+        setCode(lookup.value);
         setCheckingExisting(false);
         return;
       }
@@ -48,7 +56,40 @@ export default function ParentLinkVerifyScreen() {
     return () => { mounted = false; };
   }, [refreshVerification]);
 
+  async function retryExistingCodeLookup() {
+    setLoading(true);
+    setError('');
+    const lookup = await fetchPendingInviteCodeResult();
+    if (!lookup.ok) {
+      setLookupFailed(true);
+      setError(lookup.message);
+      setLoading(false);
+      return;
+    }
+
+    setLookupFailed(false);
+    if (lookup.value) {
+      setCode(lookup.value);
+      setLoading(false);
+      return;
+    }
+
+    const result = await generateInviteCodeResult();
+    if (result.ok) {
+      setCode(result.value);
+      await refreshVerification();
+    } else {
+      setError(result.message);
+    }
+    setLoading(false);
+  }
+
   async function createCode() {
+    if (lookupFailed) {
+      await retryExistingCodeLookup();
+      return;
+    }
+
     setLoading(true);
     setError('');
     const result = await generateInviteCodeResult();
@@ -86,7 +127,7 @@ export default function ParentLinkVerifyScreen() {
         </Text>
 
         <View style={styles.codeCard}>
-          <Text style={styles.codeLabel}>{code ? 'YOUR PRIVATE CODE' : 'CREATING YOUR PRIVATE CODE'}</Text>
+          <Text style={styles.codeLabel}>{code ? 'YOUR PRIVATE CODE' : lookupFailed ? 'CODE CHECK NEEDED' : 'CREATING YOUR PRIVATE CODE'}</Text>
           {checkingExisting ? (
             <ActivityIndicator color="#c4b5fd" style={styles.codeLoader} />
           ) : (
@@ -101,7 +142,9 @@ export default function ParentLinkVerifyScreen() {
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryText}>{code ? 'Create a new code' : 'Try creating code again'}</Text>
+            <Text style={styles.primaryText}>
+              {lookupFailed ? 'Retry existing code check' : code ? 'Create a new code' : 'Try creating code again'}
+            </Text>
           )}
         </TouchableOpacity>
 
