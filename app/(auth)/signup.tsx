@@ -16,22 +16,45 @@ import { fetchPostAuthBootstrap, ONBOARDING_SIDE_KEY } from '@/services/auth/pos
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function readableAuthError(error: unknown): string {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : '';
+function authErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
 
+  if (error && typeof error === 'object') {
+    const value = error as {
+      message?: unknown;
+      error_code?: unknown;
+      code?: unknown;
+      status?: unknown;
+    };
+    return [value.message, value.error_code, value.code, value.status]
+      .filter(part => typeof part === 'string' || typeof part === 'number')
+      .join(' ');
+  }
+
+  return '';
+}
+
+function readableAuthError(error: unknown): string {
+  const message = authErrorMessage(error);
   const normalized = message.toLowerCase();
+  const isConfirmationTimeout =
+    normalized.includes('request_timeout') ||
+    normalized.includes('processing this request timed out') ||
+    normalized.includes('context deadline exceeded') ||
+    /\b504\b/.test(normalized);
+
+  if (isConfirmationTimeout) {
+    return 'The account server is taking longer than expected. Your confirmation email may still arrive, so check your inbox and spam folder before trying again.';
+  }
+
   const isNetworkFailure =
     normalized.includes('failed to fetch') ||
     normalized.includes('fetch failed') ||
     normalized.includes('network request failed');
 
   if (isNetworkFailure) {
-    return 'Could not reach the account server. Check your connection, then try again.';
+    return 'Could not confirm the account server response. Check your connection and inbox before trying again.';
   }
 
   return message || 'Something went wrong while creating your account. Please try again.';
