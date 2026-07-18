@@ -40,16 +40,17 @@ test('the state machine cannot claim a live account', () => {
   assert.match(labDoc, /The dry-run code has no transition to `verified_live`/);
 });
 
-test('the lab performs no external account creation or credential collection', () => {
+test('the lab performs no social-platform request, account creation, or credential collection', () => {
   assert.doesNotMatch(panel, /\bfetch\s*\(/);
   assert.doesNotMatch(panel, /axios/);
   assert.doesNotMatch(panel, /XMLHttpRequest/);
   assert.doesNotMatch(panel, /Linking\.openURL/);
   assert.doesNotMatch(panel, /TextInput/);
   assert.doesNotMatch(panel, /SecureStore/);
-  assert.doesNotMatch(panel, /getSupabase|supabase\./);
   assert.match(panel, /No password, one-time code, token, secret, or private user content is requested or stored/);
-  assert.match(panel, /No external network request, signup submission, terms acceptance, or hidden browser automation was performed/);
+  assert.match(panel, /No social-platform network request, signup submission, terms acceptance, or hidden browser automation was performed/);
+  assert.match(labDoc, /Opening the panel may use the existing Supabase Auth\/profile read solely to prove founder management access/);
+  assert.match(labDoc, /rehearsal itself performs no social-platform network request/);
 });
 
 test('individual and all-platform devil tests terminate at the human gate', () => {
@@ -72,6 +73,8 @@ test('all AI instruction layers point to one coordinated mission', () => {
   assert.match(globalAi, /one active writer per artifact/);
   assert.match(agents, /Coordinated multi-AI contract/);
   assert.match(agents, /Apply the \*\*one-writer rule\*\*/);
+  assert.doesNotMatch(agents, /also load `.agents\/skills\/bip-control-room\/SKILL\.md`/);
+  assert.match(agents, /verify that skill exists on the active branch before relying on it/);
   assert.match(providers, /AI_COORDINATION\.md/);
   assert.match(providers, /Providers share one founder-defined mission/);
   assert.match(deepSeek, /Canonical coordination contract: \[`\.\.\/AI_COORDINATION\.md`\]/);
@@ -103,4 +106,8 @@ test('DeepSeek social provisioning review stops at the human gate', () => {
   assert.match(deepSeek, /credential or verification-code collection/);
   assert.match(deepSeek, /The safe rehearsal endpoint is `human_required`, never `live`, `connected`, or `verified`/);
   assert.match(deepSeek, /repository write authority/);
+  assert.match(deepSeek, /External tool schemas are not live capabilities/);
+  assert.match(deepSeek, /Tool-schema presence, provider registration, or a fluent model response is not runtime proof/);
+  assert.match(deepSeek, /tests rejecting information about minors/);
+  assert.match(providers, /Provider or tool registration is a capability declaration, not proof that an adapter is deployed/);
 });
