@@ -80,15 +80,33 @@ language plpgsql
 security definer
 set search_path = pg_catalog, public
 as $$
+declare
+  v_request_role text := coalesce((select auth.role()), '');
+  v_stage_rank integer := public.onboarding_stage_rank(new.stage);
 begin
+  -- Client-created rows always start at the server-known baseline. Administrative
+  -- maintenance has no authenticated JWT role and remains available to reviewed
+  -- migrations/probes.
+  if tg_op = 'INSERT' and v_request_role = 'authenticated' then
+    if new.stage <> 'signed_up'
+       or new.role <> 'unknown'
+       or new.activated_at is not null
+       or new.activation_action is not null
+       or new.completed_at is not null
+       or new.parent_linked_at is not null
+       or new.linked_parent_id is not null then
+      raise exception 'invalid client onboarding insert baseline'
+        using errcode = '23514';
+    end if;
+  end if;
+
   if tg_op = 'UPDATE' then
     if new.user_id is distinct from old.user_id then
       raise exception 'onboarding user_id is immutable'
         using errcode = '23514';
     end if;
 
-    if public.onboarding_stage_rank(new.stage)
-       < public.onboarding_stage_rank(old.stage) then
+    if v_stage_rank < public.onboarding_stage_rank(old.stage) then
       raise exception 'onboarding stage cannot move backward'
         using errcode = '23514';
     end if;
@@ -107,6 +125,24 @@ begin
       raise exception 'completed_at cannot be cleared'
         using errcode = '23514';
     end if;
+  end if;
+
+  if v_stage_rank < public.onboarding_stage_rank('activated') then
+    if new.activated_at is not null or new.activation_action is not null then
+      raise exception 'activation metadata requires an activated stage'
+        using errcode = '23514';
+    end if;
+  elsif new.activated_at is null then
+    raise exception 'activated stage requires activated_at'
+      using errcode = '23514';
+  end if;
+
+  if new.stage = 'steady_state' and new.completed_at is null then
+    raise exception 'steady_state requires completed_at'
+      using errcode = '23514';
+  elsif new.stage <> 'steady_state' and new.completed_at is not null then
+    raise exception 'completed_at requires steady_state'
+      using errcode = '23514';
   end if;
 
   if new.age_bucket is not null
@@ -163,6 +199,6 @@ comment on table public.user_onboarding_state is
   'Client-reported onboarding progress for product routing and aggregate analysis. Not consent, verification, relationship, or authorization authority. Permanent owners may read and report forward progress only.';
 
 comment on function public.enforce_onboarding_state_transition() is
-  'Fails closed on cross-user rewrites, stage regression, assigned-role changes, timestamp clearing, and unbounded client-reported metadata.';
+  'Fails closed on non-baseline client inserts, cross-user rewrites, stage regression, assigned-role changes, inconsistent activation/completion state, timestamp clearing, and unbounded client-reported metadata.';
 
 commit;
