@@ -1,16 +1,17 @@
 {
   "schemaVersion": 1,
   "planId": "20260718-controlled-alpha-activation",
-  "reportedAt": "2026-07-18T03:36:00.000Z",
+  "reportedAt": "2026-07-18T04:03:44.000Z",
   "repository": "jussray/Sekret-Bip",
   "pullRequest": 495,
   "branch": "launch/controlled-alpha-activation",
+  "sourceEvidenceHead": "293ce60591a1bc2debd7f3a1bbfabb94a8b3b88d",
   "evidenceLevel": "repository-content",
   "verified": [
     {
       "id": "founder-room-artifacts",
       "status": "verified",
-      "evidence": "Mission brief, ordered ledger, system map, red-team register, bottleneck map, repository boundary evidence, and alpha runtime record exist on the branch."
+      "evidence": "Mission brief, ordered ledger, system map, red-team register, bottleneck map, repository boundary evidence, alpha runtime record, trust-journey plan, device matrix, and partial verification report exist on the branch."
     },
     {
       "id": "controlled-beta-client-boundary",
@@ -23,42 +24,53 @@
       "evidence": "Dedicated alpha configuration exists, committed rollout is disabled, an allowlist is required at runtime, production rollout remains disabled, and no Worker credential is committed."
     },
     {
-      "id": "bridge-supported-source-boundary",
+      "id": "bridge-client-source-boundary",
       "status": "verified",
-      "evidence": "Journal and Mood are the only controlled-alpha source kinds; unsupported sources are rejected before the request RPC."
+      "evidence": "Journal and Mood are the only controlled-alpha client source kinds; Goal and Scrapbook are rejected before the request RPC."
     },
     {
-      "id": "crew-revocation-result-boundary",
+      "id": "relationship-server-contract-integrated",
       "status": "verified",
-      "evidence": "Crew revocation requires an active exact-row update and observed revoked row before returning success."
+      "evidence": "Three forward migrations define RPC-only Bridge/Crew mutations, teen-owned canonical Bridge sources with strict idempotency intent, private Crew owner enforcement, scoped revocation, and private non-recursive recipient authorization. This is repository integration evidence only."
     },
     {
-      "id": "controlled-alpha-test-syntax",
+      "id": "relationship-catalog-probe-prepared",
       "status": "verified",
-      "evidence": "Independent Node syntax checks passed for the three controlled-alpha test files reconstructed from exact branch content."
+      "evidence": "A rollback-contained catalog-only probe checks deployed RLS, policies, grants, function security/search paths, trigger ownership, Bridge consent markers, and non-recursive Crew helper wiring without reading user rows. The probe has not executed."
+    },
+    {
+      "id": "implementation-ledger-registration",
+      "status": "verified",
+      "evidence": "The controlled-alpha relationship boundary feature is registered as integrated with blocked live verification in an implementation-ledger extension."
     }
   ],
   "blocked": [
     {
       "id": "github-actions-execution",
       "classification": "runner_startup_failure",
-      "evidence": "Eight exact-head workflow runs completed failure. Inspected CI Test, Control Room audits, Type-check, Build, and Lint jobs contain no steps and no job logs.",
-      "nextAction": "Do not diagnose application code from these badges. Retain the classification while continuing approved non-hosted preparation."
+      "evidence": "Eight workflow runs on exact head 293ce60591a1bc2debd7f3a1bbfabb94a8b3b88d completed failure. Inspected CI Type-check, Build, Control Room audits, Lint, and Test jobs contain no steps and no job logs.",
+      "nextAction": "Do not diagnose application code from these badges. Retain the classification while continuing approved complete-checkout or provider-native verification."
     }
   ],
   "unverified": [
     "complete exact-head dependency installation",
+    "current controlled-alpha source-contract execution",
     "TypeScript compilation",
     "full unit test execution",
+    "PostgreSQL or Supabase migration parsing",
+    "local migration reset or dry run",
+    "application of the three forward relationship migrations",
+    "controlled-alpha relationship catalog probe execution",
+    "live grants, RLS, trigger, function-signature, source-ownership, and idempotency parity",
     "Wrangler alpha dry-run bundle",
     "Expo web export",
     "Playwright browser execution",
-    "live Supabase migrations, grants, RLS, RPC, and policy parity",
     "dedicated alpha Worker deployment",
     "teen preview build",
     "parent preview build",
     "Bridge two-account journey",
     "Crew two-account journey",
+    "blocked, revoked, unrelated, anonymous, and cross-user live denial",
     "account deletion and second-user isolation",
     "iOS and Android device evidence",
     "accessibility, offline, and provider-failure evidence"
@@ -66,13 +78,14 @@
   "nextOrderedAction": {
     "phase": "execute",
     "artifact": "alpha-runtime-record",
-    "status": "human-required",
-    "action": "Execute the pre-deployment test and dry-run gates on a complete checkout, then request founder approval before any credential use, deployment, paid build, or distribution."
+    "status": "verification-required-before-human-gate",
+    "action": "On a complete exact-head checkout, execute the controlled-alpha tests, TypeScript check, implementation-ledger validation, Supabase migration parse or local dry run, catalog probe against an approved target, and Wrangler alpha dry run. Retain results, then stop for founder approval before applying migrations, using credentials, deploying, consuming paid build capacity, or distributing builds."
   },
   "nonClaims": [
-    "Repository-content verification is not runtime verification.",
-    "Syntax checks are not TypeScript compilation or unit-test execution.",
+    "Repository-content verification is not runtime or live database verification.",
+    "Source contracts are not passing tests until they execute on the current exact head.",
+    "Prepared migrations and probes are not applied database state.",
     "A canonical Worker branch preview is not the dedicated alpha service.",
-    "No deployment, build, database mutation, account operation, deletion, merge, or launch occurred."
+    "No deployment, build, migration application, database mutation, account operation, deletion, merge, or launch occurred."
   ]
 }
