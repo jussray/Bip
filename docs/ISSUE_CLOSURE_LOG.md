@@ -81,6 +81,26 @@ These issues contained unique launch requirements and were not legitimately clos
 
 The long-horizon relationship roadmap in #238 also remains open. Its phased Translation, Crew, Scrapbook, and persistent-memory scope is broader than the launch program and must not be collapsed into #259 or represented as V1-complete.
 
+### Active focused pull requests
+
+- **PR #476 — Add founder social provisioning lab and coordinated AI lanes**
+  - Owns 24 focused coordination/social files, including one-writer handoffs, `AGENTS.md`, DeepSeek/provider guidance, and the dry-run-only social provisioning lab.
+  - Preserves the corresponding #468 boundaries while adding collision and external-platform safeguards.
+  - Zero commits behind `main` after ancestry reconciliation.
+- **PR #481 — Port Playwright living-room production engine to current main**
+  - Owns 12 focused files: the reviewed room manifest, Night prompt pack, Figma blueprint, room-specific Playwright suite, foreman, contract tests, and exact-head room workflow wiring.
+  - The initial current-main port preserved all eight #446-added files and all three narrow modified-file patches. Later focused commits added the workflow and hardened the foreman and contract test.
+  - Zero commits behind `main`.
+- **PR #482 — Add executable Founder Control Room mission core**
+  - Owns 15 focused files: the authenticated loopback mission server, launcher, browser client, mission UI, bounded output, Playwright evidence integration, and guarded GitHub route.
+  - Zero commits behind #481 and still stacked; it must be retargeted and reverified after its base merges.
+- **PR #484 — Extract 5W1H skill contracts and Prompt OS guidance**
+  - Owns exactly 19 changed files: the 18 repository skills and `PromptOsPanel.tsx` not present in #476 or #482.
+  - The exact reviewed #468 blobs are overlaid on current `main`.
+  - Zero commits behind `main` after the ancestry merge.
+
+The current exact heads of #481, #482, and #484 are not merge-ready. Their inspected Quality Gate jobs concluded with `steps: null` and `logs_url: null`; this is runner-startup evidence, not executed test evidence or a code diagnosis.
+
 ### Closed pull requests without merge
 
 - **PR #408 — Add Playwright as a Control Room capability (#301)**
@@ -88,6 +108,12 @@ The long-horizon relationship roadmap in #238 also remains open. Its phased Tran
   - Its Playwright scope is superseded by merged PR #436.
   - Its unmerged relationship-status prototype remains tracked by #271 and must be rebuilt on current `main`.
   - Its auth-redirect tests require reassessment against current routing before reuse.
+
+- **PR #446 — feat(room): add Playwright living-room production engine**
+  - Closed as the stale-base predecessor to current-main PR #481.
+  - The initial #481 port preserved every reviewed added file and the exact `.gitignore`, package-script, and default Playwright-isolation patches.
+  - Subsequent #481 commits added focused workflow coverage and foreman/test hardening; those are new current-head work, not lost #446 scope.
+  - Closing it does not merge the engine, approve Canva state, implement Night's actor runtime, or prove production behavior.
 
 - **PR #465 — db: add privacy-safe voice runtime telemetry foundation**
   - Closed as a stale-base predecessor to current-main PR #479.
@@ -101,10 +127,18 @@ The long-horizon relationship roadmap in #238 also remains open. Its phased Tran
   - The repository-integrated/not-proven-live correction and all privacy, consent, RLS, Bridge, and future-scope boundaries remain intact.
   - #478 remains blocked because its workflows ended with no steps or logs.
 
-Closing #465 or #466 does not complete #460 or #464, authorize merge, apply a database migration, prove live voice, or promote any roadmap or sprint scope.
+- **PR #468 — Make Control Room executable with guarded AI contracts**
+  - Closed as a mixed branch after complete file-level decomposition of its original 34 files.
+  - #476 owns 3 original coordinated AI/provider files, #482 owns 12 original executable Control Room files, and #484 owns 19 skill/Prompt OS files.
+  - #482 later added three focused GitHub-route files, bringing its current scope to 15 without changing the original partition.
+  - Core agent, launcher, server, and browser-client blobs are exact in #482.
+  - #482's focused test removes DeepSeek and whole-repository skill assertions now owned by #476/#484 and adds room-suite compatibility checks.
+  - Closing #468 does not merge any focused PR, activate a provider adapter, authorize social-account creation, or prove production Control Room execution.
+
+Closing #446, #465, #466, or #468 does not complete their replacement work or authorize merge, deployment, database application, external account mutation, or product-status promotion.
 
 The canonical Trust and launch issues remain open. Their launch-critical acceptance criteria, physical/runtime evidence, policy review, and safety proof are not satisfied merely because duplicate trackers or stale branches were removed.
 
 ## Closure standard
 
-Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge only after confirming a current-main replacement preserves all unique reviewed work. Treat zero-step or no-log failures as infrastructure evidence rather than a pass or code diagnosis. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.
+Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge only after confirming a current-main replacement preserves all unique reviewed work. For a mixed branch, account for every changed file before closure. Treat zero-step or no-log failures as infrastructure evidence rather than a pass or code diagnosis. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.

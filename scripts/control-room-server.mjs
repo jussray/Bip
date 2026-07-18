@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import { spawn } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -11,6 +12,8 @@ const port = Number(process.env.CONTROL_ROOM_LOCAL_PORT || 4317);
 const token = String(process.env.CONTROL_ROOM_LOCAL_TOKEN || '');
 const timeoutMs = Number(process.env.CONTROL_ROOM_MISSION_TIMEOUT_MS || 10 * 60 * 1000);
 const allowedMissions = new Set(['continue-yesterday', 'verify-local', 'verify-frontend', 'recover-system']);
+const founderOperatorReportDir = path.join(root, 'reports', 'control-room', 'founder-operator');
+const blockedPlanKeys = new Set(['transcript', 'journalEntry', 'privateMessage', 'rawTeenContent', 'rawParentContent', 'password', 'token', 'secret']);
 let activeMission = null;
 let latestRun = null;
 
@@ -108,7 +111,66 @@ function executeMission(missionId, req, res, origin) {
   child.on('close', code => finish(code === 0 ? 'passed' : 'failed', { exitCode: code }));
 }
 
-const server = createServer((req, res) => {
+function readJsonBody(req, maxBytes = 96_000) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    req.setEncoding('utf8');
+    req.on('data', chunk => {
+      body += chunk;
+      if (Buffer.byteLength(body, 'utf8') > maxBytes) reject(new Error('request_body_too_large'));
+    });
+    req.on('end', () => {
+      try {
+        resolve(JSON.parse(body || '{}'));
+      } catch {
+        reject(new Error('invalid_json'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+function containsBlockedPlanKey(value) {
+  if (!value || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return value.some(containsBlockedPlanKey);
+  return Object.entries(value).some(([key, nested]) => blockedPlanKeys.has(key) || containsBlockedPlanKey(nested));
+}
+
+function validateFounderOperatorPlan(plan) {
+  if (!plan || plan.schemaVersion !== 1) throw new Error('invalid_plan_schema');
+  if (typeof plan.id !== 'string' || !/^[a-z0-9-]{8,120}$/.test(plan.id)) throw new Error('invalid_plan_id');
+  if (typeof plan.mission !== 'string' || plan.mission.length < 8 || plan.mission.length > 2_000) throw new Error('invalid_plan_mission');
+  if (!Array.isArray(plan.phases) || plan.phases.length < 4 || plan.phases.length > 12) throw new Error('invalid_plan_phases');
+  if (!Array.isArray(plan.artifacts) || plan.artifacts.length < 4 || plan.artifacts.length > 40) throw new Error('invalid_plan_artifacts');
+  if (containsBlockedPlanKey(plan)) throw new Error('private_or_secret_plan_field');
+  const serialized = JSON.stringify(plan);
+  if (/(?:ghp_|github_pat_|sk-[A-Za-z0-9]|service_role|Bearer\s+[A-Za-z0-9._-]{12,})/i.test(serialized)) {
+    throw new Error('credential_shaped_content_rejected');
+  }
+  return plan;
+}
+
+function persistFounderOperatorPlan(plan) {
+  fs.mkdirSync(founderOperatorReportDir, { recursive: true });
+  let reportPath = path.join(founderOperatorReportDir, `${plan.id}.json`);
+  let version = 2;
+  while (fs.existsSync(reportPath)) {
+    reportPath = path.join(founderOperatorReportDir, `${plan.id}-v${version}.json`);
+    version += 1;
+  }
+  const latestPath = path.join(founderOperatorReportDir, 'latest.json');
+  const content = `${JSON.stringify(plan, null, 2)}\n`;
+  fs.writeFileSync(reportPath, content, { flag: 'wx' });
+  fs.writeFileSync(latestPath, content);
+  return {
+    ok: true,
+    planId: plan.id,
+    reportPath: path.relative(root, reportPath),
+    latestPath: path.relative(root, latestPath),
+  };
+}
+
+const server = createServer(async (req, res) => {
   const origin = String(req.headers.origin || '');
   if (!isLocalOrigin(origin)) return writeJson(res, 403, { error: 'origin_not_allowed' });
 
@@ -138,6 +200,16 @@ const server = createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/runs/latest') {
     return writeJson(res, 200, { latestRun }, origin);
   }
+  if (req.method === 'POST' && url.pathname === '/founder-operator/plans') {
+    try {
+      const plan = validateFounderOperatorPlan(await readJsonBody(req));
+      return writeJson(res, 201, persistFounderOperatorPlan(plan), origin);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'founder_operator_plan_rejected';
+      const status = message === 'request_body_too_large' ? 413 : 400;
+      return writeJson(res, status, { error: message }, origin);
+    }
+  }
 
   const match = /^\/missions\/([a-z0-9-]+)$/.exec(url.pathname);
   if (req.method === 'POST' && match) return executeMission(match[1], req, res, origin);
@@ -146,7 +218,7 @@ const server = createServer((req, res) => {
 
 server.listen(port, host, () => {
   console.log(`Control Room local agent ready at http://${host}:${port}`);
-  console.log('Loopback-only. Only allowlisted missions can run.');
+  console.log('Loopback-only. Only allowlisted missions and fixed Founder Operator plan persistence can run.');
 });
 
 function shutdown() {
