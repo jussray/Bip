@@ -42,6 +42,11 @@ function authErrorStatus(error: unknown): number | null {
   return Number.isFinite(status) ? status : null;
 }
 
+function hasAuthServerResponse(error: unknown): boolean {
+  const status = authErrorStatus(error);
+  return status !== null && status >= 400;
+}
+
 function isDeliveryTimeout(error: unknown): boolean {
   const message = authErrorMessage(error);
   const status = authErrorStatus(error);
@@ -58,7 +63,10 @@ function isDeliveryTimeout(error: unknown): boolean {
 
 function readableAuthError(error: unknown): string {
   const message = authErrorMessage(error);
-  if (message.includes('failed to fetch') && authErrorStatus(error) === null) {
+  if (
+    !hasAuthServerResponse(error) &&
+    (message.includes('failed to fetch') || isDeliveryTimeout(error))
+  ) {
     return 'Could not reach the account server. Check your connection and try again.';
   }
   if (message.includes('rate') || message.includes('too many')) {
@@ -94,7 +102,7 @@ export default function ForgotPasswordScreen() {
         { redirectTo: recoveryRedirectUrl() },
       );
       if (resetError) {
-        if (isDeliveryTimeout(resetError)) {
+        if (isDeliveryTimeout(resetError) && hasAuthServerResponse(resetError)) {
           setDeliveryState('delayed');
           return;
         }
@@ -103,7 +111,7 @@ export default function ForgotPasswordScreen() {
       }
       setDeliveryState('confirmed');
     } catch (caught) {
-      if (isDeliveryTimeout(caught) && authErrorStatus(caught) !== null) {
+      if (isDeliveryTimeout(caught) && hasAuthServerResponse(caught)) {
         setDeliveryState('delayed');
       } else {
         setError(readableAuthError(caught));
