@@ -45,6 +45,30 @@ Closing #283 does not claim that the parent experience is complete. It removes a
 
 All four issues remain open. This pass normalized authority rather than claiming completion. A fresh 2026-07-17 production advisor observation still leaves broad authorization findings under #399; #344 retains unique Auth/performance work, and #357 retains unique L4/observer/live-evidence work.
 
+## Voice and concept-intake hierarchy
+
+| Issue | Canonical active PR | Authority and current gate |
+|---:|---:|---|
+| #460 | #479 | Owns the privacy-safe voice telemetry contract and later environment proof. PR #465 is closed as its stale-base predecessor. No runtime consumes the tables and no migration application is authorized. |
+| #464 | #478 | Owns the documentation-only voice/RLS/visual strategy intake. PR #466 is closed as its stale-base predecessor. The corrected content is byte-identical in #478. |
+| #357 | — | Owns live style evidence, privacy-reviewed L4 persistence, and evidence-backed Control Room observers—not the telemetry schema contract or strategy intake. |
+| #402 | — | Owns shared Worker production, unavailable-state, retry, telemetry, privacy, and rollback evidence. Repository integration does not prove live voice availability. |
+
+Both #478 and #479 remain open because their exact-head GitHub jobs ended before receiving steps or logs. A `steps: null` runner-startup failure is not passing evidence, not a code diagnosis, and not authority to merge or apply a migration. Cloudflare branch previews also do not prove database application or realtime voice availability.
+
+## Control Room and room-production hierarchy
+
+| Active PR | Canonical authority | Relationship to retired work |
+|---:|---|---|
+| #476 | Coordinated multi-AI lanes and founder social-provisioning rehearsal | Owns `AGENTS.md`, `DeepSeek/deepseek-chat.md`, `docs/PROVIDERS.md`, one-writer coordination, handoffs, and the social lab. It preserves and extends the corresponding #468 boundaries. |
+| #481 | Playwright living-room production engine | Current-main replacement for closed PR #446. The initial port preserved all eight added files and all three narrow modified-file patches; later focused commits added a room-specific workflow and hardened the foreman and contract tests. Night's live actor/state runtime remains follow-up work. |
+| #482 | Executable Founder Control Room mission core | Owns 15 focused files: the authenticated loopback agent, mission UI, browser client, bounded output, Playwright evidence integration, and guarded GitHub route. It is zero commits behind #481 and must not merge before its base. |
+| #484 | Repository-wide 5W1H skill contracts and Prompt OS guidance | Owns exactly 19 changed files: the 18 skills and `PromptOsPanel.tsx` not present in #476 or #482. The exact reviewed #468 blobs are overlaid on current `main`. |
+
+PR #468 is closed without merge after a complete file-level partition of its original 34 files: 3 files are owned by #476, 12 by #482, and 19 by #484. #482 subsequently added three focused GitHub-route files. PR #446 is closed after the initial #481 port proved exact preservation; later #481 hardening does not erase that lineage. None of these closures merges the focused PRs, activates a provider adapter, authorizes external account creation, implements Night's runtime, or proves production Control Room behavior.
+
+The current exact heads of #481, #482, and #484 remain blocked by GitHub runner-startup failures: inspected Quality Gate jobs report `steps: null` and `logs_url: null`. They are not merge-ready until exact-head jobs actually execute and pass.
+
 ## Supporting launch trackers
 
 | Issue | Owned outcome | Relationship to canonical work |
@@ -64,6 +88,10 @@ All four issues remain open. This pass normalized authority rather than claiming
 | PR | Resolution | Preserved work |
 |---:|---|---|
 | #408 | Closed without merge as a stale mixed branch | Playwright work is superseded by merged PR #436; relationship-status UI remains open in #271 and must be rebuilt from current `main` |
+| #446 | Closed without merge as the stale-base room-engine branch | #481's initial current-main port preserved every reviewed file and narrow patch; later focused room-workflow and foreman/test hardening remains owned by #481 |
+| #465 | Closed without merge as a stale-base voice telemetry branch | Current-main PR #479 preserves all five files, the review-driven opaque-ID and payload-allowlist hardening, and stricter ledger criteria |
+| #466 | Closed without merge as a stale-base strategy branch | Current-main PR #478 preserves both corrected documentation files byte-for-byte, including the repository-integrated/not-proven-live distinction |
+| #468 | Closed without merge as a mixed Control Room/provider/skill branch | #476 owns coordinated AI/provider work, #482 owns the executable mission core, and #484 owns the 5W1H skill and Prompt OS residue; all original 34 changed files are accounted for |
 
 A closed unmerged PR is not implementation evidence. Any useful patch must be re-extracted onto current `main`, reviewed, and verified through the normal exact-head gates.
 
@@ -84,6 +112,8 @@ Before opening a new issue:
 4. Use descriptive titles for supporting security, privacy, accessibility, copy, and operations work.
 5. Close true duplicates with GitHub's `duplicate` reason and a comment pointing to every canonical owner needed to preserve scope.
 6. Close implementation issues as `completed` only when the required code, tests, and declared evidence gates exist.
-7. Close stale mixed PRs without merge; re-extract unique work into a focused branch from current `main`.
-8. Normalize overlapping open issues when each retains unique unfinished scope; do not force a closure merely to reduce issue count.
-9. Do not treat duplicate cleanup, title normalization, body clarification, or PR closure as product completion.
+7. Close stale mixed or stale-base PRs without merge only after confirming a current-main replacement preserves all unique reviewed work.
+8. For a decomposed mixed PR, account for every changed file and identify one focused owner before closure.
+9. Treat zero-step or no-log workflow failures as infrastructure evidence, never as a pass or code diagnosis.
+10. Normalize overlapping open issues when each retains unique unfinished scope; do not force a closure merely to reduce issue count.
+11. Do not treat duplicate cleanup, title normalization, body clarification, PR closure, or preview deployment as product completion.
