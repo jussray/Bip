@@ -12,6 +12,10 @@
  */
 
 import { getSupabase } from '@/utils/supabase';
+import {
+  classifyOnboardingZeroRow,
+  nextOnboardingWriteAttempt,
+} from './onboardingWriteRetry.mjs';
 
 export type OnboardingStage =
   | 'pre_signup'
@@ -163,13 +167,40 @@ export async function getOnboardingState(
   return data as OnboardingState | null;
 }
 
+function assertCompatibleRepairValue(
+  label: 'role' | 'age_bucket',
+  currentValue: string | null,
+  requestedValue: string | undefined,
+): void {
+  if (!requestedValue || currentValue === null || currentValue === 'unknown') return;
+  if (currentValue !== requestedValue) {
+    throw new Error(
+      `[Onboarding] ${label} conflict: current=${currentValue}, requested=${requestedValue}`,
+    );
+  }
+}
+
+function isPassedStageMetadataSatisfied(
+  current: OnboardingState,
+  payload: StageAdvancePayload,
+): boolean {
+  const role = inferredRole(payload);
+  const roleSatisfied = !role || role === 'unknown' || current.role === role;
+  const ageSatisfied = !payload.age_bucket || current.age_bucket === payload.age_bucket;
+  return roleSatisfied && ageSatisfied;
+}
+
 async function backfillPassedStageMetadata(
   userId: string,
   current: OnboardingState,
   payload: StageAdvancePayload,
+  attempt: number,
 ): Promise<OnboardingState> {
   const patch: Record<string, unknown> = {};
   const role = inferredRole(payload);
+
+  assertCompatibleRepairValue('role', current.role, role);
+  assertCompatibleRepairValue('age_bucket', current.age_bucket, payload.age_bucket);
 
   // Direct-main bugs may already have advanced a row while leaving role/age
   // unknown. Repair only missing metadata and never lower the current stage.
@@ -191,36 +222,36 @@ async function backfillPassedStageMetadata(
     .maybeSingle();
 
   if (error) throw new Error(`[Onboarding] Metadata repair failed: ${error.message}`);
-  if (!data) return advanceStage(userId, payload);
-  return data as OnboardingState;
+  if (data) return data as OnboardingState;
+
+  const refreshed = await getOnboardingState(userId);
+  if (!refreshed) {
+    throw new Error('[Onboarding] Metadata repair conflict: onboarding row disappeared.');
+  }
+  assertCompatibleRepairValue('role', refreshed.role, role);
+  assertCompatibleRepairValue('age_bucket', refreshed.age_bucket, payload.age_bucket);
+  if (isPassedStageMetadataSatisfied(refreshed, payload)) return refreshed;
+
+  const nextAttempt = nextOnboardingWriteAttempt(attempt);
+  return backfillPassedStageMetadata(userId, refreshed, payload, nextAttempt);
 }
 
-export async function advanceStage(
+async function advanceStageInternal(
   userId: string,
   payload: StageAdvancePayload,
-): Promise<OnboardingState>;
-export async function advanceStage(
-  userId: string,
-  stage: OnboardingStage,
-  extras?: StageAdvanceExtras,
-): Promise<OnboardingState>;
-export async function advanceStage(
-  userId: string,
-  payloadOrStage: StageAdvancePayload | OnboardingStage,
-  extras: StageAdvanceExtras = {},
+  attempt: number,
 ): Promise<OnboardingState> {
-  const payload = normalizeAdvancePayload(payloadOrStage, extras);
   const current = await getOnboardingState(userId);
 
   if (!current) {
     await initOnboardingState(userId);
-    return advanceStage(userId, payload);
+    return advanceStageInternal(userId, payload, attempt);
   }
 
   const nextIndex = stageIndex(payload.stage);
   const currentIndex = stageIndex(current.stage);
   if (nextIndex <= currentIndex) {
-    return backfillPassedStageMetadata(userId, current, payload);
+    return backfillPassedStageMetadata(userId, current, payload, attempt);
   }
 
   const extra: Record<string, unknown> = {};
@@ -282,12 +313,41 @@ export async function advanceStage(
     .maybeSingle();
 
   if (error) throw new Error(`[Onboarding] Stage advance failed: ${error.message}`);
+  if (data) return data as OnboardingState;
 
-  // Another forward transition won the race. Re-read and apply only if this
-  // transition is still ahead; this prevents stale fire-and-forget writes
-  // from moving the funnel backwards.
-  if (!data) return advanceStage(userId, payload);
-  return data as OnboardingState;
+  const refreshed = await getOnboardingState(userId);
+  if (!refreshed) {
+    throw new Error('[Onboarding] Stage write conflict: onboarding row disappeared.');
+  }
+
+  const zeroRowState = classifyOnboardingZeroRow(
+    stageIndex(refreshed.stage),
+    nextIndex,
+  );
+  if (zeroRowState === 'satisfied') {
+    return backfillPassedStageMetadata(userId, refreshed, payload, attempt);
+  }
+
+  const nextAttempt = nextOnboardingWriteAttempt(attempt);
+  return advanceStageInternal(userId, payload, nextAttempt);
+}
+
+export async function advanceStage(
+  userId: string,
+  payload: StageAdvancePayload,
+): Promise<OnboardingState>;
+export async function advanceStage(
+  userId: string,
+  stage: OnboardingStage,
+  extras?: StageAdvanceExtras,
+): Promise<OnboardingState>;
+export async function advanceStage(
+  userId: string,
+  payloadOrStage: StageAdvancePayload | OnboardingStage,
+  extras: StageAdvanceExtras = {},
+): Promise<OnboardingState> {
+  const payload = normalizeAdvancePayload(payloadOrStage, extras);
+  return advanceStageInternal(userId, payload, 0);
 }
 
 export async function markActivated(
