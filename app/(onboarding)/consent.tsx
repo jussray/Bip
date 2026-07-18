@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -21,8 +22,14 @@ import { useOnboarding } from '@/context/OnboardingContext';
 const PRIVACY_POLICY_URL = 'https://github.com/jussray/Sekret-Bip/blob/main/docs/PRIVACY_POLICY.md';
 const TERMS_URL = 'https://github.com/jussray/Sekret-Bip/blob/main/docs/TERMS_OF_SERVICE.md';
 
+type StoredAgeRange = '13-15' | '16-17' | '18-19';
+
 function normalizeSide(value: string | undefined): AccountSide {
   return value === 'parent' ? 'parent' : 'teen';
+}
+
+function isStoredAgeRange(value: string | null): value is StoredAgeRange {
+  return value === '13-15' || value === '16-17' || value === '18-19';
 }
 
 function CheckRow({
@@ -116,9 +123,21 @@ export default function ConsentScreen() {
         throw new Error('Your choices were not fully saved. Please try again.');
       }
 
-      // ── Onboarding state machine ──────────────────────────────────
+      // Consent is the first durable post-auth milestone. Replay any local
+      // pre-signup role/age choices only after the permanent account exists.
       await advance('consent_complete');
-      // ─────────────────────────────────────────────────────────────
+
+      if (side === 'teen') {
+        const storedAge = await AsyncStorage.getItem('bip_onboarding_age');
+        if (!isStoredAgeRange(storedAge)) {
+          router.replace('/(onboarding)/age');
+          return;
+        }
+        await advance('age_verified', { age_bucket: storedAge });
+        await advance('role_selected', { role: 'teen' });
+      } else {
+        await advance('role_selected', { role: 'parent' });
+      }
 
       const bootstrap = await fetchPostAuthBootstrap(side);
       router.replace(bootstrap.nextRoute as never);
