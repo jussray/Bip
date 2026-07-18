@@ -269,12 +269,13 @@ export async function sendMessage(
     ? localFallback(personalityId, text, learnedRelationship)
     : getSekretFallback(personalityId, text);
 
-  // The teen-companion guard rejects em/en dashes because they are an AI tell
-  // for those voices. Parent Coach intentionally uses that punctuation in its
-  // canonical examples, so normalize only punctuation for guard evaluation.
-  // Any other blocked language still produces a parent-safe fallback.
+  // Teen-companion voices reject em/en dashes as an AI tell. Parent Coach may
+  // use those marks naturally, so remove dash separators only for evaluation.
+  // Collapsing them to whitespace keeps blocked word sequences contiguous;
+  // inserting a hyphen here could let a phrase such as “I'm here to support
+  // you” evade the shared guard.
   const guardInput = isParentCoach
-    ? rawReply.replace(/[—–]/g, '-').replace(/ -- /g, ' - ')
+    ? rawReply.replace(/\s*(?:—|–|--)\s*/g, ' ').replace(/\s+/g, ' ').trim()
     : rawReply;
   const guardedCandidate = keepSekretReply(guardInput, sekretFallback);
   const guardBlocked = guardedCandidate !== guardInput.trim();
