@@ -94,17 +94,22 @@ insert into controlled_alpha_relationship_results values
     'Only authenticated app callers receive Bridge creation EXECUTE authority'
   ),
   (
-    'bridge_create_rpc_enforces_owned_alpha_sources',
+    'bridge_create_rpc_enforces_owned_alpha_sources_and_stable_intent',
     coalesce((
       select
         pg_get_functiondef(p.oid) like '%v_source_kind not in (''journal'', ''mood'')%'
         and pg_get_functiondef(p.oid) like '%entry.user_id = v_teen_user_id%'
         and pg_get_functiondef(p.oid) like '%mood.user_id = v_teen_user_id%'
         and pg_get_functiondef(p.oid) like '%active_parent_link_required%'
+        and pg_get_functiondef(p.oid) like '%sources_must_be_array%'
+        and pg_get_functiondef(p.oid) like '%v_source_id := (v_source_id::bigint)::text%'
+        and pg_get_functiondef(p.oid) like '%duplicate_source%'
+        and pg_get_functiondef(p.oid) like '%idempotency_conflict%'
+        and pg_get_functiondef(p.oid) like '%v_existing_sources <> v_requested_sources%'
       from pg_proc p
       where p.oid = to_regprocedure('public.create_bridge_share_request(uuid,text,jsonb,timestamptz)')
     ), false),
-    'Bridge RPC accepts only owned Journal/Mood sources through an active parent link'
+    'Bridge RPC accepts one unique canonical owned Journal/Mood set through an active parent link and rejects conflicting idempotency reuse'
   ),
   (
     'crew_direct_share_mutations_absent',
@@ -130,8 +135,13 @@ insert into controlled_alpha_relationship_results values
         and trigger_row.tgenabled <> 'D'
         and trigger_row.tgfoid = to_regprocedure('private.enforce_crew_check_in_share_owner()')
     )
-      and to_regprocedure('public.enforce_crew_check_in_share_owner()') is null,
-    'An enabled private trigger rejects share/check-in owner mismatches'
+      and to_regprocedure('public.enforce_crew_check_in_share_owner()') is null
+      and not coalesce(has_function_privilege(
+        'authenticated',
+        to_regprocedure('private.enforce_crew_check_in_share_owner()'),
+        'EXECUTE'
+      ), false),
+    'An enabled private trigger rejects share/check-in owner mismatches and is not directly executable by app callers'
   ),
   (
     'crew_revoke_rpc_is_scoped_and_explicit',
@@ -165,8 +175,18 @@ insert into controlled_alpha_relationship_results values
       where p.oid = to_regprocedure('private.crew_check_in_access_is_active(uuid,uuid,uuid)')
         and n.nspname = 'private'
     ), false)
-      and to_regprocedure('public.crew_check_in_access_is_active(uuid,uuid,uuid)') is null,
-    'Crew recipient authorization uses a private security-definer helper rather than an exposed public RPC'
+      and to_regprocedure('public.crew_check_in_access_is_active(uuid,uuid,uuid)') is null
+      and coalesce(has_function_privilege(
+        'authenticated',
+        to_regprocedure('private.crew_check_in_access_is_active(uuid,uuid,uuid)'),
+        'EXECUTE'
+      ), false)
+      and not coalesce(has_function_privilege(
+        'anon',
+        to_regprocedure('private.crew_check_in_access_is_active(uuid,uuid,uuid)'),
+        'EXECUTE'
+      ), false),
+    'Crew recipient authorization uses an authenticated-only private security-definer helper rather than an exposed public RPC'
   ),
   (
     'crew_policy_helper_checks_full_relationship_contract',
