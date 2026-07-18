@@ -6,6 +6,8 @@ const read = (file) => fs.readFileSync(new URL(`../${file}`, import.meta.url), '
 
 const scanner = read('scripts/control-room-ingest-github-failures.mjs');
 const docs = read('docs/CONTROL_ROOM_GITHUB_FAILURES.md');
+const ci = read('.github/workflows/ci.yml');
+const watcher = read('.github/workflows/control-room-github-failures.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('GitHub failures route through Founder Control Room first', () => {
@@ -25,7 +27,7 @@ test('runner-startup failures are not mislabeled as code regressions', () => {
   assert.match(docs, /This is infrastructure evidence\. It is not proof of a code regression/);
 });
 
-test('GitHub failure reports retain exact PR and head evidence', () => {
+test('GitHub failure reports retain exact PR, branch, head, workflow, and run evidence', () => {
   for (const field of [
     'pr_number',
     'pr_url',
@@ -34,13 +36,39 @@ test('GitHub failure reports retain exact PR and head evidence', () => {
     'workflow_name',
     'run_id',
     'run_url',
+    'event',
     'failure_class',
     'jobs',
   ]) {
     assert.match(scanner, new RegExp(field));
   }
   assert.match(scanner, /github-failures-latest\.json/);
-  assert.match(scanner, /github_actions:\$\{item\.repository\}:pr-\$\{item\.pr_number\}/);
+  assert.match(scanner, /scopeKey\(item\)/);
+  assert.match(scanner, /requested_run_id/);
+  assert.match(scanner, /main_push_failure_count/);
+});
+
+test('scanner supports exact current runs and completed main push failures', () => {
+  assert.match(scanner, /CONTROL_ROOM_GITHUB_RUN_ID/);
+  assert.match(scanner, /\/actions\/runs\/\$\{runId\}/);
+  assert.match(scanner, /event=push&branch=/);
+  assert.match(scanner, /collectMainPushFailures/);
+  assert.match(scanner, /run\.event === 'push'/);
+  assert.doesNotMatch(scanner, /return failures;\s*}\s*\n\s*const repo =/);
+});
+
+test('CI and major workflow failures invoke the scanner automatically', () => {
+  assert.match(ci, /route-failure:/);
+  assert.match(ci, /needs: \[lint, type-check, test, build, audit\]/);
+  assert.match(ci, /CONTROL_ROOM_GITHUB_RUN_ID: \$\{\{ github\.run_id \}\}/);
+  assert.match(ci, /node scripts\/control-room-ingest-github-failures\.mjs/);
+  assert.match(ci, /reports\/control-room\/github-failures-latest\.json/);
+  assert.match(watcher, /workflow_run:/);
+  assert.match(watcher, /Quality Gate/);
+  assert.match(watcher, /Type Check/);
+  assert.match(watcher, /Implementation Evidence/);
+  assert.match(watcher, /Playwright Smoke and Guardrails/);
+  assert.match(watcher, /github\.event\.workflow_run\.id/);
 });
 
 test('credentials stay server-side and out of issue metadata', () => {
