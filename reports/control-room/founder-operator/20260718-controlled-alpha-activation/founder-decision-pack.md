@@ -2,7 +2,7 @@
 
 ## Recommended posture
 
-**Continue isolated verification. Hold live migration application and alpha distribution.**
+**Continue verification preparation. Hold live migration application and alpha distribution.**
 
 ## Evidence available
 
@@ -18,20 +18,24 @@
 
 ## Decision 1: isolated database validation
 
-A Supabase development branch currently costs **$0.01344 per hour**. Retrieving this price created no branch and incurred no charge.
+The founder approved creating an isolated Supabase development branch at **$0.01344 per hour**.
 
-Recommended choice: create an isolated branch only after explicit cost confirmation, then:
+Supabase rejected the branch creation request with `PaymentRequiredException` because development branching is available only on the Pro plan or above.
 
-1. apply the three ordered relationship migrations;
-2. run catalog probe v2 expecting 12 of 12;
-3. run security advisors;
-4. run synthetic denial checks;
-5. retain rollback evidence;
-6. remove or retain the branch according to the approved cost plan.
+Verified result:
 
-Alternative: wait for a complete local or hosted checkout and use a local Supabase reset. This avoids branch cost but remains blocked by repository networking and hosted-runner startup.
+- no development branch was created;
+- no hourly branch charge started;
+- the only listed branch remains the existing `main` branch;
+- no production schema or data changed.
 
-Direct live application is not recommended before one of those validation paths succeeds.
+### Safe alternatives
+
+1. **Wait for a complete local or hosted checkout** and run a local Supabase reset when repository networking or GitHub runners recover. This adds no Supabase branch cost.
+2. **Upgrade the Supabase organization to Pro**, then request a fresh branch-cost confirmation before another branch creation attempt. A plan upgrade is a separate billing decision and is not approved by the earlier branch-cost confirmation.
+3. **Create a separate validation project** only after obtaining and approving its separate monthly price. This is not currently approved.
+
+Direct live migration application remains not recommended because neither isolated branch validation nor a complete local migration reset has succeeded.
 
 ## Decision 2: authentication protection
 
@@ -53,13 +57,15 @@ Retain only narrowly scoped app RPCs that:
 
 ## Hard holds
 
-Do not apply live migrations, change authentication settings, deploy, use secrets, consume paid build capacity, distribute builds, create controlled accounts, merge, or open the alpha without the corresponding founder approval and retained evidence.
+Do not apply live migrations, change authentication settings, upgrade plans, create another paid environment, deploy, use secrets, consume paid build capacity, distribute builds, create controlled accounts, merge, or open the alpha without the corresponding founder approval and retained evidence.
 
-## Recommended founder record
+## Current founder record
 
-- Isolated database branch: **approve after cost confirmation**
+- Isolated database branch at $0.01344/hour: **approved, attempted, blocked by current plan**
+- Supabase plan upgrade: **not approved**
+- Separate validation project: **not approved**
 - Compromised-password protection: **enable before invitations**
-- Live migration application: **hold until isolated proof passes**
+- Live migration application: **hold until isolated or local proof passes**
 - Controlled-alpha distribution: **hold**
 
-This pack records recommendations only. It executes nothing.
+This pack records decisions and results only. It does not upgrade a plan, create a project, apply a migration, change Auth, deploy, merge, or distribute anything.
