@@ -1,0 +1,54 @@
+{
+  "features": [
+    {
+      "id": "controlled-alpha-relationship-boundaries",
+      "name": "Controlled-alpha Bridge and Crew authorization boundaries",
+      "status": "integrated",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/494",
+      "acceptanceCriteria": [
+        "Bridge and Crew are available to founder, internal, and beta audiences while public production remains closed.",
+        "Bridge request creation is RPC-only, accepts only teen-owned Journal and Mood sources, and never grants a parent raw source access.",
+        "Crew share creation and revocation are RPC-only, every share owner matches the referenced check-in owner, and recipient access requires an active accepted unblocked relationship.",
+        "Revoked, blocked, removed, unrelated, anonymous, and cross-user actors are denied through rollback-contained live probes before controlled-alpha distribution.",
+        "Production routing and production Bridge rollout remain fail-closed until a separate founder decision."
+      ],
+      "contractPaths": [
+        "supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql",
+        "supabase/migrations/20260718035000_deny_blocked_crew_access.sql",
+        "reports/control-room/founder-operator/20260718-controlled-alpha-activation/system-map.md",
+        "reports/control-room/founder-operator/20260718-controlled-alpha-activation/red-team-register.md"
+      ],
+      "runtimePaths": [
+        "src/constants/relationshipFeatureFlags.ts",
+        "src/services/bridgeSummaryService.ts",
+        "src/services/crewAccountabilityServiceV2.ts",
+        "worker/bridge-summary.ts",
+        "worker/bridge-summary-store.ts",
+        "wrangler.alpha.toml",
+        "eas.json"
+      ],
+      "testPaths": [
+        "test/controlled-alpha-activation.test.mjs",
+        "test/controlled-alpha-founder-room-plan.test.mjs",
+        "test/controlled-alpha-service-boundaries.test.mjs",
+        "test/founder-preview-unlock.test.mjs"
+      ],
+      "telemetryPaths": [
+        "worker/observed-index.ts",
+        "worker/telemetry.ts",
+        "reports/control-room/founder-operator/20260718-controlled-alpha-activation/verification-report.json"
+      ],
+      "rollout": {
+        "state": "controlled",
+        "controlPath": "src/constants/relationshipFeatureFlags.ts",
+        "controlKey": "beta audience plus disabled Worker rollout until a founder-approved exact-account allowlist is provisioned"
+      },
+      "verification": {
+        "state": "blocked",
+        "evidence": "https://github.com/jussray/Sekret-Bip/pull/495",
+        "blocker": "Complete-checkout TypeScript, unit, migration, Wrangler bundle, and browser checks must execute; the reviewed migrations must be applied through an approved path; live RLS, grants, RPC signatures, source ownership, blocked/revoked denial, deletion cleanup, two-account journeys, and device evidence remain unproven. GitHub-hosted jobs currently fail before step one and do not count as execution evidence."
+      },
+      "rollback": "Leave PR #495 unmerged or revert its focused commits. Before any live rollout, keep both feature flags disabled or beta-scoped and keep both Worker configurations disabled. After an approved migration application, use a reviewed forward rollback migration that restores prior functions and policies without deleting user content; revoke the alpha account allowlist and preview distribution immediately if any privacy stop condition occurs."
+    }
+  ]
+}
