@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationPath = 'supabase/migrations/20260717034535_create_voice_runtime_foundation.sql';
+const errorCodeMigrationPath = 'supabase/migrations/20260718034600_restrict_voice_error_code_vocabulary.sql';
 
 test('voice runtime migration creates the four telemetry tables with RLS', async () => {
   const migration = await read(migrationPath);
@@ -14,8 +15,8 @@ test('voice runtime migration creates the four telemetry tables with RLS', async
     'voice_events',
     'voice_latency_metrics',
   ]) {
-    assert.match(migration, new RegExp(`create table if not exists public\\.${table}`));
-    assert.match(migration, new RegExp(`alter table public\\.${table} enable row level security`));
+    assert.match(migration, new RegExp(`create table if not exists public\.${table}`));
+    assert.match(migration, new RegExp(`alter table public\.${table} enable row level security`));
   }
 
   assert.match(migration, /voice_sessions_user_started_idx/);
@@ -37,11 +38,11 @@ test('voice telemetry is server-written and owner-readable with top-level owner 
   ]) {
     assert.match(
       migration,
-      new RegExp(`revoke all on table public\\.${table} from public, anon, authenticated`),
+      new RegExp(`revoke all on table public\.${table} from public, anon, authenticated`),
     );
     assert.match(
       migration,
-      new RegExp(`grant select, insert, update, delete on table public\\.${table} to service_role`),
+      new RegExp(`grant select, insert, update, delete on table public\.${table} to service_role`),
     );
   }
 
@@ -73,7 +74,10 @@ test('client session correlation is an opaque UUID rather than free-form text', 
 });
 
 test('voice event payloads use a strict primitive metadata allowlist', async () => {
-  const migration = await read(migrationPath);
+  const [migration, errorCodeMigration] = await Promise.all([
+    read(migrationPath),
+    read(errorCodeMigrationPath),
+  ]);
 
   assert.doesNotMatch(migration, /^\s*transcript\s+text\b/gm);
   assert.doesNotMatch(migration, /^\s*audio_(url|blob|bytes|base64)\s+/gm);
@@ -107,6 +111,31 @@ test('voice event payloads use a strict primitive metadata allowlist', async () 
     assert.match(migration, new RegExp(`when '${allowedKey}'`));
   }
 
+  assert.match(errorCodeMigration, /voice_events_error_code_vocabulary/);
+  assert.match(errorCodeMigration, /not \(payload \? 'error_code'\)/);
+  assert.match(errorCodeMigration, /provider or client errors to this finite vocabulary before insertion/i);
+  for (const approvedCode of [
+    'AUTH_REQUIRED',
+    'AUTH_EXPIRED',
+    'PERMISSION_DENIED',
+    'DEVICE_UNAVAILABLE',
+    'NETWORK_OFFLINE',
+    'NETWORK_TIMEOUT',
+    'RATE_LIMITED',
+    'PROVIDER_UNAVAILABLE',
+    'TRANSCRIPTION_FAILED',
+    'REPLY_FAILED',
+    'SYNTHESIS_FAILED',
+    'PLAYBACK_FAILED',
+    'CANCELLED',
+    'INVALID_PAYLOAD',
+    'INTERNAL_ERROR',
+    'UNKNOWN',
+  ]) {
+    assert.match(errorCodeMigration, new RegExp(`'${approvedCode}'`));
+  }
+  assert.doesNotMatch(errorCodeMigration, /I_FEEL_UNSAFE/);
+
   assert.doesNotMatch(migration, /storage\.buckets/);
   assert.doesNotMatch(migration, /storage\.objects/);
 });
@@ -122,6 +151,7 @@ test('voice foundation documentation, ledger, and rollback probe preserve the ph
   assert.match(docs, /No voice bucket is created in Phase 1/);
   assert.match(docs, /does not add a WebSocket proxy/);
   assert.match(docs, /raw audio and transcripts are excluded/i);
+  assert.match(docs, /finite internal vocabulary/i);
   assert.match(docs, /separate founder approval/);
 
   assert.equal(extension.id, 'voice-runtime-foundation');
