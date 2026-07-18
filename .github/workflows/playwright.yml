@@ -10,16 +10,21 @@ on:
       - 'src/**'
       - 'worker/**'
       - 'e2e/**'
+      - 'config/leonardo/night-asset-prompt-pack.json'
+      - 'config/room-production.manifest.json'
+      - 'scripts/room-production-foreman.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'test/cloudflare-native-deploy.test.mjs'
       - 'test/release-metadata.test.mjs'
+      - 'test/room-production-contract.test.mjs'
       - 'docs/VISION.md'
       - 'docs/GUARDRAILS.md'
       - 'DEPLOYMENT.md'
       - 'wrangler.toml'
       - 'playwright.config.ts'
       - 'playwright.production.config.ts'
+      - 'playwright.room.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/ci.yml'
@@ -33,16 +38,21 @@ on:
       - 'src/**'
       - 'worker/**'
       - 'e2e/**'
+      - 'config/leonardo/night-asset-prompt-pack.json'
+      - 'config/room-production.manifest.json'
+      - 'scripts/room-production-foreman.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'test/cloudflare-native-deploy.test.mjs'
       - 'test/release-metadata.test.mjs'
+      - 'test/room-production-contract.test.mjs'
       - 'docs/VISION.md'
       - 'docs/GUARDRAILS.md'
       - 'DEPLOYMENT.md'
       - 'wrangler.toml'
       - 'playwright.config.ts'
       - 'playwright.production.config.ts'
+      - 'playwright.room.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/ci.yml'
@@ -59,7 +69,7 @@ env:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out current workflow head
@@ -77,11 +87,17 @@ jobs:
       - name: Run exact-release unit tests
         run: node --test test/cloudflare-native-deploy.test.mjs test/release-metadata.test.mjs
 
+      - name: Run room production contract tests
+        run: node --test test/room-production-contract.test.mjs
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright smoke and guardrail tests
         run: npx playwright test
+
+      - name: Run founder-preview room contract tests
+        run: npm run test:e2e:rooms
 
       - name: Upload Playwright report
         if: failure()
