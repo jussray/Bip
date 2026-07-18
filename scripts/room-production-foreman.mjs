@@ -86,12 +86,20 @@ function buildQueue(manifest) {
   return queue;
 }
 
+function fileToken(value) {
+  return String(value)
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/[_\s]+/g, '-')
+    .toLowerCase();
+}
+
 function runtimeOutputFor(item) {
   if (item.kind === 'character-pose') {
-    return path.join('assets', 'images', 'companions', item.characterId, `${item.characterId}-${item.pose}.png`);
+    const pose = fileToken(item.pose);
+    return path.join('assets', 'images', 'companions', item.characterId, `${item.characterId}-${pose}.png`);
   }
 
-  const phase = item.phase === 'deepNight' ? 'deep-night' : item.phase;
+  const phase = fileToken(item.phase);
   return path.join('assets', 'images', 'resized-bg', `bg-${item.roomId}-room-${phase}.jpg`);
 }
 
