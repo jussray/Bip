@@ -2,7 +2,7 @@
 
 **Status:** proposal/reference, not executable or constitutional repository authority  
 **Owner gate:** Founder Control Room issue #509  
-**Observed main source:** `bip-os.md` added at `368563a4bc31b63448e1f92bd646e220bca614d6`
+**Observed copies:** root `bip-os.md` added at `368563a4bc31b63448e1f92bd646e220bca614d6`; `control-room/bip-os.md` added at `b6cbb4f8c6e7b5153bbc7106b31d0db4aa903951`
 
 ## Authority order
 
@@ -13,13 +13,13 @@ Use current inspected truth in this order:
 3. active repository paths, imports, ordered migrations, deployed configuration, and runtime observation;
 4. exact-head tests and logs that actually execute;
 5. current sprint, launch roadmap, privacy, consent, identity, and safety records;
-6. `bip-os.md` only as a source of proposals that may be promoted through a focused reviewed change.
+6. `bip-os.md` and `control-room/bip-os.md` only as sources of proposals that may be promoted through a focused reviewed change.
 
-`bip-os.md` cannot authorize merge, deployment, migration, publishing, credentials, paid capacity, external accounts, parent visibility, data retention, or deletion.
+Neither proposal copy can authorize merge, deployment, migration, publishing, credentials, paid capacity, external accounts, parent visibility, data retention, or deletion. Placement under `control-room/` does not convert source material into Founder Control Room evidence or operating authority.
 
 ## Current repository map
 
-The active repository is not the proposed `apps/mobile` / `packages/*` monorepo shown in `bip-os.md`.
+The active repository is not the proposed `apps/mobile` / `packages/*` monorepo shown in the proposal copies.
 
 | Concern | Current repository truth |
 |---|---|
@@ -36,7 +36,7 @@ A future monorepo migration requires a dedicated architecture decision, path-by-
 
 ## Parent Bridge correction
 
-The proposal's checklist item requiring a parent to see everything exposed to a teen is rejected.
+The proposal checklist item requiring a parent to see everything exposed to a teen is rejected.
 
 Current boundary:
 
@@ -49,7 +49,7 @@ Current boundary:
 
 ## CI/CD examples
 
-The YAML blocks in `bip-os.md` are illustrative sketches only.
+The YAML blocks in both proposal copies are illustrative sketches only.
 
 They do not prove that:
 
@@ -74,6 +74,7 @@ Any real workflow must use the current repository paths, least-privilege secrets
 | 30-day plan | Backlog proposal, not sprint or roadmap |
 | Production build/deploy/migrate chain | Prohibited without separate founder approval and verified environment gates |
 | Complete parent visibility | Rejected as incompatible with teen privacy and current Bridge authority |
+| Root or Control Room file location | Does not elevate proposal status |
 
 ## Promotion gate
 
@@ -87,4 +88,4 @@ Before any portion becomes authoritative:
 6. retain rollback and Founder Control Room evidence;
 7. obtain the required founder decision for merge and any later external action.
 
-Until then, preserve `bip-os.md` as source material and do not execute it as instructions.
+Until then, preserve both proposal copies as source material and do not execute either as instructions.
