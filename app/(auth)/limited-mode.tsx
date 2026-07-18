@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -18,8 +18,17 @@ const LOCKED = [
 ] as const;
 
 export default function LimitedModeScreen() {
-  const { verificationState } = useVerificationContext();
+  const { verificationState, isVerificationLoading } = useVerificationContext();
   const waiting = verificationState === 'PENDING_PARENT' || verificationState === 'PENDING_TRUSTED_ADULT';
+
+  useEffect(() => {
+    if (
+      !isVerificationLoading &&
+      (verificationState === 'UNVERIFIED' || verificationState === 'LIMITED_MODE')
+    ) {
+      router.replace('/(auth)/parent-link-verify');
+    }
+  }, [isVerificationLoading, verificationState]);
 
   return (
     <View style={styles.root}>
@@ -61,7 +70,7 @@ export default function LimitedModeScreen() {
           onPress={() => router.push('/(auth)/parent-link-verify')}
           activeOpacity={0.86}
         >
-          <Text style={styles.primaryText}>{waiting ? 'Check approval status' : 'Set up parent or trusted adult'}</Text>
+          <Text style={styles.primaryText}>{waiting ? 'View code or check approval' : 'Set up parent or trusted adult'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondary} onPress={() => router.replace('/(teen)/room')}>

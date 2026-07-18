@@ -22,27 +22,43 @@ export default function ParentLinkVerifyScreen() {
 
   useEffect(() => {
     let mounted = true;
-    void fetchPendingInviteCode().then(existingCode => {
+
+    void (async () => {
+      const existingCode = await fetchPendingInviteCode();
       if (!mounted) return;
-      setCode(existingCode);
-      setCheckingExisting(false);
-    });
+
+      if (existingCode) {
+        setCode(existingCode);
+        setCheckingExisting(false);
+        return;
+      }
+
+      const result = await generateInviteCodeResult();
+      if (!mounted) return;
+
+      if (result.ok) {
+        setCode(result.value);
+        await refreshVerification();
+      } else {
+        setError(result.message);
+      }
+      if (mounted) setCheckingExisting(false);
+    })();
+
     return () => { mounted = false; };
-  }, []);
+  }, [refreshVerification]);
 
   async function createCode() {
     setLoading(true);
     setError('');
     const result = await generateInviteCodeResult();
-    await refreshVerification();
-    setLoading(false);
-
-    if (!result.ok) {
+    if (result.ok) {
+      setCode(result.value);
+      await refreshVerification();
+    } else {
       setError(result.message);
-      return;
     }
-
-    setCode(result.value);
+    setLoading(false);
   }
 
   async function checkStatus() {
@@ -70,7 +86,7 @@ export default function ParentLinkVerifyScreen() {
         </Text>
 
         <View style={styles.codeCard}>
-          <Text style={styles.codeLabel}>{code ? 'YOUR PRIVATE CODE' : 'READY WHEN YOU ARE'}</Text>
+          <Text style={styles.codeLabel}>{code ? 'YOUR PRIVATE CODE' : 'CREATING YOUR PRIVATE CODE'}</Text>
           {checkingExisting ? (
             <ActivityIndicator color="#c4b5fd" style={styles.codeLoader} />
           ) : (
@@ -79,13 +95,13 @@ export default function ParentLinkVerifyScreen() {
           <Text style={styles.codeNote}>Codes expire after 48 hours. Only share yours with the adult you trust.</Text>
         </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error} accessibilityRole="alert">{error}</Text> : null}
 
         <TouchableOpacity style={styles.primary} onPress={createCode} disabled={loading || checkingExisting}>
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.primaryText}>{code ? 'Create a new code' : 'Create invite code'}</Text>
+            <Text style={styles.primaryText}>{code ? 'Create a new code' : 'Try creating code again'}</Text>
           )}
         </TouchableOpacity>
 
@@ -95,7 +111,7 @@ export default function ParentLinkVerifyScreen() {
 
         <View style={styles.parentHint}>
           <Text style={styles.parentHintTitle}>For your parent or trusted adult</Text>
-          <Text style={styles.parentHintBody}>They should open Parent Setup, choose “Continue to private code,” and enter this exact eight-character code.</Text>
+          <Text style={styles.parentHintBody}>They should finish Parent Setup, continue to the private-code step, and enter this exact eight-character code.</Text>
         </View>
 
         <TouchableOpacity style={styles.link} onPress={() => router.replace('/(auth)/limited-mode')}>
