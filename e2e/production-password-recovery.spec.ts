@@ -1,8 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const testEmail = 'password-recovery-check@example.invalid';
 
-async function fillRecoveryForm(page: Parameters<typeof test>[1] extends (args: infer A) => unknown ? A extends { page: infer P } ? P : never : never) {
+async function fillRecoveryForm(page: Page) {
   await page.goto('/forgot-password');
   await page.getByLabel('Account email').fill(testEmail);
   await page.getByRole('button', { name: 'Send password reset email' }).click();
