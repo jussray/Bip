@@ -19,6 +19,8 @@ import {
 } from '@/features/auth/passwordRecovery';
 import { getSupabase } from '@/utils/supabase';
 
+type DeliveryState = 'confirmed' | 'delayed' | null;
+
 function recoveryRedirectUrl(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     return buildRecoveryRedirectUrl({ webOrigin: window.location.origin });
@@ -26,21 +28,57 @@ function recoveryRedirectUrl(): string {
   return buildRecoveryRedirectUrl({ nativeUrl: Linking.createURL(PASSWORD_RECOVERY_PATH) });
 }
 
+function authErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message.toLowerCase();
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String((error as { message?: unknown }).message ?? '').toLowerCase();
+  }
+  return typeof error === 'string' ? error.toLowerCase() : '';
+}
+
+function authErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object' || !('status' in error)) return null;
+  const status = Number((error as { status?: unknown }).status);
+  return Number.isFinite(status) ? status : null;
+}
+
+function hasAuthServerResponse(error: unknown): boolean {
+  const status = authErrorStatus(error);
+  return status !== null && status >= 400;
+}
+
+function isDeliveryTimeout(error: unknown): boolean {
+  const message = authErrorMessage(error);
+  const status = authErrorStatus(error);
+  return (
+    status === 504 ||
+    message.includes('request_timeout') ||
+    message.includes('request timeout') ||
+    message.includes('request timed out') ||
+    message.includes('processing this request timed out') ||
+    message.includes('context deadline exceeded') ||
+    message.includes('gateway timeout')
+  );
+}
+
 function readableAuthError(error: unknown): string {
-  const message = error instanceof Error ? error.message.toLowerCase() : '';
-  if (error instanceof TypeError && message.includes('failed to fetch')) {
+  const message = authErrorMessage(error);
+  if (
+    !hasAuthServerResponse(error) &&
+    (message.includes('failed to fetch') || isDeliveryTimeout(error))
+  ) {
     return 'Could not reach the account server. Check your connection and try again.';
   }
   if (message.includes('rate') || message.includes('too many')) {
     return 'Too many reset requests. Wait a little, then try again.';
   }
-  return 'Could not send a reset email right now. Please try again.';
+  return 'Could not request a reset email right now. Please try again.';
 }
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [sent, setSent] = useState(false);
+  const [deliveryState, setDeliveryState] = useState<DeliveryState>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleResetRequest() {
@@ -64,25 +102,36 @@ export default function ForgotPasswordScreen() {
         { redirectTo: recoveryRedirectUrl() },
       );
       if (resetError) {
+        if (isDeliveryTimeout(resetError) && hasAuthServerResponse(resetError)) {
+          setDeliveryState('delayed');
+          return;
+        }
         setError(readableAuthError(resetError));
         return;
       }
-      setSent(true);
+      setDeliveryState('confirmed');
     } catch (caught) {
-      setError(readableAuthError(caught));
+      if (isDeliveryTimeout(caught) && hasAuthServerResponse(caught)) {
+        setDeliveryState('delayed');
+      } else {
+        setError(readableAuthError(caught));
+      }
     } finally {
       setLoading(false);
     }
   }
 
-  if (sent) {
+  if (deliveryState) {
+    const delayed = deliveryState === 'delayed';
     return (
       <View style={styles.root}>
         <View style={styles.inner}>
           <Text style={styles.logo}>📧</Text>
-          <Text style={styles.title}>Check your email</Text>
+          <Text style={styles.title}>{delayed ? 'Request received' : 'Check your email'}</Text>
           <Text style={styles.body}>
-            If an account matches that email, a secure reset link is on the way. Check spam or junk too.
+            {delayed
+              ? 'The account server received the request, but email delivery is taking longer than expected. If an account matches that email, check your inbox and spam. If nothing arrives, wait a few minutes before trying again.'
+              : 'If an account matches that email, a secure reset link is on the way. Check spam or junk too.'}
           </Text>
           <TouchableOpacity
             style={styles.btn}
@@ -93,7 +142,7 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.btnText}>Back to Sign In</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => { setSent(false); setError(''); }}
+            onPress={() => { setDeliveryState(null); setError(''); }}
             style={styles.link}
             accessibilityRole="link"
             accessibilityLabel="Try another email or resend"
@@ -114,7 +163,7 @@ export default function ForgotPasswordScreen() {
         <Text style={styles.logo}>Se&#39;kret Bip 💜</Text>
         <Text style={styles.title}>Forgot your password?</Text>
         <Text style={styles.body}>
-          Enter the email connected to your account. We’ll send a secure link to choose a new password.
+          Enter the email connected to your account. We’ll request a secure link to choose a new password.
         </Text>
 
         <TextInput
