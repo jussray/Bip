@@ -1,0 +1,38 @@
+{
+  "_comment": "Onboarding observable signals for founder-control-room OODA Observe layer.",
+  "_version": "1.0.0",
+  "_updated": "2026-07-18",
+  "repo": "Sekret-Bip",
+  "feature": "onboarding",
+  "supabase_table": "user_onboarding_state",
+  "activation_milestone": {
+    "teen": ["first_mood_log", "first_journal_entry", "first_post"],
+    "parent": ["first_bridge_message", "first_checkin_viewed"]
+  },
+  "funnel_stages": [
+    "pre_signup",
+    "signed_up",
+    "consent_complete",
+    "age_verified",
+    "role_selected",
+    "name_set",
+    "identity_set",
+    "reflection_complete",
+    "parent_link_sent",
+    "parent_setup_done",
+    "activated",
+    "steady_state"
+  ],
+  "kpi_queries": {
+    "activation_rate": "SELECT COUNT(*) FILTER (WHERE stage = 'activated') * 100.0 / COUNT(*) AS rate FROM user_onboarding_state",
+    "stage_funnel": "SELECT stage, COUNT(*) as users FROM user_onboarding_state GROUP BY stage",
+    "avg_time_to_activate_by_role": "SELECT role, AVG(identity_to_activated_secs) FROM user_onboarding_state WHERE activated_at IS NOT NULL GROUP BY role",
+    "activation_actions_breakdown": "SELECT activation_action, COUNT(*) FROM user_onboarding_state WHERE activated_at IS NOT NULL GROUP BY activation_action"
+  },
+  "ooda_mapping": {
+    "observe": "funnel timing columns + stage distribution",
+    "orient": "role + age_bucket + referral_source segmentation",
+    "decide": "nextScreenForStage() in services/onboarding.ts",
+    "act": "advanceStage() + OnboardingGuard redirect"
+  }
+}
