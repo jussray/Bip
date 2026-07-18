@@ -11,7 +11,6 @@ const workspace = fs.readFileSync('src/screens/DevControlRoomWorkspace.tsx', 'ut
 const localServer = fs.readFileSync('scripts/control-room-server.mjs', 'utf8');
 const localDev = fs.readFileSync('scripts/control-room-dev.mjs', 'utf8');
 const localClient = fs.readFileSync('src/services/controlRoomLocalAgent.ts', 'utf8');
-const frontendVerifier = fs.readFileSync('scripts/control-room-verify-frontend.mjs', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
 
@@ -72,6 +71,7 @@ test('Control Room UI executes only authenticated loopback allowlisted missions'
   assert.match(localServer, /const host = '127\.0\.0\.1'/);
   assert.match(localServer, /timingSafeEqual/);
   assert.match(localServer, /CONTROL_ROOM_LOCAL_TOKEN/);
+  assert.match(localServer, /CONTROL_ROOM_TERMINATION_GRACE_MS/);
   assert.match(localServer, /new Set\(\['continue-yesterday', 'verify-local', 'verify-frontend', 'recover-system'\]\)/);
   assert.doesNotMatch(localServer, /allowedMissions.*ship-release/s);
   assert.doesNotMatch(localServer, /allowedMissions.*launch-bip/s);
@@ -83,18 +83,30 @@ test('Control Room UI executes only authenticated loopback allowlisted missions'
 });
 
 
-test('mission timeout terminates the full process tree before releasing the mission lock', () => {
+test('mission timeout terminates the process tree before the active slot is released', () => {
   assert.match(localServer, /detached: process\.platform !== 'win32'/);
   assert.match(localServer, /process\.kill\(-child\.pid, signal\)/);
-  assert.match(localServer, /taskkill/);
+  assert.match(localServer, /spawnSync\('taskkill', args/);
   assert.match(localServer, /terminateProcessTree\(child, 'SIGTERM'\)/);
   assert.match(localServer, /terminateProcessTree\(child, 'SIGKILL'\)/);
-  assert.match(localServer, /child\.on\('close'.*finish\(timedOut \? 'timed_out'/s);
-  assert.doesNotMatch(localServer, /setTimeout\(\(\) => \{\s*child\.kill\('SIGTERM'\);\s*finish\('timed_out'/s);
+  assert.match(localServer, /terminationEscalated = true/);
+  assert.match(localServer, /if \(timedOutPayload\) finish\('timed_out', timedOutPayload\)/);
+
+  const timeoutStart = localServer.indexOf('timeoutTimer = setTimeout');
+  const forceTimerStart = localServer.indexOf('forceKillTimer = setTimeout', timeoutStart);
+  const errorHandlerStart = localServer.indexOf("child.on('error'", timeoutStart);
+  assert.notEqual(timeoutStart, -1);
+  assert.notEqual(forceTimerStart, -1);
+  assert.notEqual(errorHandlerStart, -1);
+  assert.doesNotMatch(localServer.slice(timeoutStart, forceTimerStart), /finish\(/);
+  assert.match(localServer, /child\.on\('close',[\s\S]*timedOutPayload = \{[\s\S]*error: 'mission_timeout'/);
+  assert.match(localServer, /if \(terminationEscalated\) finish\('timed_out', timedOutPayload\)/);
+  assert.match(localServer, /termination: 'process_tree'/);
+  assert.match(localServer, /if \(activeChild\) terminateProcessTree\(activeChild, 'SIGKILL'\)/);
 });
 
 
-test('Founder-triggered Playwright runs retain configured JSON, HTML, trace, screenshot, and video artifacts', () => {
+test('Playwright evidence output remains compatible with the room-specific suite', () => {
   const playwright = fs.readFileSync('playwright.config.ts', 'utf8');
   assert.match(playwright, /PLAYWRIGHT_ARTIFACT_DIR/);
   assert.match(playwright, /retain-on-failure/);
@@ -102,8 +114,8 @@ test('Founder-triggered Playwright runs retain configured JSON, HTML, trace, scr
   assert.match(playwright, /video: 'retain-on-failure'/);
   assert.match(playwright, /'\*\*\/rooms\/\*\*'/);
   assert.match(playwright, /playwright\.room\.config\.ts/);
-  assert.match(frontendVerifier, /PLAYWRIGHT_ARTIFACT_DIR: artifactDir/);
-  assert.match(frontendVerifier, /reports.*control-room.*playwright.*verify-frontend/s);
-  assert.match(frontendVerifier, /results\.json/);
+  const frontendVerifier = fs.readFileSync('scripts/control-room-verify-frontend.mjs', 'utf8');
+  assert.match(frontendVerifier, /PLAYWRIGHT_ARTIFACT_DIR/);
+  assert.match(frontendVerifier, /path\.join\(rootDir, 'reports', 'control-room', 'playwright', runId\)/);
   assert.doesNotMatch(frontendVerifier, /--reporter=json/);
 });
