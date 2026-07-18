@@ -22,10 +22,7 @@ export default function LimitedModeScreen() {
   const waiting = verificationState === 'PENDING_PARENT' || verificationState === 'PENDING_TRUSTED_ADULT';
 
   useEffect(() => {
-    if (
-      !isVerificationLoading &&
-      (verificationState === 'UNVERIFIED' || verificationState === 'LIMITED_MODE')
-    ) {
+    if (!isVerificationLoading && verificationState === 'UNVERIFIED') {
       router.replace('/(auth)/parent-link-verify');
     }
   }, [isVerificationLoading, verificationState]);
