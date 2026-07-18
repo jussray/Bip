@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "repository": "jussray/Sekret-Bip",
+  "runtimeClass": "native_rich_client",
+  "firstPartyCookies": [],
+  "platformManagedCookies": [],
+  "browserStorage": [
+    {
+      "surface": "native",
+      "mechanism": "SecureStore",
+      "purpose": "Persist the Supabase user session with the operating system's secure storage boundary on iOS and Android.",
+      "sensitive": true
+    },
+    {
+      "surface": "web",
+      "mechanism": "AsyncStorage",
+      "purpose": "Persist the Supabase session for the Expo web rich client, which must read and refresh its own tokens.",
+      "sensitive": true
+    }
+  ],
+  "forbidden": [
+    "document.cookie or custom Set-Cookie session handling in the Expo application",
+    "analytics, advertising, fingerprinting, replay, or cross-site tracking cookies",
+    "copying native sessions into a browser cookie model",
+    "storing raw teen, journal, voice, media, health, or parent-visibility content in cookies",
+    "claiming an HttpOnly SSR session without a separately approved server-rendered web architecture"
+  ],
+  "notes": [
+    "The current storage adapter is implemented in utils/supabase/client.ts.",
+    "Native and web session storage are deliberately different because the runtime capabilities differ.",
+    "A future server-rendered web app requires a new cookie manifest and separate privacy/security review."
+  ]
+}
