@@ -15,6 +15,9 @@ test('Founder Operator is a first-class founder-only Control Room surface', () =
   assert.match(screen, /FounderOperatorPanel/);
   assert.match(screen, /'founder-operator'/);
   assert.match(screen, /useState<ControlRoomSurface>\('founder-operator'\)/);
+  assert.match(screen, /getCurrentFounderProfile/);
+  assert.match(screen, /isFounderProfile\(profile\)/);
+  assert.match(screen, /Developer tools locked/);
   assert.match(panel, /FOUNDER CONTROL ROOM/);
   assert.match(panel, /Founder Operator/);
 });
