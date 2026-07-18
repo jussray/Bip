@@ -19,8 +19,6 @@ import {
 } from '@/features/auth/passwordRecovery';
 import { getSupabase } from '@/utils/supabase';
 
-type DeliveryState = 'confirmed' | 'delayed' | null;
-
 function recoveryRedirectUrl(): string {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     return buildRecoveryRedirectUrl({ webOrigin: window.location.origin });
@@ -42,12 +40,7 @@ function authErrorStatus(error: unknown): number | null {
   return Number.isFinite(status) ? status : null;
 }
 
-function hasAuthServerResponse(error: unknown): boolean {
-  const status = authErrorStatus(error);
-  return status !== null && status >= 400;
-}
-
-function isDeliveryTimeout(error: unknown): boolean {
+function isRecoveryTimeout(error: unknown): boolean {
   const message = authErrorMessage(error);
   const status = authErrorStatus(error);
   return (
@@ -63,14 +56,14 @@ function isDeliveryTimeout(error: unknown): boolean {
 
 function readableAuthError(error: unknown): string {
   const message = authErrorMessage(error);
-  if (
-    !hasAuthServerResponse(error) &&
-    (message.includes('failed to fetch') || isDeliveryTimeout(error))
-  ) {
-    return 'Could not reach the account server. Check your connection and try again.';
-  }
   if (message.includes('rate') || message.includes('too many')) {
     return 'Too many reset requests. Wait a little, then try again.';
+  }
+  if (isRecoveryTimeout(error)) {
+    return 'We could not confirm the reset request. Check your connection and try again. If a reset message arrives, use the newest link.';
+  }
+  if (message.includes('failed to fetch')) {
+    return 'Could not reach the account server. Check your connection and try again.';
   }
   return 'Could not request a reset email right now. Please try again.';
 }
@@ -78,7 +71,7 @@ function readableAuthError(error: unknown): string {
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
-  const [deliveryState, setDeliveryState] = useState<DeliveryState>(null);
+  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   async function handleResetRequest() {
@@ -102,36 +95,25 @@ export default function ForgotPasswordScreen() {
         { redirectTo: recoveryRedirectUrl() },
       );
       if (resetError) {
-        if (isDeliveryTimeout(resetError) && hasAuthServerResponse(resetError)) {
-          setDeliveryState('delayed');
-          return;
-        }
         setError(readableAuthError(resetError));
         return;
       }
-      setDeliveryState('confirmed');
+      setSent(true);
     } catch (caught) {
-      if (isDeliveryTimeout(caught) && hasAuthServerResponse(caught)) {
-        setDeliveryState('delayed');
-      } else {
-        setError(readableAuthError(caught));
-      }
+      setError(readableAuthError(caught));
     } finally {
       setLoading(false);
     }
   }
 
-  if (deliveryState) {
-    const delayed = deliveryState === 'delayed';
+  if (sent) {
     return (
       <View style={styles.root}>
         <View style={styles.inner}>
           <Text style={styles.logo}>📧</Text>
-          <Text style={styles.title}>{delayed ? 'Request received' : 'Check your email'}</Text>
+          <Text style={styles.title}>Check your email</Text>
           <Text style={styles.body}>
-            {delayed
-              ? 'The account server received the request, but email delivery is taking longer than expected. If an account matches that email, check your inbox and spam. If nothing arrives, wait a few minutes before trying again.'
-              : 'If an account matches that email, a secure reset link is on the way. Check spam or junk too.'}
+            If an account matches that email, a secure reset link is on the way. Check spam or junk too.
           </Text>
           <TouchableOpacity
             style={styles.btn}
@@ -142,7 +124,7 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.btnText}>Back to Sign In</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => { setDeliveryState(null); setError(''); }}
+            onPress={() => { setSent(false); setError(''); }}
             style={styles.link}
             accessibilityRole="link"
             accessibilityLabel="Try another email or resend"
