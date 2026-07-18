@@ -86,7 +86,7 @@ The lab follows [`../AI_COORDINATION.md`](../AI_COORDINATION.md).
 
 ## Current implementation boundary
 
-The initial implementation is local, founder-only, and deterministic. It performs no external network request, creates no platform account, opens no signup flow, stores no credentials, and claims no platform connection.
+The initial implementation is founder-only and deterministic after authorization. Opening the panel may use the existing Supabase Auth/profile read solely to prove founder management access. The rehearsal itself performs no social-platform network request, creates no platform account, opens no signup flow, stores no credentials, and claims no platform connection.
 
 ## Definition of done
 

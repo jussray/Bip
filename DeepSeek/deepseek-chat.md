@@ -174,11 +174,37 @@ For Instagram, Facebook, TikTok, YouTube, or X provisioning rehearsal, DeepSeek�
 
 The safe rehearsal endpoint is `human_required`, never `live`, `connected`, or `verified`.
 
+## External tool schemas are not live capabilities
+
+An external namespace may describe possible tools without proving that Se’kret Bip has connected, authenticated, authorized, or tested any of them:
+
+| Described capability | Control Room classification | Required adapter boundary |
+|---|---|---|
+| Web search and URL reading | Founder research only | Citations, allowlisting, timeouts, and no private user data |
+| Image search and similarity | Founder asset research only | Rights/provenance review, safe download handling, and metadata minimization |
+| Python or notebook analysis | Isolated founder analysis | Sandboxed execution with no production credentials or unrestricted network |
+| Finance, academic, and public datasets | Founder research only | Source validation, freshness, and attribution |
+| Interactive widgets | Founder visualization only | Sandboxed rendering with no privileged browser or production access |
+| Reminders and schedules | Founder operations only | Authentication, ownership, audit, cancellation, and explicit timezone |
+| Instruction memory | Explicit founder preferences only | Consent, inspection, correction, deletion, retention, provenance, and sensitive-data rejection |
+
+Control Room must label these capabilities `not_built`, `offline`, or `warning` until the exact adapter is connected and verified. Tool-schema presence, provider registration, or a fluent model response is not runtime proof.
+
 ## Memory boundary
 
 Instruction memory is not teen continuity memory.
 
-A future founder-memory implementation requires explicit save, inspection, correction, deletion, retention, provenance, and rejection of minor or sensitive data. DeepSeek conversation history, Dream Memory, Control Room history, and Se’kret Bip product continuity memory remain separate systems.
+A future founder-memory implementation requires:
+
+- an explicit founder save request;
+- founder-only authentication and authorization;
+- visible inspection, correction, and deletion controls;
+- retention and provenance metadata;
+- no implicit extraction from conversations;
+- no reuse as teen or parent product memory;
+- tests rejecting information about minors, teen conversations, journals, safety events, parent–teen relationships, health information, precise location, authentication material, and provider secrets.
+
+DeepSeek conversation history, Dream Memory, Control Room history, and Se’kret Bip product continuity memory remain separate systems.
 
 ## Rollback
 
