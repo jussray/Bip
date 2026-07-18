@@ -1,5 +1,5 @@
 /**
- * Companion reply pools — 200 hand-crafted offline/fallback replies.
+ * Companion reply pools — 316+ hand-crafted offline/fallback replies.
  * Distributed across all six companions in character voice.
  * Imported by sekret-reply.ts to replace the small inline fallback arrays.
  */
@@ -75,6 +75,54 @@ export const COMPANION_REPLY_POOLS: Record<CompanionId, string[]> = {
     "That's a lot to carry by yourself. What's the part that's been loudest?",
     "So that's more embarrassed than mad, sounds like. That's different — what set it off?",
     "What do you actually want to happen right now? Not what you think you should want.",
+
+    // Crush / relationship
+    "Okay hold on. What exactly did they say?",
+    "And how long has this been a situation?",
+    "So are we in situationship territory or is this something else?",
+    "Do you actually like them or do you like the idea of them right now?",
+    "That butterflies feeling or the nervous-for-different-reasons feeling?",
+    "What did you want them to say instead?",
+
+    // Friend drama / social
+    "Who told you that and do you trust them?",
+    "So are we fixing this or are we done with her?",
+    "The group chat is wild. What happened exactly?",
+    "That's a weird thing to say behind someone's back. What do you want to do?",
+    "Has she done this before or is this new?",
+
+    // Family
+    "What did they say that set it off?",
+    "Parents are a lot sometimes. What's the actual thing that bothers you?",
+    "Is this a today thing or has this been building for a while?",
+    "You live with them so you can't just leave. What would make it a little more bearable?",
+
+    // Self-image / appearance
+    "Babe that's not what I see when I look at what you're describing.",
+    "Your brain is being cruel to you right now. That happens — what actually happened today?",
+    "You woke up thinking that or something triggered it?",
+    "Comparison is the enemy of a good day. What was the actual moment?",
+
+    // Anxiety / overthinking
+    "Okay so worst case — what actually happens?",
+    "You've been in your head about this for how long?",
+    "Your brain is running through scenarios. Which one keeps winning?",
+    "Overthinking this or actually dealing with something real? Could be both.",
+
+    // Social media / attention
+    "How long have you been scrolling? That changes the answer.",
+    "What were you looking for when you opened it?",
+    "Who posted something that got under your skin?",
+
+    // Celebrating good news
+    "That's a real win. Sit in it for a second before the 'but.'",
+    "Okay that's actually good news! Are you letting yourself feel it?",
+    "Proud of you for that. What made it work this time?",
+
+    // Identity / growing up
+    "Who do you think you're supposed to be right now versus who you actually are?",
+    "You're figuring this out in real time. What part feels most unsettled?",
+    "You've changed a lot this year. What's the part that feels most like you now?",
   ],
 
   // ─── Rylane — 40 replies ─────────────────────────────────────────────────
@@ -132,6 +180,38 @@ export const COMPANION_REPLY_POOLS: Record<CompanionId, string[]> = {
     "Sounds less like you're mad and more like you're just tired of it. That right?",
     "What's the thing you keep thinking about that you haven't dealt with yet?",
     "You clearly already know something about this. What is it?",
+
+    // Sports / physical / discipline
+    "How long have you been putting in the work on this?",
+    "Physical things are mental things eventually. What's the mental block?",
+    "Your body knows when you're tired versus when you're avoiding. Which is this?",
+    "What's the goal — the result or the discipline itself?",
+    "Training for something or just moving? Either is fine, different answer though.",
+
+    // Friendship / loyalty
+    "Real ones don't need a test. What made you question it?",
+    "You've been there for him. Has he been there for you?",
+    "Sometimes people change and it's not about betrayal. What actually happened?",
+
+    // Pride / ego / social pressure
+    "You're more worried about how it looks than how it feels. Which matters more?",
+    "What do you actually want underneath all the bravado?",
+    "It's okay to care what people think. Everyone does. What's the specific thing?",
+
+    // Anger / frustration
+    "Anger usually has something underneath it. What's the real thing?",
+    "You're allowed to be mad. What happened?",
+    "That's frustrating as hell. What's your move?",
+
+    // Future / career
+    "What do you actually want to do — not what you're supposed to say?",
+    "Five years from now what does a good day look like?",
+    "You're thinking about this seriously. What's the part you haven't figured out yet?",
+
+    // Family
+    "Family stuff hits different when you can't get space. What's going on at home?",
+    "You love them but you're also frustrated. Both can be true. What's the specific thing?",
+    "What would you want them to understand that they don't right now?",
   ],
 
   // ─── Cloud — 35 replies ───────────────────────────────────────────────────
@@ -182,6 +262,35 @@ export const COMPANION_REPLY_POOLS: Record<CompanionId, string[]> = {
     "What would you tell someone you loved who was going through this?",
     "One small thing. What's one tiny thing that might help, even a little?",
     "It's okay to need comfort right now. Just being heard, or something more?",
+
+    // Physical / sensory comfort
+    "Your body knows before your brain does sometimes. Are you physically okay right now?",
+    "When did you last eat something or drink water? I'm asking seriously.",
+    "Is it safe where you are right now?",
+    "Sometimes the weight is actual weight — not just feelings. Have you slept?",
+
+    // Quiet companionship
+    "You don't have to talk. I'm just here.",
+    "We can just be here together for a bit.",
+    "No pressure to explain anything. You can just breathe.",
+    "I'll stay. You don't have to fill the silence.",
+
+    // Grief / hard news
+    "That's a lot to absorb. You don't have to know how to feel about it yet.",
+    "I'm so sorry. What do you need right now — company or quiet?",
+    "There's no right way to feel about something like that.",
+    "Grief doesn't follow a schedule. Whatever you're feeling is okay.",
+
+    // Overwhelm
+    "Put down everything that isn't urgent for now. What's the one thing that actually needs you?",
+    "When everything feels loud it helps to just name one thing at a time. What's first?",
+    "You're doing a lot. Too much maybe. What can you put down?",
+    "You don't have to fix everything today. What's the most important thing?",
+
+    // Encouragement (quiet version)
+    "That took something. I hope you know that.",
+    "You're doing better than it probably feels like right now.",
+    "Small steps are still steps. What was the one today?",
   ],
 
   // ─── Night — 40 replies ───────────────────────────────────────────────────
@@ -237,6 +346,37 @@ export const COMPANION_REPLY_POOLS: Record<CompanionId, string[]> = {
     "What are you afraid to want?",
     "What would you do if you weren't scared of how it looked?",
     "Tell me the fear version and the hope version of how this goes.",
+
+    // Late-night specific
+    "The 2am version of a problem is always bigger. What shrinks when the sun comes up?",
+    "What do you think about when you can't sleep?",
+    "The quiet hours make you honest. What's coming up that you've been pushing down?",
+    "Late-night brain is sometimes the most honest brain. What's it saying?",
+    "You didn't have to open this. What made you?",
+
+    // Creative blocks
+    "Every creator hits this. What did it feel like right before it stopped?",
+    "The block is usually fear wearing a disguise. What are you actually afraid of?",
+    "What's the worst that happens if it's not perfect yet?",
+    "What would you make if nobody was going to see it?",
+
+    // Identity / future self
+    "Who are you becoming? Not who you're supposed to be — who you're actually becoming.",
+    "What do you want to look back on five years from now and be glad you did?",
+    "What do you keep returning to even when you try to walk away from it?",
+    "What's the part of you that most people don't get to see?",
+
+    // Discipline / consistency
+    "You fell off. That's not failure — that's information. What went sideways?",
+    "What's the version of this that you could actually sustain?",
+    "Consistency doesn't have to be perfect. What does showing up look like for you this week?",
+    "You know what you need to do. What's making it hard?",
+
+    // Ambition and fear
+    "The thing you want most is the thing that scares you most. What is it?",
+    "What's the cost of not doing the thing you've been putting off?",
+    "You're building something in the quiet. What is it?",
+    "What would you do with a year if you weren't afraid of wasting it?",
   ],
 
   // ─── Se'kret — 20 replies ─────────────────────────────────────────────────
@@ -266,6 +406,20 @@ export const COMPANION_REPLY_POOLS: Record<CompanionId, string[]> = {
     "What do you keep coming back to that you haven't fully let yourself look at?",
     "What do you want that you haven't let yourself want out loud yet?",
     "If you could know one true thing about yourself, what would you want it to be?",
+
+    // Pattern recognition — noticing contradictions
+    "You said two things that pull against each other. I don't think that's an accident — which one is more true?",
+    "There's something you keep circling around without landing on. What's the word you keep avoiding?",
+    "You described something as small, but you came here to talk about it. What makes it small?",
+    "The way you described that — there's something in the specific word you chose. What did you mean by it?",
+    "You've mentioned this more than once. That usually means something. What is it?",
+
+    // Self-trust / intuition
+    "You already know. What's the thing you know?",
+    "What does your gut say, before your brain complicates it?",
+    "You've been talking around something. What's the direct version?",
+    "What would you decide if you trusted yourself completely right now?",
+    "There's a version of you who figured this out. What did she know that you're pretending not to?",
   ],
 
   // ─── Parent Coach — 15 replies ────────────────────────────────────────────
@@ -292,5 +446,27 @@ export const COMPANION_REPLY_POOLS: Record<CompanionId, string[]> = {
     // Closing / forward
     "What would success look like for the next conversation you have with them?",
     "You can't fix everything, but you can show up. What's the smallest way to do that tomorrow?",
+
+    // Parenting guilt
+    "You're here, which means you care. Guilt that shows up as action is different from guilt that just sits there.",
+    "You can't undo that moment. What can you do in the next one?",
+    "The fact that it's bothering you is actually a good sign. What do you want to do with it?",
+
+    // Celebrating teen wins
+    "That's worth celebrating. Did you tell them you noticed?",
+    "Your teen did something hard. How did you respond in the moment?",
+    "That's a real win for them. What do you think helped it happen?",
+
+    // Communication repair
+    "What did you mean to say versus what actually came out?",
+    "If you could have that conversation again, what would you say differently?",
+    "What do you think they heard? Not what you said — what they actually heard.",
+    "An apology without explanation or an explanation without apology — which does your teen need?",
+
+    // Parent's own overwhelm
+    "Parenting a teenager while managing your own life is a lot. What's feeling most out of control right now?",
+    "You're allowed to be struggling with this. What would help you first before you can help them?",
+    "It sounds like you needed someone to say it's hard before you could even get to the advice. Is that right?",
+    "What would you tell a friend who came to you with this same thing?",
   ],
 };
