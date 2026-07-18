@@ -13,7 +13,7 @@
     "verify",
     "decide"
   ],
-  "currentPhase": "orient",
+  "currentPhase": "execute",
   "items": [
     {
       "id": "mission-brief",
@@ -26,11 +26,11 @@
     },
     {
       "id": "artifact-ledger",
-      "phase": "observe",
+      "phase": "artifact-plan",
       "owner": "chatgpt",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/artifact-ledger.json",
-      "status": "complete",
-      "acceptance": "Every required launch artifact appears in dependency order with one owner, acceptance gate, and next action.",
+      "status": "active",
+      "acceptance": "Every required launch artifact appears in dependency order with one owner, acceptance gate, status, and next action.",
       "nextAction": "Append newly discovered requirements in dependency order without deleting earlier entries."
     },
     {
@@ -38,36 +38,54 @@
       "phase": "orient",
       "owner": "codex",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/system-map.md",
-      "status": "next",
+      "status": "complete",
       "acceptance": "App variants, feature flags, Worker routing, Supabase authorization, relationship lifecycle, deletion, preview builds, and device evidence are mapped with dependencies.",
-      "nextAction": "Build from exact repository files and current PR state."
+      "nextAction": "Apply current-state corrections through the repository boundary evidence and future map revisions."
     },
     {
       "id": "red-team-register",
       "phase": "orient",
       "owner": "chatgpt",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/red-team-register.md",
-      "status": "queued",
+      "status": "complete-with-open-risks",
       "acceptance": "Privacy, cross-user, deletion, false-green, rollout, credential, and rollback risks have observable triggers and controls.",
-      "nextAction": "Create immediately after the system map."
+      "nextAction": "Keep RLS, deletion, deployment identity, device, and live-journey risks open until executed proof exists."
     },
     {
       "id": "bottleneck-map",
       "phase": "orient",
       "owner": "chatgpt",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/bottleneck-map.md",
-      "status": "queued",
+      "status": "complete",
       "acceptance": "The highest-leverage constraint and smallest reversible executable slice are explicit.",
-      "nextAction": "Select after system and risk orientation."
+      "nextAction": "The selected repository boundary slices are implemented; advance to runtime preparation."
+    },
+    {
+      "id": "repository-boundary-evidence",
+      "phase": "execute",
+      "owner": "codex",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/repository-boundary-evidence.md",
+      "status": "complete",
+      "acceptance": "Beta audience, Worker fail-closed, Bridge supported-source, Crew mutation-proof, rollback, and exact non-claims are retained.",
+      "nextAction": "Preserve these boundaries through exact-head compilation, unit, bundle, export, and browser verification."
     },
     {
       "id": "alpha-runtime-record",
       "phase": "execute",
       "owner": "cloudflare",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/alpha-runtime-record.md",
-      "status": "human-gated",
+      "status": "prepared-human-gated",
       "acceptance": "Dedicated alpha runtime identity, non-secret configuration, deployment evidence, preview build identities, production isolation, and rollback are retained.",
-      "nextAction": "Prepare non-secret deployment checklist; stop before credential use or deployment without founder approval."
+      "nextAction": "Run the complete-checkout controlled-alpha tests and Wrangler dry run, then stop for founder approval before credential use, deployment, paid build capacity, or distribution."
+    },
+    {
+      "id": "verification-report",
+      "phase": "verify",
+      "owner": "playwright",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/verification-report.json",
+      "status": "partial",
+      "acceptance": "Executed proof, exact state, infrastructure classifications, failures, and remaining blockers are summarized without false-green claims.",
+      "nextAction": "Append complete-checkout, runtime, build, journey, deletion, and device results as each executes."
     },
     {
       "id": "trust-journey-evidence",
@@ -76,7 +94,7 @@
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/trust-journey-evidence.json",
       "status": "blocked-by-runtime-and-accounts",
       "acceptance": "Bridge, Crew, revocation, re-share, unlink, deletion, cleanup, and second-user isolation are observed with controlled accounts.",
-      "nextAction": "Define synthetic account fixtures and evidence checklist before live execution."
+      "nextAction": "Define synthetic account fixtures and evidence checklist before approved live execution."
     },
     {
       "id": "device-evidence",
@@ -85,16 +103,7 @@
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/device-evidence.json",
       "status": "blocked-by-preview-builds",
       "acceptance": "Teen and parent iOS/Android installs, critical routes, accessibility, offline behavior, and failure states are retained.",
-      "nextAction": "Create device matrix before preview distribution."
-    },
-    {
-      "id": "verification-report",
-      "phase": "verify",
-      "owner": "playwright",
-      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/verification-report.json",
-      "status": "queued",
-      "acceptance": "Executed proof, exact state, infrastructure classifications, failures, and remaining blockers are summarized without false-green claims.",
-      "nextAction": "Update after each executed verification slice."
+      "nextAction": "Create the device matrix before preview distribution."
     },
     {
       "id": "founder-decision-pack",
