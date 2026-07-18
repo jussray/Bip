@@ -62,7 +62,6 @@ test('production browser can reach Supabase Auth without creating an account', a
           method: 'GET',
           headers: {
             apikey: supabaseKey,
-            Authorization: `Bearer ${supabaseKey}`,
           },
         });
 
@@ -87,7 +86,31 @@ test('production browser can reach Supabase Auth without creating an account', a
   expect(probe.status).toBe(200);
 });
 
-test('signup contains auth transport failures without exposing raw fetch text', async ({ page }) => {
+test('signup explains delayed confirmation when Supabase returns request_timeout', async ({ page }) => {
+  await page.route('**/auth/v1/signup', route => route.fulfill({
+    status: 504,
+    contentType: 'application/json',
+    body: JSON.stringify({
+      code: 504,
+      error_code: 'request_timeout',
+      msg: 'Processing this request timed out, please retry after a moment.',
+    }),
+  }));
+  await page.goto('/signup');
+
+  await page.getByPlaceholder('email').fill('playwright-timeout-probe@example.invalid');
+  await page.getByPlaceholder('password (8+ characters)').fill('BipPlaywright!2026');
+  await page.getByPlaceholder('confirm password').fill('BipPlaywright!2026');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+
+  await expect(
+    page.getByText(
+      'The account server is taking longer than expected. Your confirmation email may still arrive, so check your inbox and spam folder before trying again.',
+    ),
+  ).toBeVisible({ timeout: 15_000 });
+});
+
+test('signup contains network transport failures without exposing raw fetch text', async ({ page }) => {
   await page.route('**/auth/v1/signup', route => route.abort('failed'));
   await page.goto('/signup');
 
@@ -97,7 +120,7 @@ test('signup contains auth transport failures without exposing raw fetch text', 
   await page.getByRole('button', { name: 'Create Account' }).click();
 
   await expect(
-    page.getByText('Could not reach the account server. Check your connection, then try again.'),
+    page.getByText('Could not confirm the account server response. Check your connection and inbox before trying again.'),
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/^Failed to fetch$/i)).not.toBeVisible();
 });
