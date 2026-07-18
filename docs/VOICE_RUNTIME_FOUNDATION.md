@@ -1,7 +1,7 @@
 # Se’kret Bip — Voice Runtime Foundation
 
 **Owner issue:** [#460](https://github.com/jussray/Sekret-Bip/issues/460)  
-**State:** contract; migration authored, not applied to production  
+**State:** contract; migrations authored, not applied to production  
 **Supabase project observed:** `tbsevonvegdnlyjgplmm`  
 **Last live observation:** 2026-07-17 UTC
 
@@ -19,6 +19,19 @@ The architecture direction came from the structural voice audit, but repository 
 | `voice_turns` | Speaker, ordering, duration, language, end reason, transcript character count | Character count only; no transcript text |
 | `voice_events` | High-level events such as speech start/end, barge-in, first-token and playback state | Strict allowlist of primitive operational metadata; unknown keys, nested values, free-form strings, and out-of-range numbers fail closed |
 | `voice_latency_metrics` | VAD, STT, LLM, TTS, playback, and total latency slices | Integer timing values only |
+
+### Error-code vocabulary
+
+`voice_events.payload.error_code` is not an upstream message field. It accepts only the finite internal vocabulary enforced by `20260718034600_restrict_voice_error_code_vocabulary.sql`:
+
+- `AUTH_REQUIRED`, `AUTH_EXPIRED`, `PERMISSION_DENIED`;
+- `DEVICE_UNAVAILABLE`;
+- `NETWORK_OFFLINE`, `NETWORK_TIMEOUT`, `RATE_LIMITED`;
+- `PROVIDER_UNAVAILABLE`;
+- `TRANSCRIPTION_FAILED`, `REPLY_FAILED`, `SYNTHESIS_FAILED`, `PLAYBACK_FAILED`;
+- `CANCELLED`, `INVALID_PAYLOAD`, `INTERNAL_ERROR`, `UNKNOWN`.
+
+Any future relay must map provider or client failures to this finite internal vocabulary before insertion. It must never forward user-authored text, provider messages, transcripts, or arbitrary normalized strings as an `error_code`.
 
 ## Authorization model
 
@@ -76,24 +89,28 @@ A bucket without this contract would be unused attack surface, not a feature.
 
 ## Migration and verification sequence
 
-1. Review `supabase/migrations/20260717034535_create_voice_runtime_foundation.sql`.
+1. Review both ordered migrations:
+   - `supabase/migrations/20260717034535_create_voice_runtime_foundation.sql`;
+   - `supabase/migrations/20260718034600_restrict_voice_error_code_vocabulary.sql`.
 2. Run repository unit, lint, TypeScript, migration-contract, RLS-audit, and implementation-evidence gates.
-3. Run `supabase/probes/voice_runtime_foundation.sql` against a development branch or approved administrator connection after applying the migration. The probe must end in `ROLLBACK` and leave no users or application rows.
+3. Run `supabase/probes/voice_runtime_foundation.sql` against a development branch or approved administrator connection after applying both migrations. The probe must end in `ROLLBACK` and leave no users or application rows.
 4. Confirm the probe rejects a human-readable client correlation value, nested raw-content-shaped payloads, and an unlisted free-form payload key.
-5. Run Supabase security and performance advisors.
-6. Apply the migration to production only under separate founder approval.
-7. Re-run catalog, grants, policy, owner/cross-user/anonymous denial, payload-allowlist, and cascade-delete proof.
-8. Record the live migration version and evidence before changing this feature from `contract` to `integrated` or `verified`.
+5. Confirm the catalog contains `voice_events_error_code_vocabulary` and that an unapproved code cannot be inserted.
+6. Run Supabase security and performance advisors.
+7. Apply the migrations to production only under separate founder approval.
+8. Re-run catalog, grants, policy, owner/cross-user/anonymous denial, payload-allowlist, error-code-vocabulary, and cascade-delete proof.
+9. Record the live migration versions and evidence before changing this feature from `contract` to `integrated` or `verified`.
 
 ## Phase 2 prerequisites
 
 An authenticated realtime relay and shared client runtime may begin only when:
 
-- the Phase 1 migration is applied and authorization proof passes;
+- the Phase 1 migrations are applied and authorization proof passes;
 - the relay has an explicit JWT and permanent-account contract;
 - service credentials remain server-only;
 - reconnect and idempotency behavior use opaque generated UUIDs;
 - VAD and barge-in events map to the Phase 1 event allowlist;
+- provider/client errors are mapped to the finite internal error-code vocabulary;
 - event payload sanitization is tested;
 - latency budgets and unavailable states are defined;
 - provider failure cannot be disguised as a successful live voice session;
