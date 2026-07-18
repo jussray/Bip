@@ -68,7 +68,8 @@ The current RLS audit confirms:
 
 | Table | Current truth |
 |---|---|
-| `journal_entries` | Exists; RLS enabled; owner write; owner plus approved linked-parent visibility where explicitly shared |
+| `journal_entries` | Exists; RLS enabled; owner-only read/write; linked parents do not receive raw journal rows |
+| `bridge_summaries` | Exists; a linked parent may read only the generated summary authorized by an active, unrevoked Bridge share |
 | `crew_members` | Exists; RLS enabled; owner-scoped CRUD |
 | `parent_circle_posts` | Exists; RLS enabled; authenticated shared-feed read plus owner-scoped writes |
 | `voice_sessions` | Does not exist |
