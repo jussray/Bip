@@ -34,7 +34,8 @@ The execution boundary is deliberately narrow:
 - only localhost origins and bearer-authenticated requests are accepted;
 - the server invokes fixed mission IDs, never arbitrary shell input;
 - only one mission runs at a time;
-- missions time out and return bounded output to the UI;
+- missions time out, terminate their full descendant process tree, and keep the mission slot locked through forced termination;
+- mission output returned to the UI remains bounded;
 - the token is local-development state and must never be reused as a production credential.
 
 Starting Expo with `npm run web` alone leaves mission buttons offline by design. Use `npm run control-room:dev` when live local execution is required.
@@ -84,7 +85,12 @@ It writes:
 ```text
 reports/control-room/frontend.json
 reports/control-room/frontend.md
+reports/control-room/playwright/<run-id>/results.json
+reports/control-room/playwright/<run-id>/html/
+reports/control-room/playwright/<run-id>/test-results/
 ```
+
+The Playwright command uses the repository configuration rather than overriding reporters on the command line. Each real browser run therefore retains JSON counts, the HTML report, and failure traces/screenshots/videos in one timestamped Control Room artifact directory.
 
 The report includes an explicit `browserProof` field and an evidence level:
 
