@@ -1,5 +1,18 @@
 # Se’kret Bip Global AI Contract
 
+## Parent and launch skills
+
+This repository inherits the private canonical `juss-founder-os` contract from
+`jussray/founder-control-room`.
+
+For splash PNG, invisible CTA, recognized login, onboarding resume, 72-hour
+founding preview, waiting-list, sponsor, launch analytics, or social-content work,
+load [`.agents/skills/bip-founding-preview/SKILL.md`](.agents/skills/bip-founding-preview/SKILL.md)
+in addition to every skill required by that file.
+
+The project skill may become stricter, but it may not weaken founder authority,
+brand/IP protection, privacy, evidence, rollback, non-deletion, or truthfulness.
+
 This repository follows the shared founder operating stack:
 
 ```text
@@ -67,6 +80,7 @@ Never claim a feature, privacy boundary, migration, test, deployment, account st
 - Do not silently change identity contexts, account-side state, parent visibility, Bip IDs, anonymous handles, route contracts, storage keys, schemas, or deployment targets.
 - Prefer small patches, existing Expo/Supabase/Worker capabilities, and canonical active paths over new abstractions.
 - Preserve deletion, revocation, sign-out cache clearing, cross-device isolation, and second-user safety.
+- Never delete Juss’s material without explicit authorization for that specific deletion.
 
 ## Approval gates
 
