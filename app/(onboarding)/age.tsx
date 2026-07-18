@@ -11,7 +11,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
-import { useOnboarding } from '@/context/OnboardingContext';
 import { advanceStage } from '@/services/onboarding';
 import { getSupabase } from '@/utils/supabase';
 
@@ -23,9 +22,16 @@ const AGE_OPTIONS = [
 
 type AgeRange = '13-15' | '16-17' | '18-19';
 
+async function getPermanentUserId(): Promise<string | null> {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user || data.user.is_anonymous) return null;
+  return data.user.id;
+}
+
 export default function AgeScreen() {
   const { setUserSide } = useAppContext();
-  const { advance } = useOnboarding();
   const [selected, setSelected] = useState<AgeRange | null>(null);
 
   async function handleNext() {
@@ -36,10 +42,16 @@ export default function AgeScreen() {
     ]);
     setUserSide('teen');
 
-    // ── Onboarding state machine ──────────────────────────────────
-    // age_verified fires here; role will be confirmed in identity.tsx
-    await advance('age_verified', { age_bucket: selected });
-    // ─────────────────────────────────────────────────────────────
+    // This screen may run before signup or after consent recovery. Only durable
+    // permanent accounts may write cloud onboarding state. Pre-auth selections
+    // stay local and are replayed by consent.tsx after account creation.
+    const userId = await getPermanentUserId();
+    if (userId) {
+      await advanceStage(userId, 'age_verified', { age_bucket: selected });
+      await advanceStage(userId, 'role_selected', { role: 'teen' });
+      router.push('/(onboarding)/name');
+      return;
+    }
 
     router.push('/(auth)/signup?side=teen' as never);
   }
@@ -48,19 +60,12 @@ export default function AgeScreen() {
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, 'parent');
     setUserSide('parent');
 
-    // ── Onboarding state machine ──────────────────────────────────
-    // Fire-and-forget: record role branch before account exists.
-    // getUser() resolves null for anonymous/unauthenticated users —
-    // the catch swallows silently. Once the parent signs up and
-    // initOnboardingState() runs, their row is ready for advances.
-    getSupabase()
-      ?.auth.getUser()
-      .then(({ data }) => {
-        if (data.user) {
-          advanceStage(data.user.id, 'role_selected', { role: 'parent' }).catch(() => null);
-        }
-      });
-    // ─────────────────────────────────────────────────────────────
+    // Normally this path is pre-auth. If a permanent account is recovering here,
+    // preserve the role milestone; otherwise consent.tsx records it after signup.
+    const userId = await getPermanentUserId();
+    if (userId) {
+      await advanceStage(userId, 'role_selected', { role: 'parent' });
+    }
 
     router.push('/(onboarding)/parent-splash');
   }
