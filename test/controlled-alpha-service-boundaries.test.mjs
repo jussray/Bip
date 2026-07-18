@@ -5,6 +5,7 @@ import test from 'node:test';
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationPath = 'supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql';
 const accessMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
+const probePath = 'supabase/probes/controlled_alpha_relationship_contract.sql';
 
 test('controlled-alpha relationship features stop at the beta audience', async () => {
   const flags = await read('src/constants/relationshipFeatureFlags.ts');
@@ -113,4 +114,23 @@ test('controlled-alpha SQL migrations are complete transaction units with balanc
     assert.equal((migration.match(/\bbegin;/g) ?? []).length >= 1, true);
     assert.equal((migration.match(/\bcommit;/g) ?? []).length, 1);
   }
+});
+
+test('relationship parity probe is catalog-only, rollback-contained, and checks the hardened boundaries', async () => {
+  const probe = await read(probePath);
+
+  assert.match(probe, /^-- Se'kret Bip controlled-alpha relationship contract probe/);
+  assert.match(probe, /begin;/);
+  assert.match(probe, /rollback;\s*$/);
+  assert.match(probe, /from pg_policies/);
+  assert.match(probe, /from pg_proc/);
+  assert.match(probe, /from pg_trigger/);
+  assert.match(probe, /has_function_privilege/);
+  assert.match(probe, /private\.crew_check_in_access_is_active/);
+  assert.match(probe, /bridge_create_rpc_enforces_owned_alpha_sources/);
+  assert.match(probe, /crew_policies_call_private_helper_without_cross_table_subqueries/);
+  assert.doesNotMatch(probe, /insert into public\./);
+  assert.doesNotMatch(probe, /update public\./);
+  assert.doesNotMatch(probe, /delete from public\./);
+  assert.doesNotMatch(probe, /select[\s\S]{0,80}from public\.(journal_entries|mood_history|bridge_share_requests|bridge_summaries|crew_check_ins|crew_check_in_shares|crew_encouragements)/i);
 });
