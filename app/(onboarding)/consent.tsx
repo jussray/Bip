@@ -16,6 +16,7 @@ import type { AccountSide } from '@/features/identity/accountProfile';
 import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
 import { consentService } from '../../services/consentService';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 const PRIVACY_POLICY_URL = 'https://github.com/jussray/Sekret-Bip/blob/main/docs/PRIVACY_POLICY.md';
 const TERMS_URL = 'https://github.com/jussray/Sekret-Bip/blob/main/docs/TERMS_OF_SERVICE.md';
@@ -51,6 +52,7 @@ function CheckRow({
 export default function ConsentScreen() {
   const params = useLocalSearchParams<{ side?: string }>();
   const side = normalizeSide(params.side);
+  const { advance } = useOnboarding();
   const [userId, setUserId] = useState<string | null>(null);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -113,6 +115,10 @@ export default function ConsentScreen() {
       if (!consentService.hasCompletedOnboarding()) {
         throw new Error('Your choices were not fully saved. Please try again.');
       }
+
+      // ── Onboarding state machine ──────────────────────────────────
+      await advance('consent_complete');
+      // ─────────────────────────────────────────────────────────────
 
       const bootstrap = await fetchPostAuthBootstrap(side);
       router.replace(bootstrap.nextRoute as never);

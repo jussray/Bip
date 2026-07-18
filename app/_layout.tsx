@@ -4,6 +4,7 @@ import { Analytics } from '@/components/shared/Analytics';
 import { NotificationBootstrap } from '@/components/shared/NotificationBootstrap';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
+import { OnboardingProvider } from '@/context/OnboardingContext';
 import { installSekretBipGuardrailRuntime } from '@/config/visionGuardrails';
 import { decideRouteAccess } from '@/services/routeAccess';
 import { validateEnv } from '@/utils/env';
@@ -105,10 +106,15 @@ export default function RootLayout() {
   return (
     <VerificationProvider>
       <AppProvider>
-        <RouteBoundary />
-        <NotificationBootstrap />
-        <Analytics />
-        <Stack screenOptions={{ headerShown: false }} />
+        {/* OnboardingProvider sits inside AppProvider so it has access to
+            useAuth/useAppContext, but wraps everything below so all screens
+            can call useOnboarding() without prop-drilling. */}
+        <OnboardingProvider>
+          <RouteBoundary />
+          <NotificationBootstrap />
+          <Analytics />
+          <Stack screenOptions={{ headerShown: false }} />
+        </OnboardingProvider>
       </AppProvider>
     </VerificationProvider>
   );

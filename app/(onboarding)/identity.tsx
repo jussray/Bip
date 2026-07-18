@@ -3,6 +3,7 @@ import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from '
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 type Identity = 'girl' | 'boy' | 'other';
 type Companion = 'raylene' | 'rylane' | 'cloud' | 'night';
@@ -21,6 +22,7 @@ const COMPANIONS: { id: Companion; label: string }[] = [
 ];
 
 export default function IdentityScreen() {
+  const { advance } = useOnboarding();
   const [identity, setIdentity] = useState<Identity | null>(null);
   const [choice, setChoice] = useState<Companion>('raylene');
 
@@ -35,6 +37,13 @@ export default function IdentityScreen() {
       ['bip_onboarding_gender', identity],
       ['bip_onboarding_companion', choice],
     ]);
+
+    // ── Onboarding state machine ──────────────────────────────────
+    // identity.tsx is where the user confirms they are a teen;
+    // role was already determined by arriving here (not parent path)
+    await advance('identity_set', { role: 'teen' });
+    // ─────────────────────────────────────────────────────────────
+
     router.push('/(onboarding)/reflection');
   }
 

@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
+import { useOnboarding } from '@/context/OnboardingContext';
 
 const AGE_OPTIONS = [
   { id: '13-15' as const, label: '13 – 15' },
@@ -22,6 +23,7 @@ type AgeRange = '13-15' | '16-17' | '18-19';
 
 export default function AgeScreen() {
   const { setUserSide } = useAppContext();
+  const { advance } = useOnboarding();
   const [selected, setSelected] = useState<AgeRange | null>(null);
 
   async function handleNext() {
@@ -31,6 +33,12 @@ export default function AgeScreen() {
       [ONBOARDING_SIDE_KEY, 'teen'],
     ]);
     setUserSide('teen');
+
+    // ── Onboarding state machine ──────────────────────────────────
+    // age_verified fires here; role will be confirmed in identity.tsx
+    await advance('age_verified', { age_bucket: selected });
+    // ─────────────────────────────────────────────────────────────
+
     router.push('/(auth)/signup?side=teen' as never);
   }
 
