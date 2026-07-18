@@ -46,16 +46,12 @@ export default function Index() {
       setProfileResolved(false);
       setRequiresAccountUpgrade(false);
       try {
-        // Missing account infrastructure must never be treated as a completed
-        // permanent session. Keep only public Splash/onboarding reachable.
+        // Surface missing Supabase config as a real error so users (and devs)
+        // are never silently walked into a dead-end signup screen.
         if (!isSupabaseConfigured) {
-          if (!cancelled) {
-            setHasPermanentSession(false);
-            setRequiredConsentsComplete(false);
-            setAccountProfile(null);
-            if (buildSide && buildSide !== userSide) setUserSide(buildSide);
-          }
-          return;
+          throw new Error(
+            'Account service is not configured.\n\nCheck that EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set correctly in your environment.'
+          );
         }
 
         const sb = getSupabase();
