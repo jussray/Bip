@@ -1,58 +1,67 @@
 /**
  * consentService
  *
- * Persists privacy/terms consent records for a user.
- * - Writes to Supabase `consent_records` table (upsert, fire-and-forget safe).
- * - Caches granted consents in AsyncStorage for offline reads.
- * - Exports a singleton `consentService` that matches the API called by consent.tsx.
+ * Persists privacy/terms consent for a user using the existing
+ * `user_consents` table (created by 20260714_trust_consent_tables.sql).
  *
- * Required Supabase table (run once):
- *   create table if not exists consent_records (
- *     id          uuid primary key default gen_random_uuid(),
- *     user_id     uuid not null references auth.users(id) on delete cascade,
- *     consent_key text not null,
- *     granted_at  timestamptz not null default now(),
- *     unique (user_id, consent_key)
- *   );
- *   alter table consent_records enable row level security;
- *   create policy "users own their consent records"
- *     on consent_records for all using (auth.uid() = user_id);
+ * Schema reference:
+ *   user_consents(user_id uuid, category text, granted boolean,
+ *                 timestamp timestamptz, version text)
+ *   PK: (user_id, category)
+ *   RLS: users manage their own rows
+ *
+ * Exports a singleton `consentService` with:
+ *   load(userId)                → populate in-memory cache from Supabase/AsyncStorage
+ *   grant(userId, key)          → upsert granted=true, update cache
+ *   has(key)                    → sync check from cache
+ *   hasCompletedOnboarding()    → true when both required consents are granted
+ *   reset()                     → clear cache on sign-out
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSupabase } from '@/utils/supabase';
 
 const STORAGE_PREFIX = 'bip_consent_';
-
-/** The consent keys required to complete onboarding. */
-const REQUIRED_CONSENTS: ConsentKey[] = ['privacyPolicy', 'termsOfService'];
+const CONSENT_VERSION = '1.0.0';
 
 export type ConsentKey = 'privacyPolicy' | 'termsOfService';
+
+/** The exact category strings stored in user_consents.category */
+const CATEGORY_MAP: Record<ConsentKey, string> = {
+  privacyPolicy: 'privacyPolicy',
+  termsOfService: 'termsOfService',
+};
+
+const REQUIRED_CONSENTS: ConsentKey[] = ['privacyPolicy', 'termsOfService'];
 
 class ConsentService {
   private granted: Set<ConsentKey> = new Set();
 
-  // ─── Load ────────────────────────────────────────────────────────────────────
+  // ── Load ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Populate the in-memory set from Supabase (falling back to AsyncStorage
-   * if the network call fails). Call once per session after the user is known.
-   */
   async load(userId: string): Promise<void> {
     // 1. Try Supabase first.
     try {
       const sb = getSupabase();
       if (sb) {
         const { data, error } = await sb
-          .from('consent_records')
-          .select('consent_key')
-          .eq('user_id', userId);
+          .from('user_consents')
+          .select('category, granted')
+          .eq('user_id', userId)
+          .in('category', Object.values(CATEGORY_MAP));
+
         if (!error && data) {
           this.granted = new Set(
             data
-              .map(r => r.consent_key as ConsentKey)
-              .filter(k => REQUIRED_CONSENTS.includes(k as ConsentKey)),
+              .filter(r => r.granted === true)
+              .map(r => {
+                const key = Object.entries(CATEGORY_MAP).find(
+                  ([, v]) => v === r.category,
+                )?.[0] as ConsentKey | undefined;
+                return key;
+              })
+              .filter((k): k is ConsentKey => k !== undefined),
           );
-          // Sync cache.
+          // Sync local cache.
           await Promise.all(
             [...this.granted].map(k =>
               AsyncStorage.setItem(`${STORAGE_PREFIX}${userId}_${k}`, '1'),
@@ -76,21 +85,23 @@ class ConsentService {
     );
   }
 
-  // ─── Grant ───────────────────────────────────────────────────────────────────
+  // ── Grant ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Record that the user granted a consent. Writes to Supabase and AsyncStorage.
-   * Throws if both writes fail so the caller can surface an error.
-   */
   async grant(userId: string, key: ConsentKey): Promise<void> {
     let supabaseOk = false;
 
     try {
       const sb = getSupabase();
       if (sb) {
-        const { error } = await sb.from('consent_records').upsert(
-          { user_id: userId, consent_key: key },
-          { onConflict: 'user_id,consent_key' },
+        const { error } = await sb.from('user_consents').upsert(
+          {
+            user_id: userId,
+            category: CATEGORY_MAP[key],
+            granted: true,
+            timestamp: new Date().toISOString(),
+            version: CONSENT_VERSION,
+          },
+          { onConflict: 'user_id,category' },
         );
         if (!error) supabaseOk = true;
       }
@@ -102,24 +113,20 @@ class ConsentService {
     this.granted.add(key);
 
     if (!supabaseOk) {
-      // Non-fatal: local cache succeeded. Log for retry later.
       console.warn(`[consentService] Supabase write failed for key=${key}; cached locally.`);
     }
   }
 
-  // ─── Query ───────────────────────────────────────────────────────────────────
+  // ── Query ─────────────────────────────────────────────────────────────────
 
-  /** Returns true if the user has granted the given consent key. */
   has(key: ConsentKey): boolean {
     return this.granted.has(key);
   }
 
-  /** Returns true when all required onboarding consents have been granted. */
   hasCompletedOnboarding(): boolean {
     return REQUIRED_CONSENTS.every(k => this.granted.has(k));
   }
 
-  /** Reset in-memory state (call on sign-out). */
   reset(): void {
     this.granted.clear();
   }
