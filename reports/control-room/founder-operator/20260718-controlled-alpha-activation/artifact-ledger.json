@@ -85,16 +85,16 @@
       "path": "supabase/probes/controlled_alpha_relationship_contract_v2.sql",
       "status": "live-baseline-observed-migrations-unapplied",
       "acceptance": "The three ordered forward migrations parse, apply cleanly in an approved isolated or dry-run environment, preserve RLS, expose only intended RPCs, keep private helpers outside the public API, and pass catalog probe v2 without reading user rows.",
-      "nextAction": "Run complete-checkout tests and an isolated migration parse or dry run. Founder review is required before live application. After approval, apply the ordered migrations, rerun probe v2 expecting 12 of 12, and execute focused anonymous, blocked, revoked, unrelated, and idempotency denial tests."
+      "nextAction": "Preferred path is an isolated Supabase branch after explicit confirmation of the current $0.01344 hourly cost. Apply the ordered migrations there, rerun probe v2 expecting 12 of 12, run advisors, and execute focused denial tests. Hold live application until that evidence and complete-checkout gates are retained."
     },
     {
       "id": "authentication-security-gate",
       "phase": "execute",
       "owner": "founder",
-      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/supabase-live-baseline.md",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/founder-decision-pack.md",
       "status": "human-required",
-      "acceptance": "Leaked-password protection is enabled before controlled-alpha password invitations, or an explicit accepted-risk decision and alternative authentication control are recorded.",
-      "nextAction": "Founder decides whether to enable leaked-password protection before controlled-account creation. Do not represent password authentication as launch-ready while this remains unresolved."
+      "acceptance": "Compromised-password protection is enabled before controlled-alpha password invitations, or an explicit accepted-risk decision and alternative authentication control are recorded.",
+      "nextAction": "Founder decides whether to enable the protection before controlled-account creation. Do not represent password authentication as launch-ready while this remains unresolved."
     },
     {
       "id": "alpha-runtime-record",
@@ -137,9 +137,9 @@
       "phase": "decide",
       "owner": "founder",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/founder-decision-pack.md",
-      "status": "human-gated",
-      "acceptance": "Ship, hold, or rollback decision includes audience, duration, evidence, open risks, exact external actions, and rollback.",
-      "nextAction": "Generate only after verification artifacts are truthfully classified."
+      "status": "prepared-human-gated",
+      "acceptance": "The decision pack records current evidence, exact branch cost, recommended holds, migration-validation options, authentication protection choice, public RPC posture, and non-claims.",
+      "nextAction": "Founder chooses whether to confirm the $0.01344 hourly isolated branch cost and whether to enable compromised-password protection. The recommended live migration and distribution state remains hold."
     }
   ],
   "standingRules": [
