@@ -103,50 +103,65 @@ export default function SignupScreen() {
   ): Promise<boolean> {
     await delay(SIGNUP_RECOVERY_DELAY_MS);
 
-    const { data: signInData, error: signInError } =
-      await sb.auth.signInWithPassword({
-        email: signupEmail,
-        password: signupPassword,
-      });
+    // The recovery path must never throw a second browser transport error back
+    // into the button handler. Probe once, then perform at most one signup retry.
+    try {
+      const { data: signInData, error: signInError } =
+        await sb.auth.signInWithPassword({
+          email: signupEmail,
+          password: signupPassword,
+        });
 
-    if (signInData.session?.user) {
-      await finishAuthenticatedSignup(signInData.session.user.id);
-      return true;
-    }
+      if (signInData.session?.user) {
+        await finishAuthenticatedSignup(signInData.session.user.id);
+        return true;
+      }
 
-    if (isConfirmationPendingError(signInError)) {
-      showConfirmationSuccess(
-        `Your account was created, but email confirmation is still pending for ${signupEmail}.\nCheck your inbox, then come back and sign in.`,
-      );
-      return true;
+      if (isConfirmationPendingError(signInError)) {
+        showConfirmationSuccess(
+          `Your account was created, but email confirmation is still pending for ${signupEmail}.\nCheck your inbox, then come back and sign in.`,
+        );
+        return true;
+      }
+    } catch (probeError) {
+      if (!isAmbiguousSignupError(probeError)) return false;
     }
 
     // A timeout can happen before Supabase returns the result even though the
     // request reached Auth. One bounded retry is safe because repeated signup
     // is handled by Supabase and avoids leaving a user behind a false network
     // failure when the first request did not commit.
-    const { data: retryData, error: retryError } = await sb.auth.signUp({
-      email: signupEmail,
-      password: signupPassword,
-    });
+    try {
+      const { data: retryData, error: retryError } = await sb.auth.signUp({
+        email: signupEmail,
+        password: signupPassword,
+      });
 
-    if (!retryError) {
-      if (retryData.session?.user) {
-        await finishAuthenticatedSignup(retryData.session.user.id);
-      } else {
-        showConfirmationSuccess();
+      if (!retryError) {
+        if (retryData.session?.user) {
+          await finishAuthenticatedSignup(retryData.session.user.id);
+        } else {
+          showConfirmationSuccess();
+        }
+        return true;
       }
-      return true;
-    }
 
-    if (
-      isConfirmationPendingError(retryError) ||
-      isAmbiguousSignupError(retryError)
-    ) {
-      showConfirmationSuccess(
-        `Your account request reached the server, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
-      );
-      return true;
+      if (
+        isConfirmationPendingError(retryError) ||
+        isAmbiguousSignupError(retryError)
+      ) {
+        showConfirmationSuccess(
+          `We could not confirm the final signup response for ${signupEmail}.\nCheck your inbox before trying again. If no message arrives, wait a moment and retry once.`,
+        );
+        return true;
+      }
+    } catch (retryError) {
+      if (isAmbiguousSignupError(retryError)) {
+        showConfirmationSuccess(
+          `We could not confirm the final signup response for ${signupEmail}.\nCheck your inbox before trying again. If no message arrives, wait a moment and retry once.`,
+        );
+        return true;
+      }
     }
 
     return false;
