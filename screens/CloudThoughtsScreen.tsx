@@ -9,7 +9,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { IMAGES, getRoomBg } from '../constants/theme';
-import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { glowForMood as glowFor } from '../constants/moodGlow';
 import { fetchSekretReply } from '../utils/api';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
@@ -74,7 +73,7 @@ const PROMPT_SETS: Record<string, { emoji: string; text: string }[]> = {
   checkin: [
     { emoji: '🫶', text: "How are you actually doing right now?" },
     { emoji: '💚', text: "What's one thing your body is telling you today?" },
-    { emoji: '☀️', text: "What\'s something you're grateful you got through?" },
+    { emoji: '☀️', text: "What's something you're grateful you got through?" },
     { emoji: '🌊', text: "On a scale of heavy to okay — where are you?" },
   ],
 };
@@ -117,11 +116,7 @@ export function CloudThoughtsScreen({
 }: CloudThoughtsScreenProps) {
 
   // Character-aware display name
-  const characterName =
-    selectedSekret === 'rylane' ? 'Rylane' :
-    selectedSekret === 'cloud'  ? 'Cloud'  :
-    selectedSekret === 'night'  ? 'Night'  :
-    'Raylene';
+  const characterName = selectedSekret === 'rylane' ? 'Rylane' : "Se'kret";
 
   const [input,      setInput]      = useState('');
   const [reply,      setReply]      = useState('');
@@ -135,12 +130,7 @@ export function CloudThoughtsScreen({
 
   // Mood glow + character-aware backdrop
   const glow     = glowFor(mood);
-  const charKey = (
-    selectedSekret === 'rylane' ? 'rylane' :
-    selectedSekret === 'cloud'  ? 'cloud'  :
-    selectedSekret === 'night'  ? 'night'  :
-    'raylene'
-  ) as 'raylene' | 'rylane' | 'cloud' | 'night';
+  const charKey  = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
   const bgSource = getRoomBg(charKey, timeOfDay());
 
   // Breath loop on hero cloud
@@ -184,7 +174,6 @@ export function CloudThoughtsScreen({
 
   return (
     <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
-      <AmbientWeatherOverlay />
       <LinearGradient
         colors={['rgba(13,9,20,0.72)', 'rgba(30,18,55,0.82)', 'rgba(13,9,20,0.95)']}
         style={StyleSheet.absoluteFill}
@@ -301,7 +290,7 @@ export function CloudThoughtsScreen({
         )}
 
         {/* ── Reply ── */}
-        {!!reply && !isThinking && (
+        {reply && !isThinking && (
           <View style={[styles.replyCard, { borderColor: 'rgba(168,85,247,0.3)', backgroundColor: 'rgba(13,9,20,0.92)' }]}>
             <Image source={CLOUD_HP} style={styles.replyCloud} resizeMode="contain" />
             <View style={{ flex: 1 }}>
@@ -327,7 +316,7 @@ export function CloudThoughtsScreen({
 // ── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root:          { flex: 1, width: '100%', height: '100%' },
+  root:          { flex: 1 },
   scroll:        { paddingBottom: 100, ...(Platform.OS === 'web' ? { maxWidth: 520, width: '100%', alignSelf: 'center' as const } : {}) },
   header:        { paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingHorizontal: 16, marginBottom: 8 },
   backBtn:       { alignSelf: 'flex-start' },
@@ -335,7 +324,7 @@ const styles = StyleSheet.create({
   heroWrap:      { alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
   heroCloud:     { width: 80, height: 80, marginBottom: 12 },
   envCloudLayer: {
-    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },

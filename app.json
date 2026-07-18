@@ -6,13 +6,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "sekret",
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
-    "updates": {
-      "enabled": false
+ "platforms": ["ios", "android", "web"],
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#160028"
     },
     "ios": {
       "supportsTablet": false,
@@ -27,10 +24,6 @@
     "web": {
       "bundler": "metro"
     },
-    "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-notifications"
-    ]
+    "plugins": ["expo-router", "expo-secure-store"]
   }
 }

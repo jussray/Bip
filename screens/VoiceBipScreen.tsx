@@ -21,7 +21,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES, getRoomPhase, getRoomScene, type TimeOfDay } from '../constants/theme';
-import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import {
   VOICE_BIP_AVATARS,
   VOICE_BIP_AVATAR_KEYS,
@@ -31,9 +30,7 @@ import {
 import { useVoiceCompanion } from '../hooks/useVoiceCompanion';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import type { VoiceNote } from '../types/bridge';
-import { Audio } from 'expo-av';
-import * as ImagePicker from 'expo-image-picker';
-import { fetchSekretReply, fetchSekretVoice, fetchSekretTranscribe } from '../utils/api';
+import { fetchSekretReply } from '../utils/api';
 import { useVoiceBipIntelligence } from '../hooks/useVoiceBipIntelligence';
 import type { OracleJournalEntry } from '../types/voiceIntelligence';
 import type { OracleProfile, OracleSide } from '../services/oracleDiscovery';
@@ -121,24 +118,15 @@ export function VoiceBipScreen({
   oracleJournalEntries, onStoreOracleMemory, syncStatus,
 }: VoiceBipScreenProps) {
 
-  const voiceHistoryRef = useRef<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
-
   const [showBipMenu,      setShowBipMenu]      = useState(false);
   const [showArchive,      setShowArchive]       = useState(false);
   const [voicePromptIdx,   setVoicePromptIdx]    = useState(0);
   const [isRecording,      setIsRecording]       = useState(false);
-  const [isRecordingStarting, setIsRecordingStarting] = useState(false);
   const [recorded,         setRecorded]          = useState(false);
   const [sekretReply,      setSekretReply]       = useState('');
-  const [replyAudioUri,    setReplyAudioUri]     = useState('');
-  const [isVoiceLoading,   setIsVoiceLoading]    = useState(false);
   const [isThinking,       setIsThinking]        = useState(false);
   const [recordingTime,    setRecordingTime]     = useState(0);
   const [selectedBipType,  setSelectedBipType]   = useState<string | null>(null);
-  const [transcriptFailed, setTranscriptFailed]  = useState(false);
-
-  const recordingRef    = useRef<Audio.Recording | null>(null);
-  const stopRecordingRef = useRef<() => Promise<void>>(async () => {});
 
   // Animations
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -226,17 +214,11 @@ export function VoiceBipScreen({
     transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
   };
 
-  const startRecording = async () => {
-    const { granted } = await Audio.requestPermissionsAsync();
-    if (!granted) return;
-
-    setIsRecordingStarting(true);
+  const startRecording = () => {
     setIsRecording(true);
     setRecorded(false);
     setSekretReply('');
-    setReplyAudioUri('');
     setRecordingTime(0);
-    setTranscriptFailed(false);
     setShowBipMenu(false);
     prepareVoiceSession('voice');
     presence.beginListening();
@@ -280,11 +262,6 @@ export function VoiceBipScreen({
     timerRef.current = setInterval(() => {
       setRecordingTime(t => t + 1);
     }, 1000);
-
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-    const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-    recordingRef.current = recording;
-    setIsRecordingStarting(false);
   };
 
   const stopRecording = async () => {
@@ -300,121 +277,37 @@ export function VoiceBipScreen({
     glowAnim.setValue(0);
     waveAnims.forEach(a => a.setValue(0.3));
 
-    // Stop the real recording and transcribe
-    let transcript: string | null = null;
-    const recording = recordingRef.current;
-    recordingRef.current = null;
-    if (recording) {
-      try {
-        await recording.stopAndUnloadAsync();
-      } catch {
-        // Android E_AUDIO_NODATA: Stop tapped before any audio data was captured
-      }
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      const uri = recording.getURI();
-      if (uri) {
-        try {
-          const fetchRes = await fetch(uri);
-          const blob = await fetchRes.blob();
-          const base64 = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              const dataUrl = reader.result as string;
-              resolve(dataUrl.split(',')[1] ?? '');
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          transcript = await fetchSekretTranscribe({ audioBase64: base64, contentType: blob.type || 'audio/m4a' });
-        } catch {
-          setTranscriptFailed(true);
-        }
-      }
-    }
-
     const noteId = Date.now();
-    const intelligence = prepareIntelligence(noteId, transcript);
+    // Real transcription is a Phase 4 provider boundary. Never fabricate it.
+    const intelligence = prepareIntelligence(noteId, null);
     const note: VoiceNote = {
       id: noteId,
       title: selectedBipType ? `${selectedBipType} Bip` : 'Voice Bip',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: formatTime(recordingTime),
-      type: (selectedBipType || 'voice') as VoiceNote['type'],
+      type: selectedBipType || 'voice',
       avatarKey,
       transcriptId: intelligence.transcript.id,
     };
 
-    (onSave ?? ((n: VoiceNote) => setVoiceNotes(prev => [n, ...prev])))(note);
+    setVoiceNotes((prev: VoiceNote[]) => [note, ...prev]);
+    onSave?.(note);
 
     setIsThinking(true);
     presence.endListening();
-    const replyText = transcript ?? 'I needed to get some feelings out.';
-    const previousVoiceHistory = voiceHistoryRef.current.slice();
     const reply = await fetchSekretReply(
-      replyText,
-      'voiceBip',
+      'I just recorded a voice bip. I had some feelings I needed to get out.',
+      'journal',
       mood,
       avatarKey,
       undefined,
       privateProfile,
       profileSide,
-      previousVoiceHistory,
     );
-    voiceHistoryRef.current = [
-      ...previousVoiceHistory,
-      { role: 'user' as const, content: replyText },
-      { role: 'assistant' as const, content: reply },
-    ].slice(-20);
     setSekretReply(reply);
-    setIsVoiceLoading(true);
-    const audio = await fetchSekretVoice({ reply, characterId: avatarKey });
-    if (audio) setReplyAudioUri(`data:${audio.contentType};base64,${audio.audioBase64}`);
-    setIsVoiceLoading(false);
     setIsThinking(false);
     presence.markResponseReady();
-    setSelectedBipType(null);
-  };
-
-  stopRecordingRef.current = stopRecording;
-
-  useEffect(() => {
-    if (!isRecording) return;
-    if (recordingTime >= 300) {
-      stopRecordingRef.current();
-    }
-  }, [recordingTime, isRecording]);
-
-  const startVideoRecording = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      setSelectedBipType(null);
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      videoMaxDuration: 60,
-      quality: 0.8,
-      allowsEditing: false,
-    });
-    if (result.canceled || !result.assets[0]) {
-      setSelectedBipType(null);
-      return;
-    }
-    const asset = result.assets[0];
-    const secs = typeof asset.duration === 'number' ? Math.floor(asset.duration) : 0;
-    const note: VoiceNote = {
-      id: Date.now(),
-      title: 'Video Bip',
-      date: new Date().toLocaleDateString(),
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      duration: `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`,
-      type: 'video',
-      avatarKey,
-      videoUri: asset.uri,
-    };
-    (onSave ?? ((n: VoiceNote) => setVoiceNotes(prev => [n, ...prev])))(note);
-    setRecorded(true);
     setSelectedBipType(null);
   };
 
@@ -424,16 +317,8 @@ export function VoiceBipScreen({
       glowLoop.current?.stop();
       waveLoop.current?.stop();
       if (timerRef.current) clearInterval(timerRef.current);
-      recordingRef.current?.stopAndUnloadAsync().catch(() => null);
     };
   }, []);
-
-
-  const playReplyAudio = async () => {
-    if (!replyAudioUri) return;
-    const { sound } = await Audio.Sound.createAsync({ uri: replyAudioUri });
-    await sound.playAsync();
-  };
 
   const prompts = avatar.prompts;
   const prompt = prompts[voicePromptIdx % prompts.length];
@@ -441,13 +326,11 @@ export function VoiceBipScreen({
     setVoicePromptIdx(0);
     setSekretReply('');
     setRecorded(false);
-    voiceHistoryRef.current = [];
     onSelectAvatar?.(nextAvatarKey);
   };
 
   return (
     <View style={[styles.root, { backgroundColor: '#0d0914' }]}>
-      <AmbientWeatherOverlay />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Avatar Voice Bip — each companion keeps an independent identity. */}
@@ -562,8 +445,8 @@ export function VoiceBipScreen({
               DEBUG_HOTSPOTS && styles.hotspotDebug,
             ]}
             onPress={() => {
-              if (isRecording && !isRecordingStarting) stopRecording();
-              else if (!isRecording) setShowBipMenu(true);
+              if (isRecording) stopRecording();
+              else setShowBipMenu(true);
             }}
           >
             {DEBUG_HOTSPOTS && <Text style={styles.debugLabel}>{HOTSPOTS.microphone.label}</Text>}
@@ -622,9 +505,6 @@ export function VoiceBipScreen({
             <Animated.View style={[styles.pulseRing, { transform: [{ scale: pulseAnim }], borderColor: '#a855f7' }]} />
             <Text style={styles.recordingLabel}>Recording… 🔴</Text>
             <Text style={styles.recordingTimer}>{formatTime(recordingTime)}</Text>
-            {recordingTime >= 270 && (
-              <Text style={styles.recordingWarn}>almost at limit — wrapping up soon</Text>
-            )}
             <View style={styles.waveform}>
               {waveAnims.map((anim, i) => (
                 <Animated.View
@@ -639,7 +519,7 @@ export function VoiceBipScreen({
                 />
               ))}
             </View>
-            <TouchableOpacity style={[styles.stopBtn, isRecordingStarting && { opacity: 0.4 }]} onPress={stopRecording} disabled={isRecordingStarting}>
+            <TouchableOpacity style={styles.stopBtn} onPress={stopRecording}>
               <Text style={styles.stopBtnText}>⏹ Stop</Text>
             </TouchableOpacity>
           </View>
@@ -654,15 +534,6 @@ export function VoiceBipScreen({
           </View>
         )}
 
-        {/* ── Transcript failed badge ── */}
-        {recorded && transcriptFailed && !isThinking && (
-          <View style={[styles.floatCard, { borderColor: '#f59e0b88', backgroundColor: 'rgba(13,9,20,0.88)' }]}>
-            <Text style={{ fontSize: 13, color: '#fcd34d', fontStyle: 'italic', textAlign: 'center', lineHeight: 19 }}>
-              couldn't catch that clearly — replied from the vibe anyway 💜
-            </Text>
-          </View>
-        )}
-
         {/* ── Companion thinking ── */}
         {isThinking && (
           <View style={[styles.floatCard, { borderColor: theme.accent, backgroundColor: 'rgba(13,9,20,0.88)', flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
@@ -672,17 +543,10 @@ export function VoiceBipScreen({
         )}
 
         {/* ── Reply ── */}
-        {Boolean(sekretReply) && !isThinking && (
+        {sekretReply && !isThinking && (
           <View style={[styles.floatCard, { borderColor: 'rgba(168,85,247,0.5)', backgroundColor: 'rgba(13,9,20,0.92)', shadowColor: '#a855f7' }]}>
             <Text style={[styles.replyLabel, { color: '#a855f7' }]}>{avatar.responseLabel}</Text>
             <Text style={[styles.replyText, { color: theme.soft }]}>{sekretReply}</Text>
-            {isVoiceLoading ? (
-              <Text style={[styles.voiceStatus, { color: theme.soft }]}>preparing voice…</Text>
-            ) : replyAudioUri ? (
-              <TouchableOpacity style={styles.voiceBtn} onPress={playReplyAudio}>
-                <Text style={styles.voiceBtnText}>▶ hear this reply</Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         )}
 
@@ -743,7 +607,6 @@ export function VoiceBipScreen({
                   setSelectedBipType(bip.id);
                   if (bip.id === 'text')       { setShowBipMenu(false); setScreen('pages'); }
                   else if (bip.id === 'cloud') { setShowBipMenu(false); setScreen('cloudThoughts'); }
-                  else if (bip.id === 'video') { setShowBipMenu(false); void startVideoRecording(); }
                   else                         { setShowBipMenu(false); startRecording(); }
                 }}
               >
@@ -834,7 +697,7 @@ const styles = StyleSheet.create({
   bottomScrim:        { position: 'absolute', bottom: 0, left: 0, right: 0, height: 140 },
   cloudWrap:          { position: 'absolute', top: 36, right: 24 },
   cloudImg:           { width: 64, height: 64 },
-  recordingOverlay:   { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(124,58,237,0.25)' },
+  recordingOverlay:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(124,58,237,0.25)' },
   timeBadge:          { position: 'absolute', top: 10, left: 12, backgroundColor: 'rgba(13,9,20,0.65)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   timeBadgeText:      { color: '#c4b5fd', fontSize: 11, fontWeight: '600' },
   presencePill:       {
@@ -866,8 +729,7 @@ const styles = StyleSheet.create({
   },
   pulseRing:          { width: 80, height: 80, borderRadius: 40, borderWidth: 3, position: 'absolute', top: 14 },
   recordingLabel:     { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 6, marginTop: 8 },
-  recordingTimer:     { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 8 },
-  recordingWarn:      { color: '#fcd34d', fontSize: 11, fontStyle: 'italic', marginBottom: 8 },
+  recordingTimer:     { color: '#a855f7', fontSize: 28, fontWeight: '900', marginBottom: 16 },
   waveform:           { flexDirection: 'row', alignItems: 'center', gap: 3, height: 44, marginBottom: 20 },
   waveBar:            { width: 4, borderRadius: 2 },
   stopBtn:            { backgroundColor: '#ef4444', borderRadius: 18, paddingHorizontal: 24, paddingVertical: 12 },
@@ -882,15 +744,12 @@ const styles = StyleSheet.create({
   thinkingText:       { fontSize: 13, fontStyle: 'italic' },
   replyLabel:         { fontSize: 10, marginBottom: 6, fontWeight: '700', letterSpacing: 0.5 },
   replyText:          { fontSize: 13, lineHeight: 20, fontStyle: 'italic' },
-  voiceStatus:        { marginTop: 10, fontSize: 12, fontStyle: 'italic', opacity: 0.75 },
-  voiceBtn:           { marginTop: 12, alignSelf: 'flex-start', backgroundColor: 'rgba(124,58,237,0.34)', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)' },
-  voiceBtnText:       { color: '#f5f0ff', fontSize: 12, fontWeight: '800' },
   cardTitle:          { fontSize: 13, fontWeight: '600', marginBottom: 10 },
   tip:                { fontSize: 13, marginBottom: 8, lineHeight: 20 },
 
   // Bip menu overlay
   overlayWrap:        { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end' },
-  overlayBackdrop:    { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)' },
+  overlayBackdrop:    { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
   bipMenuCard:        { margin: 16, borderRadius: 28, borderWidth: 1, padding: 24, zIndex: 10 },
   bipMenuTitle:       { fontSize: 20, fontWeight: '900', marginBottom: 4 },
   bipMenuSub:         { fontSize: 12, marginBottom: 20 },

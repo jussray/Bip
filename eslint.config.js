@@ -21,7 +21,6 @@ module.exports = [
       'package.master.json',
       '**/*.jsonc',
       'eslint.config.js',
-      'scripts/control-room-ingest-scans.mjs',
     ],
   },
   ...tseslint.configs.recommended,
@@ -65,13 +64,6 @@ module.exports = [
       '@typescript-eslint/ban-ts-comment':    'off',
       // React Native requires `require()` for static image assets.
       '@typescript-eslint/no-require-imports': 'off',
-    },
-  },
-  {
-    files: ['src/services/issueNormalizer.ts'],
-    rules: {
-      // `created` is reserved for future create-vs-update accounting.
-      'prefer-const': 'off',
     },
   },
 ];

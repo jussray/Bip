@@ -20,7 +20,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { IMAGES } from '../constants/theme';
-import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
 import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
@@ -29,30 +28,18 @@ import {
   Platform, TouchableOpacity, Animated, Easing, Dimensions,
 } from 'react-native';
 
-const RAINY_BG = IMAGES.bgComfort;
-
-const CLOUD_ROTATION = [
-  IMAGES.cloudStormy,
-  IMAGES.cloudHappy,
-  IMAGES.cloudHeadphones,
-  IMAGES.cloudSleepy,
-  IMAGES.cloud,
-  IMAGES.cloudHeadphonesV2,
-];
-
-// Each cloud pose maps to a matching ambient weather phase.
-// stormy→rain, happy→sun, headphones→golden afternoon, sleepy→night, neutral→day, headphonesV2→evening
-const CLOUD_PHASES = ['rain', 'day', 'afternoon', 'night', 'midday', 'evening'] as const;
+const CLOUD_STORMY = IMAGES.cloudStormy;
+const RAINY_BG     = IMAGES.bgComfort;
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
 // ── Comfort messages ───────────────────────────────────────────────────────
 const COMFORT_MESSAGES = [
-  { emoji: '🌙', text: "You've survived every hard day so far. That matters." },
+  { emoji: '🌙', text: 'You’ve survived every hard day so far. That matters.' },
   { emoji: '☁️', text: 'Rest is productive too. You are allowed to pause.' },
-  { emoji: '💙', text: "Someone is glad you're still here tonight." },
+  { emoji: '💙', text: 'Someone is glad you’re still here tonight.' },
   { emoji: '🌧️', text: 'Bad moments are real. So is your strength.' },
-  { emoji: '✨', text: "You don't need to be perfect to be loved." },
+  { emoji: '✨', text: 'You don’t need to be perfect to be loved.' },
   { emoji: '🫶', text: 'Your feelings are allowed here.' },
   { emoji: '🕯️', text: 'Soft moment. Slow breath. Stay with me.' },
 ];
@@ -87,8 +74,6 @@ export function ComfortScreen({
 
   const [checked, setChecked] = useState<number[]>([]);
   const [msgIdx, setMsgIdx] = useState(0);
-  const [cloudIdx, setCloudIdx] = useState(0);
-  const cloudFadeAnim = useRef(new Animated.Value(1)).current;
 
   // Character / mood ────────────────────────────────────────────────────────
   const isRylane = selectedSekret === 'rylane';
@@ -99,11 +84,11 @@ export function ComfortScreen({
 
   // Copy variants ───────────────────────────────────────────────────────────
   const heroCopy = isRylane
-    ? { title: 'Comfort Mode 🚨', sub: "Heavy moment. I'm right here." }
+    ? { title: 'Comfort Mode 🚨', sub: 'Heavy moment. I’m right here.' }
     : { title: 'Comfort Mode 🚨', sub: 'When it feels heavy, Bip stays with you.' }; // default
 
   const notAloneCopy = isRylane
-    ? { title: "You're not in this alone.",  sub: 'No fix. No fix-it talk. Just here.' }
+    ? { title: 'You’re not in this alone.',  sub: 'No fix. No fix-it talk. Just here.' }
     : { title: 'You are not alone in this moment.', sub: 'This is a safe space. Take your time. No rush.' };
 
   const allDoneCopy = isRylane
@@ -112,8 +97,8 @@ export function ComfortScreen({
 
   const calmBtnCopy = isRylane ? '🌙 Slide into Calm Space' : '🌙 Go to Calm Space';
   const betterCopy  = isRylane
-    ? "I'm good now ›"
-    : "I'm feeling a little better ›";
+    ? 'I’m good now ›'
+    : 'I’m feeling a little better ›';
 
   // Track session on mount
   useEffect(() => {
@@ -179,17 +164,6 @@ export function ComfortScreen({
     });
   }, []);
 
-  // Cloud image rotation with cross-fade
-  useEffect(() => {
-    const interval = setInterval(() => {
-      Animated.timing(cloudFadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }).start(() => {
-        setCloudIdx(i => (i + 1) % CLOUD_ROTATION.length);
-        Animated.timing(cloudFadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-      });
-    }, 3500);
-    return () => clearInterval(interval);
-  }, []);
-
   const toggleStep = (id: number, action?: string) => {
     setChecked(prev =>
       prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
@@ -204,7 +178,6 @@ export function ComfortScreen({
 
   return (
     <View style={[styles.root, { backgroundColor: t.background }]}>
-      <AmbientWeatherOverlay phase={CLOUD_PHASES[cloudIdx]} />
 
       {/* ── Ambient rainy room backdrop (fixed, behind scroll) ── */}
       <View style={styles.bgWrap} pointerEvents="none">
@@ -216,7 +189,7 @@ export function ComfortScreen({
         {/* Heavy purple wash */}
         <LinearGradient
           colors={['rgba(13,0,20,0.65)', 'rgba(13,0,20,0.55)', 'rgba(13,0,20,0.85)']}
-          style={StyleSheet.absoluteFill}
+          style={StyleSheet.absoluteFillObject}
         />
 
         {/* Rain streaks */}
@@ -254,13 +227,9 @@ export function ComfortScreen({
         <Text style={styles.subtitle}>{heroCopy.sub}</Text>
         <SyncBadge status={syncStatus ?? 'idle'} />
 
-        {/* Cloud — rotates through all poses with cross-fade */}
+        {/* Cloud stormy with breath/drift */}
         <Animated.View style={[styles.cloudWrap, cloudStyle]}>
-          <Animated.Image
-            source={CLOUD_ROTATION[cloudIdx]}
-            style={[styles.artworkMedium, { opacity: cloudFadeAnim }]}
-            resizeMode="contain"
-          />
+          <Image source={CLOUD_STORMY} style={styles.artworkMedium} resizeMode="contain" />
         </Animated.View>
 
         {/* You are not alone card */}
@@ -350,9 +319,9 @@ export function ComfortScreen({
 // ── Styles ─────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   root:          { flex: 1 },
-  bgWrap:        StyleSheet.absoluteFill,
+  bgWrap:        { ...StyleSheet.absoluteFillObject },
   bgImage:       { width: '100%', height: '100%' },
-  bgMoodScrim:   StyleSheet.absoluteFill,
+  bgMoodScrim:   { ...StyleSheet.absoluteFillObject },
   rainStreak:    {
     position: 'absolute', top: 0, width: 1.5, height: 22,
     backgroundColor: 'rgba(180,210,255,0.55)', borderRadius: 1,

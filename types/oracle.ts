@@ -17,20 +17,16 @@ export type StrategyAxis =
 export type ProfileDimension = TeenProfileDimension | ParentProfileDimension;
 
 export interface OracleDimensionEntry {
-  dimension?: ProfileDimension;
   signals: string[];
-  state?: SoftState;
-  softState?: SoftState | string;
+  state: SoftState;
   lastUpdated: string;
 }
 
 export interface StrategyAxisEntry {
-  axis?: StrategyAxis;
   leanA: number;
   leanB: number;
-  confidence?: number;
-  observations?: number;
-  lastUpdated?: string;
+  observations: number;
+  lastUpdated: string;
 }
 
 export interface OracleTurn {
@@ -38,7 +34,6 @@ export interface OracleTurn {
   question: string;
   answer: string;
   dimension: ProfileDimension;
-  axis?: StrategyAxis;
   timestamp: string;
 }
 

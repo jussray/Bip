@@ -9,25 +9,17 @@ import type { ImageSourcePropType } from "react-native";
 // never crashes. Replace the fallback with the real asset later — the variable
 // name stays the same so no screen code has to change.
 
-// ── Raylene (updated look — new portraits match Night/Rylane art style) ───
-const rayleneNeutral    = require("../assets/images/raylene-neutral-new.png");
-const rayleneHappy      = require("../assets/images/raylene-happy-new.png");
-const rayleneWriting    = require("../assets/images/raylene-writing.png");       // old style kept
-const rayleneWindow     = require("../assets/images/raylene-window-new.png");
-const rayleneFullbody   = require("../assets/images/raylene-confident-new.png"); // arms-crossed fullbody
-const rayleneHappyV3    = require("../assets/images/raylene-happy-v3.png");      // old style kept
-const rayleneNeutralV3  = rayleneNeutral;
-
-// ── Raylene (new emotions) ─────────────────────────────────────────────────
-const rayleneConfident  = require("../assets/images/raylene-confident-new.png");
-const raylenePlayful    = require("../assets/images/raylene-playful-new.png");
-const rayleeneSad       = require("../assets/images/raylene-sad-new.png");
-const rayleeneMad       = require("../assets/images/raylene-mad-new.png");
-const rayleeneSurprised = require("../assets/images/raylene-surprised-new.png");
-const rayleeneCrouching = require("../assets/images/raylene-crouching-new.png");
+// ── Raylene (real assets) ──────────────────────────────────────────────────
+const rayleneNeutral = require("../assets/images/raylene-neutral.png");
+const rayleneHappy = require("../assets/images/raylene-happy.png");
+const rayleneWriting = require("../assets/images/raylene-writing.png");
+const rayleneWindow = require("../assets/images/raylene-window.png");
+const rayleneFullbody = require("../assets/images/raylene-fullbody.png");
+const rayleneHappyV3 = require("../assets/images/raylene-happy-v3.png");
+const rayleneNeutralV3 = rayleneNeutral;
 
 // ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
-const rayleneThinking    = require("../assets/images/raylene-thinking-new.png");
+const rayleneThinking    = rayleneNeutral; // fallback → neutral
 const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
 const rayleneNightWindow = rayleneWindowRainy; // night window → rainy window (closer semantic)
 const rayleneNightDoodle = rayleneWriting; // fallback → writing
@@ -56,101 +48,100 @@ const rylaneVoiceDay   = require("../assets/images/rylane-voice-day.png");
 const rylaneVoiceNight = require("../assets/images/rylane-voice-night.png");
 const rylaneWindowDay  = require("../assets/images/rylane-window-day.png");
 
-// ── Room Backgrounds ───────────────────────────────────────────────────────
-const bgRayleneRoomDay       = require("../assets/images/resized-bg/bg-raylene-room-day.jpg");
-const bgRayleneRoomMidday    = require("../assets/images/resized-bg/bg-raylene-room-midday.jpg");
-const bgRayleneRoomAfternoon = require("../assets/images/resized-bg/bg-raylene-room-afternoon.jpg");
-const bgRayleneRoomEvening   = require("../assets/images/resized-bg/bg-raylene-room-evening.jpg");
-const bgRayleneRoomRain      = require("../assets/images/resized-bg/bg-raylene-room-rain.jpg");
-const bgRayleneRoomNight     = require("../assets/images/resized-bg/bg-raylene-room-night.jpg");
-const bgRayleneRoomDeepNight = require("../assets/images/resized-bg/bg-raylene-room-deep-night.jpg");
+// ── Night (real assets) ────────────────────────────────────────────────────
+// Night is his own character: curly black hair, purple Se'kret hoodie,
+// headphones, sketchbook + mug. "Late night thoughts / protect his peace."
+//
+// Dedicated, runtime-ready Night cutouts have not shipped yet. Keep these
+// explicit nulls so Metro never attempts to bundle missing design-reference
+// sheets; callers use their existing safe fallback behavior.
+const nightReferenceBoard: ImageSourcePropType | null = null;
+const nightProfileSheet: ImageSourcePropType | null = null;
 
-const bgRylaneRoomDay       = require("../assets/images/resized-bg/bg-rylane-room-day.jpg");
-const bgRylaneRoomMidday    = require("../assets/images/resized-bg/bg-rylane-room-midday.jpg");
-const bgRylaneRoomAfternoon = require("../assets/images/resized-bg/bg-rylane-room-afternoon.jpg");
-const bgRylaneRoomEvening   = require("../assets/images/resized-bg/bg-rylane-room-evening.jpg");
-const bgRylaneRoomRain      = require("../assets/images/resized-bg/bg-rylane-room-rain.jpg");
-const bgRylaneRoomNight     = require("../assets/images/resized-bg/bg-rylane-room-night.jpg");
-const bgRylaneRoomDeepNight = require("../assets/images/resized-bg/bg-rylane-room-deep-night.jpg");
+// ── Night (semantic aliases) ───────────────────────────────────────────────
+// Until per-state, single-pose Night art lands, Night states remain null.
+// Presence rendering falls back safely without borrowing another character.
+const nightNeutral     = nightProfileSheet;
+const nightHappy       = nightReferenceBoard;
+const nightThinking    = nightProfileSheet;
+const nightWriting     = nightProfileSheet;
+const nightWindow      = nightProfileSheet;
+const nightVoiceDay    = nightReferenceBoard;
+const nightVoiceNight  = nightProfileSheet;
+const nightFullbody    = nightReferenceBoard;
+
+// ── Room Backgrounds ───────────────────────────────────────────────────────
+const bgRayleneRoomDay       = require("../assets/images/bg-raylene-room-day.png");
+const bgRayleneRoomMidday    = require("../assets/images/bg-raylene-room-midday.png");
+const bgRayleneRoomAfternoon = require("../assets/images/bg-raylene-room-afternoon.png");
+const bgRayleneRoomEvening   = require("../assets/images/bg-raylene-room-evening.png");
+const bgRayleneRoomRain      = require("../assets/images/bg-raylene-room-rain.png");
+const bgRayleneRoomNight     = require("../assets/images/bg-raylene-room-night.png");
+const bgRayleneRoomDeepNight = require("../assets/images/bg-raylene-room-deep-night.png");
+
+const bgRylaneRoomDay       = require("../assets/images/bg-rylane-room-day.png");
+const bgRylaneRoomMidday    = require("../assets/images/bg-rylane-room-midday.png");
+const bgRylaneRoomAfternoon = require("../assets/images/bg-rylane-room-afternoon.png");
+const bgRylaneRoomEvening   = require("../assets/images/bg-rylane-room-evening.png");
+const bgRylaneRoomRain      = require("../assets/images/bg-rylane-room-rain.png");
+const bgRylaneRoomNight     = require("../assets/images/bg-rylane-room-night.png");
+const bgRylaneRoomDeepNight = require("../assets/images/bg-rylane-room-deep-night.png");
 
 // ── Cloud Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Cloud Room identity: cozy purple room, cloud neon sign, city window view,
 // open journals, bean bag, headphones, brain-dump backpack, scrapbook walls.
 // NOT a floating sky — it's the place you go when your brain is loud.
-const bgCloudRoomDay       = require("../assets/images/resized-bg/bg-cloud-room-day.jpg");
-const bgCloudRoomMidday    = require("../assets/images/resized-bg/bg-cloud-room-midday.jpg");
-const bgCloudRoomAfternoon = require("../assets/images/resized-bg/bg-cloud-room-afternoon.jpg");
-const bgCloudRoomEvening   = require("../assets/images/resized-bg/bg-cloud-room-evening.jpg");
-const bgCloudRoomNight     = require("../assets/images/resized-bg/bg-cloud-room-night.jpg");
-const bgCloudRoomDeepNight = require("../assets/images/resized-bg/bg-cloud-room-deep-night.jpg");
-const bgCloudRoomRain      = require("../assets/images/resized-bg/bg-cloud-room-rain.jpg");
+const bgCloudRoomDay       = require("../assets/images/bg-cloud-room-day.png");
+const bgCloudRoomMidday    = require("../assets/images/bg-cloud-room-midday.png");
+const bgCloudRoomAfternoon = require("../assets/images/bg-cloud-room-afternoon.png");
+const bgCloudRoomEvening   = require("../assets/images/bg-cloud-room-evening.png");
+const bgCloudRoomNight     = require("../assets/images/bg-cloud-room-night.png");
+const bgCloudRoomDeepNight = require("../assets/images/bg-cloud-room-deep-night.png");
+const bgCloudRoomRain      = require("../assets/images/bg-cloud-room-rain.png");
 
 // ── Night Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Night Room identity: crescent moon chair, galaxy bedding, "Voice Bip Corner"
 // light-box sign, city window with clock, sticky notes everywhere, 2AM energy.
 // NOT Raylene's room — completely different furniture, palette, and spirit.
-const bgNightRoomDay       = require("../assets/images/resized-bg/bg-night-room-day.jpg");
-const bgNightRoomMidday    = require("../assets/images/resized-bg/bg-night-room-midday.jpg");
-const bgNightRoomAfternoon = require("../assets/images/resized-bg/bg-night-room-afternoon.jpg");
-const bgNightRoomEvening   = require("../assets/images/resized-bg/bg-night-room-evening.jpg");
-const bgNightRoomNight     = require("../assets/images/resized-bg/bg-night-room-night.jpg");
-const bgNightRoomDeepNight = require("../assets/images/resized-bg/bg-night-room-deep-night.jpg");
-const bgNightRoomRain      = require("../assets/images/resized-bg/bg-night-room-rain.jpg");
+const bgNightRoomDay       = require("../assets/images/bg-night-room-day.png");
+const bgNightRoomMidday    = require("../assets/images/bg-night-room-midday.png");
+const bgNightRoomAfternoon = require("../assets/images/bg-night-room-afternoon.png");
+const bgNightRoomEvening   = require("../assets/images/bg-night-room-evening.png");
+const bgNightRoomNight     = require("../assets/images/bg-night-room-night.png");
+const bgNightRoomDeepNight = require("../assets/images/bg-night-room-deep-night.png");
+const bgNightRoomRain      = require("../assets/images/bg-night-room-rain.png");
 
-// ── Night Avatar ───────────────────────────────────────────────────────────
-const nightFullbody    = require("../assets/images/night-fullbody.png");
-const nightNeutral     = require("../assets/images/night-neutral.png");
-const nightSoftsmile   = require("../assets/images/night-softsmile.png");
-const nightHappy       = require("../assets/images/night-happy.png");
-const nightThinking    = require("../assets/images/night-thinking.png");
-const nightTired       = require("../assets/images/night-tired.png");
-const nightAnnoyed     = require("../assets/images/night-annoyed.png");
-const nightSad         = require("../assets/images/night-sad.png");
-const nightOverwhelmed = require("../assets/images/night-overwhelmed.png");
-const nightProtective  = require("../assets/images/night-protective.png");
-const nightLonely      = require("../assets/images/night-lonely.png");
-const nightHopeful     = require("../assets/images/night-hopeful.png");
-const nightRelaxed     = require("../assets/images/night-relaxed.png");
-const nightListening   = require("../assets/images/night-listening.png");
-const nightWriting     = require("../assets/images/night-writing.png");
-const nightWindow      = require("../assets/images/night-window.png");
-const nightPlayful     = require("../assets/images/night-playful.png");
-const nightHurting     = require("../assets/images/night-hurting.png");
-const nightInHisHead   = require("../assets/images/night-inhishead.png");
-const nightInLove      = require("../assets/images/night-in-love.png");
-
-const nightAvatarNeutral  = nightNeutral;
-const nightAvatarHappy    = nightSoftsmile;
-const nightAvatarThinking = nightThinking;
-const nightAvatarWriting  = nightWriting;
-const nightAvatarWindow   = nightWindow;
-const nightAvatarFullbody = nightFullbody;
-
-// ── Night voice backgrounds (aliases — real assets TBD) ────────────────────
-const nightVoiceDay   = nightNeutral;   // placeholder until night-voice-day.png exists
-const nightVoiceNight = nightWindow;    // window/late-night scene fits night voice context
+// ── Night Avatar — REAL ASSETS NEEDED ─────────────────────────────────────
+// Replace when night-*.png ships: night-neutral · night-window · night-comfort · night-listening
+// Night sits by the window — raylene-window-rainy is the closest semantic match.
+const nightAvatarNeutral  = rayleneWindowRainy;
+const nightAvatarHappy    = rayleneNightWindow;
+const nightAvatarThinking = rayleneThinking;
+const nightAvatarWriting  = rayleneWriting;
+const nightAvatarWindow   = rayleneWindowRainy;
+const nightAvatarFullbody = rayleneNeutral;
 
 // ── Parent Room Backgrounds ────────────────────────────────────────────────
-const bgMomRoomDay       = require("../assets/images/resized-bg/bg-mom-room-day.jpg");
-const bgMomRoomEvening   = require("../assets/images/resized-bg/bg-mom-room-evening.jpg");
-const bgMomRoomNight     = require("../assets/images/resized-bg/bg-mom-room-night.jpg");
-const bgMomRoomDeepNight = require("../assets/images/resized-bg/bg-mom-room-deep-night.jpg");
-const bgMomRoomRain      = require("../assets/images/resized-bg/bg-mom-room-rain.jpg");
+const bgMomRoomDay       = require("../assets/images/bg-mom-room-day.png");
+const bgMomRoomEvening   = require("../assets/images/bg-mom-room-evening.png");
+const bgMomRoomNight     = require("../assets/images/bg-mom-room-night.png");
+const bgMomRoomDeepNight = require("../assets/images/bg-mom-room-deep-night.png");
+const bgMomRoomRain      = require("../assets/images/bg-mom-room-rain.png");
 
-const bgDadRoomDay       = require("../assets/images/resized-bg/bg-dad-room-day.jpg");
-const bgDadRoomEvening   = require("../assets/images/resized-bg/bg-dad-room-evening.jpg");
-const bgDadRoomNight     = require("../assets/images/resized-bg/bg-dad-room-night.jpg");
-const bgDadRoomDeepNight = require("../assets/images/resized-bg/bg-dad-room-deep-night.jpg");
-const bgDadRoomRain      = require("../assets/images/resized-bg/bg-dad-room-rain.jpg");
+const bgDadRoomDay       = require("../assets/images/bg-dad-room-day.png");
+const bgDadRoomEvening   = require("../assets/images/bg-dad-room-evening.png");
+const bgDadRoomNight     = require("../assets/images/bg-dad-room-night.png");
+const bgDadRoomDeepNight = require("../assets/images/bg-dad-room-deep-night.png");
+const bgDadRoomRain      = require("../assets/images/bg-dad-room-rain.png");
 
 // ── Screen Backgrounds (all real) ──────────────────────────────────────────
-const bgComfort         = require('../assets/images/resized-bg/comfort-bg.jpg');
-const bgJournal         = require('../assets/images/resized-bg/journal-bg.jpg');
-const bgBridge          = require('../assets/images/resized-bg/bridge-bg.jpg');
-const bgVoiceBip        = require('../assets/images/resized-bg/voice-bip-bg.jpg');
+const bgComfort         = require('../assets/images/comfort-bg.png');
+const bgJournal         = require('../assets/images/journal-bg.png');
+const bgBridge          = require('../assets/images/bridge-bg.png');
+const bgVoiceBip        = require('../assets/images/voice-bip-bg.png');
 // Circle is assembled from React Native controls over a generic atmosphere asset.
 // Design mockups live outside assets/ and are never loaded by the application.
-const bgCircle          = require('../assets/images/resized-bg/room-bg-dark.jpg');
+const bgCircle          = require('../assets/images/room-bg-dark.png');
 const bgWindow          = require('../assets/images/window.png');
 const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
 
@@ -170,19 +161,70 @@ const cloudAvatarWriting  = cloudHeadphonesV2;
 const cloudAvatarWindow   = cloudSleepy;
 const cloudAvatarFullbody = cloudHappy;
 
-// ── App Entry Splash Screens ───────────────────────────────────────────────
-// These are the first full-screen images the user sees when opening the app
-// after completing onboarding — one per side. Teen side and parent side are
-// completely separate app experiences. These images are entry doors, not
-// companion UI or in-app features.
-//
-//   sekretSplashTeen   → teen side entry: two teens back-to-back, neon pink/purple
-//   sekretSplashParent → parent side entry: couple by candlelight, warm purple neon
-//
-// sekretSplash is a backward-compat alias → resolves to teen splash.
-const sekretSplashTeen   = require("../assets/images/A2EB8B5A-0109-4A02-927A-FA7080B5F501.png");
-const sekretSplashParent = require("../assets/images/80B326EB-C67B-4369-A3EE-CFE0348E0701.jpeg");
-const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
+// ── Sticker Layer (real assets — assets/images/stickers/) ──────────────────
+// 53 individual stickers cut from the character sticker sheets.
+// 19 raylene / 19 rylane / 15 cloud. These are the small sticker-layer art,
+// distinct from the full-size avatar/mascot images above.
+const rayStickerStanding    = require("../assets/images/stickers/raylene/raylene-sticker-standing.png");
+const rayStickerLounging    = require("../assets/images/stickers/raylene/raylene-sticker-lounging.png");
+const rayStickerStudying    = require("../assets/images/stickers/raylene/raylene-sticker-studying.png");
+const rayStickerSleepy      = require("../assets/images/stickers/raylene/raylene-sticker-sleepy.png");
+const rayStickerPeace       = require("../assets/images/stickers/raylene/raylene-sticker-peace.png");
+const rayStickerListening   = require("../assets/images/stickers/raylene/raylene-sticker-listening.png");
+const rayStickerComfort     = require("../assets/images/stickers/raylene/raylene-sticker-comfort.png");
+const rayStickerSunglasses  = require("../assets/images/stickers/raylene/raylene-sticker-sunglasses.png");
+const rayStickerHappy       = require("../assets/images/stickers/raylene/raylene-sticker-happy.png");
+const rayStickerJournaling  = require("../assets/images/stickers/raylene/raylene-sticker-journaling.png");
+const rayStickerThinking    = require("../assets/images/stickers/raylene/raylene-sticker-thinking.png");
+const rayStickerBoba        = require("../assets/images/stickers/raylene/raylene-sticker-boba.png");
+const rayStickerCrown       = require("../assets/images/stickers/raylene/raylene-sticker-crown.png");
+const rayStickerSunnies     = require("../assets/images/stickers/raylene/raylene-sticker-sunnies.png");
+const rayStickerHoodie      = require("../assets/images/stickers/raylene/raylene-sticker-hoodie.png");
+const rayStickerSekretBip   = require("../assets/images/stickers/raylene/raylene-sticker-sekret-bip.png");
+const rayStickerSekretHeart = require("../assets/images/stickers/raylene/raylene-sticker-sekret-heart.png");
+const rayStickerPillow      = require("../assets/images/stickers/raylene/raylene-sticker-pillow.png");
+const rayStickerIconCloud   = require("../assets/images/stickers/raylene/raylene-sticker-icon-cloud.png");
+
+const rylStickerMini        = require("../assets/images/stickers/rylane/rylane-sticker-mini.png");
+const rylStickerReading     = require("../assets/images/stickers/rylane/rylane-sticker-reading.png");
+const rylStickerPhone       = require("../assets/images/stickers/rylane/rylane-sticker-phone.png");
+const rylStickerThinking    = require("../assets/images/stickers/rylane/rylane-sticker-thinking.png");
+const rylStickerSitting     = require("../assets/images/stickers/rylane/rylane-sticker-sitting.png");
+const rylStickerHeadphones  = require("../assets/images/stickers/rylane/rylane-sticker-headphones.png");
+const rylStickerHoodie      = require("../assets/images/stickers/rylane/rylane-sticker-hoodie.png");
+const rylStickerCalm        = require("../assets/images/stickers/rylane/rylane-sticker-calm.png");
+const rylStickerStormy      = require("../assets/images/stickers/rylane/rylane-sticker-stormy.png");
+const rylStickerPeace       = require("../assets/images/stickers/rylane/rylane-sticker-peace.png");
+const rylStickerHappy       = require("../assets/images/stickers/rylane/rylane-sticker-happy.png");
+const rylStickerSleepy      = require("../assets/images/stickers/rylane/rylane-sticker-sleepy.png");
+const rylStickerNight       = require("../assets/images/stickers/rylane/rylane-sticker-night.png");
+const rylStickerMusic       = require("../assets/images/stickers/rylane/rylane-sticker-music.png");
+const rylStickerLateNight   = require("../assets/images/stickers/rylane/rylane-sticker-late-night.png");
+const rylStickerProtect     = require("../assets/images/stickers/rylane/rylane-sticker-protect.png");
+const rylStickerWhyILove    = require("../assets/images/stickers/rylane/rylane-sticker-why-i-love.png");
+const rylStickerWriting     = require("../assets/images/stickers/rylane/rylane-sticker-writing.png");
+const rylStickerSpeech      = require("../assets/images/stickers/rylane/rylane-sticker-speech.png");
+
+const cloudStickerSleepy    = require("../assets/images/stickers/cloud/cloud-sticker-sleepy.png");
+const cloudStickerHappy     = require("../assets/images/stickers/cloud/cloud-sticker-happy.png");
+const cloudStickerListening = require("../assets/images/stickers/cloud/cloud-sticker-listening.png");
+const cloudStickerVoiceBip  = require("../assets/images/stickers/cloud/cloud-sticker-voice-bip.png");
+const cloudStickerJournal   = require("../assets/images/stickers/cloud/cloud-sticker-journal.png");
+const cloudStickerComfort   = require("../assets/images/stickers/cloud/cloud-sticker-comfort.png");
+const cloudStickerHug       = require("../assets/images/stickers/cloud/cloud-sticker-hug.png");
+const cloudStickerProud     = require("../assets/images/stickers/cloud/cloud-sticker-proud.png");
+const cloudStickerStormy    = require("../assets/images/stickers/cloud/cloud-sticker-stormy.png");
+const cloudStickerCrying    = require("../assets/images/stickers/cloud/cloud-sticker-crying.png");
+const cloudStickerCozy      = require("../assets/images/stickers/cloud/cloud-sticker-cozy.png");
+const cloudStickerDreamy    = require("../assets/images/stickers/cloud/cloud-sticker-dreamy.png");
+const cloudStickerThinking  = require("../assets/images/stickers/cloud/cloud-sticker-thinking.png");
+const cloudStickerBippinBrb = require("../assets/images/stickers/cloud/cloud-sticker-bippin-brb.png");
+const cloudStickerCheer     = require("../assets/images/stickers/cloud/cloud-sticker-cheer.png");
+
+// ── UI / Splash ────────────────────────────────────────────────────────────
+// The native splash is color-only in app.json. The branded splash experience is
+// composed in SplashScreen from text, controls, mascots, and valid scene artwork.
+const sekretSplash = bgRayleneRoomNight;
 
 
 export const IMAGES = {
@@ -194,12 +236,6 @@ export const IMAGES = {
   rayleneHappyV2,
   rayleneHappyV3,
   rayleneThinking,
-  rayleneConfident,
-  raylenePlayful,
-  rayleeneSad,
-  rayleeneMad,
-  rayleeneSurprised,
-  rayleeneCrouching,
   rayleneWriting,
   rayleneWindow,
   rayleneWindowRainy,
@@ -253,37 +289,25 @@ export const IMAGES = {
   cloudAvatarWindow,
   cloudAvatarFullbody,
 
-  // Night Portraits (real assets)
-  nightFullbody,
-  nightNeutral,
-  nightSoftsmile,
-  nightHappy,
-  nightThinking,
-  nightTired,
-  nightAnnoyed,
-  nightSad,
-  nightOverwhelmed,
-  nightProtective,
-  nightLonely,
-  nightHopeful,
-  nightRelaxed,
-  nightListening,
-  nightWriting,
-  nightWindow,
-  nightPlayful,
-  nightHurting,
-  nightInHisHead,
-  nightInLove,
-
-  // Night Avatars
+  // Night Avatars (fallbacks until real art ships)
   nightAvatarNeutral,
   nightAvatarHappy,
   nightAvatarThinking,
   nightAvatarWriting,
   nightAvatarWindow,
   nightAvatarFullbody,
+
+  // Night (his own character — see comment block above for source files)
+  nightReferenceBoard,
+  nightProfileSheet,
+  nightNeutral,
+  nightHappy,
+  nightThinking,
+  nightWriting,
+  nightWindow,
   nightVoiceDay,
   nightVoiceNight,
+  nightFullbody,
 
   // Rooms
   bgRayleneRoomDay,
@@ -330,28 +354,79 @@ export const IMAGES = {
   cloudSleepy,
   cloudStormy,
 
-  // App entry splash — one per side, shown after onboarding
-  sekretSplash,        // backward-compat alias → teen
-  sekretSplashTeen,
-  sekretSplashParent,
+  // Raylene stickers
+  rayStickerStanding,
+  rayStickerLounging,
+  rayStickerStudying,
+  rayStickerSleepy,
+  rayStickerPeace,
+  rayStickerListening,
+  rayStickerComfort,
+  rayStickerSunglasses,
+  rayStickerHappy,
+  rayStickerJournaling,
+  rayStickerThinking,
+  rayStickerBoba,
+  rayStickerCrown,
+  rayStickerSunnies,
+  rayStickerHoodie,
+  rayStickerSekretBip,
+  rayStickerSekretHeart,
+  rayStickerPillow,
+  rayStickerIconCloud,
+
+  // Rylane stickers
+  rylStickerMini,
+  rylStickerReading,
+  rylStickerPhone,
+  rylStickerThinking,
+  rylStickerSitting,
+  rylStickerHeadphones,
+  rylStickerHoodie,
+  rylStickerCalm,
+  rylStickerStormy,
+  rylStickerPeace,
+  rylStickerHappy,
+  rylStickerSleepy,
+  rylStickerNight,
+  rylStickerMusic,
+  rylStickerLateNight,
+  rylStickerProtect,
+  rylStickerWhyILove,
+  rylStickerWriting,
+  rylStickerSpeech,
+
+  // Cloud stickers
+  cloudStickerSleepy,
+  cloudStickerHappy,
+  cloudStickerListening,
+  cloudStickerVoiceBip,
+  cloudStickerJournal,
+  cloudStickerComfort,
+  cloudStickerHug,
+  cloudStickerProud,
+  cloudStickerStormy,
+  cloudStickerCrying,
+  cloudStickerCozy,
+  cloudStickerDreamy,
+  cloudStickerThinking,
+  cloudStickerBippinBrb,
+  cloudStickerCheer,
+
+  // UI / Splash
+  sekretSplash,
 } as const;
 
 export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';
 
 export const AVATARS: Record<string, Record<string, any>> = {
   raylene: {
-    neutral:   IMAGES.rayleneNeutral,
-    happy:     IMAGES.rayleneHappy,
-    thinking:  IMAGES.rayleneThinking,
-    writing:   IMAGES.rayleneWriting,
-    window:    IMAGES.rayleneWindow,
-    fullbody:  IMAGES.rayleneFullbody,
-    confident: IMAGES.rayleneConfident,
-    playful:   IMAGES.raylenePlayful,
-    sad:       IMAGES.rayleeneSad,
-    mad:       IMAGES.rayleeneMad,
-    surprised: IMAGES.rayleeneSurprised,
-    crouching: IMAGES.rayleeneCrouching,
+    neutral:  IMAGES.rayleneNeutral,
+    happy:    IMAGES.rayleneHappy,
+    thinking: IMAGES.rayleneThinking,
+    writing:  IMAGES.rayleneWriting,
+    window:   IMAGES.rayleneWindow,
+    fullbody: IMAGES.rayleneFullbody,
   },
   rylane: {
     neutral:  IMAGES.rylaneNeutral,
@@ -370,26 +445,12 @@ export const AVATARS: Record<string, Record<string, any>> = {
     fullbody: IMAGES.cloudAvatarFullbody,
   },
   night: {
-    neutral:   IMAGES.nightNeutral,
-    happy:     IMAGES.nightSoftsmile,
-    thinking:  IMAGES.nightThinking,
-    writing:   IMAGES.nightWriting,
-    window:    IMAGES.nightWindow,
-    fullbody:  IMAGES.nightFullbody,
-    softsmile: IMAGES.nightSoftsmile,
-    tired:     IMAGES.nightTired,
-    annoyed:   IMAGES.nightAnnoyed,
-    sad:       IMAGES.nightSad,
-    overwhelmed: IMAGES.nightOverwhelmed,
-    protective:  IMAGES.nightProtective,
-    lonely:    IMAGES.nightLonely,
-    hopeful:   IMAGES.nightHopeful,
-    relaxed:   IMAGES.nightRelaxed,
-    listening: IMAGES.nightListening,
-    playful:   IMAGES.nightPlayful,
-    hurting:   IMAGES.nightHurting,
-    inhishead: IMAGES.nightInHisHead,
-    inlove:    IMAGES.nightInLove,
+    neutral:  IMAGES.nightAvatarNeutral,
+    happy:    IMAGES.nightAvatarHappy,
+    thinking: IMAGES.nightAvatarThinking,
+    writing:  IMAGES.nightAvatarWriting,
+    window:   IMAGES.nightAvatarWindow,
+    fullbody: IMAGES.nightAvatarFullbody,
   },
 };
 
@@ -412,22 +473,22 @@ export function getRoomPhase(
 
 const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
   raylene: {
-    day:       IMAGES.bgRayleneRoomDay,
-    midday:    IMAGES.bgRayleneRoomMidday,
+    day: IMAGES.bgRayleneRoomDay,
+    midday: IMAGES.bgRayleneRoomMidday,
     afternoon: IMAGES.bgRayleneRoomAfternoon,
-    evening:   IMAGES.bgRayleneRoomEvening,
-    night:     IMAGES.bgRayleneRoomNight,
+    evening: IMAGES.bgRayleneRoomEvening,
+    night: IMAGES.bgRayleneRoomNight,
     deepNight: IMAGES.bgRayleneRoomDeepNight,
-    rain:      IMAGES.bgRayleneRoomRain,
+    rain: IMAGES.bgRayleneRoomRain,
   },
   rylane: {
-    day:       IMAGES.bgRylaneRoomDay,
-    midday:    IMAGES.bgRylaneRoomMidday,
+    day: IMAGES.bgRylaneRoomDay,
+    midday: IMAGES.bgRylaneRoomMidday,
     afternoon: IMAGES.bgRylaneRoomAfternoon,
-    evening:   IMAGES.bgRylaneRoomEvening,
-    night:     IMAGES.bgRylaneRoomNight,
+    evening: IMAGES.bgRylaneRoomEvening,
+    night: IMAGES.bgRylaneRoomNight,
     deepNight: IMAGES.bgRylaneRoomDeepNight,
-    rain:      IMAGES.bgRylaneRoomRain,
+    rain: IMAGES.bgRylaneRoomRain,
   },
   cloud: {
     day: IMAGES.bgCloudRoomDay,
@@ -461,8 +522,8 @@ export function getRoomScene(
   character: Character,
   phase: RoomPhase | string,
 ): ImageSourcePropType {
-  const p = normalizeRoomPhase(phase as string);
-  return ROOM_SCENES[character]?.[p] ?? ROOM_SCENES.raylene.day;
+  const scenes = ROOM_SCENES[character] ?? ROOM_SCENES.raylene;
+  return scenes[normalizeRoomPhase(phase)];
 }
 
 export function getRoomBg(

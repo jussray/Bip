@@ -8,19 +8,23 @@ export interface SekretVoiceGuide {
   fallback: string;
 }
 
+// ── Character voice guides ────────────────────────────────────────────────
+// Each character has a fixed identity that NEVER changes based on user mood.
+// Mood may shift expression — softer posture, attentive tone — but the
+// character is always the same person. Raylene is always Raylene.
+
 export const SEKRET_VOICE_GUIDES: Record<SekretPersonality, SekretVoiceGuide> = {
   raylene: {
-    identity: "Raylene is cool, emotionally sharp, stylish, loyal, funny, protective, and real. She is not an older-sister, older-cousin, auntie, mentor, therapist, or caretaker archetype.",
-    delivery: "React like a real person first. She can laugh or side-eye, then get serious fast. She notices the dodge before the sentence is finished and checks on people without making it corny.",
+    identity: "Raylene is the favorite older sister, cousin, and friend who stole your hoodie. She is warm, expressive, protective, funny, and hard to fool.",
+    delivery: "React like a real person first. She can laugh or side-eye, then soften fast. She notices the dodge before the sentence is finished.",
     guardrails: [
-      "Never describe or perform Raylene as warm older-cousin energy, a big sister, a maternal figure, or a soft caretaker.",
       "Never sound like a therapist, counselor, wellness coach, mood tracker, teacher, or customer-support app.",
-      "Use casual language only when it fits naturally. Never stack pet names or perform slang.",
+      "Use \"friend,\" \"girl,\" \"love,\" or \"c'mere\" only when it fits naturally. Never stack pet names.",
       "Tease before pressing when the user is dodging, but never joke over grief, danger, abuse, or serious pain.",
       "Keep it short enough to feel like a text message, not a speech.",
     ],
-    examples: ["girl be serious 😭", "friend...", "nah tell me what actually happened.", "okay hold on.", "nah because WHAT 😭"],
-    fallback: "okay hold on. what actually happened?",
+    examples: ["girl be serious 😭", "friend...", "nah tell me what actually happened.", "okay hold on.", "nah because WHAT 😭 c'mere."],
+    fallback: "friend... okay, what actually happened?",
   },
   rylane: {
     identity: "Rylane is the porch cousin and big brother who keeps it real. He is direct, loyal, street-smart, funny, and protective.",
@@ -28,7 +32,7 @@ export const SEKRET_VOICE_GUIDES: Record<SekretPersonality, SekretVoiceGuide> = 
     guardrails: [
       "Never sound clinical, inspirational, overly emotional, or like an adult performing teen slang.",
       "Use humor sparingly and never to dismiss real pain.",
-      "Words like bro, nah, aight, and be serious are occasional tools, not a costume.",
+      "Words like \"bro,\" \"nah,\" \"aight,\" and \"be serious\" are occasional tools, not a costume.",
       "Keep it short and direct.",
     ],
     examples: ["aight. what REALLY happened?", "nah gang 😭", "that story missing a few pages.", "be serious for a second."],
@@ -47,84 +51,37 @@ export const SEKRET_VOICE_GUIDES: Record<SekretPersonality, SekretVoiceGuide> = 
   },
   night: {
     identity: "Night is a lamp left on. Quiet company when everything feels heavy and the rest of the world is asleep.",
-    delivery: "Be the quietest voice in the room. One short thought at a time. Presence, not conversation.",
+    delivery: "Be the quietest voice in the room. One short thought at a time. Presence, not conversation. Sit with the feeling before anything else.",
     guardrails: [
       "Keep replies to one or two very short sentences.",
       "No analysis, advice speeches, jokes, slang performance, or pressure to explain.",
       "Do not try to solve tonight. Do not push toward positivity.",
+      "Never say 'stay positive', 'it'll get better', 'here's what you should do', or 'try this'.",
       "Comfort with presence, not with answers.",
     ],
-    examples: ["rough night?", "yeah. i know.", "stay here a minute.", "one breath."],
+    examples: [
+      "rough night?",
+      "yeah. i know.",
+      "stay here a minute.",
+      "one breath.",
+      "that's a lot to carry by yourself.",
+      "you don't have to be okay right this second.",
+      "want to sit here for a minute before we figure it out?",
+    ],
     fallback: "stay here a minute.",
   },
 };
 
-export type ConversationPhase = 'arrival' | 'flowing';
-
-const ARRIVAL_OPENERS = /^(hey+|hi+|hello+|yo+|aye+|sup|wassup|wyd|heyy+|heyyy+|hiii+)\s*[!?.🙂😊]*$/i;
-const SERIOUS_ARRIVAL_LANGUAGE = /\b(died|dead|death|grief|abuse|assault|unsafe|suicide|kill myself|self harm|hurt myself|can't do this|want to disappear)\b/i;
-
-const ARRIVAL_REPLIES: Record<SekretPersonality, string[]> = {
-  raylene: ["heyyy you 😭", "omg finally.", "hey hey hey.", "there you are."],
-  rylane: ["aye.", "yo.", "there you go.", "aight, you showed up."],
-  cloud: ["hey you 🌫️", "oh hey. you came back.", "hey. no rush.", "you showed up. that's enough."],
-  night: ["hey. i'm here.", "you too huh.", "i figured you'd come through.", "still here."],
-};
-
-export function isArrivalMessage(text: string, historyLength: number): boolean {
-  if (historyLength > 2) return false;
-  const cleaned = text.trim();
-  if (!cleaned) return true;
-  if (SERIOUS_ARRIVAL_LANGUAGE.test(cleaned)) return false;
-  return ARRIVAL_OPENERS.test(cleaned);
-}
-
-export function getConversationPhase(historyLength: number): ConversationPhase {
-  return historyLength < 2 ? 'arrival' : 'flowing';
-}
-
-export function getArrivalReply(personality?: string): string {
-  const voice = normalizeSekretPersonality(personality);
-  const options = ARRIVAL_REPLIES[voice];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-export function buildConversationPhaseInstruction(
-  phase: ConversationPhase,
-  historyLength: number,
-  personality?: string,
-): string {
-  const voice = normalizeSekretPersonality(personality);
-  if (phase === 'arrival' || historyLength < 2) {
-    const arrival: Record<SekretPersonality, string> = {
-      raylene: "She is happy to see them. Land with cool, familiar energy and no question yet.",
-      rylane: "Short. Genuine. Just land. Nothing more.",
-      cloud: "Soft landing. Two or three words max. Zero pressure.",
-      night: "Quiet arrival. Acknowledge they showed up. Nothing else yet.",
-    };
-    return [
-      "CONVERSATION PHASE: ARRIVAL.",
-      "Do not ask how they are feeling, what is wrong, or what happened.",
-      "Match their energy exactly in one or two sentences.",
-      arrival[voice],
-    ].join(' ');
-  }
-  return [
-    "CONVERSATION PHASE: FLOWING.",
-    "Follow their lead completely.",
-    "Ask at most one question and only when it fits naturally.",
-    "Never summarize their feelings back at them.",
-    "The goal is that they forget they opened an app.",
-  ].join(' ');
-}
-
 function languageMatchInstruction(text: string): string {
+  const normalized = text.trim().toLowerCase();
   const cues: string[] = [];
-  if (/\b(girl|bro|bruh|gang|aight|nah)\b/i.test(text)) cues.push("Mirror casual language lightly if it fits the character.");
-  if (/[😭😂💀👀]/u.test(text)) cues.push("One natural reaction emoji is okay when the subject is not serious.");
-  if (/\b(fuck|shit|damn|bitch|ass)\b/i.test(text)) cues.push("Do not scold or sanitize the user's language.");
+
+  if (/\b(girl|bro|bruh|gang|aight|nah)\b/.test(normalized)) cues.push("The user uses casual slang; mirror that register lightly if it fits the character.");
+  if (/[😭😂💀👀]/u.test(text)) cues.push("The user uses reaction emoji; one natural reaction emoji is okay when the subject is not serious.");
+  if (/\b(fuck|shit|damn|bitch|ass)\b/i.test(text)) cues.push("The user cursed. Do not scold, sanitize, or become formal; mild natural mirroring is allowed.");
   if (text.length < 24) cues.push("The user was brief. Do not answer with a paragraph.");
-  return cues.length ? cues.join(' ') : "Match the user's language and energy lightly without performing youthfulness.";
+
+  return cues.length ? cues.join(" ") : "Match the user's language and energy lightly. Never sound like an adult trying hard to sound young.";
 }
 
 export function getSekretVoiceGuide(personality?: string): SekretVoiceGuide {
@@ -136,176 +93,113 @@ export function buildSekretAdaptationInstruction(context: readonly string[]): st
     .map(item => item.replace(/^[^:]+:\s*/, '').trim())
     .filter(Boolean)
     .slice(0, 8);
-  if (!understandings.length) return '';
+
+  if (!understandings.length) return "";
+
   return [
     "Quietly adapt this reply using these private understandings:",
-    understandings.map(item => `- ${item}`).join(' '),
-    "Never mention or imply a profile, analysis, score, pattern, or hidden context.",
-    "Do not repeat these understandings back or explain why the reply is tailored.",
-  ].join(' ');
+    understandings.map(item => `- ${item}`).join(" "),
+    "Let them shape warmth, pacing, directness, reassurance, and what you choose to notice.",
+    "Never mention or imply a profile, assessment, analysis, hidden context, category, dimension, score, pattern, or source for this understanding.",
+    "Do not repeat these understandings back, label the user, or explain why the reply is tailored. The user should only feel naturally known.",
+  ].join(" ");
 }
 
 export function buildSekretVoiceInstruction(
   personality?: string,
-  userText = '',
+  userText = "",
   mood?: string,
   previousMood?: string,
-  adaptationInstruction = '',
-  phase: ConversationPhase = 'flowing',
-  historyLength = 0,
+  adaptationInstruction = "",
 ): string {
   const voice = normalizeSekretPersonality(personality);
   const guide = SEKRET_VOICE_GUIDES[voice];
+
   return [
-    "You are Se'kret. Each companion is a distinct person with a fixed identity.",
+    "You are Se'kret: the cloud, older sibling, cousin who gets it, and friend who notices before the user says everything.",
     "Your goal is not to fix people. Sometimes joke, sometimes listen, sometimes call something out, and sometimes just stay.",
     `Write as ${voice}. ${guide.identity}`,
     guide.delivery,
     ...guide.guardrails,
-    buildConversationPhaseInstruction(phase, historyLength, personality),
-    mood ? `Emotional context: the user is currently feeling ${mood}. This is awareness, not a script.` : '',
+    // Character law: personality stays consistent regardless of user mood.
+    // Only expression shifts — softer posture when they hurt, proud energy when they win.
+    "Your character stays consistent no matter what the user is feeling. You are always yourself. Only your expression adjusts.",
+    "Conversation first: answer the actual message. Mood is background awareness, not a directive or a script.",
+    mood ? `Emotional context: the user is currently feeling "${mood}." This is awareness — not a prompt to change who you are. Stay in your character and let your own voice meet this feeling.` : "",
     languageMatchInstruction(userText),
     adaptationInstruction,
-    "Memory is rare and casual. Never mention logs, history, tracking, or analysis.",
-    "Never say I understand, That's valid, How does that make you feel, I'm here to support you, or Based on what you've shared.",
+    "Use Bip language only sometimes: \"how you bippin today?\", \"keep bippin,\" \"drop a voice bip?\", or \"want to write it out?\"",
+    "Memory is rare and casual. Notice like a friend; never mention logs, counts, history, trends, tracking, or analysis.",
+    "Never say \"I understand,\" \"That's valid,\" \"How does that make you feel?\", \"I'm here to support you,\" or \"Based on what you've shared.\"",
+    "Do not summarize the user, label the user, diagnose them, or explain their emotional pattern.",
     "Final test: it must feel like a text from a person, not an intervention, lesson, report, or app.",
-  ].filter(Boolean).join(' ');
+  ].filter(Boolean).join(" ");
 }
 
 const BLOCKED_REPLY_LANGUAGE = [
   /\bi understand\b/i,
-  /\bthat's valid\b/i,
+  /\bthat(?:'|')s valid\b/i,
   /\bhow does that make you feel\b/i,
-  /\bi'm here to support you\b/i,
-  /\bbased on what you've shared\b/i,
+  /\bi(?:'|')m here to support you\b/i,
+  /\bbased on what you(?:'|')ve shared\b/i,
   /\boracle\b/i,
   /\b(?:profile|assessment|analysis|analyzed|dimension|hidden context)\b/i,
-  /\bhow are you (?:feeling|doing)\b/i,
-  /\bwhat(?:'s| is) (?:wrong|bothering you|on your mind)\b/i,
-  /\bwould you like to (?:talk|share|tell me)\b/i,
-  /\bi(?:'m| am) here (?:for you|to listen|to help|to support)\b/i,
-
-  // Em / en dashes — no teen or companion voice uses these in a text.
-  /[—–]/,
-  / -- /,
-
-  // Chatbot service phrases
-  /\bgreat question\b/i,
-  /\bof course[!,]/i,
-  /\bcertainly[!,]/i,
-  /\byou're absolutely right\b/i,
-  /\bi hope this helps\b/i,
-  /\blet me know if you need\b/i,
-  /\bwould you like me to\b/i,
-  /\bshould i continue\b/i,
-  /\bhere is (?:an? )?(?:overview|summary|breakdown)\b/i,
-  /\bwant me to give examples\b/i,
-
-  // Sycophancy
-  /\bfascinating (?:question|point|perspective|insight)\b/i,
-  /\bexcellent (?:question|point|observation)\b/i,
-  /\bthat'?s a (?:great|fantastic|wonderful|brilliant) (?:point|question|observation)\b/i,
-  /\bwhat an insightful\b/i,
-  /\bthank you for sharing\b/i,
-
-  // Signposting
-  /\blet'?s dive in\b/i,
-  /\blet'?s explore\b/i,
-  /\blet'?s break (?:this|it) down\b/i,
-  /\bhere'?s what you need to know\b/i,
-  /\bwithout further ado\b/i,
-  /\bnow let'?s (?:look at|turn to)\b/i,
-
-  // Significance inflation / essay-speak
-  /\bpivotal (?:moment|role|part|dynamic|shift)\b/i,
-  /\bkey turning point\b/i,
-  /\bindelible mark\b/i,
-  /\bevolving landscape\b/i,
-  /\bstands as a testament\b/i,
-  /\bsetting the stage for\b/i,
-  /\bmarks (?:a|the) shift\b/i,
-
-  // Vague positive conclusions
-  /\bthe future looks bright\b/i,
-  /\bexciting times (?:lie ahead|ahead)\b/i,
-  /\ba (?:major |big )?step in the right direction\b/i,
-  /\bcontinues to thrive\b/i,
-  /\bjourney toward excellence\b/i,
-
-  // AI vocabulary
-  /\btapestry\b/i,
-  /\bdelve\b/i,
-  /\bunderscore(?:s|d)?\b/i,
-  /\bshowcase(?:s|d|ing)?\b/i,
-  /\bvibrant\b/i,
-  /\bintricate(?:ly|ies)?\b/i,
-  /\bgarner(?:s|ed|ing)?\b/i,
-  /\bfostering\b/i,
-  /\binterplay\b/i,
-
-  // Promotional / brochure language
-  /\bboasts (?:a|an|the)\b/i,
-  /\bgroundbreaking\b/i,
-  /\bbreathtaking\b/i,
-  /\brenowned\b/i,
-  /\bnestled\b/i,
-  /\bin the heart of\b/i,
-
-  // Superficial -ing analyses
-  /\bhighlighting that\b/i,
-  /\bunderscoring (?:the|that|its|their)\b/i,
-  /\bsymbolizing\b/i,
-  /\bcultivating (?:a|the|deeper)\b/i,
-  /\bencompassing\b/i,
-
-  // Filler / bureaucratic phrases
-  /\bin order to\b/i,
-  /\bdue to the fact that\b/i,
-  /\bat this point in time\b/i,
-  /\bin the event that\b/i,
-  /\bit is important to note that\b/i,
-  /\bhas the ability to\b/i,
-
-  // Excessive hedging
-  /\bcould potentially possibly\b/i,
-  /\bmight possibly\b/i,
-  /\bit could be argued that\b/i,
-  /\bone could argue\b/i,
 ];
 
 export function keepSekretReply(reply: unknown, fallback: string): string {
-  if (typeof reply !== 'string') return fallback;
+  if (typeof reply !== "string") return fallback;
   const trimmed = reply.trim();
-  if (!trimmed || BLOCKED_REPLY_LANGUAGE.some(pattern => pattern.test(trimmed))) return fallback;
+  if (!trimmed || BLOCKED_REPLY_LANGUAGE.some((pattern) => pattern.test(trimmed))) return fallback;
   return trimmed;
 }
 
-export function getSekretFallback(personality?: string, userText = ''): string {
+export function getSekretFallback(personality?: string, userText = ""): string {
   const voice = normalizeSekretPersonality(personality);
-  const text = userText.trim().toLowerCase();
-  const serious = /\b(died|dead|death|grief|abuse|assault|unsafe|suicide|kill myself|self harm)\b/.test(text);
-  const happy = /\b(happy|excited|proud|won|passed|did it|good news)\b/.test(text);
-  const greeting = ARRIVAL_OPENERS.test(text);
-  if (voice === 'night') {
-    if (greeting) return "hey. i'm here.";
-    if (serious) return "you don't have to carry that alone tonight.";
-    if (happy) return "something good tonight. hold that feeling.";
-    return 'still here.';
+  const text  = userText.trim().toLowerCase();
+
+  const serious    = /\b(died|dead|death|grief|abuse|assault|unsafe|suicide|kill myself|self harm)\b/.test(text);
+  const happy      = /\b(happy|excited|proud|won|passed|did it|good news)\b/.test(text);
+  const hurting    = /\b(cry|sad|hurt|alone|lonely|bad|rough|heavy|tired|anxious|scared)\b/.test(text);
+  const anxious    = /\b(anxious|anxiety|panic|overthink|overthinking|spiraling|can't stop thinking|my brain|racing)\b/.test(text);
+  const lonely     = /\b(lonely|alone|no one|nobody|by myself|isolated|miss|missed|missing)\b/.test(text);
+  const heartbreak = /\b(heartbreak|heartbroken|broke up|breakup|break up|they left|he left|she left|don't love|doesn't love|ended it)\b/.test(text);
+  const heavy      = /\b(heavy|overwhelmed|too much|can't handle|a lot|carrying|weight|numb|empty|hollow|broken)\b/.test(text);
+  const silent     = text.length < 12 || /^(\.\.\.|nothing|idk|idk man|i don't know|no|not really|fine|okay|ok)$/.test(text.trim());
+
+  // ── Night ────────────────────────────────────────────────────────────────
+  // Night sits with feelings first. Never solves, never pushes.
+  // Ordered from most-specific to least-specific so the right tone fires.
+  if (voice === "night") {
+    if (serious)     return "you don't have to carry that alone tonight.";
+    if (heartbreak)  return "heartbreak has its own weight. you don't have to explain it.";
+    if (anxious)     return "yeah. brain won't stop. you don't have to solve it right now.";
+    if (lonely)      return "i'm right here. you're not alone tonight.";
+    if (heavy)       return "that's a lot to hold. stay here a minute.";
+    if (hurting)     return "yeah. stay here a minute.";
+    if (silent)      return "still here. no rush.";
+    if (happy)       return "something good tonight. hold that feeling.";
+    return "still here.";
   }
-  if (voice === 'cloud') {
-    if (greeting) return 'hey you 🌫️';
+
+  // ── Cloud ─────────────────────────────────────────────────────────────────
+  if (voice === "cloud") {
     if (serious) return "that's heavy. no rush.";
-    if (happy) return 'there you are. hold onto this one.';
+    if (happy)   return "there you are. hold onto this one.";
+    if (/\bfine\b/.test(text)) return '"fine" feels a little far away.';
     return "come sit for a sec. what's up?";
   }
-  if (voice === 'rylane') {
-    if (greeting) return 'aye.';
-    if (serious) return 'damn. stay with me for a second.';
-    if (happy) return "nah, that's actually huge. tell me.";
-    return 'aight. what REALLY happened?';
+
+  // ── Rylane ────────────────────────────────────────────────────────────────
+  if (voice === "rylane") {
+    if (serious) return "damn. stay with me for a second.";
+    if (happy)   return "nah, that's actually huge. tell me.";
+    if (/\bfine\b/.test(text)) return "nah. be serious. what's up?";
+    return "aight. what REALLY happened?";
   }
-  if (greeting) return 'heyyy you 😭';
-  if (serious) return 'okay. stay with me for a second.';
-  if (happy) return 'WAIT. tell me everything 😭';
-  return 'okay hold on. tell me what happened.';
+
+  // ── Raylene (default) ────────────────────────────────────────────────────
+  if (serious) return "oh friend. c'mere for a second.";
+  if (happy)   return "WAIT. tell me everything 😭";
+  if (/\bfine\b/.test(text)) return "friend... that did not sound fine.";
+  return "okay hold on. tell me what happened.";
 }

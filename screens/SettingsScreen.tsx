@@ -2,17 +2,15 @@
 // Se'kret Bip — Vibe Lab
 // Choosing the emotional atmosphere of your room.
 
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import {
-  Text, TextInput, TouchableOpacity, ScrollView, ImageBackground,
-  View, Image, StyleSheet, Platform, Dimensions, Alert, Clipboard,
+  Text, TouchableOpacity, ScrollView, ImageBackground,
+  View, Image, StyleSheet, Platform, Dimensions, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearPrivateLocalState } from '../utils/storage';
 import { IMAGES } from '../constants/theme';
 import type { SleepWindow } from '../hooks/useSleepGuard';
-import { createParentLink, redeemParentLink } from '@/utils/sync';
-import { reportProblem } from '@/services/userReports';
 
 const { width: W } = Dimensions.get('window');
 
@@ -100,6 +98,7 @@ interface SettingsScreenProps {
   mood?:              string;
   sleepWindow?:       SleepWindow | null;
   setSleepWindow?:    (w: SleepWindow | null) => void;
+  onSignOut?:         () => Promise<void> | void;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -111,60 +110,13 @@ export function SettingsScreen({
   userSide, setUserSide,
   parentRoomStyle, setParentRoomStyle,
   setScreen, BottomNav,
-  sleepWindow, setSleepWindow,
+  sleepWindow, setSleepWindow, onSignOut,
 }: SettingsScreenProps) {
-
-  const [inviteCode,    setInviteCode]    = useState('');
-  const [isGenerating,  setIsGenerating]  = useState(false);
-  const [codeInput,     setCodeInput]     = useState('');
-  const [redeemStatus,  setRedeemStatus]  = useState<'idle' | 'ok' | 'not_found' | 'error'>('idle');
-  const [isRedeeming,   setIsRedeeming]   = useState(false);
-
-  const [reportNote,    setReportNote]    = useState('');
-  const [reportStatus,  setReportStatus]  = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
-  const [reportMessage, setReportMessage] = useState('');
-
-  const handleGenerateCode = useCallback(async () => {
-    setIsGenerating(true);
-    const code = await createParentLink();
-    setIsGenerating(false);
-    if (code) setInviteCode(code);
-  }, []);
-
-  const handleCopyCode = useCallback(() => {
-    if (!inviteCode) return;
-    Clipboard.setString(inviteCode);
-    Alert.alert('Copied!', `Share this code with your parent:\n\n${inviteCode}`);
-  }, [inviteCode]);
-
-  const handleRedeemCode = useCallback(async () => {
-    if (!codeInput.trim()) return;
-    setIsRedeeming(true);
-    setRedeemStatus('idle');
-    const result = await redeemParentLink(codeInput.trim());
-    setIsRedeeming(false);
-    setRedeemStatus(result);
-    if (result === 'ok') setCodeInput('');
-  }, [codeInput]);
-
-  const handleSubmitReport = useCallback(async () => {
-    if (!reportNote.trim() || reportStatus === 'sending') return;
-    setReportStatus('sending');
-    const result = await reportProblem(reportNote, 'Settings');
-    if (result.reported) {
-      setReportStatus('sent');
-      setReportMessage(result.message === 'already reported' ? "You've already flagged this — thank you." : 'Thanks — this was sent to the team.');
-      setReportNote('');
-    } else {
-      setReportStatus('error');
-      setReportMessage(result.message || 'Something went wrong — try again in a moment.');
-    }
-  }, [reportNote, reportStatus]);
 
   const handleClearLocalData = () => {
     Alert.alert(
-      'Clear everything saved on this device?',
-      "This wipes your journal, moods, voice bips, and Circle drafts that live only on this phone. If something was synced, it stays safe in your account — this just clears what's local.",
+      'Clear private data saved on this device?',
+      "This wipes account-scoped journals, moods, voice bips, Circle drafts/posts, crew, streaks, room memory, and AI memory on this phone. Safe app-level settings like theme stay.",
       [
         { text: 'Never mind', style: 'cancel' },
         {
@@ -172,10 +124,33 @@ export function SettingsScreen({
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.clear();
+              await clearPrivateLocalState();
               Alert.alert('Done', "This device's local data is cleared. 💜");
             } catch {
               Alert.alert("Couldn't clear it", 'Something blocked the clear — try again in a bit.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign out and clear this device?',
+      'This signs out of your private account and clears account-scoped journals, voice notes, Circle posts, crew, rewards, room memory, and AI companion memory from this device.',
+      [
+        { text: 'Stay signed in', style: 'cancel' },
+        {
+          text: 'Sign out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await onSignOut?.();
+              Alert.alert('Signed out', 'Private data from this account was cleared from this device.');
+            } catch {
+              Alert.alert("Couldn't sign out", 'Something blocked sign-out — try again in a bit.');
             }
           },
         },
@@ -446,6 +421,13 @@ export function SettingsScreen({
           <Text style={styles.privacyText}>
             ☁️ <Text style={styles.privacyStrong}>Syncs when possible</Text> — if you're signed in and online, your stuff backs up safely. If not, it just stays saved on this device.
           </Text>
+
+          <TouchableOpacity
+            onPress={handleSignOut}
+            style={[styles.sideBtn, { borderColor: 'rgba(248,113,113,0.55)', backgroundColor: 'rgba(248,113,113,0.16)', marginTop: 4 }]}
+          >
+            <Text style={[styles.sideBtnLabel, { color: '#fca5a5' }]}>🚪 Sign out + clear private data</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={handleClearLocalData}
             style={[styles.sideBtn, { borderColor: 'rgba(248,113,113,0.45)', backgroundColor: 'rgba(248,113,113,0.12)', marginTop: 4 }]}
@@ -453,106 +435,6 @@ export function SettingsScreen({
             <Text style={[styles.sideBtnLabel, { color: '#f87171' }]}>🗑️ Clear data on this device</Text>
           </TouchableOpacity>
         </View>
-
-        {/* ── REPORT A PROBLEM ── */}
-        <Text style={styles.sectionLabel}>Report a Problem</Text>
-        <View style={glass({ gap: 10 })}>
-          <Text style={styles.privacyText}>
-            Something feel broken or off? Tell us what happened — it goes straight to the team, private and just from you.
-          </Text>
-          <TextInput
-            style={[styles.noteInput, { borderColor: glow + '66', color: '#fff' }]}
-            placeholder="what happened?"
-            placeholderTextColor="#7c6899"
-            multiline
-            numberOfLines={3}
-            maxLength={240}
-            value={reportNote}
-            onChangeText={v => { setReportNote(v); if (reportStatus !== 'sending') setReportStatus('idle'); }}
-          />
-          {reportStatus === 'sent' && (
-            <Text style={[styles.privacyText, { color: '#34d399' }]}>✓ {reportMessage}</Text>
-          )}
-          {reportStatus === 'error' && (
-            <Text style={[styles.privacyText, { color: '#f87171' }]}>{reportMessage}</Text>
-          )}
-          <TouchableOpacity
-            onPress={handleSubmitReport}
-            disabled={reportStatus === 'sending' || !reportNote.trim()}
-            style={[styles.sideBtn, { borderColor: glow + '88', backgroundColor: glow + '20', opacity: reportNote.trim() ? 1 : 0.5 }]}
-          >
-            <Text style={[styles.sideBtnLabel, { color: glow }]}>
-              {reportStatus === 'sending' ? 'sending…' : '📨 send report'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── PARENT LINK (teen side) ── */}
-        {userSide === 'teen' && (
-          <>
-            <Text style={styles.sectionLabel}>Connect to a Parent</Text>
-            <View style={glass({ gap: 12 })}>
-              <Text style={styles.privacyText}>
-                Generate a 6-letter code and share it with your parent. They enter it on their side to create a private link.
-              </Text>
-              {inviteCode ? (
-                <TouchableOpacity onPress={handleCopyCode} style={[styles.codeBox, { borderColor: glow + '88' }]}>
-                  <Text style={[styles.codeText, { color: glow }]}>{inviteCode}</Text>
-                  <Text style={[styles.codeCopyHint, { color: glow + 'bb' }]}>tap to copy</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={handleGenerateCode}
-                  disabled={isGenerating}
-                  style={[styles.sideBtn, { borderColor: glow + '88', backgroundColor: glow + '20' }]}
-                >
-                  <Text style={[styles.sideBtnLabel, { color: glow }]}>
-                    {isGenerating ? 'generating…' : '🔗 generate code'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          </>
-        )}
-
-        {/* ── PARENT LINK (parent side) ── */}
-        {userSide === 'parent' && (
-          <>
-            <Text style={styles.sectionLabel}>Connect to Your Teen</Text>
-            <View style={glass({ gap: 12 })}>
-              <Text style={styles.privacyText}>
-                Ask your teen to generate a code in their settings, then enter it here to create a private link.
-              </Text>
-              <TextInput
-                style={[styles.codeInput, { borderColor: glow + '66', color: '#fff' }]}
-                placeholder="enter 6-letter code"
-                placeholderTextColor="#7c6899"
-                autoCapitalize="characters"
-                maxLength={6}
-                value={codeInput}
-                onChangeText={v => { setCodeInput(v); setRedeemStatus('idle'); }}
-              />
-              {redeemStatus === 'ok' && (
-                <Text style={[styles.privacyText, { color: '#34d399' }]}>✓ Linked! You're now connected.</Text>
-              )}
-              {redeemStatus === 'not_found' && (
-                <Text style={[styles.privacyText, { color: '#f87171' }]}>Code not found or already used — check with your teen.</Text>
-              )}
-              {redeemStatus === 'error' && (
-                <Text style={[styles.privacyText, { color: '#f87171' }]}>Something went wrong — try again in a moment.</Text>
-              )}
-              <TouchableOpacity
-                onPress={handleRedeemCode}
-                disabled={isRedeeming || !codeInput.trim()}
-                style={[styles.sideBtn, { borderColor: glow + '88', backgroundColor: glow + '20', opacity: codeInput.trim() ? 1 : 0.5 }]}
-              >
-                <Text style={[styles.sideBtnLabel, { color: glow }]}>
-                  {isRedeeming ? 'linking…' : '🔗 link to teen'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
 
         {/* ── DONE ── */}
         <TouchableOpacity
@@ -629,13 +511,6 @@ const styles = StyleSheet.create({
   sideBtn:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderRadius: 18, borderWidth: 1 },
   sideBtnIcon: { fontSize: 18 },
   sideBtnLabel:{ fontSize: 13, fontWeight: '700' },
-
-  // Parent link
-  codeBox:      { alignItems: 'center', paddingVertical: 16, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed' },
-  codeText:     { fontSize: 32, fontWeight: '900', letterSpacing: 6 },
-  codeCopyHint: { fontSize: 11, marginTop: 4, fontWeight: '600' },
-  codeInput:    { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 20, fontWeight: '700', letterSpacing: 4, textAlign: 'center', backgroundColor: 'rgba(20,10,40,0.5)' },
-  noteInput:    { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, lineHeight: 19, textAlign: 'left', textAlignVertical: 'top', minHeight: 72, backgroundColor: 'rgba(20,10,40,0.5)' },
 
   // Done
   doneBtn:     { marginTop: 8, marginBottom: 4, paddingVertical: 16, borderRadius: 24, borderWidth: 1.5, alignItems: 'center', shadowOpacity: 0.4, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 6 },

@@ -10,50 +10,86 @@ type RoomVariant = {
   night: any;
 };
 
-const ROOM_VARIANTS: Record<VoiceKey, Record<ScreenKey, RoomVariant>> = {
-  raylene: {
-    default:  { day: IMAGES.rayleneWindow,    night: IMAGES.rayleneVoiceNight },
-    bippin2:  { day: IMAGES.raylene_Bippin2Day, night: IMAGES.rayleneVoiceNight },
-    voiceBip: { day: IMAGES.rayleneVoiceDay,  night: IMAGES.rayleneVoiceNight },
-    voiceVip: { day: IMAGES.rayleneVoiceDay,  night: IMAGES.rayleneVoiceNight },
+type BackgroundLayerProps = {
+  screen?: ScreenKey;
+  voiceKey?: VoiceKey;
+  children: React.ReactNode;
+  dimOverlay?: boolean;
+};
+
+// All room art is sourced from constants/theme.ts so we only have ONE
+// place that knows how to map a logical name to a real asset file.
+const ROOMS: Record<string, RoomVariant> = {
+  bippin2: {
+    day:   IMAGES.raylene_Bippin2Day,
+    night: IMAGES.raylene_Bippin2Night,
   },
-  rylane: {
-    default:  { day: IMAGES.rylaneWindow,     night: IMAGES.rylaneVoiceNight },
-    bippin2:  { day: IMAGES.rylaneWindowDay,  night: IMAGES.rylaneVoiceNight },
-    voiceBip: { day: IMAGES.rylaneVoiceDay,   night: IMAGES.rylaneVoiceNight },
-    voiceVip: { day: IMAGES.rylaneVoiceDay,   night: IMAGES.rylaneVoiceNight },
+  voiceBip: {
+    day:   IMAGES.rayleneVoiceDay,
+    night: IMAGES.rayleneVoiceNight,
+  },
+  voiceBipRylane: {
+    day:   IMAGES.rylaneVoiceDay,
+    night: IMAGES.rylaneVoiceNight,
+  },
+  default: {
+    day:   getRoomScene('raylene', 'day'),
+    night: getRoomScene('raylene', 'night'),
   },
 };
 
-interface Props {
-  character: VoiceKey;
-  screenKey?: ScreenKey;
-  isNight?: boolean;
-  style?: object;
-  children?: React.ReactNode;
+function resolveRoom(screen: ScreenKey, voiceKey: VoiceKey) {
+  if (screen === 'bippin2') return ROOMS.bippin2;
+  if (screen === 'voiceBip' || screen === 'voiceVip') {
+    return voiceKey === 'rylane' ? ROOMS.voiceBipRylane : ROOMS.voiceBip;
+  }
+  return {
+    day: getRoomScene(voiceKey, 'day'),
+    night: getRoomScene(voiceKey, 'night'),
+  };
 }
 
-const BackgroundLayer = React.memo(function BackgroundLayer({
-  character,
-  screenKey = 'default',
-  isNight = false,
-  style,
+function isNightHour(hour: number) {
+  return hour >= 18 || hour < 6;
+}
+
+function BackgroundLayer({
+  screen = 'default',
+  voiceKey = 'raylene',
   children,
-}: Props) {
-  const variants = ROOM_VARIANTS[character] ?? ROOM_VARIANTS.raylene;
-  const variant  = variants[screenKey]       ?? variants.default;
-  const source   = isNight ? variant.night : variant.day;
+  dimOverlay = true,
+}: BackgroundLayerProps) {
+  const hour = new Date().getHours();
+  const night = isNightHour(hour);
+
+  const room = useMemo(() => resolveRoom(screen, voiceKey), [screen, voiceKey]);
+  const source = night ? room.night : room.day;
 
   return (
-    <ImageBackground source={source} style={[styles.bg, style]} resizeMode="cover">
-      {children}
+    <ImageBackground source={source} style={styles.root} resizeMode="cover">
+      {dimOverlay && (
+        <View
+          pointerEvents="none"
+          style={styles.overlay}
+        />
+      )}
+      <View style={styles.content}>{children}</View>
     </ImageBackground>
   );
-});
+}
 
-export default BackgroundLayer;
-export { BackgroundLayer };
+export default React.memo(BackgroundLayer);
 
 const styles = StyleSheet.create({
-  bg: { flex: 1 },
+  root: {
+    flex: 1,
+    backgroundColor: '#160028',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(13, 9, 20, 0.42)',
+  },
+  content: {
+    flex: 1,
+  },
 });

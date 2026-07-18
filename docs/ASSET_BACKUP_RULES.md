@@ -1,100 +1,86 @@
 # Asset Backup Rules
 
-This document governs the `assets/images/archive/` directory. Read it before touching any room background.
+This document defines the backup requirements for all room background PNGs before any Phase 2 compositing work begins.
 
-## Why the Archive Exists
+## The Rule
 
-Phase 2 will overwrite the live `bg-*.png` files with composited illustrations (characters painted into the room). The archive holds the original, untouched room backgrounds so that:
+**Every file in `assets/images/bg-*.png` must have a matching backup in `assets/images/archive/` before any composite is applied.**
 
-- Any composite can be rolled back to the original
-- `npm run verify:room-archives` can detect if a live file has been replaced with a composite
-- `npm run verify:room-archives -- --strict-match` blocks Phase 2 from starting if archives are missing or corrupt
+The backup must:
+- Have the exact same filename as the live file
+- Be a real PNG (minimum 1 MB — not a Git LFS pointer stub)
+- Have an identical SHA-256 hash to the live file
 
-## The LFS Stub Problem
+## Why This Matters
 
-Git LFS stores large files as small pointer stubs (~86–95 bytes) in the repository. When you clone or pull without running `git lfs pull`, all PNG files in the repo are these pointer stubs — not real image data.
+Git LFS stores binary files as pointer stubs on disk until explicitly pulled. A naive `cp` of an LFS-tracked file copies the pointer (86–95 bytes), not the real image. This creates a fake backup that cannot restore the original artwork.
 
-The archive was seeded with stubs instead of real bytes. This causes `verify:room-archives` to fail with:
+The verification script (`scripts/verify-room-archives.js`) enforces all three rules above and blocks Phase 2 if any check fails.
 
-```
-❌ archive is an LFS pointer stub (92 bytes)
-❌ DO NOT START PHASE 2
-```
-
-## Repair Procedure (Run This Once)
+## How to Create Valid Backups
 
 ```bash
-# Step 1: Hydrate all LFS assets
+# Step 1 — pull real binary files from LFS storage
 git lfs pull
 
-# Step 2: Confirm live files are real (expect 2–3 MB each)
-ls -lh assets/images/bg-*.png
+# Step 2 — confirm one file is MB-sized (not bytes)
+ls -lh assets/images/bg-raylene-room-day.png
+# Must show ~2.7M
 
-# Step 3: Copy real bytes into archive
-cp -f assets/images/bg-*.png assets/images/archive/
+# Step 3 — copy real files to archive
+mkdir -p assets/images/archive
+cp assets/images/bg-*.png assets/images/archive/
 
-# Step 4: Verify archive sizes (expect 2–3 MB each — no 80–100 byte stubs)
-ls -lh assets/images/archive/bg-*.png
+# Step 4 — verify all 28 pass
+npm run verify:room-archives
 
-# Step 5: Run the repair helper script (alternative to steps 1–4)
-# node scripts/repair-archive-stubs.js
-
-# Step 6: Commit
+# Step 5 — commit only after verification passes
 git add assets/images/archive/
-git commit -m "fix: replace LFS stub archive copies with real PNG bytes"
-git push
-
-# Step 7: Verify
-npm run verify:room-archives -- --strict-match
-# Expected: ✅ ALL 28 ARCHIVE FILES MATCH LIVE — strict-match passed.
-# Expected: ✅ Phase 2 may proceed.
+git commit -m "archive: replace stub room backups with real originals"
+git push origin main
 ```
 
-## Archive Rules (Ongoing)
-
-| Rule | Detail |
-|---|---|
-| **Never modify archive files** | Archive files are read-only originals. Only the live `bg-*.png` files are replaced during Phase 2. |
-| **Never delete archive files** | Even after Phase 2, keep archive files for rollback. |
-| **One archive file per live background** | Naming must exactly match: `archive/bg-X-room-Y.png` mirrors `bg-X-room-Y.png`. |
-| **Archive files must be real PNGs** | Minimum 1 MB. LFS pointer stubs are not valid archive files. |
-| **Strict match required before Phase 2** | `npm run verify:room-archives -- --strict-match` must pass (exit 0) before any composite is pushed. |
-
-## What verify:room-archives Checks
-
-Default mode (`npm run verify:room-archives`):
-1. Every live `bg-*.png` has a counterpart in `archive/`
-2. Archive file is not an LFS pointer stub
-3. Archive file is >= 1 MB
-4. Reports whether each file is pre-composite or has been composited
-
-Strict mode (`npm run verify:room-archives -- --strict-match`):
-- All of the above, plus:
-- SHA-256 of live file must exactly match archive file
-- Use **before** pushing any Phase 2 composite to confirm originals are preserved
-
-## Rollback Procedure
-
-If a composite needs to be reverted to the original:
+## Verification
 
 ```bash
-# Restore single file
-cp assets/images/archive/bg-X-room-Y.png assets/images/bg-X-room-Y.png
-
-# Restore all files (nuclear option)
-cp -f assets/images/archive/bg-*.png assets/images/
-
-git add assets/images/
-git commit -m "revert: restore original room backgrounds from archive"
-git push
+npm run verify:room-archives
 ```
 
-## Codespaces / CI Note
+Expected output when all 28 archives are valid:
 
-In GitHub Codespaces, run `git lfs pull` immediately after the environment starts. LFS assets are not automatically hydrated. Add to your Codespaces startup:
+```
+✅ bg-raylene-room-day.png          2876578 bytes
+✅ bg-raylene-room-midday.png       2810555 bytes
+... (all 28)
+
+✅ ALL 28 ARCHIVE FILES MATCH LIVE — Phase 2 may proceed.
+```
+
+If any file is missing, undersized, or mismatched:
+
+```
+❌ bg-raylene-room-day.png — archive is 88 bytes (LFS stub)
+
+❌ DO NOT START PHASE 2 — fix archive backups first.
+```
+
+## Rules for the Archive Folder
+
+- `assets/images/archive/` is write-once before Phase 2 begins.
+- Do not overwrite archive files with composite outputs.
+- Do not delete archive files.
+- The archive is used for rollback only — see [PHASE_2_ROOM_INTEGRATION.md](PHASE_2_ROOM_INTEGRATION.md).
+
+## Git LFS and the Archive
+
+The archive PNGs are also tracked by Git LFS. After committing real backups, confirm the push includes LFS objects:
 
 ```bash
-git lfs pull
+git lfs push origin main
 ```
 
-See `docs/CODESPACES.md` for full setup.
+If the remote shows archive files as 86–95 bytes after push, LFS objects did not transfer. Re-push with:
+
+```bash
+git lfs push --all origin main
+```

@@ -1,56 +1,57 @@
-# ── Secrets — NEVER commit these ─────────────────────────────────────────
+# 
+# Se'kret Bip — .gitignore
+# 
+
+#  Dependencies 
+node_modules/
+.pnp
+.pnp.js
+
+#  Testing 
+.coverage/
+
+#  Production / Build 
+build/
+dist/
+.expo/
+.expo-shared/
+
+#  Environment — NEVER commit real values 
+# .env.example is intentionally NOT listed here — it should be committed.
 .env
 .env.local
 .env.*.local
-.dev.vars
 
-# ── MCP config (may contain project refs / tokens) ────────────────────────
-.mcp.json
-
-# ── Expo / React Native ───────────────────────────────────────────────────
-node_modules/
-.expo/
-dist/
-npm-debug.*
+# ── EAS / Signing Certificates — NEVER commit these 
 *.jks
 *.p8
 *.p12
 *.key
 *.mobileprovision
 *.orig.*
-web-build/
 
-# ── Browser test artifacts ────────────────────────────────────────────────
-playwright-report/
-test-results/
+#  TypeScript 
+*.tsbuildinfo
 
-# ── Native build outputs ──────────────────────────────────────────────────
-android/
-ios/
-
-# ── Wrangler local state ──────────────────────────────────────────────────
-.wrangler/
-
-# ── Supabase CLI local state ──────────────────────────────────────────────
-supabase/.temp/
-supabase/.branches/
-
-# ── Design artifacts — store in Figma / Notion, not git ──────────────────
-figma/
-design-references/
-
-# ── Archived / duplicate binary assets ───────────────────────────────────
-# UUID-named PNGs in assets/images/ are duplicates of named files.
-# Run the BFG cleanup in docs/REPO_HYGIENE.md to purge from history.
-assets/images/archive/
-
-# ── macOS ─────────────────────────────────────────────────────────────────
-.DS_Store
-*.pem
-
-# ── Editor ────────────────────────────────────────────────────────────────
+#  IDE 
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# ── Logs ──────────────────────────────────────────────────────────────────
+#  OS 
+.DS_Store
+Thumbs.db
+
+#  Logs 
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

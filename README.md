@@ -1,244 +1,122 @@
 # Se'kret Bip 💜
 
-> **Copyright © 2024–2026 Juss Ray. All rights reserved.**
-> This is proprietary software. No license to use, copy, modify, distribute,
-> sublicense, or create derivative works is granted. See [LICENSE](LICENSE).
+A private emotional wellness and self-expression app built with React Native and Expo.
 
-Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built with React Native, Expo Router, TypeScript, Supabase, and Cloudflare Workers.
+> Cool cousin, teen-safe, private, soft, scrapbook, purple-night.
+> Raylene / Rylane / Cloud / Night companion energy.
 
-## Code audit status
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/jussray/Bip?quickstart=1)
 
-A repository-wide code audit is in progress. The project has substantial automated verification, authorization evidence, release metadata, and privacy guardrails, but those controls do not mean the product is ready for public launch.
+## Features
 
-Current launch blockers remain authoritative: complete account deletion across every storage and relationship boundary; production proof for Bridge and parent journeys; remaining negative-authorization tests; physical-device, accessibility, offline, notification, moderation, recovery, incident-response, backup, restore, and rollback validation. Planned L4/L5 intelligence must not be represented as implemented or production-ready.
+- **Room (home)** — your personalized space; companion + day/night background
+- **Journal** — private pages for your thoughts
+- **Calm** — breathing / grounding space
+- **Sekret** — chat-style talk with your chosen companion
+- **Comfort** — soft messages and presence
+- **MindBody Reset** — quick reset flow
+- **Bippin2** — secondary expressive space
+- **Voice Bip** — record 30–60s voice notes
+- **Cloud Thoughts** — thought-cloud space (Cloud mascot)
+- **Circle** — anonymous community posts with soft reactions
+- **Period Calendar** — private cycle tracking
+- **Bridge** — teen ↔ trusted adult soft-share (no full explanation required)
+- **Parent Bridge** — adult-side view of incoming bridge shares
+- **Five theme packs** — Night Purple, Golden Moon, Soft Pink, Rain Blue, Galaxy Night
 
-See `docs/LAUNCH_ROADMAP.md`, `SPRINT.md`, `docs/CURRENT_STATUS.md`, and `implementation-ledger.json` for current evidence and status.
+## Roadmap
 
+1. **Phase 1 — Polish.** Tighten each screen one by one (Room → Journal → Calm → Sekret → …). Replace placeholder image fallbacks in `constants/theme.ts` with real PNGs as they land.
+2. **Phase 2 — Wire Supabase.** Move journal entries, mood history, circle posts, bridge shares, voice notes, and room memory off AsyncStorage onto the real backend. Scaffold lives in [`utils/supabase.ts`](utils/supabase.ts) — it's a safe no-op while env vars are unset so Phase 1 isn't blocked.
 
-> Warm, funny, soft, slightly nosy, and never clinical.
+## Project Structure
 
-## Start here
-
-- [`docs/LAUNCH_ROADMAP.md`](docs/LAUNCH_ROADMAP.md) — visual path from the current foundation to controlled alpha and public launch
-- [`SPRINT.md`](SPRINT.md) — current execution window, blockers, order, and definition of done
-- [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md) — human-readable current product state
-- [`docs/DOCUMENTATION_MAP.md`](docs/DOCUMENTATION_MAP.md) — which documents are authoritative and how stale plans are handled
-- [`implementation-ledger.json`](implementation-ledger.json) — machine-checked feature status and evidence
-- [`docs/WIRING_STATUS.md`](docs/WIRING_STATUS.md) — runtime, database, and deployment wiring
-- [`DEPLOYMENT.md`](DEPLOYMENT.md) — canonical production path and exact-release verification
-- [`docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`](docs/security/SUPABASE_AUTHORIZATION_PHASE0.md) — live authorization evidence and remaining blockers
-
-Architecture, roadmap, current-status, sprint, and agent-skill changes must reconcile the implementation ledger. CI rejects unsupported implementation claims.
-
-## AI operating contracts
-
-- [`GLOBAL_AI.md`](GLOBAL_AI.md) — provider-neutral founder and product contract
-- [`AGENTS.md`](AGENTS.md) — Codex, ChatGPT, and repository-agent instructions
-- [`CLAUDE.md`](CLAUDE.md) — verified design-system and Figma integration reference
-- [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — provider boundaries
-
-Shared founder stack:
-
-```text
-/garyvee lindymode redteam l99 redteam ooda
 ```
-
-The first red-team pass attacks the premise and evidence. The second attacks implementation, privacy blast radius, rollback, and proof. Project-local instructions may become stricter, but they may not weaken teen privacy, consent, security, provenance, evidence, or rollback.
-
-## Why Se'kret Bip exists
-
-Teens need room to process emotions, build habits, and ask for support without feeling watched. Parents need a healthier way to stay connected without unrestricted access to private reflections.
-
-Se'kret Bip is designed around that tension: private by default, intentional sharing by choice, and relationship-based support instead of surveillance.
-
-## Product promise
-
-- Private reflections stay private.
-- Teens choose what they share.
-- Parent access is relationship-based, not surveillance-based.
-- Identity and permission rules are enforced by runtime checks, Supabase policies, and server boundaries rather than UI hiding.
-- Operational evidence remains metadata-safe and never becomes a back door into private teen content.
-
-## Product areas
-
-### Teen
-
-- Room, Pages, journaling, and voice reflection
-- Raylene, Rylane, Cloud, and Night companion experiences
-- Se'kret continuity presence and rules-based safety boundaries
-- Privacy-safe Daily Intentions with Basic, opt-in Personalized, and Off modes
-- Calm, Comfort, Mind + Body Reset, and Cloud Thoughts
-- Bippin 2, Growth, Insights, History, and Memories
-- Period Calendar, points, and rewards infrastructure
-
-### Social and trusted connection
-
-- **Circle** — anonymous or circle-safe community posting
-- **Bip Crew** — trusted accountability relationships
-- **Bridge** — intentional teen-parent sharing and relationship support
-- **Parent Circle** — separate parent-to-parent community space
-- No open stranger direct messages
-
-### Parent
-
-Parent routes, account linking, Bridge data contracts, and guarded parent surfaces exist. The parent product remains in progress until lifecycle states, Bridge production proof, Parent Circle boundaries, Parent Coach boundaries, notifications, device QA, and end-to-end privacy evidence are complete. Documentation and demos must not imply broader parent visibility than the server and RLS layers enforce.
-
-## Current implementation state
-
-### Integrated
-
-- Expo Router teen and parent route groups
-- Supabase Auth, synchronization, migrations, RLS, Storage, and Edge Functions
-- Cloudflare Worker API, AI reply, transcription, TTS, and metadata-only telemetry
-- Shared typed frontend-to-Worker contracts and stable failure mapping
-- Se'kret identity boundary and versioned companion-style runtime wrapper
-- Privacy-safe Daily Intentions with local deterministic generation and owner-only durable records
-- Mind + Body Reset regulation and workout flows
-- Founder Control Room operational data sources and repository capability contracts
-- Bridge data model, consent contracts, and controlled rollout paths
-- Exact production release verification using Worker checks, `release.json`, health verification, production Playwright, and retained evidence
-- Runtime-truth gates that compare repository claims with live Supabase and deployment witnesses
-
-### Verified authorization and security slices
-
-- Owner access and anonymous/cross-user denial proof for sampled private tables
-- Server-only configuration tables with zero client grants and preserved rows
-- JWT-protected HTTP 410 retirement of obsolete release/probe Edge Functions
-- `notification_deliveries` documented and verified as service-role-only
-- Permanent-account restrictions for sampled private self-data
-- Fail-closed negative-auth contracts for `account-delete` and `safety-scan`
-- Safety-scan contract limiting durable output to reduced metadata rather than raw content
-
-### Planned, not implemented
-
-- Durable L4 continuity memory
-- Persistent companion goals
-- Scheduled reflection jobs
-- Relationship phases derived from durable evidence
-- Inter-companion coordination
-- L5 cross-companion synthesis and consented autonomous goal proposals
-
-L5 is explicitly blocked until L4 reaches `verified`. See `implementation-ledger.json` and `docs/AGENT_L4_ARCHITECTURE.md` for the exact boundary.
-
-## Architecture
-
-- **Frontend:** React Native, Expo Router, TypeScript
-- **Routes:** separate teen and parent route groups
-- **Local state:** React state, context, hooks, and AsyncStorage
-- **Cloud data:** Supabase Auth, Postgres, RLS, Storage, Edge Functions, and ordered migrations
-- **API layer:** canonical Cloudflare Worker `sekret-backend`
-- **Web deployment:** Cloudflare Pages project `sekret-bip`
-- **Production verification:** exact commit marker plus Worker check, health probe, production Playwright, and retained evidence
-- **Schema source of truth:** `supabase/migrations/`
-
-Legacy compatibility files are not a second production authority.
-
-## Companion intelligence
-
-The current companion system supports short-term conversation history and approved context. The production Worker and TTS paths consume canonical identity and style contracts.
-
-Durable semantic memory, goals, scheduled reflection, relationship phases, and inter-companion coordination remain blocked until their ownership, provenance, correction, expiry, deletion, consent, RLS, runtime use, denial tests, rollout, telemetry, and rollback exist. L4 and L5 must not be invented as parallel implementations ahead of those boundaries.
-
-## Launch posture
-
-The canonical phase map is [`docs/LAUNCH_ROADMAP.md`](docs/LAUNCH_ROADMAP.md). The current execution order is [`SPRINT.md`](SPRINT.md).
-
-A controlled internal demo may use synthetic or non-sensitive data while unfinished areas are clearly labeled. Controlled alpha and public launch remain separate decisions.
-
-Current launch-critical blockers include:
-
-1. controlled production proof for Bridge and parent relationship journeys;
-2. account deletion across database, Auth, Storage, local caches, relationship access, retries, and isolation;
-3. focused denial proof for remaining launch-critical private surfaces;
-4. behavior tests for remaining high-blast-radius authenticated database functions;
-5. password-breach protection planning and Auth regression evidence;
-6. physical-device, accessibility, offline, notification, moderation, and failure-state QA;
-7. legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness;
-8. exact production evidence for features still marked integrated rather than verified or released.
-
-L4 and L5 are preserved future lanes, not automatic public-launch dependencies.
-
-## Project structure
-
-```text
-app/                 Expo Router route groups
-screens/             compatibility screen implementations
-src/                 components, features, hooks, services, types, utilities
-worker/              Cloudflare Worker
-supabase/            ordered migrations and Edge Functions
-assets/              app artwork and media
-docs/                roadmap, architecture, operations, privacy, and evidence
-scripts/             audits and validation tools
-test/                automated tests
-e2e/                 Playwright smoke and guardrail tests
+sekret-bip/
+├── app/                    # Expo Router screens
+│   ├── _layout.tsx
+│   ├── index.tsx           # IMAGES re-export lives near the top
+│   └── ...                 # route entry points per screen
+├── components/             # Reusable UI (BackgroundLayer, BottomNav)
+├── screens/                # Full-page screens
+├── hooks/                  # useSekretState etc.
+├── constants/              # theme.ts (IMAGES map + design tokens), styles.ts, bip_voice.ts
+├── utils/                  # api.ts, storage.ts, moodEngine.js, supabase.ts (Phase 2 scaffold)
+├── types/                  # index.ts (BridgePayload + entry types), bridge.ts (re-export shim)
+├── assets/images/          # All companion + room + screen artwork
+├── .devcontainer/          # Codespaces config — auto-installs deps on first boot
+├── .env.example            # Environment template — copy to .env.local
+└── app.json                # Expo config
 ```
 
 ## Setup
 
+### Option A — GitHub Codespaces (recommended)
+
+1. Click **Open in GitHub Codespaces** above (or [open directly](https://codespaces.new/jussray/Bip?quickstart=1)).
+2. Wait ~1 min — the devcontainer auto-installs deps and seeds `.env.local`.
+3. Run:
+   ```bash
+   npx expo start --web -c
+   ```
+4. The forwarded port 8081 opens automatically in the browser preview.
+
+### Option B — Local machine
+
+Prerequisites: Node 20+, npm.
+
 ```bash
-gh repo clone jussray/Sekret-Bip
-cd Sekret-Bip
+gh repo clone jussray/Bip
+cd Bip
 npm install --legacy-peer-deps
-cp .env.example .env.local
-npx expo start --web -c
+cp .env.example .env.local            # fill in keys when ready
+npx expo start --web -c               # web
+npm run ios                           # iOS simulator
+npm run android                       # Android emulator
 ```
 
-Hydrate Git LFS assets before visual or archive validation:
+## Environment Variables
 
-```bash
-git lfs pull
+Create `.env.local` from `.env.example`. Only `EXPO_PUBLIC_*` vars ship to the client.
+
+```
+EXPO_PUBLIC_BACKEND_URL=http://YOUR_LOCAL_IP:8001
+EXPO_PUBLIC_APP_ENV=development
+
+# Phase 2 — fill in when wiring Supabase:
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
 ```
 
-### Supabase
+**Never commit `.env.local`. Never put a Supabase `service_role` key on the device.**
 
-```bash
-npx supabase login
-npx supabase link --project-ref <project-ref>
-npx supabase db push
-```
+## Architecture
 
-Do not maintain a second schema bootstrap file. Use the ordered migration chain.
+- **State (Phase 1)**: AsyncStorage via `utils/storage.ts`, React hooks for local state
+- **State (Phase 2)**: Supabase via `utils/supabase.ts`, AsyncStorage as offline cache
+- **Navigation**: Expo Router (file-based)
+- **Styling**: React Native StyleSheet + theme packs in `constants/theme.ts`
+- **Voice / personality**: `constants/bip_voice.ts` + `SEKRET_PROFILES`
 
-## Validation
+## Tech Stack
 
-```bash
-npm run type-check
-npm test
-npm run lint
-npm run verify:bundle
-npm run audit:control-room
-npm run validate:companions
-npm run test:e2e
-```
+- React Native 0.74
+- Expo 56
+- TypeScript 5
+- Expo Router
+- AsyncStorage + Supabase (scaffold)
 
-Full repository gate:
+## Guides
 
-```bash
-npm run verify:prepush
-```
+- [Codespaces setup](docs/CODESPACES.md) — running the app in GitHub Codespaces
+- [Dependency audit](docs/DEPENDENCY_AUDIT.md) — version pins and how they're enforced
+- [Room art guide](docs/ROOM_ART_GUIDE.md) — naming, format, and fallback rules for room backgrounds
+- [Phase 2 room integration](docs/PHASE_2_ROOM_INTEGRATION.md) — the gate before Phase 2 touches room art
+- [Asset backup rules](docs/ASSET_BACKUP_RULES.md) — backup requirements for room background PNGs
 
-Production verification is documented in `DEPLOYMENT.md`.
-
-## Key guides
-
-- `docs/LAUNCH_ROADMAP.md`
-- `docs/DOCUMENTATION_MAP.md`
-- `SPRINT.md`
-- `docs/CURRENT_STATUS.md`
-- `docs/WIRING_STATUS.md`
-- `docs/DEMO_READINESS_ENFORCEMENT.md`
-- `docs/ARCHITECTURE.md`
-- `docs/SUPABASE.md`
-- `docs/BRIDGE_CONNECTION_AUDIT.md`
-- `docs/AGENT_L4_ARCHITECTURE.md`
-- `docs/RLS_POLICY_AUDIT.md`
-- `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
-- `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
-- `DEPLOYMENT.md`
-
-Documentation is an implementation guardrail. When code, production configuration, and docs disagree, fix the stale source and preserve the evidence trail.
+Run `npm run verify:prepush` before pushing — it runs the asset audit,
+type-check, lint, bundle export, and room-archive verification together.
 
 ## License
 
-Copyright © 2024–2026 Juss Ray. All rights reserved.  
-Proprietary software — see [LICENSE](LICENSE).
+Private project.

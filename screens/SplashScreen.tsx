@@ -1,157 +1,170 @@
 // screens/SplashScreen.tsx
+// Se'kret Bip — Opening Screen
 //
-// Full-screen splash artwork for teen and parent entry.
-// The painted "Se'kret Bip ♡" button in each image is the main tap target.
-// Artwork is contained instead of cropped so the full composition remains
-// visible on phones, tablets, laptops, and wide web screens.
+// splash-bg.png is the full neon Se'kret Bip artwork (1024×1536):
+//   Raylene + Rylane back-to-back, cloud with headphones, neon title,
+//   "Press Se'kret Bip to enter your safe space", CTA + shortcuts — all baked in.
 //
-// Hit-target fractions are relative to the rendered artwork, not the viewport.
-// Tune T_BTN_* and P_BTN_* if the painted button moves inside an asset.
+// Hit targets are positioned as fractions of the rendered image so they scale
+// with any screen size. The Se'kret Bip CTA button is the primary entry point.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Image,
+  Text,
   TouchableOpacity,
   StyleSheet,
+  Dimensions,
   Animated,
-  useWindowDimensions,
+  Platform,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
-const TEEN_BG   = require("../assets/images/splash-bg.png");
-const PARENT_BG = require("../assets/images/parent-space-splash.png");
+const { width, height } = Dimensions.get("window");
+const splashBg = require("../assets/images/splash-bg.png");
+const parentSplashBg = require("../assets/images/parent-space-splash.png");
 
-// ── Teen splash: "Se'kret Bip ♡" pill button position within the artwork ────
-const T_BTN = { top: 0.800, bottom: 0.875, left: 0.08, right: 0.08 };
+// Fractions measured against the 1024×1536 source artwork.
+// The Se'kret Bip CTA button occupies roughly 63%–71% vertically, 11%–89% horizontally.
+const CTA_TOP    = 0.63;
+const CTA_BOTTOM = 0.71;
+const CTA_LEFT   = 0.11;
+const CTA_RIGHT  = 0.89;
 
-// ── Parent splash: broader hit zone so the parent door is actually usable ───
-const P_BTN = { top: 0.700, bottom: 0.900, left: 0.05, right: 0.05 };
+// The four shortcut icons sit roughly 75%–85% down.
+const SC_TOP    = 0.75;
+const SC_BOTTOM = 0.85;
+
+const SHORTCUTS = [
+  { label: "Write It Out", target: "pages" },
+  { label: "Voice Bip",   target: "voiceBip" },
+  { label: "Calm Me",     target: "calm" },
+  { label: "Circle",      target: "circle" },
+] as const;
 
 interface SplashScreenProps {
+  setScreen: (screen: string) => void;
   userSide?: "teen" | "parent";
-  setScreen: () => void;
+  interactive?: boolean;
 }
 
-interface ImageSize {
-  width: number;
-  height: number;
-}
-
-function getContainedLayout(
-  viewportWidth: number,
-  viewportHeight: number,
-  imageWidth: number,
-  imageHeight: number,
-) {
-  const safeViewportWidth = Math.max(1, viewportWidth);
-  const safeViewportHeight = Math.max(1, viewportHeight);
-  const safeImageWidth = imageWidth > 0 ? imageWidth : safeViewportWidth;
-  const safeImageHeight = imageHeight > 0 ? imageHeight : safeViewportHeight;
-  const scale = Math.min(
-    safeViewportWidth / safeImageWidth,
-    safeViewportHeight / safeImageHeight,
-  );
-  const width = safeImageWidth * scale;
-  const height = safeImageHeight * scale;
-
-  return {
-    width,
-    height,
-    left: (safeViewportWidth - width) / 2,
-    top: (safeViewportHeight - height) / 2,
-  };
-}
-
-export function SplashScreen({ userSide = "teen", setScreen }: SplashScreenProps) {
-  const fade = useRef(new Animated.Value(0)).current;
-  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
-  const [imageSize, setImageSize] = useState<ImageSize | null>(null);
+export function SplashScreen({ setScreen, userSide = "teen", interactive = true }: SplashScreenProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const isParent = userSide === "parent";
-  const btn = isParent ? P_BTN : T_BTN;
-  const source = isParent ? PARENT_BG : TEEN_BG;
 
   useEffect(() => {
-    setImageSize(null);
-  }, [isParent]);
-
-  const art = useMemo(
-    () => getContainedLayout(
-      viewportWidth,
-      viewportHeight,
-      imageSize?.width ?? viewportWidth,
-      imageSize?.height ?? viewportHeight,
-    ),
-    [imageSize?.height, imageSize?.width, viewportHeight, viewportWidth],
-  );
-
-  useEffect(() => {
-    Animated.timing(fade, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-  }, [fade]);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 900,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
 
   return (
-    <Animated.View style={[s.root, { opacity: fade }]}> 
+    <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
       <StatusBar style="light" />
 
-      {/* Full artwork stays visible; letterboxing uses the splash background. */}
-      <View pointerEvents="none" style={s.artLayer}>
+      {/* Full-screen artwork — display only, no tap-to-enter */}
+      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <Image
-          source={source}
-          style={[s.artwork, { width: art.width, height: art.height }]}
-          resizeMode="contain"
-          onLoad={({ nativeEvent }) => {
-            const width = nativeEvent.source?.width;
-            const height = nativeEvent.source?.height;
-            if (!width || !height || width <= 0 || height <= 0) return;
-
-            setImageSize(current =>
-              current?.width === width && current.height === height
-                ? current
-                : { width, height },
-            );
-          }}
+          source={isParent ? parentSplashBg : splashBg}
+          style={styles.bgImage}
+          resizeMode={isParent ? "contain" : "cover"}
         />
       </View>
 
-      {/* Invisible clip tracks the painted button inside the contained image. */}
-      <TouchableOpacity
-        style={[
-          s.clip,
-          {
-            top: art.top + art.height * btn.top,
-            height: art.height * (btn.bottom - btn.top),
-            left: art.left + art.width * btn.left,
-            width: art.width * (1 - btn.left - btn.right),
-          },
-        ]}
-        onPress={setScreen}
-        activeOpacity={0.6}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isParent
-            ? "Se'kret Bip — enter your parent space"
-            : "Se'kret Bip — enter your safe space"
-        }
-      />
+      {isParent ? (
+        <View style={styles.parentIntro} pointerEvents="none">
+          <Text style={styles.parentEyebrow}>PARENT SPACE</Text>
+          <Text style={styles.parentTitle}>A softer way to stay connected.</Text>
+          <Text style={styles.parentBody}>Your teen’s private space stays private. Bridge moments are shared on purpose.</Text>
+        </View>
+      ) : null}
+
+      {interactive ? (
+        <>
+          {/* Se'kret Bip CTA button — the only way to enter the app */}
+          <TouchableOpacity
+            style={isParent ? styles.parentEnter : [styles.hitTarget, {
+              top: height * CTA_TOP,
+              height: height * (CTA_BOTTOM - CTA_TOP),
+              left: width * CTA_LEFT,
+              right: width * (1 - CTA_RIGHT),
+            }]}
+            onPress={() => setScreen("home")}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={isParent ? "Enter Parent Space" : "Se'kret Bip — enter your safe space"}
+            accessibilityHint="Opens the app"
+          />
+
+          {/* Transparent hit-targets aligned with the shortcut row baked into the image */}
+          {!isParent ? <View style={[styles.shortcutRow, {
+            top:    height * SC_TOP,
+            height: height * (SC_BOTTOM - SC_TOP),
+          }]}>
+            {SHORTCUTS.map(({ label, target }) => (
+              <TouchableOpacity
+                key={target}
+                style={styles.shortcutHit}
+                onPress={() => setScreen(target)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+              />
+            ))}
+          </View> : null}
+        </>
+      ) : null}
     </Animated.View>
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden", backgroundColor: "#090011" },
-  artLayer: {
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#090011",
+  },
+  bgImage: {
+    width,
+    height,
+  },
+  parentIntro: {
     position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
+    left: 28,
+    right: 28,
+    bottom: 138,
+    borderRadius: 22,
+    padding: 18,
+    backgroundColor: "rgba(18, 9, 31, 0.78)",
+    borderWidth: 1,
+    borderColor: "rgba(226, 194, 255, 0.34)",
+  },
+  parentEyebrow: { color: "#d7b8ef", fontSize: 10, fontWeight: "800", letterSpacing: 2 },
+  parentTitle: { color: "#fff", fontSize: 22, lineHeight: 27, fontWeight: "800", marginTop: 6 },
+  parentBody: { color: "#dfd5e7", fontSize: 13, lineHeight: 19, marginTop: 7 },
+  parentEnter: {
+    position: "absolute",
+    left: 28,
+    right: 28,
+    bottom: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: "rgba(153, 104, 185, 0.24)",
+    borderWidth: 1,
+    borderColor: "rgba(240, 217, 255, 0.55)",
+  },
+  hitTarget: {
+    position: "absolute",
+  },
+  shortcutRow: {
+    position: "absolute",
     left: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
+    right: 0,
+    flexDirection: "row",
   },
-  artwork: {
-    maxWidth: "100%",
-    maxHeight: "100%",
+  shortcutHit: {
+    flex: 1,
+    height: "100%",
   },
-  clip: { position: "absolute" },
 });

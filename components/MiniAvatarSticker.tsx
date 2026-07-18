@@ -9,16 +9,16 @@
 // Stickers NEVER replace full-size avatars.
 //
 // CHARACTER ROUTING RULES:
-//   raylene page/context  → raylene mini sticker, fallback to Raylene avatar
-//   rylane  page/context  → rylane  mini sticker, fallback to Rylane avatar
-//   cloud   page/context  → cloud   mini sticker, fallback to Cloud avatar
-//   night   context       → night/rylane-night sticker, fallback to Night avatar
+//   raylene page/context  → raylene mini sticker
+//   rylane  page/context  → rylane  mini sticker
+//   cloud   page/context  → cloud   mini sticker
+//   night   context       → rylane/night sticker only if registered, else null
 //   oracle  / sekretBrain → return null (never shown, never rendered)
 //   null / unknown        → return null
 
 import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
-import { IMAGES, AVATARS } from '../constants/theme';
+import { IMAGES } from '../constants/theme';
 import {
   getContextSticker,
   getStickerById,
@@ -48,49 +48,6 @@ interface MiniAvatarStickerProps {
   opacity?: number;
 }
 
-function fallbackAvatar(character: Exclude<MiniAvatarCharacter, 'oracle' | 'sekretBrain' | null>) {
-  const avatarMap = AVATARS as Record<string, Record<string, unknown> | unknown>;
-  const imageMap = IMAGES as Record<string, unknown>;
-
-  if (character === 'raylene') {
-    return imageMap.rayleneWriting ?? imageMap.rayleneNeutral ?? (avatarMap.raylene as any)?.neutral;
-  }
-  if (character === 'rylane') {
-    return imageMap.rylaneWriting ?? imageMap.rylaneNeutral ?? (avatarMap.rylane as any)?.neutral;
-  }
-  if (character === 'cloud') {
-    return imageMap.cloudAvatarWriting ?? imageMap.cloudHeadphones ?? imageMap.cloud ?? (avatarMap.cloud as any)?.neutral;
-  }
-  if (character === 'night') {
-    return imageMap.nightWriting ?? imageMap.nightNeutral ?? (avatarMap.night as any)?.neutral;
-  }
-  return null;
-}
-
-function MiniAvatarImage({ source, size, bottom, right, opacity }: {
-  source: unknown;
-  size: number;
-  bottom: number;
-  right: number;
-  opacity: number;
-}) {
-  if (!source) return null;
-  return (
-    <View
-      style={[
-        styles.container,
-        { width: size, height: size, bottom, right, opacity },
-      ]}
-    >
-      <Image
-        source={source as any}
-        style={{ width: size, height: size }}
-        resizeMode="contain"
-      />
-    </View>
-  );
-}
-
 export function MiniAvatarSticker({
   character,
   screenContext,
@@ -103,39 +60,49 @@ export function MiniAvatarSticker({
   if (!character || character === 'oracle' || character === 'sekretBrain') return null;
 
   const ctx: StickerContext = screenContext ?? 'general';
-  const imageMap = IMAGES as Record<string, unknown>;
 
-  // Night context: prefer rylane-night sticker if registered, then fall back to Night.
+  // Night context: only render if rylane-night sticker is registered
   if (character === 'night') {
     const nightSticker = getStickerById('rylane-night');
-    const src = nightSticker?.renderable && nightSticker.assetKey
-      ? imageMap[nightSticker.assetKey]
-      : null;
+    if (!nightSticker?.renderable || !nightSticker.assetKey) return null;
+    const src = (IMAGES as Record<string, unknown>)[nightSticker.assetKey];
+    if (!src) return null;
     return (
-      <MiniAvatarImage
-        source={src ?? fallbackAvatar('night')}
-        size={size}
-        bottom={bottom}
-        right={right}
-        opacity={opacity}
-      />
+      <View
+        style={[
+          styles.container,
+          { width: size, height: size, bottom, right, opacity },
+        ]}
+      >
+        <Image
+          source={src as any}
+          style={{ width: size, height: size }}
+          resizeMode="contain"
+        />
+      </View>
     );
   }
 
-  // Raylene / Rylane / Cloud: look up context sticker from registry first.
+  // Raylene / Rylane / Cloud: look up context sticker from registry
   const sticker = getContextSticker(character, ctx);
-  const imgSource = sticker?.renderable && sticker.assetKey
-    ? imageMap[sticker.assetKey]
-    : null;
+  if (!sticker?.renderable || !sticker.assetKey) return null;
+
+  const imgSource = (IMAGES as Record<string, unknown>)[sticker.assetKey];
+  if (!imgSource) return null;
 
   return (
-    <MiniAvatarImage
-      source={imgSource ?? fallbackAvatar(character)}
-      size={size}
-      bottom={bottom}
-      right={right}
-      opacity={opacity}
-    />
+    <View
+      style={[
+        styles.container,
+        { width: size, height: size, bottom, right, opacity },
+      ]}
+    >
+      <Image
+        source={imgSource as any}
+        style={{ width: size, height: size }}
+        resizeMode="contain"
+      />
+    </View>
   );
 }
 
