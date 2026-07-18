@@ -84,20 +84,22 @@ The long-horizon relationship roadmap in #238 also remains open. Its phased Tran
 ### Active focused pull requests
 
 - **PR #476 — Add founder social provisioning lab and coordinated AI lanes**
-  - Owns coordinated AI/provider contracts, one-writer handoffs, `AGENTS.md`, DeepSeek/provider guidance, and the dry-run-only social provisioning lab.
+  - Owns 24 focused coordination/social files, including one-writer handoffs, `AGENTS.md`, DeepSeek/provider guidance, and the dry-run-only social provisioning lab.
   - Preserves the corresponding #468 boundaries while adding collision and external-platform safeguards.
+  - Zero commits behind `main` after ancestry reconciliation.
 - **PR #481 — Port Playwright living-room production engine to current main**
-  - Owns the reviewed room manifest, Night prompt pack, Figma blueprint, room-specific Playwright suite, foreman, and contract tests.
-  - All eight added blobs and all three modified-file patches were verified identical to closed PR #446.
+  - Owns 12 focused files: the reviewed room manifest, Night prompt pack, Figma blueprint, room-specific Playwright suite, foreman, contract tests, and exact-head room workflow wiring.
+  - The initial current-main port preserved all eight #446-added files and all three narrow modified-file patches. Later focused commits added the workflow and hardened the foreman and contract test.
+  - Zero commits behind `main`.
 - **PR #482 — Add executable Founder Control Room mission core**
-  - Owns the authenticated loopback mission server, launcher, browser client, mission UI, bounded output, and Playwright evidence integration extracted from #468.
-  - It is stacked on #481 and must be retargeted and reverified after its base merges.
+  - Owns 15 focused files: the authenticated loopback mission server, launcher, browser client, mission UI, bounded output, Playwright evidence integration, and guarded GitHub route.
+  - Zero commits behind #481 and still stacked; it must be retargeted and reverified after its base merges.
 - **PR #484 — Extract 5W1H skill contracts and Prompt OS guidance**
-  - Created from current `main` with one commit and exactly 19 changed files.
-  - Owns the 18 repository skills and `PromptOsPanel.tsx` that were not present in #476 or #482.
-  - Every changed file uses the exact reviewed #468 Git blob.
+  - Owns exactly 19 changed files: the 18 repository skills and `PromptOsPanel.tsx` not present in #476 or #482.
+  - The exact reviewed #468 blobs are overlaid on current `main`.
+  - Zero commits behind `main` after the ancestry merge.
 
-These focused PRs remain open and retain their own exact-head, review, merge-order, and founder gates.
+The current exact heads of #481, #482, and #484 are not merge-ready. Their inspected Quality Gate jobs concluded with `steps: null` and `logs_url: null`; this is runner-startup evidence, not executed test evidence or a code diagnosis.
 
 ### Closed pull requests without merge
 
@@ -109,8 +111,8 @@ These focused PRs remain open and retain their own exact-head, review, merge-ord
 
 - **PR #446 — feat(room): add Playwright living-room production engine**
   - Closed as the stale-base predecessor to current-main PR #481.
-  - All eight newly added files have identical Git blob SHAs in #481.
-  - `.gitignore`, `package.json`, and `playwright.config.ts` carry the same narrow patches.
+  - The initial #481 port preserved every reviewed added file and the exact `.gitignore`, package-script, and default Playwright-isolation patches.
+  - Subsequent #481 commits added focused workflow coverage and foreman/test hardening; those are new current-head work, not lost #446 scope.
   - Closing it does not merge the engine, approve Canva state, implement Night's actor runtime, or prove production behavior.
 
 - **PR #465 — db: add privacy-safe voice runtime telemetry foundation**
@@ -126,8 +128,9 @@ These focused PRs remain open and retain their own exact-head, review, merge-ord
   - #478 remains blocked because its workflows ended with no steps or logs.
 
 - **PR #468 — Make Control Room executable with guarded AI contracts**
-  - Closed as a mixed branch after complete file-level decomposition.
-  - #476 owns 3 coordinated AI/provider files, #482 owns 12 executable Control Room files, and #484 owns 19 skill/Prompt OS files: all 34 changed files are accounted for.
+  - Closed as a mixed branch after complete file-level decomposition of its original 34 files.
+  - #476 owns 3 original coordinated AI/provider files, #482 owns 12 original executable Control Room files, and #484 owns 19 skill/Prompt OS files.
+  - #482 later added three focused GitHub-route files, bringing its current scope to 15 without changing the original partition.
   - Core agent, launcher, server, and browser-client blobs are exact in #482.
   - #482's focused test removes DeepSeek and whole-repository skill assertions now owned by #476/#484 and adds room-suite compatibility checks.
   - Closing #468 does not merge any focused PR, activate a provider adapter, authorize social-account creation, or prove production Control Room execution.
