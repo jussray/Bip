@@ -61,11 +61,13 @@ Both #478 and #479 remain open because their exact-head GitHub jobs ended before
 | Active PR | Canonical authority | Relationship to retired work |
 |---:|---|---|
 | #476 | Coordinated multi-AI lanes and founder social-provisioning rehearsal | Owns `AGENTS.md`, `DeepSeek/deepseek-chat.md`, `docs/PROVIDERS.md`, one-writer coordination, handoffs, and the social lab. It preserves and extends the corresponding #468 boundaries. |
-| #481 | Playwright living-room production engine | Current-main replacement for closed PR #446. All eight added files and the three modified-file patches were verified identical. Night's live actor/state runtime remains follow-up work. |
-| #482 | Executable Founder Control Room mission core | Owns the authenticated loopback agent, mission UI, browser client, bounded output, and Playwright evidence integration extracted from #468. It is stacked on #481 and must not merge before its base. |
-| #484 | Repository-wide 5W1H skill contracts and Prompt OS guidance | Owns the 18 skill files and `PromptOsPanel.tsx` that were not present in #476 or #482. The files are exact reviewed blobs extracted from #468 onto current `main`. |
+| #481 | Playwright living-room production engine | Current-main replacement for closed PR #446. The initial port preserved all eight added files and all three narrow modified-file patches; later focused commits added a room-specific workflow and hardened the foreman and contract tests. Night's live actor/state runtime remains follow-up work. |
+| #482 | Executable Founder Control Room mission core | Owns 15 focused files: the authenticated loopback agent, mission UI, browser client, bounded output, Playwright evidence integration, and guarded GitHub route. It is zero commits behind #481 and must not merge before its base. |
+| #484 | Repository-wide 5W1H skill contracts and Prompt OS guidance | Owns exactly 19 changed files: the 18 skills and `PromptOsPanel.tsx` not present in #476 or #482. The exact reviewed #468 blobs are overlaid on current `main`. |
 
-PR #468 is closed without merge after a complete file-level partition: 3 files are owned by #476, 12 by #482, and 19 by #484, accounting for all 34 changed files. PR #446 is closed after #481 proved exact preservation. None of these closures merges the focused PRs, activates a provider adapter, authorizes external account creation, implements Night's runtime, or proves production Control Room behavior.
+PR #468 is closed without merge after a complete file-level partition of its original 34 files: 3 files are owned by #476, 12 by #482, and 19 by #484. #482 subsequently added three focused GitHub-route files. PR #446 is closed after the initial #481 port proved exact preservation; later #481 hardening does not erase that lineage. None of these closures merges the focused PRs, activates a provider adapter, authorizes external account creation, implements Night's runtime, or proves production Control Room behavior.
+
+The current exact heads of #481, #482, and #484 remain blocked by GitHub runner-startup failures: inspected Quality Gate jobs report `steps: null` and `logs_url: null`. They are not merge-ready until exact-head jobs actually execute and pass.
 
 ## Supporting launch trackers
 
@@ -86,10 +88,10 @@ PR #468 is closed without merge after a complete file-level partition: 3 files a
 | PR | Resolution | Preserved work |
 |---:|---|---|
 | #408 | Closed without merge as a stale mixed branch | Playwright work is superseded by merged PR #436; relationship-status UI remains open in #271 and must be rebuilt from current `main` |
-| #446 | Closed without merge as the stale-base room-engine branch | Current-main PR #481 preserves all eight added blobs and the exact `.gitignore`, package-script, and default Playwright-isolation patches |
+| #446 | Closed without merge as the stale-base room-engine branch | #481's initial current-main port preserved every reviewed file and narrow patch; later focused room-workflow and foreman/test hardening remains owned by #481 |
 | #465 | Closed without merge as a stale-base voice telemetry branch | Current-main PR #479 preserves all five files, the review-driven opaque-ID and payload-allowlist hardening, and stricter ledger criteria |
 | #466 | Closed without merge as a stale-base strategy branch | Current-main PR #478 preserves both corrected documentation files byte-for-byte, including the repository-integrated/not-proven-live distinction |
-| #468 | Closed without merge as a mixed Control Room/provider/skill branch | #476 owns coordinated AI/provider work, #482 owns the executable mission core, and #484 owns the 5W1H skill and Prompt OS residue; all 34 changed files are accounted for |
+| #468 | Closed without merge as a mixed Control Room/provider/skill branch | #476 owns coordinated AI/provider work, #482 owns the executable mission core, and #484 owns the 5W1H skill and Prompt OS residue; all original 34 changed files are accounted for |
 
 A closed unmerged PR is not implementation evidence. Any useful patch must be re-extracted onto current `main`, reviewed, and verified through the normal exact-head gates.
 
