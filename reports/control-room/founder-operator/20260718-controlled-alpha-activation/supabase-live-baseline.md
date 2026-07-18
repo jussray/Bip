@@ -5,8 +5,7 @@
 - Project: Se’kret Bip (`tbsevonvegdnlyjgplmm`)
 - Project status: active and healthy
 - Repository PR: #495
-- Repository head observed before this record: `ef19e0db1bdab7a4929b0ff05c328f2821cffe4d`
-- Evidence type: live catalog and aggregate-only read evidence
+- Evidence type: live catalog, aggregate-only read, rollback-only compilation, and branch-capability evidence
 - No migration, credential, account, user-content, storage, or persistent database mutation occurred.
 
 The catalog probes created only temporary result rows inside transactions and ended with `ROLLBACK`. No teen, parent, Journal, Mood, Crew, account, or deletion-record identifiers were returned.
@@ -66,6 +65,32 @@ All four pre-application drift counts are zero:
 
 The migration’s malformed-share revocation statement currently has no matching active row. No cleanup sweep is needed for unsupported Bridge source rows before migration application based on this baseline.
 
+## Rollback-only function compilation
+
+The final function bodies compiled successfully as temporary `pg_temp` functions against the live schema and were rolled back:
+
+- Bridge request creation RPC;
+- Crew share-owner trigger function;
+- Crew scoped revoke RPC;
+- caller-bound Crew access helper.
+
+This proves PL/pgSQL syntax and referenced live columns for those functions. It does not prove the full policy DDL, grants, trigger installation, migration order, or post-migration behavior.
+
+## Isolated branch attempt
+
+The founder approved an isolated Supabase development branch at **$0.01344 per hour**.
+
+Supabase rejected `controlled-alpha-validation-20260718` with `PaymentRequiredException`: development branching is supported only on the Pro plan or above.
+
+Verified branch state after the rejection:
+
+- no development branch was created;
+- no hourly branch charge started;
+- the branch list contains only the existing `main` branch;
+- production schema and data remain unchanged.
+
+A Supabase plan upgrade is a separate billing decision and was not approved by the branch-cost confirmation. A separate validation project would also require a separate price and approval.
+
 ## Supabase security advisor findings relevant to launch
 
 ### Founder action required
@@ -84,15 +109,14 @@ The migration’s malformed-share revocation statement currently has no matching
 
 ## Current decision boundary
 
-Safe preparation may continue. Do not apply the relationship migrations to the live project, change Auth settings, provision secrets, deploy the alpha Worker, create paid builds, distribute builds, or operate controlled accounts without the founder gate.
+Safe repository and catalog preparation may continue. Do not apply the relationship migrations to the live project, change Auth settings, upgrade the plan, create another paid environment, provision secrets, deploy the alpha Worker, create paid builds, distribute builds, or operate controlled accounts without the corresponding founder gate.
 
 The next evidence order is:
 
-1. complete-checkout controlled-alpha tests;
+1. complete-checkout controlled-alpha tests when repository access or hosted runners recover;
 2. TypeScript and implementation-ledger validation;
-3. migration parse or isolated dry run;
-4. founder review of this live baseline and advisor findings;
-5. approved migration application;
-6. rerun catalog probe v2 expecting 12 of 12;
-7. security advisors after DDL;
-8. controlled live denial and journey evidence.
+3. local Supabase reset, or a newly approved paid validation environment after plan/cost approval;
+4. catalog probe v2 expecting 12 of 12 in that isolated environment;
+5. security advisors after DDL;
+6. synthetic anonymous, blocked, revoked, unrelated, source-ownership, and idempotency denial probes;
+7. separate founder approval before any live application.
