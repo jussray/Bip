@@ -124,25 +124,26 @@ export async function initOnboardingState(
   platform: string = 'unknown',
   referralSource?: string,
 ): Promise<OnboardingState> {
+  const existing = await getOnboardingState(userId);
+  if (existing) return existing;
+
   const { data, error } = await db()
     .from('user_onboarding_state')
-    .upsert(
-      {
-        user_id: userId,
-        stage: 'signed_up',
-        role: 'unknown',
-        device_platform: platform,
-        referral_source: referralSource ?? null,
-      },
-      { onConflict: 'user_id', ignoreDuplicates: true },
-    )
+    .insert({
+      user_id: userId,
+      stage: 'signed_up',
+      role: 'unknown',
+      device_platform: platform,
+      referral_source: referralSource ?? null,
+    })
     .select()
     .single();
 
   if (error) {
-    if (error.code === '23505' || error.message.includes('duplicate')) {
-      const existing = await getOnboardingState(userId);
-      if (existing) return existing;
+    // A concurrent provider/screen initialization may have won the insert race.
+    if (error.code === '23505' || error.message.toLowerCase().includes('duplicate')) {
+      const raced = await getOnboardingState(userId);
+      if (raced) return raced;
     }
     throw new Error(`[Onboarding] Init failed: ${error.message}`);
   }
@@ -160,6 +161,38 @@ export async function getOnboardingState(
 
   if (error) throw new Error(`[Onboarding] Fetch failed: ${error.message}`);
   return data as OnboardingState | null;
+}
+
+async function backfillPassedStageMetadata(
+  userId: string,
+  current: OnboardingState,
+  payload: StageAdvancePayload,
+): Promise<OnboardingState> {
+  const patch: Record<string, unknown> = {};
+  const role = inferredRole(payload);
+
+  // Direct-main bugs may already have advanced a row while leaving role/age
+  // unknown. Repair only missing metadata and never lower the current stage.
+  if (current.role === 'unknown' && role && role !== 'unknown') {
+    patch.role = role;
+  }
+  if (!current.age_bucket && typeof payload.age_bucket === 'string') {
+    patch.age_bucket = payload.age_bucket;
+  }
+
+  if (Object.keys(patch).length === 0) return current;
+
+  const { data, error } = await db()
+    .from('user_onboarding_state')
+    .update(patch)
+    .eq('user_id', userId)
+    .eq('stage', current.stage)
+    .select()
+    .maybeSingle();
+
+  if (error) throw new Error(`[Onboarding] Metadata repair failed: ${error.message}`);
+  if (!data) return advanceStage(userId, payload);
+  return data as OnboardingState;
 }
 
 export async function advanceStage(
@@ -186,7 +219,9 @@ export async function advanceStage(
 
   const nextIndex = stageIndex(payload.stage);
   const currentIndex = stageIndex(current.stage);
-  if (nextIndex <= currentIndex) return current;
+  if (nextIndex <= currentIndex) {
+    return backfillPassedStageMetadata(userId, current, payload);
+  }
 
   const extra: Record<string, unknown> = {};
 
