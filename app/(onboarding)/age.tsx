@@ -12,6 +12,8 @@ import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
 import { useOnboarding } from '@/context/OnboardingContext';
+import { advanceStage } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 const AGE_OPTIONS = [
   { id: '13-15' as const, label: '13 – 15' },
@@ -45,6 +47,21 @@ export default function AgeScreen() {
   async function handleParent() {
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, 'parent');
     setUserSide('parent');
+
+    // ── Onboarding state machine ──────────────────────────────────
+    // Fire-and-forget: record role branch before account exists.
+    // getUser() resolves null for anonymous/unauthenticated users —
+    // the catch swallows silently. Once the parent signs up and
+    // initOnboardingState() runs, their row is ready for advances.
+    getSupabase()
+      ?.auth.getUser()
+      .then(({ data }) => {
+        if (data.user) {
+          advanceStage(data.user.id, 'role_selected', { role: 'parent' }).catch(() => null);
+        }
+      });
+    // ─────────────────────────────────────────────────────────────
+
     router.push('/(onboarding)/parent-splash');
   }
 
