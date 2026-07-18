@@ -49,9 +49,18 @@ function isConfirmationPendingError(error: unknown): boolean {
   );
 }
 
+function hasAuthServerResponse(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('status' in error)) return false;
+  const status = Number((error as { status?: unknown }).status);
+  return Number.isFinite(status) && status >= 400;
+}
+
 function readableAuthError(error: unknown): string {
   if (isAmbiguousSignupError(error)) {
-    return 'The account server took too long to answer. Your account may still have been created, so check your email before trying again.';
+    if (hasAuthServerResponse(error)) {
+      return 'The account server took too long to answer. Your account may still have been created, so check your email before trying again.';
+    }
+    return 'We could not reach the account server. Check your connection and try again.';
   }
   if (error instanceof Error && error.message) return error.message;
   return 'Something went wrong while creating your account. Please try again.';
@@ -100,8 +109,10 @@ export default function SignupScreen() {
     sb: NonNullable<ReturnType<typeof getSupabase>>,
     signupEmail: string,
     signupPassword: string,
+    initialError: unknown,
   ): Promise<boolean> {
     await delay(SIGNUP_RECOVERY_DELAY_MS);
+    const initialSignupReachedAuth = hasAuthServerResponse(initialError);
 
     // The recovery path must never throw a second browser transport error back
     // into the button handler. Probe once, then perform at most one signup retry.
@@ -127,10 +138,10 @@ export default function SignupScreen() {
       if (!isAmbiguousSignupError(probeError)) return false;
     }
 
-    // A timeout can happen before Supabase returns the result even though the
-    // request reached Auth. One bounded retry is safe because repeated signup
-    // is handled by Supabase and avoids leaving a user behind a false network
-    // failure when the first request did not commit.
+    // A timeout can happen after Auth received the request but before it returns
+    // the result. Retry signup once. Only show confirmation success when either
+    // signup attempt produced an HTTP response or the password probe proved the
+    // account exists. Pure browser fetch failures stay retryable on this screen.
     try {
       const { data: retryData, error: retryError } = await sb.auth.signUp({
         email: signupEmail,
@@ -146,19 +157,30 @@ export default function SignupScreen() {
         return true;
       }
 
+      if (isConfirmationPendingError(retryError)) {
+        showConfirmationSuccess(
+          `Your account was created, but email confirmation is still pending for ${signupEmail}.\nCheck your inbox, then come back and sign in.`,
+        );
+        return true;
+      }
+
+      const retryReachedAuth = hasAuthServerResponse(retryError);
       if (
-        isConfirmationPendingError(retryError) ||
-        isAmbiguousSignupError(retryError)
+        isAmbiguousSignupError(retryError) &&
+        (initialSignupReachedAuth || retryReachedAuth)
       ) {
         showConfirmationSuccess(
-          `We could not confirm the final signup response for ${signupEmail}.\nCheck your inbox before trying again. If no message arrives, wait a moment and retry once.`,
+          `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
         );
         return true;
       }
     } catch (retryError) {
-      if (isAmbiguousSignupError(retryError)) {
+      if (
+        isAmbiguousSignupError(retryError) &&
+        initialSignupReachedAuth
+      ) {
         showConfirmationSuccess(
-          `We could not confirm the final signup response for ${signupEmail}.\nCheck your inbox before trying again. If no message arrives, wait a moment and retry once.`,
+          `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
         );
         return true;
       }
@@ -245,7 +267,7 @@ export default function SignupScreen() {
 
           if (upgradeError) {
             if (isAmbiguousSignupError(upgradeError)) {
-              const recovered = await recoverAmbiguousSignup(sb, e, p);
+              const recovered = await recoverAmbiguousSignup(sb, e, p, upgradeError);
               if (recovered) return;
             }
 
@@ -289,7 +311,7 @@ export default function SignupScreen() {
 
       if (authErr) {
         if (isAmbiguousSignupError(authErr)) {
-          const recovered = await recoverAmbiguousSignup(sb, e, p);
+          const recovered = await recoverAmbiguousSignup(sb, e, p, authErr);
           if (recovered) return;
         }
         setError(readableAuthError(authErr));
@@ -305,7 +327,7 @@ export default function SignupScreen() {
       }
     } catch (caught) {
       if (isAmbiguousSignupError(caught)) {
-        const recovered = await recoverAmbiguousSignup(sb, e, p);
+        const recovered = await recoverAmbiguousSignup(sb, e, p, caught);
         if (recovered) return;
       }
       setError(readableAuthError(caught));

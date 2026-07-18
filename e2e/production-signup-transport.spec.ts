@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('public signup stays bounded when browser transport fails throughout recovery', async ({ page }) => {
+test('public signup stays retryable when no Auth request reaches the server', async ({ page }) => {
   let signupAttempts = 0;
   let passwordProbeAttempts = 0;
 
@@ -38,9 +38,12 @@ test('public signup stays bounded when browser transport fails throughout recove
   await page.getByPlaceholder('confirm password').fill('PlaywrightOnly-123!');
   await page.getByRole('button', { name: 'Create Account' }).click();
 
-  await expect(page.getByText('Check your email')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/could not confirm the final signup response/i)).toBeVisible();
-  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveText(
+    'We could not reach the account server. Check your connection and try again.',
+    { timeout: 30_000 },
+  );
+  await expect(page.getByText('Check your email')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Create Account' })).toBeEnabled();
   expect(signupAttempts).toBe(2);
   expect(passwordProbeAttempts).toBe(1);
 });
