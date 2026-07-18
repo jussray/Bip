@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@constants/theme';
+import { BIP_SURFACE } from '../../constants/vibeColors';
 import {
   requestNotificationPermissions,
   scheduleDailyReminder,
@@ -60,10 +61,12 @@ export default function SettingsScreen() {
     selectedSekret, setSelectedSekret,
     sekretMode, setSekretMode,
     notificationsEnabled, setNotificationsEnabled,
+    colorScheme, setColorScheme,
     resetApp,
   } = useAppContext();
 
   const { sleepWindow, setSleepWindow } = useSleepGuard();
+  const cs = BIP_SURFACE[colorScheme];
 
   const [inviteCode, setInviteCode] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -158,80 +161,92 @@ export default function SettingsScreen() {
   }, [codeInput]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: cs.root }]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Settings</Text>
-        <Text style={styles.sectionTitle}>Side</Text>
-        <View style={styles.row}>
-          <Text style={styles.label}>Parent side</Text>
+        <Text style={[styles.title, { color: cs.textPrimary }]}>Settings</Text>
+
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Appearance</Text>
+        <View style={[styles.row, { backgroundColor: cs.row }]}>
+          <Text style={[styles.label, { color: cs.textPrimary }]}>Dark mode</Text>
+          <Switch
+            value={colorScheme === 'dark'}
+            onValueChange={(v) => setColorScheme(v ? 'dark' : 'light')}
+            trackColor={{ false: cs.inputBorder, true: cs.accent }}
+            thumbColor="#fff"
+          />
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Side</Text>
+        <View style={[styles.row, { backgroundColor: cs.row }]}>
+          <Text style={[styles.label, { color: cs.textPrimary }]}>Parent side</Text>
           <Switch value={userSide === 'parent'} onValueChange={(v) => setUserSide(v ? 'parent' : 'teen')} />
         </View>
 
-        <Text style={styles.sectionTitle}>Theme</Text>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Theme</Text>
         {THEME_ORDER.map((key) => (
-          <TouchableOpacity key={String(key)} style={styles.option} onPress={() => setTheme(key)}>
-            <Text style={styles.optionText}>{themeLabel(key)}</Text>
-            {theme === key && <Text style={styles.check}>✓</Text>}
+          <TouchableOpacity key={String(key)} style={[styles.option, { backgroundColor: cs.row }]} onPress={() => setTheme(key)}>
+            <Text style={[styles.optionText, { color: cs.textPrimary }]}>{themeLabel(key)}</Text>
+            {theme === key && <Text style={[styles.check, { color: cs.accent }]}>✓</Text>}
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.sectionTitle}>Companion</Text>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Companion</Text>
         {COMPANIONS.map((c) => (
-          <TouchableOpacity key={c.key} style={styles.option} onPress={() => setSelectedSekret(c.key)}>
-            <Text style={styles.optionText}>{c.emoji} {c.name} — {c.title}</Text>
-            {selectedSekret === c.key && <Text style={styles.check}>✓</Text>}
+          <TouchableOpacity key={c.key} style={[styles.option, { backgroundColor: cs.row }]} onPress={() => setSelectedSekret(c.key)}>
+            <Text style={[styles.optionText, { color: cs.textPrimary }]}>{c.emoji} {c.name} — {c.title}</Text>
+            {selectedSekret === c.key && <Text style={[styles.check, { color: cs.accent }]}>✓</Text>}
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.sectionTitle}>Se'kret mode</Text>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Se'kret mode</Text>
         {SEKRET_MODES.map((m) => (
-          <TouchableOpacity key={m.key} style={styles.option} onPress={() => setSekretMode(m.key)}>
-            <Text style={styles.optionText}>{m.emoji} {m.label}</Text>
-            {sekretMode === m.key && <Text style={styles.check}>✓</Text>}
+          <TouchableOpacity key={m.key} style={[styles.option, { backgroundColor: cs.row }]} onPress={() => setSekretMode(m.key)}>
+            <Text style={[styles.optionText, { color: cs.textPrimary }]}>{m.emoji} {m.label}</Text>
+            {sekretMode === m.key && <Text style={[styles.check, { color: cs.accent }]}>✓</Text>}
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.sectionTitle}>Notifications</Text>
-        <View style={styles.row}>
-          <Text style={styles.label}>Daily reminder</Text>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Notifications</Text>
+        <View style={[styles.row, { backgroundColor: cs.row }]}>
+          <Text style={[styles.label, { color: cs.textPrimary }]}>Daily reminder</Text>
           <Switch value={notificationsEnabled} onValueChange={handleNotificationToggle} />
         </View>
 
-        <Text style={styles.sectionTitle}>Sleep guard</Text>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Sleep guard</Text>
         {SLEEP_OPTIONS.map((opt) => (
-          <TouchableOpacity key={opt.label} style={styles.option} onPress={() => setSleepWindow(opt.value)}>
-            <Text style={styles.optionText}>{opt.label}</Text>
-            {JSON.stringify(sleepWindow) === JSON.stringify(opt.value) && <Text style={styles.check}>✓</Text>}
+          <TouchableOpacity key={opt.label} style={[styles.option, { backgroundColor: cs.row }]} onPress={() => setSleepWindow(opt.value)}>
+            <Text style={[styles.optionText, { color: cs.textPrimary }]}>{opt.label}</Text>
+            {JSON.stringify(sleepWindow) === JSON.stringify(opt.value) && <Text style={[styles.check, { color: cs.accent }]}>✓</Text>}
           </TouchableOpacity>
         ))}
 
-        <Text style={styles.sectionTitle}>Parent link</Text>
-        <TouchableOpacity style={styles.button} onPress={handleGenerateCode} disabled={isGenerating}>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Parent link</Text>
+        <TouchableOpacity style={[styles.button, { backgroundColor: cs.accent }]} onPress={handleGenerateCode} disabled={isGenerating}>
           <Text style={styles.buttonText}>{isGenerating ? 'Generating…' : 'Generate link code'}</Text>
         </TouchableOpacity>
         {!!inviteCode && (
-          <TouchableOpacity style={styles.codeBox} onPress={handleCopyCode}>
-            <Text style={styles.codeText}>{inviteCode}</Text>
-            <Text style={styles.hint}>tap to copy</Text>
+          <TouchableOpacity style={[styles.codeBox, { borderColor: cs.accent }]} onPress={handleCopyCode}>
+            <Text style={[styles.codeText, { color: cs.textPrimary }]}>{inviteCode}</Text>
+            <Text style={[styles.hint, { color: cs.textSecond }]}>tap to copy</Text>
           </TouchableOpacity>
         )}
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: cs.textPrimary, borderColor: cs.inputBorder }]}
           value={codeInput}
           onChangeText={setCodeInput}
           placeholder="Enter teen code"
-          placeholderTextColor="#999"
+          placeholderTextColor={cs.textMuted}
           autoCapitalize="characters"
         />
-        <TouchableOpacity style={styles.button} onPress={handleRedeemCode} disabled={isRedeeming}>
+        <TouchableOpacity style={[styles.button, { backgroundColor: cs.accent }]} onPress={handleRedeemCode} disabled={isRedeeming}>
           <Text style={styles.buttonText}>{isRedeeming ? 'Connecting…' : 'Redeem code'}</Text>
         </TouchableOpacity>
-        {redeemStatus !== 'idle' && <Text style={styles.hint}>Status: {redeemStatus}</Text>}
+        {redeemStatus !== 'idle' && <Text style={[styles.hint, { color: cs.textSecond }]}>Status: {redeemStatus}</Text>}
         <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkTeen} disabled={isUnlinking}>
           <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink teen'}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.sectionTitle}>Danger zone</Text>
+        <Text style={[styles.sectionTitle, { color: cs.section }]}>Danger zone</Text>
         <AccountDeletionControls />
         <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleDeleteData}>
           <Text style={styles.buttonText}>Delete local device data</Text>
@@ -242,20 +257,20 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#130b24' },
-  content: { padding: 20, paddingBottom: 80 },
-  title: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 20 },
-  sectionTitle: { color: '#c4b5fd', fontWeight: '800', fontSize: 16, marginTop: 18, marginBottom: 8 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
-  label: { color: '#fff', fontWeight: '700' },
-  option: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 8 },
-  optionText: { color: '#fff', flex: 1 },
-  check: { color: '#a78bfa', fontWeight: '900', fontSize: 18 },
-  button: { padding: 14, borderRadius: 16, backgroundColor: '#a78bfa', alignItems: 'center', marginBottom: 10 },
-  danger: { backgroundColor: '#ef4444' },
-  buttonText: { color: '#1e1236', fontWeight: '800' },
-  codeBox: { padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#a78bfa', alignItems: 'center', marginBottom: 10 },
-  codeText: { color: '#fff', fontSize: 24, fontWeight: '900', letterSpacing: 3 },
-  hint: { color: '#c4b5fd', textAlign: 'center', marginBottom: 10 },
-  input: { color: '#fff', borderWidth: 1, borderColor: '#6d5aa5', borderRadius: 14, padding: 12, marginBottom: 10 },
+  container:    { flex: 1 },
+  content:      { padding: 20, paddingBottom: 80 },
+  title:        { fontSize: 28, fontWeight: '800', marginBottom: 20 },
+  sectionTitle: { fontWeight: '800', fontSize: 16, marginTop: 18, marginBottom: 8 },
+  row:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 8 },
+  label:        { fontWeight: '700' },
+  option:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14, borderRadius: 16, marginBottom: 8 },
+  optionText:   { flex: 1 },
+  check:        { fontWeight: '900', fontSize: 18 },
+  button:       { padding: 14, borderRadius: 16, alignItems: 'center', marginBottom: 10 },
+  danger:       { backgroundColor: '#ef4444' },
+  buttonText:   { color: '#fff', fontWeight: '800' },
+  codeBox:      { padding: 16, borderRadius: 16, borderWidth: 1, alignItems: 'center', marginBottom: 10 },
+  codeText:     { fontSize: 24, fontWeight: '900', letterSpacing: 3 },
+  hint:         { textAlign: 'center', marginBottom: 10 },
+  input:        { borderWidth: 1, borderRadius: 14, padding: 12, marginBottom: 10 },
 });

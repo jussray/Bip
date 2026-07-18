@@ -118,6 +118,8 @@ interface AppContextValue {
 
   teenGender: 'girl' | 'boy' | 'other' | null;
   resetApp: () => void;
+  colorScheme: 'light' | 'dark';
+  setColorScheme: (s: 'light' | 'dark') => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -141,11 +143,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [homeMessageIndex, setHomeMessageIndex] = useState(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [teenGender, setTeenGender] = useState<'girl' | 'boy' | 'other' | null>(null);
+  const [colorScheme, setColorSchemeRaw] = useState<'light' | 'dark'>('dark');
   const breatheAnim = useRef(new Animated.Value(1)).current;
 
   const state = useSekretState();
   const { streakDays } = useStreak();
   const { syncStatus, withSyncWrap } = useSyncStatus();
+
+  useEffect(() => {
+    AsyncStorage.getItem('bip_color_scheme').then(raw => {
+      if (raw === 'light' || raw === 'dark') setColorSchemeRaw(raw);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     AsyncStorage.getItem('teen_profile_data').then(raw => {
@@ -330,6 +339,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNotificationsEnabled(false);
   }
 
+  function setColorScheme(s: 'light' | 'dark') {
+    setColorSchemeRaw(s);
+    AsyncStorage.setItem('bip_color_scheme', s).catch(() => {});
+  }
+
   const value: AppContextValue = {
     theme: state.theme,
     setTheme: state.setTheme,
@@ -403,6 +417,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     completeParentOracleSession,
     teenGender,
     resetApp,
+    colorScheme,
+    setColorScheme,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
