@@ -53,15 +53,21 @@ test('history and reports preserve evidence without exposing a delete path', () 
   assert.doesNotMatch(panel, />Delete</);
   assert.match(server, /founderOperatorReportDir/);
   assert.match(server, /founder-operator\/plans/);
-  assert.match(server, /while \(fs\.existsSync\(reportPath\)\)/);
-  assert.match(server, /-v\$\{version\}\.json/);
+  assert.match(server, /for \(let version = 1; version <= 10_000; version \+= 1\)/);
+  assert.match(server, /fs\.writeFileSync\(candidate, content, \{ flag: 'wx' \}\)/);
+  assert.match(server, /-v\$\{version\}/);
   assert.match(server, /path\.join\(founderOperatorReportDir, 'latest\.json'\)/);
+  assert.match(server, /fs\.renameSync\(latestTempPath, latestPath\)/);
+  assert.match(server, /isSymbolicLink\(\)/);
 });
 
 
 test('free-form founder input cannot become arbitrary shell or secret-bearing evidence', () => {
   assert.match(server, /blockedPlanKeys/);
+  assert.match(server, /key\.toLowerCase\(\)\.replace/);
   assert.match(server, /credential_shaped_content_rejected/);
+  assert.match(server, /external_action_evidence_required/);
+  assert.match(server, /unverified_evidence_level/);
   assert.match(server, /invalid_plan_id/);
   assert.match(server, /request_body_too_large/);
   assert.match(client, /persistFounderOperatorPlan/);
