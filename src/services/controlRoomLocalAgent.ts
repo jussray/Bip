@@ -1,3 +1,5 @@
+import type { FounderOperatorPlan } from '@/types/controlRoomFounderOperator';
+
 export type LocalAgentStatus = 'checking' | 'online' | 'offline';
 
 export type LocalMissionRun = {
@@ -18,6 +20,13 @@ export type LocalAgentHealth = {
   activeMission: string | null;
   allowedMissions: string[];
   latestRun: LocalMissionRun | null;
+};
+
+export type FounderOperatorPersistence = {
+  ok: true;
+  planId: string;
+  reportPath: string;
+  latestPath: string;
 };
 
 const baseUrl = (process.env.EXPO_PUBLIC_CONTROL_ROOM_LOCAL_AGENT_URL || 'http://127.0.0.1:4317').replace(/\/$/, '');
@@ -65,4 +74,13 @@ export async function runLocalControlRoomMission(missionId: string): Promise<Loc
     throw new Error(run.error || 'invalid_local_agent_response');
   }
   return run;
+}
+
+export async function persistFounderOperatorPlan(plan: FounderOperatorPlan): Promise<FounderOperatorPersistence> {
+  if (plan.schemaVersion !== 1 || !/^[a-z0-9-]+$/.test(plan.id)) throw new Error('invalid_founder_operator_plan');
+  return request<FounderOperatorPersistence>(
+    '/founder-operator/plans',
+    { method: 'POST', body: JSON.stringify(plan) },
+    15_000,
+  );
 }
