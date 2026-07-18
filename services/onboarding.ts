@@ -2,45 +2,30 @@
  * Onboarding Service — Se'kret Bip
  * ============================================================
  * State machine for the user onboarding flow.
- * Wraps Supabase reads/writes for user_onboarding_state table.
+ * Wraps Supabase reads/writes for user_onboarding_state.
  *
- * OODA Role: ACT layer
- *   Observe  — funnel timing cols feed the control room
- *   Orient   — role/age_bucket/device segment adaptive flows
- *   Decide   — nextScreenForStage() returns the correct route
- *   Act      — advanceStage() writes state forward-only
- *
- * Import pattern: uses getSupabase() from @/utils/supabase
- * to match the rest of the codebase.
- *
- * Fire-and-forget usage (screens — self-reliant pattern):
- *   getSupabase()?.auth.getUser().then(({ data }) => {
- *     if (data.user) advanceStage(data.user.id, 'name_set').catch(() => null);
- *   });
- *
- * Context-aware usage (if OnboardingContext is mounted):
- *   const { advance } = useOnboarding();
- *   await advance('name_set');
+ * Calls may use either:
+ *   advanceStage(userId, { stage: 'name_set', role: 'teen' })
+ * or:
+ *   advanceStage(userId, 'name_set', { role: 'teen' })
  * ============================================================
  */
 
 import { getSupabase } from '@/utils/supabase';
-
-// ─── Types ────────────────────────────────────────────────────
 
 export type OnboardingStage =
   | 'pre_signup'
   | 'signed_up'
   | 'consent_complete'
   | 'age_verified'
-  | 'role_selected'      // identity.tsx fires this
+  | 'role_selected'
   | 'name_set'
-  | 'identity_set'       // alias kept for backwards compat
+  | 'identity_set'
   | 'reflection_complete'
-  | 'parent_linked'      // parent successfully linked a teen
-  | 'parent_link_skipped'// parent chose to link later
-  | 'parent_link_sent'   // teen dispatched invite code (teen path)
-  | 'parent_setup_complete' // parent finished profile setup
+  | 'parent_linked'
+  | 'parent_link_skipped'
+  | 'parent_link_sent'
+  | 'parent_setup_complete'
   | 'activated'
   | 'steady_state';
 
@@ -62,7 +47,6 @@ export interface OnboardingState {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
-  // Funnel timing
   signup_to_consent_secs: number | null;
   consent_to_age_secs: number | null;
   age_to_role_secs: number | null;
@@ -79,9 +63,8 @@ export interface StageAdvancePayload {
   [key: string]: unknown;
 }
 
-// Stage ordering — used to guard against backwards movement.
-// parent_linked and parent_link_skipped are parallel branches;
-// both are treated as equivalently "past" parent-link step.
+type StageAdvanceExtras = Omit<StageAdvancePayload, 'stage'>;
+
 const STAGE_ORDER: OnboardingStage[] = [
   'pre_signup',
   'signed_up',
@@ -91,19 +74,17 @@ const STAGE_ORDER: OnboardingStage[] = [
   'name_set',
   'identity_set',
   'reflection_complete',
-  'parent_link_sent',     // teen dispatched invite
-  'parent_linked',        // parent linked a teen
-  'parent_link_skipped',  // parent skipped linking (same rank as parent_linked)
+  'parent_link_sent',
+  'parent_linked',
+  'parent_link_skipped',
   'parent_setup_complete',
   'activated',
   'steady_state',
 ];
 
-// Parallel stages that should be treated as equivalent rank
-// when checking forward-only guard.
 const PARALLEL_STAGES: Partial<Record<OnboardingStage, number>> = {
   parent_linked: STAGE_ORDER.indexOf('parent_linked'),
-  parent_link_skipped: STAGE_ORDER.indexOf('parent_linked'), // same rank
+  parent_link_skipped: STAGE_ORDER.indexOf('parent_linked'),
 };
 
 function stageIndex(stage: OnboardingStage): number {
@@ -116,17 +97,32 @@ function db() {
   return sb;
 }
 
-// ─── Initialization ───────────────────────────────────────────
+function normalizeAdvancePayload(
+  payloadOrStage: StageAdvancePayload | OnboardingStage,
+  extras: StageAdvanceExtras = {},
+): StageAdvancePayload {
+  return typeof payloadOrStage === 'string'
+    ? { stage: payloadOrStage, ...extras }
+    : payloadOrStage;
+}
 
-/**
- * Called immediately after Supabase auth sign-up.
- * Creates the onboarding state row for the new user.
- * Safe to call multiple times — uses upsert.
- */
+function inferredRole(payload: StageAdvancePayload): UserRole | undefined {
+  if (payload.role) return payload.role;
+  if (
+    payload.stage === 'parent_linked'
+    || payload.stage === 'parent_link_skipped'
+    || payload.stage === 'parent_setup_complete'
+  ) {
+    return 'parent';
+  }
+  if (payload.stage === 'parent_link_sent') return 'teen';
+  return undefined;
+}
+
 export async function initOnboardingState(
   userId: string,
   platform: string = 'unknown',
-  referralSource?: string
+  referralSource?: string,
 ): Promise<OnboardingState> {
   const { data, error } = await db()
     .from('user_onboarding_state')
@@ -138,13 +134,12 @@ export async function initOnboardingState(
         device_platform: platform,
         referral_source: referralSource ?? null,
       },
-      { onConflict: 'user_id', ignoreDuplicates: true }
+      { onConflict: 'user_id', ignoreDuplicates: true },
     )
     .select()
     .single();
 
   if (error) {
-    // Row already exists — fetch it instead
     if (error.code === '23505' || error.message.includes('duplicate')) {
       const existing = await getOnboardingState(userId);
       if (existing) return existing;
@@ -154,10 +149,8 @@ export async function initOnboardingState(
   return data as OnboardingState;
 }
 
-// ─── Reading State ─────────────────────────────────────────────
-
 export async function getOnboardingState(
-  userId: string
+  userId: string,
 ): Promise<OnboardingState | null> {
   const { data, error } = await db()
     .from('user_onboarding_state')
@@ -169,20 +162,23 @@ export async function getOnboardingState(
   return data as OnboardingState | null;
 }
 
-// ─── Advancing Stage ──────────────────────────────────────────
-
-/**
- * Advance the user's onboarding stage forward.
- * Guards against backwards movement — returns current state silently
- * if called with an already-passed stage (idempotent).
- */
 export async function advanceStage(
   userId: string,
-  payload: StageAdvancePayload
+  payload: StageAdvancePayload,
+): Promise<OnboardingState>;
+export async function advanceStage(
+  userId: string,
+  stage: OnboardingStage,
+  extras?: StageAdvanceExtras,
+): Promise<OnboardingState>;
+export async function advanceStage(
+  userId: string,
+  payloadOrStage: StageAdvancePayload | OnboardingStage,
+  extras: StageAdvanceExtras = {},
 ): Promise<OnboardingState> {
+  const payload = normalizeAdvancePayload(payloadOrStage, extras);
   const current = await getOnboardingState(userId);
 
-  // If row doesn't exist yet (race condition), init first then retry
   if (!current) {
     await initOnboardingState(userId);
     return advanceStage(userId, payload);
@@ -190,16 +186,14 @@ export async function advanceStage(
 
   const nextIndex = stageIndex(payload.stage);
   const currentIndex = stageIndex(current.stage);
-
-  // Forward-only guard — no-op if already at or past this stage
   if (nextIndex <= currentIndex) return current;
 
-  // Build timing and activation columns for special transitions
   const extra: Record<string, unknown> = {};
 
   if (payload.stage === 'activated') {
-    const createdMs = new Date(current.created_at).getTime();
-    extra.identity_to_activated_secs = Math.round((Date.now() - createdMs) / 1000);
+    extra.identity_to_activated_secs = Math.round(
+      (Date.now() - new Date(current.created_at).getTime()) / 1000,
+    );
     extra.activated_at = new Date().toISOString();
     extra.activation_action = payload.activation_action ?? 'unknown';
   }
@@ -210,66 +204,60 @@ export async function advanceStage(
 
   if (payload.stage === 'consent_complete' && current.stage === 'signed_up') {
     extra.signup_to_consent_secs = Math.round(
-      (Date.now() - new Date(current.created_at).getTime()) / 1000
+      (Date.now() - new Date(current.created_at).getTime()) / 1000,
     );
   }
 
   if (payload.stage === 'age_verified' && current.stage === 'consent_complete') {
     extra.consent_to_age_secs = Math.round(
-      (Date.now() - new Date(current.updated_at).getTime()) / 1000
+      (Date.now() - new Date(current.updated_at).getTime()) / 1000,
     );
   }
 
   if (payload.stage === 'role_selected' && current.stage === 'age_verified') {
     extra.age_to_role_secs = Math.round(
-      (Date.now() - new Date(current.updated_at).getTime()) / 1000
+      (Date.now() - new Date(current.updated_at).getTime()) / 1000,
     );
   }
 
   if (payload.stage === 'name_set' && current.stage === 'role_selected') {
     extra.role_to_name_secs = Math.round(
-      (Date.now() - new Date(current.updated_at).getTime()) / 1000
+      (Date.now() - new Date(current.updated_at).getTime()) / 1000,
     );
   }
 
-  if (payload.stage === 'reflection_complete' && current.stage === 'name_set') {
+  if (payload.stage === 'identity_set' && current.stage === 'name_set') {
     extra.name_to_identity_secs = Math.round(
-      (Date.now() - new Date(current.updated_at).getTime()) / 1000
+      (Date.now() - new Date(current.updated_at).getTime()) / 1000,
     );
   }
 
+  const role = inferredRole(payload) ?? current.role;
   const { data, error } = await db()
     .from('user_onboarding_state')
     .update({
       stage: payload.stage,
-      role: payload.role ?? current.role,
+      role,
       age_bucket: payload.age_bucket ?? current.age_bucket,
       ...extra,
     })
     .eq('user_id', userId)
+    .eq('stage', current.stage)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw new Error(`[Onboarding] Stage advance failed: ${error.message}`);
+
+  // Another forward transition won the race. Re-read and apply only if this
+  // transition is still ahead; this prevents stale fire-and-forget writes
+  // from moving the funnel backwards.
+  if (!data) return advanceStage(userId, payload);
   return data as OnboardingState;
 }
 
-// ─── Activation ────────────────────────────────────────────────
-
-/**
- * Mark a user as activated.
- *
- * Call this when the user completes their FIRST core action:
- *   Teen:   'first_mood_log' | 'first_journal_entry' | 'first_post'
- *   Parent: 'first_bridge_message' | 'first_checkin_viewed'
- *
- * The DB trigger in 20260718000001_onboarding_mood_log_trigger.sql
- * also fires this automatically for mood logs, so the app-side call
- * here is belt-and-suspenders.
- */
 export async function markActivated(
   userId: string,
-  activationAction: string
+  activationAction: string,
 ): Promise<OnboardingState> {
   return advanceStage(userId, {
     stage: 'activated',
@@ -277,23 +265,22 @@ export async function markActivated(
   });
 }
 
-// ─── Parent Link ───────────────────────────────────────────────
-
 export async function setParentLinkCode(
   userId: string,
-  code: string
+  code: string,
 ): Promise<void> {
   const { error } = await db()
     .from('user_onboarding_state')
-    .update({ parent_link_code: code, stage: 'parent_link_sent' })
+    .update({ parent_link_code: code })
     .eq('user_id', userId);
 
   if (error) throw new Error(`[Onboarding] Parent link code failed: ${error.message}`);
+  await advanceStage(userId, 'parent_link_sent');
 }
 
 export async function completeParentLink(
   teenUserId: string,
-  parentUserId: string
+  parentUserId: string,
 ): Promise<void> {
   const { error } = await db()
     .from('user_onboarding_state')
@@ -306,33 +293,35 @@ export async function completeParentLink(
   if (error) throw new Error(`[Onboarding] Complete parent link failed: ${error.message}`);
 }
 
-// ─── Helpers ──────────────────────────────────────────────────
-
-/** Returns true if the user has completed onboarding. */
 export function isOnboardingComplete(state: OnboardingState | null): boolean {
   if (!state) return false;
   return stageIndex(state.stage) >= stageIndex('activated');
 }
 
-/**
- * Returns the next expected screen route for a given stage + role.
- * Used by OnboardingGuard to redirect mid-flow users.
- */
-export function nextScreenForStage(stage: OnboardingStage, role: UserRole): string {
+export function nextScreenForStage(
+  stage: OnboardingStage,
+  role: UserRole,
+): string {
   const map: Partial<Record<OnboardingStage, string>> = {
-    signed_up:              '/(onboarding)/welcome',
-    consent_complete:       '/(onboarding)/age',
-    age_verified:           '/(onboarding)/identity',
-    role_selected:          role === 'parent' ? '/(onboarding)/parent-welcome' : '/(onboarding)/name',
-    name_set:               '/(onboarding)/reflection',
-    identity_set:           '/(onboarding)/reflection',      // alias
-    reflection_complete:    '/(onboarding)/parent-link',
-    parent_link_sent:       role === 'teen' ? '/(teen)' : '/(onboarding)/parent-link',
-    parent_linked:          '/(parent)',
-    parent_link_skipped:    '/(auth)/guardian-verification',
-    parent_setup_complete:  role === 'parent' ? '/(parent)' : '/(auth)/guardian-verification',
-    activated:              role === 'parent' ? '/(parent)' : '/(teen)',
-    steady_state:           role === 'parent' ? '/(parent)' : '/(teen)',
+    signed_up: '/(onboarding)/welcome',
+    consent_complete: '/(onboarding)/age',
+    age_verified: '/(onboarding)/identity',
+    role_selected: role === 'parent'
+      ? '/(onboarding)/parent-welcome'
+      : '/(onboarding)/name',
+    name_set: '/(onboarding)/reflection',
+    identity_set: '/(onboarding)/reflection',
+    reflection_complete: '/(onboarding)/parent-link',
+    parent_link_sent: role === 'teen'
+      ? '/(teen)'
+      : '/(onboarding)/parent-link',
+    parent_linked: '/(parent)',
+    parent_link_skipped: '/(auth)/guardian-verification',
+    parent_setup_complete: role === 'parent'
+      ? '/(parent)'
+      : '/(auth)/guardian-verification',
+    activated: role === 'parent' ? '/(parent)' : '/(teen)',
+    steady_state: role === 'parent' ? '/(parent)' : '/(teen)',
   };
   return map[stage] ?? '/(onboarding)/welcome';
 }
