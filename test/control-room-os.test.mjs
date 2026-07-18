@@ -11,6 +11,7 @@ const workspace = fs.readFileSync('src/screens/DevControlRoomWorkspace.tsx', 'ut
 const localServer = fs.readFileSync('scripts/control-room-server.mjs', 'utf8');
 const localDev = fs.readFileSync('scripts/control-room-dev.mjs', 'utf8');
 const localClient = fs.readFileSync('src/services/controlRoomLocalAgent.ts', 'utf8');
+const frontendVerifier = fs.readFileSync('scripts/control-room-verify-frontend.mjs', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 
 
@@ -82,7 +83,18 @@ test('Control Room UI executes only authenticated loopback allowlisted missions'
 });
 
 
-test('Playwright evidence output remains compatible with the room-specific suite', () => {
+test('mission timeout terminates the full process tree before releasing the mission lock', () => {
+  assert.match(localServer, /detached: process\.platform !== 'win32'/);
+  assert.match(localServer, /process\.kill\(-child\.pid, signal\)/);
+  assert.match(localServer, /taskkill/);
+  assert.match(localServer, /terminateProcessTree\(child, 'SIGTERM'\)/);
+  assert.match(localServer, /terminateProcessTree\(child, 'SIGKILL'\)/);
+  assert.match(localServer, /child\.on\('close'.*finish\(timedOut \? 'timed_out'/s);
+  assert.doesNotMatch(localServer, /setTimeout\(\(\) => \{\s*child\.kill\('SIGTERM'\);\s*finish\('timed_out'/s);
+});
+
+
+test('Founder-triggered Playwright runs retain configured JSON, HTML, trace, screenshot, and video artifacts', () => {
   const playwright = fs.readFileSync('playwright.config.ts', 'utf8');
   assert.match(playwright, /PLAYWRIGHT_ARTIFACT_DIR/);
   assert.match(playwright, /retain-on-failure/);
@@ -90,4 +102,8 @@ test('Playwright evidence output remains compatible with the room-specific suite
   assert.match(playwright, /video: 'retain-on-failure'/);
   assert.match(playwright, /'\*\*\/rooms\/\*\*'/);
   assert.match(playwright, /playwright\.room\.config\.ts/);
+  assert.match(frontendVerifier, /PLAYWRIGHT_ARTIFACT_DIR: artifactDir/);
+  assert.match(frontendVerifier, /reports.*control-room.*playwright.*verify-frontend/s);
+  assert.match(frontendVerifier, /results\.json/);
+  assert.doesNotMatch(frontendVerifier, /--reporter=json/);
 });
