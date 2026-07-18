@@ -14,6 +14,13 @@ Current launch blockers remain authoritative: complete account deletion across e
 
 See `docs/LAUNCH_ROADMAP.md`, `SPRINT.md`, `docs/CURRENT_STATUS.md`, and `implementation-ledger.json` for current evidence and status.
 
+### Current production signup evidence
+
+On July 18, 2026, [PR #517](https://github.com/jussray/Sekret-Bip/pull/517) merged bounded recovery for ambiguous Supabase Auth signup timeouts. It prevents raw browser-level `Failed to fetch` errors from stranding users when a request may have reached Auth, performs one bounded recovery probe, and includes a Playwright regression that blocks real Auth mutation.
+
+[PR #518](https://github.com/jussray/Sekret-Bip/pull/518) then merged a read-only production-browser reachability test for the configured Supabase Auth boundary. The static contract passed locally. Exact live execution against `sekretbip.net` remains pending because GitHub Actions has not produced normal hosted-runner evidence for the merged head.
+
+Founder Control Room [issue #514](https://github.com/jussray/Sekret-Bip/issues/514) remains the authoritative incident record until hosted Playwright executes and passes. Zero-step or no-log failures remain classified as `runner_startup_failure` infrastructure evidence, not a code regression.
 
 > Warm, funny, soft, slightly nosy, and never clinical.
 
@@ -27,8 +34,12 @@ See `docs/LAUNCH_ROADMAP.md`, `SPRINT.md`, `docs/CURRENT_STATUS.md`, and `implem
 - [`docs/WIRING_STATUS.md`](docs/WIRING_STATUS.md) — runtime, database, and deployment wiring
 - [`DEPLOYMENT.md`](DEPLOYMENT.md) — canonical production path and exact-release verification
 - [`docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`](docs/security/SUPABASE_AUTHORIZATION_PHASE0.md) — live authorization evidence and remaining blockers
+- [`docs/FOUNDER_CONTROL_ROOM.md`](docs/FOUNDER_CONTROL_ROOM.md) — founder-only operational system and evidence model
+- [`.control-room/README_SYNC_POLICY.md`](.control-room/README_SYNC_POLICY.md) — Founder Control Room README sync ownership and completion gate
 
 Architecture, roadmap, current-status, sprint, and agent-skill changes must reconcile the implementation ledger. CI rejects unsupported implementation claims.
+
+Founder Control Room owns the README sync decision for nontrivial incidents, fixes, merges, deployment changes, migration changes, validation changes, and authority changes. Every such change must record README impact as `required`, `not_required`, or `deferred_with_reason`. When impact is `required`, update this README in the same pull request whenever practical and keep merged code, local verification, hosted verification, deployment, and live production proof distinct.
 
 ## AI operating contracts
 
@@ -209,6 +220,7 @@ npm run verify:bundle
 npm run audit:control-room
 npm run validate:companions
 npm run test:e2e
+npm run test:e2e:production
 ```
 
 Full repository gate:
@@ -217,7 +229,7 @@ Full repository gate:
 npm run verify:prepush
 ```
 
-Production verification is documented in `DEPLOYMENT.md`.
+Production verification is documented in `DEPLOYMENT.md`. Production Playwright must distinguish a test committed to the repository from a test that actually executed against the deployed exact head.
 
 ## Key guides
 
@@ -234,6 +246,8 @@ Production verification is documented in `DEPLOYMENT.md`.
 - `docs/RLS_POLICY_AUDIT.md`
 - `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
 - `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
+- `docs/FOUNDER_CONTROL_ROOM.md`
+- `.control-room/README_SYNC_POLICY.md`
 - `DEPLOYMENT.md`
 
 Documentation is an implementation guardrail. When code, production configuration, and docs disagree, fix the stale source and preserve the evidence trail.
