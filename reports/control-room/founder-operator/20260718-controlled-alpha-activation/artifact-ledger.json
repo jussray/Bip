@@ -49,7 +49,7 @@
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/red-team-register.md",
       "status": "complete-with-open-risks",
       "acceptance": "Privacy, cross-user, deletion, false-green, rollout, credential, and rollback risks have observable triggers and controls.",
-      "nextAction": "Keep live RLS, deletion, deployment identity, device, and journey risks open until executed proof exists."
+      "nextAction": "Keep live RLS, deletion, authentication, deployment identity, device, and journey risks open until executed proof exists."
     },
     {
       "id": "bottleneck-map",
@@ -70,13 +70,31 @@
       "nextAction": "Preserve these boundaries through exact-head compilation, unit, migration, bundle, export, and browser verification."
     },
     {
+      "id": "supabase-live-baseline",
+      "phase": "execute",
+      "owner": "supabase",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/supabase-live-baseline.md",
+      "status": "complete-pre-migration-baseline",
+      "acceptance": "The live project, migration history, catalog probe results, schema compatibility, indexes, aggregate drift, advisor findings, non-claims, and founder gates are retained without private identifiers or persistent mutation.",
+      "nextAction": "Use this as the before-state. After an approved migration application, rerun catalog probe v2 expecting 12 of 12 and rerun security advisors."
+    },
+    {
       "id": "relationship-authorization-contract",
       "phase": "execute",
       "owner": "supabase",
-      "path": "supabase/probes/controlled_alpha_relationship_contract.sql",
-      "status": "prepared-verification-required",
-      "acceptance": "The three ordered forward migrations parse, apply cleanly in an approved dry-run environment, preserve RLS, expose only intended RPCs, keep private helpers outside the public API, and pass the catalog parity probe without reading user rows.",
-      "nextAction": "On a complete exact-head checkout, run implementation-ledger validation and a Supabase migration parse or local reset/dry run. Execute the catalog probe only against an approved target. Stop before applying migrations to live state without founder approval."
+      "path": "supabase/probes/controlled_alpha_relationship_contract_v2.sql",
+      "status": "live-baseline-observed-migrations-unapplied",
+      "acceptance": "The three ordered forward migrations parse, apply cleanly in an approved isolated or dry-run environment, preserve RLS, expose only intended RPCs, keep private helpers outside the public API, and pass catalog probe v2 without reading user rows.",
+      "nextAction": "Run complete-checkout tests and an isolated migration parse or dry run. Founder review is required before live application. After approval, apply the ordered migrations, rerun probe v2 expecting 12 of 12, and execute focused anonymous, blocked, revoked, unrelated, and idempotency denial tests."
+    },
+    {
+      "id": "authentication-security-gate",
+      "phase": "execute",
+      "owner": "founder",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/supabase-live-baseline.md",
+      "status": "human-required",
+      "acceptance": "Leaked-password protection is enabled before controlled-alpha password invitations, or an explicit accepted-risk decision and alternative authentication control are recorded.",
+      "nextAction": "Founder decides whether to enable leaked-password protection before controlled-account creation. Do not represent password authentication as launch-ready while this remains unresolved."
     },
     {
       "id": "alpha-runtime-record",
