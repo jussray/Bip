@@ -25,13 +25,16 @@ test('initialization reuses existing state and handles insert races', async () =
   assert.match(source, /const raced = await getOnboardingState\(userId\)/);
 });
 
-test('stage writes are forward-only and concurrency-safe', async () => {
+test('stage writes are forward-only and use bounded zero-row classification', async () => {
   const source = await read('services/onboarding.ts');
 
   assert.match(source, /if \(nextIndex <= currentIndex\) \{\s*return backfillPassedStageMetadata/);
   assert.match(source, /\.eq\('stage', current\.stage\)/);
-  assert.match(source, /if \(!data\) return advanceStage\(userId, payload\)/);
-  assert.match(source, /prevents stale fire-and-forget writes[\s\S]*moving the funnel backwards/);
+  assert.match(source, /const refreshed = await getOnboardingState\(userId\)/);
+  assert.match(source, /classifyOnboardingZeroRow/);
+  assert.match(source, /nextOnboardingWriteAttempt\(attempt\)/);
+  assert.doesNotMatch(source, /if \(!data\) return advanceStage\(userId, payload\)/);
+  assert.match(source, /Stage write conflict: onboarding row disappeared/);
 });
 
 test('passed stages can repair missing role and age without regression', async () => {
@@ -42,6 +45,7 @@ test('passed stages can repair missing role and age without regression', async (
   assert.match(source, /!current\.age_bucket && typeof payload\.age_bucket === 'string'/);
   assert.match(source, /\.update\(patch\)[\s\S]*\.eq\('stage', current\.stage\)/);
   assert.match(source, /Repair only missing metadata and never lower the current stage/);
+  assert.match(source, /Metadata repair conflict: onboarding row disappeared/);
 });
 
 test('role-specific milestones persist the correct account side', async () => {
