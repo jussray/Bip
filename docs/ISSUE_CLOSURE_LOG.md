@@ -81,6 +81,24 @@ These issues contained unique launch requirements and were not legitimately clos
 
 The long-horizon relationship roadmap in #238 also remains open. Its phased Translation, Crew, Scrapbook, and persistent-memory scope is broader than the launch program and must not be collapsed into #259 or represented as V1-complete.
 
+### Active focused pull requests
+
+- **PR #476 — Add founder social provisioning lab and coordinated AI lanes**
+  - Owns coordinated AI/provider contracts, one-writer handoffs, `AGENTS.md`, DeepSeek/provider guidance, and the dry-run-only social provisioning lab.
+  - Preserves the corresponding #468 boundaries while adding collision and external-platform safeguards.
+- **PR #481 — Port Playwright living-room production engine to current main**
+  - Owns the reviewed room manifest, Night prompt pack, Figma blueprint, room-specific Playwright suite, foreman, and contract tests.
+  - All eight added blobs and all three modified-file patches were verified identical to closed PR #446.
+- **PR #482 — Add executable Founder Control Room mission core**
+  - Owns the authenticated loopback mission server, launcher, browser client, mission UI, bounded output, and Playwright evidence integration extracted from #468.
+  - It is stacked on #481 and must be retargeted and reverified after its base merges.
+- **PR #484 — Extract 5W1H skill contracts and Prompt OS guidance**
+  - Created from current `main` with one commit and exactly 19 changed files.
+  - Owns the 18 repository skills and `PromptOsPanel.tsx` that were not present in #476 or #482.
+  - Every changed file uses the exact reviewed #468 Git blob.
+
+These focused PRs remain open and retain their own exact-head, review, merge-order, and founder gates.
+
 ### Closed pull requests without merge
 
 - **PR #408 — Add Playwright as a Control Room capability (#301)**
@@ -88,6 +106,12 @@ The long-horizon relationship roadmap in #238 also remains open. Its phased Tran
   - Its Playwright scope is superseded by merged PR #436.
   - Its unmerged relationship-status prototype remains tracked by #271 and must be rebuilt on current `main`.
   - Its auth-redirect tests require reassessment against current routing before reuse.
+
+- **PR #446 — feat(room): add Playwright living-room production engine**
+  - Closed as the stale-base predecessor to current-main PR #481.
+  - All eight newly added files have identical Git blob SHAs in #481.
+  - `.gitignore`, `package.json`, and `playwright.config.ts` carry the same narrow patches.
+  - Closing it does not merge the engine, approve Canva state, implement Night's actor runtime, or prove production behavior.
 
 - **PR #465 — db: add privacy-safe voice runtime telemetry foundation**
   - Closed as a stale-base predecessor to current-main PR #479.
@@ -101,10 +125,17 @@ The long-horizon relationship roadmap in #238 also remains open. Its phased Tran
   - The repository-integrated/not-proven-live correction and all privacy, consent, RLS, Bridge, and future-scope boundaries remain intact.
   - #478 remains blocked because its workflows ended with no steps or logs.
 
-Closing #465 or #466 does not complete #460 or #464, authorize merge, apply a database migration, prove live voice, or promote any roadmap or sprint scope.
+- **PR #468 — Make Control Room executable with guarded AI contracts**
+  - Closed as a mixed branch after complete file-level decomposition.
+  - #476 owns 3 coordinated AI/provider files, #482 owns 12 executable Control Room files, and #484 owns 19 skill/Prompt OS files: all 34 changed files are accounted for.
+  - Core agent, launcher, server, and browser-client blobs are exact in #482.
+  - #482's focused test removes DeepSeek and whole-repository skill assertions now owned by #476/#484 and adds room-suite compatibility checks.
+  - Closing #468 does not merge any focused PR, activate a provider adapter, authorize social-account creation, or prove production Control Room execution.
+
+Closing #446, #465, #466, or #468 does not complete their replacement work or authorize merge, deployment, database application, external account mutation, or product-status promotion.
 
 The canonical Trust and launch issues remain open. Their launch-critical acceptance criteria, physical/runtime evidence, policy review, and safety proof are not satisfied merely because duplicate trackers or stale branches were removed.
 
 ## Closure standard
 
-Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge only after confirming a current-main replacement preserves all unique reviewed work. Treat zero-step or no-log failures as infrastructure evidence rather than a pass or code diagnosis. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.
+Use `completed` only when the issue's declared implementation and verification criteria are met. Use `duplicate` only when another issue clearly owns the same outcome with equal or stronger scope. Preserve links to merged PRs, test evidence, production witnesses, or every canonical issue required to retain the original scope in the closure comment. Close stale PRs without merge only after confirming a current-main replacement preserves all unique reviewed work. For a mixed branch, account for every changed file before closure. Treat zero-step or no-log failures as infrastructure evidence rather than a pass or code diagnosis. Normalize overlapping open issues when each retains unique unfinished work instead of forcing a misleading closure.
