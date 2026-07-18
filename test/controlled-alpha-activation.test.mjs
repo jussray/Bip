@@ -40,5 +40,28 @@ test('alpha Worker enables Bridge generation without changing production wrangle
 
   assert.match(alpha, /name\s*=\s*"sekret-backend-alpha"/);
   assert.match(alpha, /BRIDGE_SUMMARIES_ROLLOUT\s*=\s*"enabled"/);
+  assert.doesNotMatch(alpha, /(OPENAI_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\s*=/);
   assert.match(production, /BRIDGE_SUMMARIES_ROLLOUT\s*=\s*"disabled"/);
+});
+
+test('controlled-alpha commands are explicit and cannot silently deploy production', async () => {
+  const pkg = JSON.parse(await read('package.json'));
+
+  assert.equal(
+    pkg.scripts['test:controlled-alpha'],
+    'node --test test/controlled-alpha-activation.test.mjs',
+  );
+  assert.equal(
+    pkg.scripts['verify:worker:alpha'],
+    'wrangler deploy --config wrangler.alpha.toml --dry-run',
+  );
+  assert.equal(
+    pkg.scripts['deploy:worker:alpha'],
+    'wrangler deploy --config wrangler.alpha.toml',
+  );
+  assert.equal(
+    pkg.scripts['preview:worker:alpha'],
+    'wrangler dev --config wrangler.alpha.toml',
+  );
+  assert.equal(pkg.scripts['deploy:worker'], 'wrangler deploy');
 });
