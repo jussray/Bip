@@ -27,7 +27,15 @@ const supabasePublishableKey =
   productionEnv.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
   productionEnv.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-test('production browser can reach Supabase Auth without mutating account data', async ({
+type BrowserProbe = {
+  ok: boolean;
+  status: number;
+  contentType: string;
+  body: string;
+  error: string;
+};
+
+test('production browser validates the Supabase publishable key and reaches Auth read-only', async ({
   page,
 }) => {
   expect(supabaseUrl).toMatch(/^https:\/\/[a-z0-9]+\.supabase\.co$/);
@@ -35,40 +43,59 @@ test('production browser can reach Supabase Auth without mutating account data',
 
   await page.goto('/signup?side=teen');
 
-  const probe = await page.evaluate(
+  const probes = await page.evaluate(
     async ({ url, key }) => {
-      try {
-        const response = await fetch(`${url}/auth/v1/settings`, {
-          method: 'GET',
-          headers: {
-            apikey: key,
-            Authorization: `Bearer ${key}`,
-          },
-        });
-        const body = await response.text();
+      const read = async (
+        pathname: string,
+        headers: Record<string, string>,
+      ): Promise<BrowserProbe> => {
+        try {
+          const response = await fetch(`${url}${pathname}`, {
+            method: 'GET',
+            headers,
+          });
+          const body = await response.text();
 
-        return {
-          ok: response.ok,
-          status: response.status,
-          contentType: response.headers.get('content-type') ?? '',
-          body: body.slice(0, 1_000),
-          error: '',
-        };
-      } catch (error) {
-        return {
-          ok: false,
-          status: 0,
-          contentType: '',
-          body: '',
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
+          return {
+            ok: response.ok,
+            status: response.status,
+            contentType: response.headers.get('content-type') ?? '',
+            body: body.slice(0, 2_000),
+            error: '',
+          };
+        } catch (error) {
+          return {
+            ok: false,
+            status: 0,
+            contentType: '',
+            body: '',
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      };
+
+      return {
+        key: await read('/rest/v1/', {
+          apikey: key,
+          Accept: 'application/openapi+json, application/json',
+        }),
+        auth: await read('/auth/v1/settings', {
+          apikey: key,
+          Accept: 'application/json',
+        }),
+      };
     },
     { url: supabaseUrl, key: supabasePublishableKey },
   );
 
-  expect(probe.status, JSON.stringify(probe)).toBe(200);
-  expect(probe.ok, JSON.stringify(probe)).toBe(true);
-  expect(probe.contentType).toContain('application/json');
-  expect(probe.body).not.toMatch(/service[_-]?role/i);
+  expect(probes.key.status, JSON.stringify(probes.key)).toBe(200);
+  expect(probes.key.ok, JSON.stringify(probes.key)).toBe(true);
+  expect(probes.key.contentType).toMatch(/json/i);
+  expect(probes.key.body).not.toContain(supabasePublishableKey);
+  expect(probes.key.body).not.toMatch(/sb_secret_|service[_-]?role/i);
+
+  expect(probes.auth.status, JSON.stringify(probes.auth)).toBe(200);
+  expect(probes.auth.ok, JSON.stringify(probes.auth)).toBe(true);
+  expect(probes.auth.contentType).toContain('application/json');
+  expect(probes.auth.body).not.toMatch(/sb_secret_|service[_-]?role/i);
 });
