@@ -4,15 +4,30 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(await readFile(resolve(root, '.security/cookies.json'), 'utf8'));
+const supabaseClient = await readFile(resolve(root, 'utils/supabase/client.ts'), 'utf8');
 const errors = [];
 const requireValue = (condition, message) => { if (!condition) errors.push(message); };
 
 requireValue(manifest.schemaVersion === 1, 'schemaVersion must be 1');
-requireValue(typeof manifest.repository === 'string' && manifest.repository.includes('/'), 'repository must be owner/name');
+requireValue(manifest.repository === 'jussray/Sekret-Bip', 'repository must be jussray/Sekret-Bip');
 requireValue(manifest.defaultPolicy === 'deny-undeclared', 'defaultPolicy must be deny-undeclared');
 requireValue(Array.isArray(manifest.cookies), 'cookies must be an array');
 requireValue(Array.isArray(manifest.scanRoots), 'scanRoots must be an array');
 requireValue(Array.isArray(manifest.allowedCookieWriters), 'allowedCookieWriters must be an array');
+requireValue(Array.isArray(manifest.nonCookieState), 'nonCookieState must be an array');
+requireValue((manifest.cookies ?? []).length === 0, 'first-party cookie count must remain zero');
+requireValue((manifest.allowedCookieWriters ?? []).length === 0, 'cookie writer count must remain zero');
+requireValue(
+  manifest.nonCookieState?.some((entry) => entry.name === 'supabase-auth-session-native' && entry.mechanism === 'Expo SecureStore'),
+  'native Supabase SecureStore declaration missing',
+);
+requireValue(
+  manifest.nonCookieState?.some((entry) => entry.name === 'supabase-auth-session-web' && entry.mechanism.includes('AsyncStorage')),
+  'web Supabase AsyncStorage declaration missing',
+);
+for (const fragment of ['expo-secure-store', 'AsyncStorage', "Platform.OS === 'web'", 'persistSession: true']) {
+  requireValue(supabaseClient.includes(fragment), `Supabase storage adapter missing ${fragment}`);
+}
 
 const names = new Set();
 for (const cookie of manifest.cookies ?? []) {
@@ -77,3 +92,5 @@ if (errors.length) {
 console.log(`Cookie contract verified for ${manifest.repository}.`);
 console.log(`Declared cookies: ${(manifest.cookies ?? []).length}`);
 console.log(`Allowed cookie writers: ${allowed.size}`);
+console.log('Native session storage: Expo SecureStore');
+console.log('Web rich-client session storage: AsyncStorage');
