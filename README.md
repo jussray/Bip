@@ -198,7 +198,9 @@ To start the founder-only Control Room with live, guarded local mission buttons:
 npm run control-room:dev
 ```
 
-The command starts Expo web and a loopback-only local agent with an ephemeral token. The UI can run only the documented allowlisted verification and recovery missions; release deployment remains a manual, exact-head gate. See `docs/CONTROL_ROOM.md`.
+The command starts Expo web and a loopback-only local agent with an ephemeral token. The UI can run only the documented allowlisted verification and recovery missions; timed-out missions terminate their descendant process tree before another mission can start. Real Playwright runs retain JSON, HTML, traces, screenshots, and videos under `reports/control-room/playwright/<run-id>/`.
+
+The founder-only **Founder Operator** surface turns a mission into a 5W1H artifact plan and may persist it only through the authenticated loopback endpoint. Persistence is append-only for versioned history, rejects private or credential-shaped fields, unsafe artifact paths and symlinks, unsupported schemas, unverified hosted/deployed evidence levels, and approval-gated artifacts falsely marked complete. Recording approval does not execute or verify the external action. Release deployment remains a manual, exact-head gate. See `docs/CONTROL_ROOM.md` and `docs/CONTROL_ROOM_FOUNDER_OPERATOR.md`.
 
 ### Supabase
 

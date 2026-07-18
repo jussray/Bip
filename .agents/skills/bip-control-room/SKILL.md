@@ -98,8 +98,11 @@ Fail the change if any of these become false:
 - mission IDs are allowlisted and arbitrary shell arguments are rejected;
 - Founder Operator reports use fixed server-owned paths;
 - repeated plan IDs create versioned history instead of replacing earlier records;
-- only one mission runs at a time;
-- execution has a timeout and bounded output;
+- report targets and artifact path hints reject traversal, backslashes, and symlink escapes;
+- the local persistence endpoint rejects false `exact-head`, `deployed-observation`, and approval-gated completion claims;
+- only one mission runs at a time, including while a timed-out process tree is terminating;
+- execution has a timeout, descendant-process termination with forced escalation, and bounded output;
+- local-server shutdown force-terminates any active detached mission tree;
 - tokens and secrets are never written to reports, logs, commits, or production bundles;
 - raw teen or parent-private content never enters mission input, output, telemetry, plans, prompts, or provider calls;
 - UI success is not described as deployment or exact production proof.
@@ -112,7 +115,7 @@ For Control Room execution changes, run at minimum:
 node --check scripts/control-room-agent.mjs
 node --check scripts/control-room-server.mjs
 node --check scripts/control-room-dev.mjs
-node --test test/control-room-os.test.mjs test/control-room-founder-operator.test.mjs
+node --test test/control-room-os.test.mjs test/control-room-founder-operator.test.mjs test/control-room-founder-operator-server.test.mjs test/control-room-server-process-tree.test.mjs test/control-room-verify-frontend.test.mjs
 npm run type-check
 npm run verify:local
 ```
