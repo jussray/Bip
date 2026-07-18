@@ -16,12 +16,26 @@ import { fetchPostAuthBootstrap, ONBOARDING_SIDE_KEY } from '@/services/auth/pos
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-function readableAuthError(error: unknown): string {
-  if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
-    return 'Could not reach the account server. Check your connection and Supabase settings, then try again.';
+const ACCOUNT_SERVER_ERROR = 'Could not reach the account server. Check your connection, then try again.';
+
+function authErrorMessage(error: unknown): string {
+  if (typeof error === 'string') return error.trim();
+  if (error instanceof Error) return error.message.trim();
+
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    return typeof message === 'string' ? message.trim() : '';
   }
-  if (error instanceof Error && error.message) return error.message;
-  return 'Something went wrong while creating your account. Please try again.';
+
+  return '';
+}
+
+function readableAuthError(error: unknown): string {
+  const message = authErrorMessage(error);
+  if (/failed to fetch|network request failed|networkerror|load failed/i.test(message)) {
+    return ACCOUNT_SERVER_ERROR;
+  }
+  return message || 'Something went wrong while creating your account. Please try again.';
 }
 
 function normalizeSide(value: string | undefined): AccountSide {
@@ -81,7 +95,7 @@ export default function SignupScreen() {
       await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
       const { data: sessionData, error: sessionError } = await sb.auth.getSession();
       if (sessionError) {
-        setError(sessionError.message);
+        setError(readableAuthError(sessionError));
         return;
       }
 
@@ -103,7 +117,7 @@ export default function SignupScreen() {
           });
 
           if (upgradeError) {
-            const message = upgradeError.message.toLowerCase();
+            const message = authErrorMessage(upgradeError).toLowerCase();
             const emailExists =
               message.includes('already registered') ||
               message.includes('already exists') ||
@@ -115,12 +129,17 @@ export default function SignupScreen() {
               return;
             }
 
-            setError(upgradeError.message);
+            setError(readableAuthError(upgradeError));
             return;
           }
 
           const { data: refreshed, error: refreshError } = await sb.auth.getSession();
-          if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
+          if (refreshError) {
+            setError(readableAuthError(refreshError));
+            return;
+          }
+
+          if (refreshed.session?.user && !refreshed.session.user.is_anonymous) {
             await finishAuthenticatedSignup(refreshed.session.user.id);
           } else {
             setSuccess(true);
@@ -135,7 +154,7 @@ export default function SignupScreen() {
       });
 
       if (authErr) {
-        setError(authErr.message);
+        setError(readableAuthError(authErr));
         return;
       }
 
