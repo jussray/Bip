@@ -5,6 +5,7 @@ import test from 'node:test';
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationPath = 'supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql';
 const accessMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
+const bridgeIntentMigrationPath = 'supabase/migrations/20260718035500_harden_bridge_source_idempotency.sql';
 const probePath = 'supabase/probes/controlled_alpha_relationship_contract.sql';
 
 test('controlled-alpha relationship features stop at the beta audience', async () => {
@@ -52,6 +53,23 @@ test('Bridge server accepts only owned Journal and Mood sources through the RPC'
   assert.match(migration, /unsupported_or_invalid_source/);
   assert.match(migration, /source_not_available/);
   assert.match(migration, /Direct request\/source mutation policies are intentionally absent/);
+});
+
+test('Bridge request intent is null-safe, canonical, duplicate-free, and idempotency-strict', async () => {
+  const migration = await read(bridgeIntentMigrationPath);
+  const arrayTypeGuard = migration.indexOf("p_sources is null or jsonb_typeof(p_sources) <> 'array'");
+  const arrayLengthRead = migration.indexOf('jsonb_array_length(p_sources) = 0');
+
+  assert.ok(arrayTypeGuard >= 0, 'Bridge source array type guard must exist');
+  assert.ok(arrayLengthRead > arrayTypeGuard, 'Bridge must validate array type before reading its length');
+  assert.match(migration, /v_source_id := \(v_source_id::bigint\)::text/);
+  assert.match(migration, /exception when numeric_value_out_of_range/);
+  assert.match(migration, /duplicate_source/);
+  assert.match(migration, /v_normalized_sources @> jsonb_build_array\(v_normalized_source\)/);
+  assert.match(migration, /select id, status, parent_user_id/);
+  assert.match(migration, /v_existing_parent_user_id <> p_parent_user_id/);
+  assert.match(migration, /v_existing_sources <> v_requested_sources/);
+  assert.match(migration, /idempotency_conflict/);
 });
 
 test('Crew revocation uses a scoped RPC and treats a null result as no transition', async () => {
@@ -106,7 +124,7 @@ test('Crew recipient authorization uses one private non-recursive policy helper'
 });
 
 test('controlled-alpha SQL migrations are complete transaction units with balanced function bodies', async () => {
-  for (const path of [migrationPath, accessMigrationPath]) {
+  for (const path of [migrationPath, accessMigrationPath, bridgeIntentMigrationPath]) {
     const migration = await read(path);
     assert.match(migration, /^begin;/);
     assert.match(migration, /commit;\s*$/);
