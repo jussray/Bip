@@ -1,10 +1,17 @@
 begin;
 
 -- Defense in depth for Crew privacy. The relationship cleanup trigger revokes
--- active shares when either participant blocks or leaves, but read and insert
--- policies also deny access whenever a blocked row exists in either direction.
+-- active shares when either participant blocks or leaves. A private,
+-- security-definer policy helper also checks the full check-in/share/relationship
+-- contract without creating recursive RLS evaluation between the two public
+-- tables.
 
-create or replace function public.crew_pair_is_unblocked(
+create schema if not exists private;
+revoke all on schema private from public;
+grant usage on schema private to authenticated;
+
+create or replace function private.crew_check_in_access_is_active(
+  p_check_in_id uuid,
   p_owner_user_id uuid,
   p_member_user_id uuid
 )
@@ -15,9 +22,32 @@ security definer
 set search_path = public, pg_temp
 as $$
   select
-    p_owner_user_id is not null
+    p_check_in_id is not null
+    and p_owner_user_id is not null
     and p_member_user_id is not null
     and p_owner_user_id <> p_member_user_id
+    and exists (
+      select 1
+      from public.crew_check_ins ci
+      where ci.id = p_check_in_id
+        and ci.owner_user_id = p_owner_user_id
+        and ci.status = 'active'
+    )
+    and exists (
+      select 1
+      from public.crew_check_in_shares share_row
+      where share_row.check_in_id = p_check_in_id
+        and share_row.owner_user_id = p_owner_user_id
+        and share_row.shared_with = p_member_user_id
+        and share_row.status = 'active'
+    )
+    and exists (
+      select 1
+      from public.crew_members accepted
+      where accepted.user_id = p_owner_user_id
+        and accepted.member_user_id = p_member_user_id
+        and accepted.connection_status = 'accepted'
+    )
     and not exists (
       select 1
       from public.crew_members blocked
@@ -29,31 +59,24 @@ as $$
     );
 $$;
 
-revoke all on function public.crew_pair_is_unblocked(uuid, uuid)
+revoke all on function private.crew_check_in_access_is_active(uuid, uuid, uuid)
   from public, anon;
-grant execute on function public.crew_pair_is_unblocked(uuid, uuid)
+grant execute on function private.crew_check_in_access_is_active(uuid, uuid, uuid)
   to authenticated;
 
-comment on function public.crew_pair_is_unblocked(uuid, uuid) is
-  'Returns false when either direction of a Crew relationship is blocked. Used only as a policy helper; it does not create or modify relationship state.';
+comment on function private.crew_check_in_access_is_active(uuid, uuid, uuid) is
+  'Private RLS helper that confirms one active check-in, owner-consistent active share, accepted Crew relationship, and no block in either direction. It is intentionally outside exposed API schemas.';
 
 drop policy if exists crew_check_in_shares_crew_read on public.crew_check_in_shares;
 create policy crew_check_in_shares_crew_read on public.crew_check_in_shares
   for select to authenticated
   using (
-    auth.uid() = shared_with
+    (select auth.uid()) = shared_with
     and status = 'active'
-    and public.crew_pair_is_unblocked(owner_user_id, auth.uid())
-    and exists (
-      select 1
-      from public.crew_check_ins ci
-      join public.crew_members cm
-        on cm.user_id = ci.owner_user_id
-       and cm.member_user_id = auth.uid()
-       and cm.connection_status = 'accepted'
-      where ci.id = crew_check_in_shares.check_in_id
-        and ci.owner_user_id = crew_check_in_shares.owner_user_id
-        and ci.status = 'active'
+    and private.crew_check_in_access_is_active(
+      check_in_id,
+      owner_user_id,
+      (select auth.uid())
     )
   );
 
@@ -62,18 +85,10 @@ create policy crew_check_ins_crew_read on public.crew_check_ins
   for select to authenticated
   using (
     status = 'active'
-    and exists (
-      select 1
-      from public.crew_check_in_shares s
-      join public.crew_members cm
-        on cm.user_id = s.owner_user_id
-       and cm.member_user_id = auth.uid()
-       and cm.connection_status = 'accepted'
-      where s.check_in_id = crew_check_ins.id
-        and s.owner_user_id = crew_check_ins.owner_user_id
-        and s.shared_with = auth.uid()
-        and s.status = 'active'
-        and public.crew_pair_is_unblocked(s.owner_user_id, auth.uid())
+    and private.crew_check_in_access_is_active(
+      id,
+      owner_user_id,
+      (select auth.uid())
     )
   );
 
@@ -81,24 +96,12 @@ drop policy if exists crew_encouragements_sender_insert on public.crew_encourage
 create policy crew_encouragements_sender_insert on public.crew_encouragements
   for insert to authenticated
   with check (
-    auth.uid() = sender_user_id
+    (select auth.uid()) = sender_user_id
     and recipient_user_id <> sender_user_id
-    and public.crew_pair_is_unblocked(recipient_user_id, sender_user_id)
-    and exists (
-      select 1
-      from public.crew_check_in_shares s
-      join public.crew_check_ins ci
-        on ci.id = s.check_in_id
-       and ci.owner_user_id = s.owner_user_id
-       and ci.status = 'active'
-      join public.crew_members cm
-        on cm.user_id = s.owner_user_id
-       and cm.member_user_id = auth.uid()
-       and cm.connection_status = 'accepted'
-      where s.check_in_id = crew_encouragements.check_in_id
-        and s.shared_with = auth.uid()
-        and s.owner_user_id = recipient_user_id
-        and s.status = 'active'
+    and private.crew_check_in_access_is_active(
+      check_in_id,
+      recipient_user_id,
+      sender_user_id
     )
   );
 
