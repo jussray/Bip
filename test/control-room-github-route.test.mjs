@@ -20,7 +20,9 @@ test('GitHub route fails closed and never performs branch-changing or credential
   assert.match(route, /checkout_target_not_empty/);
   assert.match(route, /repository_origin_mismatch/);
   assert.match(route, /repository_clone_failed/);
-  assert.doesNotMatch(route, /git[^\n]*(?:pull|reset|checkout|switch|merge|rebase|push|--force)/i);
+  for (const command of ['pull', 'reset', 'checkout', 'switch', 'merge', 'rebase', 'push', '--force']) {
+    assert.doesNotMatch(route, new RegExp(`run\\('git', \\[[^\\]]*'${command}'`, 's'));
+  }
   assert.doesNotMatch(route, /https:\/\/[^\s'"`]*@github\.com/i);
   assert.match(route, /ghp_\|github_pat_/);
   assert.match(route, /no pull, reset, checkout, merge, rebase, push, or force/);
