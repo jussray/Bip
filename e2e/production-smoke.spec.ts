@@ -68,3 +68,63 @@ test('unauthenticated visitor cannot reach a protected parent route from a blank
   await expect(page.getByText('Bridge')).toHaveCount(0);
   expect(consoleErrors).toEqual([]);
 });
+
+test('signup recovers from an ambiguous Supabase timeout without creating a real user', async ({ page }) => {
+  let signupAttempts = 0;
+  let passwordProbeAttempts = 0;
+
+  await page.route('**/auth/v1/**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+
+    if (request.method() === 'POST' && url.pathname.endsWith('/signup')) {
+      signupAttempts += 1;
+      await route.fulfill({
+        status: 504,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'request_timeout',
+          message: 'Processing this request timed out, please retry after a moment.',
+        }),
+      });
+      return;
+    }
+
+    if (
+      request.method() === 'POST' &&
+      url.pathname.endsWith('/token') &&
+      url.searchParams.get('grant_type') === 'password'
+    ) {
+      passwordProbeAttempts += 1;
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          code: 'email_not_confirmed',
+          msg: 'Email not confirmed',
+          message: 'Email not confirmed',
+        }),
+      });
+      return;
+    }
+
+    // Never let this verification test mutate or inspect real production Auth.
+    await route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ message: 'Blocked by signup recovery test.' }),
+    });
+  });
+
+  await page.goto('/signup?side=teen');
+  await page.getByPlaceholder('email').fill('playwright-signup-timeout@example.invalid');
+  await page.getByPlaceholder('password (8+ characters)').fill('PlaywrightOnly-123!');
+  await page.getByPlaceholder('confirm password').fill('PlaywrightOnly-123!');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+
+  await expect(page.getByText('Check your email')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/account was created.*confirmation is still pending/i)).toBeVisible();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(signupAttempts).toBe(1);
+  expect(passwordProbeAttempts).toBe(1);
+});
