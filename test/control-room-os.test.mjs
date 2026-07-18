@@ -71,6 +71,7 @@ test('Control Room UI executes only authenticated loopback allowlisted missions'
   assert.match(localServer, /const host = '127\.0\.0\.1'/);
   assert.match(localServer, /timingSafeEqual/);
   assert.match(localServer, /CONTROL_ROOM_LOCAL_TOKEN/);
+  assert.match(localServer, /CONTROL_ROOM_TERMINATION_GRACE_MS/);
   assert.match(localServer, /new Set\(\['continue-yesterday', 'verify-local', 'verify-frontend', 'recover-system'\]\)/);
   assert.doesNotMatch(localServer, /allowedMissions.*ship-release/s);
   assert.doesNotMatch(localServer, /allowedMissions.*launch-bip/s);
@@ -82,6 +83,28 @@ test('Control Room UI executes only authenticated loopback allowlisted missions'
 });
 
 
+test('mission timeout terminates the process tree before the active slot is released', () => {
+  assert.match(localServer, /detached: process\.platform !== 'win32'/);
+  assert.match(localServer, /process\.kill\(-child\.pid, signal\)/);
+  assert.match(localServer, /spawnSync\('taskkill', args/);
+  assert.match(localServer, /terminateProcessTree\(child, 'SIGTERM'\)/);
+  assert.match(localServer, /terminateProcessTree\(child, 'SIGKILL'\)/);
+  assert.match(localServer, /terminationEscalated = true/);
+  assert.match(localServer, /if \(timedOutPayload\) finish\('timed_out', timedOutPayload\)/);
+
+  const timeoutStart = localServer.indexOf('timeoutTimer = setTimeout');
+  const forceTimerStart = localServer.indexOf('forceKillTimer = setTimeout', timeoutStart);
+  const errorHandlerStart = localServer.indexOf("child.on('error'", timeoutStart);
+  assert.notEqual(timeoutStart, -1);
+  assert.notEqual(forceTimerStart, -1);
+  assert.notEqual(errorHandlerStart, -1);
+  assert.doesNotMatch(localServer.slice(timeoutStart, forceTimerStart), /finish\(/);
+  assert.match(localServer, /child\.on\('close',[\s\S]*timedOutPayload = \{[\s\S]*error: 'mission_timeout'/);
+  assert.match(localServer, /if \(terminationEscalated\) finish\('timed_out', timedOutPayload\)/);
+  assert.match(localServer, /termination: 'process_tree'/);
+});
+
+
 test('Playwright evidence output remains compatible with the room-specific suite', () => {
   const playwright = fs.readFileSync('playwright.config.ts', 'utf8');
   assert.match(playwright, /PLAYWRIGHT_ARTIFACT_DIR/);
@@ -90,4 +113,8 @@ test('Playwright evidence output remains compatible with the room-specific suite
   assert.match(playwright, /video: 'retain-on-failure'/);
   assert.match(playwright, /'\*\*\/rooms\/\*\*'/);
   assert.match(playwright, /playwright\.room\.config\.ts/);
+  const frontendVerifier = fs.readFileSync('scripts/control-room-verify-frontend.mjs', 'utf8');
+  assert.match(frontendVerifier, /PLAYWRIGHT_ARTIFACT_DIR/);
+  assert.match(frontendVerifier, /path\.join\(rootDir, 'reports', 'control-room', 'playwright', runId\)/);
+  assert.doesNotMatch(frontendVerifier, /--reporter=json/);
 });
