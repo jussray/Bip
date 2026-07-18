@@ -17,7 +17,7 @@ Before planning, editing, or claiming completion, every agent must establish **w
 
 Inspect repository and runtime truth for missing answers. Ask only when an unknown materially changes the safe solution or authority. Re-run 5W1H after red-team/OODA changes the plan, and map the final evidence and next owner back to all six questions.
 
-For any Control Room task, also load `.agents/skills/bip-control-room/SKILL.md`.
+For Control Room coordination, also load [`AI_COORDINATION.md`](./AI_COORDINATION.md). Executable local-agent work must additionally follow the provider-neutral `bip-control-room` skill supplied by the focused mission-core change; verify that skill exists on the active branch before relying on it.
 
 ## Coordinated multi-AI contract
 
