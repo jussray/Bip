@@ -36,8 +36,10 @@ test('human-only actions remain explicit approval gates', () => {
   for (const phrase of ['merge or close a pull request', 'deploy or change production routing', 'database migration', 'spend money', 'external communications', 'external account', 'credentials or secrets', 'delete, overwrite']) {
     assert.match(engine, new RegExp(phrase));
   }
-  assert.match(panel, /Founder marks reviewed/);
-  assert.match(panel, /does not execute the external action|cannot silently merge/s);
+  assert.match(panel, /Founder records approval/);
+  assert.match(panel, /external action still pending/);
+  assert.match(panel, /approvalRecordedAt/);
+  assert.match(panel, /cannot silently merge/);
 });
 
 
