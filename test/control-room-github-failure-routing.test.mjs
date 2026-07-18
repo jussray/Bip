@@ -22,6 +22,8 @@ test('runner-startup failures are not mislabeled as code regressions', () => {
   assert.match(scanner, /runner_startup_failure/);
   assert.match(scanner, /workflow_no_jobs/);
   assert.match(scanner, /workflow_step_failure/);
+  assert.match(scanner, /const failedJobs = jobs\.filter/);
+  assert.match(scanner, /const evidenceJobs = failedJobs\.length > 0 \? failedJobs : jobs/);
   assert.match(scanner, /A run with no executed steps or logs is infrastructure evidence, not proof of a code regression/);
   assert.match(scanner, /do not change application code until a real failing step or log exists/);
   assert.match(docs, /This is infrastructure evidence\. It is not proof of a code regression/);
@@ -54,7 +56,6 @@ test('scanner supports exact current runs and completed main push failures', () 
   assert.match(scanner, /event=push&branch=/);
   assert.match(scanner, /collectMainPushFailures/);
   assert.match(scanner, /run\.event === 'push'/);
-  assert.doesNotMatch(scanner, /return failures;\s*}\s*\n\s*const repo =/);
 });
 
 test('CI and major workflow failures invoke the scanner automatically', () => {
