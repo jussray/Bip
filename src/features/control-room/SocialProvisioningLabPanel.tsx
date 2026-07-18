@@ -78,7 +78,7 @@ function buildChecks(platform: PlatformDefinition): string[] {
     'Candidate handles remain unverified until the platform confirms availability.',
     `Content lane assigned: ${platform.lane}.`,
     'No password, one-time code, token, secret, or private user content is requested or stored.',
-    'No external network request, signup submission, terms acceptance, or hidden browser automation was performed.',
+    'No social-platform network request, signup submission, terms acceptance, or hidden browser automation was performed.',
     `Human-only gate preserved: ${platform.humanGate}`,
     'Dry-run result: human_required. No external account was created.',
   ];
