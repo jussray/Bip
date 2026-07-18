@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   detectPlaywrightAvailability,
   parsePlaywrightJson,
+  runPlaywright,
   writeReports,
 } from '../scripts/control-room-verify-frontend.mjs';
 
@@ -38,6 +39,51 @@ test('forced fallback is explicit and never claims browser proof', async () => {
 
   assert.equal(availability.available, false);
   assert.match(availability.reason, /deterministic fallback testing/);
+});
+
+test('Playwright runs through configured reporters and retains the Control Room artifact bundle', () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bip-playwright-root-'));
+  const artifactDir = path.join(rootDir, 'reports', 'control-room', 'playwright', 'test-run');
+  let invocation = null;
+
+  const run = runPlaywright({
+    rootDir,
+    artifactDir,
+    env: { CI: 'false' },
+    spawnImpl(command, args, options) {
+      invocation = { command, args, options };
+      fs.mkdirSync(options.env.PLAYWRIGHT_ARTIFACT_DIR, { recursive: true });
+      fs.writeFileSync(
+        path.join(options.env.PLAYWRIGHT_ARTIFACT_DIR, 'results.json'),
+        JSON.stringify({ stats: { expected: 3, unexpected: 0, flaky: 0, skipped: 1, timedOut: 0 } }),
+      );
+      return { status: 0, stdout: 'line reporter output', stderr: '' };
+    },
+  });
+
+  assert.deepEqual(invocation.args, ['playwright', 'test']);
+  assert.equal(invocation.options.env.PLAYWRIGHT_ARTIFACT_DIR, artifactDir);
+  assert.equal(invocation.options.env.CI, undefined);
+  assert.equal(run.browserProof, true);
+  assert.equal(run.status, 'pass');
+  assert.equal(run.counts.passed, 3);
+  assert.equal(run.artifactDir, 'reports/control-room/playwright/test-run');
+  assert.equal(run.jsonReportPath, 'reports/control-room/playwright/test-run/results.json');
+});
+
+test('missing Playwright JSON evidence fails closed even when the command exits zero', () => {
+  const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bip-playwright-missing-report-'));
+  const run = runPlaywright({
+    rootDir,
+    artifactDir: path.join(rootDir, 'artifacts'),
+    spawnImpl() {
+      return { status: 0, stdout: 'line reporter output', stderr: '' };
+    },
+  });
+
+  assert.equal(run.status, 'fail');
+  assert.equal(run.browserProof, false);
+  assert.match(run.parseError, /did not write results\.json/);
 });
 
 test('frontend reports distinguish browser evidence from local fallback', () => {
