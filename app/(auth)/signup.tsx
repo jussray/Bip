@@ -64,6 +64,18 @@ export default function SignupScreen() {
 
     setLoading(true);
     const sb = getSupabase();
+
+    if (__DEV__) {
+      // Diagnostic: log client + session state so null-client and
+      // email-confirmation issues are immediately visible in Expo logs.
+      console.log('[signup] sb=', sb ? 'ok' : 'NULL — check EXPO_PUBLIC_SUPABASE_URL/ANON_KEY');
+      if (sb) {
+        sb.auth.getSession().then(({ data, error: e2 }) => {
+          console.log('[signup] session user=', data?.session?.user?.id ?? 'none', 'anon=', data?.session?.user?.is_anonymous ?? false, 'err=', e2?.message ?? null);
+        }).catch(() => null);
+      }
+    }
+
     if (!sb) {
       setError('Auth unavailable. Check the Supabase app configuration.');
       setLoading(false);
@@ -82,35 +94,44 @@ export default function SignupScreen() {
       const isAnonymous = Boolean(currentUser?.is_anonymous);
 
       if (isAnonymous) {
-        const { error: upgradeError } = await sb.auth.updateUser({
-          email: e,
-          password: p,
-        });
+        // Re-verify the anonymous session is still live before upgrading.
+        // If it has expired or is missing, sign out and fall through to a
+        // fresh signUp so the account is always created.
+        const { data: refreshed0, error: refreshErr0 } = await sb.auth.getUser();
+        if (refreshErr0 || !refreshed0.user?.is_anonymous) {
+          await sb.auth.signOut();
+          // Fall through to signUp below
+        } else {
+          const { error: upgradeError } = await sb.auth.updateUser({
+            email: e,
+            password: p,
+          });
 
-        if (upgradeError) {
-          const message = upgradeError.message.toLowerCase();
-          const emailExists =
-            message.includes('already registered') ||
-            message.includes('already exists') ||
-            message.includes('duplicate') ||
-            message.includes('email address is already');
+          if (upgradeError) {
+            const message = upgradeError.message.toLowerCase();
+            const emailExists =
+              message.includes('already registered') ||
+              message.includes('already exists') ||
+              message.includes('duplicate') ||
+              message.includes('email address is already');
 
-          if (emailExists) {
-            setError('That email already has a Bip account. Sign in instead so we can use that account safely.');
+            if (emailExists) {
+              setError('That email already has a Bip account. Sign in instead so we can use that account safely.');
+              return;
+            }
+
+            setError(upgradeError.message);
             return;
           }
 
-          setError(upgradeError.message);
+          const { data: refreshed, error: refreshError } = await sb.auth.getSession();
+          if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
+            await finishAuthenticatedSignup(refreshed.session.user.id);
+          } else {
+            setSuccess(true);
+          }
           return;
         }
-
-        const { data: refreshed, error: refreshError } = await sb.auth.getSession();
-        if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
-          await finishAuthenticatedSignup(refreshed.session.user.id);
-        } else {
-          setSuccess(true);
-        }
-        return;
       }
 
       const { data: signUpData, error: authErr } = await sb.auth.signUp({
@@ -126,6 +147,8 @@ export default function SignupScreen() {
       if (signUpData.session) {
         await finishAuthenticatedSignup(signUpData.session.user.id);
       } else {
+        // session is null when Supabase email confirmation is enabled.
+        // The user must click the confirmation link before they can sign in.
         setSuccess(true);
       }
     } catch (caught) {
