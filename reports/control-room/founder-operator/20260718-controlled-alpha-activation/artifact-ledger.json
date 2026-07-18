@@ -75,17 +75,17 @@
       "owner": "supabase",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/supabase-live-baseline.md",
       "status": "complete-pre-migration-baseline",
-      "acceptance": "The live project, migration history, catalog probe results, schema compatibility, indexes, aggregate drift, advisor findings, non-claims, and founder gates are retained without private identifiers or persistent mutation.",
-      "nextAction": "Use this as the before-state. After an approved migration application, rerun catalog probe v2 expecting 12 of 12 and rerun security advisors."
+      "acceptance": "The live project, migration history, catalog probe results, schema compatibility, indexes, aggregate drift, advisor findings, branch-capability result, non-claims, and founder gates are retained without private identifiers or persistent mutation.",
+      "nextAction": "Use this as the before-state. After an approved isolated or local migration validation and separate live-application approval, rerun catalog probe v2 expecting 12 of 12 and rerun security advisors."
     },
     {
       "id": "relationship-authorization-contract",
       "phase": "execute",
       "owner": "supabase",
       "path": "supabase/probes/controlled_alpha_relationship_contract_v2.sql",
-      "status": "live-baseline-observed-migrations-unapplied",
+      "status": "isolated-branch-blocked-by-plan",
       "acceptance": "The three ordered forward migrations parse, apply cleanly in an approved isolated or dry-run environment, preserve RLS, expose only intended RPCs, keep private helpers outside the public API, and pass catalog probe v2 without reading user rows.",
-      "nextAction": "Preferred path is an isolated Supabase branch after explicit confirmation of the current $0.01344 hourly cost. Apply the ordered migrations there, rerun probe v2 expecting 12 of 12, run advisors, and execute focused denial tests. Hold live application until that evidence and complete-checkout gates are retained."
+      "nextAction": "The founder-approved development-branch attempt was rejected because branching requires Supabase Pro. No branch or charge exists. Continue through a local Supabase reset when repository access recovers, or obtain separate approval for a plan upgrade or separately priced validation project. Hold live migration application."
     },
     {
       "id": "authentication-security-gate",
@@ -138,8 +138,8 @@
       "owner": "founder",
       "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/founder-decision-pack.md",
       "status": "prepared-human-gated",
-      "acceptance": "The decision pack records current evidence, exact branch cost, recommended holds, migration-validation options, authentication protection choice, public RPC posture, and non-claims.",
-      "nextAction": "Founder chooses whether to confirm the $0.01344 hourly isolated branch cost and whether to enable compromised-password protection. The recommended live migration and distribution state remains hold."
+      "acceptance": "The decision pack records current evidence, the approved but plan-blocked branch attempt, safe alternatives, authentication protection choice, public RPC posture, and non-claims.",
+      "nextAction": "Founder may separately approve a Supabase plan upgrade, a separately priced validation project, or wait for local/hosted repository execution. The recommended live migration and distribution state remains hold."
     }
   ],
   "standingRules": [
