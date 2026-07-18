@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "constitution": "docs/architecture.md",
+  "reviewers": {
+    "architecture": {
+      "script": "scripts/audit-architecture.js",
+      "blocking": true
+    },
+    "rls": {
+      "script": "scripts/audit-rls.js",
+      "blocking": true
+    },
+    "companions": {
+      "script": "scripts/audit-companions.js",
+      "blocking": true,
+      "voiceDocPath": "docs/companions/"
+    },
+    "safety": {
+      "script": "scripts/audit-safety.js",
+      "blocking": true,
+      "escalationHandlerPath": "worker/safety-check.ts"
+    },
+    "release": {
+      "script": "scripts/release-checklist.js",
+      "blocking": true
+    }
+  },
+  "featureFlags": {
+    "required": true,
+    "flagFile": "lib/flags.ts"
+  }
+}

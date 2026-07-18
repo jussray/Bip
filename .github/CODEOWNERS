@@ -1,0 +1,6 @@
+worker/companion-replies.ts @jussray
+worker/safety-check.ts @jussray
+worker/parent-bridge.ts @jussray
+docs/companions/ @jussray
+docs/safety-philosophy.md @jussray
+supabase/migrations/ @jussray
