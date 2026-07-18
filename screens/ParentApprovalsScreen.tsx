@@ -24,6 +24,7 @@ import {
   reviewTaskSubmission,
   reviewRewardRedemption,
 } from '@/utils/parentApprovals';
+import { BipEmptyState } from '../components/BipEmptyState';
 
 const TOP = Platform.OS === 'ios' ? 56 : 36;
 
@@ -120,13 +121,7 @@ export function ParentApprovalsScreen({ teenId, isLinked, setScreen, BottomNav }
       <View style={s.root}>
         <ScrollView contentContainerStyle={s.scroll}>
           <Header setScreen={setScreen} count={0} />
-          <View style={s.emptyWrap}>
-            <Text style={s.emptyEmoji}>🔗</Text>
-            <Text style={s.emptyTitle}>Not linked to a teen yet</Text>
-            <Text style={s.emptySub}>
-              {"Ask your teen to generate a connection code in Settings, then link it from More to see chores and rewards here."}
-            </Text>
-          </View>
+          <BipEmptyState type="empty" message="Ask your teen to generate a connection code in Settings, then link it from More to see chores and rewards here." accent="#34d399" />
         </ScrollView>
         {BottomNav}
       </View>
@@ -170,11 +165,7 @@ export function ParentApprovalsScreen({ teenId, isLinked, setScreen, BottomNav }
         {!loading && tab === 'review' && (
           <>
             {pendingCount === 0 && (
-              <View style={s.emptyWrap}>
-                <Text style={s.emptyEmoji}>✅</Text>
-                <Text style={s.emptyTitle}>Nothing waiting on you</Text>
-                <Text style={s.emptySub}>{"When your teen submits a task or requests a reward, it'll show up here."}</Text>
-              </View>
+              <BipEmptyState type="empty" message="When your teen submits a task or requests a reward, it'll show up here." accent="#34d399" />
             )}
 
             {taskSubs.map(sub => (
@@ -355,9 +346,6 @@ const s = StyleSheet.create({
 
   loadingWrap: { paddingTop: 40, alignItems: 'center' },
 
-  emptyWrap:  { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 },
   emptySub:   { color: '#64748B', fontSize: 14, lineHeight: 22, textAlign: 'center' },
 
   card: {

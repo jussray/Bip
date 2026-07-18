@@ -12,6 +12,7 @@ import {
   StyleSheet, Animated, Platform, ActivityIndicator,
 } from 'react-native';
 import { fetchMyTasks, submitTask, type TeenTask, type BipTaskCategory } from '@/utils/teenTasks';
+import { BipEmptyState } from '../components/BipEmptyState';
 
 const TOP = Platform.OS === 'ios' ? 56 : 36;
 
@@ -91,11 +92,7 @@ export function TeenChoresScreen({ setScreen, BottomNav }: TeenChoresScreenProps
         {loading && <View style={s.loadingWrap}><ActivityIndicator color="#c084fc" /></View>}
 
         {!loading && tasks.length === 0 && (
-          <View style={s.emptyWrap}>
-            <Text style={s.emptyEmoji}>🌤️</Text>
-            <Text style={s.emptyTitle}>Nothing here yet</Text>
-            <Text style={s.emptySub}>{"When your parent sets up a task, it'll show up here."}</Text>
-          </View>
+          <BipEmptyState type="empty" message="When your parent sets up a task, it'll show up here." accent="#c084fc" />
         )}
 
         {!loading && actionable.map(task => {
@@ -179,11 +176,6 @@ const s = StyleSheet.create({
   countText: { color: '#e9d5ff', fontSize: 13, fontWeight: '700' },
 
   loadingWrap: { paddingTop: 40, alignItems: 'center' },
-
-  emptyWrap:  { alignItems: 'center', paddingTop: 60, paddingHorizontal: 40 },
-  emptyEmoji: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 8 },
-  emptySub:   { color: '#64748B', fontSize: 14, lineHeight: 22, textAlign: 'center' },
 
   card: {
     marginHorizontal: 20, marginBottom: 12,

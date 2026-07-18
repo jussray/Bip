@@ -14,6 +14,7 @@ import { useAppContext } from '@/context/AppContext';
 import { loadSekretMemory, summarizeSekretMemory } from '../services/sekretMemory';
 import type { SekretMemory } from '../services/sekretMemory';
 import type { MemorySummary } from '../types/sekretCompanion';
+import { BipEmptyState } from '../components/BipEmptyState';
 
 export function MemoriesScreen() {
   const { entries, voiceNotes } = useAppContext();
@@ -87,11 +88,7 @@ export function MemoriesScreen() {
         {/* Se'kret Moments */}
         <Text style={styles.sectionTitle}>Se'kret Moments</Text>
         {moments.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              Your Se'kret moments will appear here as you journal with your companions.
-            </Text>
-          </View>
+          <BipEmptyState type="empty" message="Your Se'kret moments will appear here as you journal with your companions." />
         ) : (
           moments.slice(0, 25).map(entry => (
             <View key={String(entry.id)} style={styles.momentCard}>
@@ -175,8 +172,6 @@ const styles = StyleSheet.create({
   topicText:   { color: '#cfc5d5', fontSize: 11 },
   growthNote:  { color: '#b4e9b0', fontSize: 12, marginTop: 4 },
   sectionTitle: { color: '#efe8f3', fontSize: 14, fontWeight: '900', marginTop: 24, marginBottom: 10 },
-  emptyCard:   { borderRadius: 18, borderWidth: 1, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.03)', padding: 20, alignItems: 'center' },
-  emptyText:   { color: '#8e8495', fontSize: 13, lineHeight: 20, textAlign: 'center' },
   momentCard:  { borderRadius: 18, borderWidth: 1, borderColor: '#ffffff10', backgroundColor: 'rgba(255,255,255,0.04)', padding: 15, marginBottom: 10 },
   momentMeta:  { color: '#8e8495', fontSize: 9, marginBottom: 8 },
   momentMedia: { width: '100%', height: 130, borderRadius: 10, resizeMode: 'cover', marginBottom: 8 },
