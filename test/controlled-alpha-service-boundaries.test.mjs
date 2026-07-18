@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationPath = 'supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql';
-const blockedMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
+const accessMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
 
 test('controlled-alpha relationship features stop at the beta audience', async () => {
   const flags = await read('src/constants/relationshipFeatureFlags.ts');
@@ -76,23 +76,41 @@ test('Crew share mutations are RPC-only and every share owner matches the check-
 
   assert.match(migration, /drop policy if exists crew_check_in_shares_owner_insert/);
   assert.match(migration, /drop policy if exists crew_check_in_shares_owner_update/);
+  assert.match(migration, /create or replace function private\.enforce_crew_check_in_share_owner/);
   assert.match(migration, /create trigger crew_check_in_shares_owner_guard/);
   assert.match(migration, /v_check_in_owner <> new\.owner_user_id/);
+  assert.match(migration, /not exists \([\s\S]*ci\.owner_user_id = share_row\.owner_user_id/);
   assert.match(migration, /create or replace function public\.revoke_crew_check_in_share/);
   assert.match(migration, /and status = 'active'[\s\S]*returning id into v_share_id/);
-  assert.match(migration, /s\.owner_user_id = crew_check_ins\.owner_user_id/);
-  assert.match(migration, /ci\.owner_user_id = crew_check_in_shares\.owner_user_id/);
-  assert.match(migration, /ci\.owner_user_id = s\.owner_user_id/);
+  assert.doesNotMatch(migration, /create policy crew_check_in_shares_crew_read/);
+  assert.doesNotMatch(migration, /create policy crew_check_ins_crew_read/);
 });
 
-test('Crew recipient reads and encouragements deny either-direction blocking', async () => {
-  const migration = await read(blockedMigrationPath);
+test('Crew recipient authorization uses one private non-recursive policy helper', async () => {
+  const migration = await read(accessMigrationPath);
+  const policySection = migration.slice(migration.indexOf('drop policy if exists crew_check_in_shares_crew_read'));
 
-  assert.match(migration, /create or replace function public\.crew_pair_is_unblocked/);
+  assert.match(migration, /create schema if not exists private/);
+  assert.match(migration, /create or replace function private\.crew_check_in_access_is_active/);
+  assert.match(migration, /from public\.crew_check_ins ci/);
+  assert.match(migration, /from public\.crew_check_in_shares share_row/);
+  assert.match(migration, /accepted\.connection_status = 'accepted'/);
   assert.match(migration, /blocked\.connection_status = 'blocked'/);
   assert.match(migration, /blocked\.user_id = p_owner_user_id and blocked\.member_user_id = p_member_user_id/);
   assert.match(migration, /blocked\.user_id = p_member_user_id and blocked\.member_user_id = p_owner_user_id/);
-  assert.match(migration, /public\.crew_pair_is_unblocked\(owner_user_id, auth\.uid\(\)\)/);
-  assert.match(migration, /public\.crew_pair_is_unblocked\(s\.owner_user_id, auth\.uid\(\)\)/);
-  assert.match(migration, /public\.crew_pair_is_unblocked\(recipient_user_id, sender_user_id\)/);
+  assert.match(policySection, /private\.crew_check_in_access_is_active\(/g);
+  assert.doesNotMatch(policySection, /from public\.crew_check_ins/);
+  assert.doesNotMatch(policySection, /from public\.crew_check_in_shares/);
+  assert.doesNotMatch(migration, /create or replace function public\.crew_pair_is_unblocked/);
+});
+
+test('controlled-alpha SQL migrations are complete transaction units with balanced function bodies', async () => {
+  for (const path of [migrationPath, accessMigrationPath]) {
+    const migration = await read(path);
+    assert.match(migration, /^begin;/);
+    assert.match(migration, /commit;\s*$/);
+    assert.equal((migration.match(/\$\$/g) ?? []).length % 2, 0, `${path} has unbalanced dollar quotes`);
+    assert.equal((migration.match(/\bbegin;\b/g) ?? []).length >= 1, true);
+    assert.equal((migration.match(/\bcommit;\b/g) ?? []).length, 1);
+  }
 });
