@@ -15,12 +15,12 @@ import type { AccountSide } from '@/features/identity/accountProfile';
 import { fetchPostAuthBootstrap, ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initOnboardingState } from '@/services/onboarding';
 
 function readableAuthError(error: unknown): string {
   if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
     return 'Could not reach the account server. Check your connection and Supabase settings, then try again.';
   }
-
   if (error instanceof Error && error.message) return error.message;
   return 'Something went wrong while creating your account. Please try again.';
 }
@@ -44,7 +44,9 @@ export default function SignupScreen() {
   const [success, setSuccess]   = useState(false);
   const [loading, setLoading]   = useState(false);
 
-  async function finishAuthenticatedSignup() {
+  async function finishAuthenticatedSignup(userId: string) {
+    // Fire-and-forget — never blocks navigation
+    initOnboardingState(userId, Platform.OS).catch(() => null);
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
     const bootstrap = await fetchPostAuthBootstrap(preferredSide);
     await refreshVerification();
@@ -104,7 +106,7 @@ export default function SignupScreen() {
 
         const { data: refreshed, error: refreshError } = await sb.auth.getSession();
         if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
-          await finishAuthenticatedSignup();
+          await finishAuthenticatedSignup(refreshed.session.user.id);
         } else {
           setSuccess(true);
         }
@@ -122,7 +124,7 @@ export default function SignupScreen() {
       }
 
       if (signUpData.session) {
-        await finishAuthenticatedSignup();
+        await finishAuthenticatedSignup(signUpData.session.user.id);
       } else {
         setSuccess(true);
       }
@@ -140,7 +142,7 @@ export default function SignupScreen() {
           <Text style={styles.logo}>💜</Text>
           <Text style={styles.successTitle}>Check your email</Text>
           <Text style={styles.successBody}>
-            We sent a confirmation link to {email.trim()}.{`\n`}
+            We sent a confirmation link to {email.trim()}.{'\n'}
             Open it, then come back and sign in.
           </Text>
           <TouchableOpacity

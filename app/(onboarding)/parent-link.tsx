@@ -26,6 +26,8 @@ import {
   resolveParentEntryState,
   routeForParentEntryState,
 } from '@/services/parentEntryState';
+import { advanceStage } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 export default function ParentLinkOnboarding() {
   const { setUserSide } = useAppContext();
@@ -41,7 +43,10 @@ export default function ParentLinkOnboarding() {
   async function completeVerifiedParentLink(linkedTeenId: string) {
     setUserSide('parent');
     await AsyncStorage.setItem('linked_teen_id', linkedTeenId);
-
+    // Fire-and-forget — record the link milestone
+    getSupabase()?.auth.getUser().then(({ data }) => {
+      if (data.user) advanceStage(data.user.id, 'parent_linked').catch(() => null);
+    });
     const parentEntry = await resolveParentEntryState();
     router.replace(routeForParentEntryState(parentEntry) as never);
   }
@@ -79,6 +84,10 @@ export default function ParentLinkOnboarding() {
     try {
       setUserSide('parent');
       await AsyncStorage.removeItem('linked_teen_id');
+      // Fire-and-forget — parent chose to skip linking for now
+      getSupabase()?.auth.getUser().then(({ data }) => {
+        if (data.user) advanceStage(data.user.id, 'parent_link_skipped').catch(() => null);
+      });
       router.replace('/(auth)/guardian-verification');
     } finally {
       setLoading(false);

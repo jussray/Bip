@@ -22,6 +22,8 @@ import {
   type ParentRoomStyle,
 } from '@/features/identity/accountProfile';
 import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
+import { advanceStage, markActivated } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 const FOCUS_OPTIONS: { id: ParentFocus; label: string; emoji: string }[] = [
   { id: 'support', label: 'Support', emoji: '🤝' },
@@ -83,6 +85,14 @@ export default function ParentSetup() {
         circleAvatarEmoji: selectedRoomStyle === 'dad' ? '👑' : '💜',
       });
       const state = await submitGuardianVerification();
+
+      // Fire-and-forget state machine signals
+      getSupabase()?.auth.getUser().then(({ data }) => {
+        if (!data.user) return;
+        advanceStage(data.user.id, 'parent_setup_complete').catch(() => null);
+        markActivated(data.user.id, 'onboarding_complete').catch(() => null);
+      });
+
       setUserSide('parent');
       setParentRoomStyle(selectedRoomStyle);
       await refreshVerification();
@@ -117,7 +127,7 @@ export default function ParentSetup() {
         </TouchableOpacity>
 
         <Text style={styles.step}>PARENT SETUP</Text>
-        <Text style={styles.title}>Quick intro,{`\n`}then your room.</Text>
+        <Text style={styles.title}>Quick intro,{'\n'}then your room.</Text>
         <Text style={styles.intro}>
           You can finish setting up now and connect a teen later. No invite code required.
         </Text>

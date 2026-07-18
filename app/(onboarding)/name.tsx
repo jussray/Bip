@@ -12,6 +12,8 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
+import { advanceStage } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 export default function NameScreen() {
   const [name, setName] = useState('');
@@ -22,6 +24,10 @@ export default function NameScreen() {
     if (!ready) return;
     Keyboard.dismiss();
     await AsyncStorage.setItem('bip_onboarding_name', name.trim());
+    // Fire-and-forget — screen owns its own navigation
+    getSupabase()?.auth.getUser().then(({ data }) => {
+      if (data.user) advanceStage(data.user.id, 'name_set').catch(() => null);
+    });
     router.push('/(onboarding)/identity');
   }
 

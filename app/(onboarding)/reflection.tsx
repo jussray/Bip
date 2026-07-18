@@ -13,6 +13,8 @@ import {
   type ProfileGender,
 } from '@/features/identity/accountProfile';
 import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
+import { advanceStage, markActivated } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 const QUESTIONS: Record<string, string> = {
   '13-15': 'What do you wish somebody understood about you?',
@@ -99,6 +101,14 @@ export default function ReflectionScreen() {
         ['bip_onboarding_reflection', trimmed],
         ['sekret_self_discovery_profile', JSON.stringify({ reflection: trimmed, updatedAt: new Date().toISOString() })],
       ]);
+
+      // Fire-and-forget state machine signals — never block the user entering their space
+      getSupabase()?.auth.getUser().then(({ data }) => {
+        if (!data.user) return;
+        advanceStage(data.user.id, 'reflection_complete').catch(() => null);
+        markActivated(data.user.id, 'onboarding_complete').catch(() => null);
+      });
+
       setUserSide('teen');
       setSelectedSekret(choice);
       await refreshVerification();
