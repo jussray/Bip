@@ -4,11 +4,11 @@ import type { RelationshipFeature, RelationshipFeatureState } from '@/types/rela
 export type RelationshipFeatureFlagMap = Record<RelationshipFeature, RelationshipFeatureState>;
 
 export const RELATIONSHIP_FEATURE_FLAGS: Readonly<RelationshipFeatureFlagMap> = Object.freeze({
-  // The controlled-alpha build is account-gated and still relies on Supabase RLS,
-  // relationship consent, guardian verification, and Worker rollout controls.
-  // Enabling a client surface never bypasses those server-side boundaries.
-  bridgeSummaries: 'enabled',
-  crewAccountability: 'enabled',
+  // Controlled-alpha surfaces are available only to founder, internal, and beta
+  // audiences. Public production builds remain closed until a separate founder
+  // decision promotes them after authorization, deletion, and journey evidence.
+  bridgeSummaries: 'beta',
+  crewAccountability: 'beta',
 
   // Emotional Scrapbook remains a founder/internal visual prototype until its
   // durable schema, deletion path, denial tests, and two-account journey exist.
