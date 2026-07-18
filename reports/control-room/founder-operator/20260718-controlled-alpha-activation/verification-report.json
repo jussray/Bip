@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "planId": "20260718-controlled-alpha-activation",
+  "reportedAt": "2026-07-18T03:36:00.000Z",
+  "repository": "jussray/Sekret-Bip",
+  "pullRequest": 495,
+  "branch": "launch/controlled-alpha-activation",
+  "evidenceLevel": "repository-content",
+  "verified": [
+    {
+      "id": "founder-room-artifacts",
+      "status": "verified",
+      "evidence": "Mission brief, ordered ledger, system map, red-team register, bottleneck map, repository boundary evidence, and alpha runtime record exist on the branch."
+    },
+    {
+      "id": "controlled-beta-client-boundary",
+      "status": "verified",
+      "evidence": "Bridge and Crew are beta-scoped; Scrapbook is internal; L4 remains disabled; production audience is public and therefore denied by beta flags."
+    },
+    {
+      "id": "worker-fail-closed-boundary",
+      "status": "verified",
+      "evidence": "Dedicated alpha configuration exists, committed rollout is disabled, an allowlist is required at runtime, production rollout remains disabled, and no Worker credential is committed."
+    },
+    {
+      "id": "bridge-supported-source-boundary",
+      "status": "verified",
+      "evidence": "Journal and Mood are the only controlled-alpha source kinds; unsupported sources are rejected before the request RPC."
+    },
+    {
+      "id": "crew-revocation-result-boundary",
+      "status": "verified",
+      "evidence": "Crew revocation requires an active exact-row update and observed revoked row before returning success."
+    },
+    {
+      "id": "controlled-alpha-test-syntax",
+      "status": "verified",
+      "evidence": "Independent Node syntax checks passed for the three controlled-alpha test files reconstructed from exact branch content."
+    }
+  ],
+  "blocked": [
+    {
+      "id": "github-actions-execution",
+      "classification": "runner_startup_failure",
+      "evidence": "Eight exact-head workflow runs completed failure. Inspected CI Test, Control Room audits, Type-check, Build, and Lint jobs contain no steps and no job logs.",
+      "nextAction": "Do not diagnose application code from these badges. Retain the classification while continuing approved non-hosted preparation."
+    }
+  ],
+  "unverified": [
+    "complete exact-head dependency installation",
+    "TypeScript compilation",
+    "full unit test execution",
+    "Wrangler alpha dry-run bundle",
+    "Expo web export",
+    "Playwright browser execution",
+    "live Supabase migrations, grants, RLS, RPC, and policy parity",
+    "dedicated alpha Worker deployment",
+    "teen preview build",
+    "parent preview build",
+    "Bridge two-account journey",
+    "Crew two-account journey",
+    "account deletion and second-user isolation",
+    "iOS and Android device evidence",
+    "accessibility, offline, and provider-failure evidence"
+  ],
+  "nextOrderedAction": {
+    "phase": "execute",
+    "artifact": "alpha-runtime-record",
+    "status": "human-required",
+    "action": "Execute the pre-deployment test and dry-run gates on a complete checkout, then request founder approval before any credential use, deployment, paid build, or distribution."
+  },
+  "nonClaims": [
+    "Repository-content verification is not runtime verification.",
+    "Syntax checks are not TypeScript compilation or unit-test execution.",
+    "A canonical Worker branch preview is not the dedicated alpha service.",
+    "No deployment, build, database mutation, account operation, deletion, merge, or launch occurred."
+  ]
+}
