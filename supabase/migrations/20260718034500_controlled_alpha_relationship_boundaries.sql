@@ -5,8 +5,12 @@ begin;
 -- 1. Bridge request/source mutations are RPC-only. The security-definer RPC
 --    validates the active parent link, restricts alpha sources to Journal/Mood,
 --    and proves every selected source belongs to the authenticated teen.
--- 2. Crew share insertion and revocation are RPC-only. A trigger and read-policy
---    joins enforce that every share owner matches the referenced check-in owner.
+-- 2. Crew share insertion and revocation are RPC-only. A private trigger helper
+--    enforces that every share owner matches the referenced check-in owner.
+--    Recipient-policy hardening follows in the next ordered migration.
+
+create schema if not exists private;
+revoke all on schema private from public;
 
 -- ---------------------------------------------------------------------------
 -- Bridge: remove direct client mutation paths and harden the canonical RPC.
@@ -184,7 +188,7 @@ comment on function public.create_bridge_share_request(uuid, text, jsonb, timest
 drop policy if exists crew_check_in_shares_owner_insert on public.crew_check_in_shares;
 drop policy if exists crew_check_in_shares_owner_update on public.crew_check_in_shares;
 
-create or replace function public.enforce_crew_check_in_share_owner()
+create or replace function private.enforce_crew_check_in_share_owner()
 returns trigger
 language plpgsql
 security definer
@@ -206,14 +210,28 @@ begin
 end;
 $$;
 
-revoke all on function public.enforce_crew_check_in_share_owner()
+revoke all on function private.enforce_crew_check_in_share_owner()
   from public, anon, authenticated;
+
+-- Preserve malformed legacy rows for audit while ending their access before the
+-- stricter trigger and recipient policies take effect.
+update public.crew_check_in_shares share_row
+set status = 'revoked',
+    revoked_at = coalesce(share_row.revoked_at, now()),
+    updated_at = now()
+where share_row.status = 'active'
+  and not exists (
+    select 1
+    from public.crew_check_ins ci
+    where ci.id = share_row.check_in_id
+      and ci.owner_user_id = share_row.owner_user_id
+  );
 
 drop trigger if exists crew_check_in_shares_owner_guard on public.crew_check_in_shares;
 create trigger crew_check_in_shares_owner_guard
   before insert or update of check_in_id, owner_user_id
   on public.crew_check_in_shares
-  for each row execute function public.enforce_crew_check_in_share_owner();
+  for each row execute function private.enforce_crew_check_in_share_owner();
 
 create or replace function public.revoke_crew_check_in_share(
   p_check_in_id uuid,
@@ -258,70 +276,5 @@ grant execute on function public.revoke_crew_check_in_share(uuid, uuid)
 
 comment on function public.revoke_crew_check_in_share(uuid, uuid) is
   'Revokes one exact active Crew check-in share owned by the authenticated permanent user and returns the affected share id. Null means no transition occurred.';
-
--- Recipient read policies require the denormalized share owner to match the
--- referenced check-in owner, preventing a mismatched share row from exposing a
--- different user''s check-in.
-drop policy if exists crew_check_in_shares_crew_read on public.crew_check_in_shares;
-create policy crew_check_in_shares_crew_read on public.crew_check_in_shares
-  for select to authenticated
-  using (
-    auth.uid() = shared_with
-    and status = 'active'
-    and exists (
-      select 1
-      from public.crew_check_ins ci
-      join public.crew_members cm
-        on cm.user_id = ci.owner_user_id
-       and cm.member_user_id = auth.uid()
-       and cm.connection_status = 'accepted'
-      where ci.id = crew_check_in_shares.check_in_id
-        and ci.owner_user_id = crew_check_in_shares.owner_user_id
-        and ci.status = 'active'
-    )
-  );
-
-drop policy if exists crew_check_ins_crew_read on public.crew_check_ins;
-create policy crew_check_ins_crew_read on public.crew_check_ins
-  for select to authenticated
-  using (
-    status = 'active'
-    and exists (
-      select 1
-      from public.crew_check_in_shares s
-      join public.crew_members cm
-        on cm.user_id = s.owner_user_id
-       and cm.member_user_id = auth.uid()
-       and cm.connection_status = 'accepted'
-      where s.check_in_id = crew_check_ins.id
-        and s.owner_user_id = crew_check_ins.owner_user_id
-        and s.shared_with = auth.uid()
-        and s.status = 'active'
-    )
-  );
-
-drop policy if exists crew_encouragements_sender_insert on public.crew_encouragements;
-create policy crew_encouragements_sender_insert on public.crew_encouragements
-  for insert to authenticated
-  with check (
-    auth.uid() = sender_user_id
-    and recipient_user_id <> sender_user_id
-    and exists (
-      select 1
-      from public.crew_check_in_shares s
-      join public.crew_check_ins ci
-        on ci.id = s.check_in_id
-       and ci.owner_user_id = s.owner_user_id
-       and ci.status = 'active'
-      join public.crew_members cm
-        on cm.user_id = s.owner_user_id
-       and cm.member_user_id = auth.uid()
-       and cm.connection_status = 'accepted'
-      where s.check_in_id = crew_encouragements.check_in_id
-        and s.shared_with = auth.uid()
-        and s.owner_user_id = recipient_user_id
-        and s.status = 'active'
-    )
-  );
 
 commit;
