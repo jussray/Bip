@@ -81,11 +81,16 @@ Founder Operator accepts project instructions and operating constraints only. Do
 
 The loopback persistence endpoint rejects:
 
-- blocked private-content field names;
+- blocked private-content and secret field names after case and separator normalization;
 - credential-shaped content;
 - oversized or malformed payloads;
-- invalid plan IDs or schemas;
-- arbitrary filesystem destinations.
+- invalid, unknown, or internally inconsistent plan schemas;
+- approval-gated artifacts or phases falsely marked verified;
+- `exact-head` or `deployed-observation` claims that this local endpoint cannot verify;
+- arbitrary, traversing, or backslash-based artifact paths;
+- symlinked report directories or `latest.json` targets.
+
+Version files use exclusive creation so concurrent or repeated writes cannot replace earlier history. The mutable `latest.json` convenience snapshot is replaced atomically only after its existing target is proven to be a regular file.
 
 ## Safe execution
 
@@ -115,7 +120,7 @@ Run at minimum:
 
 ```bash
 node --check scripts/control-room-server.mjs
-node --test test/control-room-founder-operator.test.mjs
+node --test test/control-room-founder-operator.test.mjs test/control-room-founder-operator-server.test.mjs
 npm run type-check
 npm test
 ```
