@@ -1,4 +1,16 @@
 ---
+name: supabase-postgres-best-practices
+description: Postgres performance optimization and best practices from Supabase. Use this skill when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations.
+license: MIT
+metadata:
+  author: supabase
+  version: "1.1.1"
+  organization: Supabase
+  date: January 2026
+  abstract: Comprehensive Postgres performance optimization guide for developers using Supabase and Postgres. Contains performance rules across 8 categories, prioritized by impact from critical (query performance, connection management) to incremental (advanced features). Each rule includes detailed explanations, incorrect vs. correct SQL examples, query plan analysis, and specific performance metrics to guide automated optimization and code generation.
+---
+
+# Supabase Postgres Best Practices
 
 ## 5W1H operating contract
 
@@ -12,19 +24,6 @@ Before planning, editing, or claiming completion, establish and state:
 - **How** — the smallest safe implementation, required permissions, verification evidence, rollout, and rollback.
 
 Inspect repository and runtime truth for unknowns. Ask the user only when a missing answer would materially change the safe solution or authority. Re-run 5W1H after red-team/OODA findings change the plan. Finish by mapping the result, evidence, remaining blocker, and next owner back to these six questions.
-
-name: supabase-postgres-best-practices
-description: Postgres performance optimization and best practices from Supabase. Use this skill when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations.
-license: MIT
-metadata:
-  author: supabase
-  version: "1.1.1"
-  organization: Supabase
-  date: January 2026
-  abstract: Comprehensive Postgres performance optimization guide for developers using Supabase and Postgres. Contains performance rules across 8 categories, prioritized by impact from critical (query performance, connection management) to incremental (advanced features). Each rule includes detailed explanations, incorrect vs. correct SQL examples, query plan analysis, and specific performance metrics to guide automated optimization and code generation.
----
-
-# Supabase Postgres Best Practices
 
 Comprehensive performance optimization guide for Postgres, maintained by Supabase. Contains rules across 8 categories, prioritized by impact to guide automated query optimization and schema design.
 
