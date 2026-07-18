@@ -7,6 +7,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const livePath = 'docs/migration-history/onboarding/20260718040638_onboarding_state.live.sql';
 const repoStatePath = 'docs/migration-history/onboarding/20260718000000_onboarding_state.repository.sql';
 const repoMoodPath = 'docs/migration-history/onboarding/20260718000001_onboarding_mood_log_trigger.repository.sql';
+const observationPath = 'docs/migration-history/onboarding/production-observation-2026-07-18.json';
 
 test('repository migration archives are exact content copies', async () => {
   const [activeState, archivedState, activeMood, archivedMood] = await Promise.all([
@@ -61,6 +62,24 @@ test('read-only parity probe contains no mutation statements', async () => {
   assert.doesNotMatch(probe, /select\s+\*/i);
 });
 
+test('retained production observation is aggregate-only and fail-closed', async () => {
+  const observation = JSON.parse(await read(observationPath));
+
+  assert.equal(observation.observationMode, 'read_only_catalog_and_aggregate');
+  assert.equal(observation.migrationHistory.liveVersion, '20260718040638');
+  assert.deepEqual(observation.migrationHistory.repositoryVersionsAbsentLive, [
+    '20260718000000',
+    '20260718000001',
+  ]);
+  assert.equal(observation.aggregateState.onboardingRows, 0);
+  assert.equal(observation.aggregateState.moodRows, 0);
+  assert.equal(observation.privacy.identifiersRetrieved, false);
+  assert.equal(observation.privacy.rowContentRetrieved, false);
+  assert.equal(observation.mutation.ddlExecuted, false);
+  assert.equal(observation.mutation.dmlExecuted, false);
+  assert.equal(observation.decision, 'hold_for_development_branch_reconciliation');
+});
+
 test('live and repository stage contracts are intentionally distinct evidence', async () => {
   const [live, repository] = await Promise.all([
     read(livePath),
@@ -77,7 +96,7 @@ test('live and repository stage contracts are intentionally distinct evidence', 
 });
 
 test('evidence artifacts stay outside the ordered migration directory', async () => {
-  for (const path of [livePath, repoStatePath, repoMoodPath]) {
+  for (const path of [livePath, repoStatePath, repoMoodPath, observationPath]) {
     assert.ok(path.startsWith('docs/migration-history/onboarding/'));
     assert.ok(!path.startsWith('supabase/migrations/'));
   }
