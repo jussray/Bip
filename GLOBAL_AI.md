@@ -40,6 +40,16 @@ Do not collapse the two redteam passes. The first attacks the product premise. T
 
 Never claim a feature, privacy boundary, migration, test, deployment, account state, parent link, AI capability, or release status exists without evidence.
 
+## `bip-os.md` status
+
+The root [`bip-os.md`](bip-os.md) is a **non-authoritative proposal and checklist reference**. It is not the repository constitution, current architecture map, sprint, roadmap, CODEOWNERS file, workflow configuration, release approval, migration authority, or implementation evidence.
+
+- This global contract, `AGENTS.md`, Founder Control Room, current repository paths, ordered migrations, runtime evidence, and explicit founder decisions outrank `bip-os.md`.
+- Its `apps/mobile` and `packages/*` tree, reviewer handles, commands, workflows, coverage targets, and 30-day plan are illustrative unless they exist in the current repository and pass exact-head proof.
+- Its example tag-triggered EAS, Cloudflare, and Supabase steps do not authorize builds, deployment, credentials, paid capacity, publishing, or database application.
+- Any statement suggesting parents can see everything a teen sees is invalid. Parent visibility remains consent-based, minimized, relationship-scoped, revocable, and enforced by services, RPCs, RLS, storage, and route authorization.
+- See [`docs/BIP_ENGINEERING_OS_STATUS.md`](docs/BIP_ENGINEERING_OS_STATUS.md) for the reconciliation boundary.
+
 ## Product boundaries
 
 - Teen privacy outranks speed and convenience.
