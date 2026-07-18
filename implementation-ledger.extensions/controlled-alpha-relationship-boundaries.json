@@ -15,6 +15,7 @@
       "contractPaths": [
         "supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql",
         "supabase/migrations/20260718035000_deny_blocked_crew_access.sql",
+        "supabase/probes/controlled_alpha_relationship_contract.sql",
         "reports/control-room/founder-operator/20260718-controlled-alpha-activation/system-map.md",
         "reports/control-room/founder-operator/20260718-controlled-alpha-activation/red-team-register.md"
       ],
@@ -46,7 +47,7 @@
       "verification": {
         "state": "blocked",
         "evidence": "https://github.com/jussray/Sekret-Bip/pull/495",
-        "blocker": "Complete-checkout TypeScript, unit, migration, Wrangler bundle, and browser checks must execute; the reviewed migrations must be applied through an approved path; live RLS, grants, RPC signatures, source ownership, blocked/revoked denial, deletion cleanup, two-account journeys, and device evidence remain unproven. GitHub-hosted jobs currently fail before step one and do not count as execution evidence."
+        "blocker": "Complete-checkout TypeScript, unit, migration, Wrangler bundle, and browser checks must execute; the reviewed migrations must be applied through an approved path; the catalog parity probe and live RLS, grants, RPC signatures, source ownership, blocked/revoked denial, deletion cleanup, two-account journeys, and device evidence remain unexecuted. GitHub-hosted jobs currently fail before step one and do not count as execution evidence."
       },
       "rollback": "Leave PR #495 unmerged or revert its focused commits. Before any live rollout, keep both feature flags disabled or beta-scoped and keep both Worker configurations disabled. After an approved migration application, use a reviewed forward rollback migration that restores prior functions and policies without deleting user content; revoke the alpha account allowlist and preview distribution immediately if any privacy stop condition occurs."
     }
