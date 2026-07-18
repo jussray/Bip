@@ -15,7 +15,6 @@ import type { AccountSide } from '@/features/identity/accountProfile';
 import { fetchPostAuthBootstrap, ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initOnboardingState } from '@/services/onboarding';
 
 function readableAuthError(error: unknown): string {
   if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
@@ -45,8 +44,6 @@ export default function SignupScreen() {
   const [loading, setLoading]   = useState(false);
 
   async function finishAuthenticatedSignup(userId: string) {
-    // Fire-and-forget — never blocks navigation
-    initOnboardingState(userId, Platform.OS).catch(() => null);
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
     const bootstrap = await fetchPostAuthBootstrap(preferredSide);
     await refreshVerification();
@@ -66,8 +63,6 @@ export default function SignupScreen() {
     const sb = getSupabase();
 
     if (__DEV__) {
-      // Diagnostic: log client + session state so null-client and
-      // email-confirmation issues are immediately visible in Expo logs.
       console.log('[signup] sb=', sb ? 'ok' : 'NULL — check EXPO_PUBLIC_SUPABASE_URL/ANON_KEY');
       if (sb) {
         sb.auth.getSession().then(({ data, error: e2 }) => {
