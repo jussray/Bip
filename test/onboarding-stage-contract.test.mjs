@@ -14,13 +14,34 @@ test('advanceStage supports payload and ergonomic stage call forms', async () =>
   assert.match(source, /\{ stage: payloadOrStage, \.\.\.extras \}/);
 });
 
+test('initialization reuses existing state and handles insert races', async () => {
+  const source = await read('services/onboarding.ts');
+
+  assert.match(source, /const existing = await getOnboardingState\(userId\)/);
+  assert.match(source, /if \(existing\) return existing/);
+  assert.match(source, /\.insert\(\{/);
+  assert.doesNotMatch(source, /ignoreDuplicates: true/);
+  assert.match(source, /concurrent provider\/screen initialization may have won the insert race/);
+  assert.match(source, /const raced = await getOnboardingState\(userId\)/);
+});
+
 test('stage writes are forward-only and concurrency-safe', async () => {
   const source = await read('services/onboarding.ts');
 
-  assert.match(source, /if \(nextIndex <= currentIndex\) return current/);
+  assert.match(source, /if \(nextIndex <= currentIndex\) \{\s*return backfillPassedStageMetadata/);
   assert.match(source, /\.eq\('stage', current\.stage\)/);
   assert.match(source, /if \(!data\) return advanceStage\(userId, payload\)/);
   assert.match(source, /prevents stale fire-and-forget writes[\s\S]*moving the funnel backwards/);
+});
+
+test('passed stages can repair missing role and age without regression', async () => {
+  const source = await read('services/onboarding.ts');
+
+  assert.match(source, /async function backfillPassedStageMetadata/);
+  assert.match(source, /current\.role === 'unknown' && role/);
+  assert.match(source, /!current\.age_bucket && typeof payload\.age_bucket === 'string'/);
+  assert.match(source, /\.update\(patch\)[\s\S]*\.eq\('stage', current\.stage\)/);
+  assert.match(source, /Repair only missing metadata and never lower the current stage/);
 });
 
 test('role-specific milestones persist the correct account side', async () => {
@@ -47,6 +68,16 @@ test('name-to-identity timing is recorded on identity transition', async () => {
 
   assert.match(source, /payload\.stage === 'identity_set' && current\.stage === 'name_set'/);
   assert.doesNotMatch(source, /payload\.stage === 'reflection_complete' && current\.stage === 'name_set'/);
+});
+
+test('context advances through the service even while its state snapshot is loading', async () => {
+  const context = await read('context/OnboardingContext.tsx');
+
+  assert.match(context, /if \(!user\?\.id\) return/);
+  assert.doesNotMatch(context, /if \(!user\?\.id \|\| !state\) return/);
+  assert.match(context, /Do not depend on the React state snapshot/);
+  assert.match(context, /const updated = await advanceStage\(user\.id, \{ stage, \.\.\.extras \}\)/);
+  assert.match(context, /\[user\?\.id\]/);
 });
 
 test('age screen keeps pre-auth choices local and supports permanent-account recovery', async () => {
