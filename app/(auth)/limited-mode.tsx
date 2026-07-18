@@ -18,14 +18,17 @@ const LOCKED = [
 ] as const;
 
 export default function LimitedModeScreen() {
-  const { verificationState } = useVerificationContext();
+  const { verificationState, isVerificationLoading } = useVerificationContext();
   const waiting = verificationState === 'PENDING_PARENT' || verificationState === 'PENDING_TRUSTED_ADULT';
 
   useEffect(() => {
-    if (verificationState === 'UNVERIFIED' || verificationState === 'LIMITED_MODE') {
+    if (
+      !isVerificationLoading &&
+      (verificationState === 'UNVERIFIED' || verificationState === 'LIMITED_MODE')
+    ) {
       router.replace('/(auth)/parent-link-verify');
     }
-  }, [verificationState]);
+  }, [isVerificationLoading, verificationState]);
 
   return (
     <View style={styles.root}>
