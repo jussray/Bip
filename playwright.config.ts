@@ -16,6 +16,7 @@ export default defineConfig({
   testIgnore: [
     '**/production-smoke.spec.ts',
     '**/production-password-recovery.spec.ts',
+    '**/production-auth-reachability.spec.ts',
   ],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
