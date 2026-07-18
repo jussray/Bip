@@ -1,9 +1,11 @@
 # Founder Control Room Incident — GitHub Actions hosted-runner failure
 
-- **Observed:** 2026-07-18
+- **First observed:** 2026-07-18
+- **Last confirmed:** 2026-07-18
 - **Repository:** `jussray/Sekret-Bip`
 - **Pull request:** #503
-- **Head commit:** `bf185197ae396a80515e97ae589e25dad03ffcd2`
+- **Affected branch:** `agent/rename-uuid-image-assets`
+- **Latest code-bearing head inspected:** `3d5f18cc193d45dc068b77b049a5a973e2f21a59`
 - **Source:** `build_pipeline`
 - **Category:** infrastructure health
 - **Severity:** high
@@ -12,7 +14,9 @@
 
 ## Evidence
 
-All pull-request workflow families completed as failures, but their jobs contain **no execution steps** and expose **no job logs**:
+Unrelated pull-request workflow families complete as failures, but their jobs contain **no execution steps** and expose **no job logs**. The failure occurs before repository commands execute.
+
+### Initial confirmation
 
 - Implementation Evidence — run `29631363817`
 - Type Check — run `29631363830`
@@ -22,7 +26,20 @@ All pull-request workflow families completed as failures, but their jobs contain
 - Verify Room Archives — run `29631363799`
 - Quality Gate — run `29631363829`
 
-The failure occurs before repository commands execute. The simultaneous zero-step/no-log signature across unrelated workflows rules out a supported claim that the asset change caused the failures.
+### Latest code-bearing confirmation
+
+The same signature repeated after the canonical splash runtime migration:
+
+- Playwright Smoke and Guardrails — run `29632125994`; job `smoke`; `steps: null`; `logs_url: null`
+- Pre-Push Checks — run `29632126055`
+- Implementation Evidence — run `29632125988`
+- Quality Gate — run `29632125992`
+- CI — run `29632126017`
+- Type Check — run `29632126021`; job `typecheck`; `steps: null`; `logs_url: null`
+- Verify Room Archives — run `29632125993`
+- Regression Tests — run `29632126016`
+
+The simultaneous zero-step/no-log signature across unrelated workflows, including the newly triggered Playwright workflow, rules out a supported claim that repository code caused these failures.
 
 ## Founder interpretation
 
