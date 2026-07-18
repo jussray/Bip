@@ -1,29 +1,35 @@
 {
   "id": "social-provisioning-lab",
-  "title": "Founder-only social account provisioning rehearsal and multi-AI coordination",
+  "name": "Founder-only social account provisioning rehearsal and coordinated-AI lanes",
   "status": "integrated",
-  "owner": "founder-control-room",
-  "scope": [
-    "src/features/control-room/SocialProvisioningLabPanel.tsx",
-    "src/screens/DevControlRoomScreen.tsx",
-    "docs/SOCIAL_ACCOUNT_PROVISIONING_LAB.md",
+  "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/486",
+  "acceptanceCriteria": [
+    "Only a founder with management access can open the lab and run a rehearsal.",
+    "Every platform rehearsal ends at human_required and cannot claim a live or connected account.",
+    "The rehearsal makes no social-platform request, collects no credential, accepts no terms, and submits no signup.",
+    "Every provider follows one-writer handoffs and remains inside its evidence and approval lane."
+  ],
+  "contractPaths": [
     "AI_COORDINATION.md",
-    "GLOBAL_AI.md",
-    "AGENTS.md",
+    "docs/SOCIAL_ACCOUNT_PROVISIONING_LAB.md",
+    "DeepSeek/deepseek-chat.md",
     "docs/PROVIDERS.md"
+  ],
+  "runtimePaths": [
+    "src/features/control-room/SocialProvisioningLabPanel.tsx",
+    "src/screens/DevControlRoomScreen.tsx"
+  ],
+  "testPaths": [
+    "test/social-provisioning-lab-contract.test.mjs",
+    "test/social-provisioning-lab-ledger.test.mjs"
+  ],
+  "telemetryPaths": [
+    "src/features/control-room/SocialProvisioningLabPanel.tsx"
   ],
   "verification": {
     "state": "partial",
-    "evidence": [
-      "test/social-provisioning-lab-contract.test.mjs",
-      "dry-run state machine has no live-account transition",
-      "no external network, credential collection, OAuth, terms acceptance, or signup submission"
-    ],
-    "remaining": [
-      "exact-head repository CI",
-      "founder opens the /dev Social panel and runs all five rehearsals",
-      "manual confirmation that each result terminates at human_required"
-    ]
+    "evidence": "https://github.com/jussray/Sekret-Bip/pull/476",
+    "blocker": "Exact-head repository CI must execute and pass, then the founder must run all five rehearsals and confirm every result terminates at human_required."
   },
   "privacy": {
     "storesCredentials": false,
@@ -33,6 +39,8 @@
   },
   "rollout": {
     "state": "founder-only",
+    "controlPath": "src/features/control-room/SocialProvisioningLabPanel.tsx",
+    "controlKey": "getCurrentFounderProfile plus isFounderProfile plus can_manage_app",
     "productionMutation": false
   },
   "rollback": "Revert the PR. No external account or credential cleanup is required because the lab performs no external mutation."
