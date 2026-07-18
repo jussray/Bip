@@ -87,7 +87,9 @@ function classifyRun(run, jobs) {
   if (run.conclusion === 'startup_failure') return 'runner_startup_failure';
   if (!jobs.length) return 'workflow_no_jobs';
 
-  const jobsWithSteps = jobs.filter((job) => Array.isArray(job.steps) && job.steps.length > 0);
+  const failedJobs = jobs.filter((job) => FAILURE_CONCLUSIONS.has(job.conclusion));
+  const evidenceJobs = failedJobs.length > 0 ? failedJobs : jobs;
+  const jobsWithSteps = evidenceJobs.filter((job) => Array.isArray(job.steps) && job.steps.length > 0);
   if (jobsWithSteps.length === 0) return 'runner_startup_failure';
 
   const executedSteps = jobsWithSteps.flatMap((job) => job.steps).filter((step) =>
