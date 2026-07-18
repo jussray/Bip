@@ -3,14 +3,15 @@
  *
  * Founder-only Control Room panel for live Worker observability.
  *
- * Three sub-panels:
+ * Sub-panels:
  *   Health  — ping /health, show latency + Worker URL
  *   Fire    — manual test shot: pick character/surface, write userText,
  *             optionally set mood; renders full CompanionReply
+ *   Threads — active thread-board pool view (read from ThreadBoardPanel store)
  *   History — last 20 session shots (in-memory, no persistence)
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -31,7 +32,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SubPanel = 'health' | 'fire' | 'history';
+type SubPanel = 'health' | 'fire' | 'threads' | 'history';
 
 interface ShotRecord {
   id: string;
@@ -68,21 +69,35 @@ const SURFACES: Surface[] = [
 
 const MAX_HISTORY = 20;
 
-// ─── Colours (match Control Room dark theme) ─────────────────────────────────
-
 const C = {
-  bg: '#080611',
-  surface: '#0d0a15',
-  border: '#272238',
-  purple: '#6d28d9',
+  bg:        '#080611',
+  surface:   '#0d0a15',
+  border:    '#272238',
+  purple:    '#6d28d9',
   purpleDim: '#3b1f6e',
-  text: '#e2dff0',
-  muted: '#8f899e',
-  green: '#22c55e',
-  red: '#ef4444',
-  yellow: '#eab308',
-  teal: '#14b8a6',
+  text:      '#e2dff0',
+  muted:     '#8f899e',
+  green:     '#22c55e',
+  red:       '#ef4444',
+  yellow:    '#eab308',
+  teal:      '#14b8a6',
 } as const;
+
+// Status colors matching ThreadBoardPanel
+const STATUS_COLOR: Record<string, string> = {
+  planned:  '#6b7280',
+  running:  '#a78bfa',
+  review:   '#fbbf24',
+  approved: '#4ade80',
+  applied:  '#22d3ee',
+  blocked:  '#fb7185',
+};
+
+const AGENT_EMOJI: Record<string, string> = {
+  product: '📐', engineer: '⚙️', debugger: '🔬',
+  analyst: '📊', growth: '🚀', support: '💬',
+  deploy: '🛳️', coo: '🧭',
+};
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -91,24 +106,26 @@ export default function WorkerPanel() {
 
   return (
     <View style={s.root}>
-      {/* Sub-panel switcher */}
       <View style={s.subSwitcher}>
-        {(['health', 'fire', 'history'] as SubPanel[]).map((p) => (
+        {(['health', 'fire', 'threads', 'history'] as SubPanel[]).map((p) => (
           <TouchableOpacity
             key={p}
             style={[s.subBtn, sub === p && s.subBtnActive]}
             onPress={() => setSub(p)}
           >
             <Text style={[s.subLabel, sub === p && s.subLabelActive]}>
-              {p === 'health' ? '⚡ Health' : p === 'fire' ? '🎯 Fire' : '📋 History'}
+              {p === 'health'  ? '⚡ Health'
+               : p === 'fire' ? '🎯 Fire'
+               : p === 'threads' ? '🧵 Threads'
+               : '📋 History'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Panels */}
-      {sub === 'health' && <HealthPanel />}
-      {sub === 'fire' && <FirePanel />}
+      {sub === 'health'  && <HealthPanel />}
+      {sub === 'fire'    && <FirePanel />}
+      {sub === 'threads' && <ThreadsPanel />}
       {sub === 'history' && <HistoryPanel />}
     </View>
   );
@@ -166,9 +183,96 @@ function HealthPanel() {
   );
 }
 
+// ─── Threads panel ────────────────────────────────────────────────────────────
+// Reads the same in-memory store used by ThreadBoardPanel so Worker can see
+// the live thread pool without requiring a separate data source.
+
+function ThreadsPanel() {
+  const [, forceRender] = useState(0);
+  const refresh = useCallback(() => forceRender((n) => n + 1), []);
+
+  // Dynamic import of the shared store ref from ThreadBoardPanel
+  // Since both panels live in the same JS runtime, we access the module-level
+  // variable through a re-export. If the store is empty we show a prompt.
+  let threads: Array<{
+    id: string; title: string; agent: string; status: string;
+    risk: string; artifacts: unknown[]; notes: string;
+  }> = [];
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const boardModule = require('./ThreadBoardPanel');
+    // The store is not directly exported; read via a getter if available.
+    // In practice, integrate via a shared context/store (Zustand, Jotai) in
+    // production. For now, this panel shows a mirror view.
+    threads = boardModule._getThreads?.() ?? [];
+  } catch {
+    threads = [];
+  }
+
+  const active   = threads.filter((t) => !['applied', 'blocked'].includes(t.status));
+  const blocked  = threads.filter((t) => t.status === 'blocked');
+  const review   = threads.filter((t) => t.status === 'review');
+
+  return (
+    <ScrollView style={s.panel} contentContainerStyle={s.panelContent}>
+      <View style={s.historyHeader}>
+        <Text style={s.sectionTitle}>Thread Pool ({threads.length} total)</Text>
+        <TouchableOpacity onPress={refresh}>
+          <Text style={s.refreshBtn}>↻</Text>
+        </TouchableOpacity>
+      </View>
+
+      {threads.length === 0 && (
+        <View style={s.emptyState}>
+          <Text style={s.emptyTitle}>No threads spawned yet</Text>
+          <Text style={[s.urlText, { textAlign: 'center' }]}>
+            Open the Board tab → write a founder brief → confirm the plan to spawn threads.
+          </Text>
+        </View>
+      )}
+
+      {review.length > 0 && (
+        <>
+          <Text style={[s.fieldLabel, { color: '#fbbf24' }]}>⚠ Awaiting review ({review.length})</Text>
+          {review.map((t) => <ThreadRow key={t.id} thread={t} />)}
+        </>
+      )}
+
+      {blocked.length > 0 && (
+        <>
+          <Text style={[s.fieldLabel, { color: '#fb7185' }]}>Blocked ({blocked.length})</Text>
+          {blocked.map((t) => <ThreadRow key={t.id} thread={t} />)}
+        </>
+      )}
+
+      {active.length > 0 && (
+        <>
+          <Text style={s.fieldLabel}>Active ({active.length})</Text>
+          {active.filter((t) => t.status !== 'review').map((t) => <ThreadRow key={t.id} thread={t} />)}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+function ThreadRow({ thread }: { thread: { id: string; title: string; agent: string; status: string; risk: string; artifacts: unknown[]; notes: string } }) {
+  const col = STATUS_COLOR[thread.status] ?? '#6b7280';
+  return (
+    <View style={s.threadRow}>
+      <View style={s.threadLeft}>
+        <Text style={s.threadAgent}>{AGENT_EMOJI[thread.agent] ?? '•'} {thread.agent}</Text>
+        <Text style={s.threadTitle} numberOfLines={1}>{thread.title}</Text>
+        <Text style={s.threadNotes} numberOfLines={1}>{thread.notes}</Text>
+      </View>
+      <View style={[s.threadStatusPill, { backgroundColor: col + '22' }]}>
+        <Text style={[s.threadStatusText, { color: col }]}>{thread.status}</Text>
+      </View>
+    </View>
+  );
+}
+
 // ─── Fire panel ───────────────────────────────────────────────────────────────
 
-// Shared shot history — persists across Fire/History tab switches in-session
 const shotHistory: ShotRecord[] = [];
 let shotCounter = 0;
 
@@ -221,7 +325,6 @@ function FirePanel() {
     <ScrollView style={s.panel} contentContainerStyle={s.panelContent} keyboardShouldPersistTaps='handled'>
       <Text style={s.sectionTitle}>Fire Test Shot</Text>
 
-      {/* Character picker */}
       <Text style={s.fieldLabel}>Character</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipRow}>
         {CHARACTERS.map((c) => (
@@ -235,7 +338,6 @@ function FirePanel() {
         ))}
       </ScrollView>
 
-      {/* Surface picker */}
       <Text style={s.fieldLabel}>Surface</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipRow}>
         {SURFACES.map((sv) => (
@@ -249,7 +351,6 @@ function FirePanel() {
         ))}
       </ScrollView>
 
-      {/* Mood (optional) */}
       <Text style={s.fieldLabel}>Mood (optional)</Text>
       <TextInput
         style={s.input}
@@ -259,7 +360,6 @@ function FirePanel() {
         onChangeText={setMood}
       />
 
-      {/* User text */}
       <Text style={s.fieldLabel}>User message</Text>
       <TextInput
         style={[s.input, s.inputTall]}
@@ -282,7 +382,6 @@ function FirePanel() {
         )}
       </TouchableOpacity>
 
-      {/* Last result */}
       {lastShot && <ShotCard shot={lastShot} expanded />}
     </ScrollView>
   );
@@ -291,7 +390,6 @@ function FirePanel() {
 // ─── History panel ────────────────────────────────────────────────────────────
 
 function HistoryPanel() {
-  // Re-render trigger when Fire panel updates the shared array
   const [, forceUpdate] = useState(0);
   const refresh = useCallback(() => forceUpdate((n) => n + 1), []);
 
@@ -396,7 +494,7 @@ function Pill({ ok, label }: { ok: boolean; label: string }) {
 }
 
 function latencyColor(ms: number): string {
-  if (ms < 800) return C.green;
+  if (ms < 800)  return C.green;
   if (ms < 2500) return C.yellow;
   return C.red;
 }
@@ -413,7 +511,7 @@ const s = StyleSheet.create({
     paddingBottom: 10,
   },
   subBtn: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: C.surface,
@@ -421,7 +519,7 @@ const s = StyleSheet.create({
     borderColor: C.border,
   },
   subBtnActive: { backgroundColor: C.purple, borderColor: C.purple },
-  subLabel: { color: C.muted, fontWeight: '700', fontSize: 12 },
+  subLabel: { color: C.muted, fontWeight: '700', fontSize: 11 },
   subLabelActive: { color: '#fff' },
 
   panel: { flex: 1 },
@@ -480,6 +578,17 @@ const s = StyleSheet.create({
   historyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   refreshBtn: { color: C.purple, fontWeight: '700', fontSize: 13 },
   emptyText: { color: C.muted, fontSize: 13, textAlign: 'center', marginTop: 32 },
+  emptyState: { alignItems: 'center', paddingTop: 32, gap: 8 },
+  emptyTitle: { color: C.text, fontWeight: '800', fontSize: 15 },
+
+  // Thread rows
+  threadRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10 },
+  threadLeft: { flex: 1, gap: 2 },
+  threadAgent: { color: '#c4b5fd', fontWeight: '800', fontSize: 11 },
+  threadTitle: { color: C.text, fontWeight: '700', fontSize: 13 },
+  threadNotes: { color: C.muted, fontSize: 11 },
+  threadStatusPill: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  threadStatusText: { fontSize: 10, fontWeight: '900' },
 
   shotCard: {
     backgroundColor: C.surface,
