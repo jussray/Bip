@@ -1,0 +1,26 @@
+{
+  "id": "founder-operator-orchestration",
+  "name": "Founder Operator mission-to-artifact orchestration",
+  "status": "contract",
+  "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/489",
+  "acceptanceCriteria": [
+    "A founder-only Control Room surface converts one mission into a versioned plan containing ULTRATHINK orientation, durable artifact ownership, a first-principles execution slice, verification evidence, and a founder decision gate.",
+    "Free-form mission text never becomes a shell command, and execution remains limited to the existing allowlisted local missions.",
+    "Plan history is append-only and authenticated persistence writes only to fixed server-owned paths under reports/control-room/founder-operator.",
+    "Merge, deployment, migration, spending, publishing, external-account, credential, and destructive actions remain explicit founder-only gates."
+  ],
+  "contractPaths": [
+    "docs/CONTROL_ROOM_FOUNDER_OPERATOR.md",
+    "src/services/controlRoomFounderOperator.ts",
+    "src/types/controlRoomFounderOperator.ts",
+    ".agents/skills/bip-control-room/SKILL.md"
+  ],
+  "testPaths": [
+    "test/control-room-founder-operator.test.mjs"
+  ],
+  "verification": {
+    "state": "blocked",
+    "evidence": "https://github.com/jussray/Sekret-Bip/issues/489",
+    "blocker": "Open the focused pull request, require exact-head repository checks and Playwright to execute and pass, then perform a founder-only mission-generation and fixed-path persistence rehearsal before promoting beyond contract."
+  }
+}
