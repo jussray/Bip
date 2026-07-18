@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "planId": "20260718-controlled-alpha-activation",
+  "sourceOfTruth": "Founder Control Room",
+  "repository": "jussray/Sekret-Bip",
+  "pullRequest": 495,
+  "branch": "launch/controlled-alpha-activation",
+  "order": [
+    "observe",
+    "orient",
+    "artifact-plan",
+    "execute",
+    "verify",
+    "decide"
+  ],
+  "currentPhase": "orient",
+  "items": [
+    {
+      "id": "mission-brief",
+      "phase": "observe",
+      "owner": "chatgpt",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/mission-brief.md",
+      "status": "complete",
+      "acceptance": "Mission, 5W1H, scope, exclusions, exact-state baseline, sequence, and non-claims are explicit.",
+      "nextAction": "Maintain when scope or evidence changes."
+    },
+    {
+      "id": "artifact-ledger",
+      "phase": "observe",
+      "owner": "chatgpt",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/artifact-ledger.json",
+      "status": "complete",
+      "acceptance": "Every required launch artifact appears in dependency order with one owner, acceptance gate, and next action.",
+      "nextAction": "Append newly discovered requirements in dependency order without deleting earlier entries."
+    },
+    {
+      "id": "system-map",
+      "phase": "orient",
+      "owner": "codex",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/system-map.md",
+      "status": "next",
+      "acceptance": "App variants, feature flags, Worker routing, Supabase authorization, relationship lifecycle, deletion, preview builds, and device evidence are mapped with dependencies.",
+      "nextAction": "Build from exact repository files and current PR state."
+    },
+    {
+      "id": "red-team-register",
+      "phase": "orient",
+      "owner": "chatgpt",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/red-team-register.md",
+      "status": "queued",
+      "acceptance": "Privacy, cross-user, deletion, false-green, rollout, credential, and rollback risks have observable triggers and controls.",
+      "nextAction": "Create immediately after the system map."
+    },
+    {
+      "id": "bottleneck-map",
+      "phase": "orient",
+      "owner": "chatgpt",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/bottleneck-map.md",
+      "status": "queued",
+      "acceptance": "The highest-leverage constraint and smallest reversible executable slice are explicit.",
+      "nextAction": "Select after system and risk orientation."
+    },
+    {
+      "id": "alpha-runtime-record",
+      "phase": "execute",
+      "owner": "cloudflare",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/alpha-runtime-record.md",
+      "status": "human-gated",
+      "acceptance": "Dedicated alpha runtime identity, non-secret configuration, deployment evidence, preview build identities, production isolation, and rollback are retained.",
+      "nextAction": "Prepare non-secret deployment checklist; stop before credential use or deployment without founder approval."
+    },
+    {
+      "id": "trust-journey-evidence",
+      "phase": "verify",
+      "owner": "playwright",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/trust-journey-evidence.json",
+      "status": "blocked-by-runtime-and-accounts",
+      "acceptance": "Bridge, Crew, revocation, re-share, unlink, deletion, cleanup, and second-user isolation are observed with controlled accounts.",
+      "nextAction": "Define synthetic account fixtures and evidence checklist before live execution."
+    },
+    {
+      "id": "device-evidence",
+      "phase": "verify",
+      "owner": "playwright",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/device-evidence.json",
+      "status": "blocked-by-preview-builds",
+      "acceptance": "Teen and parent iOS/Android installs, critical routes, accessibility, offline behavior, and failure states are retained.",
+      "nextAction": "Create device matrix before preview distribution."
+    },
+    {
+      "id": "verification-report",
+      "phase": "verify",
+      "owner": "playwright",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/verification-report.json",
+      "status": "queued",
+      "acceptance": "Executed proof, exact state, infrastructure classifications, failures, and remaining blockers are summarized without false-green claims.",
+      "nextAction": "Update after each executed verification slice."
+    },
+    {
+      "id": "founder-decision-pack",
+      "phase": "decide",
+      "owner": "founder",
+      "path": "reports/control-room/founder-operator/20260718-controlled-alpha-activation/founder-decision-pack.md",
+      "status": "human-gated",
+      "acceptance": "Ship, hold, or rollback decision includes audience, duration, evidence, open risks, exact external actions, and rollback.",
+      "nextAction": "Generate only after verification artifacts are truthfully classified."
+    }
+  ],
+  "standingRules": [
+    "Use Founder Control Room as the operational source of truth.",
+    "Treat GitHub as repository memory and evidence, not a substitute for executed proof.",
+    "Add newly discovered requirements in dependency order without deleting prior work.",
+    "Do not count zero-step workflow failures as code or test results.",
+    "Do not expose raw teen content to parents.",
+    "Do not enable unfinished L4 or L5 concepts.",
+    "Do not merge, deploy, use credentials, spend, mutate data, widen distribution, or delete material without the founder gate."
+  ]
+}
