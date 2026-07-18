@@ -23,15 +23,6 @@ function childEnv(source = process.env) {
   return env;
 }
 
-function runToken(date = new Date()) {
-  return date.toISOString().replace(/[-:.TZ]/g, '').slice(0, 17);
-}
-
-function resolveArtifactDir(rootDir, env) {
-  if (env.PLAYWRIGHT_ARTIFACT_DIR) return path.resolve(rootDir, env.PLAYWRIGHT_ARTIFACT_DIR);
-  return path.join(rootDir, 'reports', 'control-room', 'playwright', 'verify-frontend', runToken());
-}
-
 export async function detectPlaywrightAvailability({ rootDir = root, env = process.env } = {}) {
   if (env.CONTROL_ROOM_FORCE_NO_PLAYWRIGHT === '1') {
     return {
@@ -88,17 +79,31 @@ export function parsePlaywrightJson(stdout) {
   };
 }
 
-export function runPlaywright({ rootDir = root, env = process.env } = {}) {
-  const startedAt = Date.now();
-  const artifactDir = resolveArtifactDir(rootDir, env);
-  const resultsPath = path.join(artifactDir, 'results.json');
-  fs.mkdirSync(artifactDir, { recursive: true });
+export function playwrightArtifactDir({ rootDir = root, env = process.env, now = new Date() } = {}) {
+  if (env.PLAYWRIGHT_ARTIFACT_DIR) return path.resolve(rootDir, env.PLAYWRIGHT_ARTIFACT_DIR);
+  const runId = now.toISOString().replace(/[:.]/g, '-');
+  return path.join(rootDir, 'reports', 'control-room', 'playwright', runId);
+}
 
-  const result = spawnSync(commandFor('npx'), ['playwright', 'test'], {
+export function runPlaywright({
+  rootDir = root,
+  env = process.env,
+  artifactDir = playwrightArtifactDir({ rootDir, env }),
+  spawnImpl = spawnSync,
+} = {}) {
+  const startedAt = Date.now();
+  const resolvedArtifactDir = path.resolve(artifactDir);
+  const jsonReportPath = path.join(resolvedArtifactDir, 'results.json');
+  fs.mkdirSync(resolvedArtifactDir, { recursive: true });
+
+  const result = spawnImpl(commandFor('npx'), ['playwright', 'test'], {
     cwd: rootDir,
     encoding: 'utf8',
     shell: false,
-    env: childEnv({ ...env, PLAYWRIGHT_ARTIFACT_DIR: artifactDir }),
+    env: childEnv({
+      ...env,
+      PLAYWRIGHT_ARTIFACT_DIR: resolvedArtifactDir,
+    }),
     maxBuffer: 20 * 1024 * 1024,
   });
   const exitCode = typeof result.status === 'number' ? result.status : 1;
@@ -106,23 +111,26 @@ export function runPlaywright({ rootDir = root, env = process.env } = {}) {
   let counts = { passed: 0, failed: 0, skipped: 0, timedOut: 0, total: 0 };
   let parseError = null;
   try {
-    if (!fs.existsSync(resultsPath)) throw new Error('Playwright JSON report was not created.');
-    counts = parsePlaywrightJson(fs.readFileSync(resultsPath, 'utf8'));
+    if (!fs.existsSync(jsonReportPath)) {
+      throw new Error('Playwright JSON reporter did not write results.json.');
+    }
+    counts = parsePlaywrightJson(fs.readFileSync(jsonReportPath, 'utf8'));
   } catch (error) {
     parseError = error instanceof Error ? error.message : String(error);
   }
+  const passed = exitCode === 0 && parseError === null;
 
   return {
     mode: 'playwright',
     evidenceLevel: 'browser',
-    browserProof: exitCode === 0 && !parseError,
-    status: exitCode === 0 && !parseError ? 'pass' : 'fail',
+    browserProof: passed,
+    status: passed ? 'pass' : 'fail',
     exitCode,
     durationMs: Date.now() - startedAt,
     counts,
     parseError,
-    artifactDir: path.relative(rootDir, artifactDir),
-    resultsPath: path.relative(rootDir, resultsPath),
+    artifactDir: path.relative(rootDir, resolvedArtifactDir),
+    jsonReportPath: path.relative(rootDir, jsonReportPath),
     stdoutTail: tail(result.stdout),
     stderrTail: tail(result.stderr),
   };
@@ -149,7 +157,7 @@ export function runFallback({ rootDir = root, env = process.env } = {}) {
     counts: null,
     parseError: null,
     artifactDir: null,
-    resultsPath: null,
+    jsonReportPath: null,
     stdoutTail: tail(result.stdout),
     stderrTail: tail(result.stderr),
   };
@@ -186,13 +194,13 @@ export function writeReports(availability, run, { outputDir = defaultReportDir, 
     lines.push('The fallback result must not be described as browser or Playwright proof.');
   }
 
-  if (run.artifactDir) {
-    lines.push('', `Playwright artifacts: \`${run.artifactDir}\``);
-    lines.push(`Playwright JSON: \`${run.resultsPath}\``);
-  }
-
   if (run.counts) {
     lines.push('', `Passed: ${run.counts.passed} · Failed: ${run.counts.failed} · Skipped: ${run.counts.skipped} · Timed out: ${run.counts.timedOut}`);
+  }
+
+  if (run.artifactDir) {
+    lines.push('', `Playwright artifacts: ${run.artifactDir}`);
+    lines.push(`Playwright JSON: ${run.jsonReportPath}`);
   }
 
   if (run.parseError) {
