@@ -1,8 +1,15 @@
 # UUID Asset Rename Map
 
-Status: canonical names established on `agent/rename-uuid-image-assets`.
+Status: canonical names established and live splash routing migrated on `agent/rename-uuid-image-assets`.
 
-This migration is intentionally non-destructive. Existing UUID paths remain as compatibility aliases so current imports, historical notes, and external links do not break. No image bytes were deleted. Production room art already had clean filenames, so those existing files are the canonical targets rather than creating more duplicates.
+This migration is intentionally non-destructive. Existing UUID image files remain as compatibility aliases so historical notes and external links do not break. No image bytes were deleted. Production room art already had clean filenames, so those existing files are the canonical targets rather than creating more duplicates.
+
+## Runtime source of truth
+
+- `components/sekret/SekretSplashScreen.tsx` loads `assets/images/splash-teen.jpeg` for the teen side and `assets/images/splash-parent.png` for the parent side.
+- `constants/theme.ts` is the public theme entrypoint and overrides every exported splash alias with those canonical paths.
+- `constants/theme.base.ts` preserves the previous theme implementation byte-for-byte for compatibility and review history. It is an internal base module, not the public import target and not a source for new asset paths.
+- New runtime code must import from `constants/theme.ts` or use the canonical image paths directly. It must not import `constants/theme.base.ts`.
 
 ## App entry splashes
 
@@ -49,4 +56,4 @@ Repository history proves these are reference-only images, but does not contain 
 
 ## Migration rule
 
-New code and documentation should use the canonical paths above. UUID paths exist only for backward compatibility and should not be introduced into new imports.
+New code and documentation must use the canonical paths above. UUID image files exist only for backward compatibility and must not be introduced into new imports. `constants/theme.base.ts` is preservation-only and must not become a direct dependency.
