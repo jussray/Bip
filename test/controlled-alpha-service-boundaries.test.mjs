@@ -110,7 +110,7 @@ test('controlled-alpha SQL migrations are complete transaction units with balanc
     assert.match(migration, /^begin;/);
     assert.match(migration, /commit;\s*$/);
     assert.equal((migration.match(/\$\$/g) ?? []).length % 2, 0, `${path} has unbalanced dollar quotes`);
-    assert.equal((migration.match(/\bbegin;\b/g) ?? []).length >= 1, true);
-    assert.equal((migration.match(/\bcommit;\b/g) ?? []).length, 1);
+    assert.equal((migration.match(/\bbegin;/g) ?? []).length >= 1, true);
+    assert.equal((migration.match(/\bcommit;/g) ?? []).length, 1);
   }
 });
