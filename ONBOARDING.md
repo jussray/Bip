@@ -1,26 +1,33 @@
 # Se'kret Bip — Onboarding System
 
 > **ULTRATHINK OODA Reference**
-> This document is the single source of truth for the Se'kret Bip onboarding flow.
-> Treat it as the living spec for the state machine, activation milestones, and funnel.
+> Single source of truth for the onboarding state machine, activation milestones, funnel KPIs, and migration runbook.
 
 ---
 
 ## Activation Milestones (North Star)
 
 Onboarding is **complete** when a user reaches `activated` stage.
-The definition of activation differs by role:
+Activation definition differs by role:
 
-| Role | Activation Action | `activation_action` value |
-|---|---|---|
-| **Teen** | First mood log saved | `first_mood_log` |
-| **Teen** | First journal entry saved | `first_journal_entry` |
-| **Teen** | First anonymous post published | `first_post` |
-| **Parent** | First bridge message sent to teen | `first_bridge_message` |
-| **Parent** | First teen check-in viewed | `first_checkin_viewed` |
+| Role | Activation Action | `activation_action` value | How fired |
+|---|---|---|---|
+| **Teen** | First mood log saved | `first_mood_log` | DB trigger + app-side |
+| **Teen** | First journal entry | `first_journal_entry` | app-side only |
+| **Teen** | First anonymous post | `first_post` | app-side only |
+| **Parent** | First bridge message sent | `first_bridge_message` | app-side only |
+| **Parent** | First teen check-in viewed | `first_checkin_viewed` | app-side only |
 
-Call `markActivated(userId, activationAction)` from the service layer
-immediately after confirming the user completed their first action.
+App-side call (belt-and-suspenders, always idempotent):
+```ts
+import { markActivated } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
+
+// After confirming the first action was saved to DB:
+getSupabase()?.auth.getUser().then(({ data }) => {
+  if (data.user) markActivated(data.user.id, 'first_mood_log').catch(() => null);
+});
+```
 
 ---
 
@@ -28,56 +35,66 @@ immediately after confirming the user completed their first action.
 
 ```
 pre_signup
-    │  (user signs up via auth)
+    │  (user creates account — signup.tsx)
     ▼
 signed_up          → welcome.tsx
-    │  (accepts terms)
+    │  (accepts terms + privacy)
     ▼
 consent_complete   → age.tsx
-    │  (confirms age)
+    │  (confirms age bucket)
     ▼
 age_verified       → identity.tsx
     │  (selects role: teen | parent)
     ▼
 role_selected
     │
-    ├─[teen]──────────────────────────────────────────────────┐
-    │                                                          │
-    ▼                                                          │
-name.tsx                                                       │
-    │  (sets name/username)                                    │
-    ▼                                                          │
-name_set → reflection.tsx                                      │
-    │  (completes emotional reflection)                        │
-    ▼                                                          │
-reflection_complete → parent-link.tsx                         │
-    │  (sends parent invite code)                              │
-    ▼                                                          │
-parent_link_sent → (teen) app tabs ──► first core action      │
-    │                                        │                 │
-    │                               markActivated()           │
-    │                                        │                 │
-    ▼                                        ▼                 │
-                                         activated             │
-                                             │                 │
-                                             ▼                 │
-                                        steady_state           │
-                                                               │
-    └─[parent]─────────────────────────────────────────────────┘
+    ├─[teen]──────────────────────────────────────────────────────┐
+    │                                                              │
+    ▼                                                              │
+name.tsx                                                           │
+    │  (sets display name)                                         │
+    ▼                                                              │
+name_set → reflection.tsx                                          │
+    │  (completes emotional reflection)                            │
+    ▼                                                              │
+reflection_complete → parent-link.tsx (optional)                  │
+    │  (teen dispatches invite code to parent)                     │
+    ▼                                                              │
+parent_link_sent → (teen) app tabs                                │
+    │                   │                                          │
+    │          first core action                                   │
+    │          (mood log / journal / post)                         │
+    │                   │                                          │
+    │          markActivated()                                     │
+    │          DB trigger (mood_logs)                              │
+    │                   │                                          │
+    │                   ▼                                          │
+    │               activated                                      │
+    │                   │                                          │
+    │                   ▼                                          │
+    │              steady_state                                    │
+    │                                                              │
+    └─[parent]─────────────────────────────────────────────────────┘
          │
          ▼
-    parent-welcome.tsx → parent-setup.tsx
+    parent-welcome.tsx → parent-link.tsx
+         │  (links teen OR skips)
+         ├──► parent_linked (linked now)
+         └──► parent_link_skipped (link later)
+         │
+         ▼
+    parent-setup.tsx
          │  (completes parent profile)
          ▼
-    parent_setup_done → (parent) app tabs ──► first core action
-                                                    │
-                                           markActivated()
-                                                    │
-                                                    ▼
-                                                activated
-                                                    │
-                                                    ▼
-                                               steady_state
+    parent_setup_complete → (parent) app tabs
+         │
+         first core action
+         (bridge message / check-in)
+         │
+         markActivated()
+         │
+         ▼
+     activated → steady_state
 ```
 
 ---
@@ -91,16 +108,17 @@ parent_link_sent → (teen) app tabs ──► first core action      │
 | `app/(onboarding)/consent.tsx` | Terms & privacy consent |
 | `app/(onboarding)/age.tsx` | Age verification / bucket selection |
 | `app/(onboarding)/identity.tsx` | Role selection (teen / parent) |
-| `app/(onboarding)/name.tsx` | Username / display name (teen path) |
-| `app/(onboarding)/reflection.tsx` | Emotional reflection (teen path) |
-| `app/(onboarding)/parent-link.tsx` | Parent invite code (teen path) |
+| `app/(onboarding)/name.tsx` | Display name — teen path |
+| `app/(onboarding)/reflection.tsx` | Emotional reflection — teen path |
+| `app/(onboarding)/parent-link.tsx` | Parent invite code — shared entry point |
 | `app/(onboarding)/parent-splash.tsx` | Parent entry splash |
-| `app/(onboarding)/parent-welcome.tsx` | Parent welcome (parent path) |
+| `app/(onboarding)/parent-welcome.tsx` | Parent welcome |
 | `app/(onboarding)/parent-setup.tsx` | Parent profile setup |
 | `app/(onboarding)/teen-splash.tsx` | Teen entry splash |
-| `services/onboarding.ts` | State machine service — DB reads/writes |
-| `context/OnboardingContext.tsx` | React context — exposes state to screens |
-| `supabase/migrations/20260718000000_onboarding_state.sql` | DB schema |
+| `services/onboarding.ts` | State machine — DB reads/writes, `getSupabase()` |
+| `context/OnboardingContext.tsx` | React context — optional, wraps service for context-aware screens |
+| `supabase/migrations/20260718000000_onboarding_state.sql` | DB schema — table, enum, RLS, indexes |
+| `supabase/migrations/20260718000001_onboarding_mood_log_trigger.sql` | DB trigger — auto-activates on first mood log |
 
 ---
 
@@ -108,16 +126,14 @@ parent_link_sent → (teen) app tabs ──► first core action      │
 
 | OODA Phase | What Happens | Where |
 |---|---|---|
-| **Observe** | Funnel timing columns (`signup_to_consent_secs`, etc.) capture drop-off data per stage | `user_onboarding_state` table |
+| **Observe** | Funnel timing columns (`signup_to_consent_secs`, etc.) capture drop-off per stage | `user_onboarding_state` table |
 | **Orient** | `role`, `age_bucket`, `referral_source`, `device_platform` segment users for adaptive flows | `user_onboarding_state` table |
-| **Decide** | `nextScreenForStage()` computes the correct next route given role + stage | `services/onboarding.ts` |
-| **Act** | `advanceStage()` writes state, `OnboardingGuard` redirects mid-flow users to correct screen | `services/onboarding.ts` + `context/OnboardingContext.tsx` |
+| **Decide** | `nextScreenForStage()` computes correct route given role + stage | `services/onboarding.ts` |
+| **Act** | `advanceStage()` writes state forward-only; `OnboardingGuard` redirects mid-flow users | `services/onboarding.ts` + `context/OnboardingContext.tsx` |
 
 ---
 
 ## Funnel KPIs (Control Room)
-
-Query `user_onboarding_state` for these metrics:
 
 ```sql
 -- Activation rate
@@ -126,7 +142,7 @@ SELECT
 FROM user_onboarding_state;
 
 -- Stage drop-off funnel
-SELECT stage, COUNT(*) as users_at_stage
+SELECT stage, COUNT(*) AS users_at_stage
 FROM user_onboarding_state
 GROUP BY stage
 ORDER BY MIN(created_at);
@@ -137,62 +153,137 @@ FROM user_onboarding_state
 WHERE activated_at IS NOT NULL
 GROUP BY role;
 
--- Breakdown by activation action
-SELECT activation_action, COUNT(*) as count
+-- Activation action breakdown
+SELECT activation_action, COUNT(*) AS count
 FROM user_onboarding_state
 WHERE activated_at IS NOT NULL
-GROUP BY activation_action;
+GROUP BY activation_action
+ORDER BY count DESC;
+
+-- Parent link skip-to-link conversion
+SELECT
+  COUNT(*) FILTER (WHERE stage = 'parent_link_skipped') AS skipped,
+  COUNT(*) FILTER (WHERE stage = 'parent_linked') AS linked,
+  COUNT(*) FILTER (WHERE stage = 'parent_linked') * 100.0
+    / NULLIF(COUNT(*) FILTER (WHERE stage IN ('parent_linked','parent_link_skipped')), 0)
+    AS link_conversion_pct
+FROM user_onboarding_state
+WHERE role = 'parent';
+
+-- Platform split
+SELECT device_platform, COUNT(*) AS users
+FROM user_onboarding_state
+GROUP BY device_platform;
+
+-- Drop at each funnel stage (as % of signed_up cohort)
+WITH cohort AS (
+  SELECT COUNT(*) AS total FROM user_onboarding_state
+)
+SELECT
+  s.stage,
+  COUNT(*) AS users,
+  ROUND(COUNT(*) * 100.0 / c.total, 1) AS pct_of_signups
+FROM user_onboarding_state s, cohort c
+GROUP BY s.stage, c.total
+ORDER BY MIN(s.created_at);
 ```
 
-These queries are the Observe inputs for your OODA cycle.
-Run them from `founder-control-room` on your dashboard.
+---
+
+## Migration Runbook
+
+### Local development
+```bash
+# 1. Start local Supabase stack
+supabase start
+
+# 2. Verify migration files exist
+ls supabase/migrations/
+# 20260718000000_onboarding_state.sql
+# 20260718000001_onboarding_mood_log_trigger.sql
+
+# 3. Apply locally (resets DB and reruns all migrations)
+supabase db reset
+
+# 4. Verify the table exists
+supabase db diff   # should show no diff after reset
+```
+
+### Staging / Production
+```bash
+# Link to your remote project (one-time)
+supabase link --project-ref <your-project-ref>
+
+# Push migrations to remote
+supabase db push
+
+# Verify
+supabase db diff --linked
+# Should output: No schema changes found
+```
+
+### Rollback
+There is no down migration for enum types in Postgres.
+If you need to roll back:
+1. Drop dependent objects manually in the Supabase SQL editor.
+2. `DROP TYPE onboarding_stage CASCADE;`
+3. `DROP TYPE user_role CASCADE;`
+4. `DROP TABLE IF EXISTS user_onboarding_state;`
+5. Remove the migration files and rerun `supabase db push`.
+
+### If `supabase db push` fails with "type already exists"
+The enums were created manually in the dashboard.
+Run this in the Supabase SQL editor first:
+```sql
+DROP TYPE IF EXISTS onboarding_stage CASCADE;
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TABLE IF EXISTS user_onboarding_state;
+```
+Then re-run `supabase db push`.
+
+### Mood log trigger table name
+The trigger in `20260718000001` targets `public.mood_logs`.
+If your mood log table has a different name, update the trigger:
+```sql
+-- In Supabase SQL editor or a new migration:
+DROP TRIGGER IF EXISTS trg_first_mood_log_activation ON public.mood_logs;
+CREATE TRIGGER trg_first_mood_log_activation
+  AFTER INSERT ON public.<your_actual_table_name>
+  FOR EACH ROW EXECUTE FUNCTION handle_first_mood_log();
+```
 
 ---
 
 ## Adding a New Onboarding Step
 
-1. Add the new stage value to the `onboarding_stage` enum in the migration.
-2. Add it to the `STAGE_ORDER` array in `services/onboarding.ts` at the correct position.
-3. Add the new screen to `app/(onboarding)/`.
-4. Add the screen route to `nextScreenForStage()` in `services/onboarding.ts`.
-5. Call `advance(newStage)` at the end of the new screen's submit handler.
+1. Add the stage value to `onboarding_stage` enum in `20260718000000_onboarding_state.sql`.
+2. Add it to `STAGE_ORDER` in `services/onboarding.ts` at the correct position.
+3. Create the screen in `app/(onboarding)/`.
+4. Add the route to `nextScreenForStage()` in `services/onboarding.ts`.
+5. Fire `advanceStage(userId, 'your_new_stage').catch(() => null)` in the screen's submit handler.
 6. Update this doc.
 
 ---
 
-## Integration: `useOnboarding()` in a Screen
+## Self-Reliant Screen Pattern
 
-```tsx
-// app/(onboarding)/name.tsx — example integration
-import { useOnboarding } from '@/context/OnboardingContext';
-import { router } from 'expo-router';
+Screens own their own navigation. The state machine is an observer, not a gatekeeper.
 
-export default function NameScreen() {
-  const { advance, loading } = useOnboarding();
+```ts
+// Standard fire-and-forget pattern for any onboarding screen
+import { advanceStage } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
-  const handleNext = async (displayName: string) => {
-    await advance('name_set', { display_name: displayName });
-    router.push('/(onboarding)/reflection');
-  };
+async function handleNext() {
+  // 1. Do your own work first (AsyncStorage, validation, etc.)
+  await AsyncStorage.setItem('bip_onboarding_name', name.trim());
 
-  return (
-    // ... your existing UI
-  );
-}
-```
+  // 2. Signal the state machine — fire-and-forget, never awaited
+  getSupabase()?.auth.getUser().then(({ data }) => {
+    if (data.user) advanceStage(data.user.id, 'name_set').catch(() => null);
+  });
 
----
-
-## Integration: Triggering Activation
-
-```tsx
-// Call this wherever the first core action fires — e.g. MoodLogScreen
-import { useOnboarding } from '@/context/OnboardingContext';
-
-const { markActivated, isComplete } = useOnboarding();
-
-// After saving first mood log to DB:
-if (!isComplete) {
-  await markActivated('first_mood_log');
+  // 3. Navigate immediately — never wait for the DB write
+  router.push('/(onboarding)/reflection');
 }
 ```
