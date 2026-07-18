@@ -4,14 +4,16 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('controlled alpha activates built relationship surfaces without inventing L4', async () => {
+test('controlled alpha activates built relationship surfaces without widening public or inventing L4', async () => {
   const flags = await read('src/constants/relationshipFeatureFlags.ts');
 
-  assert.match(flags, /bridgeSummaries:\s*'enabled'/);
-  assert.match(flags, /crewAccountability:\s*'enabled'/);
+  assert.match(flags, /bridgeSummaries:\s*'beta'/);
+  assert.match(flags, /crewAccountability:\s*'beta'/);
   assert.match(flags, /emotionalScrapbook:\s*'internal'/);
   assert.match(flags, /companionMemory:\s*'disabled'/);
   assert.match(flags, /FOUNDER_PREVIEWABLE_FEATURES[\s\S]*'emotionalScrapbook'/);
+  assert.doesNotMatch(flags, /bridgeSummaries:\s*'enabled'/);
+  assert.doesNotMatch(flags, /crewAccountability:\s*'enabled'/);
 });
 
 test('preview builds use the isolated alpha Worker while production stays canonical', async () => {
@@ -32,15 +34,18 @@ test('preview builds use the isolated alpha Worker while production stays canoni
     'https://sekret-backend.mcgill-raylene.workers.dev',
   );
   assert.equal(eas.build.production.env.EXPO_PUBLIC_RELEASE_AUDIENCE, 'public');
+  assert.equal(eas.build['parent-production'].env.EXPO_PUBLIC_RELEASE_AUDIENCE, 'public');
 });
 
-test('alpha Worker enables Bridge generation without changing production wrangler config', async () => {
+test('alpha Worker is isolated and fail-closed without changing production configuration', async () => {
   const alpha = await read('wrangler.alpha.toml');
   const production = await read('wrangler.toml');
 
   assert.match(alpha, /name\s*=\s*"sekret-backend-alpha"/);
-  assert.match(alpha, /BRIDGE_SUMMARIES_ROLLOUT\s*=\s*"enabled"/);
+  assert.match(alpha, /BRIDGE_SUMMARIES_ROLLOUT\s*=\s*"disabled"/);
+  assert.match(alpha, /comma-separated allowlist/);
   assert.doesNotMatch(alpha, /(OPENAI_API_KEY|SUPABASE_SERVICE_ROLE_KEY)\s*=/);
+  assert.doesNotMatch(alpha, /BRIDGE_SUMMARIES_ROLLOUT\s*=\s*"enabled"/);
   assert.match(production, /BRIDGE_SUMMARIES_ROLLOUT\s*=\s*"disabled"/);
 });
 
@@ -49,7 +54,7 @@ test('controlled-alpha commands are explicit and cannot silently deploy producti
 
   assert.equal(
     pkg.scripts['test:controlled-alpha'],
-    'node --test test/controlled-alpha-activation.test.mjs',
+    'node --test test/controlled-alpha-activation.test.mjs test/controlled-alpha-founder-room-plan.test.mjs test/controlled-alpha-service-boundaries.test.mjs',
   );
   assert.equal(
     pkg.scripts['verify:worker:alpha'],
