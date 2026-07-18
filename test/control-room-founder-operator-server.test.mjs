@@ -157,6 +157,17 @@ test('Founder Operator endpoint persists valid plans and rejects false or unsafe
     assert.ok(fs.existsSync(path.join(reportDir, '20260718-integrated-control-room-v2.json')));
     assert.deepEqual(JSON.parse(fs.readFileSync(path.join(reportDir, 'latest.json'), 'utf8')), buildPlan());
 
+    const terminologyPlan = buildPlan('20260718-service-role-terminology');
+    terminologyPlan.constraints = 'Audit service_role access without pasting any credential value.';
+    const terminologyResponse = await post(terminologyPlan);
+    assert.equal(terminologyResponse.status, 201);
+
+    const credentialPlan = buildPlan('20260718-service-role-credential');
+    credentialPlan.constraints = 'SUPABASE_SERVICE_ROLE_KEY=eyJabcdefghijk.abcdefghijkl.abcdefghijkl';
+    const credentialResponse = await post(credentialPlan);
+    assert.equal(credentialResponse.status, 400);
+    assert.equal((await credentialResponse.json()).error, 'credential_shaped_content_rejected');
+
     const secretPlan = buildPlan('20260718-secret-shape-rejection');
     secretPlan.artifacts[0].Access_Token = 'plain-text-value';
     const secretResponse = await post(secretPlan);
