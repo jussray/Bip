@@ -70,8 +70,8 @@ Fail the change if any of these become false:
 - each launch uses a new random token of at least 32 bytes;
 - local origin and bearer authentication are enforced;
 - mission IDs are allowlisted and arbitrary shell arguments are rejected;
-- only one mission runs at a time;
-- execution has a timeout and bounded output;
+- only one mission runs at a time, including while a timed-out process tree is terminating;
+- execution has a timeout, descendant-process termination with forced escalation, and bounded output;
 - tokens and secrets are never written to reports, logs, commits, or production bundles;
 - raw teen or parent-private content never enters mission output, telemetry, prompts, or provider calls;
 - UI success is not described as deployment or exact production proof.
