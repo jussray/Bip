@@ -4,13 +4,14 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('GLOBAL_AI subordinates bip-os proposal to current authority', async () => {
+test('GLOBAL_AI subordinates both Bip OS copies to current authority', async () => {
   const global = await read('GLOBAL_AI.md');
 
-  assert.match(global, /`bip-os\.md` status/);
-  assert.match(global, /non-authoritative proposal and checklist reference/);
-  assert.match(global, /Founder Control Room/);
-  assert.match(global, /current repository paths/);
+  assert.match(global, /Bip Engineering OS proposal status/);
+  assert.match(global, /\[`bip-os\.md`\]\(bip-os\.md\)/);
+  assert.match(global, /\[`control-room\/bip-os\.md`\]\(control-room\/bip-os\.md\)/);
+  assert.match(global, /non-authoritative proposal and checklist references/);
+  assert.match(global, /Founder Control Room evidence/);
   assert.match(global, /do not authorize builds, deployment, credentials, paid capacity, publishing, or database application/);
 });
 
@@ -30,9 +31,16 @@ test('fictional monorepo and release YAML are explicitly non-claims', async () =
   const status = await read('docs/BIP_ENGINEERING_OS_STATUS.md');
 
   assert.match(status, /not the proposed `apps\/mobile` \/ `packages\/\*` monorepo/);
-  assert.match(status, /The YAML blocks in `bip-os\.md` are illustrative sketches only/);
+  assert.match(status, /The YAML blocks in both proposal copies are illustrative sketches only/);
   assert.match(status, /`supabase db push` is safe or authorized/);
   assert.match(status, /Production build\/deploy\/migrate chain \| Prohibited/);
+});
+
+test('Control Room location does not elevate proposal authority', async () => {
+  const status = await read('docs/BIP_ENGINEERING_OS_STATUS.md');
+
+  assert.match(status, /Placement under `control-room\/` does not convert source material into Founder Control Room evidence/);
+  assert.match(status, /Root or Control Room file location \| Does not elevate proposal status/);
 });
 
 test('actual repository path map keeps migration and runtime authority explicit', async () => {
@@ -51,8 +59,8 @@ test('actual repository path map keeps migration and runtime authority explicit'
   assert.match(status, /Database application must use reviewed ordered migrations and separate live approval/);
 });
 
-test('source material is preserved rather than deleted', async () => {
+test('both source copies are preserved rather than deleted', async () => {
   const status = await read('docs/BIP_ENGINEERING_OS_STATUS.md');
-  assert.match(status, /preserve `bip-os\.md` as source material/);
-  assert.match(status, /do not execute it as instructions/);
+  assert.match(status, /preserve both proposal copies as source material/);
+  assert.match(status, /do not execute either as instructions/);
 });
