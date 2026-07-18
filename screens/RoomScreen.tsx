@@ -97,6 +97,7 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     label: 'Headphones 🎙️',
     target: 'voiceBip',
     hint: 'tap headphones',
+    pulse: true,
     style: { bottom: '14%', left: '2%', width: '18%', height: '12%' },
   },
   {
@@ -112,6 +113,7 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     label: 'Bed 🌙',
     target: 'comfort',
     hint: 'tap the bed',
+    pulse: true,
     style: { top: '38%', right: '6%', width: '34%', height: '34%' },
   },
   {
@@ -119,6 +121,7 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     label: 'Growth Board ⭐',
     target: 'bippin2',
     hint: 'tap the board',
+    pulse: true,
     style: { top: '4%', left: '22%', width: '24%', height: '26%' },
   },
   {
@@ -126,6 +129,7 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     label: 'Photo Wall 🌐',
     target: 'circle',
     hint: 'tap the wall',
+    pulse: true,
     style: { top: '4%', right: '0%', width: '18%', height: '55%' },
   },
   {
@@ -137,18 +141,20 @@ const RAYLENE_HOTSPOTS: Hotspot[] = [
     style: { top: '4%', left: '0%', width: '18%', height: '50%' },
   },
   {
-    id: 'bridge',
-    label: 'Bridge 🌉',
-    target: 'bridge',
-    hint: 'tap the bridge object',
-    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
+    id: ‘bridge’,
+    label: ‘Bridge 🌉’,
+    target: ‘bridge’,
+    hint: ‘tap the bridge object’,
+    pulse: true,
+    style: { bottom: ‘24%’, right: ‘36%’, width: ‘16%’, height: ‘12%’ },
   },
   {
-    id: 'summon',
+    id: ‘summon’,
     label: "Se’kret 💜",
-    target: 'sekret',
+    target: ‘sekret’,
     hint: "call Se’kret",
-    style: { top: '38%', left: '4%', width: '20%', height: '30%' },
+    pulse: true,
+    style: { top: ‘38%’, left: ‘4%’, width: ‘20%’, height: ‘30%’ },
   },
 ];
 
@@ -166,6 +172,7 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     label: 'Headphones 🎙️',
     target: 'voiceBip',
     hint: 'tap headphones',
+    pulse: true,
     style: { top: '40%', left: '28%', width: '14%', height: '10%' },
   },
   {
@@ -181,6 +188,7 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     label: 'Bed 🌙',
     target: 'comfort',
     hint: 'tap the bed',
+    pulse: true,
     style: { top: '36%', right: '6%', width: '36%', height: '36%' },
   },
   {
@@ -188,6 +196,7 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     label: 'Growth Board ⭐',
     target: 'bippin2',
     hint: 'tap the board',
+    pulse: true,
     style: { top: '2%', left: '26%', width: '24%', height: '28%' },
   },
   {
@@ -195,6 +204,7 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     label: 'Photo Wall 🌐',
     target: 'circle',
     hint: 'tap the wall',
+    pulse: true,
     style: { top: '2%', right: '0%', width: '20%', height: '50%' },
   },
   {
@@ -206,18 +216,20 @@ const RYLANE_HOTSPOTS: Hotspot[] = [
     style: { top: '2%', left: '0%', width: '20%', height: '55%' },
   },
   {
-    id: 'bridge',
-    label: 'Bridge 🌉',
-    target: 'bridge',
-    hint: 'tap the bridge object',
-    style: { bottom: '24%', right: '36%', width: '16%', height: '12%' },
+    id: ‘bridge’,
+    label: ‘Bridge 🌉’,
+    target: ‘bridge’,
+    hint: ‘tap the bridge object’,
+    pulse: true,
+    style: { bottom: ‘24%’, right: ‘36%’, width: ‘16%’, height: ‘12%’ },
   },
   {
-    id: 'summon',
+    id: ‘summon’,
     label: "Se’kret ⚡",
-    target: 'sekret',
+    target: ‘sekret’,
     hint: "call Se’kret",
-    style: { top: '30%', left: '2%', width: '24%', height: '36%' },
+    pulse: true,
+    style: { top: ‘30%’, left: ‘2%’, width: ‘24%’, height: ‘36%’ },
   },
 ];
 
@@ -244,6 +256,7 @@ const CLOUD_HOTSPOTS: Hotspot[] = [
     label: 'Cloud Mic 🎤',
     target: 'voiceBip',
     hint: 'tap the mic',
+    pulse: true,
     style: { top: '22%', right: '10%', width: '20%', height: '16%' },
   },
   {
@@ -259,6 +272,7 @@ const CLOUD_HOTSPOTS: Hotspot[] = [
     label: "Cloud Se'kret ☁️",
     target: 'sekret',
     hint: 'tap to float',
+    pulse: true,
     style: { top: '62%', left: '18%', width: '64%', height: '22%' },
   },
 ];
@@ -286,6 +300,7 @@ const NIGHT_HOTSPOTS: Hotspot[] = [
     label: 'Voice Bip Corner 🎙️',
     target: 'voiceBip',
     hint: 'voice bip corner',
+    pulse: true,
     style: { top: '20%', right: '2%', width: '26%', height: '28%' },
   },
   {
@@ -293,6 +308,7 @@ const NIGHT_HOTSPOTS: Hotspot[] = [
     label: 'Moon Chair 🌙',
     target: 'comfort',
     hint: 'sit in the chair',
+    pulse: true,
     style: { top: '26%', left: '34%', width: '36%', height: '40%' },
   },
   {
@@ -300,6 +316,7 @@ const NIGHT_HOTSPOTS: Hotspot[] = [
     label: 'Reach Out 🌉',
     target: 'bridge',
     hint: 'reach out',
+    pulse: true,
     style: { bottom: '30%', right: '6%', width: '22%', height: '16%' },
   },
   {
@@ -307,6 +324,7 @@ const NIGHT_HOTSPOTS: Hotspot[] = [
     label: "Night Se'kret 🌙",
     target: 'sekret',
     hint: 'tap to wake',
+    pulse: true,
     style: { bottom: '36%', left: '2%', width: '32%', height: '32%' },
   },
 ];

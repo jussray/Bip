@@ -105,6 +105,10 @@ export function ManhoodScreen({
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
+        <TouchableOpacity onPress={() => setScreen('more')} style={styles.backBtn}>
+          <Text style={[styles.backText, { color: glow }]}>← back</Text>
+        </TouchableOpacity>
+
         {/* ── HERO ── */}
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>Bippin 2{"\n"}Manhood ⚡</Text>
@@ -239,6 +243,8 @@ export function ManhoodScreen({
 const styles = StyleSheet.create({
   root:      { flex: 1, backgroundColor: '#030612' },
   container: { flexGrow: 1, paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingHorizontal: 16, paddingBottom: 100 },
+  backBtn:   { alignSelf: 'flex-start', paddingVertical: 6, paddingHorizontal: 2, marginBottom: 4 },
+  backText:  { fontSize: 14, fontWeight: '700' },
 
   hero:      { marginBottom: 18, paddingTop: 8 },
   heroTitle: { fontSize: 32, fontWeight: '900', color: '#fff', lineHeight: 38, marginBottom: 6 },
