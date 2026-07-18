@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import path from 'node:path';
@@ -10,6 +10,7 @@ const host = '127.0.0.1';
 const port = Number(process.env.CONTROL_ROOM_LOCAL_PORT || 4317);
 const token = String(process.env.CONTROL_ROOM_LOCAL_TOKEN || '');
 const timeoutMs = Number(process.env.CONTROL_ROOM_MISSION_TIMEOUT_MS || 10 * 60 * 1000);
+const terminationGraceMs = Number(process.env.CONTROL_ROOM_TERMINATION_GRACE_MS || 3_000);
 const allowedMissions = new Set(['continue-yesterday', 'verify-local', 'verify-frontend', 'recover-system']);
 let activeMission = null;
 let latestRun = null;
@@ -19,6 +20,9 @@ if (!token || token.length < 32) {
 }
 if (!Number.isInteger(port) || port < 1024 || port > 65535) {
   throw new Error('CONTROL_ROOM_LOCAL_PORT must be a valid non-privileged port.');
+}
+if (!Number.isInteger(terminationGraceMs) || terminationGraceMs < 100 || terminationGraceMs > 60_000) {
+  throw new Error('CONTROL_ROOM_TERMINATION_GRACE_MS must be between 100 and 60000 milliseconds.');
 }
 
 function safeEqual(left, right) {
@@ -60,6 +64,28 @@ function appendTail(current, chunk) {
   return (current + chunk.toString('utf8')).slice(-64_000);
 }
 
+function terminateProcessTree(child, signal) {
+  if (!child?.pid) return false;
+
+  if (process.platform === 'win32') {
+    const args = ['/PID', String(child.pid), '/T', '/F'];
+    const result = spawnSync('taskkill', args, {
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    return result.status === 0;
+  }
+
+  try {
+    process.kill(-child.pid, signal);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ESRCH') return true;
+    console.error(`Unable to terminate mission process group ${child.pid}: ${error instanceof Error ? error.message : String(error)}`);
+    return false;
+  }
+}
+
 function executeMission(missionId, req, res, origin) {
   if (!allowedMissions.has(missionId)) {
     return writeJson(res, 403, { error: 'mission_not_allowed', missionId }, origin);
@@ -74,17 +100,24 @@ function executeMission(missionId, req, res, origin) {
     cwd: root,
     env: { ...process.env, CI: process.env.CI || 'false' },
     stdio: ['ignore', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32',
   });
   let stdout = '';
   let stderr = '';
   let settled = false;
+  let timedOut = false;
+  let terminationEscalated = false;
+  let timedOutPayload = null;
+  let timeoutTimer = null;
+  let forceKillTimer = null;
   child.stdout.on('data', chunk => { stdout = appendTail(stdout, chunk); });
   child.stderr.on('data', chunk => { stderr = appendTail(stderr, chunk); });
 
   const finish = (status, payload) => {
     if (settled) return;
     settled = true;
-    clearTimeout(timer);
+    clearTimeout(timeoutTimer);
+    clearTimeout(forceKillTimer);
     activeMission = null;
     latestRun = {
       missionId,
@@ -99,13 +132,27 @@ function executeMission(missionId, req, res, origin) {
     if (!res.writableEnded) writeJson(res, status === 'passed' ? 200 : 500, latestRun, origin);
   };
 
-  const timer = setTimeout(() => {
-    child.kill('SIGTERM');
-    finish('timed_out', { exitCode: null, error: 'mission_timeout' });
+  timeoutTimer = setTimeout(() => {
+    timedOut = true;
+    terminateProcessTree(child, 'SIGTERM');
+    forceKillTimer = setTimeout(() => {
+      if (settled) return;
+      terminateProcessTree(child, 'SIGKILL');
+      terminationEscalated = true;
+      if (timedOutPayload) finish('timed_out', timedOutPayload);
+    }, terminationGraceMs);
   }, timeoutMs);
 
-  child.on('error', error => finish('failed', { exitCode: null, error: error.message }));
-  child.on('close', code => finish(code === 0 ? 'passed' : 'failed', { exitCode: code }));
+  child.on('error', error => {
+    if (!timedOut) return finish('failed', { exitCode: null, error: error.message });
+    timedOutPayload = { exitCode: null, error: 'mission_timeout', termination: 'process_tree' };
+    if (terminationEscalated) finish('timed_out', timedOutPayload);
+  });
+  child.on('close', (code, signal) => {
+    if (!timedOut) return finish(code === 0 ? 'passed' : 'failed', { exitCode: code, signal });
+    timedOutPayload = { exitCode: code, signal, error: 'mission_timeout', termination: 'process_tree' };
+    if (terminationEscalated) finish('timed_out', timedOutPayload);
+  });
 }
 
 const server = createServer((req, res) => {
