@@ -1,0 +1,19 @@
+name = "sekret-backend-alpha"
+main = "worker/observed-index.ts"
+compatibility_date = "2026-06-13"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+# Controlled-alpha runtime. Secrets must be provisioned through `wrangler secret put`
+# against this Worker and must never be committed.
+[vars]
+SUPABASE_URL = "https://tbsevonvegdnlyjgplmm.supabase.co"
+OPENAI_CHAT_MODEL = "gpt-4o"
+OPENAI_TTS_MODEL = "gpt-4o-mini-tts"
+OPENAI_STT_MODEL = "whisper-1"
+
+# Alpha is account-gated and invite-controlled at the app/relationship layers.
+# This enables Bridge summary generation in the isolated alpha Worker only.
+BRIDGE_SUMMARIES_ROLLOUT = "enabled"
