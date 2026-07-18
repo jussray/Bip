@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationPath = 'supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql';
+const blockedMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
 
 test('controlled-alpha relationship features stop at the beta audience', async () => {
   const flags = await read('src/constants/relationshipFeatureFlags.ts');
@@ -82,4 +83,16 @@ test('Crew share mutations are RPC-only and every share owner matches the check-
   assert.match(migration, /s\.owner_user_id = crew_check_ins\.owner_user_id/);
   assert.match(migration, /ci\.owner_user_id = crew_check_in_shares\.owner_user_id/);
   assert.match(migration, /ci\.owner_user_id = s\.owner_user_id/);
+});
+
+test('Crew recipient reads and encouragements deny either-direction blocking', async () => {
+  const migration = await read(blockedMigrationPath);
+
+  assert.match(migration, /create or replace function public\.crew_pair_is_unblocked/);
+  assert.match(migration, /blocked\.connection_status = 'blocked'/);
+  assert.match(migration, /blocked\.user_id = p_owner_user_id and blocked\.member_user_id = p_member_user_id/);
+  assert.match(migration, /blocked\.user_id = p_member_user_id and blocked\.member_user_id = p_owner_user_id/);
+  assert.match(migration, /public\.crew_pair_is_unblocked\(owner_user_id, auth\.uid\(\)\)/);
+  assert.match(migration, /public\.crew_pair_is_unblocked\(s\.owner_user_id, auth\.uid\(\)\)/);
+  assert.match(migration, /public\.crew_pair_is_unblocked\(recipient_user_id, sender_user_id\)/);
 });
