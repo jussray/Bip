@@ -48,3 +48,29 @@ test('name-to-identity timing is recorded on identity transition', async () => {
   assert.match(source, /payload\.stage === 'identity_set' && current\.stage === 'name_set'/);
   assert.doesNotMatch(source, /payload\.stage === 'reflection_complete' && current\.stage === 'name_set'/);
 });
+
+test('age screen keeps pre-auth choices local and supports permanent-account recovery', async () => {
+  const age = await read('app/(onboarding)/age.tsx');
+
+  assert.match(age, /Pre-auth selections\s*\n\s*\/\/ stay local and are replayed by consent\.tsx/);
+  assert.match(age, /if \(error \|\| !data\.user \|\| data\.user\.is_anonymous\) return null/);
+  assert.match(age, /advanceStage\(userId, 'age_verified', \{ age_bucket: selected \}\)/);
+  assert.match(age, /advanceStage\(userId, 'role_selected', \{ role: 'teen' \}\)/);
+  assert.match(age, /router\.push\('\/\(auth\)\/signup\?side=teen'/);
+});
+
+test('consent replays durable age and role milestones after permanent auth', async () => {
+  const consent = await read('app/(onboarding)/consent.tsx');
+
+  const consentIndex = consent.indexOf("await advance('consent_complete')");
+  const ageIndex = consent.indexOf("await advance('age_verified', { age_bucket: storedAge })");
+  const teenRoleIndex = consent.indexOf("await advance('role_selected', { role: 'teen' })");
+  const parentRoleIndex = consent.indexOf("await advance('role_selected', { role: 'parent' })");
+
+  assert.ok(consentIndex >= 0);
+  assert.ok(ageIndex > consentIndex);
+  assert.ok(teenRoleIndex > ageIndex);
+  assert.ok(parentRoleIndex > consentIndex);
+  assert.match(consent, /if \(!isStoredAgeRange\(storedAge\)\) \{\s*router\.replace\('\/\(onboarding\)\/age'\)/);
+  assert.match(consent, /Replay any local\s*\n\s*\/\/ pre-signup role\/age choices only after the permanent account exists/);
+});
