@@ -4,7 +4,8 @@ begin;
 -- active shares when either participant blocks or leaves. A private,
 -- security-definer policy helper also checks the full check-in/share/relationship
 -- contract without creating recursive RLS evaluation between the two public
--- tables.
+-- tables. The helper binds its member argument to the current permanent caller,
+-- so it cannot be used as an arbitrary relationship-enumeration primitive.
 
 create schema if not exists private;
 revoke all on schema private from public;
@@ -22,7 +23,10 @@ security definer
 set search_path = public, pg_temp
 as $$
   select
-    p_check_in_id is not null
+    (select auth.uid()) is not null
+    and (select auth.uid()) = p_member_user_id
+    and not coalesce((select (auth.jwt() ->> 'is_anonymous')::boolean), false)
+    and p_check_in_id is not null
     and p_owner_user_id is not null
     and p_member_user_id is not null
     and p_owner_user_id <> p_member_user_id
@@ -65,7 +69,7 @@ grant execute on function private.crew_check_in_access_is_active(uuid, uuid, uui
   to authenticated;
 
 comment on function private.crew_check_in_access_is_active(uuid, uuid, uuid) is
-  'Private RLS helper that confirms one active check-in, owner-consistent active share, accepted Crew relationship, and no block in either direction. It is intentionally outside exposed API schemas.';
+  'Private RLS helper bound to the current permanent member. Confirms one active check-in, owner-consistent active share, accepted Crew relationship, and no block in either direction. It is intentionally outside exposed API schemas.';
 
 drop policy if exists crew_check_in_shares_crew_read on public.crew_check_in_shares;
 create policy crew_check_in_shares_crew_read on public.crew_check_in_shares
@@ -89,6 +93,24 @@ create policy crew_check_ins_crew_read on public.crew_check_ins
       id,
       owner_user_id,
       (select auth.uid())
+    )
+  );
+
+-- The check-in owner may retain their own encouragement history. A former or
+-- blocked Crew member loses direct encouragement reads when active share access
+-- ends, matching the feed and revocation boundary.
+drop policy if exists crew_encouragements_read on public.crew_encouragements;
+create policy crew_encouragements_read on public.crew_encouragements
+  for select to authenticated
+  using (
+    (select auth.uid()) = recipient_user_id
+    or (
+      (select auth.uid()) = sender_user_id
+      and private.crew_check_in_access_is_active(
+        check_in_id,
+        recipient_user_id,
+        sender_user_id
+      )
     )
   );
 
