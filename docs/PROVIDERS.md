@@ -41,9 +41,11 @@ Tool evidence is required for claimed writes, tests, merges, deployments, schedu
 
 ## DeepSeek
 
-Use as a founder-only advisory worker for premise challenge, alternative hypotheses, implementation critique, cost and complexity challenge, and red-team analysis. DeepSeek is not the active writer by default. It cannot authorize, publish, deploy, create accounts, alter production state, or become a teen-facing runtime merely because it produced a strong recommendation.
+Use as a founder-only advisory worker for premise challenge, alternative hypotheses, implementation critique, cost and complexity challenge, and red-team analysis through the existing Control Room. The canonical handoff contract is [`../DeepSeek/deepseek-chat.md`](../DeepSeek/deepseek-chat.md).
 
-Any future live adapter must follow the same minimized handoff, evidence, authentication, rate, cost, failure, and rollback controls as other providers.
+DeepSeek is not the active writer by default and is not a teen-facing runtime. It must not receive raw teen content, parent-private content, authentication tokens, service-role credentials, provider secrets, or unminimized production data. It cannot authorize, publish, merge, deploy, create accounts, alter production state, or become a live product capability merely because it produced a strong recommendation or appears in a registry.
+
+Any future live adapter must run behind an authenticated server boundary with explicit model versioning, minimized handoffs, output validation, timeouts, retry/rate/cost limits, metadata-safe telemetry, failure fallback, one-writer provenance, a feature flag, and immediate rollback. Provider or tool registration is a capability declaration, not proof that an adapter is deployed.
 
 ## OpenAI Platform
 
