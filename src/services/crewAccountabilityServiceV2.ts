@@ -110,18 +110,20 @@ export async function revokeCheckInShare(
     return { ok: false, code: 'not_authenticated', message: 'Sign in to revoke a share.' };
   }
 
-  const { data, error } = await supabase
-    .from('crew_check_in_shares')
-    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
-    .eq('check_in_id', checkInId)
-    .eq('owner_user_id', user.id)
-    .eq('shared_with', sharedWithUserId)
-    .eq('status', 'active')
-    .select('id,status,revoked_at')
-    .maybeSingle();
+  const { data, error } = await supabase.rpc('revoke_crew_check_in_share', {
+    p_check_in_id: checkInId,
+    p_shared_with: sharedWithUserId,
+  });
 
-  if (error) return { ok: false, code: 'server_error', message: error.message };
-  if (!data || data.status !== 'revoked' || typeof data.revoked_at !== 'string') {
+  if (error) {
+    return {
+      ok: false,
+      code: error.code === '42501' ? 'not_authorized' : 'server_error',
+      message: error.message || 'Could not revoke the Crew share.',
+      retryable: error.code !== '42501',
+    };
+  }
+  if (typeof data !== 'string' || !data) {
     return {
       ok: false,
       code: 'not_authorized',
