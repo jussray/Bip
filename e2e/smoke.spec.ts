@@ -1,4 +1,18 @@
+import fs from 'node:fs';
 import { expect, test } from '@playwright/test';
+
+const productionEnv = fs.readFileSync('.env.production', 'utf8');
+
+function productionEnvValue(name: string): string {
+  const match = productionEnv.match(new RegExp(`^${name}=(.+)$`, 'm'));
+  if (!match?.[1]?.trim()) {
+    throw new Error(`Missing ${name} in .env.production`);
+  }
+  return match[1].trim();
+}
+
+const PRODUCTION_SUPABASE_URL = productionEnvValue('EXPO_PUBLIC_SUPABASE_URL');
+const PRODUCTION_SUPABASE_KEY = productionEnvValue('EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
 
 test('teen splash leads into onboarding welcome', async ({ page }) => {
   await page.goto('/');
@@ -36,6 +50,56 @@ test('signup deep link exposes account creation controls', async ({ page }) => {
   await expect(page.getByPlaceholder('password (8+ characters)')).toBeVisible();
   await expect(page.getByPlaceholder('confirm password')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Create Account' })).toBeVisible();
+});
+
+test('production browser can reach Supabase Auth without creating an account', async ({ page }) => {
+  await page.goto('/signup');
+
+  const probe = await page.evaluate(
+    async ({ supabaseUrl, supabaseKey }) => {
+      try {
+        const response = await fetch(`${supabaseUrl}/auth/v1/settings`, {
+          method: 'GET',
+          headers: {
+            apikey: supabaseKey,
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+        });
+
+        return {
+          status: response.status,
+          error: null,
+        };
+      } catch (error) {
+        return {
+          status: null,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
+    {
+      supabaseUrl: PRODUCTION_SUPABASE_URL,
+      supabaseKey: PRODUCTION_SUPABASE_KEY,
+    },
+  );
+
+  expect(probe.error).toBeNull();
+  expect(probe.status).toBe(200);
+});
+
+test('signup contains auth transport failures without exposing raw fetch text', async ({ page }) => {
+  await page.route('**/auth/v1/signup', route => route.abort('failed'));
+  await page.goto('/signup');
+
+  await page.getByPlaceholder('email').fill('playwright-network-probe@example.invalid');
+  await page.getByPlaceholder('password (8+ characters)').fill('BipPlaywright!2026');
+  await page.getByPlaceholder('confirm password').fill('BipPlaywright!2026');
+  await page.getByRole('button', { name: 'Create Account' }).click();
+
+  await expect(
+    page.getByText('Could not reach the account server. Check your connection, then try again.'),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/^Failed to fetch$/i)).not.toBeVisible();
 });
 
 test('frontend entry renders at phone width without horizontal overflow', async ({ page }) => {
