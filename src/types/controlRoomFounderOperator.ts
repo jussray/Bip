@@ -53,6 +53,7 @@ export type FounderOperatorArtifact = {
   evidenceRequired: string[];
   approvalGate?: string;
   status: FounderOperatorArtifactStatus;
+  approvalRecordedAt?: string;
 };
 
 export type FounderOperatorPhase = {
