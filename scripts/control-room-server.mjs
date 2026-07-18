@@ -11,10 +11,12 @@ const host = '127.0.0.1';
 const port = Number(process.env.CONTROL_ROOM_LOCAL_PORT || 4317);
 const token = String(process.env.CONTROL_ROOM_LOCAL_TOKEN || '');
 const timeoutMs = Number(process.env.CONTROL_ROOM_MISSION_TIMEOUT_MS || 10 * 60 * 1000);
+const timeoutGraceMs = Number(process.env.CONTROL_ROOM_MISSION_TIMEOUT_GRACE_MS || 5_000);
 const allowedMissions = new Set(['continue-yesterday', 'verify-local', 'verify-frontend', 'recover-system']);
 const founderOperatorReportDir = path.join(root, 'reports', 'control-room', 'founder-operator');
 const blockedPlanKeys = new Set(['transcript', 'journalEntry', 'privateMessage', 'rawTeenContent', 'rawParentContent', 'password', 'token', 'secret']);
 let activeMission = null;
+let activeChild = null;
 let latestRun = null;
 
 if (!token || token.length < 32) {
@@ -22,6 +24,9 @@ if (!token || token.length < 32) {
 }
 if (!Number.isInteger(port) || port < 1024 || port > 65535) {
   throw new Error('CONTROL_ROOM_LOCAL_PORT must be a valid non-privileged port.');
+}
+if (!Number.isInteger(timeoutGraceMs) || timeoutGraceMs < 250 || timeoutGraceMs > 30_000) {
+  throw new Error('CONTROL_ROOM_MISSION_TIMEOUT_GRACE_MS must be between 250 and 30000 milliseconds.');
 }
 
 function safeEqual(left, right) {
@@ -63,6 +68,30 @@ function appendTail(current, chunk) {
   return (current + chunk.toString('utf8')).slice(-64_000);
 }
 
+function terminateProcessTree(child, signal) {
+  if (!child?.pid) return false;
+  try {
+    if (process.platform === 'win32') {
+      const args = ['/pid', String(child.pid), '/T'];
+      if (signal === 'SIGKILL') args.push('/F');
+      const killer = spawn('taskkill', args, { windowsHide: true, stdio: 'ignore' });
+      killer.unref();
+      return true;
+    }
+    process.kill(-child.pid, signal);
+    return true;
+  } catch (error) {
+    if (error?.code !== 'ESRCH') {
+      try {
+        return child.kill(signal);
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
 function executeMission(missionId, req, res, origin) {
   if (!allowedMissions.has(missionId)) {
     return writeJson(res, 403, { error: 'mission_not_allowed', missionId }, origin);
@@ -75,12 +104,16 @@ function executeMission(missionId, req, res, origin) {
   const startedAt = Date.now();
   const child = spawn(process.execPath, ['scripts/control-room-agent.mjs', missionId], {
     cwd: root,
+    detached: process.platform !== 'win32',
     env: { ...process.env, CI: process.env.CI || 'false' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+  activeChild = child;
   let stdout = '';
   let stderr = '';
   let settled = false;
+  let timedOut = false;
+  let escalationTimer = null;
   child.stdout.on('data', chunk => { stdout = appendTail(stdout, chunk); });
   child.stderr.on('data', chunk => { stderr = appendTail(stderr, chunk); });
 
@@ -88,7 +121,9 @@ function executeMission(missionId, req, res, origin) {
     if (settled) return;
     settled = true;
     clearTimeout(timer);
+    if (escalationTimer) clearTimeout(escalationTimer);
     activeMission = null;
+    activeChild = null;
     latestRun = {
       missionId,
       status,
@@ -103,12 +138,23 @@ function executeMission(missionId, req, res, origin) {
   };
 
   const timer = setTimeout(() => {
-    child.kill('SIGTERM');
-    finish('timed_out', { exitCode: null, error: 'mission_timeout' });
+    timedOut = true;
+    stderr = appendTail(stderr, `\nMission exceeded ${timeoutMs}ms; terminating the full process tree.\n`);
+    terminateProcessTree(child, 'SIGTERM');
+    escalationTimer = setTimeout(() => {
+      stderr = appendTail(stderr, `\nMission process tree did not exit within ${timeoutGraceMs}ms; escalating to SIGKILL.\n`);
+      terminateProcessTree(child, 'SIGKILL');
+    }, timeoutGraceMs);
   }, timeoutMs);
 
-  child.on('error', error => finish('failed', { exitCode: null, error: error.message }));
-  child.on('close', code => finish(code === 0 ? 'passed' : 'failed', { exitCode: code }));
+  child.on('error', error => finish(timedOut ? 'timed_out' : 'failed', {
+    exitCode: null,
+    error: timedOut ? 'mission_timeout' : error.message,
+  }));
+  child.on('close', code => finish(timedOut ? 'timed_out' : code === 0 ? 'passed' : 'failed', {
+    exitCode: code,
+    ...(timedOut ? { error: 'mission_timeout' } : {}),
+  }));
 }
 
 function readJsonBody(req, maxBytes = 96_000) {
@@ -222,6 +268,7 @@ server.listen(port, host, () => {
 });
 
 function shutdown() {
+  if (activeChild) terminateProcessTree(activeChild, 'SIGKILL');
   server.close(() => process.exit(0));
 }
 process.on('SIGINT', shutdown);
