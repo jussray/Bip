@@ -1,10 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -48,7 +44,7 @@ jobs:
             "ref": "${{ github.ref }}",
             "sha": "${{ github.sha }}",
             "classification": "runner_started",
-            "role": "lightweight GitHub Actions sensor",
+            "role": "manual GitHub Actions sensor",
             "deploymentTruth": "Cloudflare build/deploy logs and exact release markers",
             "repoControlRoom": "Sekret-Bip Control Room collects and classifies evidence",
             "founderAuthority": "Founder Control Room remains the final merge authority"
@@ -58,7 +54,7 @@ jobs:
             echo "## GitHub Actions Control Room handoff"
             echo ""
             echo "- Runner started for ${{ github.sha }}."
-            echo "- GitHub Actions is only a lightweight sensor in this policy."
+            echo "- GitHub Actions is manual-only in free-account budget mode."
             echo "- Cloudflare build/deploy logs are the deployment truth source."
             echo "- Sekret-Bip Control Room classifies evidence before Founder Control Room decides."
           } >> "$GITHUB_STEP_SUMMARY"
