@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "status": "structural_only",
+  "projectRef": "tbsevonvegdnlyjgplmm",
+  "observedAt": "2026-07-15",
+  "inventorySource": "read_only_live_pg_catalog",
+  "scope": {
+    "schemas": ["public", "auth"],
+    "returnType": "trigger",
+    "securityDefinerOnly": true,
+    "platformSchemasExcluded": ["extensions", "realtime", "storage"]
+  },
+  "verification": {
+    "repositoryStructuralCoverage": false,
+    "liveCatalogObserved": true,
+    "liveBehaviorVerified": false,
+    "externalEffectsSafelyStubbed": false
+  },
+  "catalogDrift": [
+    {
+      "kind": "live_only_legacy_trigger_path",
+      "status": "open",
+      "liveMigration": "20260704012007_award_points_for_app_actions",
+      "function": "public.award_points_for_app_activity()",
+      "trigger": "activity_events_award_points",
+      "table": "public.activity_events",
+      "repositoryCanonicalPath": "public.bip_events -> public.handle_bip_event_points()",
+      "currentClientWriter": "src/features/activity/events.ts writes public.bip_events only",
+      "requiredResolution": "Create and verify a bounded Supabase migration that retires the legacy trigger/function, or document a real remaining producer before preserving it. Do not mutate production from this structural-audit PR."
+    }
+  ],
+  "functions": [
+    {
+      "signature": "public.apply_point_transaction()",
+      "searchPath": "public",
+      "risk": "high",
+      "rationale": "Applies server-owned point ledger effects after transaction inserts.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.auto_resolve_issue_on_event_resolve()",
+      "searchPath": "public",
+      "risk": "high",
+      "rationale": "Mutates Control Room issue state from audit-event resolution changes.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.award_points_for_app_activity()",
+      "searchPath": "public",
+      "risk": "high",
+      "rationale": "Live-only legacy path that creates derived point transactions from activity_events.",
+      "clientExecuteRevokedLive": true,
+      "repositoryExpected": false,
+      "catalogDrift": "live_only",
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.cleanup_crew_relationship_access()",
+      "searchPath": "pg_catalog, pg_temp",
+      "risk": "critical",
+      "rationale": "Removes relationship-derived access after crew membership state changes.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.enforce_circle_anonymity()",
+      "searchPath": "public",
+      "risk": "critical",
+      "rationale": "Enforces pseudonymous Circle identity before post writes become durable.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.handle_bip_event_points()",
+      "searchPath": "public",
+      "risk": "high",
+      "rationale": "Awards idempotent point transactions from Bip events.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.initialize_account_verification()",
+      "searchPath": "public, auth",
+      "risk": "critical",
+      "rationale": "Creates verification state for new authentication users.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.initialize_app_profile()",
+      "searchPath": "pg_catalog, pg_temp",
+      "risk": "critical",
+      "rationale": "Creates the durable application profile shell for new auth users.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.record_bridge_signal_activity()",
+      "searchPath": "public",
+      "risk": "high",
+      "rationale": "Records metadata-only activity when a Bridge signal is created.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.sync_app_profile_email_from_auth()",
+      "searchPath": "pg_catalog, pg_temp",
+      "risk": "critical",
+      "rationale": "Synchronizes private profile email state from auth.users updates.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.trigger_safety_scan()",
+      "searchPath": "public",
+      "risk": "critical",
+      "rationale": "Queues child-safety scanning for newly inserted user content.",
+      "clientExecuteRevokedLive": true,
+      "behaviorVerified": false
+    }
+  ],
+  "attachments": [
+    {
+      "trigger": "point_transactions_apply_balance",
+      "table": "public.point_transactions",
+      "function": "public.apply_point_transaction()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "trg_auto_resolve_issue",
+      "table": "public.audit_events",
+      "function": "public.auto_resolve_issue_on_event_resolve()",
+      "timing": "AFTER",
+      "events": ["UPDATE"]
+    },
+    {
+      "trigger": "activity_events_award_points",
+      "table": "public.activity_events",
+      "function": "public.award_points_for_app_activity()",
+      "timing": "AFTER",
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "catalogDrift": "live_only"
+    },
+    {
+      "trigger": "crew_members_cleanup_access",
+      "table": "public.crew_members",
+      "function": "public.cleanup_crew_relationship_access()",
+      "timing": "AFTER",
+      "events": ["UPDATE"]
+    },
+    {
+      "trigger": "enforce_circle_anonymity",
+      "table": "public.posts",
+      "function": "public.enforce_circle_anonymity()",
+      "timing": "BEFORE",
+      "events": ["INSERT", "UPDATE"]
+    },
+    {
+      "trigger": "bip_events_award_points",
+      "table": "public.bip_events",
+      "function": "public.handle_bip_event_points()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "initialize_account_verification_on_signup",
+      "table": "auth.users",
+      "function": "public.initialize_account_verification()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "initialize_app_profile_on_signup",
+      "table": "auth.users",
+      "function": "public.initialize_app_profile()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "bridge_signals_record_meaningful_activity",
+      "table": "public.bridge_signals",
+      "function": "public.record_bridge_signal_activity()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "sync_app_profile_email_on_auth_update",
+      "table": "auth.users",
+      "function": "public.sync_app_profile_email_from_auth()",
+      "timing": "AFTER",
+      "events": ["UPDATE"]
+    },
+    {
+      "trigger": "safety_scan_circle",
+      "table": "public.circle_posts",
+      "function": "public.trigger_safety_scan()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "safety_scan_journal",
+      "table": "public.journal_entries",
+      "function": "public.trigger_safety_scan()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "safety_scan_posts",
+      "table": "public.posts",
+      "function": "public.trigger_safety_scan()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    },
+    {
+      "trigger": "safety_scan_public_circle",
+      "table": "public.public_circle_posts",
+      "function": "public.trigger_safety_scan()",
+      "timing": "AFTER",
+      "events": ["INSERT"]
+    }
+  ]
+}
