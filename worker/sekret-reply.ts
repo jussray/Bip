@@ -1,5 +1,6 @@
 /** Se'kret Brain + Voice Worker */
 import { ORACLE_HIDDEN_GUIDANCE } from './companion-curriculum';
+import { COMPANION_REPLY_POOLS } from './companion-replies';
 import { getModels } from './config/models';
 import { PROMPT_VERSION, POLICY_VERSION } from './config/policy';
 import { estimateCostUsd } from './config/pricing';
@@ -1205,68 +1206,8 @@ CONVERSATION CONTINUITY RULES:
 `.trim();
 
 // ─── Fallbacks ──────────────────────────────────────────────────────────────
-const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = {
-  raylene: [
-    // greeting / short-input fallbacks first
-    "Hey! Random or did something actually happen?",
-    "That's valid. We can start with random, drama, music, or just sit here looking cute.",
-    "Bet. Would you rather have a closet full of perfect outfits or a playlist that always matches your mood?",
-    // deeper fallbacks
-    'You do not have to make it sound neat for me. Say the messy version.',
-    'Whew, yeah—that would get under my skin too. Do you need comfort, honesty, or a game plan?',
-    'Which part of that is sitting heaviest on you right now?',
-  ],
-  rylane: [
-    // greeting / short-input fallbacks first
-    "Aight, I'm here. Talk.",
-    "You chilling or got something on your mind?",
-    "Bet. Something happen or you just pulling up?",
-    // deeper fallbacks
-    'Yeah, that is real. What is the part you have not said out loud yet?',
-    'You do not have to act unbothered in here. Give me the honest version.',
-    'Do you want to vent or figure out your next move?',
-  ],
-  cloud: [
-    // greeting / short-input fallbacks first
-    "Hey. No pressure — what's on your mind or nothing at all?",
-    "Hi hi. Good or not-so-good today?",
-    "Hey. We can just vibe for a second.",
-    // deeper fallbacks
-    'No rush. You do not have to solve the whole feeling right now.',
-    'We do not have to fix it. We can just name what hurts first.',
-    'Take one breath. Then tell me the tiniest thing.',
-  ],
-  night: [
-    // greeting / short-input fallbacks first
-    "Hey. You trying to talk, plan, or just sit in it?",
-    "What's the mood tonight?",
-    "Okay, I'm here. What you bringing?",
-    // deeper fallbacks
-    'Yeah… nights make everything talk louder. What thought keeps circling back?',
-    'Tell me the version you hide during the day.',
-    'Let us not rush past it. What did this make you believe about yourself?',
-  ],
-  sekret: [
-    // greeting / short-input fallbacks first
-    "Something brought you here — what is it?",
-    "I'm here. No agenda. Where do you want to start?",
-    "You showed up. That means something. What's the thing?",
-    // deeper fallbacks
-    "I might be reading this wrong, but it sounds like you want to be understood without having to explain every detail. Does that feel close?",
-    "You may be carrying more than you let people see. Keep the part that fits and correct what doesn't.",
-    "Your answers seem to point toward wanting both privacy and real connection. Which side feels harder to ask for right now?",
-  ],
-  parentCoach: [
-    // greeting / short-input fallbacks first
-    "Hey. Glad you're here. What's going on at home?",
-    "Hi. Tell me what's happening — I'm listening.",
-    "What brought you here today? Start wherever feels right.",
-    // deeper fallbacks
-    "That sounds like a lot to carry. What's the part that's hardest right now?",
-    "Tell me what you're actually seeing — not what you're afraid of, just what's there.",
-    "What would feel different if this conversation went well?",
-  ],
-};
+// Full 200-reply pools live in companion-replies.ts; aliased here for callsite compatibility.
+const CHARACTER_FALLBACKS: Record<CharacterId, string[]> = COMPANION_REPLY_POOLS;
 
 const BUILT_IN_VOICES: Record<CharacterId, string> = {
   raylene: 'nova',
