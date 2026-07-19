@@ -17,6 +17,11 @@ export const USER_FACING_SIMPLIFY_ACTIONS = Object.freeze({
   teachTogether: 'Teach us together',
 });
 
+export const LOCK_SCREEN_NOTIFICATION_COPY = Object.freeze({
+  teen: 'Your teen asked you to join them in Learning Bridge.',
+  parent: 'Your parent asked you to join them in Learning Bridge.',
+});
+
 const DEPTH_ORDER: readonly ExplanationDepth[] = ['concrete', 'plain', 'guided', 'academic'];
 
 export function createTeachingState(
@@ -44,6 +49,22 @@ export function deepenDepth(current: ExplanationDepth): ExplanationDepth {
   return DEPTH_ORDER[index + 1];
 }
 
+export function requireChangedTeachingStrategy(input: {
+  previousStrategyKey: string | null;
+  proposedStrategyKey: string | null | undefined;
+}): string {
+  const proposed = input.proposedStrategyKey?.trim();
+  if (!proposed) {
+    throw new Error('Bridge Learning requires a changed teaching strategy after a failed understanding check.');
+  }
+
+  if (input.previousStrategyKey === proposed) {
+    throw new Error('Bridge Learning cannot repeat the same teaching strategy after a failed understanding check.');
+  }
+
+  return proposed;
+}
+
 export function adaptAfterUnderstandingCheck(
   current: BridgeLearningTeachingState,
   result: { conceptUnderstood: boolean; missingConcept?: string | null; strategyKey?: string | null },
@@ -58,13 +79,18 @@ export function adaptAfterUnderstandingCheck(
     };
   }
 
+  const nextStrategyKey = requireChangedTeachingStrategy({
+    previousStrategyKey: current.lastStrategyKey,
+    proposedStrategyKey: result.strategyKey,
+  });
+
   return {
     ...current,
     conceptUnderstood: false,
     missingConcept: result.missingConcept ?? current.missingConcept,
     explanationDepth: simplifyDepth(current.explanationDepth),
     explanationAttempts: current.explanationAttempts + 1,
-    lastStrategyKey: result.strategyKey ?? current.lastStrategyKey,
+    lastStrategyKey: nextStrategyKey,
   };
 }
 
@@ -107,25 +133,15 @@ export function mayInviteSekret(sessionState: BridgeLearningState): boolean {
 }
 
 export function lockScreenNotificationCopy(senderRole: 'teen' | 'parent'): string {
-  return senderRole === 'teen'
-    ? 'Your teen asked you to join them in Learning Bridge.'
-    : 'Your parent asked you to join them in Learning Bridge.';
+  return LOCK_SCREEN_NOTIFICATION_COPY[senderRole];
 }
 
 /**
- * This wording contract intentionally avoids exposing subject, question, grade,
- * answer, source document, or mistake on the device lock screen.
+ * Lock-screen notification approval is an exact-template allowlist. Dynamic
+ * generated copy is rejected so subject, question, answer, source document,
+ * grade, mistake, or private-study details cannot leak onto the device lock
+ * screen.
  */
 export function isPrivateNotificationCopy(copy: string): boolean {
-  const forbidden = [
-    'grade',
-    'failed',
-    'wrong answer',
-    'homework',
-    'worksheet',
-    'test score',
-    'journal',
-  ];
-  const normalized = copy.toLowerCase();
-  return forbidden.every(term => !normalized.includes(term));
+  return Object.values(LOCK_SCREEN_NOTIFICATION_COPY).includes(copy);
 }
