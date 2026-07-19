@@ -86,3 +86,4 @@ jobs:
     uses: ./.github/workflows/quality-gate.yml
     with:
       run_vendor_gates: false
+    secrets: inherit
