@@ -21,3 +21,29 @@ OPENAI_STT_MODEL  = "whisper-1"
 # only for a time-bounded live proof after Cloudflare deployment credentials
 # have been verified.
 BRIDGE_SUMMARIES_ROLLOUT = "disabled"
+
+# ── CPU time limit ────────────────────────────────────────────────────
+# Prevents runaway OpenAI / TTS calls from consuming excess CPU.
+# Bundled Workers default: 10ms CPU (free) / 30s wall clock (paid).
+# Explicitly set to enforce consistent behavior across environments.
+[limits]
+cpu_ms = 30000
+
+# ── Custom domain (production) ────────────────────────────────────────
+# Routes api.sekretbip.net → this Worker.
+# Cloudflare auto-provisions TLS. Zone must be active on Cloudflare.
+# After first deploy, verify with:
+#   curl --fail https://api.sekretbip.net/health
+[[routes]]
+pattern = "api.sekretbip.net/*"
+custom_domain = true
+
+# ── Rate limiting binding ─────────────────────────────────────────────
+# 60 requests per 10-second window per user/IP key.
+# Requires Cloudflare Workers Paid plan.
+# Binding name must match Env interface: SEKRET_RATE_LIMITER
+[[unsafe.bindings]]
+name = "SEKRET_RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001"
+simple = { limit = 60, period = 10 }

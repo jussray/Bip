@@ -1,8 +1,19 @@
 # Se'kret Bip 💜
 
-> **Copyright © 2024–2026 Juss Ray. All rights reserved.**
-> This is proprietary software. No license to use, copy, modify, distribute,
-> sublicense, or create derivative works is granted. See [LICENSE](LICENSE).
+> **Copyright © 2024–2026 Juss Ray. All rights reserved.**  
+> Proprietary software. No license to use, copy, modify, or distribute is granted. See [LICENSE](LICENSE).
+
+---
+
+## The real story
+
+I'm a single mom of 8 in Pittsburgh building a mental wellness app for teens — at $0, no team, no VC, no co-founder. Just me, my kids, real teen users already waiting on the app, and a system I built myself because I couldn't afford to outsource it.
+
+Se'kret Bip is the product. The [Founder Control Room](https://github.com/jussray/founder-control-room) is the operating system I built to govern it. Every approval, every deploy, every change proposal goes through a system I designed from scratch while raising 8 kids.
+
+This isn't a side project. This is the whole thing.
+
+---
 
 Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built with React Native, Expo Router, TypeScript, Supabase, and Cloudflare Workers.
 
