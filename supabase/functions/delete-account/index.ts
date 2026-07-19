@@ -1,11 +1,11 @@
 /**
- * delete-account Edge Function
- * Runs a full cascade delete of all user data.
- * Requires a valid user JWT — only deletes the authenticated user's own data.
- * Uses service_role client to bypass RLS for the deletion cascade.
+ * delete-account compatibility endpoint
  *
- * Apple App Store requirement: in-app account deletion.
- * Deploy: supabase functions deploy delete-account
+ * The repository's canonical account-deletion system is the seven-day,
+ * cancellable request flow processed by `account-delete`. This legacy endpoint
+ * is retained for compatibility with clients that may still call
+ * `/functions/v1/delete-account`, but it only schedules the canonical request.
+ * It never performs direct table deletes or deletes an Auth user.
  */
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -14,67 +14,65 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+
+  const authorization = req.headers.get('authorization');
+  if (!authorization) return json({ error: 'unauthorized' }, 401);
+
+  const url = Deno.env.get('SUPABASE_URL');
+  const key = Deno.env.get('SUPABASE_ANON_KEY');
+  if (!url || !key) return json({ error: 'server_config' }, 500);
+
+  const db = createClient(url, key, {
+    global: { headers: { Authorization: authorization } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: authData, error: authError } = await db.auth.getUser();
+  const userId = authData.user?.id;
+  if (authError || !userId) return json({ error: 'unauthorized' }, 401);
+
+  const body = await req.json().catch(() => ({})) as { confirmed?: boolean };
+  if (body.confirmed !== true) return json({ error: 'confirmation_required' }, 400);
+
+  const { data: existing, error: lookupError } = await db
+    .from('account_deletion_requests')
+    .select('id,status,requested_at,scheduled_for')
+    .eq('user_id', userId)
+    .in('status', ['pending', 'processing'])
+    .maybeSingle();
+
+  if (lookupError) return json({ error: 'request_lookup_failed' }, 500);
+  if (existing) {
+    return json({
+      ok: true,
+      request: existing,
+      alreadyExists: true,
+      compatibilityEndpoint: true,
+    });
   }
 
-  try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+  const { data: request, error: requestError } = await db
+    .from('account_deletion_requests')
+    .insert({ user_id: userId, status: 'pending' })
+    .select('id,status,requested_at,scheduled_for')
+    .single();
 
-    // Verify identity with anon client
-    const userClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+  if (requestError) return json({ error: 'request_failed' }, 500);
 
-    const { data: { user }, error: userError } = await userClient.auth.getUser();
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid session' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const userId = user.id;
-
-    // Service role client — bypasses RLS for cascade delete
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
-
-    // CASCADE DELETE — FK-safe order (children before parents)
-    await adminClient.from('messages').delete().eq('user_id', userId);
-    await adminClient.from('companion_memories').delete().eq('user_id', userId);
-    await adminClient.from('companion_sessions').delete().eq('user_id', userId);
-    await adminClient.from('journal_entries').delete().eq('user_id', userId);
-    await adminClient.from('user_rewards').delete().eq('user_id', userId);
-    await adminClient.from('circle_members').delete().eq('user_id', userId);
-    await adminClient.from('circle_invites').delete().eq('invitee_id', userId);
-    await adminClient.from('notifications').delete().eq('user_id', userId);
-    await adminClient.from('profiles').delete().eq('id', userId);
-
-    // Final step: delete the auth user itself
-    const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(userId);
-    if (deleteAuthError) throw deleteAuthError;
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Account and all data deleted.' }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  } catch (err: any) {
-    console.error('[delete-account]', err);
-    return new Response(
-      JSON.stringify({ error: err.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
+  return json({
+    ok: true,
+    request,
+    alreadyExists: false,
+    compatibilityEndpoint: true,
+  }, 202);
 });
