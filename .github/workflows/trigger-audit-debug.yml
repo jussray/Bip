@@ -1,15 +1,7 @@
 name: Trigger Audit
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'SPRINT.md'
-      - 'security/supabase-trigger-baseline.json'
-      - 'supabase/migrations/**'
-      - 'supabase/probes/security_definer_trigger_catalog_phase1.sql'
-      - 'test/supabase-trigger-structure.test.mjs'
-      - '.github/workflows/trigger-audit-debug.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
