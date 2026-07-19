@@ -32,6 +32,12 @@ MCP connectivity and Bip skill activation are separate requirements. Before invo
 - Use `npm run verify:mcp` to prove that configured servers, authority boundaries, and skill files remain aligned.
 - Auth, login, consent, verification, parent linking, or onboarding work must activate `.agents/skills/bip-auth-onboarding/SKILL.md` in addition to the server-specific mappings.
 
+## Figma build and implementation
+
+For every Figma, screen-design, room-design, design-system, design-to-code, Code Connect, prototype, or visual QA task, also read `.agents/skills/figma-build-implement/SKILL.md` and `.figma/repository-profile.json`.
+
+Figma may specify Expo/React Native product behavior only with synthetic or redacted content. It cannot create runtime, auth, consent, parent visibility, RLS, migration, device, deployment, or release proof. Native-critical flows require controlled device evidence in addition to editable design and web proof.
+
 ## OODA Workflow
 
 Every agent must execute the full founder stack above, then follow this repository OODA workflow before changing anything.
