@@ -24,7 +24,15 @@ test('production probe validates the public key and reaches Auth read-only', () 
   assert.doesNotMatch(source, /method:\s*['"]POST['"]/);
   assert.doesNotMatch(source, /Authorization:\s*`Bearer \$\{key\}`/);
   assert.doesNotMatch(source, /\.auth\.signUp\s*\(/);
-  assert.doesNotMatch(source, /sb_secret_/i);
+
+  const publicConfigBlock = source.match(
+    /const productionEnv = readProductionEnv\(\);[\s\S]*?type BrowserProbe =/,
+  );
+  assert.ok(publicConfigBlock, 'Expected the production public-config block.');
+  assert.doesNotMatch(
+    publicConfigBlock[0],
+    /sb_secret_|service[_-]?role|SUPABASE_SERVICE/i,
+  );
 });
 
 test('production probe uses repository-controlled public config', () => {
