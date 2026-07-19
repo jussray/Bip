@@ -5,6 +5,25 @@
 
 ---
 
+## User-facing entry shape
+
+The onboarding entry should feel like **one page** to the user: welcome copy, age bucket, protection path, and account-side routing live together on `app/(onboarding)/welcome.tsx`.
+
+The one-page entry is a UX shell, not a single unchecked backend event. It still records separate safety checkpoints:
+
+- `age_bucket`
+- `age_verification_status`
+- `age_verification_method`
+- `guardian_required`
+- `raw_evidence_stored = false`
+- `ONBOARDING_SIDE_KEY`
+
+`app/(onboarding)/age.tsx` remains available as a fallback or deep-link surface, but the default entry CTA should not route users through a separate age-only page.
+
+No raw ID image, selfie, video, face scan, full birth date, or third-party age proof is stored by the in-app one-page entry. Stronger verification can be introduced later only behind a separate legal, privacy, storage, deletion, and vendor review.
+
+---
+
 ## Activation Milestones (North Star)
 
 Onboarding is **complete** when a user reaches `activated` stage.
@@ -104,9 +123,10 @@ parent_link_sent → (teen) app tabs                                │
 | File | Purpose |
 |---|---|
 | `app/(onboarding)/_layout.tsx` | Expo Router layout wrapper for the flow |
-| `app/(onboarding)/welcome.tsx` | First screen — role selection entry |
+| `app/(onboarding)/welcome.tsx` | One-page entry shell: welcome, age bucket, protection path, and account-side routing |
+| `src/features/onboarding/ageAssurance.ts` | Privacy-minimal age assurance decision model |
 | `app/(onboarding)/consent.tsx` | Terms & privacy consent |
-| `app/(onboarding)/age.tsx` | Age verification / bucket selection |
+| `app/(onboarding)/age.tsx` | Age verification / bucket selection fallback and deep-link surface |
 | `app/(onboarding)/identity.tsx` | Role selection (teen / parent) |
 | `app/(onboarding)/name.tsx` | Display name — teen path |
 | `app/(onboarding)/reflection.tsx` | Emotional reflection — teen path |
@@ -258,32 +278,3 @@ CREATE TRIGGER trg_first_mood_log_activation
 
 1. Add the stage value to `onboarding_stage` enum in `20260718000000_onboarding_state.sql`.
 2. Add it to `STAGE_ORDER` in `services/onboarding.ts` at the correct position.
-3. Create the screen in `app/(onboarding)/`.
-4. Add the route to `nextScreenForStage()` in `services/onboarding.ts`.
-5. Fire `advanceStage(userId, 'your_new_stage').catch(() => null)` in the screen's submit handler.
-6. Update this doc.
-
----
-
-## Self-Reliant Screen Pattern
-
-Screens own their own navigation. The state machine is an observer, not a gatekeeper.
-
-```ts
-// Standard fire-and-forget pattern for any onboarding screen
-import { advanceStage } from '@/services/onboarding';
-import { getSupabase } from '@/utils/supabase';
-
-async function handleNext() {
-  // 1. Do your own work first (AsyncStorage, validation, etc.)
-  await AsyncStorage.setItem('bip_onboarding_name', name.trim());
-
-  // 2. Signal the state machine — fire-and-forget, never awaited
-  getSupabase()?.auth.getUser().then(({ data }) => {
-    if (data.user) advanceStage(data.user.id, 'name_set').catch(() => null);
-  });
-
-  // 3. Navigate immediately — never wait for the DB write
-  router.push('/(onboarding)/reflection');
-}
-```
