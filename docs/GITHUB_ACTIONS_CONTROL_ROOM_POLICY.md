@@ -1,6 +1,6 @@
 # GitHub Actions Control Room Policy
 
-This policy keeps GitHub Actions useful without letting hosted-runner startup failures become the project brain.
+This policy keeps GitHub Actions useful without letting hosted-runner startup failures or private-repo minute limits become the project brain.
 
 ## Source-of-truth split
 
@@ -11,20 +11,33 @@ Founder Control Room = final authority
 GitHub Actions = lightweight sensor
 ```
 
+## Actions budget mode
+
+While the repo is operating under free-account/private-repo budget pressure, GitHub-hosted runners should not start automatically for normal PRs or pushes.
+
+Default rule:
+
+```text
+Automatic GitHub-hosted runners: off
+Manual GitHub Actions gates: available by explicit founder / Control Room decision
+Cloudflare builds: deployment-truth witness
+Local Control Room checks: daily development evidence
+Founder Control Room: final merge authority
+```
+
+This prevents every PR update from spending account Actions minutes just to rediscover the same hosted-runner startup condition.
+
 ## Why this exists
 
 When GitHub Actions jobs fail before any steps or logs exist, they did not validate or invalidate the code. Those runs are classified as `runner_startup_failure` and should not be treated as app regressions.
 
-The fix is not to remove quality. The fix is to move interpretation into the Control Rooms and let Cloudflare's real build/deploy logs tell us what actually breaks in the deployment path.
+The fix is not to remove quality. The fix is to stop spending automatic GitHub-hosted runner attempts as the first line of truth. Interpretation moves into the Control Rooms, and Cloudflare's real build/deploy logs tell us what actually breaks in the deployment path.
 
 ## Automatic GitHub Actions
 
-Automatic PR/push Actions should stay small while runner reliability is uncertain:
+Automatic PR/push Actions should remain disabled while Actions budget mode is active.
 
-- confirm the runner can start
-- verify this policy stays in place
-- upload a tiny runner-sensor artifact
-- hand off evidence interpretation to the Sekret-Bip Control Room
+`ci.yml` is retained as a manual `Control Room handoff` workflow so a founder can intentionally spend one small run when runner-health evidence is needed.
 
 Automatic Actions should not duplicate every local test, browser test, implementation ledger check, pre-push check, and quality gate on every PR.
 
@@ -32,8 +45,10 @@ Automatic Actions should not duplicate every local test, browser test, implement
 
 The deeper GitHub-hosted checks still exist, but they run by explicit founder or Control Room decision:
 
+- CI / Control Room handoff
 - Quality Gate
 - Playwright browser evidence
+- Companion Lab AI-reply evidence
 - archived Pre-Push Checks
 - archived Type Check
 - archived Regression Tests
@@ -79,7 +94,7 @@ No merge should happen unless Founder Control Room explicitly green-lights the e
 ## OODA rule
 
 ```text
-Observe: GitHub runner status + Cloudflare logs.
+Observe: Cloudflare logs + local Control Room reports + any manually requested GitHub runner status.
 Orient: Sekret-Bip Control Room classifies evidence.
 Decide: Founder Control Room picks HOLD / REVIEW / APPROVE.
 Act: adjust code, Cloudflare config, or GitHub Actions only from real evidence.
