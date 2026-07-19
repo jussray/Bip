@@ -65,5 +65,5 @@ test('onboarding documentation and ledger describe the one-page shell without cl
   assert.match(ledger, /app\/\(onboarding\)\/welcome\.tsx/);
   assert.match(ledger, /src\/features\/onboarding\/ageAssurance\.ts/);
   assert.match(ledger, /test\/age-assurance-model\.test\.mjs/);
-  assert.match(ledger, /"state": "not-run"/);
+  assert.match(ledger, /"state":\s*"not-run"/);
 });
