@@ -1,3 +1,10 @@
+// app/(auth)/login.tsx
+//
+// Instagram-model login screen.
+// ─ Wordmark-only logo (no icon box, no glow blobs)
+// ─ Clean thin-border inputs, solid CTA, OR divider, Sign up switch
+// ─ All Supabase auth logic, shake animation, and error handling preserved.
+
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -39,21 +46,21 @@ export default function LoginScreen() {
   const preferredSide = normalizeSide(params.side);
   const { refreshVerification } = useVerificationContext();
 
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
   const [pwVisible, setPwVisible] = useState(false);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   function shakeCard() {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10,  duration: 50,  useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  10, duration: 50,  useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 50,  useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6,   duration: 40,  useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6,  duration: 40,  useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,   duration: 30,  useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:   6, duration: 40,  useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  -6, duration: 40,  useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:   0, duration: 30,  useNativeDriver: true }),
     ]).start();
   }
 
@@ -95,37 +102,34 @@ export default function LoginScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.root}
+      style={s.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Background gradient dots — decorative */}
-      <View style={styles.bgDot1} pointerEvents="none" />
-      <View style={styles.bgDot2} pointerEvents="none" />
+      <Animated.View style={[s.card, { transform: [{ translateX: shakeAnim }] }]}>
 
-      <Animated.View style={[styles.card, { transform: [{ translateX: shakeAnim }] }]}>
-        {/* Logo */}
-        <View style={styles.logoWrap}>
-          <Text style={styles.logoMark}>Bip</Text>
-          <Text style={styles.logoHeart}>💜</Text>
+        {/* ── Wordmark logo — no icon box, no glow ── */}
+        <View style={s.logoArea}>
+          <Text style={s.wordmark}>Se'kret Bip</Text>
+          <Text style={s.heart}>♡</Text>
         </View>
 
-        <Text style={styles.wordmark}>Se'kret Bip</Text>
-        <Text style={styles.tagline}>sign in to continue</Text>
+        <Text style={s.tagline}>sign in to continue</Text>
 
+        {/* Password-reset success banner */}
         {passwordReset ? (
-          <View style={styles.successBanner}>
-            <Text style={styles.successBannerText}>
-              Password updated. Sign in with your new password.
+          <View style={s.successBanner}>
+            <Text style={s.successBannerText}>
+              Password updated — sign in with your new password.
             </Text>
           </View>
         ) : null}
 
         {/* Email */}
-        <View style={[styles.inputWrap, error && email.length === 0 && styles.inputError]}>
+        <View style={[s.inputWrap, error && !email ? s.inputError : null]}>
           <TextInput
-            style={styles.input}
+            style={s.input}
             placeholder="Phone number, username or email"
-            placeholderTextColor="#666"
+            placeholderTextColor={MUTED}
             autoCapitalize="none"
             autoComplete="email"
             autoCorrect={false}
@@ -139,11 +143,11 @@ export default function LoginScreen() {
         </View>
 
         {/* Password */}
-        <View style={[styles.inputWrap, { marginBottom: 6 }]}>
+        <View style={[s.inputWrap, { marginBottom: 6 }]}>
           <TextInput
-            style={[styles.input, { paddingRight: 52 }]}
+            style={[s.input, { paddingRight: 52 }]}
             placeholder="Password"
-            placeholderTextColor="#666"
+            placeholderTextColor={MUTED}
             secureTextEntry={!pwVisible}
             autoComplete="current-password"
             textContentType="password"
@@ -155,60 +159,60 @@ export default function LoginScreen() {
             accessibilityLabel="Password"
           />
           <Pressable
-            style={styles.eyeBtn}
+            style={s.eyeBtn}
             onPress={() => setPwVisible(v => !v)}
             accessibilityLabel={pwVisible ? 'Hide password' : 'Show password'}
           >
-            <Text style={styles.eyeText}>{pwVisible ? '🙈' : '👁'}</Text>
+            <Text style={s.eyeText}>{pwVisible ? '🙈' : '👁'}</Text>
           </Pressable>
         </View>
 
-        {/* Error */}
+        {/* Inline error */}
         {error ? (
-          <Text style={styles.errorText} accessibilityRole="alert">{error}</Text>
+          <Text style={s.errorText} accessibilityRole="alert">{error}</Text>
         ) : null}
 
-        {/* Forgot */}
+        {/* Forgot password */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/forgot-password')}
-          style={styles.forgotRow}
+          style={s.forgotRow}
           accessibilityRole="link"
           accessibilityLabel="Forgot password"
         >
-          <Text style={styles.forgotText}>Forgot password?</Text>
+          <Text style={s.forgotText}>Forgot password?</Text>
         </TouchableOpacity>
 
-        {/* Sign In CTA */}
+        {/* Primary CTA — solid fill, no glow shadow */}
         <TouchableOpacity
-          style={[styles.btn, (loading || !email || !password) && styles.btnDim]}
+          style={[s.btn, (loading || !email || !password) && s.btnDim]}
           onPress={handleSignIn}
           disabled={loading}
           activeOpacity={0.82}
           accessibilityRole="button"
-          accessibilityLabel="Sign In"
+          accessibilityLabel="Log in"
         >
           {loading
             ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.btnText}>Log in</Text>
+            : <Text style={s.btnText}>Log in</Text>
           }
         </TouchableOpacity>
 
         {/* OR divider */}
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
-          <View style={styles.dividerLine} />
+        <View style={s.dividerRow}>
+          <View style={s.dividerLine} />
+          <Text style={s.dividerText}>OR</Text>
+          <View style={s.dividerLine} />
         </View>
 
         {/* Switch to signup */}
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Don't have an account?</Text>
+        <View style={s.switchRow}>
+          <Text style={s.switchLabel}>Don't have an account?</Text>
           <TouchableOpacity
             onPress={() => router.push(authRoute('/(auth)/signup', preferredSide) as never)}
             accessibilityRole="link"
             accessibilityLabel="Sign up"
           >
-            <Text style={styles.switchCta}> Sign up.</Text>
+            <Text style={s.switchCta}>{' '}Sign up.</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -216,66 +220,50 @@ export default function LoginScreen() {
   );
 }
 
-const PURPLE = '#7c3aed';
+// ─── Design tokens ────────────────────────────────────────────────────────
+const PURPLE     = '#7c3aed';
 const PURPLE_DIM = '#4c1d95';
-const BG = '#0a0a0a';
-const CARD = '#111218';
-const BORDER = '#1e1e2a';
-const TEXT = '#f3f3f5';
-const MUTED = '#888';
+const BG         = '#0a0a0a';
+const BORDER     = '#2a2a35';   // slightly lighter than old — clean, not muddy
+const TEXT       = '#f3f3f5';
+const MUTED      = '#666';
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: BG,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  // Atmospheric background dots
-  bgDot1: {
-    position: 'absolute', width: 340, height: 340,
-    borderRadius: 170, backgroundColor: '#4c1d9520',
-    top: -80, right: -100,
-  },
-  bgDot2: {
-    position: 'absolute', width: 260, height: 260,
-    borderRadius: 130, backgroundColor: '#7c3aed12',
-    bottom: 60, left: -80,
+    // No decorative blobs — background is clean, flat dark.
   },
 
   card: {
     width: '100%',
     maxWidth: 380,
     paddingHorizontal: 32,
-    paddingTop: 48,
+    paddingTop: 52,
     paddingBottom: 32,
     alignItems: 'center',
   },
 
-  logoWrap: {
-    width: 64, height: 64,
-    borderRadius: 20,
-    backgroundColor: PURPLE_DIM,
+  // ── Wordmark-only logo area — Instagram puts its logotype here, no box ──
+  logoArea: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 12,
+    marginBottom: 28,
   },
-  logoMark: { color: '#fff', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
-  logoHeart: { fontSize: 11, position: 'absolute', bottom: 8, right: 9 },
-
   wordmark: {
     color: TEXT,
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 4,
+    letterSpacing: -0.5,
+    lineHeight: 36,
   },
+  heart: {
+    color: PURPLE,
+    fontSize: 18,
+    marginTop: 2,
+  },
+
   tagline: {
     color: MUTED,
     fontSize: 13,
@@ -285,36 +273,42 @@ const styles = StyleSheet.create({
 
   successBanner: {
     width: '100%',
-    backgroundColor: '#1a1030',
+    backgroundColor: '#12101a',
     borderWidth: 1,
-    borderColor: PURPLE,
-    borderRadius: 12,
+    borderColor: BORDER,
+    borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 16,
   },
-  successBannerText: { color: '#c4b5fd', fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  successBannerText: {
+    color: '#c4b5fd',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 
+  // ── Inputs: thin border, transparent background, Instagram-clean ──────
   inputWrap: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: BORDER,
-    borderRadius: 12,
-    backgroundColor: '#16161e',
+    borderRadius: 10,
+    backgroundColor: '#111118',
     marginBottom: 12,
     overflow: 'hidden',
   },
   inputError: { borderColor: '#ef4444' },
   input: {
     flex: 1,
-    paddingVertical: 15,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     color: TEXT,
-    fontSize: 15,
+    fontSize: 14,
   },
-  eyeBtn: { paddingHorizontal: 14, paddingVertical: 15 },
+  eyeBtn: { paddingHorizontal: 14, paddingVertical: 14 },
   eyeText: { fontSize: 16 },
 
   errorText: {
@@ -328,29 +322,36 @@ const styles = StyleSheet.create({
   forgotRow: { alignSelf: 'flex-end', marginBottom: 20 },
   forgotText: { color: '#a78bfa', fontSize: 13, fontWeight: '600' },
 
+  // ── CTA button: solid fill, no glow shadow ─────────────────────────────
   btn: {
     width: '100%',
     backgroundColor: PURPLE,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 10,
+    paddingVertical: 15,
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    // No shadowColor / shadowOpacity — solid, not glowing.
   },
-  btnDim: { backgroundColor: PURPLE_DIM, shadowOpacity: 0 },
+  btnDim: { backgroundColor: PURPLE_DIM },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 },
 
+  // ── OR divider ─────────────────────────────────────────────────────────
   dividerRow: {
-    width: '100%', flexDirection: 'row',
-    alignItems: 'center', marginBottom: 20,
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: BORDER },
-  dividerText: { color: MUTED, fontSize: 12, fontWeight: '600', marginHorizontal: 12, letterSpacing: 1 },
+  dividerText: {
+    color: MUTED,
+    fontSize: 11,
+    fontWeight: '600',
+    marginHorizontal: 12,
+    letterSpacing: 1.2,
+  },
 
+  // ── Switch to signup ──────────────────────────────────────────────────
   switchRow: { flexDirection: 'row', alignItems: 'center' },
   switchLabel: { color: MUTED, fontSize: 14 },
   switchCta: { color: '#a78bfa', fontSize: 14, fontWeight: '700' },

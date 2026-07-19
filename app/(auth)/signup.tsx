@@ -1,3 +1,11 @@
+// app/(auth)/signup.tsx
+//
+// Instagram-model signup screen — 3-step progressive card.
+// ─ Wordmark-only logo (no icon box, no glow blobs)
+// ─ Clean thin-border inputs, solid CTA, step progress dots
+// ─ Step 0: email + password  |  Step 1: username  |  Step 2: review + submit
+// ─ All Supabase auth logic, anonymous upgrade, ambiguous-error recovery preserved.
+
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
@@ -22,7 +30,7 @@ import {
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ─── Error helpers (unchanged from original) ───────────────────────────────
+// ─── Error helpers (unchanged) ────────────────────────────────────────────
 function authErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
@@ -81,31 +89,26 @@ function delay(ms: number): Promise<void> {
 }
 
 const SIGNUP_RECOVERY_DELAY_MS = 750;
-
-// ─── Step config ───────────────────────────────────────────────────────────
-const STEPS = 3; // 0: email+pw  1: username  2: birthday/done
+const STEPS = 3; // 0: email+pw  1: username  2: review
 
 export default function SignupScreen() {
   const params = useLocalSearchParams<{ side?: string }>();
   const preferredSide = normalizeSide(params.side);
   const { refreshVerification } = useVerificationContext();
 
-  // Fields
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm]   = useState('');
-  const [username, setUsername] = useState('');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [confirm, setConfirm]     = useState('');
+  const [username, setUsername]   = useState('');
   const [pwVisible, setPwVisible] = useState(false);
   const [cfVisible, setCfVisible] = useState(false);
 
-  // Flow
-  const [step, setStep]         = useState(0);
-  const [error, setError]       = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [success, setSuccess]   = useState(false);
+  const [step, setStep]           = useState(0);
+  const [error, setError]         = useState('');
+  const [loading, setLoading]     = useState(false);
+  const [success, setSuccess]     = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Animation
   const slideAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const SCREEN_W  = 380;
@@ -125,16 +128,16 @@ export default function SignupScreen() {
 
   function shakeCard() {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10,  duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6,   duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -6,  duration: 40, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,   duration: 30, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:   6, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:  -6, duration: 40, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue:   0, duration: 30, useNativeDriver: true }),
     ]).start();
   }
 
-  // ─── Auth helpers (unchanged logic) ──────────────────────────────────────
-  const finishAuthenticatedSignup = useCallback(async (userId: string) => {
+  // ─── Auth helpers (logic unchanged) ──────────────────────────────────────
+  const finishAuthenticatedSignup = useCallback(async (_userId: string) => {
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
     const bootstrap = await fetchPostAuthBootstrap(preferredSide);
     await refreshVerification();
@@ -207,7 +210,6 @@ export default function SignupScreen() {
     return false;
   }
 
-  // ─── Step 0 → 1: validate email/password, then slide ─────────────────────
   function handleNextStep0() {
     setError('');
     const e = email.trim();
@@ -218,21 +220,19 @@ export default function SignupScreen() {
     animateToStep(1);
   }
 
-  // ─── Step 1 → 2: validate username ───────────────────────────────────────
   function handleNextStep1() {
     setError('');
     const u = username.trim();
     if (!u) { setError('Pick a username.'); shakeCard(); return; }
     if (u.length < 3) { setError('Username must be at least 3 characters.'); shakeCard(); return; }
     if (!/^[a-zA-Z0-9_.]+$/.test(u)) {
-      setError('Username can only contain letters, numbers, . and _');
+      setError('Letters, numbers, . and _ only.');
       shakeCard();
       return;
     }
     animateToStep(2);
   }
 
-  // ─── Step 2: final signup submission ──────────────────────────────────────
   async function handleSignUp() {
     setError('');
     const e = email.trim();
@@ -243,12 +243,6 @@ export default function SignupScreen() {
 
     if (__DEV__) {
       console.log('[signup] sb=', sb ? 'ok' : 'NULL — check EXPO_PUBLIC_SUPABASE_URL/ANON_KEY');
-      if (sb) {
-        sb.auth.getSession().then(({ data, error: e2 }) => {
-          console.log('[signup] session user=', data?.session?.user?.id ?? 'none',
-            'anon=', data?.session?.user?.is_anonymous ?? false, 'err=', e2?.message ?? null);
-        }).catch(() => null);
-      }
     }
 
     if (!sb) {
@@ -281,7 +275,7 @@ export default function SignupScreen() {
               msg.includes('already registered') || msg.includes('already exists') ||
               msg.includes('duplicate') || msg.includes('email address is already');
             if (emailExists) {
-              setError('That email already has a Bip account. Sign in instead so we can use that account safely.');
+              setError('That email already has a Bip account. Sign in instead.');
               return;
             }
             setError(readableAuthError(upgradeError));
@@ -315,8 +309,11 @@ export default function SignupScreen() {
       }
     } catch (caught) {
       if (isAmbiguousSignupError(caught)) {
-        const recovered = await recoverAmbiguousSignup(sb, e, p, caught);
-        if (recovered) return;
+        const sb2 = getSupabase();
+        if (sb2) {
+          const recovered = await recoverAmbiguousSignup(sb2, e, p, caught);
+          if (recovered) return;
+        }
       }
       setError(readableAuthError(caught));
       shakeCard();
@@ -328,73 +325,68 @@ export default function SignupScreen() {
   // ─── Success screen ───────────────────────────────────────────────────────
   if (success) {
     return (
-      <View style={styles.root}>
-        <View style={styles.successCard}>
-          <Text style={styles.successEmoji}>📬</Text>
-          <Text style={styles.successTitle}>Check your email</Text>
-          <Text style={styles.successBody}>{successMessage}</Text>
+      <View style={s.root}>
+        <View style={s.successCard}>
+          <Text style={s.successEmoji}>📬</Text>
+          <Text style={s.successTitle}>Check your email</Text>
+          <Text style={s.successBody}>{successMessage}</Text>
           <TouchableOpacity
-            style={styles.btn}
+            style={s.btn}
             onPress={() => router.replace(loginRoute(preferredSide) as never)}
             accessibilityRole="button"
             accessibilityLabel="Go to Sign In"
           >
-            <Text style={styles.btnText}>Go to Sign In</Text>
+            <Text style={s.btnText}>Go to Sign In</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  // ─── Step labels ──────────────────────────────────────────────────────────
   const STEP_LABELS = ['Account', 'Username', 'Done'];
 
-  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
-      style={styles.root}
+      style={s.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.bgDot1} pointerEvents="none" />
-      <View style={styles.bgDot2} pointerEvents="none" />
-
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={s.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Logo */}
-        <View style={styles.logoWrap}>
-          <Text style={styles.logoMark}>Bip</Text>
-          <Text style={styles.logoHeart}>💜</Text>
+        {/* ── Wordmark-only logo — no icon box, no glow blobs ── */}
+        <View style={s.logoArea}>
+          <Text style={s.wordmark}>Se'kret Bip</Text>
+          <Text style={s.heart}>♡</Text>
         </View>
-        <Text style={styles.wordmark}>Se'kret Bip</Text>
-        <Text style={styles.tagline}>
+
+        <Text style={s.tagline}>
           {preferredSide === 'parent' ? 'create your Parent Space' : 'create your space'}
         </Text>
 
-        {/* Step dots */}
-        <View style={styles.dotsRow}>
+        {/* Step progress dots */}
+        <View style={s.dotsRow}>
           {Array.from({ length: STEPS }).map((_, i) => (
-            <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+            <View key={i} style={[s.dot, i === step && s.dotActive]} />
           ))}
         </View>
-        <Text style={styles.stepLabel}>{STEP_LABELS[step]}</Text>
+        <Text style={s.stepLabel}>{STEP_LABELS[step]}</Text>
 
         {/* Animated step content */}
         <Animated.View style={[
-          styles.stepContent,
+          s.stepContent,
           { transform: [{ translateX: slideAnim }, { translateX: shakeAnim }] },
         ]}>
 
           {/* ── Step 0: email + password ── */}
           {step === 0 && (
-            <View style={styles.stepInner}>
-              <View style={styles.inputWrap}>
+            <View style={s.stepInner}>
+              <View style={s.inputWrap}>
                 <TextInput
-                  style={styles.input}
+                  style={s.input}
                   placeholder="Email address"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={MUTED}
                   autoCapitalize="none"
                   autoComplete="email"
                   autoCorrect={false}
@@ -406,11 +398,11 @@ export default function SignupScreen() {
                   accessibilityLabel="Email"
                 />
               </View>
-              <View style={[styles.inputWrap, { marginBottom: 12 }]}>
+              <View style={[s.inputWrap, { marginBottom: 12 }]}>
                 <TextInput
-                  style={[styles.input, { paddingRight: 52 }]}
+                  style={[s.input, { paddingRight: 52 }]}
                   placeholder="Password (8+ characters)"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={MUTED}
                   secureTextEntry={!pwVisible}
                   autoComplete="new-password"
                   textContentType="newPassword"
@@ -419,15 +411,15 @@ export default function SignupScreen() {
                   onChangeText={t => { setPassword(t); setError(''); }}
                   accessibilityLabel="Password"
                 />
-                <Pressable style={styles.eyeBtn} onPress={() => setPwVisible(v => !v)}>
-                  <Text style={styles.eyeText}>{pwVisible ? '🙈' : '👁'}</Text>
+                <Pressable style={s.eyeBtn} onPress={() => setPwVisible(v => !v)}>
+                  <Text style={s.eyeText}>{pwVisible ? '🙈' : '👁'}</Text>
                 </Pressable>
               </View>
-              <View style={[styles.inputWrap, { marginBottom: 4 }]}>
+              <View style={[s.inputWrap, { marginBottom: 4 }]}>
                 <TextInput
-                  style={[styles.input, { paddingRight: 52 }]}
+                  style={[s.input, { paddingRight: 52 }]}
                   placeholder="Confirm password"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={MUTED}
                   secureTextEntry={!cfVisible}
                   autoComplete="new-password"
                   textContentType="newPassword"
@@ -438,35 +430,35 @@ export default function SignupScreen() {
                   returnKeyType="next"
                   accessibilityLabel="Confirm password"
                 />
-                <Pressable style={styles.eyeBtn} onPress={() => setCfVisible(v => !v)}>
-                  <Text style={styles.eyeText}>{cfVisible ? '🙈' : '👁'}</Text>
+                <Pressable style={s.eyeBtn} onPress={() => setCfVisible(v => !v)}>
+                  <Text style={s.eyeText}>{cfVisible ? '🙈' : '👁'}</Text>
                 </Pressable>
               </View>
 
-              {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
+              {error ? <Text style={s.errorText} accessibilityRole="alert">{error}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.btn, (!email || password.length < 8) && styles.btnDim]}
+                style={[s.btn, (!email || password.length < 8) && s.btnDim]}
                 onPress={handleNextStep0}
                 activeOpacity={0.82}
                 accessibilityRole="button"
                 accessibilityLabel="Next"
               >
-                <Text style={styles.btnText}>Next</Text>
+                <Text style={s.btnText}>Next</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* ── Step 1: username ── */}
           {step === 1 && (
-            <View style={styles.stepInner}>
-              <Text style={styles.stepHint}>Choose a username people will know you by.</Text>
-              <View style={[styles.inputWrap, { marginBottom: 4 }]}>
-                <Text style={styles.atSign}>@</Text>
+            <View style={s.stepInner}>
+              <Text style={s.stepHint}>Choose a username people will know you by.</Text>
+              <View style={[s.inputWrap, { marginBottom: 4 }]}>
+                <Text style={s.atSign}>@</Text>
                 <TextInput
-                  style={[styles.input, { paddingLeft: 4 }]}
+                  style={[s.input, { paddingLeft: 4 }]}
                   placeholder="username"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={MUTED}
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="username"
@@ -480,44 +472,44 @@ export default function SignupScreen() {
                 />
               </View>
 
-              {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
+              {error ? <Text style={s.errorText} accessibilityRole="alert">{error}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.btn, username.length < 3 && styles.btnDim]}
+                style={[s.btn, username.length < 3 && s.btnDim]}
                 onPress={handleNextStep1}
                 activeOpacity={0.82}
                 accessibilityRole="button"
                 accessibilityLabel="Next"
               >
-                <Text style={styles.btnText}>Next</Text>
+                <Text style={s.btnText}>Next</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.backBtn}
+                style={s.backBtn}
                 onPress={() => animateToStep(0)}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
               >
-                <Text style={styles.backText}>← Back</Text>
+                <Text style={s.backText}>← Back</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* ── Step 2: confirm + submit ── */}
+          {/* ── Step 2: review + submit ── */}
           {step === 2 && (
-            <View style={styles.stepInner}>
-              <Text style={styles.stepHint}>You're almost in 🎉</Text>
+            <View style={s.stepInner}>
+              <Text style={s.stepHint}>You're almost in 🎉</Text>
 
-              <View style={styles.reviewCard}>
-                <ReviewRow label="Email" value={email.trim()} />
+              <View style={s.reviewCard}>
+                <ReviewRow label="Email"    value={email.trim()} />
                 <ReviewRow label="Username" value={`@${username.trim()}`} />
-                <ReviewRow label="Account" value={preferredSide === 'parent' ? 'Parent Space' : 'Teen Space'} />
+                <ReviewRow label="Account"  value={preferredSide === 'parent' ? 'Parent Space' : 'Teen Space'} />
               </View>
 
-              {error ? <Text style={styles.errorText} accessibilityRole="alert">{error}</Text> : null}
+              {error ? <Text style={s.errorText} accessibilityRole="alert">{error}</Text> : null}
 
               <TouchableOpacity
-                style={[styles.btn, loading && styles.btnDim]}
+                style={[s.btn, loading && s.btnDim]}
                 onPress={handleSignUp}
                 disabled={loading}
                 activeOpacity={0.82}
@@ -526,32 +518,32 @@ export default function SignupScreen() {
               >
                 {loading
                   ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={styles.btnText}>Create account</Text>
+                  : <Text style={s.btnText}>Create account</Text>
                 }
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.backBtn}
+                style={s.backBtn}
                 onPress={() => animateToStep(1)}
                 disabled={loading}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
               >
-                <Text style={styles.backText}>← Back</Text>
+                <Text style={s.backText}>← Back</Text>
               </TouchableOpacity>
             </View>
           )}
         </Animated.View>
 
         {/* Switch to login */}
-        <View style={styles.switchRow}>
-          <Text style={styles.switchLabel}>Have an account?</Text>
+        <View style={s.switchRow}>
+          <Text style={s.switchLabel}>Have an account?</Text>
           <TouchableOpacity
             onPress={() => router.replace(loginRoute(preferredSide) as never)}
             accessibilityRole="link"
             accessibilityLabel="Sign in"
           >
-            <Text style={styles.switchCta}> Log in.</Text>
+            <Text style={s.switchCta}>{' '}Log in.</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -561,43 +553,36 @@ export default function SignupScreen() {
 
 function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={reviewStyles.row}>
-      <Text style={reviewStyles.label}>{label}</Text>
-      <Text style={reviewStyles.value}>{value}</Text>
+    <View style={rr.row}>
+      <Text style={rr.label}>{label}</Text>
+      <Text style={rr.value}>{value}</Text>
     </View>
   );
 }
 
-const reviewStyles = StyleSheet.create({
+const rr = StyleSheet.create({
   row: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#1e1e2a',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2a2a35',
   },
-  label: { color: '#888', fontSize: 13 },
+  label: { color: '#666', fontSize: 13 },
   value: { color: '#f3f3f5', fontSize: 13, fontWeight: '600', flexShrink: 1, textAlign: 'right' },
 });
 
-const PURPLE      = '#7c3aed';
-const PURPLE_DIM  = '#4c1d95';
-const BG          = '#0a0a0a';
-const BORDER      = '#1e1e2a';
-const TEXT        = '#f3f3f5';
-const MUTED       = '#888';
+// ─── Design tokens ────────────────────────────────────────────────────────
+const PURPLE     = '#7c3aed';
+const PURPLE_DIM = '#4c1d95';
+const BG         = '#0a0a0a';
+const BORDER     = '#2a2a35';
+const TEXT       = '#f3f3f5';
+const MUTED      = '#666';
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: BG },
-
-  bgDot1: {
-    position: 'absolute', width: 340, height: 340,
-    borderRadius: 170, backgroundColor: '#4c1d9520',
-    top: -80, right: -100,
-  },
-  bgDot2: {
-    position: 'absolute', width: 260, height: 260,
-    borderRadius: 130, backgroundColor: '#7c3aed12',
-    bottom: 60, left: -80,
-  },
 
   scroll: {
     flexGrow: 1,
@@ -605,91 +590,110 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
     paddingVertical: 48,
+    // No decorative blobs — background is clean flat dark.
   },
 
-  logoWrap: {
-    width: 64, height: 64,
-    borderRadius: 20,
-    backgroundColor: PURPLE_DIM,
+  // ── Wordmark-only logo area ────────────────────────────────────────────
+  logoArea: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 12,
+    marginBottom: 28,
   },
-  logoMark: { color: '#fff', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
-  logoHeart: { fontSize: 11, position: 'absolute', bottom: 8, right: 9 },
-
   wordmark: {
-    color: TEXT, fontSize: 24, fontWeight: '800',
-    letterSpacing: -0.3, marginBottom: 4,
+    color: TEXT,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 36,
   },
-  tagline: { color: MUTED, fontSize: 13, marginBottom: 20, letterSpacing: 0.2 },
+  heart: {
+    color: PURPLE,
+    fontSize: 18,
+    marginTop: 2,
+  },
 
+  tagline: {
+    color: MUTED,
+    fontSize: 13,
+    marginBottom: 20,
+    letterSpacing: 0.2,
+  },
+
+  // ── Step progress dots ─────────────────────────────────────────────────
   dotsRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   dot: {
-    width: 7, height: 7, borderRadius: 4,
+    width: 7, height: 7,
+    borderRadius: 4,
     backgroundColor: '#2a2a3a',
   },
   dotActive: { backgroundColor: PURPLE, width: 22 },
-  stepLabel: { color: MUTED, fontSize: 11, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 24 },
+  stepLabel: {
+    color: MUTED,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    marginBottom: 24,
+  },
 
   stepContent: { width: '100%' },
   stepInner:   { width: '100%' },
 
   stepHint: {
-    color: TEXT, fontSize: 15, fontWeight: '600',
-    marginBottom: 20, textAlign: 'center',
+    color: TEXT,
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
   },
 
+  // ── Inputs ─────────────────────────────────────────────────────────────
   inputWrap: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: BORDER,
-    borderRadius: 12,
-    backgroundColor: '#16161e',
+    borderRadius: 10,
+    backgroundColor: '#111118',
     marginBottom: 12,
     overflow: 'hidden',
   },
   input: {
-    flex: 1, paddingVertical: 15,
-    paddingHorizontal: 16,
-    color: TEXT, fontSize: 15,
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    color: TEXT,
+    fontSize: 14,
   },
   atSign: {
-    color: MUTED, fontSize: 18,
-    paddingLeft: 14, paddingRight: 2,
+    color: MUTED,
+    fontSize: 18,
+    paddingLeft: 14,
+    paddingRight: 2,
     fontWeight: '600',
   },
-  eyeBtn: { paddingHorizontal: 14, paddingVertical: 15 },
+  eyeBtn: { paddingHorizontal: 14, paddingVertical: 14 },
   eyeText: { fontSize: 16 },
 
   errorText: {
-    color: '#f87171', fontSize: 12,
+    color: '#f87171',
+    fontSize: 12,
     alignSelf: 'flex-start',
-    marginBottom: 8, marginLeft: 2,
+    marginBottom: 8,
+    marginLeft: 2,
   },
 
+  // ── CTA button — solid fill, no glow ──────────────────────────────────
   btn: {
     width: '100%',
     backgroundColor: PURPLE,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 10,
+    paddingVertical: 15,
     alignItems: 'center',
     marginTop: 6,
     marginBottom: 14,
-    shadowColor: PURPLE,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    // No shadowColor / shadowOpacity.
   },
-  btnDim: { backgroundColor: PURPLE_DIM, shadowOpacity: 0 },
+  btnDim: { backgroundColor: PURPLE_DIM },
   btnText: { color: '#fff', fontWeight: '700', fontSize: 15, letterSpacing: 0.2 },
 
   backBtn: { alignSelf: 'center', paddingVertical: 8 },
@@ -697,8 +701,8 @@ const styles = StyleSheet.create({
 
   reviewCard: {
     width: '100%',
-    backgroundColor: '#16161e',
-    borderRadius: 14,
+    backgroundColor: '#111118',
+    borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 16,
     borderWidth: 1,
@@ -711,14 +715,18 @@ const styles = StyleSheet.create({
 
   // Success
   successCard: {
-    flex: 1, alignItems: 'center',
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 36,
   },
   successEmoji: { fontSize: 52, marginBottom: 16 },
   successTitle: { color: TEXT, fontSize: 22, fontWeight: '700', marginBottom: 12 },
   successBody: {
-    color: MUTED, fontSize: 15,
-    textAlign: 'center', lineHeight: 22, marginBottom: 36,
+    color: MUTED,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 36,
   },
 });
