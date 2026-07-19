@@ -1,7 +1,6 @@
-name: Implementation Evidence
+name: Archived — Implementation Evidence
 
 on:
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -12,10 +11,12 @@ env:
 
 jobs:
   verify-ledger:
-    name: Verify implementation claims
+    name: Manual legacy implementation evidence
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
-      - name: Check out repository history
+      - name: Checkout repository history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -24,10 +25,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Validate ledger and changed architecture documents
         env:
           BASE_REF: ${{ github.base_ref }}
+        shell: bash
         run: |
           if [[ -n "$BASE_REF" ]]; then
             npm run verify:implementation-ledger -- --changed-since "origin/$BASE_REF"
