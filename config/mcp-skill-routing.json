@@ -8,9 +8,12 @@
       "skills": [
         "bip-repo-truth",
         "bip-typescript-audit",
+        "bip-typescript-root-cause-debugger",
+        "bip-typescript-minimal-patch",
+        "bip-typescript-strict-review",
         "bip-release-gate"
       ],
-      "boundary": "Repository, pull-request, draft pull-request, Actions, and security evidence only. Verify exact branch and commit before claims or writes."
+      "boundary": "Repository, pull-request, draft pull-request, Actions, TypeScript patch/review/debugging, and security evidence only. Verify exact branch and commit before claims or writes."
     },
     "supabase": {
       "skills": [
