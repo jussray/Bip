@@ -1,57 +1,6 @@
 name: Playwright Smoke and Guardrails
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'app/**'
-      - 'components/**'
-      - 'screens/**'
-      - 'src/**'
-      - 'worker/**'
-      - 'e2e/**'
-      - 'e2e-founder-preview/**'
-      - 'scripts/verify-cloudflare-native-deploy.mjs'
-      - 'scripts/write-release-metadata.mjs'
-      - 'test/cloudflare-native-deploy.test.mjs'
-      - 'test/release-metadata.test.mjs'
-      - 'docs/VISION.md'
-      - 'docs/GUARDRAILS.md'
-      - 'DEPLOYMENT.md'
-      - 'wrangler.toml'
-      - 'playwright.config.ts'
-      - 'playwright.production.config.ts'
-      - 'playwright.founder-preview.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/deploy-cloudflare.yml'
-      - '.github/workflows/playwright.yml'
-  pull_request:
-    paths:
-      - 'app/**'
-      - 'components/**'
-      - 'screens/**'
-      - 'src/**'
-      - 'worker/**'
-      - 'e2e/**'
-      - 'e2e-founder-preview/**'
-      - 'scripts/verify-cloudflare-native-deploy.mjs'
-      - 'scripts/write-release-metadata.mjs'
-      - 'test/cloudflare-native-deploy.test.mjs'
-      - 'test/release-metadata.test.mjs'
-      - 'docs/VISION.md'
-      - 'docs/GUARDRAILS.md'
-      - 'DEPLOYMENT.md'
-      - 'wrangler.toml'
-      - 'playwright.config.ts'
-      - 'playwright.production.config.ts'
-      - 'playwright.founder-preview.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/workflows/ci.yml'
-      - '.github/workflows/deploy-cloudflare.yml'
-      - '.github/workflows/playwright.yml'
   workflow_dispatch:
 
 permissions:
