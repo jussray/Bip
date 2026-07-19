@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   wordmark:      { color: TEXT, fontSize: 22, fontWeight: '800', letterSpacing: -0.3, marginBottom: 28 },
   title:         { color: TEXT, fontSize: 44, fontWeight: '900', lineHeight: 50, marginBottom: 16 },
   body:          { color: '#c5bbcf', fontSize: 15, lineHeight: 24, marginBottom: 18 },
-  promiseCard:   { borderRadius: 20, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: '#ffffff08', padding: 16, marginBottom: 22 },
+  promiseCard:   { width: '100%', borderRadius: 20, borderWidth: 1, borderColor: '#ffffff14', backgroundColor: '#ffffff08', padding: 16, marginBottom: 22 },
   promiseTitle:  { color: TEXT, fontSize: 14, fontWeight: '900', marginBottom: 6 },
   promiseText:   { color: '#a89daf', fontSize: 12, lineHeight: 18 },
   sectionTitle:  { color: ACCENT, fontSize: 12, fontWeight: '900', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
