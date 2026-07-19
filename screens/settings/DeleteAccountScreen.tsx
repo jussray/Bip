@@ -1,8 +1,8 @@
 /**
  * DeleteAccountScreen.tsx
- * Apple App Store requirement — in-app account deletion (mandatory since June 2023).
- * Deletes: auth user, all messages, all memories, all companion history, all profile data.
- * Triggered via Settings → Account → Delete Account.
+ *
+ * Full-screen account-deletion request UI. The actual deletion is handled by
+ * the repository's canonical seven-day, cancellable deletion processor.
  */
 import React, { useState } from 'react';
 import {
@@ -16,81 +16,68 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '@/services/supabase';
+import {
+  requestAccountDeletion,
+  type AccountDeletionRequest,
+} from '@/services/accountDeletion';
 
 const WHAT_GETS_DELETED = [
   "Your Se'kret Bip account and login",
-  'All conversations with Raylene, Rylane, Night, and Cloud',
-  'All memories your companions have of you',
-  'Your journal entries and scrapbook',
-  'Your rewards and badges',
-  'Parent Circle connections',
-  'All personal data stored by Se\'kret Bip',
+  'Account-owned conversations and companion history',
+  'Account-owned journal, rewards, and profile data',
+  'Parent or teen relationship access tied to your account',
+  'Private uploads stored under your account path',
 ];
+
+function formatDeletionDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'after the seven-day grace period';
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+}
 
 export default function DeleteAccountScreen() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const [scheduledRequest, setScheduledRequest] = useState<AccountDeletionRequest | null>(null);
 
-  const handleDelete = async () => {
-    if (!confirmed) {
-      setConfirmed(true);
-      return;
-    }
-
+  const scheduleDeletion = () => {
     Alert.alert(
-      'Delete your account?',
-      'This cannot be undone. Everything listed will be permanently deleted.',
+      'Schedule account deletion?',
+      'Your account will be scheduled for deletion after a seven-day grace period. You can cancel from Settings before processing begins.',
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => setConfirmed(false) },
+        { text: 'Keep account', style: 'cancel' },
         {
-          text: 'Delete forever',
+          text: 'Schedule deletion',
           style: 'destructive',
-          onPress: performDeletion,
+          onPress: () => void performDeletionRequest(),
         },
-      ]
+      ],
     );
   };
 
-  const performDeletion = async () => {
+  const performDeletionRequest = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('No active session');
+      const result = await requestAccountDeletion();
+      if (!result.ok) throw new Error(result.message);
 
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Deletion failed');
-      }
-
-      await supabase.auth.signOut();
-
+      setScheduledRequest(result.value);
       Alert.alert(
-        'Account deleted',
-        "Your Se'kret Bip account and all data have been permanently deleted.",
-        [{ text: 'OK', onPress: () => router.replace('/') }]
+        'Deletion scheduled',
+        `Your account is scheduled for deletion on ${formatDeletionDate(result.value.scheduledFor)}. You can cancel from Settings before processing begins.`,
       );
-    } catch (error: any) {
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not schedule account deletion.';
       Alert.alert(
-        'Something went wrong',
-        `We couldn't delete your account right now. Please try again or contact support@sekretbip.net.\n\n${error.message}`,
-        [{ text: 'OK' }]
+        'Could not schedule deletion',
+        `${message}\n\nPlease check your connection and try again.`,
       );
     } finally {
       setLoading(false);
-      setConfirmed(false);
     }
   };
 
@@ -99,13 +86,13 @@ export default function DeleteAccountScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Delete your account</Text>
         <Text style={styles.subtitle}>
-          Deleting your account is permanent and cannot be undone.
+          Account deletion uses a seven-day grace period so you can cancel an accidental request before processing begins.
         </Text>
 
         <View style={styles.listCard}>
-          <Text style={styles.listTitle}>What will be deleted:</Text>
-          {WHAT_GETS_DELETED.map((item, i) => (
-            <View key={i} style={styles.listRow}>
+          <Text style={styles.listTitle}>When the grace period ends, deletion includes:</Text>
+          {WHAT_GETS_DELETED.map((item) => (
+            <View key={item} style={styles.listRow}>
               <Text style={styles.bullet}>•</Text>
               <Text style={styles.listItem}>{item}</Text>
             </View>
@@ -113,23 +100,26 @@ export default function DeleteAccountScreen() {
         </View>
 
         <Text style={styles.warning}>
-          If you have an active subscription, cancel it in the App Store before deleting.
+          If you have an active subscription, cancel it in the App Store separately. Deleting your Se'kret Bip account does not cancel an App Store subscription.
         </Text>
 
-        {loading ? (
+        {scheduledRequest ? (
+          <View style={styles.statusCard}>
+            <Text style={styles.statusTitle}>Deletion scheduled</Text>
+            <Text style={styles.statusText}>
+              Processing is scheduled for {formatDeletionDate(scheduledRequest.scheduledFor)}. Return to Settings to review or cancel the request before then.
+            </Text>
+          </View>
+        ) : loading ? (
           <ActivityIndicator size="large" color="#c0392b" style={styles.loader} />
         ) : (
           <TouchableOpacity
-            style={[styles.deleteButton, confirmed && styles.deleteButtonConfirmed]}
-            onPress={handleDelete}
-            accessibilityLabel="Delete account permanently"
+            style={styles.deleteButton}
+            onPress={scheduleDeletion}
+            accessibilityLabel="Schedule account deletion"
             accessibilityRole="button"
           >
-            <Text style={styles.deleteButtonText}>
-              {confirmed
-                ? '⚠️ Tap again to confirm — this cannot be undone'
-                : 'Delete my account'}
-            </Text>
+            <Text style={styles.deleteButtonText}>Schedule account deletion</Text>
           </TouchableOpacity>
         )}
 
@@ -138,7 +128,9 @@ export default function DeleteAccountScreen() {
           onPress={() => router.back()}
           accessibilityRole="button"
         >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text style={styles.cancelButtonText}>
+            {scheduledRequest ? 'Back to Settings' : 'Cancel'}
+          </Text>
         </TouchableOpacity>
 
         <Text style={styles.support}>
@@ -184,8 +176,17 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     minHeight: 54,
   },
-  deleteButtonConfirmed: { backgroundColor: '#96281b' },
   deleteButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  statusCard: {
+    backgroundColor: '#fff3f1',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#c0392b55',
+    padding: 16,
+    marginBottom: 12,
+  },
+  statusTitle: { color: '#96281b', fontSize: 16, fontWeight: '700', marginBottom: 6 },
+  statusText: { color: '#6b3029', fontSize: 14, lineHeight: 20 },
   cancelButton: {
     backgroundColor: 'transparent',
     borderRadius: 12,
