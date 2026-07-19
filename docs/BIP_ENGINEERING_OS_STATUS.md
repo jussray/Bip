@@ -24,10 +24,10 @@ The active repository is not the proposed `apps/mobile` / `packages/*` monorepo 
 | Concern | Current repository truth |
 |---|---|
 | Expo Router application | `app/` route groups at repository root |
-| Shared application code | `src/`, `components/`, `screens/`, `hooks/`, `contexts/`, `services/`, `utils/` |
+| Shared application code | `src/`, `components/`, `screens/`, `hooks/`, `context/`, `services/`, `utils/` |
 | Supabase schema authority | `supabase/migrations/` with live parity checked separately |
 | Database probes | `supabase/probes/` |
-| Cloudflare runtime | `workers/` and current Worker configuration |
+| Cloudflare runtime | `worker/` and current Worker configuration |
 | Repository contracts | `test/`, implementation ledger, audit scripts, and current workflows |
 | Founder Control Room | existing Control Room services, reports, documents, issues, and stacked PRs |
 | Design/Figma guidance | current design references, `CLAUDE.md`, repository Figma skills, and verified active imports |
