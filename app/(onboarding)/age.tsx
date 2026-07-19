@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -83,7 +84,7 @@ export default function AgeScreen() {
       <View style={styles.bgDot1} pointerEvents="none" />
       <View style={styles.bgDot2} pointerEvents="none" />
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back">
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
@@ -133,7 +134,7 @@ export default function AgeScreen() {
             <Text style={styles.decisionText}>{decision.message}</Text>
           </View>
         ) : null}
-      </View>
+      </ScrollView>
 
       <View style={styles.footer}>
         <TouchableOpacity
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   root:             { flex: 1, backgroundColor: BG },
   bgDot1:           { position: 'absolute', width: 340, height: 340, borderRadius: 170, backgroundColor: '#4c1d9520', top: -80, right: -100 },
   bgDot2:           { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: '#7c3aed12', bottom: 60, left: -80 },
-  content:          { flex: 1, paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingHorizontal: 28 },
+  content:          { paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingHorizontal: 28, paddingBottom: 24 },
   back:             { marginBottom: 28 },
   backText:         { color: MUTED, fontSize: 22 },
   stepDots:         { flexDirection: 'row', gap: 6, marginBottom: 28 },
