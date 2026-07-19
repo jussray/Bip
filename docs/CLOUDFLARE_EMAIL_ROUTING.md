@@ -1,13 +1,17 @@
 # Cloudflare Email Routing for Se'kret Bip
 
-Incoming Bip email is handled by the existing Cloudflare Worker named `sekret-backend`.
+Last reviewed: 2026-07-18
+
+## Canonical handler
+
+Incoming Bip email belongs to the existing production Worker named `sekret-backend`.
 
 The Worker entry point remains `worker/observed-index.ts`. It exports both:
 
-- `fetch()` for the Bip HTTP/API backend;
+- `fetch()` for the HTTP/API backend;
 - `email()` for inbound email processing through `worker/email-router.ts`.
 
-There is no second mail Worker and no second Wrangler configuration.
+The Cloudflare dashboard may still contain a legacy Worker named `bip-mail`. That Worker is a cutover source, not the canonical destination. Do not create or preserve a second Wrangler configuration for mail.
 
 ## Supported inbox aliases
 
@@ -21,17 +25,30 @@ There is no second mail Worker and no second Wrangler configuration.
 
 Unknown aliases are rejected rather than silently forwarded.
 
-## Deploy the Worker
+## Deploy the canonical Worker
 
 From the repository root, use the existing root configuration:
 
 ```bash
-npx wrangler deploy
+npm run deploy:worker
 ```
 
 The root `wrangler.toml` deploys `worker/observed-index.ts` as `sekret-backend`. Do not deploy `worker/email-router.ts` directly under the same Worker name, because that would replace the HTTP/API entry point.
 
-## Cloudflare setup
+## Cut over from `bip-mail`
+
+1. Confirm the intended `sekret-backend` release is deployed.
+2. Confirm its `/health` endpoint succeeds.
+3. Open **Email Routing** for the Bip domain.
+4. For every supported alias, change the Worker action from `bip-mail` to `sekret-backend`.
+5. Send a controlled message to every alias.
+6. Confirm every message reaches the verified destination and preserves the expected `X-Bip-*` headers.
+7. Confirm `bip-mail` has no remaining Email Routing rules, routes, triggers, bindings, or recent traffic.
+8. Only then delete `bip-mail`.
+
+If any alias fails, restore its prior Worker action before deleting anything. The complete deletion and rollback gate is in `docs/CLOUDFLARE_WORKER_CONSOLIDATION.md`.
+
+## Initial Cloudflare setup
 
 1. In Cloudflare, open **Email Routing** for the Bip domain.
 2. Add `sekretbip@gmail.com` as a destination address.

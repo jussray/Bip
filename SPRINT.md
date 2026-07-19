@@ -1,88 +1,38 @@
-# Se'kret Bip — Current Sprint State
+# Se'kret Bip — Current Sprint
 
-This file records volatile project state. Verify material claims with GitHub, Supabase, Cloudflare, and the relevant tests before acting.
-
-## Verification
-
-**Last verified:** 2026-07-13  
+**Sprint theme:** Launch trust and journey proof  
+**Last verified:** 2026-07-16  
 **Repository:** `jussray/Sekret-Bip`  
 **Default branch:** `main`  
-**Verified implementation baseline:** `3b9673add18108bacf6de9d500ddccbdefa8e844`
+**Verified implementation baseline reviewed:** `ab5cf40b398e02536764b5b806b6f3aec0a9161c`  
+**Owner roadmap:** `docs/LAUNCH_ROADMAP.md`
 
-`implementation-ledger.json` is the machine-checked feature-status source. This file is an execution handoff, not a magical synchronization layer.
+This file is the volatile execution handoff. Verify material claims against GitHub, live Supabase, Cloudflare, tests, and the exact deployed SHA before acting.
 
-The verified baseline includes:
+`implementation-ledger.json` remains the machine-checked feature-state source. A green PR proves reviewed integration. It does not prove production behavior.
 
-- merge `044d72ca4028c30401dd44c9948e4e51e8e51d3b` for the unified frontend-to-Worker contract spine;
-- merge `3b9673add18108bacf6de9d500ddccbdefa8e844` for permanent-account RLS on `comfort_sessions` and `room_memory`;
-- live Supabase migration `20260713230600_harden_private_self_data_permanent_accounts`;
-- exact-head PR checks green before both merges;
-- rollback-contained live authorization proof with no retained synthetic rows.
+## Sprint outcome
 
-A green reviewed branch and an identical scoped squash merge prove repository integration. Production UI or Worker behavior still requires the separate Cloudflare exact-release workflow and user-journey evidence when those runtime surfaces changed.
+Move Se'kret Bip from a strong integrated foundation toward **controlled-alpha readiness** by proving the launch-critical trust journeys:
 
-## Current baseline
+1. exact runtime and deployment truth;
+2. remaining authorization and denial boundaries;
+3. complete teen-parent Bridge and relationship lifecycle;
+4. account deletion across database, Storage, local caches, and linked access;
+5. physical-device, accessibility, offline, and failure-state quality;
+6. named ownership for legal, safeguarding, store, support, and operational gates.
 
-### Implementation Evidence
+This sprint does **not** promise public launch. It closes the evidence gaps required before a responsible alpha and launch-clearance phase.
 
-Merged and active on `main`:
+## What changed since the previous sprint baseline
 
-- feature states: `planned -> contract -> integrated -> verified -> released`;
-- architecture, roadmap, current-status, and agent-skill changes require ledger reconciliation;
-- integrated features require runtime paths, telemetry, rollout controls, and rollback;
-- verified/released claims require passed evidence and production proof;
-- status docs are updated only after the implementation merges and the tested `main` content is verified.
+Merged into `main`:
 
-### Frontend-to-Worker contract spine
-
-Merged through PR #398.
-
-Current state:
-
-- `src/contracts/sekretApi.ts` is the shared request, response, avatar-state, voice, transcription, and stable-error contract;
-- `src/services/backend/sekretClient.ts` owns migrated Worker transport, auth headers, timeouts, trace IDs, and HTTP/network error mapping;
-- main chat, legacy API helpers, and founder Worker tooling route through the shared client;
-- Worker fallback and client-local fallback are distinguished;
-- Worker style enforcement supplies an avatar state for frontend visual truth;
-- exact-head CI, Type Check, Quality Gate, Regression, Pre-Push, Companion Lab, and Playwright passed before merge;
-- exact-production-release observation plus user-facing 401, 403, 429, timeout, offline, safety, malformed-response, and voice-unavailable state proof remain before verified or released status.
-
-### Identity and companion style
-
-The canonical identity/style contract is integrated into Worker reply and TTS paths.
-
-Current state:
-
-- exact-head CI, Companion Lab, and Playwright passed;
-- Se'kret continuity identity and named-companion distinctions are enforced;
-- question budgets and deterministic repair exist;
-- telemetry records version metadata without private content;
-- production style-version observation remains before promotion to verified/released.
-
-### Supabase authorization
-
-Completed live slices:
-
-- rollback-contained owner/cross-user/anonymous denial proof;
-- zero synthetic residue;
-- config tables hardened to service-role-only with zero client grants and preserved rows;
-- migration-history parity for completed security migrations;
-- `notification_deliveries` verified as service-role-only;
-- `release-health`, `bridge-e2e-probe`, and `github-workflow-status` retired as JWT-protected HTTP 410 functions with recorded versions and hashes;
-- `comfort_sessions` and `room_memory` now require `is_non_anonymous_user()` plus matching ownership;
-- all `anon` table privileges were removed from those two private tables;
-- `authenticated` privileges were reduced to SELECT, INSERT, UPDATE, and DELETE only;
-- migration `20260713230600_harden_private_self_data_permanent_accounts` is applied live and matches the repository;
-- rollback-contained proof passed 7 of 7 checks while retaining no application rows.
-
-Advisor interpretation:
-
-- Supabase continues to emit role-based anonymous-access warnings for policies assigned to `authenticated`;
-- the advisor does not evaluate the explicit `is_non_anonymous_user()` predicate;
-- do not claim those static warnings are cleared;
-- use the executable JWT-claim denial probe as authorization evidence.
-
-Remaining before L4 activation:
+- runtime-truth enforcement across GitHub, Supabase, deployment evidence, and Founder Control Room capability claims;
+- privacy-safe Daily Intentions in the Teen User Room with local deterministic generation and owner-only durable storage;
+- negative-auth contract tests for `account-delete` and `safety-scan`;
+- one explicit L5 definition, still blocked behind L4 reaching `verified`;
+- Cloudflare verification changes that retain failure evidence instead of allowing deployment uncertainty to disappear.
 
 - additional anonymous-auth policy hardening for Bridge, activity, points/rewards, tasks, relationships, and other private surfaces;
 - behavior tests for high-blast-radius authenticated database functions;
@@ -102,53 +52,71 @@ Remaining before L4 activation:
 - Do not mark trigger assurance verified until both live catalog parity and the external-effect-safe behavioral suite pass against the intended Supabase target.
 
 ### Production deployment
+These are repository integration claims. Any frontend or Worker release still requires exact production observation for the deployed commit.
 
-Canonical deployment authority:
+## Current launch position
 
-- Worker: `sekret-backend` through Cloudflare Workers Builds;
-- Pages: `sekret-bip` through Cloudflare Pages;
-- branch: `main`;
-- GitHub Actions verifies production but does not upload code.
+| Area | Repository state | Production or journey state | Sprint posture |
+|---|---|---|---|
+| Core app, routes, Supabase, Worker, Pages | Integrated | Evidence varies by surface | Preserve and prove |
+| Release truth and runtime contracts | Integrated | Exact-SHA verification required per release | Launch-critical |
+| Daily Intentions | Integrated, privacy-scoped | Device and exact-release observation remain | Verify; do not expand scope |
+| Supabase authorization | Contract with several passed slices | Remaining private surfaces and RPCs need focused proof | Launch-critical |
+| Bridge and parent lifecycle | Integrated, controlled | Full two-account production journey incomplete | Primary blocker |
+| Account deletion | Integrated | End-to-end database, Storage, cache, retry, and isolation proof incomplete | Primary blocker |
+| Teen Room, companions, Calm, Circle | Integrated surfaces | Physical-device, accessibility, offline, moderation, and failure-state evidence varies | Quality pass |
+| Mind + Body Reset | Integrated, internal | Physical-device timer and movement-safety QA remain | Conditional launch scope |
+| Legal, safeguarding, app-store, support | In progress | Clearance incomplete | Primary blocker |
+| L4 continuity memory | Planned | Not implemented | Not a launch dependency |
+| L5 synthesis | Planned and blocked | Must not start before L4 is verified | Out of sprint |
 
-Exact-release proof requires:
+## Workstream A — Runtime truth and authorization
 
-1. Worker build success for the expected commit;
-2. deployed `release.json` matching the expected SHA;
-3. healthy Worker endpoint;
-4. read-only production Playwright;
-5. retained artifact.
+### Already established
 
-The retired Supabase `release-health` function and stale `control_room_releases` rows are not deployment evidence.
+- Cloudflare Workers Builds owns the canonical Worker deployment.
+- Cloudflare Pages owns the canonical web deployment.
+- GitHub Actions verifies production but does not upload production code.
+- Exact release proof requires the expected Worker check, matching `release.json`, healthy backend, production Playwright, and retained evidence.
+- Several owner, cross-user, anonymous, founder, guardian, configuration, room-memory, and comfort-session authorization slices have executable proof.
+- `account-delete` and `safety-scan` have fail-closed negative-auth source contracts on `main`.
 
-The private-self-data change is a live Supabase migration, not a Worker or Pages runtime change. Its release evidence is migration parity plus the rollback-contained authorization probe. Do not use Cloudflare status as a substitute for database authorization proof.
+### Sprint completion work
 
-## Current product priority
+- finish bounded anonymous-auth hardening for remaining launch-critical private tables;
+- add positive and negative behavior tests for remaining high-blast-radius authenticated database functions;
+- keep migration history, live schema, grants, policies, and runtime claims aligned;
+- verify every production-changing merge through the exact release path;
+- preserve terminal failure evidence and an actionable rollback.
 
-### Teen-to-parent Bridge proof
+## Workstream B — Bridge, parent lifecycle, and deletion
 
-The required complete journey remains:
+### Required Bridge journey
 
-1. teen creates and verifies an account;
-2. parent creates and verifies an account;
-3. relationship is linked through the intended two-party flow;
+1. teen creates and verifies a permanent account;
+2. parent creates and verifies a permanent account;
+3. both complete the intended two-party link flow;
 4. teen creates private source content;
 5. teen previews and confirms an eligible Bridge share;
-6. Worker generates a privacy-safe parent summary;
+6. Worker generates a privacy-safe summary;
 7. parent sees only the generated summary;
-8. teen revokes and parent access disappears;
-9. re-share creates fresh generation without stale exposure;
-10. unlink and deletion remove relationship access;
-11. second-user isolation remains correct.
+8. revocation removes access immediately;
+9. re-share creates a fresh generation without stale exposure;
+10. unlink removes relationship access;
+11. account deletion removes database, Storage, local, and relationship access;
+12. second-user isolation remains correct throughout;
+13. test data and artifacts are cleaned up or retained only as privacy-safe receipts.
 
-Contracts, runtime paths, and rollback controls exist. Bridge summary rollout remains disabled/controlled until the complete deployed journey passes with cleanup evidence.
+Bridge summary rollout remains controlled until this deployed journey passes.
 
-### Account deletion
+### Account-deletion proof
 
-Deletion remains a release blocker. Proof must include:
+Proof must cover:
 
-- database rows;
-- Storage objects;
-- parent-link revocation;
+- application database rows;
+- Auth identity handling;
+- Storage objects discovered from live configuration rather than stale hard-coded bucket lists;
+- parent and trusted-relationship revocation;
 - local private caches;
 - retry/idempotency behavior;
 - second-user restore isolation.
@@ -201,3 +169,81 @@ Current Control Room operational sources are integrated. Additional panels must 
 10. Add Control Room observers only after their sources exist.
 
 A green PR proves reviewed integration. It does not prove production behavior unless the correct system witness, deployed artifact, and user journey were observed. Computers remain deeply committed to this inconvenient distinction.
+- retry and idempotency behavior;
+- durable metadata-only receipts;
+- second-user restore and isolation behavior.
+
+## Workstream C — Mobile product quality
+
+Required physical-device and accessibility proof:
+
+- iOS and Android signup, login, onboarding, Room, Pages, Calm, Circle, More, and parent-link smoke journeys;
+- keyboard, screen-reader, contrast, motion, orientation, safe-area, and touch-target checks;
+- offline, timeout, 401, 403, 429, malformed-response, safety, and unavailable-voice states;
+- Daily Intentions layout, mode controls, completion, privacy sheet, and off-state behavior;
+- timer, pause, skip, stop, completion threshold, low-impact alternatives, and movement-safety review for Mind + Body Reset;
+- minimal notification content and no private-content leakage into logs or evidence.
+
+Use Playwright for web and release guardrails. Use Maestro for physical mobile user journeys. Introduce deeper native automation only when a proven gap requires it.
+
+## Workstream D — Launch operations
+
+- assign an owner and evidence state to every applicable item in `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`;
+- define controlled-alpha cohort, support channel, success conditions, and stop conditions;
+- decide launch scope: which integrated features are enabled, controlled, hidden, or explicitly unfinished;
+- decide the free/paid boundary only after entitlements, restoration, support, and privacy implications are understood;
+- complete incident, moderation, safeguarding, backup, restore, and rollback runbooks;
+- ensure launch messaging matches verified behavior rather than repository ambition.
+
+## Immediate execution order
+
+1. Reconcile the latest `main`, live Supabase, and Cloudflare production witnesses before making new status claims.
+2. Complete the next bounded private-surface authorization slice, prioritizing Bridge and relationship tables used in the launch journey.
+3. Add focused behavior tests for remaining high-blast-radius authenticated database functions.
+4. Complete account-deletion database, Storage, cache, retry, receipt, and isolation proof.
+5. Run the controlled Bridge two-account production journey with revocation, re-share, unlink, deletion, and cleanup evidence.
+6. Run iOS and Android launch-route smoke journeys plus accessibility and failure-state QA.
+7. Observe production identity/style, voice, Worker-contract, and Daily Intentions behavior only through metadata-safe witnesses.
+8. Assign owners and evidence states to legal, safeguarding, store, support, and operational launch gates.
+9. Prepare the controlled-alpha decision packet: scope, cohort, metrics, rollback thresholds, support, and stop conditions.
+10. Only after launch-critical authorization work is complete, design the smallest safe L4 schema and one real consumer.
+11. Only after L4 reaches `verified`, consider an L5 consent contract. Do not create L5 schema, services, or runtime first.
+
+## Explicit non-goals
+
+Not part of this sprint:
+
+- broad visual redesign unrelated to launch defects;
+- a second backend, state system, schema bootstrap, or deployment authority;
+- raw-content analytics or Control Room ingestion;
+- public launch dates unsupported by capacity and evidence owners;
+- L4 dashboards before L4 storage, denial, deletion, and one consumer exist;
+- any L5 implementation before L4 reaches `verified`;
+- turning every research signal into a feature commitment;
+- deleting preserved future work merely to make the launch scope look smaller.
+
+## Definition of done
+
+A sprint item is done only when:
+
+- the canonical implementation or contract is on `main`;
+- tests appropriate to its risk pass;
+- production-changing work has exact deployed-SHA evidence;
+- database-changing work has live migration and authorization evidence;
+- user-journey work has the required account, device, revocation, cleanup, and isolation proof;
+- privacy-safe evidence is retained;
+- rollout and rollback are explicit;
+- `implementation-ledger.json` or a validated extension is reconciled;
+- `docs/CURRENT_STATUS.md` and `docs/LAUNCH_ROADMAP.md` are updated only when their owned truth changed.
+
+## Escalate immediately when
+
+- a parent can access raw teen source content;
+- anonymous or cross-user access succeeds on a private surface;
+- a deployment verifier cannot identify the exact live commit;
+- deletion leaves private rows, files, caches, or relationship access behind;
+- a release artifact or log contains private content, credentials, or broad identifiers;
+- a planned L4 or L5 concept is presented as implemented;
+- documentation claims more than the code, database, deployed runtime, or observed journey proves.
+
+Computers remain extremely talented at completing the wrong checklist. This sprint is about proving the right one.

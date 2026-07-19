@@ -22,6 +22,22 @@ The first redteam attacks the product premise and evidence. L99 drives implement
 
 Provider boundaries and handoffs are documented in [`docs/PROVIDERS.md`](./docs/PROVIDERS.md). Project-local rules below may be stricter; they may not weaken privacy, security, evidence, approval, provenance, rollback, or truthfulness.
 
+## MCP-to-skill routing
+
+MCP connectivity and Bip skill activation are separate requirements. Before invoking any MCP server, read [`config/mcp-skill-routing.json`](./config/mcp-skill-routing.json), load every skill mapped to that server, and also load every skill in `alwaysLoad`.
+
+- Never use an MCP merely because it is configured.
+- The mapped skill defines the product boundary; the MCP supplies a scoped tool.
+- If a mapped skill file is missing, stop rather than silently continuing without the guardrail.
+- Use `npm run verify:mcp` to prove that configured servers, authority boundaries, and skill files remain aligned.
+- Auth, login, consent, verification, parent linking, or onboarding work must activate `.agents/skills/bip-auth-onboarding/SKILL.md` in addition to the server-specific mappings.
+
+## Figma build and implementation
+
+For every Figma, screen-design, room-design, design-system, design-to-code, Code Connect, prototype, or visual QA task, also read `.agents/skills/figma-build-implement/SKILL.md` and `.figma/repository-profile.json`.
+
+Figma may specify Expo/React Native product behavior only with synthetic or redacted content. It cannot create runtime, auth, consent, parent visibility, RLS, migration, device, deployment, or release proof. Native-critical flows require controlled device evidence in addition to editable design and web proof.
+
 ## OODA Workflow
 
 Every agent must execute the full founder stack above, then follow this repository OODA workflow before changing anything.

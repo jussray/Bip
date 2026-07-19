@@ -18,7 +18,7 @@ env:
 
 jobs:
   verify-native-deployment:
-    name: Verify exact Worker and Pages release
+    name: Verify exact Worker, Pages, and Supabase release
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
@@ -29,6 +29,7 @@ jobs:
       PRODUCTION_BASE_URL: https://sekretbip.net
       FRONTEND_RELEASE_URL: https://sekretbip.net/release.json
       BACKEND_HEALTH_URL: https://sekret-backend.mcgill-raylene.workers.dev/health
+      SUPABASE_RUNTIME_HEALTH_URL: https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/runtime-contract-health
       EXPECTED_RELEASE_SHA: ${{ github.sha }}
     steps:
       - name: Check out deployed commit
@@ -49,6 +50,10 @@ jobs:
       - name: Verify backend health
         run: |
           curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$BACKEND_HEALTH_URL"
+
+      - name: Verify Supabase runtime contracts
+        run: |
+          curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$SUPABASE_RUNTIME_HEALTH_URL"
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

@@ -182,9 +182,51 @@ function assertNoCommittedSecrets(relativePath, parsed) {
   }
 }
 
+function validateMcpSkillRouting(config) {
+  assert(config.schemaVersion === 1, 'config/mcp-skill-routing.json schemaVersion must be 1');
+  assert(Array.isArray(config.alwaysLoad), 'MCP skill routing alwaysLoad must be an array');
+  assert(config.alwaysLoad.includes('bip-repo-truth'), 'MCP skill routing must always load bip-repo-truth');
+  validateServerSet(
+    'config/mcp-skill-routing.json',
+    config.servers,
+    expectedCredentialedServerNames,
+  );
+
+  const referencedSkills = new Set(config.alwaysLoad);
+  for (const serverName of expectedCredentialedServerNames) {
+    const route = config.servers?.[serverName];
+    assert(route && typeof route === 'object', `${serverName} is missing its MCP skill route`);
+    assert(Array.isArray(route.skills) && route.skills.length > 0, `${serverName} must map to at least one Bip skill`);
+    assert(typeof route.boundary === 'string' && route.boundary.trim(), `${serverName} must document its authority boundary`);
+    for (const skill of route.skills) referencedSkills.add(skill);
+  }
+
+  for (const skill of referencedSkills) {
+    assert(/^[a-z0-9-]+$/.test(skill), `invalid Bip skill name: ${skill}`);
+    const skillPath = path.join(root, '.agents', 'skills', skill, 'SKILL.md');
+    assert(fs.existsSync(skillPath), `mapped Bip skill does not exist: ${skill}`);
+  }
+
+  const requiredMappings = {
+    github: ['bip-repo-truth', 'bip-release-gate'],
+    supabase: ['bip-supabase-guardian', 'bip-privacy-redteam', 'bip-auth-onboarding'],
+    playwright: ['bip-auth-onboarding', 'bip-release-gate'],
+    'cloudflare-builds': ['bip-worker-guardian', 'bip-release-gate'],
+    'cloudflare-observability': ['bip-worker-guardian', 'bip-privacy-redteam'],
+    figma: ['bip-companion-style-engine', 'bip-sekret-identity'],
+  };
+
+  for (const [server, requiredSkills] of Object.entries(requiredMappings)) {
+    for (const skill of requiredSkills) {
+      assert(config.servers[server].skills.includes(skill), `${server} must activate ${skill}`);
+    }
+  }
+}
+
 const projectConfig = readJson('.mcp.json');
 const exampleConfig = readJson('.mcp.example.json');
 const vscodeConfig = readJson('.vscode/mcp.json');
+const mcpSkillRouting = readJson('config/mcp-skill-routing.json');
 
 const projectServers = projectConfig.mcpServers;
 const exampleServers = exampleConfig.mcpServers;
@@ -219,6 +261,7 @@ validateBrightData(
   true,
 );
 validateVscodeInput(vscodeConfig);
+validateMcpSkillRouting(mcpSkillRouting);
 
 assert(!projectServers['cloudflare-api'], '.mcp.json must not enable the broad Cloudflare API server');
 assert(!vscodeServers['cloudflare-api'], '.vscode/mcp.json must not enable the broad Cloudflare API server');
@@ -230,5 +273,6 @@ assert(!vscodeServers.dbhub, '.vscode/mcp.json must use the scoped Supabase serv
 assertNoCommittedSecrets('.mcp.json', projectConfig);
 assertNoCommittedSecrets('.mcp.example.json', exampleConfig);
 assertNoCommittedSecrets('.vscode/mcp.json', vscodeConfig);
+assertNoCommittedSecrets('config/mcp-skill-routing.json', mcpSkillRouting);
 
-console.log('[verify:mcp] MCP configuration is valid, scoped, pinned, and credential-free.');
+console.log('[verify:mcp] MCP configuration and Bip skill routing are valid, scoped, pinned, and credential-free.');

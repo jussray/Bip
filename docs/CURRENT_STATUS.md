@@ -1,104 +1,147 @@
 # Se'kret Bip — Current Status
 
-Last reviewed: 2026-07-13
+**Last reviewed:** 2026-07-16  
+**Roadmap:** `docs/LAUNCH_ROADMAP.md`  
+**Current execution:** `SPRINT.md`
 
-This page is the human-readable status summary. `implementation-ledger.json` is the machine-checked source for feature state, evidence, rollout controls, and blockers.
+This is the human-readable product snapshot. `implementation-ledger.json` and validated extensions are the machine-checked source for feature state, evidence, rollout controls, and blockers.
 
-## Integrated
+## Launch posture
 
-- Expo Router route groups for teen and parent experiences
-- Supabase-backed authentication, synchronization, ordered migrations, RLS, Storage, and Edge Functions
+Se'kret Bip has a substantial integrated product and infrastructure foundation. It is moving toward **controlled-alpha readiness**, not claiming unrestricted public-launch readiness.
+
+Public launch, app-store release, or production teen-data collection remains blocked until applicable relationship, deletion, authorization, device, accessibility, legal, safeguarding, moderation, support, and operational gates have evidence.
+
+## Integrated foundation
+
+- Expo Router teen and parent route groups
+- Supabase Auth, synchronization, ordered migrations, RLS, Storage, and Edge Functions
 - Canonical Cloudflare Worker `sekret-backend`
-- Cloudflare Pages project `sekret-bip`
-- One typed frontend-to-Worker client and shared request/response contract for companion replies, transcription, speech, health, stable errors, trace IDs, fallback state, and avatar state
+- Canonical Cloudflare Pages project `sekret-bip`
+- Shared typed frontend-to-Worker contracts for companion replies, transcription, speech, health, stable errors, trace IDs, fallback state, and avatar state
 - Companion reply, transcription, speech, and metadata-only telemetry flows
-- Versioned Se'kret identity and companion-style runtime wrapper in Worker and TTS paths
-- Mind + Body Reset guided regulation tools and timer-driven bodyweight workouts
-- Bridge account-link, consent, summary, revocation, and controlled-rollout contracts
-- Founder Control Room operational data sources
-- Exact-release production verification using the Worker check, deployed `release.json`, health verification, and read-only Playwright
-- Implementation Evidence CI gate for architecture, roadmap, status, and agent-skill claims
+- Versioned Se'kret identity and named-companion style contracts in Worker and TTS paths
+- Teen Room, Pages, voice reflection, Calm tools, Circle surfaces, rewards infrastructure, and trusted-relationship surfaces
+- Mind + Body Reset regulation tools and timer-driven bodyweight routines
+- Bridge linking, consent, summary, revocation, and controlled-rollout contracts
+- Founder Control Room operational sources and repository capability claims
+- Exact-release production verification using the Worker check, deployed `release.json`, backend health, production Playwright, and retained evidence
+- Runtime-truth gates that compare repository claims with live Supabase and production release witnesses
+- Implementation Evidence CI enforcement for architecture, roadmap, current-status, and agent-skill claims
+
+## Recently integrated
+
+### Privacy-safe Daily Intentions
+
+The Teen User Room now has a local-first daily checklist that can produce at most three small intentions.
+
+- Basic mode uses current mood and broad app actions.
+- Personalized mode is explicit opt-in and examines up to three recent user-authored companion entries locally.
+- No AI or backend request is required to generate the list.
+- The durable record contains only the final generic labels and coarse metadata.
+- Raw journal text, chat excerpts, companion replies, voice transcripts, Circle content, parent summaries, safety evidence, names, emails, and Bip IDs are excluded.
+- The Supabase table is owner-only for permanent authenticated accounts and has no parent or guardian access policy.
+
+Repository integration is complete. Exact production observation and physical-device layout and interaction QA remain evidence tasks.
+
+### Custom-auth Edge Function contracts
+
+Negative-auth tests now enforce that:
+
+- `account-delete` rejects before protected database, Storage, or Auth administration work when the shared secret is missing or wrong;
+- `safety-scan` rejects before scanning content when the shared secret is missing or wrong;
+- safety scanning stores reduced metadata rather than raw content.
+
+These are repository contract tests. Live operational configuration and end-to-end deletion evidence remain separate responsibilities.
+
+### L5 definition
+
+L5 now has one canonical meaning: cross-companion synthesis under explicit consent, distinguishable autonomous goal proposals, and self-directed reflection scheduling.
+
+L5 is **planned and blocked**. No L5 schema, service, consent flow, or runtime should be created before L4 continuity memory reaches `verified`.
 
 ## Verified authorization and operations slices
 
-- Rollback-contained live proof for sampled owner access, cross-user denial, anonymous denial, and zero synthetic residue
-- `app_config` and `app_private_config` hardened as service-role-only with RLS enabled, zero client grants, zero policies, and unchanged rows
-- `notification_deliveries` verified as an intentional service-role-only table rather than an unresolved user-policy gap
-- `release-health`, `bridge-e2e-probe`, and `github-workflow-status` retired as JWT-protected, side-effect-free HTTP 410 functions with replacement evidence
-- Repository migration history aligned with the live Supabase migration version for config-grant hardening
-- The existing `bip_events` event-to-points trigger restored and inspected live without adding a parallel workout or reward table
-- `comfort_sessions` and `room_memory` now require both permanent-account status and matching ownership; anonymous table grants were removed and authenticated access was reduced to CRUD only
-- Migration `20260713230600_harden_private_self_data_permanent_accounts` is applied live and matches the repository migration ledger
-- A rollback-contained live proof passed 7 of 7 checks: anonymous-auth writes were denied, permanent-owner writes remained functional, least-privilege grants were confirmed, and no synthetic application rows were retained
-- Supabase still emits static anonymous-role warnings for these guarded policies because the advisor does not evaluate `is_non_anonymous_user()`; the executable JWT-claim proof is the authorization evidence
+- Rollback-contained owner, cross-user, anonymous, founder, and guardian proof for sampled boundaries
+- Server-owned configuration tables hardened with zero client grants and preserved service access
+- `notification_deliveries` verified as service-role-only
+- Obsolete release and probe Edge Functions retired as JWT-protected, side-effect-free HTTP 410 functions
+- Migration-history alignment for completed security changes
+- Existing `bip_events` event-to-points behavior restored without a parallel workout or reward schema
+- `comfort_sessions` and `room_memory` restricted to permanent matching owners with anonymous table grants removed
+- Rollback-contained private-self-data proof with no retained synthetic application rows
+- Runtime-contract health and release gates that fail when production claims drift from live Supabase
 
-## Integrated but not yet fully verified or released
+Supabase may still emit static role-based warnings for policies whose executable predicates deny anonymous authenticated users. Those warnings must be reported honestly; executable denial proof remains the relevant evidence.
+
+## Integrated but not fully verified or released
 
 ### Frontend-to-Worker contract spine
 
-- `src/contracts/sekretApi.ts` defines the shared reply, voice, transcription, avatar-state, and stable-error contracts.
-- `src/services/backend/sekretClient.ts` owns migrated Worker transport, authentication headers, timeout mapping, trace IDs, and Worker-versus-local fallback state.
-- Main chat, legacy API helpers, and the founder Worker adapter route through the shared client rather than owning separate direct fetch logic.
-- Exact-head CI, Type Check, Quality Gate, Regression, Pre-Push, Companion Lab, and Playwright passed before merge.
-- Exact-production-release observation and complete user-facing proof for 401, 403, 429, timeout, offline, safety, malformed-response, and voice-unavailable states remain before verified or released status.
-
-### Mind + Body Reset
-
-- Guided mind tools, guided body regulation, and four real bodyweight routines are wired through teen-only hidden routes.
-- Work/rest timers, low-impact alternatives, pause, skip, stop, progress, safety guidance, and meaningful-completion thresholds are implemented.
-- Minimal routine metadata uses the existing `bip_events` pipeline; raw emotional text is not written by the reset flow.
-- Exact-head CI, Expo web export, and Playwright passed; physical iOS/Android plus manual timer, accessibility, and movement-safety QA remain before verified or released status.
-
-### Parent and Bridge
-
-- Parent routes and linked-account data exist.
-- Bridge contracts and runtime paths exist.
-- Bridge summaries remain under controlled rollout.
-- Production two-account journey proof, full relationship lifecycle coverage, Parent Circle privacy, Parent Coach boundaries, minimal-content notifications, and parent-facing completion remain open.
+The canonical client and shared contracts are integrated. Exact production observation and complete user-facing proof for authentication failures, rate limits, timeouts, offline behavior, safety responses, malformed responses, fallback state, and unavailable voice remain.
 
 ### Companion identity and style
 
-- Canonical identity and style contracts are consumed by Worker and TTS runtime paths.
-- Exact-head CI, Companion Lab, and Playwright passed.
-- Production style-version telemetry still needs to be observed before the feature is promoted from integrated to verified or released.
+Canonical identity and style rules are consumed by Worker and TTS runtime paths. Production style-version observation and broader user-journey evidence remain before promotion to verified or released.
 
-### Control Room
+### Mind + Body Reset
 
-- Founder-gated operational sources and screens exist.
-- Freshness, unavailable states, and metadata-only boundaries are required.
-- Identity, style, voice, and L4 observer adapters must not be presented as complete before their runtime or data sources are evidenced.
+Guided regulation and four workout lengths are integrated with work and rest timers, low-impact alternatives, pause, skip, stop, progress, safety guidance, and completion thresholds. Physical iOS and Android, accessibility, timer, and movement-safety QA remain.
 
-## Enforced release blockers
+### Parent and Bridge
 
-- Controlled production proof for Bridge and parent relationship journeys
-- Account deletion and privacy lifecycle completion
-- Focused positive and negative behavior tests for remaining high-blast-radius authenticated database functions
-- Continued anonymous-auth policy hardening for Bridge, activity, points/rewards, tasks, relationships, and other private surfaces tracked in issue #399
-- Negative-auth tests for the two remaining custom-auth Edge Functions: `account-delete` and `safety-scan`
-- Password-breach protection planning and Auth regression evidence
-- Legal, accessibility, safeguarding, moderation, and store-review readiness
-- Production evidence for any feature still marked integrated rather than verified or released
+Parent routes, linked-account data, Bridge contracts, and runtime paths exist. Bridge summaries remain controlled until the complete two-account production journey proves:
+
+- intentional linking;
+- private-source isolation;
+- teen preview and confirmation;
+- parent summary-only visibility;
+- revocation;
+- fresh re-share behavior;
+- unlink;
+- deletion;
+- second-user isolation;
+- cleanup evidence.
+
+Parent onboarding, guardian verification, relationship lifecycle states, Parent Circle privacy, Parent Coach boundaries, minimal-content notifications, physical-device QA, and end-to-end privacy evidence remain open.
+
+### Founder Control Room
+
+Operational data sources and repository capability contracts exist. Every panel must retain freshness and honest unavailable states. Raw teen content and broad user identifiers are forbidden. Observer panels must not claim identity, style, voice, memory, or release state without the corresponding runtime source.
+
+## Launch-critical blockers
+
+- Complete controlled production proof for Bridge and parent relationship journeys
+- Complete account deletion across database rows, Auth handling, Storage objects, local caches, relationship access, retries, durable receipts, and second-user isolation
+- Continue focused anonymous and cross-user denial proof for launch-critical Bridge, activity, rewards, tasks, relationships, and other private surfaces
+- Add positive and negative behavior tests for remaining high-blast-radius authenticated database functions
+- Plan password-breach protection with Auth regression evidence
+- Complete physical-device, accessibility, offline, notification, and failure-state QA
+- Complete applicable legal, safeguarding, moderation, app-store, support, incident-response, backup, restore, and rollback readiness
+- Obtain exact production evidence for features still marked integrated rather than verified or released
 
 ## Planned only — not implemented
 
 - Durable L4 continuity memory
 - Persistent companion goals
 - Scheduled reflection jobs
+- Relationship phases derived from durable evidence
 - Inter-companion coordination
-- Relationship phase derived from persisted evidence
+- L5 cross-companion synthesis and consented goal proposal
 
-L4 remains blocked until ownership, provenance, correction, expiration, deletion, RLS, denial tests, runtime use, rollout, and rollback are approved together.
+L4 remains blocked until ownership, provenance, correction, expiration, deletion, RLS, denial tests, one real consumer, rollout, telemetry, and rollback are approved together. L5 remains blocked until L4 reaches `verified` and a separate cross-companion consent contract is approved.
 
-## Release posture
-
-A controlled internal demo may use synthetic or non-sensitive data while unfinished areas are clearly labeled. Public launch, public demo involving real teen data, app-store release, and production teen-data collection remain blocked until the applicable engineering, privacy, security, legal, and operational gates have evidence.
-
-See:
+## Canonical references
 
 - `implementation-ledger.json`
+- `implementation-ledger.extensions/`
+- `SPRINT.md`
+- `docs/LAUNCH_ROADMAP.md`
+- `docs/DOCUMENTATION_MAP.md`
 - `docs/WIRING_STATUS.md`
 - `docs/DEMO_READINESS_ENFORCEMENT.md`
 - `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
-- `security/private-self-data-hardening.json`
 - `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
 - `DEPLOYMENT.md`
+
+Documentation is an implementation guardrail. When code, production configuration, evidence, and documentation disagree, stop and reconcile the stale source rather than selecting the happiest version.

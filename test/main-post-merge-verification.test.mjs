@@ -20,8 +20,10 @@ test('critical quality workflows run on the merged main commit', () => {
   assert.match(regression, /push:\n\s+branches:\n\s+- main/);
 });
 
-test('main verification includes tests, build export, RLS evidence, and browser smoke', () => {
-  assert.match(qualityGate, /run: npm test/);
+test('main verification includes tests, retained failure evidence, build export, RLS evidence, and browser smoke', () => {
+  assert.match(qualityGate, /npm test/);
+  assert.match(qualityGate, /unit-test-output\.log/);
+  assert.match(qualityGate, /unit-test-failure-evidence/);
   assert.match(qualityGate, /verify:implementation-ledger/);
   assert.match(qualityGate, /audit:control-room:rls/);
   assert.match(ci, /npm run verify:bundle/);

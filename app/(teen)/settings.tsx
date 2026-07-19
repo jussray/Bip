@@ -24,6 +24,8 @@ import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
 import { revokeParentLink } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 import { AccountDeletionControls } from '@/components/settings/AccountDeletionControls';
+import { advanceStage } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
@@ -140,6 +142,19 @@ export default function SettingsScreen() {
     setIsGenerating(false);
     if (code) {
       setInviteCode(code);
+
+      // ── Onboarding state machine ──────────────────────────────
+      // Fire-and-forget: record that the teen generated an invite
+      // code. This is the parent_link_sent signal — it fires even
+      // post-onboarding when a teen re-invites from settings.
+      getSupabase()
+        ?.auth.getUser()
+        .then(({ data }) => {
+          if (data.user) {
+            advanceStage(data.user.id, 'parent_link_sent').catch(() => null);
+          }
+        });
+      // ──────────────────────────────────────────────────────────
     } else {
       Alert.alert('Not signed in', 'Sign in to your account first, then generate a link code.');
     }

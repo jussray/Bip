@@ -4,6 +4,7 @@ import { Analytics } from '@/components/shared/Analytics';
 import { NotificationBootstrap } from '@/components/shared/NotificationBootstrap';
 import { AppProvider, useAppContext } from '@/context/AppContext';
 import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
+import { OnboardingProvider } from '@/context/OnboardingContext';
 import { installSekretBipGuardrailRuntime } from '@/config/visionGuardrails';
 import { decideRouteAccess } from '@/services/routeAccess';
 import { validateEnv } from '@/utils/env';
@@ -15,6 +16,12 @@ import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 void validateEnv();
 
 const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew', 'discover']);
+const PUBLIC_ONBOARDING_SEGMENTS = new Set([
+  'welcome',
+  'age',
+  'parent-splash',
+  'parent-welcome',
+]);
 
 function RouteBoundary() {
   const { userSide, isLoading } = useAppContext();
@@ -57,7 +64,11 @@ function RouteBoundary() {
     if (!isAuthResolved || isLoading || isVerificationLoading) return;
 
     if (isSupabaseConfigured && !isAuthenticated) {
-      if (first !== '(auth)') router.replace('/(auth)/login');
+      const isPublicRoot = first === '';
+      const isPublicOnboarding = first === '(onboarding)' && PUBLIC_ONBOARDING_SEGMENTS.has(second);
+      if (!isPublicRoot && first !== '(auth)' && !isPublicOnboarding) {
+        router.replace('/(auth)/login');
+      }
       return;
     }
 
@@ -95,10 +106,15 @@ export default function RootLayout() {
   return (
     <VerificationProvider>
       <AppProvider>
-        <RouteBoundary />
-        <NotificationBootstrap />
-        <Analytics />
-        <Stack screenOptions={{ headerShown: false }} />
+        {/* OnboardingProvider sits inside AppProvider so it has access to
+            useAuth/useAppContext, but wraps everything below so all screens
+            can call useOnboarding() without prop-drilling. */}
+        <OnboardingProvider>
+          <RouteBoundary />
+          <NotificationBootstrap />
+          <Analytics />
+          <Stack screenOptions={{ headerShown: false }} />
+        </OnboardingProvider>
       </AppProvider>
     </VerificationProvider>
   );

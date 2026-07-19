@@ -6,11 +6,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
-import { hydrateAccountProfile } from '@/features/identity/accountProfile';
+import { ONBOARDING_SIDE_KEY } from '@/services/auth/postAuthBootstrap';
+import { useOnboarding } from '@/context/OnboardingContext';
+import { advanceStage } from '@/services/onboarding';
+import { getSupabase } from '@/utils/supabase';
 
 const AGE_OPTIONS = [
   { id: '13-15' as const, label: '13 – 15' },
@@ -20,37 +22,61 @@ const AGE_OPTIONS = [
 
 type AgeRange = '13-15' | '16-17' | '18-19';
 
+const PURPLE     = '#7c3aed';
+const PURPLE_DIM = '#4c1d95';
+const BG         = '#0a0a0a';
+const TEXT       = '#f3f3f5';
+const MUTED      = '#8b7fa0';
+const ACCENT     = '#a78bfa';
+
+const STEPS = 4;
+
 export default function AgeScreen() {
   const { setUserSide } = useAppContext();
+  const { advance } = useOnboarding();
   const [selected, setSelected] = useState<AgeRange | null>(null);
 
   async function handleNext() {
     if (!selected) return;
-    await AsyncStorage.setItem('bip_onboarding_age', selected);
+    await AsyncStorage.multiSet([
+      ['bip_onboarding_age', selected],
+      [ONBOARDING_SIDE_KEY, 'teen'],
+    ]);
     setUserSide('teen');
-    router.push('/(onboarding)/name');
+    await advance('age_verified', { age_bucket: selected });
+    router.push('/(auth)/signup?side=teen' as never);
   }
 
   async function handleParent() {
+    await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, 'parent');
     setUserSide('parent');
-    const profile = await hydrateAccountProfile('parent').catch(() => null);
-    if (profile?.accountSide === 'parent' && profile.onboardingComplete) {
-      router.replace('/(auth)/guardian-verification');
-      return;
-    }
+    getSupabase()
+      ?.auth.getUser()
+      .then(({ data }) => {
+        if (data.user) {
+          advanceStage(data.user.id, 'role_selected', { role: 'parent' }).catch(() => null);
+        }
+      });
     router.push('/(onboarding)/parent-splash');
   }
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#10091b', '#171024', '#090711']} style={StyleSheet.absoluteFill} />
+      <View style={styles.bgDot1} pointerEvents="none" />
+      <View style={styles.bgDot2} pointerEvents="none" />
 
       <View style={styles.content}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel="Go back">
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={styles.step}>1 OF 3</Text>
+        {/* Step dots */}
+        <View style={styles.stepDots}>
+          {Array.from({ length: STEPS }).map((_, i) => (
+            <View key={i} style={[styles.dot, i === 0 && styles.dotActive]} />
+          ))}
+        </View>
+
         <Text style={styles.title}>How old are you?</Text>
         <Text style={styles.sub}>Helps your Se'kret know how to be with you.</Text>
 
@@ -61,6 +87,8 @@ export default function AgeScreen() {
               activeOpacity={0.8}
               onPress={() => setSelected(opt.id)}
               style={[styles.option, selected === opt.id && styles.optionActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: selected === opt.id }}
             >
               <Text style={[styles.optionText, selected === opt.id && styles.optionTextActive]}>
                 {opt.label}
@@ -76,10 +104,12 @@ export default function AgeScreen() {
           onPress={handleNext}
           style={[styles.btn, !selected && styles.btnDisabled]}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Create my account"
         >
-          <Text style={styles.btnText}>Continue →</Text>
+          <Text style={styles.btnText}>Create my account →</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={handleParent} style={styles.parentLink}>
+        <TouchableOpacity onPress={handleParent} style={styles.parentLink} accessibilityRole="link" accessibilityLabel="I'm a parent">
           <Text style={styles.parentLinkText}>I'm a parent →</Text>
         </TouchableOpacity>
       </View>
@@ -88,22 +118,26 @@ export default function AgeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root:            { flex: 1, backgroundColor: '#090711' },
-  content:         { flex: 1, paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingHorizontal: 28 },
-  back:            { marginBottom: 32 },
-  backText:        { color: '#7a7089', fontSize: 22 },
-  step:            { color: '#6d28d9', fontSize: 10, fontWeight: '900', letterSpacing: 2.5, marginBottom: 12 },
-  title:           { color: '#fff', fontSize: 34, fontWeight: '900', marginBottom: 10 },
-  sub:             { color: '#8b7fa0', fontSize: 14, lineHeight: 22, marginBottom: 42 },
-  options:         { gap: 12 },
-  option:          { height: 68, borderRadius: 20, borderWidth: 1.5, borderColor: '#ffffff14', backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center' },
-  optionActive:    { borderColor: '#6d28d9', backgroundColor: 'rgba(109,40,217,0.18)' },
-  optionText:      { color: '#a89ec0', fontSize: 20, fontWeight: '800' },
-  optionTextActive: { color: '#fff' },
-  footer:          { paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 52 : 36 },
-  btn:             { height: 58, borderRadius: 20, backgroundColor: '#6d28d9', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  btnDisabled:     { opacity: 0.35 },
-  btnText:         { color: '#fff', fontSize: 17, fontWeight: '900' },
-  parentLink:      { alignItems: 'center', paddingVertical: 8 },
-  parentLinkText:  { color: '#6d4a9c', fontSize: 13, fontWeight: '700' },
+  root:             { flex: 1, backgroundColor: BG },
+  bgDot1:           { position: 'absolute', width: 340, height: 340, borderRadius: 170, backgroundColor: '#4c1d9520', top: -80, right: -100 },
+  bgDot2:           { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: '#7c3aed12', bottom: 60, left: -80 },
+  content:          { flex: 1, paddingTop: Platform.OS === 'ios' ? 64 : 44, paddingHorizontal: 28 },
+  back:             { marginBottom: 28 },
+  backText:         { color: MUTED, fontSize: 22 },
+  stepDots:         { flexDirection: 'row', gap: 6, marginBottom: 28 },
+  dot:              { width: 6, height: 6, borderRadius: 3, backgroundColor: '#333' },
+  dotActive:        { backgroundColor: PURPLE, width: 18, borderRadius: 3 },
+  title:            { color: TEXT, fontSize: 34, fontWeight: '900', marginBottom: 10 },
+  sub:              { color: MUTED, fontSize: 14, lineHeight: 22, marginBottom: 42 },
+  options:          { gap: 12 },
+  option:           { height: 68, borderRadius: 20, borderWidth: 1.5, borderColor: '#ffffff14', backgroundColor: '#16161e', alignItems: 'center', justifyContent: 'center' },
+  optionActive:     { borderColor: PURPLE, backgroundColor: 'rgba(124,58,237,0.18)' },
+  optionText:       { color: ACCENT, fontSize: 20, fontWeight: '800' },
+  optionTextActive: { color: TEXT },
+  footer:           { paddingHorizontal: 28, paddingBottom: Platform.OS === 'ios' ? 52 : 36 },
+  btn:              { height: 58, borderRadius: 20, backgroundColor: PURPLE, alignItems: 'center', justifyContent: 'center', marginBottom: 14, shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 8 },
+  btnDisabled:      { opacity: 0.35 },
+  btnText:          { color: '#fff', fontSize: 17, fontWeight: '900' },
+  parentLink:       { alignItems: 'center', paddingVertical: 8 },
+  parentLinkText:   { color: ACCENT, fontSize: 13, fontWeight: '700' },
 });

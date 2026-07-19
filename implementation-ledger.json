@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-07-13",
+  "updatedAt": "2026-07-15",
   "documentationReview": {
     "reviewedAt": "2026-07-13",
     "baseCommit": "3b9673add18108bacf6de9d500ddccbdefa8e844",
@@ -15,6 +15,7 @@
       "Mind and Body Reset guided tools and workouts",
       "Bridge controlled rollout",
       "L4 planned-only boundary",
+      "L5 planned-only boundary",
       "agent architecture and Worker guardrails",
       "historical audit labeling"
     ],
@@ -293,6 +294,22 @@
         "state": "not-run",
         "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
         "blocker": "Additional anonymous-auth policy and authenticated database-function denial suites, negative tests for the two custom-auth Edge Functions, and password-breach protection require focused proof before L4 schema activation."
+      }
+    },
+    {
+      "id": "l5-cross-companion-synthesis",
+      "name": "L5 cross-companion synthesis, consented goal proposal",
+      "status": "planned",
+      "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/357",
+      "acceptanceCriteria": [
+        "Cross-companion memory synthesis requires an explicit, reviewed consent contract before any read spans more than one companion_id.",
+        "Autonomous goal proposals are distinguishable from teen-stated goals in storage and in any surface that displays them, and a teen can reject or delete a proposed goal.",
+        "Self-directed reflection scheduling runs outside the live reply latency path and never promotes relationship phase from empty or synthetic evidence."
+      ],
+      "verification": {
+        "state": "not-run",
+        "evidence": "https://github.com/jussray/Sekret-Bip/issues/357",
+        "blocker": "l4-continuity-memory must reach 'verified' first. L5 contract work (schema, services, consent flow) has not started and must not start before L4 is verified, per .agents/skills/bip-l4-memory/SKILL.md's rule against inventing a parallel implementation ahead of its runtime boundaries."
       }
     }
   ]
