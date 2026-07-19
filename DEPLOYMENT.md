@@ -1,6 +1,6 @@
 # Se'kret Bip — Deployment Guide
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-18
 
 ## Current production direction
 
@@ -72,6 +72,15 @@ Private Worker routes must verify authenticated identity and must not trust a us
 ## Cloudflare Pages
 
 The canonical Pages project is `sekret-bip`, deployed by the Cloudflare GitHub App after a push to `main`.
+
+The repository owns the frontend build contract:
+
+- Node runtime: `.node-version` must resolve to `22.16.0`;
+- install command: Cloudflare's native dependency installation from `package-lock.json`;
+- build command: `npm run build:web`;
+- output directory: `dist`.
+
+Do not rely on the Pages project's historical default Node version. Expo SDK 56 requires Node 22.13 or newer, and the repository pin keeps older and newer Cloudflare build systems on the same supported runtime.
 
 Cloudflare Pages injects `CF_PAGES_COMMIT_SHA` and `CF_PAGES_BRANCH` during the build. `npm run build:web` writes those values to the public, non-sensitive `dist/release.json` file after Expo export.
 

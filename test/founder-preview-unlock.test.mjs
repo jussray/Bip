@@ -54,7 +54,7 @@ test('preview points unlock UI without touching the real economy', () => {
   assert.doesNotMatch(ledger, /preview[\s\S]{0,200}\.insert\(/);
 });
 
-test('only implemented relationship features receive the development override', () => {
+test('implemented and founder-only prototype features receive development override without L4', () => {
   const flags = read('src/constants/relationshipFeatureFlags.ts');
 
   assert.match(flags, /FOUNDER_PREVIEWABLE_FEATURES/);
@@ -64,7 +64,7 @@ test('only implemented relationship features receive the development override', 
     flags.indexOf('const FOUNDER_PREVIEWABLE_FEATURES'),
     flags.indexOf('export function isRelationshipFeatureAvailable'),
   );
-  assert.doesNotMatch(previewSet, /emotionalScrapbook/);
+  assert.match(previewSet, /emotionalScrapbook/);
   assert.doesNotMatch(previewSet, /companionMemory/);
 });
 

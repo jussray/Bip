@@ -1,5 +1,18 @@
 # Se’kret Bip Global AI Contract
 
+## Parent and launch skills
+
+This repository inherits the private canonical `juss-founder-os` contract from
+`jussray/founder-control-room`.
+
+For splash PNG, invisible CTA, recognized login, onboarding resume, 72-hour
+founding preview, waiting-list, sponsor, launch analytics, or social-content work,
+load [`.agents/skills/bip-founding-preview/SKILL.md`](.agents/skills/bip-founding-preview/SKILL.md)
+in addition to every skill required by that file.
+
+The project skill may become stricter, but it may not weaken founder authority,
+brand/IP protection, privacy, evidence, rollback, non-deletion, or truthfulness.
+
 This repository follows the shared founder operating stack:
 
 ```text
@@ -26,6 +39,16 @@ Do not collapse the two redteam passes. The first attacks the product premise. T
 5. Prior summaries, generated plans, chat memory, and assumptions.
 
 Never claim a feature, privacy boundary, migration, test, deployment, account state, parent link, AI capability, or release status exists without evidence.
+
+## Bip Engineering OS proposal status
+
+The root [`bip-os.md`](bip-os.md) and Control Room copy [`control-room/bip-os.md`](control-room/bip-os.md) are **non-authoritative proposal and checklist references**. Their location does not make either copy the repository constitution, current architecture map, sprint, roadmap, CODEOWNERS file, workflow configuration, release approval, migration authority, or implementation evidence.
+
+- This global contract, `AGENTS.md`, Founder Control Room evidence, current repository paths, ordered migrations, runtime evidence, and explicit founder decisions outrank both proposal copies.
+- Their `apps/mobile` and `packages/*` tree, reviewer handles, commands, workflows, coverage targets, and 30-day plan are illustrative unless they exist in the current repository and pass exact-head proof.
+- Their example tag-triggered EAS, Cloudflare, and Supabase steps do not authorize builds, deployment, credentials, paid capacity, publishing, or database application.
+- Any statement suggesting parents can see everything a teen sees is invalid. Parent visibility remains consent-based, minimized, relationship-scoped, revocable, and enforced by services, RPCs, RLS, storage, and route authorization.
+- See [`docs/BIP_ENGINEERING_OS_STATUS.md`](docs/BIP_ENGINEERING_OS_STATUS.md) for the reconciliation boundary.
 
 ## Product boundaries
 
@@ -67,6 +90,7 @@ Never claim a feature, privacy boundary, migration, test, deployment, account st
 - Do not silently change identity contexts, account-side state, parent visibility, Bip IDs, anonymous handles, route contracts, storage keys, schemas, or deployment targets.
 - Prefer small patches, existing Expo/Supabase/Worker capabilities, and canonical active paths over new abstractions.
 - Preserve deletion, revocation, sign-out cache clearing, cross-device isolation, and second-user safety.
+- Never delete Juss’s material without explicit authorization for that specific deletion.
 
 ## Approval gates
 
