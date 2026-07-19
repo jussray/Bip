@@ -7,7 +7,7 @@ This policy keeps GitHub Actions useful without letting hosted-runner startup fa
 ```text
 Cloudflare = deployment truth
 Sekret-Bip Control Room = repo-local evidence
-Founder Control Room = final authority
+Founder Control Room = final review authority
 GitHub Actions = lightweight sensor
 ```
 
@@ -22,7 +22,7 @@ Automatic GitHub-hosted runners: off
 Manual GitHub Actions gates: available by explicit founder / Control Room decision
 Cloudflare builds: deployment-truth witness
 Local Control Room checks: daily development evidence
-Founder Control Room: final merge authority
+Founder Control Room: exact-SHA review record
 ```
 
 This prevents every PR update from spending account Actions minutes just to rediscover the same hosted-runner startup condition.
@@ -65,7 +65,7 @@ Cloudflare is the practical build/deploy witness:
 - If GitHub Actions has zero steps/logs, do not infer a code failure from that signal.
 - If Cloudflare also fails to start or provide logs, classify that as provider/config evidence, not app proof.
 
-Cloudflare passing is still not a standalone merge approval. It guides diagnosis and confidence; Founder Control Room remains the merge authority.
+Cloudflare passing is deployment evidence for review. Founder Control Room records the final exact-SHA decision.
 
 ## Sekret-Bip Control Room handoff
 
@@ -85,11 +85,9 @@ recommended next action
 
 It should classify the evidence before any Founder Control Room decision.
 
-## Founder Control Room gate
+## Founder Control Room record
 
-Founder Control Room decides `HOLD`, `REVIEW`, or `APPROVE`.
-
-No merge should happen unless Founder Control Room explicitly green-lights the exact PR and exact head SHA.
+Founder Control Room records `HOLD`, `REVIEW`, or `APPROVE` for the exact PR and exact head SHA.
 
 ## OODA rule
 
