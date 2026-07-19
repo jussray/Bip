@@ -49,13 +49,16 @@ test('actual repository path map keeps migration and runtime authority explicit'
   for (const path of [
     '`app/`',
     '`src/`',
+    '`context/`',
     '`supabase/migrations/`',
     '`supabase/probes/`',
-    '`workers/`',
+    '`worker/`',
     '`test/`',
   ]) {
     assert.ok(status.includes(path), `missing current repository path ${path}`);
   }
+  assert.doesNotMatch(status, /`contexts\/`/);
+  assert.doesNotMatch(status, /`workers\/`/);
   assert.match(status, /Database application must use reviewed ordered migrations and separate live approval/);
 });
 
