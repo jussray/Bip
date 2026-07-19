@@ -21,6 +21,7 @@ const manualOnlyWorkflows = [
   '.github/workflows/regression-tests.yml',
   '.github/workflows/implementation-evidence.yml',
   '.github/workflows/playwright.yml',
+  '.github/workflows/companion-lab.yml',
 ];
 
 const ci = read('.github/workflows/ci.yml');
