@@ -2,7 +2,7 @@
 
 ## Decision
 
-Move GitHub Actions from the project brain into a lightweight runner-sensor role. Use Cloudflare build/deploy logs as the practical deployment truth signal. Route interpretation through Sekret-Bip Control Room and final authority through Founder Control Room.
+Move GitHub Actions from the project brain into a lightweight runner-sensor role. Use Cloudflare build/deploy logs as the practical deployment truth signal. Route interpretation through Sekret-Bip Control Room and final review through Founder Control Room.
 
 ## Current model
 
@@ -10,7 +10,7 @@ Move GitHub Actions from the project brain into a lightweight runner-sensor role
 GitHub Actions = lightweight sensor
 Cloudflare = deployment truth
 Sekret-Bip Control Room = evidence classifier
-Founder Control Room = final merge authority
+Founder Control Room = exact-SHA review record
 ```
 
 ## Why
@@ -31,8 +31,8 @@ If GitHub Actions shows zero steps or no logs, classify it as `runner_startup_fa
 
 If Cloudflare provides real build/deploy logs, act on those logs first.
 
-If Cloudflare passes, that improves deployment confidence but does not bypass Founder Control Room exact-SHA merge authority.
+If Cloudflare passes, that improves deployment confidence and becomes part of the Founder Control Room exact-SHA review record.
 
-## Merge hold
+## Review record
 
-This report does not authorize merge. Founder Control Room must explicitly approve the exact PR and exact head SHA before merge.
+This report records evidence for Founder Control Room review.
