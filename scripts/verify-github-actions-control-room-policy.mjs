@@ -69,7 +69,7 @@ if (!cloudflare.includes('Verify Cloudflare Native Deployment')) {
 for (const phrase of [
   'Cloudflare = deployment truth',
   'Sekret-Bip Control Room = repo-local evidence',
-  'Founder Control Room = final authority',
+  'Founder Control Room = final review authority',
   'GitHub Actions = lightweight sensor',
   'Actions budget mode',
 ]) {
