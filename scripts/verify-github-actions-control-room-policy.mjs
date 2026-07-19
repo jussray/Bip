@@ -16,6 +16,7 @@ const read = (path) => {
 const hasAutomaticTrigger = (content) => /^\s{0,2}(push|pull_request):\s*$/m.test(content);
 
 const manualOnlyWorkflows = [
+  '.github/workflows/ci.yml',
   '.github/workflows/prepush.yml',
   '.github/workflows/typecheck.yml',
   '.github/workflows/regression-tests.yml',
@@ -70,6 +71,7 @@ for (const phrase of [
   'Sekret-Bip Control Room = repo-local evidence',
   'Founder Control Room = final authority',
   'GitHub Actions = lightweight sensor',
+  'Actions budget mode',
 ]) {
   if (!policy.includes(phrase)) {
     fail(`Policy document is missing required declaration: ${phrase}`);
