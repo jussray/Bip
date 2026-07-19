@@ -14,6 +14,7 @@ const targets = JSON.parse(read('config/cloudflare-targets.json'));
 const wrangler = read('wrangler.toml');
 const observedIndex = read('worker/observed-index.ts');
 const backendRouter = read('worker/index.ts');
+const replyWorker = read('worker/sekret-reply.ts');
 const ownership = read('docs/CLOUDFLARE_OWNERSHIP.md');
 const emailRouting = read('docs/CLOUDFLARE_EMAIL_ROUTING.md');
 const consolidation = read('docs/CLOUDFLARE_WORKER_CONSOLIDATION.md');
@@ -39,10 +40,10 @@ test('sekret-backend owns both HTTP and inbound email handlers', () => {
   assert.ok(observedIndex.includes('await emailRouter.email(message)'));
 });
 
-test('Sekret runtime routes remain inside the canonical backend router', () => {
+test('Sekret runtime routes remain inside the canonical backend code path', () => {
   assert.ok(backendRouter.includes('/api/sekret/reply'));
   assert.ok(backendRouter.includes('/api/sekret/voice'));
-  assert.ok(backendRouter.includes('/api/sekret/transcribe'));
+  assert.ok(replyWorker.includes('/api/sekret/transcribe'));
   assert.ok(backendRouter.includes('/api/bridge/summary/generate'));
   assert.ok(targets.production.worker.roles.includes('sekret-reply'));
   assert.ok(targets.production.worker.roles.includes('inbound-email-routing'));
