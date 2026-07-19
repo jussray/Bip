@@ -4,6 +4,15 @@ Story Engine is the Meta developer app container for Se'kret Bip's Facebook and 
 
 This document is a setup contract only. It does not mean publishing, comments, insights, webhooks, or account connection flows are implemented or production-ready.
 
+## Boundary from Playground
+
+Story Engine and Playground are separate external Meta surfaces:
+
+- `Story Engine`: Facebook/Instagram social integration setup.
+- `Playground`: Meta Model API / Muse Spark response API experiments.
+
+Do not mix their secrets, permissions, review evidence, or production gates.
+
 ## Current intent
 
 Story Engine may later support these bounded use cases:
