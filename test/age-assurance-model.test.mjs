@@ -51,3 +51,19 @@ test('welcome is a one-page onboarding entry without bypassing age assurance', a
   assert.doesNotMatch(welcome, /router\.push\('\/\(onboarding\)\/age'/);
   assert.doesNotMatch(welcome, /upload.*id|selfie|video.*proof|date of birth/i);
 });
+
+test('onboarding documentation and ledger describe the one-page shell without claiming production proof', async () => {
+  const docs = await read('ONBOARDING.md');
+  const ledger = await read('implementation-ledger.extensions/auth-onboarding-runtime.json');
+
+  assert.match(docs, /one-page entry/i);
+  assert.match(docs, /UX shell, not a single unchecked backend event/i);
+  assert.match(docs, /raw_evidence_stored = false/);
+  assert.match(docs, /Stronger verification can be introduced later only behind a separate legal, privacy, storage, deletion, and vendor review/);
+
+  assert.match(ledger, /one-page age\/account-side choice/);
+  assert.match(ledger, /app\/\(onboarding\)\/welcome\.tsx/);
+  assert.match(ledger, /src\/features\/onboarding\/ageAssurance\.ts/);
+  assert.match(ledger, /test\/age-assurance-model\.test\.mjs/);
+  assert.match(ledger, /"state": "not-run"/);
+});
