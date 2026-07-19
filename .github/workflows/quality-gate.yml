@@ -1,10 +1,20 @@
 name: Quality Gate
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_call:
+    inputs:
+      run_vendor_gates:
+        description: Run optional Qodo and SonarQube vendor gates.
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
+    inputs:
+      run_vendor_gates:
+        description: Run optional Qodo and SonarQube vendor gates.
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -13,87 +23,37 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  typecheck:
-    name: "Typecheck"
+  repository-gate:
+    name: Repository Gate
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: npx tsc --noEmit
+    timeout-minutes: 25
 
-  lint:
-    name: "Lint"
-    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository history
+        uses: actions/checkout@v4
         with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run lint
-
-  unit-tests:
-    name: "Unit Tests"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - name: Run unit tests with concise failure evidence
-        shell: bash
-        run: |
-          set +e
-          npm test > unit-test-output.log 2>&1
-          status=$?
-          if [[ $status -ne 0 ]]; then
-            echo "::group::Unit test failure tail"
-            tail -n 240 unit-test-output.log
-            echo "::endgroup::"
-            exit $status
-          fi
-          cat unit-test-output.log
-      - name: Upload unit test failure evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: unit-test-failure-evidence
-          path: unit-test-output.log
-          if-no-files-found: error
-          retention-days: 14
-
-  runtime-truth-contracts:
-    name: "Runtime Truth Contracts"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - run: node --test test/runtime-truth-contract.test.mjs
-
-  implementation-evidence:
-    name: "Implementation Evidence"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
+          lfs: true
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+
+      - name: Hydrate LFS assets
+        run: git lfs pull
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify MCP configuration
+        run: npm run verify:mcp
+
       - name: Verify implementation claims
         env:
           BASE_REF: ${{ github.base_ref }}
+        shell: bash
         run: |
           if [[ -n "$BASE_REF" ]]; then
             npm run verify:implementation-ledger -- --changed-since "origin/$BASE_REF"
@@ -101,32 +61,31 @@ jobs:
             npm run verify:implementation-ledger
           fi
 
-  rls-audit:
-    name: "RLS Audit"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-      - name: Run canonical repository RLS scanner
-        run: npm run audit:control-room:rls
+      - name: Audit runtime assets
+        run: npm run audit:runtime-assets
 
-  qodo-contracts:
-    name: "Qodo – Data + API Contract Tests"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
+      - name: Audit Control Room structure and RLS
+        run: npm run audit:control-room
+
+      - name: Validate companion assets
+        run: npm run validate:companions
+
+      - name: Verify room archives
+        run: npm run verify:room-archives
+
+      - name: Run Control Room scanners in report-only mode
+        run: npm run audit:control-room:ingest
+        env:
+          CONTROL_ROOM_REPORT_ONLY: 'true'
+
+      - name: Generate Supabase advisor report in report-only mode
+        run: npm run audit:control-room:advisors
+        env:
+          CONTROL_ROOM_REPORT_ONLY: 'true'
 
       - name: Detect Qodo configuration
         id: qodo_config
+        if: ${{ inputs.run_vendor_gates }}
         shell: bash
         env:
           QODO_API_KEY: ${{ secrets.QODO_API_KEY }}
@@ -139,13 +98,13 @@ jobs:
           fi
 
       - name: Run Qodo tests
-        if: steps.qodo_config.outputs.configured == 'true'
+        if: ${{ inputs.run_vendor_gates && steps.qodo_config.outputs.configured == 'true' }}
         run: npx qodo test --coverage --reporter=json --output=qodo-results.json
         env:
           QODO_API_KEY: ${{ secrets.QODO_API_KEY }}
 
       - name: Evaluate Qodo gate
-        if: steps.qodo_config.outputs.configured == 'true'
+        if: ${{ inputs.run_vendor_gates && steps.qodo_config.outputs.configured == 'true' }}
         run: |
           node -e "
             const r = require('./qodo-results.json');
@@ -159,28 +118,9 @@ jobs:
             console.log('Qodo gate passed.');
           "
 
-      - uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.qodo_config.outputs.configured == 'true' }}
-        with:
-          name: qodo-results
-          path: qodo-results.json
-          if-no-files-found: ignore
-
-  sonarqube:
-    name: "SonarQube – API + Data Standard"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-      - run: npm ci
-
       - name: Detect SonarQube configuration
         id: sonar_config
+        if: ${{ inputs.run_vendor_gates }}
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -194,7 +134,7 @@ jobs:
           fi
 
       - name: SonarQube Scan
-        if: steps.sonar_config.outputs.configured == 'true'
+        if: ${{ inputs.run_vendor_gates && steps.sonar_config.outputs.configured == 'true' }}
         uses: SonarSource/sonarqube-scan-action@master
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -204,3 +144,30 @@ jobs:
             -Dsonar.projectKey=sekret-bip
             -Dsonar.qualitygate.wait=true
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+
+      - name: Upload Control Room scanner report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: control-room-scanner-report
+          path: artifacts/control-room/scanner-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Supabase advisor report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-advisors-report
+          path: artifacts/control-room/supabase-advisors-report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Qodo results
+        if: ${{ always() && inputs.run_vendor_gates }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: qodo-results
+          path: qodo-results.json
+          if-no-files-found: ignore
+          retention-days: 14
