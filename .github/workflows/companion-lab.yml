@@ -1,32 +1,12 @@
-name: Companion Lab Audit
+name: Manual — Companion Lab Audit
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'scripts/companion-lab-audit.js'
-      - 'test/fixtures/companion-lab-scenarios.json'
-      - 'test/fixtures/replies/**'
-      - 'docs/COMPANION_LAB.md'
-      - '.github/workflows/companion-lab.yml'
-      - 'package.json'
-      - 'worker/sekret-reply.ts'
-      - 'src/services/ai/**'
-      - 'src/utils/sekretReply.ts'
-      - 'src/services/sekretVoice.ts'
-  pull_request:
-    paths:
-      - 'scripts/companion-lab-audit.js'
-      - 'test/fixtures/companion-lab-scenarios.json'
-      - 'test/fixtures/replies/**'
-      - 'docs/COMPANION_LAB.md'
-      - '.github/workflows/companion-lab.yml'
-      - 'package.json'
-      - 'worker/sekret-reply.ts'
-      - 'src/services/ai/**'
-      - 'src/utils/sekretReply.ts'
-      - 'src/services/sekretVoice.ts'
   workflow_dispatch:
+    inputs:
+      reason:
+        description: Why the founder/control room is requesting companion reply evidence
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -36,8 +16,9 @@ env:
 
 jobs:
   audit:
-    name: Score companion reply fixtures
+    name: Manual companion reply evidence
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
