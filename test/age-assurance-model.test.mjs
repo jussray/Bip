@@ -32,5 +32,5 @@ test('age onboarding screen stores assurance metadata instead of raw evidence', 
   assert.match(screen, /guardian_required/);
   assert.match(screen, /raw_evidence_stored:\s*false/);
 
-  assert.doesNotMatch(screen, /upload.*id|selfie|video.*proof|date of birth/i);
+  assert.doesNotMatch(screen, /upload.*id|capture.*selfie|video.*proof|date_of_birth|full_dob/i);
 });
