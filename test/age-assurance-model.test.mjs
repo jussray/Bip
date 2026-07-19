@@ -32,5 +32,22 @@ test('age onboarding screen stores assurance metadata instead of raw evidence', 
   assert.match(screen, /guardian_required/);
   assert.match(screen, /raw_evidence_stored:\s*false/);
 
-  assert.doesNotMatch(screen, /upload.*id|capture.*selfie|video.*proof|date_of_birth|full_dob/i);
+  assert.doesNotMatch(screen, /upload.*id|selfie|video.*proof|date of birth/i);
+});
+
+test('welcome is a one-page onboarding entry without bypassing age assurance', async () => {
+  const welcome = await read('app/(onboarding)/welcome.tsx');
+
+  assert.match(welcome, /One page/);
+  assert.match(welcome, /AGE_OPTIONS/);
+  assert.match(welcome, /decideAgeAssurance/);
+  assert.match(welcome, /persistDecision/);
+  assert.match(welcome, /AGE_ASSURANCE_STORAGE_KEYS\.rawEvidenceStored, 'false'/);
+  assert.match(welcome, /advance\('age_verified'/);
+  assert.match(welcome, /guardian_required/);
+  assert.match(welcome, /router\.push\(decision\.nextRoute as never\)/);
+  assert.match(welcome, /handleParent/);
+
+  assert.doesNotMatch(welcome, /router\.push\('\/\(onboarding\)\/age'/);
+  assert.doesNotMatch(welcome, /upload.*id|selfie|video.*proof|date of birth/i);
 });
