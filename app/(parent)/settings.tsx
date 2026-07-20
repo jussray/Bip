@@ -21,9 +21,9 @@ import {
   cancelDailyReminder,
 } from '@/utils/notifications';
 import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
-import { revokeParentLink } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 import { AccountDeletionControls } from '@/components/settings/AccountDeletionControls';
+import { ParentLinkStatusCard } from '@/components/settings/ParentLinkStatusCard';
 
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
@@ -69,8 +69,8 @@ export default function SettingsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [isRedeeming, setIsRedeeming] = useState(false);
-  const [isUnlinking, setIsUnlinking] = useState(false);
   const [redeemStatus, setRedeemStatus] = useState<RedeemStatus>('idle');
+  const [linkStatusVersion, setLinkStatusVersion] = useState(0);
 
   async function handleNotificationToggle(enabled: boolean) {
     if (enabled) {
@@ -109,37 +109,16 @@ export default function SettingsScreen() {
     );
   }
 
-  function handleUnlinkTeen() {
-    Alert.alert(
-      'Unlink teen?',
-      'Your linked access will be removed immediately. A new invite is required to reconnect.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unlink',
-          style: 'destructive',
-          onPress: async () => {
-            setIsUnlinking(true);
-            const revoked = await revokeParentLink();
-            setIsUnlinking(false);
-            if (revoked) {
-              setInviteCode('');
-              Alert.alert('Teen unlinked', 'Your linked access has been removed.');
-            } else {
-              Alert.alert('Could not unlink', 'No active link was found, or the connection could not be updated.');
-            }
-          },
-        },
-      ],
-    );
-  }
-
   const handleGenerateCode = useCallback(async () => {
     setIsGenerating(true);
     const code = await createParentLink();
     setIsGenerating(false);
-    if (code) setInviteCode(code);
-    else Alert.alert('Not signed in', 'Sign in to your account first, then generate a link code.');
+    if (code) {
+      setInviteCode(code);
+      setLinkStatusVersion((value) => value + 1);
+    } else {
+      Alert.alert('Not signed in', 'Sign in to your account first, then generate a link code.');
+    }
   }, []);
 
   const handleCopyCode = useCallback(() => {
@@ -154,7 +133,9 @@ export default function SettingsScreen() {
     const raw = await redeemParentLink(codeInput);
     setIsRedeeming(false);
     const VALID: RedeemStatus[] = ['idle', 'ok', 'not_found', 'error'];
-    setRedeemStatus(VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error');
+    const result = VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error';
+    setRedeemStatus(result);
+    if (result === 'ok') setLinkStatusVersion((value) => value + 1);
   }, [codeInput]);
 
   return (
@@ -206,6 +187,14 @@ export default function SettingsScreen() {
         ))}
 
         <Text style={styles.sectionTitle}>Parent link</Text>
+        <ParentLinkStatusCard
+          accountSide="parent"
+          refreshKey={linkStatusVersion}
+          onRevoked={() => {
+            setInviteCode('');
+            setLinkStatusVersion((value) => value + 1);
+          }}
+        />
         <TouchableOpacity style={styles.button} onPress={handleGenerateCode} disabled={isGenerating}>
           <Text style={styles.buttonText}>{isGenerating ? 'Generating…' : 'Generate link code'}</Text>
         </TouchableOpacity>
@@ -227,9 +216,6 @@ export default function SettingsScreen() {
           <Text style={styles.buttonText}>{isRedeeming ? 'Connecting…' : 'Redeem code'}</Text>
         </TouchableOpacity>
         {redeemStatus !== 'idle' && <Text style={styles.hint}>Status: {redeemStatus}</Text>}
-        <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkTeen} disabled={isUnlinking}>
-          <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink teen'}</Text>
-        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
         <AccountDeletionControls />
