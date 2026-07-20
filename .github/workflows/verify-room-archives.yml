@@ -1,17 +1,6 @@
 name: Verify Room Archives
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'assets/images/**'
-      - 'scripts/verify-room-archives.js'
-      - 'scripts/repair-archive-stubs.js'
-  pull_request:
-    branches: [main]
-    paths:
-      - 'assets/images/**'
-      - 'scripts/verify-room-archives.js'
   workflow_dispatch:
 
 env:
