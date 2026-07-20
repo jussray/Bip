@@ -47,16 +47,23 @@ test('guard_crew_member_write rejects anonymous sessions and owner/id mismatch',
   assert.match(fn, /raise exception 'crew_relationship_identity_is_immutable'/);
 });
 
-test('cleanup_crew_relationship_access is SECURITY DEFINER, pinned, and not directly callable', async () => {
-  const source = await read('supabase/migrations/20260714183500_harden_crew_membership_paths.sql');
-  const fn = source.match(/create or replace function public\.cleanup_crew_relationship_access\(\)[\s\S]*?\$\$;/)?.[0];
+test('cleanup_crew_relationship_access is SECURITY DEFINER, effectively pinned, and not directly callable', async () => {
+  const definitionSource = await read('supabase/migrations/20260714183500_harden_crew_membership_paths.sql');
+  const lockSource = await read('supabase/migrations/20260714183600_lock_crew_function_search_paths.sql');
+  const fn = definitionSource.match(/create or replace function public\.cleanup_crew_relationship_access\(\)[\s\S]*?\$\$;/)?.[0];
   assert.ok(fn, 'expected cleanup_crew_relationship_access() definition');
 
   assert.match(fn, /security definer/);
-  assert.match(fn, /set search_path = public, pg_temp/);
-  assert.match(source, /revoke all on function public\.cleanup_crew_relationship_access\(\) from public, anon, authenticated/);
+  assert.match(definitionSource, /revoke all on function public\.cleanup_crew_relationship_access\(\) from public, anon, authenticated/);
+  assert.match(definitionSource, /after update of connection_status on public\.crew_members/);
 
-  assert.match(source, /after update of connection_status on public\.crew_members/);
+  // The effective search_path is locked by the follow-up migration after the
+  // function body was qualified. Checking only the original CREATE text would
+  // miss a later weakening/removal of the deployed function setting.
+  assert.match(
+    lockSource,
+    /alter function public\.cleanup_crew_relationship_access\(\)\s+set search_path = pg_catalog, pg_temp/i,
+  );
 });
 
 test('apply_point_transaction is SECURITY DEFINER, pinned, and not directly callable', async () => {
