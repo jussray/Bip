@@ -16,6 +16,7 @@
     "test": "node scripts/run-unit-tests.mjs",
     "test:e2e": "playwright test",
     "test:e2e:production": "playwright test --config=playwright.production.config.ts",
+    "test:e2e:live-onboarding-email": "playwright test --config=playwright.production.config.ts e2e/live-onboarding-email.spec.ts",
     "test:controlled-alpha": "node --test test/controlled-alpha-activation.test.mjs test/controlled-alpha-founder-room-plan.test.mjs test/controlled-alpha-service-boundaries.test.mjs test/controlled-alpha-crew-access-hardening.test.mjs",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
