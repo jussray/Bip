@@ -25,16 +25,23 @@
         "bip-auth-onboarding",
         "bip-release-gate"
       ],
-      "boundary": "Design exploration, screenshot-grounded audits, prototype QA, and visual handoff evidence only. Product Design evidence never replaces exact-head tests, privacy gates, release gates, or deployment proof."
+      "boundary": "Design exploration, screenshot-grounded audits, prototype QA, and visual handoff evidence only. Product Design evidence never replaces exact-head tests, Supabase proof, privacy gates, release gates, or deployment proof."
     },
     "supabase": {
       "skills": [
         "bip-repo-truth",
+        "bip-typescript-audit",
+        "bip-typescript-root-cause-debugger",
+        "bip-typescript-behavior-tests",
+        "bip-typescript-minimal-patch",
+        "bip-typescript-strict-review",
         "bip-supabase-guardian",
         "bip-privacy-redteam",
-        "bip-auth-onboarding"
+        "bip-auth-onboarding",
+        "bip-product-design-gate",
+        "bip-release-gate"
       ],
-      "boundary": "Project-scoped read-only inspection. Schema changes remain migration-first, reviewed, denied by default, and separately applied with proof."
+      "boundary": "Supabase Auth, RLS, migrations, Storage, Realtime, Edge Functions, and client integration inspection. Keep schema changes migration-first, reviewed, denied by default, and separately applied with proof. Product Design evidence and UI screenshots do not prove Supabase correctness."
     },
     "context7": {
       "skills": [
