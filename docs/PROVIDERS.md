@@ -28,6 +28,27 @@ Best for debugging, code review, tests, repository operations, data analysis, th
 
 Codex/ChatGPT must not claim a code regression from GitHub jobs with no executed steps or logs. It must keep working actual code/review issues when independently proven, while treating runner outage as infrastructure and release-truth evidence.
 
+### Codex provider baseline
+
+When a repo-running Codex agent needs model-provider configuration, keep it machine-local and use OpenAI/Codex as the default coding engine:
+
+```toml
+model = "gpt-5.3-codex"
+model_provider = "openai"
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_supports_reasoning_summaries = true
+model_auto_compact_token_limit = 900000
+```
+
+Store the API key outside the repository, for example in `~/.codex/.env`:
+
+```dotenv
+OPENAI_API_KEY=replace_with_local_secret
+```
+
+Never commit `.codex/.env`, `OPENAI_API_KEY`, `MODEL_API_KEY`, service-role keys, provider tokens, Supabase service-role keys, Cloudflare tokens, GitHub tokens, or any other secret. Model choice does not override `AGENTS.md`, `GLOBAL_AI.md`, repository skills, teen privacy, Founder Control Room release truth, Playwright requirements, or explicit founder approval gates.
+
 ## OpenAI Platform
 
 Use only behind trusted Worker or server-side boundaries for model responses, voice, moderation, embeddings, or structured output. Keep keys off clients. Version models, prompts, tool schemas, safety behavior, and provenance. Model output is never authorization, consent, identity truth, clinical judgment, or a reason to bypass RLS.
