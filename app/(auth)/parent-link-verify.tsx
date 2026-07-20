@@ -5,20 +5,31 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-  generateInviteCodeResult,
+  generateInviteCodeWithDeliveryResult,
   PARENT_INVITE_CODE_LENGTH,
+  type ParentInviteEmailStatus,
 } from '@/utils/parentLink';
 import { fetchPendingInviteCodeResult } from '@/utils/pendingParentInvite';
 import { useVerificationContext } from '@/context/VerificationContext';
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmailInput(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 export default function ParentLinkVerifyScreen() {
   const { verificationState, refreshVerification } = useVerificationContext();
   const [code, setCode]                     = useState<string | null>(null);
+  const [parentEmail, setParentEmail]       = useState('');
+  const [emailStatus, setEmailStatus]       = useState<ParentInviteEmailStatus | 'idle'>('idle');
+  const [emailMessage, setEmailMessage]     = useState('');
   const [loading, setLoading]               = useState(false);
   const [checkingExisting, setCheckingExisting] = useState(true);
   const [lookupFailed, setLookupFailed]     = useState(false);
@@ -27,6 +38,33 @@ export default function ParentLinkVerifyScreen() {
   useEffect(() => {
     if (verificationState === 'VERIFIED_TEEN') router.replace('/(teen)/room');
   }, [verificationState]);
+
+  async function createInvite(parentEmailOverride?: string): Promise<boolean> {
+    const result = await generateInviteCodeWithDeliveryResult({
+      parentEmail: parentEmailOverride,
+    });
+
+    if (!result.ok) {
+      setError(result.message);
+      setEmailStatus('idle');
+      setEmailMessage('');
+      return false;
+    }
+
+    setCode(result.value.code);
+    setEmailStatus(result.value.email.status);
+
+    if (result.value.email.status === 'sent') {
+      setEmailMessage('Invite email sent. Keep this code visible in case they need to enter it manually.');
+    } else if (result.value.email.status === 'failed') {
+      setEmailMessage('Code created, but email did not send. Copy or share the code directly for now.');
+    } else {
+      setEmailMessage('');
+    }
+
+    await refreshVerification();
+    return true;
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -44,13 +82,10 @@ export default function ParentLinkVerifyScreen() {
         setCheckingExisting(false);
         return;
       }
-      const result = await generateInviteCodeResult();
+      const created = await createInvite();
       if (!mounted) return;
-      if (result.ok) {
-        setCode(result.value);
-        await refreshVerification();
-      } else {
-        setError(result.message);
+      if (!created) {
+        setEmailStatus('idle');
       }
       if (mounted) setCheckingExisting(false);
     })();
@@ -60,6 +95,7 @@ export default function ParentLinkVerifyScreen() {
   async function retryExistingCodeLookup() {
     setLoading(true);
     setError('');
+    setEmailMessage('');
     const lookup = await fetchPendingInviteCodeResult();
     if (!lookup.ok) {
       setLookupFailed(true);
@@ -69,9 +105,7 @@ export default function ParentLinkVerifyScreen() {
     }
     setLookupFailed(false);
     if (lookup.value) { setCode(lookup.value); setLoading(false); return; }
-    const result = await generateInviteCodeResult();
-    if (result.ok) { setCode(result.value); await refreshVerification(); }
-    else setError(result.message);
+    await createInvite();
     setLoading(false);
   }
 
@@ -79,9 +113,22 @@ export default function ParentLinkVerifyScreen() {
     if (lookupFailed) { await retryExistingCodeLookup(); return; }
     setLoading(true);
     setError('');
-    const result = await generateInviteCodeResult();
-    if (result.ok) { setCode(result.value); await refreshVerification(); }
-    else setError(result.message);
+    setEmailMessage('');
+    await createInvite();
+    setLoading(false);
+  }
+
+  async function sendInviteEmail() {
+    const email = normalizeEmailInput(parentEmail);
+    if (!EMAIL_PATTERN.test(email)) {
+      setError('Enter a valid parent or trusted-adult email first.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setEmailMessage('');
+    await createInvite(email);
     setLoading(false);
   }
 
@@ -98,6 +145,7 @@ export default function ParentLinkVerifyScreen() {
   }
 
   const displayCode = code ?? '•'.repeat(PARENT_INVITE_CODE_LENGTH);
+  const canSendEmail = Boolean(normalizeEmailInput(parentEmail)) && !loading && !checkingExisting;
 
   return (
     <View style={styles.root}>
@@ -137,6 +185,49 @@ export default function ParentLinkVerifyScreen() {
           <Text style={styles.codeNote}>
             Codes expire after 48 hours. Only share yours with the adult you trust.
           </Text>
+        </View>
+
+        <View style={styles.emailCard}>
+          <Text style={styles.emailLabel}>EMAIL INVITE OPTIONAL</Text>
+          <TextInput
+            value={parentEmail}
+            onChangeText={text => {
+              setParentEmail(text);
+              setError('');
+              setEmailMessage('');
+              if (emailStatus !== 'idle') setEmailStatus('idle');
+            }}
+            placeholder="parent@example.com"
+            placeholderTextColor="#555"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="emailAddress"
+            style={styles.emailInput}
+            accessibilityLabel="Parent or trusted adult email"
+          />
+          <TouchableOpacity
+            style={[styles.emailButton, !canSendEmail && styles.emailButtonDim]}
+            onPress={sendInviteEmail}
+            disabled={!canSendEmail}
+            activeOpacity={0.86}
+          >
+            {loading && canSendEmail ? (
+              <ActivityIndicator color="#0a0a0a" size="small" />
+            ) : (
+              <Text style={styles.emailButtonText}>Send invite email</Text>
+            )}
+          </TouchableOpacity>
+          {emailMessage ? (
+            <Text
+              style={[
+                styles.emailStatus,
+                emailStatus === 'sent' ? styles.emailStatusSent : styles.emailStatusFailed,
+              ]}
+            >
+              {emailMessage}
+            </Text>
+          ) : null}
         </View>
 
         {error ? (
@@ -259,6 +350,50 @@ const styles = StyleSheet.create({
   codeNote: {
     color: '#555', fontSize: 11, lineHeight: 16, textAlign: 'center',
   },
+
+  emailCard: {
+    width: '100%',
+    backgroundColor: '#111118',
+    borderWidth: 1,
+    borderColor: '#6d28d933',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+  },
+  emailLabel: {
+    color: '#a78bfa',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.6,
+    marginBottom: 10,
+  },
+  emailInput: {
+    width: '100%',
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: BORDER,
+    color: TEXT,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  emailButton: {
+    width: '100%',
+    minHeight: 46,
+    borderRadius: 12,
+    backgroundColor: '#c4b5fd',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailButtonDim: { opacity: 0.45 },
+  emailButtonText: { color: '#0a0a0a', fontSize: 14, fontWeight: '800' },
+  emailStatus: {
+    marginTop: 10,
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  emailStatusSent: { color: '#86efac' },
+  emailStatusFailed: { color: '#fbbf24' },
 
   errorText: {
     color: '#f87171', fontSize: 12, alignSelf: 'flex-start',
