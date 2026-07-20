@@ -19,7 +19,7 @@ import {
   decideAgeAssurance,
   type AgeBucket,
 } from '@/features/onboarding/ageAssurance';
-import { consentService } from '@/services/consentService';
+import { consentService } from '../../services/consentService';
 import { getSupabase } from '@/utils/supabase';
 
 const PURPLE     = '#7c3aed';
