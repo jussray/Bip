@@ -79,7 +79,7 @@ Owns Auth, Postgres, RLS, Storage, RPCs, functions, and durable user data. Servi
 
 ## Cloudflare Workers / Pages
 
-Own privileged AI, voice, authenticated API, Pages/Worker build and deploy evidence, and server-side integration calls. Verify CORS, authentication, input validation, secrets, logging minimization, rate limits, timeouts, costs, and fallback behavior. Worker or Pages deployment success is not proof that app clients use the intended endpoint safely.
+Own privileged AI, voice, authenticated API, Pages/Worker build and deploy evidence, and server-side integration calls. Verify CORS, authentication, input validation, secrets, logging minimization, rate limits, costs, and fallback behavior. Worker or Pages deployment success is not proof that app clients use the intended endpoint safely.
 
 ## Expo / React Native
 
