@@ -1,0 +1,29 @@
+# Cursor Rules — Sekret-Bip
+
+## 5W1H Operating Contract
+
+Before every nontrivial edit, establish and state:
+
+- **Who** — requester, decision owner, affected data subjects, execution authority
+- **What** — exact outcome, deliverable, non-goals, preserved IP
+- **Where** — `jussray/Sekret-Bip`, exact branch, environment, IP asset boundary
+- **When** — lifecycle state, ordering constraint, rollback window
+- **Why** — verified creative problem and evidence
+- **How** — smallest safe implementation, verification plan, rollback
+
+## Repository Identity
+
+Private Se’kret Bip creative universe — characters, lore, stories, production tools, and IP assets. Strictly separate from all other Chief AI projects.
+
+## Rules
+
+- Never expose unreleased characters, lore, story arcs, or IP assets in any context.
+- Never blend Se’kret Bip IP with other project content.
+- All changes via branch + PR, never direct to `main`.
+- Credentials and signing keys must stay in vault.
+- Run any available lint/build checks before PR.
+- Creative and publishing decisions require explicit founder approval.
+
+## Approval Gates
+
+Require explicit founder approval before: merging, publishing, deploying, releasing IP, platform config changes, or rotating secrets.
