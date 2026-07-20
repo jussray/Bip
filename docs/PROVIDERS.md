@@ -55,7 +55,9 @@ Use only behind trusted Worker or server-side boundaries for model responses, vo
 
 For companion behavior, read [`COMPANION_IDENTITY_BIBLE.md`](./COMPANION_IDENTITY_BIBLE.md) before changing companion prompts, fallback packs, character voices, synthetic evals, memory behavior, or AI transparency.
 
-For OpenAI-backed companion runtime behavior, read [`OPENAI_COMPANION_RUNTIME.md`](./OPENAI_COMPANION_RUNTIME.md) before changing text replies, TTS, STT, future realtime voice, provider adapters, schemas, safety repair, fallback selection, or voice style instructions.
+For Soria world/culture behavior, read [`SORIA_CANON.md`](./SORIA_CANON.md) before changing companion lore, homeworld references, Sorian customs, holidays, family lineages, spiritual route handling, or non-spiritual route handling.
+
+For OpenAI-backed companion runtime behavior, read [`OPENAI_COMPANION_RUNTIME.md`](./OPENAI_COMPANION_RUNTIME.md) before changing text replies, TTS, STT, future realtime voice, provider adapters, schemas, safety repair, fallback selection, Soria relation routing, or voice style instructions.
 
 ## Anthropic Platform
 
