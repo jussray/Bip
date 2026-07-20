@@ -59,6 +59,8 @@ For companion naming behavior, read [`COMPANION_NAME_CANON.md`](./COMPANION_NAME
 
 For Soria world/culture behavior, read [`SORIA_CANON.md`](./SORIA_CANON.md) before changing companion lore, homeworld references, Sorian customs, holidays, family lineages, spiritual route handling, or non-spiritual route handling.
 
+For on-the-fly Sorian relation behavior, read [`SORIA_RELATION_PALETTE.md`](./SORIA_RELATION_PALETTE.md) before changing cloud references, Sorian living-world objects, birth-cloud behavior, tiny relation bridges, or fallback palettes.
+
 For OpenAI-backed companion runtime behavior, read [`OPENAI_COMPANION_RUNTIME.md`](./OPENAI_COMPANION_RUNTIME.md) before changing text replies, TTS, STT, future realtime voice, provider adapters, schemas, safety repair, fallback selection, Soria relation routing, or voice style instructions.
 
 ## Anthropic Platform
