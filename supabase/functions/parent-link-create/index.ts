@@ -13,7 +13,14 @@ type PendingInvite = {
   is_active: boolean;
 };
 
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
 const JSON_HEADERS = {
+  ...CORS_HEADERS,
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
 };
@@ -116,6 +123,7 @@ async function sendInviteEmail(parentEmail: string, code: string, expiresAt: str
 }
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const authorization = req.headers.get("authorization");
