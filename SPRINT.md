@@ -1,10 +1,10 @@
 # Se'kret Bip — Current Sprint
 
 **Sprint theme:** Launch trust and journey proof  
-**Last verified:** 2026-07-16  
+**Last verified:** 2026-07-20  
 **Repository:** `jussray/Sekret-Bip`  
 **Default branch:** `main`  
-**Verified implementation baseline reviewed:** `ab5cf40b398e02536764b5b806b6f3aec0a9161c`  
+**Verified implementation baseline reviewed:** `2171672b897722de97836563e02e72c330586357`  
 **Owner roadmap:** `docs/LAUNCH_ROADMAP.md`
 
 This file is the volatile execution handoff. Verify material claims against GitHub, live Supabase, Cloudflare, tests, and the exact deployed SHA before acting.
@@ -26,13 +26,22 @@ This sprint does **not** promise public launch. It closes the evidence gaps requ
 
 ## What changed since the previous sprint baseline
 
-Merged into `main`:
+Completed and merged into `main`:
 
 - runtime-truth enforcement across GitHub, Supabase, deployment evidence, and Founder Control Room capability claims;
 - privacy-safe Daily Intentions in the Teen User Room with local deterministic generation and owner-only durable storage;
 - negative-auth contract tests for `account-delete` and `safety-scan`;
 - one explicit L5 definition, still blocked behind L4 reaching `verified`;
-- Cloudflare verification changes that retain failure evidence instead of allowing deployment uncertainty to disappear.
+- Cloudflare verification changes that retain failure evidence instead of allowing deployment uncertainty to disappear;
+- Resend parent invite email setup documentation plus a placeholder-only MCP example config through PR #549, closing the docs/config tracking lane #548;
+- Cloudflare Free-plan-safe default Worker config and canonical `sekret-backend` Worker naming through PR #551 and the follow-up main config correction;
+- Actions Budget Mode release-verification reconciliation through PR #552;
+- account security/password-change route handoff through PR #553;
+- current Resend onboarding, trigger-function hardening, and relationship-status rebuild lanes through PR #554, PR #555, and PR #557;
+- Codex/OpenAI provider baseline and companion identity/runtime documentation through PR #556;
+- Cloudflare MCP server configs and per-agent 5W1H repo instructions for Claude, ChatGPT, Perplexity, and Cursor.
+
+The completed items above are repository, documentation, configuration, and reviewed-integration evidence. Production behavior still requires the proper runtime witness for each lane.
 
 - additional anonymous-auth policy hardening for Bridge, activity, points/rewards, tasks, relationships, and other private surfaces;
 - behavior tests for high-blast-radius authenticated database functions;
@@ -52,6 +61,7 @@ Merged into `main`:
 - Do not mark trigger assurance verified until both live catalog parity and the external-effect-safe behavioral suite pass against the intended Supabase target.
 
 ### Production deployment
+
 These are repository integration claims. Any frontend or Worker release still requires exact production observation for the deployed commit.
 
 ## Current launch position
@@ -218,32 +228,3 @@ Not part of this sprint:
 - raw-content analytics or Control Room ingestion;
 - public launch dates unsupported by capacity and evidence owners;
 - L4 dashboards before L4 storage, denial, deletion, and one consumer exist;
-- any L5 implementation before L4 reaches `verified`;
-- turning every research signal into a feature commitment;
-- deleting preserved future work merely to make the launch scope look smaller.
-
-## Definition of done
-
-A sprint item is done only when:
-
-- the canonical implementation or contract is on `main`;
-- tests appropriate to its risk pass;
-- production-changing work has exact deployed-SHA evidence;
-- database-changing work has live migration and authorization evidence;
-- user-journey work has the required account, device, revocation, cleanup, and isolation proof;
-- privacy-safe evidence is retained;
-- rollout and rollback are explicit;
-- `implementation-ledger.json` or a validated extension is reconciled;
-- `docs/CURRENT_STATUS.md` and `docs/LAUNCH_ROADMAP.md` are updated only when their owned truth changed.
-
-## Escalate immediately when
-
-- a parent can access raw teen source content;
-- anonymous or cross-user access succeeds on a private surface;
-- a deployment verifier cannot identify the exact live commit;
-- deletion leaves private rows, files, caches, or relationship access behind;
-- a release artifact or log contains private content, credentials, or broad identifiers;
-- a planned L4 or L5 concept is presented as implemented;
-- documentation claims more than the code, database, deployed runtime, or observed journey proves.
-
-Computers remain extremely talented at completing the wrong checklist. This sprint is about proving the right one.
