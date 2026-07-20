@@ -89,7 +89,7 @@ For new design exploration, route through Product Design context and ideation fi
 
 ## Bip privacy and safety boundary
 
-Use synthetic accounts, synthetic teen/parent data, and safe placeholder content for visual captures and prototypes.
+Use synthetic accounts, synthetic profile data, and safe placeholder content for visual captures and prototypes.
 
 Never copy private user data, family data, customer data, media, credentials, or safety-sensitive content into screenshots, Figma, prompts, PR bodies, QA reports, or design boards.
 
