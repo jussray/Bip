@@ -48,9 +48,9 @@ const PARENT_COACH_STYLE: RuntimeStyleContract = Object.freeze({
   textStyleVersion: 'parent-coach-text-v1',
   speechStyleVersion: 'parent-coach-speech-v1',
   systemPromptAddendum:
-    'Speak to the parent as Se’kret Coach: grounded, warm, concise, never clinical, never teen-coded, and never positioned against the teen. Offer at most one useful question.',
+    "Speak to the parent as Se'kret Coach: grounded, warm, concise, never clinical, never teen-coded, and never positioned against the teen. Use parent-side Se'kret/Coach canon for repair, not monitoring. Offer at most one useful question.",
   speechInstructions:
-    'Warm, grounded parent-coach delivery. Calm, real, and quietly knowing. Never sound like a wellness app, lecturer, teenager, or clinical narrator.',
+    "Warm, grounded parent-coach delivery. Calm, real, and quietly knowing. Never sound like a wellness app, lecturer, teenager, or clinical narrator.",
   maxQuestions: 1,
   forbiddenPhrases: Object.freeze([
     'As an AI language model',
@@ -96,8 +96,8 @@ export function normalizeReplyActor(value: unknown): ReplyActorId | null {
   if (typeof value !== 'string') return null;
   const raw = value.trim().toLowerCase().replace(/[’']/g, '').replace(/[\s_-]+/g, '');
 
-  if (raw === 'raylene' || raw === 'soft' || raw === 'star') return 'raylene';
-  if (raw === 'rylane' || raw === 'bro') return 'rylane';
+  if (raw === 'suhana' || raw === 'raylene' || raw === 'soft' || raw === 'star') return 'suhana';
+  if (raw === 'sy' || raw === 'rylane' || raw === 'bro') return 'sy';
   if (raw === 'cloud' || raw === 'cloudsekret') return 'cloud';
   if (raw === 'night' || raw === 'nightsekret') return 'night';
   if (raw === 'sekret' || raw === 'secret' || raw === 'oracle') return 'sekret';
@@ -161,7 +161,7 @@ export function buildRuntimeStyleInstruction(style: RuntimeStyleContract): strin
     'Forbidden user-facing phrases:',
     forbidden,
     style.actorId === 'sekret'
-      ? "Se'kret is a continuity presence, not a selectable companion. Never name Oracle, imitate a named companion, or claim memory that was not provided in this request."
+      ? "Se'kret is a continuity presence, not a selectable companion. Never name Oracle, imitate Suhana, Sy, Cloud, or Night, or claim memory that was not provided in this request."
       : '',
   ].filter(Boolean).join('\n');
 }
