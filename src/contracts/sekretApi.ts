@@ -1,10 +1,12 @@
 export type CompanionId =
-  | 'raylene'
-  | 'rylane'
+  | 'suhana'
+  | 'sy'
   | 'cloud'
   | 'night'
   | 'sekret'
   | 'parentCoach';
+
+export type LegacyCompanionId = 'raylene' | 'rylane';
 
 export type CompanionSurface =
   | 'journal'
@@ -32,7 +34,7 @@ export interface CompanionHistoryTurn {
 }
 
 export interface CompanionReplyRequest {
-  characterId: CompanionId;
+  characterId: CompanionId | LegacyCompanionId;
   surface: CompanionSurface;
   userText: string;
   history?: CompanionHistoryTurn[];
@@ -45,11 +47,13 @@ export interface CompanionReplyRequest {
   conversationPhase?: string;
   phaseInstruction?: string;
   isArrival?: boolean;
+  /** True only for a user's first introduction to this companion. */
+  isFirstCompanionChat?: boolean;
 }
 
 export interface CompanionReplyData {
   reply: string;
-  characterId?: CompanionId;
+  characterId?: CompanionId | LegacyCompanionId;
   tone: string;
   avatarState?: CompanionAvatarState;
   safetyFlag: boolean;
@@ -61,14 +65,14 @@ export interface CompanionReplyData {
 
 export interface VoiceSynthesisRequest {
   reply: string;
-  characterId: CompanionId;
+  characterId: CompanionId | LegacyCompanionId;
   format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
 }
 
 export interface VoiceSynthesisData {
   audioBase64: string;
   contentType?: string;
-  characterId?: CompanionId;
+  characterId?: CompanionId | LegacyCompanionId;
   voiceSource?: string;
   traceId?: string;
 }
