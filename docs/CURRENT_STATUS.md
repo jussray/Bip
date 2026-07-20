@@ -1,6 +1,6 @@
 # Se'kret Bip — Current Status
 
-**Last reviewed:** 2026-07-16  
+**Last reviewed:** 2026-07-20  
 **Roadmap:** `docs/LAUNCH_ROADMAP.md`  
 **Current execution:** `SPRINT.md`
 
@@ -30,6 +30,20 @@ Public launch, app-store release, or production teen-data collection remains blo
 - Implementation Evidence CI enforcement for architecture, roadmap, current-status, and agent-skill claims
 
 ## Recently integrated
+
+### July 20 completed repository, docs, and governance sync
+
+The July 20 mainline work that is complete and should be treated as landed repository evidence includes:
+
+- PR #549 completed the repo-side Resend parent invite email documentation and placeholder-only MCP config. Issue #548 is closed as completed for that docs/config lane.
+- PR #551 made the default `sekret-backend` Worker config safer for Cloudflare Free-plan preview checks and corrected the custom-domain route pattern.
+- PR #552 reconciled Actions Budget Mode with release verification so reduced automatic fan-out does not erase exact-head release/account-lifecycle proof requirements.
+- PR #553 added the signed-in account security/password-change path while preserving the existing hardened recovery route.
+- PR #556 added the Codex/OpenAI provider baseline plus companion identity/runtime documentation.
+- PR #554, PR #555, and PR #557 landed the current Resend onboarding, trigger-function hardening, and relationship-status rebuild lanes on `main`.
+- Direct main commits added Cloudflare MCP server configs, corrected the Worker config name to `sekret-backend`, and added per-agent 5W1H config files for Claude, ChatGPT, Perplexity, and Cursor.
+
+These entries record completed repository/doc/config work only. Runtime delivery, live smoke evidence, account/device proof, and production release proof remain governed by their own gates.
 
 ### Privacy-safe Daily Intentions
 
