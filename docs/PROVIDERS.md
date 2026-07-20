@@ -63,7 +63,7 @@ Use only behind trusted server-side boundaries for model capability or repositor
 
 ## Perplexity
 
-Use for current public research, official documentation discovery, policy and market research, and source gathering. It does not know private repository, Supabase, Worker, account, Cloudflare, GitHub Actions, or production state unless explicitly connected and inspected.
+Use for current public research, official documentation discovery, policy and market research, and source gathering. It does not know private repository, Supabase, Worker, account, Cloudflare, GitHub Actions, or production state unless those systems are explicitly connected and inspected.
 
 Perplexity findings can support context. They do not override repository evidence, Founder Control Room, Cloudflare build logs, Playwright, Supabase, or runtime proof.
 
