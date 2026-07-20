@@ -10,7 +10,7 @@ test('invite screen preserves lookup errors', async () => {
   assert.match(screen, /fetchPendingInviteCodeResult/);
   assert.match(screen, /if \(!lookup\.ok\)/);
   assert.match(screen, /Retry existing code check/);
-  assert.match(screen, /generateInviteCodeResult/);
+  assert.match(screen, /generateInviteCodeWithDeliveryResult/);
   assert.match(lookup, /ParentLinkResult<string \| null>/);
   assert.match(lookup, /ok: true, value: null/);
   assert.match(lookup, /ok: false/);
@@ -50,4 +50,30 @@ test('code redemption uses the protected helper', async () => {
   assert.match(screen, /Continue to guardian verification/);
   assert.match(helper, /redeem_parent_link_invite/);
   assert.match(helper, /p_invite_code: normalized/);
+});
+
+test('parent invite email is optional and does not replace code display', async () => {
+  const screen = await read('app/(auth)/parent-link-verify.tsx');
+  const helper = await read('src/utils/parentLink.ts');
+
+  assert.match(screen, /EMAIL INVITE OPTIONAL/);
+  assert.match(screen, /Send invite email/);
+  assert.match(screen, /Code created, but email did not send/);
+  assert.match(helper, /ParentInviteEmailStatus = 'not_requested' \| 'sent' \| 'failed'/);
+  assert.match(helper, /parent-link-create/);
+  assert.match(helper, /parseEmailDelivery/);
+});
+
+test('parent-link-create edge function wraps RPC and never directly mutates parent_links', async () => {
+  const source = await read('supabase/functions/parent-link-create/index.ts');
+
+  assert.match(source, /db\.rpc\("create_parent_link_invite"\)/);
+  assert.match(source, /findPendingInvite/);
+  assert.match(source, /RESEND_API_KEY/);
+  assert.match(source, /email_not_configured/);
+  assert.match(source, /This email does not include private teen content/);
+  assert.doesNotMatch(source, /\.insert\(/);
+  assert.doesNotMatch(source, /\.upsert\(/);
+  assert.doesNotMatch(source, /\.update\(/);
+  assert.doesNotMatch(source, /SUPABASE_SERVICE_ROLE_KEY/);
 });
