@@ -23,11 +23,11 @@ OPENAI_STT_MODEL  = "whisper-1"
 BRIDGE_SUMMARIES_ROLLOUT = "disabled"
 
 # ── CPU time limit ────────────────────────────────────────────────────
-# Prevents runaway OpenAI / TTS calls from consuming excess CPU.
-# Bundled Workers default: 10ms CPU (free) / 30s wall clock (paid).
-# Explicitly set to enforce consistent behavior across environments.
-[limits]
-cpu_ms = 30000
+# Do not commit `[limits] cpu_ms` in the default Worker config.
+# Cloudflare rejects CPU limits on Free-plan deploys, so the repo default
+# must stay free-plan safe for PR previews and documentation-only changes.
+# Paid production CPU limits can be restored only through an approved
+# paid-plan release lane after Founder Control Room records that gate.
 
 # ── Custom domain (production) ────────────────────────────────────────
 # Routes api.sekretbip.net → this Worker.
