@@ -12,9 +12,20 @@
         "bip-typescript-minimal-patch",
         "bip-typescript-behavior-tests",
         "bip-typescript-strict-review",
+        "bip-product-design-gate",
         "bip-release-gate"
       ],
-      "boundary": "Repository, pull-request, draft pull-request, Actions, TypeScript tests/patch/review/debugging, and security evidence only. Verify exact branch and commit before claims or writes."
+      "boundary": "Repository, pull-request, draft pull-request, Actions, TypeScript tests/patch/review/debugging, Product Design evidence, and security evidence only. Verify exact branch and commit before claims or writes."
+    },
+    "product-design": {
+      "skills": [
+        "bip-repo-truth",
+        "bip-product-design-gate",
+        "bip-privacy-redteam",
+        "bip-auth-onboarding",
+        "bip-release-gate"
+      ],
+      "boundary": "Design exploration, screenshot-grounded audits, prototype QA, and visual handoff evidence only. Product Design evidence never replaces exact-head tests, privacy gates, release gates, or deployment proof."
     },
     "supabase": {
       "skills": [
@@ -42,6 +53,7 @@
     "figma": {
       "skills": [
         "bip-repo-truth",
+        "bip-product-design-gate",
         "bip-companion-style-engine",
         "bip-sekret-identity",
         "bip-privacy-redteam"
