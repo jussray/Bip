@@ -53,6 +53,10 @@ Never commit `.codex/.env`, `OPENAI_API_KEY`, `MODEL_API_KEY`, service-role keys
 
 Use only behind trusted Worker or server-side boundaries for model responses, voice, moderation, embeddings, or structured output. Keep keys off clients. Version models, prompts, tool schemas, safety behavior, and provenance. Model output is never authorization, consent, identity truth, clinical judgment, or a reason to bypass RLS.
 
+For companion behavior, read [`COMPANION_IDENTITY_BIBLE.md`](./COMPANION_IDENTITY_BIBLE.md) before changing companion prompts, fallback packs, character voices, synthetic evals, memory behavior, or AI transparency.
+
+For OpenAI-backed companion runtime behavior, read [`OPENAI_COMPANION_RUNTIME.md`](./OPENAI_COMPANION_RUNTIME.md) before changing text replies, TTS, STT, future realtime voice, provider adapters, schemas, safety repair, fallback selection, or voice style instructions.
+
 ## Anthropic Platform
 
 Use only behind trusted server-side boundaries for model capability or repository assistance. Keep keys off clients. Conversation context is not durable teen memory, consent, or product state. Validate outputs before writes, user-visible safety decisions, or repository mutation.
