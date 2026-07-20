@@ -33,6 +33,8 @@
     "audit:control-room:ingest": "node scripts/control-room-ingest-scans.mjs",
     "audit:control-room:advisors": "node scripts/control-room-ingest-supabase-advisors.mjs",
     "audit:control-room:local-report": "node scripts/control-room-ingest-local-report.mjs",
+    "control-room:github-failures:scan": "node scripts/control-room-ingest-github-failures.mjs",
+    "control-room:github-failures:ingest": "CONTROL_ROOM_GITHUB_INGEST=1 node scripts/control-room-ingest-github-failures.mjs",
     "audit:companion-lab": "node scripts/companion-lab-audit.js",
     "audit:companion-lab:verbose": "node scripts/companion-lab-audit.js --verbose",
     "validate:companions": "node scripts/validate-companion-assets.mjs",

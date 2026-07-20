@@ -1,0 +1,27 @@
+{
+  "id": "github-failure-routing",
+  "name": "Automatic GitHub Actions failure routing through Founder Control Room",
+  "status": "contract",
+  "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/492",
+  "acceptanceCriteria": [
+    "CI invokes the scanner after required jobs do not succeed and uploads the exact-run Control Room report.",
+    "Major non-CI workflow failures are captured through a completed-workflow watcher without a manual scan.",
+    "The scanner handles exact run IDs, open pull-request failures, and completed failed main-branch push runs with distinct fingerprints.",
+    "Runs without executed steps remain infrastructure evidence while runs with executed failing steps remain code or configuration evidence.",
+    "Credentials and private product content are excluded from reports, issue metadata, workflow artifacts, and client bundles."
+  ],
+  "contractPaths": [
+    "docs/CONTROL_ROOM_GITHUB_FAILURES.md",
+    "scripts/control-room-ingest-github-failures.mjs",
+    ".github/workflows/ci.yml",
+    ".github/workflows/control-room-github-failures.yml"
+  ],
+  "testPaths": [
+    "test/control-room-github-failure-routing.test.mjs"
+  ],
+  "verification": {
+    "state": "blocked",
+    "evidence": "https://github.com/jussray/Sekret-Bip/issues/492",
+    "blocker": "Exact-head tests and GitHub Actions jobs must execute and pass, followed by controlled pull-request and main-branch failure report rehearsals."
+  }
+}
