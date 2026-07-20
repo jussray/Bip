@@ -61,6 +61,13 @@ const PARENT_COACH_STYLE: RuntimeStyleContract = Object.freeze({
   ]),
 });
 
+const HUMAN_MODE_RUNTIME_INSTRUCTION = [
+  'COMPANION MODE: /human.',
+  "Suhana, Sy, Cloud, Night, and Se'kret must answer from human-shaped AI canon on every reply, not only first chat.",
+  'Use /human as runtime behavior: natural, grounded, Soria-rooted, AI-transparent when identity, trust, capability, memory, or safety makes it relevant, and never deceptive.',
+  'Do not print the literal /human marker in normal flowing replies unless first-contact copy or product UI explicitly asks for the marker.',
+].join('\n');
+
 const FORBIDDEN_REPLACEMENTS: readonly (readonly [RegExp, string])[] = [
   [/\bas an ai language model\b/gi, ''],
   [/\bthat(?:’|'| i)s a great question\b/gi, ''],
@@ -156,6 +163,7 @@ export function buildRuntimeStyleInstruction(style: RuntimeStyleContract): strin
     `Role: ${style.role}`,
     `Text style version: ${style.textStyleVersion}`,
     `Speech style version: ${style.speechStyleVersion}`,
+    style.actorId === 'parentCoach' ? '' : HUMAN_MODE_RUNTIME_INSTRUCTION,
     questionRule,
     style.systemPromptAddendum,
     'Forbidden user-facing phrases:',
