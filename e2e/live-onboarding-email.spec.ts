@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const liveEmail = process.env.LIVE_ONBOARDING_EMAIL?.trim();
 const livePassword = process.env.LIVE_ONBOARDING_PASSWORD?.trim() || 'PlaywrightOnly-123!';
@@ -12,11 +12,46 @@ const phase = process.env.LIVE_ONBOARDING_PHASE?.trim().toLowerCase() || 'signup
 const shouldRunSignup = phase === 'signup' || phase === 'all';
 const shouldRunInvite = phase === 'invite' || phase === 'all';
 
-async function signInTeen(page: import('@playwright/test').Page) {
+type InviteResponseBody = {
+  ok?: boolean;
+  email?: {
+    status?: string;
+    error_code?: string | null;
+  };
+};
+
+function isInviteResponseBody(value: unknown): value is InviteResponseBody {
+  return Boolean(value && typeof value === 'object');
+}
+
+async function attachPageState(page: Page, name: string, extra: Record<string, unknown> = {}) {
+  const alert = page.getByRole('alert');
+  await test.info().attach(name, {
+    body: JSON.stringify({
+      url: page.url(),
+      visibleAlert: await alert.textContent().catch(() => null),
+      title: await page.title().catch(() => null),
+      ...extra,
+    }, null, 2),
+    contentType: 'application/json',
+  });
+}
+
+async function signInTeen(page: Page) {
   await page.goto('/login?side=teen');
   await page.getByPlaceholder('Phone number, username or email').fill(liveEmail!);
   await page.getByPlaceholder('Password').fill(livePassword);
+
   await page.getByRole('button', { name: /log in/i }).click();
+  await page.waitForLoadState('networkidle', { timeout: 45_000 }).catch(() => null);
+
+  const alert = page.getByRole('alert');
+  if (await alert.isVisible().catch(() => false)) {
+    await attachPageState(page, 'live-login-failed');
+    throw new Error(`Live teen login failed: ${await alert.textContent()}`);
+  }
+
+  await expect(page.getByRole('button', { name: /log in/i })).toHaveCount(0, { timeout: 45_000 });
 }
 
 test.describe('live onboarding email smoke', () => {
@@ -44,17 +79,18 @@ test.describe('live onboarding email smoke', () => {
     const consentCheckpoint = page.getByText(/consent|privacy|continue/i).first();
     await expect(confirmationCheckpoint.or(consentCheckpoint)).toBeVisible({ timeout: 45_000 });
 
-    await test.info().attach('live-onboarding-email', {
-      body: JSON.stringify({
-        email: liveEmail,
-        username: liveUsername,
-        phase,
-        checkpoint: await confirmationCheckpoint.isVisible().catch(() => false)
-          ? 'signup_confirmation_email'
-          : 'post_auth_onboarding',
-        note: 'If checkpoint is signup_confirmation_email, verify the inbox before running LIVE_ONBOARDING_PHASE=invite.',
-      }, null, 2),
-      contentType: 'application/json',
+    const checkpoint = await confirmationCheckpoint.isVisible().catch(() => false)
+      ? 'signup_confirmation_email'
+      : 'post_auth_onboarding';
+
+    await attachPageState(page, 'live-onboarding-email', {
+      email: liveEmail,
+      username: liveUsername,
+      phase,
+      checkpoint,
+      note: checkpoint === 'signup_confirmation_email'
+        ? 'Verify this inbox before running LIVE_ONBOARDING_PHASE=invite.'
+        : 'The account reached post-auth onboarding; email confirmation may be disabled for this project.',
     });
 
     expect(consoleErrors).toEqual([]);
@@ -87,12 +123,15 @@ test.describe('live onboarding email smoke', () => {
     await expect(page.getByText(/invite email sent|code created, but email did not send/i)).toBeVisible({ timeout: 45_000 });
 
     const latestInvite = inviteResponses.at(-1);
-    await test.info().attach('parent-link-create-response', {
-      body: JSON.stringify(latestInvite ?? { error: 'no parent-link-create response captured' }, null, 2),
-      contentType: 'application/json',
+    await attachPageState(page, 'parent-link-create-response', {
+      response: latestInvite ?? { error: 'no parent-link-create response captured' },
     });
 
     expect(latestInvite, 'parent-link-create response should be captured').toBeTruthy();
-    expect(latestInvite?.status).toBeLessThan(500);
+    expect(latestInvite?.status).toBe(200);
+    expect(isInviteResponseBody(latestInvite?.body)).toBe(true);
+    expect((latestInvite?.body as InviteResponseBody).ok).toBe(true);
+    expect((latestInvite?.body as InviteResponseBody).email?.status).toBe('sent');
+    expect((latestInvite?.body as InviteResponseBody).email?.error_code ?? null).toBeNull();
   });
 });
