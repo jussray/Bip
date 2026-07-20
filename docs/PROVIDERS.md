@@ -61,6 +61,8 @@ For Soria world/culture behavior, read [`SORIA_CANON.md`](./SORIA_CANON.md) befo
 
 For on-the-fly Sorian relation behavior, read [`SORIA_RELATION_PALETTE.md`](./SORIA_RELATION_PALETTE.md) before changing cloud references, Sorian living-world objects, birth-cloud behavior, tiny relation bridges, or fallback palettes.
 
+For Soria humor behavior, read [`SORIA_JOKE_PALETTE.md`](./SORIA_JOKE_PALETTE.md) before changing companion jokes, playful replies, safe roasts, Cloud whimsy, Sorian meme logic, joke fallback packs, or humor voice style.
+
 For OpenAI-backed companion runtime behavior, read [`OPENAI_COMPANION_RUNTIME.md`](./OPENAI_COMPANION_RUNTIME.md) before changing text replies, TTS, STT, future realtime voice, provider adapters, schemas, safety repair, fallback selection, Soria relation routing, or voice style instructions.
 
 ## Anthropic Platform
