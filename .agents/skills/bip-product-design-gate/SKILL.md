@@ -93,7 +93,7 @@ Use synthetic accounts, synthetic profile data, and safe placeholder content for
 
 Never copy private user data, family data, customer data, media, credentials, or safety-sensitive content into screenshots, Figma, prompts, PR bodies, QA reports, or design boards.
 
-Do not expose Oracle or private companion internals in user-facing design artifacts.
+Do not expose private companion internals in user-facing design artifacts.
 
 ## Product Design output
 
