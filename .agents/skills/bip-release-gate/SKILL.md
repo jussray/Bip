@@ -1,5 +1,19 @@
 # bip-release-gate
 
+## 5W1H operating contract
+
+Before planning, editing, or claiming completion, establish and state:
+
+- **Who** — the requester, decision owner, affected users, data subjects, and execution authority.
+- **What** — the requested outcome, concrete deliverable, non-goals, and existing work that must be preserved.
+- **Where** — the exact repository, branch, environment, runtime, route, service, table, or provider boundary involved.
+- **When** — the current lifecycle or release state, required ordering, timing constraint, and rollback window.
+- **Why** — the user problem and verified evidence that justify the work.
+- **How** — the smallest safe implementation, required permissions, verification evidence, rollout, and rollback.
+
+Inspect repository and runtime truth for unknowns. Ask the user only when a missing answer would materially change the safe solution or authority. Re-run 5W1H after red-team/OODA findings change the plan. Finish by mapping the result, evidence, remaining blocker, and next owner back to these six questions.
+
+
 Last reviewed: 2026-07-13
 
 ## Trigger
@@ -196,3 +210,7 @@ Include:
 - exact blocker file, workflow, or environment when blocked.
 
 Never recommend merging with a known failure. Never describe an untriggered, skipped, stale, or older-SHA check as passed.
+
+## Control Room evidence gate
+
+A passing local Control Room mission is local evidence only. It does not merge, deploy, prove the hosted artifact, or satisfy exact-production verification. `ship-release` must remain outside the browser-executable allowlist. If GitHub Actions creates jobs but no runner executes steps, classify hosted evidence as BLOCKED and retain the local report without calling the exact head merge-ready.
