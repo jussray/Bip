@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { PERSONALITY_CONFIG } from '@/services/ai/personalities';
 import { AVATAR_PERSONAS, lintAvatarResponse, type AvatarPersona } from '@/services/ai/aiPatternLinter';
 import { PERSONA_OPERATIONS } from '@/config/controlRoomPersonaOperations';
 import { PROMPT_OS_ENTRIES, PROMPT_OS_SCOPE, type PromptOsCategory } from '@/config/controlRoomPromptOs';
+import { getCurrentFounderProfile, isFounderProfile } from '@/services/founderAudit';
 
 type Panel = 'library' | 'personas' | 'quality' | 'deployments';
 const categories: Array<'all' | PromptOsCategory> = ['all', 'personas', 'system', 'redteam', 'engineering', 'release'];
@@ -18,8 +19,26 @@ export default function PromptOsPanel() {
   const [query, setQuery] = useState('');
   const [lintPersona, setLintPersona] = useState<AvatarPersona>('redteam');
   const [lintDraft, setLintDraft] = useState('');
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
   const lintResult = useMemo(() => lintAvatarResponse(lintDraft, lintPersona), [lintDraft, lintPersona]);
   const entries = useMemo(() => PROMPT_OS_ENTRIES.filter((item) => category === 'all' || item.category === category).filter((item) => `${item.title} ${item.description} ${item.tags.join(' ')}`.toLowerCase().includes(query.toLowerCase())), [category, query]);
+
+  useEffect(() => {
+    void getCurrentFounderProfile().then((profile) => {
+      setAuthorized(isFounderProfile(profile));
+    });
+  }, []);
+
+  if (authorized === null) {
+    return <View style={[s.root, s.centerContent]}><ActivityIndicator color="#a78bfa" /></View>;
+  }
+
+  if (!authorized) {
+    return <View style={[s.root, s.centerContent]}>
+      <Text style={s.lockedTitle}>Prompt OS is locked.</Text>
+      <Text style={s.lockedBody}>Founder or admin access is required to view prompt, persona, and quality operations.</Text>
+    </View>;
+  }
 
   return <View style={s.root}>
     <View style={s.header}>
@@ -83,6 +102,9 @@ export default function PromptOsPanel() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#080611' },
+  centerContent: { alignItems: 'center', justifyContent: 'center', padding: 28 },
+  lockedTitle: { color: '#fff', fontSize: 17, fontWeight: '900', textAlign: 'center' },
+  lockedBody: { color: '#8f899e', fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 8, maxWidth: 300 },
   header: { paddingTop: 58, paddingHorizontal: 20, paddingBottom: 14 },
   kicker: { color: '#a78bfa', fontWeight: '800', fontSize: 11, letterSpacing: 2 },
   title: { color: '#fff', fontWeight: '900', fontSize: 30, marginTop: 4 },
