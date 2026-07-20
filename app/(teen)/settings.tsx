@@ -21,9 +21,9 @@ import {
   cancelDailyReminder,
 } from '@/utils/notifications';
 import { createParentLink, redeemParentLink } from '@/utils/parentBridgeCompat';
-import { revokeParentLink } from '@/utils/parentLink';
 import { useSleepGuard, type SleepWindow } from '../../hooks/useSleepGuard';
 import { AccountDeletionControls } from '@/components/settings/AccountDeletionControls';
+import { ParentLinkStatusCard } from '@/components/settings/ParentLinkStatusCard';
 import { advanceStage } from '@/services/onboarding';
 import { getSupabase } from '@/utils/supabase';
 
@@ -71,8 +71,8 @@ export default function SettingsScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [codeInput,    setCodeInput]    = useState('');
   const [isRedeeming,  setIsRedeeming]  = useState(false);
-  const [isUnlinking,  setIsUnlinking]  = useState(false);
   const [redeemStatus, setRedeemStatus] = useState<RedeemStatus>('idle');
+  const [linkStatusVersion, setLinkStatusVersion] = useState(0);
 
   async function handleNotificationToggle(enabled: boolean) {
     if (enabled) {
@@ -111,37 +111,13 @@ export default function SettingsScreen() {
     );
   }
 
-  function handleUnlinkParent() {
-    Alert.alert(
-      'Unlink parent?',
-      'Your parent will immediately lose linked access. You can create a new invite later.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unlink',
-          style: 'destructive',
-          onPress: async () => {
-            setIsUnlinking(true);
-            const revoked = await revokeParentLink();
-            setIsUnlinking(false);
-            if (revoked) {
-              setInviteCode('');
-              Alert.alert('Parent unlinked', 'Linked access has been removed.');
-            } else {
-              Alert.alert('Could not unlink', 'No active link was found, or the connection could not be updated.');
-            }
-          },
-        },
-      ],
-    );
-  }
-
   const handleGenerateCode = useCallback(async () => {
     setIsGenerating(true);
     const code = await createParentLink();
     setIsGenerating(false);
     if (code) {
       setInviteCode(code);
+      setLinkStatusVersion((value) => value + 1);
 
       // ── Onboarding state machine ──────────────────────────────
       // Fire-and-forget: record that the teen generated an invite
@@ -174,6 +150,7 @@ export default function SettingsScreen() {
     const VALID: RedeemStatus[] = ['idle', 'ok', 'not_found', 'error'];
     const result = VALID.includes(raw as RedeemStatus) ? (raw as RedeemStatus) : 'error';
     setRedeemStatus(result);
+    if (result === 'ok') setLinkStatusVersion((value) => value + 1);
   }, [codeInput]);
 
   return (
@@ -225,6 +202,14 @@ export default function SettingsScreen() {
         ))}
 
         <Text style={styles.sectionTitle}>Parent link</Text>
+        <ParentLinkStatusCard
+          accountSide="teen"
+          refreshKey={linkStatusVersion}
+          onRevoked={() => {
+            setInviteCode('');
+            setLinkStatusVersion((value) => value + 1);
+          }}
+        />
         <TouchableOpacity style={styles.button} onPress={handleGenerateCode} disabled={isGenerating}>
           <Text style={styles.buttonText}>{isGenerating ? 'Generating…' : 'Generate parent code'}</Text>
         </TouchableOpacity>
@@ -248,9 +233,6 @@ export default function SettingsScreen() {
         {redeemStatus !== 'idle' && (
           <Text style={styles.hint}>Status: {redeemStatus}</Text>
         )}
-        <TouchableOpacity style={[styles.button, styles.danger]} onPress={handleUnlinkParent} disabled={isUnlinking}>
-          <Text style={styles.buttonText}>{isUnlinking ? 'Unlinking…' : 'Unlink parent'}</Text>
-        </TouchableOpacity>
 
         <Text style={styles.sectionTitle}>Danger zone</Text>
         <AccountDeletionControls />
