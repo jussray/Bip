@@ -31,11 +31,12 @@ BRIDGE_SUMMARIES_ROLLOUT = "disabled"
 
 # ── Custom domain (production) ────────────────────────────────────────
 # Routes api.sekretbip.net → this Worker.
+# Cloudflare custom-domain patterns are hostname-only: no wildcard or path.
 # Cloudflare auto-provisions TLS. Zone must be active on Cloudflare.
 # After first deploy, verify with:
 #   curl --fail https://api.sekretbip.net/health
 [[routes]]
-pattern = "api.sekretbip.net/*"
+pattern = "api.sekretbip.net"
 custom_domain = true
 
 # ── Rate limiting binding ─────────────────────────────────────────────
