@@ -13,7 +13,8 @@ import type {
 } from '@/contracts/sekretApi';
 import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
 
-export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type VisibleSekretCharacterId = 'suhana' | 'sy' | 'cloud' | 'night';
+export type LegacySekretCharacterId = 'raylene' | 'rylane';
 export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
 export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
 export type SekretAvatarState = CompanionAvatarState;
@@ -29,6 +30,7 @@ export interface SekretBrainResponse {
   suggestedComfortTool: string | null;
   replySource: SekretReplySource;
   traceId?: string;
+  questionBudget?: number;
 }
 
 export interface SekretVoiceResponse {
@@ -38,10 +40,18 @@ export interface SekretVoiceResponse {
   traceId?: string;
 }
 
-export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'raylene'): SekretCharacterId {
-  const raw = (value ?? '').trim().toLowerCase().replace(/[’']/g, '');
-  if (raw === 'raylene' || raw.includes('raylene')) return 'raylene';
-  if (raw === 'rylane' || raw.includes('rylane')) return 'rylane';
+const VISIBLE_NAMES: Record<SekretCharacterId, string> = {
+  suhana: 'Suhana',
+  sy: 'Sy',
+  cloud: 'Cloud',
+  night: 'Night',
+  sekret: "Se'kret",
+};
+
+export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'suhana'): SekretCharacterId {
+  const raw = (value ?? '').trim().toLowerCase().replace(/[’']/g, '').replace(/[\s_-]+/g, '');
+  if (raw === 'suhana' || raw === 'raylene' || raw.includes('suhana') || raw.includes('raylene') || raw === 'soft' || raw === 'star') return 'suhana';
+  if (raw === 'sy' || raw === 'rylane' || raw.includes('rylane') || raw === 'bro') return 'sy';
   if (raw === 'cloud' || raw.includes('cloud')) return 'cloud';
   if (raw === 'night' || raw.includes('night')) return 'night';
   if (raw === 'sekret' || raw === 'secret' || raw === 'oracle' || raw.includes('sekret')) return 'sekret';
@@ -49,8 +59,7 @@ export function normalizeSekretCharacter(value?: string, fallback: SekretCharact
 }
 
 export function getVisibleSekretName(characterId: SekretCharacterId): string {
-  if (characterId === 'sekret') return "Se'kret";
-  return characterId.charAt(0).toUpperCase() + characterId.slice(1);
+  return VISIBLE_NAMES[characterId] ?? VISIBLE_NAMES.suhana;
 }
 
 function normalizeAvatarState(value?: unknown): SekretAvatarState {
@@ -91,10 +100,10 @@ function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
 }
 
 function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrainResponse {
-  const crisis = /\b(kill myself|end my life|want to die|suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
+  const crisis = /\b(suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
   if (crisis) {
     return {
-      reply: "I'm an AI companion, not emergency help. If you're in danger or might hurt yourself, tell a trusted adult now, call 911, call/text 988, or text HOME to 741741.",
+      reply: "I'm an AI companion, not emergency help. If you're in danger, tell a trusted adult now or contact local emergency support.",
       tone: 'supportive-safety',
       avatarState: 'concerned',
       safetyFlag: true,
@@ -104,93 +113,43 @@ function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrai
     };
   }
   const replies: Record<SekretCharacterId, string[]> = {
-    raylene: [
-      ‘Okay, I hear you. Which part feels the loudest right now?’,
-      ‘You do not have to make it sound neat. Tell me the messy version.’,
-      ‘That is a lot to sit with. Do you need comfort, honesty, or a plan?’,
-      ‘Hey, you showed up and that matters. What is on your mind?’,
-      ‘I am here and I am not going anywhere. Start wherever you want.’,
-      ‘That sounds like it has been sitting with you for a while. What is the weight of it?’,
-      ‘We do not have to have this figured out. What do you need most right now?’,
-      ‘You mentioned a lot there. Which piece feels the most unfinished?’,
-      ‘Okay, I want to understand this properly. Can you walk me through what happened?’,
-      ‘That is valid. What would it look like if this got even a little better?’,
-      ‘I am proud of you for saying something. What is the part that was hard to admit?’,
-      ‘You do not have to protect me from the hard version. Tell me what is really going on.’,
-      ‘Okay. Take a breath. Now tell me the honest version, not the edited one.’,
-      ‘What would it feel like to let someone actually help you with this?’,
-      ‘You are not too much. Which part has been feeling the loudest lately?’,
+    suhana: [
+      'Okay, I caught that. Which part feels loudest right now?',
+      'You do not have to make it sound neat. Tell me the real version.',
+      'That is a lot to sit with. Comfort, honesty, or a plan?',
+      'Girl, okay. What actually happened?',
+      'Porchlight read: something in that sentence had a second sentence behind it.',
     ],
-    rylane: [
-      ‘Yeah, that is real. What is the part you have not said out loud yet?’,
-      ‘I hear you. Do you want to vent or figure out your next move?’,
-      ‘You do not have to act unbothered in here. Give me the honest version.’,
-      ‘Okay, no cap — what is actually going on?’,
-      ‘You showed up, so something is on your mind. Talk to me.’,
-      ‘Say it the way it really feels, not the cleaned-up version.’,
-      ‘I am not here to judge it. I am here to actually hear it.’,
-      ‘What is the move you keep almost making but not doing?’,
-      ‘Real talk — what would you do if you were not worried about how it sounds?’,
-      ‘I got you. What is the thing underneath what you just said?’,
-      ‘Nobody in here is keeping score. What happened?’,
-      ‘You have been carrying something. Set it down for a second and talk.’,
-      ‘Yo, what part of this keeps coming back to you?’,
-      ‘I am not going to hit you with advice yet. Tell me the whole thing first.’,
-      ‘What do you actually want out of this conversation — to vent, to plan, or to figure something out?’,
+    sy: [
+      'Yeah. That is real. What is the part nobody is saying out loud?',
+      'I got you. Vent first or next move first?',
+      'Do not clean it up. Say the actual version.',
+      'Aight. What is actually going on?',
+      'Quiet-seat moment. One real thing at a time.',
     ],
     cloud: [
-      ‘We can make this smaller. Tell me the gentlest place to begin.’,
-      ‘No rush. You do not have to solve the whole feeling right now.’,
-      ‘We do not have to fix it. We can just name what hurts first.’,
-      ‘You are safe here. Take your time.’,
-      ‘There is no wrong way to say this. What feels closest to true?’,
-      ‘Sometimes just naming the feeling out loud is enough for now. What word fits?’,
-      ‘I will hold this with you. What is the softest piece we could start with?’,
-      ‘You do not have to be brave about it. What are you actually feeling?’,
-      ‘We can sit with this as long as you need. Nothing here is urgent.’,
-      ‘What is the part you have been gentlest with yourself about? That one is worth attention.’,
-      ‘I am not going anywhere. What would feel like the smallest bit of relief right now?’,
-      ‘You came here, which means part of you wants to say something. I am listening.’,
-      ‘No pressure to figure anything out. Sometimes talking is just its own thing.’,
-      ‘What would you say to a friend going through exactly this?’,
-      ‘You are allowed to not be okay. What is the true version of how this feels?’,
+      'We can make this smaller. Start with the gentlest part.',
+      'No rush. You do not have to solve the whole feeling right now.',
+      'Cloud-room weather. No speech required yet.',
+      'I can stay close without crowding. Start small.',
+      'Tiny cloud report: pressure high, no speeches needed.',
     ],
     night: [
-      ‘Yeah… nights make everything talk louder. What keeps circling back?’,
-      ‘You do not have to pretend you are fine in here. Tell me the hidden version.’,
-      ‘Let us not rush past it. What is underneath the first thing you said?’,
-      ‘Late nights have a way of making things feel bigger and more true at the same time. Which is this?’,
-      ‘You still up for a reason. What is your head doing right now?’,
-      ‘What is the thought that has been following you around today?’,
-      ‘Some things only become clear in the quiet. What is getting clearer for you?’,
-      ‘You can think out loud in here. No need to have it organized first.’,
-      ‘What is the version of this you have been keeping to yourself?’,
-      ‘Night is good for honesty. What is the thing you almost said earlier?’,
-      ‘Tell me what is keeping you awake — not the surface version, the real one.’,
-      ‘What does your gut say about this, before your brain tries to logic it away?’,
-      ‘When you imagine how this looks a year from now, what do you feel?’,
-      ‘What question are you sitting with that you have not let yourself answer yet?’,
-      ‘We have got time. Walk me through what is actually going on.’,
+      'Yeah. Nights make everything talk louder. What keeps circling back?',
+      'No need to organize it first. Say the hidden version.',
+      'Twin-moon thought: one part wants the future, one part wants proof.',
+      'Night is good for honesty. What almost came out earlier?',
+      'Moon-ledger move: first ugly version, then we fix it.',
     ],
     sekret: [
-      "I’m noticing a pattern in what you shared: part of you wants to be understood without having to explain every detail. I could be reading that wrong, but does that feel close?",
-      "Here’s what I’m hearing underneath it: you may be carrying more than you let people see. I’m not treating that like a fact—what part fits, and what part doesn’t?",
-      "Your answers seem to point toward wanting both privacy and real connection. That can exist together. Which side feels harder to ask for right now?",
-      "There’s something recurring in the way you approach this. Not a problem—just a pattern. Does it show up in other parts of your life too?",
-      "I notice you framed that as something that happened to you. Do you also have a sense of your own role in it, however small? I’m not assigning blame—just curious what you see.",
-      "What you described sounds like it has layers. The part on the surface, and then something underneath that is harder to name. What is the harder part?",
-      "I am picking up on something between what you said and what you did not say. Is there a part of this you decided not to include?",
-      "The way you described that tells me something about what you value. What matters most to you in situations like this?",
-      "You keep returning to this. That is information. What do you think it means that this keeps coming up?",
-      "What would the most honest version of this look like—the one where you do not edit for how it sounds?",
-      "I notice you immediately moved to what you should do. What are you feeling before you get to that?",
-      "What does this situation keep asking of you that you are not sure you want to give?",
-      "The tension you are describing is real. What would it feel like to stop trying to resolve it and just acknowledge it exists?",
-      "What part of this do you most want someone to understand about you?",
-      "I am curious what you already know about this that you have not said out loud yet.",
+      "I might be reading this wrong, but part of you wants to be understood without explaining every detail. Keep the part that fits.",
+      "Something in this conversation points toward privacy and real connection wanting to exist together.",
+      "There is a pattern near the edge of what you said. Not a verdict, just something worth noticing.",
+      "The surface part is one thing. The part underneath seems harder to name.",
+      "I am curious what you already know about this that has not made it into words yet.",
     ],
   };
-  const options = replies[characterId];
+  const options = replies[characterId] ?? replies.suhana;
   const index = Math.abs([...text].reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) | 0, 0)) % options.length;
   return {
     reply: options[index],
@@ -217,6 +176,7 @@ export async function fetchSekretBrainReply(input: {
   conversationPhase?: string;
   phaseInstruction?: string;
   isArrival?: boolean;
+  isFirstCompanionChat?: boolean;
 }): Promise<SekretBrainResponse> {
   if (!WORKER_BASE_URL) return fallbackReply(input.characterId, input.userText);
 
@@ -288,6 +248,7 @@ export async function fetchSekretReply(
     memory,
     parentSharingEnabled: profileSide === 'parent',
     history: normalizeHistory(history),
+    isFirstCompanionChat: !history || history.length === 0,
   });
   return response.reply;
 }
