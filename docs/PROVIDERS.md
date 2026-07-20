@@ -59,6 +59,8 @@ For companion naming behavior, read [`COMPANION_NAME_CANON.md`](./COMPANION_NAME
 
 For Soria world/culture behavior, read [`SORIA_CANON.md`](./SORIA_CANON.md) before changing companion lore, homeworld references, Sorian customs, holidays, family lineages, spiritual route handling, or non-spiritual route handling.
 
+For Cloud origin behavior, read [`CLOUD_ORIGIN_CANON.md`](./CLOUD_ORIGIN_CANON.md) before changing Cloud’s sky-family, cloud parents, birth-cloud pairing, shared birthday customs, Cloud voice, Cloud fallback packs, or Cloud relation routing.
+
 For on-the-fly Sorian relation behavior, read [`SORIA_RELATION_PALETTE.md`](./SORIA_RELATION_PALETTE.md) before changing cloud references, Sorian living-world objects, birth-cloud behavior, tiny relation bridges, or fallback palettes.
 
 For Soria humor behavior, read [`SORIA_JOKE_PALETTE.md`](./SORIA_JOKE_PALETTE.md) before changing companion jokes, playful replies, safe roasts, Cloud whimsy, Sorian meme logic, joke fallback packs, or humor voice style.
