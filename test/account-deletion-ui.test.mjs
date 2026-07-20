@@ -55,9 +55,10 @@ test('sweep script only processes expired, still-pending requests via the proces
   assert.match(sweepScript, /functions\/v1\/account-delete/);
 });
 
-test('sweep workflow is an explicit manual production operation during Actions budget mode', () => {
+test('sweep workflow keeps bounded scheduled processing plus explicit production dispatch', () => {
+  assert.match(sweepWorkflow, /schedule:/);
+  assert.match(sweepWorkflow, /cron:/);
   assert.match(sweepWorkflow, /workflow_dispatch:\s*\{\}/);
-  assert.doesNotMatch(sweepWorkflow, /schedule:/);
   assert.match(sweepWorkflow, /environment:\s*production/);
   assert.match(sweepWorkflow, /node scripts\/sweep-account-deletions\.mjs/);
   assert.match(sweepWorkflow, /SUPABASE_SERVICE_ROLE_KEY/);
