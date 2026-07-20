@@ -12,10 +12,17 @@ PR #546 added the code boundary for parent-link invite email delivery:
 - invite email copy must not include private teen content;
 - production sending happens from the Supabase Edge Function runtime, not from Expo/client code.
 
-Runtime tracking:
+## Completed repo setup
+
+PR #549 completed the repo-side documentation/config lane for Resend parent invite email setup:
+
+- `docs/onboarding/RESEND_PARENT_INVITE_EMAIL.md` records the operator setup and safety boundary;
+- `.mcp/resend.email.example.json` provides a placeholder-only MCP example;
+- GitHub issue #548 is closed as completed because this docs/config lane is finished.
+
+Runtime tracking remains separate:
 
 - Se'kret Bip runtime gate: #547
-- Se'kret Bip repo/MCP setup tracking: #548
 - Founder Control Room gate: jussray/founder-control-room#62
 
 ## Required production secrets
