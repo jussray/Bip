@@ -1,6 +1,14 @@
 /**
  * OnboardingContext — Se'kret Bip
  * ============================================================
+ * SUPERSEDED — the live onboarding provider is src/context/OnboardingContext.tsx,
+ * wired into app/_layout.tsx and used by every app/(onboarding)/*.tsx screen.
+ * This earlier draft has zero importers and references an @/services/onboarding
+ * API surface (OnboardingState, UserRole, getOnboardingState, etc.) that was
+ * never implemented — it's excluded from tsconfig rather than deleted. If this
+ * design is revived, reconcile it with src/context/OnboardingContext.tsx first
+ * instead of maintaining two competing onboarding contexts.
+ *
  * React context that wraps the onboarding service layer.
  * Provides current stage + typed advance/skip actions to all
  * onboarding screens without prop-drilling.

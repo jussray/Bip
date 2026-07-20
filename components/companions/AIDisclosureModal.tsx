@@ -21,7 +21,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import { supabase } from '@/services/supabase';
+import { supabase } from '@/utils/supabase';
 
 interface Props {
   visible: boolean;
@@ -32,12 +32,14 @@ interface Props {
 export default function AIDisclosureModal({ visible, companionName, onAccept }: Props) {
   const handleAccept = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({ ai_disclosure_accepted_at: new Date().toISOString() })
-          .eq('id', user.id);
+      if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await supabase
+            .from('profiles')
+            .update({ ai_disclosure_accepted_at: new Date().toISOString() })
+            .eq('id', user.id);
+        }
       }
     } catch (e) {
       // Non-blocking — user flow continues regardless

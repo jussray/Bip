@@ -143,5 +143,5 @@ export function lockScreenNotificationCopy(senderRole: 'teen' | 'parent'): strin
  * screen.
  */
 export function isPrivateNotificationCopy(copy: string): boolean {
-  return Object.values(LOCK_SCREEN_NOTIFICATION_COPY).includes(copy);
+  return (Object.values(LOCK_SCREEN_NOTIFICATION_COPY) as string[]).includes(copy);
 }

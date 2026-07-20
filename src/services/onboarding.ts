@@ -121,3 +121,27 @@ export async function clearOnboardingState(): Promise<void> {
     // Silent
   }
 }
+
+/**
+ * markActivated
+ *
+ * Records a one-off retention/activation event in `app_events`, separate
+ * from the resumable onboarding stage machine above. Fire-and-forget, safe
+ * to call without awaiting or catching.
+ */
+export async function markActivated(
+  userId: string,
+  event: string,
+): Promise<void> {
+  try {
+    const sb = getSupabase();
+    if (!sb) return;
+
+    await sb.from('app_events').insert({
+      user_id: userId,
+      event_type: event,
+    });
+  } catch {
+    // Never block UI
+  }
+}

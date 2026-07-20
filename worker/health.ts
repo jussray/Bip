@@ -44,5 +44,5 @@ export async function handleStatus(req: Request, env: Env): Promise<Response> {
 }
 
 interface Env {
-  BIP_KV?: KVNamespace;
+  BIP_KV?: { get(key: string): Promise<string | null> };
 }

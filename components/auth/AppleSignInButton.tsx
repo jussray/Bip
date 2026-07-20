@@ -7,15 +7,16 @@
  *   import AppleSignInButton from '@/components/auth/AppleSignInButton';
  *   <AppleSignInButton onSuccess={(session) => router.replace('/home')} />
  *
- * Prerequisites:
+ * Prerequisites (not yet done — this file is excluded from tsconfig until they are):
  *   - expo install expo-apple-authentication
  *   - Add "Sign In with Apple" capability in Xcode
  *   - Enable Apple provider in Supabase Auth dashboard
+ *   - Wire this component into an actual sign-in screen (currently has zero importers)
  */
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { supabase } from '@/services/supabase';
+import { supabase } from '@/utils/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 interface Props {

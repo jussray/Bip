@@ -132,8 +132,7 @@ export default function ForgotPasswordScreen() {
           <Text style={styles.sentEmoji}>📬</Text>
           <Text style={styles.title}>Check your email</Text>
           <Text style={styles.body}>
-            If an account matches that email, a secure reset link is on the way.{'
-'}Check spam or junk too.
+            If an account matches that email, a secure reset link is on the way.{'\n'}Check spam or junk too.
           </Text>
           <TouchableOpacity
             style={styles.btn}

@@ -19,5 +19,9 @@
       "@types/*": ["./src/types/*"]
     }
   },
-  "exclude": ["supabase/functions/**"]
+  "exclude": [
+    "supabase/functions/**",
+    "context/OnboardingContext.tsx",
+    "components/auth/AppleSignInButton.tsx"
+  ]
 }
