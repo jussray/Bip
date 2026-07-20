@@ -4,9 +4,8 @@ This branch reduces GitHub Actions fan-out during runner-budget/outage pressure.
 
 ## What changes
 
-The noisy workflows remain available, but only through manual `workflow_dispatch` runs:
+Most noisy workflows remain available only through manual `workflow_dispatch` runs:
 
-- Account Deletion Sweep
 - CI
 - Companion Lab Audit
 - Control Room Manifest
@@ -19,6 +18,12 @@ The noisy workflows remain available, but only through manual `workflow_dispatch
 - Trigger Audit
 - Type Check
 - Verify Room Archives
+
+## What stays scheduled
+
+Account Deletion Sweep keeps its bounded schedule plus explicit `workflow_dispatch` access. Budget mode must not disable the only reliable repository processor for expired deletion requests unless an equally reliable approved processor replaces it.
+
+The sweep still requires the production environment, Supabase credentials, and the account-deletion process secret. Running it or changing its production secrets remains a separate production operation gate.
 
 ## Why
 
@@ -39,7 +44,7 @@ Zero-step jobs, `steps: null`, missing logs, or missing runs remain `runner_star
 
 ## Account deletion sweep
 
-The account-deletion sweep is intentionally manual during budget mode. It still requires the production environment, Supabase credentials, and the account-deletion process secret. Running it remains a separate founder-approved production operation gate.
+Account deletion is privacy-impacting lifecycle behavior, so its scheduled processor is preserved. The schedule is narrow and production-environment gated; any live run still requires repository secrets already configured outside this PR.
 
 ## Room archives
 
