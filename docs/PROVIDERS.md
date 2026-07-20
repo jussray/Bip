@@ -28,9 +28,34 @@ Best for debugging, code review, tests, repository operations, data analysis, th
 
 Codex/ChatGPT must not claim a code regression from GitHub jobs with no executed steps or logs. It must keep working actual code/review issues when independently proven, while treating runner outage as infrastructure and release-truth evidence.
 
+### Codex provider baseline
+
+When a repo-running Codex agent needs model-provider configuration, keep it machine-local and use OpenAI/Codex as the default coding engine:
+
+```toml
+model = "gpt-5.3-codex"
+model_provider = "openai"
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_supports_reasoning_summaries = true
+model_auto_compact_token_limit = 900000
+```
+
+Store the API key outside the repository, for example in `~/.codex/.env`:
+
+```dotenv
+OPENAI_API_KEY=replace_with_local_secret
+```
+
+Never commit `.codex/.env`, `OPENAI_API_KEY`, `MODEL_API_KEY`, service-role keys, provider tokens, Supabase service-role keys, Cloudflare tokens, GitHub tokens, or any other secret. Model choice does not override `AGENTS.md`, `GLOBAL_AI.md`, repository skills, teen privacy, Founder Control Room release truth, Playwright requirements, or explicit founder approval gates.
+
 ## OpenAI Platform
 
 Use only behind trusted Worker or server-side boundaries for model responses, voice, moderation, embeddings, or structured output. Keep keys off clients. Version models, prompts, tool schemas, safety behavior, and provenance. Model output is never authorization, consent, identity truth, clinical judgment, or a reason to bypass RLS.
+
+For companion behavior, read [`COMPANION_IDENTITY_BIBLE.md`](./COMPANION_IDENTITY_BIBLE.md) before changing companion prompts, fallback packs, character voices, synthetic evals, memory behavior, or AI transparency.
+
+For OpenAI-backed companion runtime behavior, read [`OPENAI_COMPANION_RUNTIME.md`](./OPENAI_COMPANION_RUNTIME.md) before changing text replies, TTS, STT, future realtime voice, provider adapters, schemas, safety repair, fallback selection, or voice style instructions.
 
 ## Anthropic Platform
 
@@ -38,7 +63,7 @@ Use only behind trusted server-side boundaries for model capability or repositor
 
 ## Perplexity
 
-Use for current public research, official documentation discovery, policy and market research, and source gathering. It does not know private repository, Supabase, Worker, account, Cloudflare, GitHub Actions, or production state unless explicitly connected and inspected.
+Use for current public research, official documentation discovery, policy and market research, and source gathering. It does not know private repository, Supabase, Worker, account, Cloudflare, GitHub Actions, or production state unless those systems are explicitly connected and inspected.
 
 Perplexity findings can support context. They do not override repository evidence, Founder Control Room, Cloudflare build logs, Playwright, Supabase, or runtime proof.
 
@@ -54,7 +79,7 @@ Owns Auth, Postgres, RLS, Storage, RPCs, functions, and durable user data. Servi
 
 ## Cloudflare Workers / Pages
 
-Own privileged AI, voice, authenticated API, Pages/Worker build and deploy evidence, and server-side integration calls. Verify CORS, authentication, input validation, secrets, logging minimization, rate limits, timeouts, costs, and fallback behavior. Worker or Pages deployment success is not proof that app clients use the intended endpoint safely.
+Own privileged AI, voice, authenticated API, Pages/Worker build and deploy evidence, and server-side integration calls. Verify CORS, authentication, input validation, secrets, logging minimization, rate limits, costs, and fallback behavior. Worker or Pages deployment success is not proof that app clients use the intended endpoint safely.
 
 ## Expo / React Native
 
