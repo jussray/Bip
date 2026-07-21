@@ -3,12 +3,20 @@
 Use these instructions whenever an AI coding agent works in this repository.
 
 > **Before making any claim about current PR, deployment, migration, backend state, GitHub Actions status, Cloudflare status, or release truth, read `SPRINT.md` at the repo root and verify it using `.agents/skills/bip-repo-truth/SKILL.md`. Also check Founder Control Room when release, CI, outage, or cross-repo truth is involved.**
+>
+> **2026-07-20 repo refresh:** a 17-day-old map is stale. Read [`docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`](./docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md) before auth/onboarding, Product Design, Cloudflare, agent-skill, CI, or current-state work.
 
 ## Canonical repository
 
 `jussray/Sekret-Bip` is the active Se’kret Bip working repository.
 
 Other Bip-named repositories are historical or investigate-only unless Founder Control Room explicitly names one for provenance capture. Do not implement active Bip work in those repos. Port useful findings here through a focused PR.
+
+## Current repo map checkpoint
+
+The current app is no longer the old single-file prototype map. Treat `app/`, Supabase auth/onboarding, Cloudflare Worker/Page deployment, `.agents/skills/*`, Control Room manifests, Product Design assets, companion canon docs, and Playwright/device evidence as active architecture until exact repository inspection proves otherwise.
+
+The repo-refresh checkpoint records the late-July delta from the July 3 audit baseline, the current Founder Access Recovery Gate, the PR #567 Cloudflare branch state, and the separation between GitHub, Cloudflare, Supabase, Playwright, device, and Product Design proof.
 
 ## Global founder stack
 
