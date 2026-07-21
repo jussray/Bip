@@ -1,0 +1,79 @@
+# AI Companion Fallback Product Design Contract
+
+Status: draft for founder review  
+Branch: `agent/fallback-batch-1-current`  
+Pack: `fallback-natural-v1.0.0`
+
+## User experience goal
+
+When OpenAI or the Worker path is unavailable, Se'kret Bip should still feel stable, kind, and teen-native without pretending the companions are human.
+
+The fallback path is not a second secret personality engine. It is a local, versioned safety net that keeps the chat moving while preserving trust.
+
+## Product rules
+
+1. Every companion remains an AI companion.
+2. The app must not imply a companion has a body, school, home, parents, offline memories, hidden feelings, or human consciousness.
+3. If the teen asks whether a companion is real, human, sentient, or a robot, the reply must clearly say the companion is AI.
+4. Fallback replies should still sound natural, warm, and character-specific.
+5. Fallback replies must avoid silent learning from teen conversations.
+6. Fallback packs must be versioned and auditable before they are approved for production.
+7. Founder review is required before new fallback packs are treated as approved.
+
+## Splash and welcome-screen guard
+
+- Do not change splash images, welcome art, character placement, or the teen-forward visual direction from fallback telemetry work.
+- Fallback copy should support the companion experience behind those visuals, not rewrite the visual identity.
+- Persistent AI labels should be added near companion identity surfaces without covering or distorting the splash characters.
+
+## Companion lanes
+
+- Suhana: caring, emotionally clear, steady.
+- Sy: direct, protective, honest.
+- Cloud: soft comfort, lower pressure, grounding.
+- Night: late-night honesty, quiet steadiness, hidden-thought support.
+- Se'kret: pattern reflection, uncertainty-aware interpretation.
+
+## Interaction behavior
+
+- The API helper now routes app fallback replies through the natural fallback pack.
+- Selection is deterministic from pack version, companion, surface, mood, and user text.
+- Recent assistant fallback replies are avoided when possible.
+- Identity probes use explicit AI-disclosure replies.
+- Safety fallback remains separate from normal character style.
+
+## Control Room telemetry
+
+This branch logs app-side companion fallback usage through the existing sanitized `audit_events` pipeline.
+
+Logged metadata is aggregate-friendly and intentionally excludes private teen message text:
+
+- companion / character id,
+- surface,
+- mood presence only,
+- history turn count only,
+- fallback reason,
+- fallback pack version,
+- fallback variant id,
+- fallback kind: natural, identity, or safety,
+- identity-disclosure boolean,
+- safety boolean,
+- suggested comfort tool,
+- tone.
+
+Control Room analytics now aggregates:
+
+- total fallback count,
+- natural fallback count,
+- identity-disclosure fallback count,
+- safety fallback count,
+- fallback use by companion,
+- fallback use by surface,
+- fallback pack versions observed,
+- founder approval state.
+
+## Remaining follow-up
+
+- Render a dedicated Control Room panel if the current dashboard needs a visual fallback tab after founder review.
+- Add Worker-side telemetry for OpenAI failures that happen before the app receives a fallback.
+- Promote `fallback-natural-v1.0.0` from draft to approved only after founder review and CI.
