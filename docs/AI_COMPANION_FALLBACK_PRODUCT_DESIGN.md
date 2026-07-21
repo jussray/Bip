@@ -20,6 +20,12 @@ The fallback path is not a second secret personality engine. It is a local, vers
 6. Fallback packs must be versioned and auditable before they are approved for production.
 7. Founder review is required before new fallback packs are treated as approved.
 
+## Splash and welcome-screen guard
+
+- Do not change splash images, welcome art, character placement, or the teen-forward visual direction from fallback telemetry work.
+- Fallback copy should support the companion experience behind those visuals, not rewrite the visual identity.
+- Persistent AI labels should be added near companion identity surfaces without covering or distorting the splash characters.
+
 ## Companion lanes
 
 - Suhana: caring, emotionally clear, steady.
@@ -36,16 +42,38 @@ The fallback path is not a second secret personality engine. It is a local, vers
 - Identity probes use explicit AI-disclosure replies.
 - Safety fallback remains separate from normal character style.
 
-## Control Room implications
+## Control Room telemetry
 
-Control Room should eventually surface:
+This branch logs app-side companion fallback usage through the existing sanitized `audit_events` pipeline.
 
-- active fallback pack version,
-- fallback use count,
-- fallback rate by companion,
-- fallback rate by surface,
-- identity-disclosure trigger count,
-- safety fallback trigger count,
+Logged metadata is aggregate-friendly and intentionally excludes private teen message text:
+
+- companion / character id,
+- surface,
+- mood presence only,
+- history turn count only,
+- fallback reason,
+- fallback pack version,
+- fallback variant id,
+- fallback kind: natural, identity, or safety,
+- identity-disclosure boolean,
+- safety boolean,
+- suggested comfort tool,
+- tone.
+
+Control Room analytics now aggregates:
+
+- total fallback count,
+- natural fallback count,
+- identity-disclosure fallback count,
+- safety fallback count,
+- fallback use by companion,
+- fallback use by surface,
+- fallback pack versions observed,
 - founder approval state.
 
-This branch does not yet implement Control Room telemetry. That belongs in the next batch.
+## Remaining follow-up
+
+- Render a dedicated Control Room panel if the current dashboard needs a visual fallback tab after founder review.
+- Add Worker-side telemetry for OpenAI failures that happen before the app receives a fallback.
+- Promote `fallback-natural-v1.0.0` from draft to approved only after founder review and CI.
