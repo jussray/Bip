@@ -11,6 +11,7 @@ import type {
   CompanionReplyRequest,
   CompanionReplySource,
 } from '@/contracts/sekretApi';
+import { createNaturalFallbackResponse } from '@/features/sekret/naturalFallbacks';
 import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
 
 export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
@@ -90,57 +91,22 @@ function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
   return turns.slice(-10);
 }
 
-function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrainResponse {
-  const crisis = /\b(kill myself|end my life|want to die|suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
-  if (crisis) {
-    return {
-      reply: "I'm an AI companion, not emergency help. If you're in danger or might hurt yourself, tell a trusted adult now, call 911, call/text 988, or text HOME to 741741.",
-      tone: 'supportive-safety',
-      avatarState: 'concerned',
-      safetyFlag: true,
-      parentShareSummary: null,
-      suggestedComfortTool: 'safety-plan',
-      replySource: 'fallback',
-    };
-  }
-  const replies: Record<SekretCharacterId, string[]> = {
-    raylene: [
-      'Okay, I hear you. Which part feels the loudest right now?',
-      'You do not have to make it sound neat. Tell me the messy version.',
-      'That is a lot to sit with. Do you need comfort, honesty, or a plan?',
-    ],
-    rylane: [
-      'Yeah, that is real. What is the part you have not said out loud yet?',
-      'I hear you. Do you want to vent or figure out your next move?',
-      'You do not have to act unbothered in here. Give me the honest version.',
-    ],
-    cloud: [
-      'We can make this smaller. Tell me the gentlest place to begin.',
-      'No rush. You do not have to solve the whole feeling right now.',
-      'We do not have to fix it. We can just name what hurts first.',
-    ],
-    night: [
-      'Yeah… nights make everything talk louder. What keeps circling back?',
-      'You do not have to pretend you are fine in here. Tell me the hidden version.',
-      'Let us not rush past it. What is underneath the first thing you said?',
-    ],
-    sekret: [
-      "I’m noticing a pattern in what you shared: part of you wants to be understood without having to explain every detail. I could be reading that wrong, but does that feel close?",
-      "Here’s what I’m hearing underneath it: you may be carrying more than you let people see. I’m not treating that like a fact—what part fits, and what part doesn’t?",
-      "Your answers seem to point toward wanting both privacy and real connection. That can exist together. Which side feels harder to ask for right now?",
-    ],
-  };
-  const options = replies[characterId];
-  const index = Math.abs([...text].reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) | 0, 0)) % options.length;
-  return {
-    reply: options[index],
-    tone: characterId,
-    avatarState: characterId === 'cloud' || characterId === 'night' || characterId === 'sekret' ? 'comforting' : 'responding',
-    safetyFlag: false,
-    parentShareSummary: null,
-    suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
-    replySource: 'fallback',
-  };
+function fallbackReply(
+  characterId: SekretCharacterId,
+  text: string,
+  options: {
+    surface?: SekretSurface;
+    mood?: string;
+    history?: SekretHistoryTurn[];
+  } = {},
+): SekretBrainResponse {
+  return createNaturalFallbackResponse({
+    characterId,
+    userText: text,
+    surface: options.surface,
+    mood: options.mood,
+    history: options.history,
+  });
 }
 
 export async function fetchSekretBrainReply(input: {
@@ -158,14 +124,20 @@ export async function fetchSekretBrainReply(input: {
   phaseInstruction?: string;
   isArrival?: boolean;
 }): Promise<SekretBrainResponse> {
-  if (!WORKER_BASE_URL) return fallbackReply(input.characterId, input.userText);
+  const fallbackOptions = {
+    surface: input.surface,
+    mood: input.mood,
+    history: input.history,
+  };
+
+  if (!WORKER_BASE_URL) return fallbackReply(input.characterId, input.userText, fallbackOptions);
 
   const request: CompanionReplyRequest = input;
   const result = await sekretClient.sendReply(request);
-  if (!result.ok) return fallbackReply(input.characterId, input.userText);
+  if (!result.ok) return fallbackReply(input.characterId, input.userText, fallbackOptions);
 
   const data = result.data;
-  const fallback = fallbackReply(input.characterId, input.userText);
+  const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
   return {
     reply: data.reply || fallback.reply,
     tone: data.tone || input.characterId,
