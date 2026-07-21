@@ -25,18 +25,29 @@ Current launch blockers remain authoritative: complete account deletion across e
 
 See `docs/LAUNCH_ROADMAP.md`, `SPRINT.md`, `docs/CURRENT_STATUS.md`, and `implementation-ledger.json` for current evidence and status.
 
-### Current production signup evidence
+### Current repo knowledge refresh
+
+On July 20, 2026, the repo was re-oriented against the July 3 shipping-fix audit baseline. `main` is now 878 commits ahead of that baseline. Any 17-day-old summary that describes Se'kret Bip as a one-file prototype, missing `app/`, missing Supabase auth, or missing Expo Router route groups is stale unless it explicitly names the exact commit it inspected.
+
+Read [`docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`](docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md) before making current-state, auth/onboarding, Product Design, Cloudflare, CI, agent-skill, or release-truth claims.
+
+### Current production signup and founder-access evidence
 
 On July 18, 2026, [PR #517](https://github.com/jussray/Sekret-Bip/pull/517) merged bounded recovery for ambiguous Supabase Auth signup timeouts. It prevents raw browser-level `Failed to fetch` errors from stranding users when a request may have reached Auth, performs one bounded recovery probe, and includes a Playwright regression that blocks real Auth mutation.
 
-[PR #518](https://github.com/jussray/Sekret-Bip/pull/518) then merged a read-only production-browser reachability test for the configured Supabase Auth boundary. The static contract passed locally. Exact live execution against `sekretbip.net` remains pending because GitHub Actions has not produced normal hosted-runner evidence for the merged head.
+[PR #518](https://github.com/jussray/Sekret-Bip/pull/518) then merged a read-only production-browser reachability test for the configured Supabase Auth boundary. The static contract passed locally. Exact live execution against `sekretbip.net` remains pending unless the current exact deployed head has normal hosted-runner and/or production evidence.
 
-Founder Control Room [issue #514](https://github.com/jussray/Sekret-Bip/issues/514) remains the authoritative incident record until hosted Playwright executes and passes. Zero-step or no-log failures remain classified as `runner_startup_failure` infrastructure evidence, not a code regression.
+Founder Control Room [issue #514](https://github.com/jussray/Sekret-Bip/issues/514) remains the authoritative signup transport incident record until hosted Playwright executes and passes. Zero-step or no-log failures remain classified as `runner_startup_failure` infrastructure evidence, not a code regression.
+
+Founder Access Recovery Gate [issue #563](https://github.com/jussray/Sekret-Bip/issues/563) is the current primary user-facing launch blocker: Ray must personally get inside the app on device after signup, login, session persistence, email/deep-link recovery, consent, onboarding, route bootstrap, and logout/cache cleanup are proven.
+
+Late-July Cloudflare repair evidence must stay exact-head: `main` has `4daaa99449ef8570869c2c79b8a41c5cdfa5a676` for the forgot-password JSX export fix, and draft PR #567 branch `agent/fix-cloudflare-worker-name` has `f8cb7cb9ccf0de5207a5a921179e71ee972f9d33` with the same JSX fix plus the `sekret-backend` Worker-name correction. Cloudflare Pages/Expo export success remains a separate witness from GitHub checks.
 
 > Warm, funny, soft, slightly nosy, and never clinical.
 
 ## Start here
 
+- [`docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`](docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md) — late-July repo-orientation checkpoint for agents and Product Design work
 - [`docs/LAUNCH_ROADMAP.md`](docs/LAUNCH_ROADMAP.md) — visual path from the current foundation to controlled alpha and public launch
 - [`SPRINT.md`](SPRINT.md) — current execution window, blockers, order, and definition of done
 - [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md) — human-readable current product state
@@ -62,7 +73,7 @@ Founder Control Room owns the README sync decision for nontrivial incidents, fix
 Shared founder stack:
 
 ```text
-/garyvee lindymode redteam l99 redteam ooda
+/elonmusk /garyvee lindymode redteam l99 redteam ooda /truthmode
 ```
 
 The first red-team pass attacks the premise and evidence. The second attacks implementation, privacy blast radius, rollback, and proof. Project-local instructions may become stricter, but they may not weaken teen privacy, consent, security, provenance, evidence, or rollback.
@@ -244,6 +255,7 @@ Production verification is documented in `DEPLOYMENT.md`. Production Playwright 
 
 ## Key guides
 
+- `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`
 - `docs/LAUNCH_ROADMAP.md`
 - `docs/DOCUMENTATION_MAP.md`
 - `SPRINT.md`
@@ -258,8 +270,6 @@ Production verification is documented in `DEPLOYMENT.md`. Production Playwright 
 - `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
 - `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
 - `docs/FOUNDER_CONTROL_ROOM.md`
-- `.control-room/README_SYNC_POLICY.md`
-- `DEPLOYMENT.md`
 
 Documentation is an implementation guardrail. When code, production configuration, and docs disagree, fix the stale source and preserve the evidence trail.
 
