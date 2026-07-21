@@ -36,6 +36,7 @@ Architecture, roadmap, current-status, sprint, and agent-skill changes must reco
 - [`AGENTS.md`](AGENTS.md) — Codex, ChatGPT, and repository-agent instructions
 - [`CLAUDE.md`](CLAUDE.md) — verified design-system and Figma integration reference
 - [`docs/PROVIDERS.md`](docs/PROVIDERS.md) — provider boundaries
+- [`.agents/skills/bip-control-room/SKILL.md`](.agents/skills/bip-control-room/SKILL.md) — canonical 5W1H behavior and guarded Control Room execution boundary
 
 Shared founder stack:
 
@@ -188,6 +189,18 @@ Hydrate Git LFS assets before visual or archive validation:
 ```bash
 git lfs pull
 ```
+
+### Founder Control Room
+
+To start the founder-only Control Room with live, guarded local mission buttons:
+
+```bash
+npm run control-room:dev
+```
+
+The command starts Expo web and a loopback-only local agent with an ephemeral token. The UI can run only the documented allowlisted verification and recovery missions; timed-out missions terminate their descendant process tree before another mission can start. Real Playwright runs retain JSON, HTML, traces, screenshots, and videos under `reports/control-room/playwright/<run-id>/`.
+
+The founder-only **Founder Operator** surface turns a mission into a 5W1H artifact plan and may persist it only through the authenticated loopback endpoint. Persistence is append-only for versioned history, rejects private or credential-shaped fields, unsafe artifact paths and symlinks, unsupported schemas, unverified hosted/deployed evidence levels, and approval-gated artifacts falsely marked complete. Recording approval does not execute or verify the external action. Release deployment remains a manual, exact-head gate. See `docs/CONTROL_ROOM.md` and `docs/CONTROL_ROOM_FOUNDER_OPERATOR.md`.
 
 ### Supabase
 

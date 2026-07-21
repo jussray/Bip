@@ -79,13 +79,31 @@ export function parsePlaywrightJson(stdout) {
   };
 }
 
-export function runPlaywright({ rootDir = root, env = process.env } = {}) {
+export function playwrightArtifactDir({ rootDir = root, env = process.env, now = new Date() } = {}) {
+  if (env.PLAYWRIGHT_ARTIFACT_DIR) return path.resolve(rootDir, env.PLAYWRIGHT_ARTIFACT_DIR);
+  const runId = now.toISOString().replace(/[:.]/g, '-');
+  return path.join(rootDir, 'reports', 'control-room', 'playwright', runId);
+}
+
+export function runPlaywright({
+  rootDir = root,
+  env = process.env,
+  artifactDir = playwrightArtifactDir({ rootDir, env }),
+  spawnImpl = spawnSync,
+} = {}) {
   const startedAt = Date.now();
-  const result = spawnSync(commandFor('npx'), ['playwright', 'test', '--reporter=json'], {
+  const resolvedArtifactDir = path.resolve(artifactDir);
+  const jsonReportPath = path.join(resolvedArtifactDir, 'results.json');
+  fs.mkdirSync(resolvedArtifactDir, { recursive: true });
+
+  const result = spawnImpl(commandFor('npx'), ['playwright', 'test'], {
     cwd: rootDir,
     encoding: 'utf8',
     shell: false,
-    env: childEnv(env),
+    env: childEnv({
+      ...env,
+      PLAYWRIGHT_ARTIFACT_DIR: resolvedArtifactDir,
+    }),
     maxBuffer: 20 * 1024 * 1024,
   });
   const exitCode = typeof result.status === 'number' ? result.status : 1;
@@ -93,20 +111,26 @@ export function runPlaywright({ rootDir = root, env = process.env } = {}) {
   let counts = { passed: 0, failed: 0, skipped: 0, timedOut: 0, total: 0 };
   let parseError = null;
   try {
-    counts = parsePlaywrightJson(result.stdout);
+    if (!fs.existsSync(jsonReportPath)) {
+      throw new Error('Playwright JSON reporter did not write results.json.');
+    }
+    counts = parsePlaywrightJson(fs.readFileSync(jsonReportPath, 'utf8'));
   } catch (error) {
     parseError = error instanceof Error ? error.message : String(error);
   }
+  const passed = exitCode === 0 && parseError === null;
 
   return {
     mode: 'playwright',
     evidenceLevel: 'browser',
-    browserProof: exitCode === 0,
-    status: exitCode === 0 ? 'pass' : 'fail',
+    browserProof: passed,
+    status: passed ? 'pass' : 'fail',
     exitCode,
     durationMs: Date.now() - startedAt,
     counts,
     parseError,
+    artifactDir: path.relative(rootDir, resolvedArtifactDir),
+    jsonReportPath: path.relative(rootDir, jsonReportPath),
     stdoutTail: tail(result.stdout),
     stderrTail: tail(result.stderr),
   };
@@ -132,6 +156,8 @@ export function runFallback({ rootDir = root, env = process.env } = {}) {
     durationMs: Date.now() - startedAt,
     counts: null,
     parseError: null,
+    artifactDir: null,
+    jsonReportPath: null,
     stdoutTail: tail(result.stdout),
     stderrTail: tail(result.stderr),
   };
@@ -144,7 +170,7 @@ export function writeReports(availability, run, { outputDir = defaultReportDir, 
   const report = {
     generatedAt,
     mission: 'verify-frontend',
-    purpose: 'Browser-level frontend verification with an explicit non-browser fallback when Playwright cannot run.',
+    purpose: 'Browser-level frontend verification with retained Playwright artifacts and an explicit non-browser fallback when Playwright cannot run.',
     playwright: availability,
     run,
   };
@@ -172,6 +198,11 @@ export function writeReports(availability, run, { outputDir = defaultReportDir, 
     lines.push('', `Passed: ${run.counts.passed} · Failed: ${run.counts.failed} · Skipped: ${run.counts.skipped} · Timed out: ${run.counts.timedOut}`);
   }
 
+  if (run.artifactDir) {
+    lines.push('', `Playwright artifacts: ${run.artifactDir}`);
+    lines.push(`Playwright JSON: ${run.jsonReportPath}`);
+  }
+
   if (run.parseError) {
     lines.push('', `Reporter parse error: ${run.parseError}`);
   }
@@ -196,6 +227,7 @@ async function main() {
   console.log(`Evidence: ${report.run.evidenceLevel}`);
   console.log(`Browser proof: ${report.run.browserProof ? 'YES' : 'NO'}`);
   console.log(`Status: ${report.run.status.toUpperCase()}`);
+  if (report.run.artifactDir) console.log(`Playwright artifacts: ${report.run.artifactDir}`);
   console.log(`Report: ${path.relative(root, jsonPath)}`);
   console.log(`Readable report: ${path.relative(root, mdPath)}`);
 
