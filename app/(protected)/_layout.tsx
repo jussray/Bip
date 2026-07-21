@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Slot, useRouter } from 'expo-router';
 import { View, ActivityIndicator } from 'react-native';
-import { requireAuth } from '@/src/middleware/auth';
+import { requireAuth } from '@/middleware/auth';
 
 export default function ProtectedLayout() {
   const router = useRouter();
