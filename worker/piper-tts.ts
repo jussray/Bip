@@ -1,23 +1,23 @@
 export interface PiperTtsEnv {
   PIPER_TTS_URL?: string;
   PIPER_TTS_TOKEN?: string;
-  PIPER_RAYLENE_VOICE?: string;
-  PIPER_RYLANE_VOICE?: string;
+  PIPER_SUHANA_VOICE?: string;
+  PIPER_SY_VOICE?: string;
   PIPER_CLOUD_VOICE?: string;
   PIPER_NIGHT_VOICE?: string;
   PIPER_SEKRET_VOICE?: string;
   PIPER_PARENT_COACH_VOICE?: string;
 }
 
-export type PiperCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret' | 'parentCoach';
+export type PiperCharacterId = 'suhana' | 'sy' | 'cloud' | 'night' | 'sekret' | 'parentCoach';
 
 const DEFAULT_PIPER_VOICES: Record<PiperCharacterId, string> = {
-  raylene: 'raylene', rylane: 'rylane', cloud: 'cloud', night: 'night', sekret: 'sekret', parentCoach: 'parentCoach',
+  suhana: 'suhana', sy: 'sy', cloud: 'cloud', night: 'night', sekret: 'sekret', parentCoach: 'parentCoach',
 };
 
 function getPiperVoice(characterId: PiperCharacterId, env: PiperTtsEnv): string {
-  const configured = characterId === 'raylene' ? env.PIPER_RAYLENE_VOICE
-    : characterId === 'rylane' ? env.PIPER_RYLANE_VOICE
+  const configured = characterId === 'suhana' ? env.PIPER_SUHANA_VOICE
+    : characterId === 'sy' ? env.PIPER_SY_VOICE
       : characterId === 'cloud' ? env.PIPER_CLOUD_VOICE
         : characterId === 'night' ? env.PIPER_NIGHT_VOICE
           : characterId === 'parentCoach' ? env.PIPER_PARENT_COACH_VOICE
