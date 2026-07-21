@@ -98,6 +98,14 @@ const PRIVATE_ACCOUNT_KEYS = [
   'sekret_self_discovery_profile',
   'bip_onboarding_reflection',
   'teen_profile_data',
+  // Transient onboarding choices are account-sensitive. A shared device must not
+  // replay a prior user's pre-auth age/side state into the next account.
+  'bip_onboarding_side',
+  'bip_onboarding_age',
+  'bip_age_verification_status',
+  'bip_age_verification_method',
+  'bip_age_guardian_required',
+  'bip_age_raw_evidence_stored',
 ] as const;
 
 export const loadState = async (): Promise<Record<string, any>> => {
