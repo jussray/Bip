@@ -1,4 +1,4 @@
-/**
+/*
  * src/utils/api.ts
  *
  * Backward-compatible Se'kret API helpers. Network transport now flows through
@@ -11,8 +11,12 @@ import type {
   CompanionReplyRequest,
   CompanionReplySource,
 } from '@/contracts/sekretApi';
-import { createNaturalFallbackResponse } from '@/features/sekret/naturalFallbacks';
+import {
+  createNaturalFallbackResponse,
+  type NaturalFallbackResponse,
+} from '@/features/sekret/naturalFallbacks';
 import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
+import { logCompanionFallbackUsage } from '@/services/runtimeAudit';
 
 export type VisibleSekretCharacterId = 'suhana' | 'sy' | 'cloud' | 'night';
 export type LegacySekretCharacterId = 'raylene' | 'rylane';
@@ -108,13 +112,33 @@ function fallbackReply(
     mood?: string;
     history?: SekretHistoryTurn[];
   } = {},
-): SekretBrainResponse {
+): NaturalFallbackResponse {
   return createNaturalFallbackResponse({
     characterId,
     userText: text,
     surface: options.surface,
     mood: options.mood,
     history: options.history,
+  });
+}
+
+function reportFallbackUsage(input: {
+  fallback: NaturalFallbackResponse;
+  characterId: SekretCharacterId;
+  surface: SekretSurface;
+  mood?: string;
+  history?: SekretHistoryTurn[];
+  reason: string;
+}): void {
+  void logCompanionFallbackUsage({
+    characterId: input.characterId,
+    surface: input.surface,
+    mood: input.mood,
+    historyTurnCount: input.history?.length ?? 0,
+    reason: input.reason,
+    fallback: input.fallback,
+  }).catch((error) => {
+    console.warn('[sekretApi] fallback telemetry failed:', error instanceof Error ? error.message : error);
   });
 }
 
@@ -140,14 +164,47 @@ export async function fetchSekretBrainReply(input: {
     history: input.history,
   };
 
-  if (!WORKER_BASE_URL) return fallbackReply(input.characterId, input.userText, fallbackOptions);
+  if (!WORKER_BASE_URL) {
+    const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
+    reportFallbackUsage({
+      fallback,
+      characterId: input.characterId,
+      surface: input.surface,
+      mood: input.mood,
+      history: input.history,
+      reason: 'worker_base_url_missing',
+    });
+    return fallback;
+  }
 
   const request: CompanionReplyRequest = input;
   const result = await sekretClient.sendReply(request);
-  if (!result.ok) return fallbackReply(input.characterId, input.userText, fallbackOptions);
+  if (!result.ok) {
+    const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
+    reportFallbackUsage({
+      fallback,
+      characterId: input.characterId,
+      surface: input.surface,
+      mood: input.mood,
+      history: input.history,
+      reason: result.error.code || 'worker_reply_failed',
+    });
+    return fallback;
+  }
 
   const data = result.data;
   const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
+  if (!data.reply?.trim()) {
+    reportFallbackUsage({
+      fallback,
+      characterId: input.characterId,
+      surface: input.surface,
+      mood: input.mood,
+      history: input.history,
+      reason: 'worker_reply_empty',
+    });
+  }
+
   return {
     reply: data.reply || fallback.reply,
     tone: data.tone || input.characterId,
