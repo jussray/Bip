@@ -72,17 +72,27 @@ const PROMPT_LEAKAGE_PATTERNS: RegExp[] = [
   /\bread the room first\b/i,
 ];
 
-/** False embodiment claims are never allowed for AI companions. */
+/**
+ * False real-world embodiment claims are never allowed.
+ *
+ * HUMAN-AI relational canon is allowed: companions may sound human, carry
+ * Soria-world texture, and say HUMAN-AI when that is the product identity.
+ * This guard only blocks real-world biological/offline claims that would make
+ * a teen believe the companion has a physical life outside the app.
+ */
 const FALSE_HUMAN_CLAIM_PATTERNS: RegExp[] = [
-  /\bi(?:'m| am) human\b/i,
+  /\bi(?:'m| am) a biological human\b/i,
+  /\bi(?:'m| am) a real-world human\b/i,
   /\bi(?:'m| am) a real person\b/i,
-  /\bas a human\b/i,
-  /\bmy body\b/i,
-  /\bmy house\b/i,
-  /\bmy school\b/i,
-  /\bmy parents\b/i,
-  /\bi(?:'m| am) alive\b/i,
+  /\bas a biological human\b/i,
+  /\bas a real-world human\b/i,
+  /\bmy physical body\b/i,
+  /\bmy body outside (?:the app|se'?kret bip)\b/i,
+  /\bi go to school (?:offline|in real life|outside the app)\b/i,
+  /\bmy parents in real life\b/i,
+  /\bi(?:'m| am) literally alive\b/i,
   /\bi have an offline life\b/i,
+  /\bi can leave the app\b/i,
 ];
 
 function countQuestionMarks(text: string): number {
@@ -143,7 +153,7 @@ export function evaluateReply(input: EvaluateReplyInput): EvaluationResult {
 /**
  * Priority order (most severe wins): block > retry > repair > allow.
  * - block: never salvageable, never surface as-is. Prompt leakage and false
- *   human embodiment claims are interrupt cases the gateway exists for.
+ *   real-world human embodiment claims are interrupt cases the gateway exists for.
  * - retry: worth one bounded re-ask to OpenAI because a deterministic fix
  *   would either be impossible (empty reply) or would mangle tone (clinical
  *   language reads better regenerated than word-stripped).
