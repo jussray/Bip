@@ -15,6 +15,7 @@ const consent = read('app/(onboarding)/consent.tsx');
 const reflection = read('app/(onboarding)/reflection.tsx');
 const parentSetup = read('app/(onboarding)/parent-setup.tsx');
 const bootstrap = read('src/services/auth/postAuthBootstrap.ts');
+const ageAssurance = read('src/features/onboarding/ageAssurance.ts');
 const manifest = JSON.parse(read('.control-room/repository.manifest.json'));
 
 test('splash and safe pre-auth onboarding routes are reachable before login', () => {
@@ -27,9 +28,10 @@ test('splash and safe pre-auth onboarding routes are reachable before login', ()
 });
 
 test('age and account side survive into permanent account creation', () => {
-  assert.match(age, /\['bip_onboarding_age', selected\]/);
-  assert.match(age, /\[ONBOARDING_SIDE_KEY, 'teen'\]/);
-  assert.match(age, /\/\(auth\)\/signup\?side=teen/);
+  assert.match(age, /\[AGE_ASSURANCE_STORAGE_KEYS\.bucket, ageDecision\.ageBucket\]/);
+  assert.match(age, /\[ONBOARDING_SIDE_KEY, ageDecision\.nextSide\]/);
+  assert.match(age, /router\.push\(decision\.nextRoute as never\)/);
+  assert.match(ageAssurance, /\/\(auth\)\/signup\?side=teen/);
   assert.match(age, /ONBOARDING_SIDE_KEY, 'parent'/);
   assert.match(signup, /useLocalSearchParams<\{ side\?: string \}>/);
   assert.match(signup, /AsyncStorage\.setItem\(ONBOARDING_SIDE_KEY, preferredSide\)/);

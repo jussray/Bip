@@ -10,8 +10,11 @@ test('onboarding state is permanent-account owner scoped', async () => {
 
   assert.match(sql, /revoke all on table public\.user_onboarding_state from public, anon, authenticated/);
   assert.match(sql, /grant select, insert, update on table public\.user_onboarding_state to authenticated/);
-  assert.equal((sql.match(/public\.is_non_anonymous_user\(\)/g) ?? []).length, 3);
-  assert.equal((sql.match(/\(select auth\.uid\(\)\) = user_id/g) ?? []).length, 3);
+  // 4, not 3: select + insert + update's USING clause + update's WITH CHECK
+  // clause each carry both checks — the UPDATE policy intentionally guards
+  // both which rows can be touched (USING) and what they can become (CHECK).
+  assert.equal((sql.match(/public\.is_non_anonymous_user\(\)/g) ?? []).length, 4);
+  assert.equal((sql.match(/\(select auth\.uid\(\)\) = user_id/g) ?? []).length, 4);
   assert.doesNotMatch(sql, /grant[^;]*delete[^;]*user_onboarding_state/i);
 });
 

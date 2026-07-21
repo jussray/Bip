@@ -11,7 +11,7 @@
     "platformSchemasExcluded": ["extensions", "realtime", "storage"]
   },
   "verification": {
-    "repositoryStructuralCoverage": false,
+    "repositoryStructuralCoverage": true,
     "liveCatalogObserved": true,
     "liveBehaviorVerified": false,
     "externalEffectsSafelyStubbed": false
@@ -119,6 +119,26 @@
       "rationale": "Queues child-safety scanning for newly inserted user content.",
       "clientExecuteRevokedLive": true,
       "behaviorVerified": false
+    },
+    {
+      "signature": "public.enforce_onboarding_state_transition()",
+      "searchPath": "pg_catalog, public",
+      "risk": "critical",
+      "rationale": "Fails closed on non-baseline client inserts, cross-user rewrites, onboarding stage regression, assigned-role changes, and inconsistent activation/completion metadata for public.user_onboarding_state.",
+      "clientExecuteRevokedLive": false,
+      "deployedLive": false,
+      "deploymentStatus": "Reviewed and migration-complete on main (supabase/migrations/20260718000002_harden_onboarding_state.sql), including the search_path pin and client EXECUTE revoke shown here. Read-only live pg_catalog inspection on 2026-07-21 confirmed this function does not exist yet on the tbsevonvegdnlyjgplmm project — the migration has not been deployed. clientExecuteRevokedLive is false because that field asserts a verified LIVE fact, not a repository claim; do not flip it to true until live catalog parity is re-run after deployment.",
+      "behaviorVerified": false
+    },
+    {
+      "signature": "public.handle_first_mood_log()",
+      "searchPath": "public",
+      "risk": "high",
+      "rationale": "Belt-and-suspenders activation: advances user_onboarding_state to activated on a user's first public.moods insert, idempotent against the existing app-side markActivated() call.",
+      "clientExecuteRevokedLive": false,
+      "deployedLive": false,
+      "deploymentStatus": "Reviewed and migration-complete on main (supabase/migrations/20260718000001_onboarding_mood_log_trigger.sql defines it; supabase/migrations/20260718000002_harden_onboarding_state.sql revokes client EXECUTE). Read-only live pg_catalog inspection on 2026-07-21 confirmed this function does not exist yet on the tbsevonvegdnlyjgplmm project — the migration has not been deployed. clientExecuteRevokedLive is false because that field asserts a verified LIVE fact, not a repository claim; do not flip it to true until live catalog parity is re-run after deployment.",
+      "behaviorVerified": false
     }
   ],
   "attachments": [
@@ -221,6 +241,22 @@
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
       "events": ["INSERT"]
+    },
+    {
+      "trigger": "onboarding_state_transition_guard",
+      "table": "public.user_onboarding_state",
+      "function": "public.enforce_onboarding_state_transition()",
+      "timing": "BEFORE",
+      "events": ["INSERT", "UPDATE"],
+      "deployedLive": false
+    },
+    {
+      "trigger": "trg_first_mood_activation",
+      "table": "public.moods",
+      "function": "public.handle_first_mood_log()",
+      "timing": "AFTER",
+      "events": ["INSERT"],
+      "deployedLive": false
     }
   ]
 }

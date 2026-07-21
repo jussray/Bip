@@ -66,10 +66,14 @@ test('Oracle and Se’kret resolve to the visible Se’kret identity', () => {
 });
 
 test('named companions keep their own visible identities', () => {
-  assert.equal(identity.resolveVisibleIdentity('raylene'), 'Raylene');
-  assert.equal(identity.resolveVisibleIdentity('rylane'), 'Rylane');
+  assert.equal(identity.resolveVisibleIdentity('suhana'), 'Suhana');
+  assert.equal(identity.resolveVisibleIdentity('sy'), 'Sy');
   assert.equal(identity.resolveVisibleIdentity('cloud'), 'Cloud');
   assert.equal(identity.resolveVisibleIdentity('night'), 'Night');
+
+  // Legacy ids still resolve to the current canonical display name.
+  assert.equal(identity.resolveVisibleIdentity('raylene'), 'Suhana');
+  assert.equal(identity.resolveVisibleIdentity('rylane'), 'Sy');
 });
 
 test('Oracle leaks are detected and rejected', () => {
@@ -92,7 +96,7 @@ test('visible and suppressed Se’kret surfaces have unambiguous semantics', () 
 test('named companion registry excludes Se’kret', () => {
   assert.deepEqual(
     [...styleProfiles.NAMED_COMPANION_IDS],
-    ['raylene', 'rylane', 'cloud', 'night'],
+    ['suhana', 'sy', 'cloud', 'night'],
   );
   assert.equal(styleProfiles.isNamedCompanionId('sekret'), false);
   assert.equal(styleProfiles.getNamedCompanionStyleProfiles().length, 4);
@@ -111,10 +115,10 @@ test('Se’kret has a continuity-presence profile, not a companion profile', () 
 });
 
 test('style engine uses separate builders for companions and Se’kret presence', () => {
-  const raylene = styleEngine.buildCompanionStyleRequest('raylene');
-  assert.equal(raylene.role, 'named-companion');
-  assert.equal(raylene.constraints.maxQuestions, 1);
-  assert.match(raylene.systemPromptAddendum, /at most one direct question/i);
+  const suhana = styleEngine.buildCompanionStyleRequest('suhana');
+  assert.equal(suhana.role, 'named-companion');
+  assert.equal(suhana.constraints.maxQuestions, 1);
+  assert.match(suhana.systemPromptAddendum, /at most one direct question/i);
 
   const sekret = styleEngine.buildSekretPresenceStyleRequest();
   assert.equal(sekret.styleId, 'sekret');

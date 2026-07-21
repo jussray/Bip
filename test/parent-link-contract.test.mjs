@@ -29,5 +29,8 @@ test('parent onboarding matches the live contract', async () => {
 
 test('teen invite screen describes eight characters', async () => {
   const source = await read('app/(auth)/parent-link-verify.tsx');
-  assert.match(source, /eight-character code/);
+  // The screen interpolates PARENT_INVITE_CODE_LENGTH (8) into the copy
+  // rather than hardcoding the word "eight", so it can't drift out of sync
+  // with src/utils/parentLink.ts's PARENT_INVITE_CODE_LENGTH constant.
+  assert.match(source, /\{PARENT_INVITE_CODE_LENGTH\}-character code/);
 });

@@ -14,6 +14,13 @@ const eas = JSON.parse(read('eas.json'));
 
 const WORKER_NAME = 'sekret-backend';
 const WORKER_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
+const ALPHA_WORKER_URL = 'https://sekret-backend-alpha.mcgill-raylene.workers.dev';
+// Founder-approved controlled-alpha isolation (wrangler.alpha.toml,
+// docs/CLOUDFLARE_OWNERSHIP.md, reports/control-room/founder-operator/
+// 20260718-controlled-alpha-activation/system-map.md): preview builds
+// deliberately route to the distinct, non-production sekret-backend-alpha
+// Worker instead of the canonical one.
+const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
  test('Wrangler targets the canonical Worker name', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
@@ -44,12 +51,13 @@ test('GitHub Actions does not require Cloudflare deployment credentials', () => 
   assert.equal(workflow.includes('wrangler pages deploy'), false);
 });
 
-test('all EAS profiles point to the canonical Worker URL', () => {
+test('all EAS profiles point to the canonical Worker URL, except the approved controlled-alpha preview isolation', () => {
   for (const [profileName, profile] of Object.entries(eas.build)) {
+    const expected = ALPHA_ROUTED_PROFILES.has(profileName) ? ALPHA_WORKER_URL : WORKER_URL;
     assert.equal(
       profile.env?.EXPO_PUBLIC_BACKEND_URL,
-      WORKER_URL,
-      `${profileName} must point to ${WORKER_URL}`,
+      expected,
+      `${profileName} must point to ${expected}`,
     );
   }
 });

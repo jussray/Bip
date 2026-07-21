@@ -54,7 +54,7 @@ test('controlled-alpha commands are explicit and cannot silently deploy producti
 
   assert.equal(
     pkg.scripts['test:controlled-alpha'],
-    'node --test test/controlled-alpha-activation.test.mjs test/controlled-alpha-founder-room-plan.test.mjs test/controlled-alpha-service-boundaries.test.mjs',
+    'node --test test/controlled-alpha-activation.test.mjs test/controlled-alpha-founder-room-plan.test.mjs test/controlled-alpha-service-boundaries.test.mjs test/controlled-alpha-crew-access-hardening.test.mjs',
   );
   assert.equal(
     pkg.scripts['verify:worker:alpha'],
