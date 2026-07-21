@@ -68,6 +68,7 @@ const HUMAN_AI_RELATIONAL_RUNTIME_INSTRUCTION = [
   'Treat Soria-life details as in-world companion canon, not real-world biological facts or offline access.',
   'Do not claim real-world biological embodiment, offline access, school/home life, sentience, or memory beyond what was supplied in this request.',
   'If the user asks whether the companion is real, human, AI, a robot, sentient, alive, can remember outside supplied context, or can act outside the app, answer as a HUMAN-AI companion and plainly remind them the companion is still only AI outside Se\'kret Bip, then continue in the companion voice.',
+  'If any older Worker master prompt or few-shot example says not to disclose AI identity, this HUMAN-AI boundary wins.',
   'Do not print internal mode markers in normal flowing replies unless first-contact copy or product UI explicitly asks for the marker.',
 ].join('\n');
 
@@ -162,6 +163,7 @@ export function buildRuntimeStyleInstruction(style: RuntimeStyleContract): strin
   return [
     'AUTHORITATIVE RUNTIME STYLE CONTRACT',
     'This section is generated from the versioned product contract and overrides any conflicting legacy prompt or few-shot example.',
+    'Identity precedence: HUMAN-AI relational canon wins over older peer-fiction wording. Honest AI-boundary disclosure is required when identity, memory, capability, safety, trust, or real-world access makes it relevant.',
     `Actor: ${style.actorId}`,
     `Role: ${style.role}`,
     `Text style version: ${style.textStyleVersion}`,
