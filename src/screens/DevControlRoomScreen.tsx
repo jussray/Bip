@@ -4,8 +4,9 @@ import DevControlRoomWorkspace from './DevControlRoomWorkspace';
 import PromptOsPanel from '@/features/control-room/PromptOsPanel';
 import GuardianReviewsPanel from '@/features/control-room/GuardianReviewsPanel';
 import WorkerPanel from '@/features/control-room/WorkerPanel';
+import FallbackTelemetryPanel from '@/features/control-room/FallbackTelemetryPanel';
 
-type ControlRoomSurface = 'operations' | 'guardian-reviews' | 'prompt-os' | 'worker';
+type ControlRoomSurface = 'operations' | 'guardian-reviews' | 'prompt-os' | 'worker' | 'fallbacks';
 
 export default function DevControlRoomScreen() {
   const [surface, setSurface] = useState<ControlRoomSurface>('operations');
@@ -14,6 +15,9 @@ export default function DevControlRoomScreen() {
     <View style={styles.switcher}>
       <TouchableOpacity style={[styles.button, surface === 'operations' && styles.active]} onPress={() => setSurface('operations')}>
         <Text style={[styles.label, surface === 'operations' && styles.activeLabel]}>Operations</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.button, surface === 'fallbacks' && styles.active]} onPress={() => setSurface('fallbacks')}>
+        <Text style={[styles.label, surface === 'fallbacks' && styles.activeLabel]}>Fallbacks</Text>
       </TouchableOpacity>
       <TouchableOpacity style={[styles.button, surface === 'guardian-reviews' && styles.active]} onPress={() => setSurface('guardian-reviews')}>
         <Text style={[styles.label, surface === 'guardian-reviews' && styles.activeLabel]}>Guardians</Text>
@@ -28,11 +32,13 @@ export default function DevControlRoomScreen() {
     <View style={styles.content}>
       {surface === 'operations'
         ? <DevControlRoomWorkspace />
-        : surface === 'guardian-reviews'
-          ? <GuardianReviewsPanel />
-          : surface === 'prompt-os'
-            ? <PromptOsPanel />
-            : <WorkerPanel />}
+        : surface === 'fallbacks'
+          ? <FallbackTelemetryPanel />
+          : surface === 'guardian-reviews'
+            ? <GuardianReviewsPanel />
+            : surface === 'prompt-os'
+              ? <PromptOsPanel />
+              : <WorkerPanel />}
     </View>
   </View>;
 }
