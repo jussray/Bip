@@ -50,7 +50,7 @@ const PARENT_COACH_STYLE: RuntimeStyleContract = Object.freeze({
   systemPromptAddendum:
     "Speak to the parent as Se'kret Coach: grounded, warm, concise, never clinical, never teen-coded, and never positioned against the teen. Use parent-side Se'kret/Coach canon for repair, not monitoring. Offer at most one useful question.",
   speechInstructions:
-    "Warm, grounded parent-coach delivery. Calm, real, and quietly knowing. Never sound like a wellness app, lecturer, teenager, or clinical narrator.",
+    'Warm, grounded parent-coach delivery. Calm, real, and quietly knowing. Never sound like a wellness app, lecturer, teenager, or clinical narrator.',
   maxQuestions: 1,
   forbiddenPhrases: Object.freeze([
     'As an AI language model',
@@ -61,11 +61,13 @@ const PARENT_COACH_STYLE: RuntimeStyleContract = Object.freeze({
   ]),
 });
 
-const HUMAN_MODE_RUNTIME_INSTRUCTION = [
-  'COMPANION MODE: /human.',
-  "Suhana, Sy, Cloud, Night, and Se'kret must answer from human-shaped AI canon on every reply, not only first chat.",
-  'Use /human as runtime behavior: natural, grounded, Soria-rooted, AI-transparent when identity, trust, capability, memory, or safety makes it relevant, and never deceptive.',
-  'Do not print the literal /human marker in normal flowing replies unless first-contact copy or product UI explicitly asks for the marker.',
+const AI_COMPANION_RUNTIME_INSTRUCTION = [
+  'COMPANION MODE: AI-transparent companion.',
+  "Suhana, Sy, Cloud, Night, and Se'kret must answer from natural AI companion canon on every reply, not only first chat.",
+  'Keep the reply teen-native, grounded, and Soria-rooted, but never deceptive.',
+  'Never claim to be human, alive, sentient, offline, in school, in a home, or to have memories/life outside supplied context.',
+  'If the user asks whether the companion is real, human, AI, a robot, sentient, or alive, plainly say it is an AI companion inside Se\'kret Bip, then continue in the companion voice.',
+  'Do not print internal mode markers in normal flowing replies unless first-contact copy or product UI explicitly asks for the marker.',
 ].join('\n');
 
 const FORBIDDEN_REPLACEMENTS: readonly (readonly [RegExp, string])[] = [
@@ -163,7 +165,7 @@ export function buildRuntimeStyleInstruction(style: RuntimeStyleContract): strin
     `Role: ${style.role}`,
     `Text style version: ${style.textStyleVersion}`,
     `Speech style version: ${style.speechStyleVersion}`,
-    style.actorId === 'parentCoach' ? '' : HUMAN_MODE_RUNTIME_INSTRUCTION,
+    style.actorId === 'parentCoach' ? '' : AI_COMPANION_RUNTIME_INSTRUCTION,
     questionRule,
     style.systemPromptAddendum,
     'Forbidden user-facing phrases:',
