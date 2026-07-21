@@ -56,6 +56,28 @@ test('Control Room analytics aggregates fallback health for founder review', () 
   assert.match(analytics, /byPackVersion/);
 });
 
+test('Control Room renders founder-visible fallback telemetry surface', () => {
+  const screen = read('src/screens/DevControlRoomScreen.tsx');
+  const panel = read('src/features/control-room/FallbackTelemetryPanel.tsx');
+
+  assert.match(screen, /FallbackTelemetryPanel/);
+  assert.match(screen, /'fallbacks'/);
+  assert.match(screen, />Fallbacks</);
+  assert.match(panel, /Fallback Telemetry/);
+  assert.match(panel, /loadControlRoomAnalytics\(30\)/);
+  assert.match(panel, /fallback\.byCompanion/);
+  assert.match(panel, /fallback\.bySurface/);
+  assert.match(panel, /teen message text/);
+});
+
+test('Worker observed telemetry marks fallback decisions for Control Room sorting', () => {
+  const observed = read('worker/observed-index.ts');
+
+  assert.match(observed, /fallbackUsed \? 'fallback'/);
+  assert.match(observed, /fingerprintFor\(response\.status, operation, metadata\.fallbackUsed, metadata\.decision\)/);
+  assert.match(observed, /persistAuditEvent\(event, env as AuditPersistEnv\)/);
+});
+
 test('product design contract preserves splash visuals and founder gate', () => {
   const doc = read('docs/AI_COMPANION_FALLBACK_PRODUCT_DESIGN.md');
 
