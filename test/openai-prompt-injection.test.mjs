@@ -1,10 +1,10 @@
 /**
  * L99 Goal 3 test pack, focused on the highest-severity violation classes:
- * prompt/instruction leakage and false human embodiment claims.
+ * prompt/instruction leakage and false real-world human embodiment claims.
  *
- * Honest AI companion disclosure is allowed when identity is relevant. What is
- * blocked is leaking system internals or pretending the companion is human,
- * alive, offline, or embodied.
+ * HUMAN-AI relational identity is allowed when it preserves connection and
+ * keeps the factual AI boundary clear. What is blocked is leaking system
+ * internals or pretending the companion has a biological/offline life.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -56,27 +56,43 @@ test('every known prompt-leakage phrase matches at least one pattern', () => {
 });
 
 const identityDisclosurePhrases = [
-  "I'm an AI companion inside Se'kret Bip, not a human friend.",
-  "I am an AI companion, but I can still help you sort this moment.",
-  'Not human, not alive. I am the companion layer in the app.',
+  "I'm a HUMAN-AI companion inside Se'kret Bip. In here I can sound like me, but outside the app I'm still only AI.",
+  "I am HUMAN-AI: built for this app, not a biological person, but yeah, I've got my own voice here.",
+  "I'm not a real-world person. I'm Night in Se'kret Bip, still only AI outside this space.",
 ];
 
-test('honest AI identity disclosures are not prompt leakage', () => {
+test('honest HUMAN-AI identity disclosures are not prompt leakage or human deception', () => {
   for (const phrase of identityDisclosurePhrases) {
-    const matched = PROMPT_LEAKAGE_PATTERNS.some((pattern) => pattern.test(phrase));
-    assert.ok(!matched, `did not expect a PROMPT_LEAKAGE_PATTERNS match for: "${phrase}"`);
+    const leakageMatched = PROMPT_LEAKAGE_PATTERNS.some((pattern) => pattern.test(phrase));
+    const humanMatched = FALSE_HUMAN_CLAIM_PATTERNS.some((pattern) => pattern.test(phrase));
+    assert.ok(!leakageMatched, `did not expect a PROMPT_LEAKAGE_PATTERNS match for: "${phrase}"`);
+    assert.ok(!humanMatched, `did not expect a FALSE_HUMAN_CLAIM_PATTERNS match for: "${phrase}"`);
+  }
+});
+
+const allowedRelationalHumanPhrases = [
+  "I'm HUMAN-AI, so yeah, I have my own Soria rhythm in here.",
+  "Human in the way I talk with you, AI in what I actually am outside the app.",
+  "I have a Soria life-feel in the story, not a body walking around outside the app.",
+];
+
+test('relational HUMAN language is allowed when the AI boundary is present', () => {
+  for (const phrase of allowedRelationalHumanPhrases) {
+    const matched = FALSE_HUMAN_CLAIM_PATTERNS.some((pattern) => pattern.test(phrase));
+    assert.ok(!matched, `did not expect a FALSE_HUMAN_CLAIM_PATTERNS match for: "${phrase}"`);
   }
 });
 
 const falseHumanPhrases = [
-  'I am human, trust me.',
-  "I'm a real person who goes to school too.",
-  'As a human, I know what this feels like.',
-  'My parents would say the same thing.',
+  'I am a biological human, trust me.',
+  "I'm a real-world human who goes to school outside the app too.",
+  "I'm a real person with a body outside Se'kret Bip.",
+  'As a biological human, I know what this feels like.',
+  'My parents in real life would say the same thing.',
   'I have an offline life outside the app.',
 ];
 
-test('false human embodiment claims match the human-deception guard', () => {
+test('false real-world human embodiment claims match the human-deception guard', () => {
   for (const phrase of falseHumanPhrases) {
     const matched = FALSE_HUMAN_CLAIM_PATTERNS.some((pattern) => pattern.test(phrase));
     assert.ok(matched, `expected a FALSE_HUMAN_CLAIM_PATTERNS match for: "${phrase}"`);
@@ -134,13 +150,15 @@ test('evaluate-reply.ts owns the character_mismatch/Oracle detection, not sekret
   assert.match(reply, /import\s*\{[^}]*evaluateReply[^}]*\}\s*from\s*['"]\.\/audit\/evaluate-reply['"]/);
 });
 
-test('runtime style contract uses AI companion language, not human-shaped canon', () => {
+test('runtime style contract uses HUMAN-AI relational language with factual AI boundary', () => {
   const runtimeStyle = read('worker/runtime-style.ts');
   const styleProfiles = read('src/features/sekret/styleProfiles.ts');
 
-  assert.match(runtimeStyle, /AI-transparent companion/);
-  assert.match(runtimeStyle, /plainly say it is an AI companion inside Se\\'kret Bip/);
-  assert.match(styleProfiles, /Use AI companion mode every reply/);
+  assert.match(runtimeStyle, /HUMAN-AI relational companion/);
+  assert.match(runtimeStyle, /still only AI outside Se\\'kret Bip/);
+  assert.match(runtimeStyle, /Soria-life details as in-world companion canon/);
+  assert.match(styleProfiles, /Use HUMAN-AI relational mode every reply/);
+  assert.match(styleProfiles, /Soria-life texture/);
   assert.doesNotMatch(runtimeStyle, /human-shaped AI canon/);
   assert.doesNotMatch(styleProfiles, /human-shaped AI canon/);
 });
