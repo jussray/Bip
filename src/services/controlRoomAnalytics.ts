@@ -38,7 +38,7 @@ export type ControlRoomAnalytics = {
   signals: MetricPoint[];
   adoption: MetricPoint[];
   crashes: MetricPoint[];
-  fallback: CompanionFallbackAnalytics;
+  fallback?: CompanionFallbackAnalytics;
   releases: ReleaseHealth[];
 };
 
