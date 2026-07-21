@@ -9,13 +9,25 @@
 // NEVER reference service_role keys in client code.
 
 import 'react-native-url-polyfill/auto';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { AppState, Platform } from 'react-native';
+import { createClient, processLock, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SUPABASE_URL, SUPABASE_ANON, isSupabaseReady } from './env';
 
 export const isSupabaseConfigured = isSupabaseReady;
 
 let _client: SupabaseClient | null = null;
+let _autoRefreshListenerInstalled = false;
+
+function installNativeAutoRefresh(client: SupabaseClient) {
+  if (Platform.OS === 'web' || _autoRefreshListenerInstalled) return;
+  _autoRefreshListenerInstalled = true;
+
+  AppState.addEventListener('change', (state) => {
+    if (state === 'active') client.auth.startAutoRefresh();
+    else client.auth.stopAutoRefresh();
+  });
+}
 
 export function getSupabase(): SupabaseClient | null {
   if (!isSupabaseConfigured) return null;
@@ -26,8 +38,10 @@ export function getSupabase(): SupabaseClient | null {
       autoRefreshToken:   true,
       persistSession:     true,
       detectSessionInUrl: false,
+      lock:               processLock,
     },
   });
+  installNativeAutoRefresh(_client);
   return _client;
 }
 
