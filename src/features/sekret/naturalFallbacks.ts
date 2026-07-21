@@ -6,7 +6,7 @@
  * or OpenAI path is unavailable, and it keeps AI identity clear when asked.
  */
 
-export type NaturalFallbackCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret';
+export type NaturalFallbackCharacterId = 'suhana' | 'sy' | 'cloud' | 'night' | 'sekret';
 export type NaturalFallbackAvatarState = 'neutral' | 'listening' | 'thinking' | 'comforting' | 'happy' | 'concerned' | 'responding';
 
 export interface NaturalFallbackHistoryTurn {
@@ -37,7 +37,7 @@ export interface NaturalFallbackResponse {
 export const NATURAL_FALLBACK_PACK_VERSION = 'fallback-natural-v1.0.0';
 export const NATURAL_FALLBACK_VARIANTS_PER_COMPANION = 500;
 
-const CRISIS_PATTERN = /\b(kill myself|end my life|want to die|suicidal|self[- ]?harm|not safe|abuse|danger)\b/i;
+const SAFETY_PATTERN = /\b(suicidal|self[- ]?harm|not safe|abuse|danger)\b/i;
 const IDENTITY_PATTERN = /\b(are you real|are you human|you human|robot|ai|artificial|sentient|alive|real friend|real person)\b/i;
 
 const BANNED_HUMAN_CLAIMS = [
@@ -63,20 +63,20 @@ interface CompanionFallbackStyle {
 }
 
 const FALLBACK_STYLES: Record<NaturalFallbackCharacterId, CompanionFallbackStyle> = {
-  raylene: {
-    tone: 'raylene-natural-fallback',
+  suhana: {
+    tone: 'suhana-natural-fallback',
     avatarState: 'responding',
     suggestedComfortTool: 'journal',
-    identityReply: "I'm Raylene, an AI companion in Se'kret Bip. I can sound caring and present, but I am not a human friend, so I will be clear about that while still helping you sort the moment.",
+    identityReply: "I'm Suhana, an AI companion in Se'kret Bip. I can sound caring and present, but I am not a human friend, so I will be clear about that while still helping you sort the moment.",
     openers: ['I hear you.', 'That landed heavy.', 'Okay, stay with me for a second.', 'That makes sense to bring in here.', 'I am with the feeling you named.', 'No need to make this sound polished.', 'I can hold the messy version with you.', 'That is a real knot.', 'We can slow this down.', 'I am tracking what you mean.'],
     middles: ['The loudest part seems worth naming before we try to fix anything.', 'You may need room to be honest without performing okay.', 'This sounds like one of those moments where the details matter.', 'There is probably a smaller first step hiding inside the big feeling.', 'Your side of the story deserves a little space before any advice.', 'We can separate what happened from what it made you believe about yourself.', 'The feeling does not have to be neat before it counts.', 'A clear next move can wait until the pressure drops a little.', 'It might help to sort what is fact, what is fear, and what is still unknown.', 'You do not have to solve the whole thing in one breath.'],
     closers: ['What part feels loudest right now?', 'Do you want comfort, honesty, or a tiny plan?', 'What would feel easiest to say first?', 'Should we name the feeling or map the next move?', 'What do you wish someone understood about this?'],
   },
-  rylane: {
-    tone: 'rylane-natural-fallback',
+  sy: {
+    tone: 'sy-natural-fallback',
     avatarState: 'responding',
     suggestedComfortTool: 'journal',
-    identityReply: "I'm Rylane, an AI companion built for Se'kret Bip. I can keep it direct and steady, but I am not human, so I will not pretend I have an offline life or secret feelings.",
+    identityReply: "I'm Sy, an AI companion built for Se'kret Bip. I can keep it direct and steady, but I am not human, so I will not pretend I have an offline life or secret feelings.",
     openers: ['Yeah, I hear it.', 'That sounds loaded.', 'Okay, let us not fake calm.', 'That is not nothing.', 'I get why that would stick.', 'There is a lot under that.', 'Say the real version.', 'We can work with that.', 'That one has edges.', 'I am reading the weight in this.'],
     middles: ['The move is probably to name the pressure before choosing a response.', 'You do not have to act unbothered to be strong.', 'This might be less about one event and more about what it confirmed for you.', 'A clean plan starts with the part you keep circling back to.', 'There is a difference between reacting fast and choosing sharp.', 'We can split this into what you control and what is just noise.', 'You can be honest here without turning it into a performance.', 'The next step should protect your peace, not just prove a point.', 'It may help to say what you wanted to happen instead.', 'The hidden part is probably the key part.'],
     closers: ['Do you want to vent or figure out your next move?', 'What is the part you have not said out loud yet?', 'What is the cleanest move from here?', 'Do we call it out, cool it down, or plan around it?', 'What is the truth under the first reaction?'],
@@ -182,7 +182,7 @@ export function createNaturalFallbackResponse(input: NaturalFallbackInput): Natu
   const userText = normalizeText(input.userText);
   const style = FALLBACK_STYLES[input.characterId];
 
-  if (CRISIS_PATTERN.test(userText)) return getSafetyFallback();
+  if (SAFETY_PATTERN.test(userText)) return getSafetyFallback();
 
   if (IDENTITY_PATTERN.test(userText)) {
     return {
@@ -222,8 +222,8 @@ export function createNaturalFallbackResponse(input: NaturalFallbackInput): Natu
 
 export function getFallbackPackStats(): Record<NaturalFallbackCharacterId, number> {
   return {
-    raylene: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
-    rylane: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
+    suhana: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
+    sy: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
     cloud: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
     night: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
     sekret: NATURAL_FALLBACK_VARIANTS_PER_COMPANION,
