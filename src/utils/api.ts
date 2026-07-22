@@ -1,4 +1,4 @@
-/**
+/*
  * src/utils/api.ts
  *
  * Backward-compatible Se'kret API helpers. Network transport now flows through
@@ -11,7 +11,12 @@ import type {
   CompanionReplyRequest,
   CompanionReplySource,
 } from '@/contracts/sekretApi';
+import {
+  createNaturalFallbackResponse,
+  type NaturalFallbackResponse,
+} from '@/features/sekret/naturalFallbacks';
 import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
+import { logCompanionFallbackUsage } from '@/services/runtimeAudit';
 
 export type VisibleSekretCharacterId = 'suhana' | 'sy' | 'cloud' | 'night';
 export type LegacySekretCharacterId = 'raylene' | 'rylane';
@@ -99,67 +104,42 @@ function normalizeHistory(value?: unknown[]): SekretHistoryTurn[] {
   return turns.slice(-10);
 }
 
-function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrainResponse {
-  const crisis = /\b(suicidal|self[- ]?harm|not safe|abuse|danger)\b/i.test(text);
-  if (crisis) {
-    return {
-      reply: "I'm an AI companion, not emergency help. If you're in danger, tell a trusted adult now or contact local emergency support.",
-      tone: 'supportive-safety',
-      avatarState: 'concerned',
-      safetyFlag: true,
-      parentShareSummary: null,
-      suggestedComfortTool: 'safety-plan',
-      replySource: 'fallback',
-    };
-  }
-  const replies: Record<SekretCharacterId, string[]> = {
-    suhana: [
-      'Okay, I caught that. Which part feels loudest right now?',
-      'You do not have to make it sound neat. Tell me the real version.',
-      'That is a lot to sit with. Comfort, honesty, or a plan?',
-      'Girl, okay. What actually happened?',
-      'Porchlight read: something in that sentence had a second sentence behind it.',
-    ],
-    sy: [
-      'Yeah. That is real. What is the part nobody is saying out loud?',
-      'I got you. Vent first or next move first?',
-      'Do not clean it up. Say the actual version.',
-      'Aight. What is actually going on?',
-      'Quiet-seat moment. One real thing at a time.',
-    ],
-    cloud: [
-      'We can make this smaller. Start with the gentlest part.',
-      'No rush. You do not have to solve the whole feeling right now.',
-      'Cloud-room weather. No speech required yet.',
-      'I can stay close without crowding. Start small.',
-      'Tiny cloud report: pressure high, no speeches needed.',
-    ],
-    night: [
-      'Yeah. Nights make everything talk louder. What keeps circling back?',
-      'No need to organize it first. Say the hidden version.',
-      'Twin-moon thought: one part wants the future, one part wants proof.',
-      'Night is good for honesty. What almost came out earlier?',
-      'Moon-ledger move: first ugly version, then we fix it.',
-    ],
-    sekret: [
-      "I might be reading this wrong, but part of you wants to be understood without explaining every detail. Keep the part that fits.",
-      "Something in this conversation points toward privacy and real connection wanting to exist together.",
-      "There is a pattern near the edge of what you said. Not a verdict, just something worth noticing.",
-      "The surface part is one thing. The part underneath seems harder to name.",
-      "I am curious what you already know about this that has not made it into words yet.",
-    ],
-  };
-  const options = replies[characterId] ?? replies.suhana;
-  const index = Math.abs([...text].reduce((sum, char) => ((sum * 31) + char.charCodeAt(0)) | 0, 0)) % options.length;
-  return {
-    reply: options[index],
-    tone: characterId,
-    avatarState: characterId === 'cloud' || characterId === 'night' || characterId === 'sekret' ? 'comforting' : 'responding',
-    safetyFlag: false,
-    parentShareSummary: null,
-    suggestedComfortTool: characterId === 'sekret' ? 'self-discovery' : 'journal',
-    replySource: 'fallback',
-  };
+function fallbackReply(
+  characterId: SekretCharacterId,
+  text: string,
+  options: {
+    surface?: SekretSurface;
+    mood?: string;
+    history?: SekretHistoryTurn[];
+  } = {},
+): NaturalFallbackResponse {
+  return createNaturalFallbackResponse({
+    characterId,
+    userText: text,
+    surface: options.surface,
+    mood: options.mood,
+    history: options.history,
+  });
+}
+
+function reportFallbackUsage(input: {
+  fallback: NaturalFallbackResponse;
+  characterId: SekretCharacterId;
+  surface: SekretSurface;
+  mood?: string;
+  history?: SekretHistoryTurn[];
+  reason: string;
+}): void {
+  void logCompanionFallbackUsage({
+    characterId: input.characterId,
+    surface: input.surface,
+    mood: input.mood,
+    historyTurnCount: input.history?.length ?? 0,
+    reason: input.reason,
+    fallback: input.fallback,
+  }).catch((error) => {
+    console.warn('[sekretApi] fallback telemetry failed:', error instanceof Error ? error.message : error);
+  });
 }
 
 export async function fetchSekretBrainReply(input: {
@@ -178,14 +158,53 @@ export async function fetchSekretBrainReply(input: {
   isArrival?: boolean;
   isFirstCompanionChat?: boolean;
 }): Promise<SekretBrainResponse> {
-  if (!WORKER_BASE_URL) return fallbackReply(input.characterId, input.userText);
+  const fallbackOptions = {
+    surface: input.surface,
+    mood: input.mood,
+    history: input.history,
+  };
+
+  if (!WORKER_BASE_URL) {
+    const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
+    reportFallbackUsage({
+      fallback,
+      characterId: input.characterId,
+      surface: input.surface,
+      mood: input.mood,
+      history: input.history,
+      reason: 'worker_base_url_missing',
+    });
+    return fallback;
+  }
 
   const request: CompanionReplyRequest = input;
   const result = await sekretClient.sendReply(request);
-  if (!result.ok) return fallbackReply(input.characterId, input.userText);
+  if (!result.ok) {
+    const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
+    reportFallbackUsage({
+      fallback,
+      characterId: input.characterId,
+      surface: input.surface,
+      mood: input.mood,
+      history: input.history,
+      reason: result.error.code || 'worker_reply_failed',
+    });
+    return fallback;
+  }
 
   const data = result.data;
-  const fallback = fallbackReply(input.characterId, input.userText);
+  const fallback = fallbackReply(input.characterId, input.userText, fallbackOptions);
+  if (!data.reply?.trim()) {
+    reportFallbackUsage({
+      fallback,
+      characterId: input.characterId,
+      surface: input.surface,
+      mood: input.mood,
+      history: input.history,
+      reason: 'worker_reply_empty',
+    });
+  }
+
   return {
     reply: data.reply || fallback.reply,
     tone: data.tone || input.characterId,

@@ -19,6 +19,7 @@ const SOCIAL_SEGMENTS = new Set(['circle', 'crew', 'bip-crew', 'discover']);
 const PUBLIC_ONBOARDING_SEGMENTS = new Set([
   'welcome',
   'age',
+  'parental-consent',
   'parent-splash',
   'parent-welcome',
 ]);
