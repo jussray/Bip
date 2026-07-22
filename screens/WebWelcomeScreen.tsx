@@ -12,9 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const FAMILY_HERO = require('../prototypes/teen-welcome/assets/sekret-bip-teen-family-v1.jpg');
 
-type WebWelcomeScreenProps = {
-  onEnter: () => void;
-};
+type WebWelcomeScreenProps = { onEnter: () => void };
 
 const navItems = [
   { icon: '⌂', label: 'Home' },
@@ -26,23 +24,22 @@ const navItems = [
 
 export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
   const { width } = useWindowDimensions();
-  const compact = width < 520;
 
   return (
     <View style={styles.page}>
       <View pointerEvents="none" style={styles.ambientTop} />
       <View pointerEvents="none" style={styles.ambientBottom} />
 
-      <View style={[styles.shell, compact && styles.shellCompact]}>
+      <View style={[styles.shell, width < 520 && styles.shellCompact]}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
           <View style={styles.topBar}>
-            <Pressable accessibilityRole="button" accessibilityLabel="About Se'kret Bip" style={styles.roundButton}>
+            <View accessibilityLabel="About Se'kret Bip" style={styles.roundButton}>
               <Text style={styles.roundButtonText}>i</Text>
-            </Pressable>
+            </View>
 
             <View style={styles.wordmark}>
               <LinearGradient colors={['#f07bc3', '#8b64ff', '#596be1']} style={styles.wordmarkBadge}>
@@ -51,9 +48,9 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
               <Text style={styles.wordmarkText}>SE’KRET BIP</Text>
             </View>
 
-            <Pressable accessibilityRole="button" accessibilityLabel="Welcome sound" style={styles.roundButton}>
+            <View accessibilityLabel="Welcome sound" style={styles.roundButton}>
               <Text style={styles.music}>♪</Text>
-            </Pressable>
+            </View>
           </View>
 
           <View style={styles.copy}>
@@ -87,7 +84,11 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
 
           <Text style={styles.handNote}>☁  stay awhile. you’re safe here.</Text>
 
-          <Pressable accessibilityRole="button" accessibilityLabel="Enter Se'kret Bip" onPress={onEnter}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Se'kret Bip — enter your safe space"
+            onPress={onEnter}
+          >
             {({ pressed }) => (
               <LinearGradient
                 colors={['#6549e7', '#9c63ed', '#dc68b1']}
@@ -104,15 +105,14 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
           </Pressable>
         </ScrollView>
 
-        <View style={styles.bottomNav} accessibilityRole="tablist">
+        <View style={styles.bottomNav}>
           {navItems.map(item => {
             const isCenter = 'center' in item && item.center;
             return (
               <Pressable
                 key={item.label}
-                accessibilityRole="tab"
+                accessibilityRole="button"
                 accessibilityLabel={item.label}
-                accessibilityState={{ selected: item.label === 'Home' }}
                 onPress={isCenter ? onEnter : undefined}
                 style={[styles.navItem, isCenter && styles.centerNavItem]}
               >
@@ -139,74 +139,34 @@ const styles = StyleSheet.create({
     backgroundColor: '#05030f',
   },
   ambientTop: {
-    position: 'absolute',
-    width: 520,
-    height: 520,
-    top: -220,
-    right: -160,
-    borderRadius: 260,
-    backgroundColor: 'rgba(137, 91, 241, 0.22)',
+    position: 'absolute', width: 520, height: 520, top: -220, right: -160,
+    borderRadius: 260, backgroundColor: 'rgba(137, 91, 241, 0.22)',
   },
   ambientBottom: {
-    position: 'absolute',
-    width: 460,
-    height: 460,
-    bottom: -210,
-    left: -160,
-    borderRadius: 230,
-    backgroundColor: 'rgba(231, 81, 162, 0.15)',
+    position: 'absolute', width: 460, height: 460, bottom: -210, left: -160,
+    borderRadius: 230, backgroundColor: 'rgba(231, 81, 162, 0.15)',
   },
   shell: {
-    width: '100%',
-    maxWidth: 430,
-    height: '100vh' as never,
-    maxHeight: 900,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
-    borderRadius: 38,
-    backgroundColor: '#120927',
+    width: '100%', maxWidth: 430, height: '100vh' as never, maxHeight: 900,
+    overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 38, backgroundColor: '#120927',
     boxShadow: '0 40px 110px rgba(0,0,0,.66)' as never,
   },
-  shellCompact: {
-    maxWidth: '100%',
-    maxHeight: '100%',
-    borderRadius: 0,
-    borderWidth: 0,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingBottom: 18,
-  },
+  shellCompact: { maxWidth: '100%', maxHeight: '100%', borderRadius: 0, borderWidth: 0 },
+  scrollContent: { flexGrow: 1, paddingBottom: 18 },
   topBar: {
-    height: 78,
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    height: 78, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   roundButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 1,
-    borderColor: 'rgba(220,199,255,.2)',
-    backgroundColor: 'rgba(255,255,255,.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 42, height: 42, borderRadius: 21, borderWidth: 1,
+    borderColor: 'rgba(220,199,255,.2)', backgroundColor: 'rgba(255,255,255,.05)',
+    alignItems: 'center', justifyContent: 'center',
   },
   roundButtonText: { color: '#fff', fontSize: 22, fontWeight: '700' },
   music: { color: '#fff', fontSize: 18 },
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  wordmarkBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  wordmarkBadge: { width: 30, height: 30, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
   wordmarkHeart: { color: '#fff', fontSize: 20, fontWeight: '700' },
   wordmarkText: { color: '#f2edff', fontSize: 14, fontWeight: '900', letterSpacing: 3.2 },
   copy: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 12 },
@@ -215,95 +175,49 @@ const styles = StyleSheet.create({
   title: { color: '#fff', fontFamily: 'Georgia', fontSize: 48, lineHeight: 54, letterSpacing: -2 },
   spark: { color: '#f2a4d5', fontSize: 18, marginLeft: 8, marginTop: 3 },
   subtitle: {
-    color: '#c9bddf',
-    fontSize: 15,
-    lineHeight: 23,
-    textAlign: 'center',
-    maxWidth: 350,
-    marginTop: 10,
+    color: '#c9bddf', fontSize: 15, lineHeight: 23, textAlign: 'center',
+    maxWidth: 350, marginTop: 10,
   },
-  heroWrap: {
-    height: 430,
-    marginTop: 4,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-  },
+  heroWrap: { height: 430, marginTop: 4, overflow: 'hidden', justifyContent: 'flex-end' },
   heroGlow: {
-    position: 'absolute',
-    width: 340,
-    height: 340,
-    left: '50%',
-    top: 35,
-    marginLeft: -170,
-    borderRadius: 170,
-    backgroundColor: 'rgba(142,89,255,.18)',
+    position: 'absolute', width: 340, height: 340, left: '50%', top: 35,
+    marginLeft: -170, borderRadius: 170, backgroundColor: 'rgba(142,89,255,.18)',
   },
   hero: { width: '100%', height: '100%' },
   namePill: {
-    minHeight: 44,
-    marginHorizontal: 36,
-    marginTop: -36,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.16)',
-    backgroundColor: 'rgba(6,3,18,.9)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
+    minHeight: 44, marginHorizontal: 36, marginTop: -36, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,.16)',
+    backgroundColor: 'rgba(6,3,18,.9)', flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 10,
   },
   nameText: { color: '#ddcfef', fontFamily: 'Georgia', fontStyle: 'italic', fontSize: 17 },
   nameDot: { color: '#b469f0', fontSize: 17 },
   handNote: {
-    color: '#c4aed7',
-    fontSize: 13,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    color: '#c4aed7', fontSize: 13, fontStyle: 'italic', textAlign: 'center',
+    marginTop: 8, marginBottom: 12,
   },
   enterButton: {
-    minHeight: 72,
-    marginHorizontal: 34,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.18)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-    boxShadow: '0 16px 30px rgba(101,65,219,.35)' as never,
+    minHeight: 72, marginHorizontal: 34, borderRadius: 24, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.18)', flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 16, boxShadow: '0 16px 30px rgba(101,65,219,.35)' as never,
   },
   enterPressed: { opacity: 0.84, transform: [{ scale: 0.99 }] },
   enterText: { color: '#fff', fontSize: 26, fontWeight: '800' },
   enterHeartBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,.16)',
+    alignItems: 'center', justifyContent: 'center',
   },
   enterHeart: { color: '#fff', fontSize: 28, lineHeight: 32 },
   bottomNav: {
-    height: 92,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(220,199,255,.15)',
-    backgroundColor: 'rgba(7,4,20,.98)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+    height: 92, borderTopWidth: 1, borderTopColor: 'rgba(220,199,255,.15)',
+    backgroundColor: 'rgba(7,4,20,.98)', flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-around', paddingHorizontal: 8, paddingBottom: 8,
   },
   navItem: { flex: 1, height: 72, alignItems: 'center', justifyContent: 'center', gap: 5 },
   centerNavItem: { transform: [{ translateY: -12 }] },
   navIconWrap: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center' },
   centerIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 22,
-    backgroundColor: '#b969df',
+    width: 64, height: 64, borderRadius: 22, backgroundColor: '#b969df',
     boxShadow: '0 12px 26px rgba(134,92,239,.42)' as never,
   },
   navIcon: { color: '#817694', fontSize: 23, fontWeight: '800' },
