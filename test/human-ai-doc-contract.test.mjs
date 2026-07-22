@@ -16,6 +16,10 @@ function assertContains(text, expected, label) {
 test('name canon preserves Suhana and Sy as canonical display names with stable legacy ids', () => {
   const nameCanon = read('docs/COMPANION_NAME_CANON.md');
 
+  assertContains(nameCanon, 'Read with:', 'name canon');
+  assertContains(nameCanon, '`docs/HUMAN_AI_IDENTITY_AGENT_HANDOFF.md`', 'name canon');
+  assertContains(nameCanon, '`docs/COMPANION_IDENTITY_BIBLE.md`', 'name canon');
+  assertContains(nameCanon, '`docs/OPENAI_COMPANION_RUNTIME.md`', 'name canon');
   assertContains(nameCanon, '**Suhana**: canonical display/canon name for the companion formerly documented as Raylene.', 'name canon');
   assertContains(nameCanon, '**Sy**: canonical display/canon name for the companion formerly documented as Rylane.', 'name canon');
   assertContains(nameCanon, 'raylene -> Suhana', 'name canon');
