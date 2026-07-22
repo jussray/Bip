@@ -14,6 +14,7 @@
     "build:web": "expo export -p web && node scripts/write-release-metadata.mjs dist",
     "vercel-build": "npm run build:web",
     "test": "node scripts/run-unit-tests.mjs",
+    "test:human-ai-contract": "node --test test/human-ai-doc-contract.test.mjs test/human-ai-runtime-precedence.test.mjs test/openai-prompt-injection.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:production": "playwright test --config=playwright.production.config.ts",
     "test:e2e:live-onboarding-email": "playwright test --config=playwright.production.config.ts e2e/live-onboarding-email.spec.ts",
