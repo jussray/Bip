@@ -49,7 +49,7 @@ const runtimeSource = fs.readFileSync(path.join(root, 'worker/runtime-style.ts')
 const indexSource = fs.readFileSync(path.join(root, 'worker/index.ts'), 'utf8');
 const observedSource = fs.readFileSync(path.join(root, 'worker/observed-index.ts'), 'utf8');
 
-const raylene = runtime.resolveRuntimeStyle('raylene');
+const suhana = runtime.resolveRuntimeStyle('suhana');
 const sekret = runtime.resolveRuntimeStyle('sekret');
 const parentCoach = runtime.resolveRuntimeStyle('parentCoach');
 
@@ -58,7 +58,9 @@ after(() => {
 });
 
 test('runtime actor normalization preserves aliases without substring guessing', () => {
-  assert.equal(runtime.normalizeReplyActor('soft'), 'raylene');
+  assert.equal(runtime.normalizeReplyActor('soft'), 'suhana');
+  assert.equal(runtime.normalizeReplyActor('Raylene'), 'suhana');
+  assert.equal(runtime.normalizeReplyActor('Rylane'), 'sy');
   assert.equal(runtime.normalizeReplyActor('Night Se’kret'), 'night');
   assert.equal(runtime.normalizeReplyActor('oracle'), 'sekret');
   assert.equal(runtime.normalizeReplyActor('Se’kret Coach'), 'parentCoach');
@@ -68,16 +70,16 @@ test('runtime actor normalization preserves aliases without substring guessing',
 
 test('parent coaching cannot cross the teen-facing actor/surface boundary', () => {
   assert.equal(runtime.validateActorSurface('parentCoach', 'journal'), 'parentCoach actor requires the parentCoach surface');
-  assert.equal(runtime.validateActorSurface('raylene', 'parentCoach'), 'parentCoach surface requires the parentCoach actor');
+  assert.equal(runtime.validateActorSurface('suhana', 'parentCoach'), 'parentCoach surface requires the parentCoach actor');
   assert.equal(runtime.validateActorSurface('parentCoach', 'parentCoach'), null);
   assert.equal(runtime.validateActorSurface('sekret', 'selfDiscovery'), null);
 });
 
 test('named companions and Se’kret resolve the merged versioned style contracts', () => {
-  assert.equal(raylene.role, 'named-companion');
-  assert.equal(raylene.textStyleVersion, 'raylene-text-v1');
-  assert.equal(raylene.speechStyleVersion, 'raylene-speech-v1');
-  assert.equal(raylene.maxQuestions, 1);
+  assert.equal(suhana.role, 'named-companion');
+  assert.equal(suhana.textStyleVersion, 'suhana-text-v1');
+  assert.equal(suhana.speechStyleVersion, 'suhana-speech-v1');
+  assert.equal(suhana.maxQuestions, 1);
 
   assert.equal(sekret.role, 'continuity-presence');
   assert.equal(sekret.textStyleVersion, 'sekret-presence-text-v1');
@@ -113,10 +115,21 @@ test('Se’kret output is deterministically repaired to hide Oracle and ask zero
   assert.deepEqual(result.styleViolationCodes, ['style_oracle_leak', 'style_question_budget']);
 });
 
+test('legacy display names are repaired to Suhana and Sy before a reply reaches the user', () => {
+  const result = runtime.enforceRuntimeStyleResponse({
+    reply: 'Raylene said Rylane has your back.',
+  }, suhana);
+
+  assert.equal(result.reply, 'Suhana said Sy has your back.');
+  assert.equal(result.actorId, 'suhana');
+  assert.equal(result.styleRepaired, true);
+  assert.deepEqual(result.styleViolationCodes, ['style_forbidden_phrase']);
+});
+
 test('named companion output keeps one question and repairs extras', () => {
   const result = runtime.enforceRuntimeStyleResponse({
     reply: 'What happened? What do you want next?',
-  }, raylene);
+  }, suhana);
   assert.equal(result.reply, 'What happened? What do you want next.');
   assert.equal(result.questionBudget, 1);
   assert.deepEqual(result.styleViolationCodes, ['style_question_budget']);
