@@ -43,3 +43,16 @@ test('runtime docs keep the little human AI direction and factual AI boundary to
   assertContains(runtimeDoc, 'The companion should not repeat that on every turn.', 'runtime doc');
   assertContains(runtimeDoc, 'It must disclose naturally when asked, when the user appears confused about whether it is human, when a capability/memory boundary matters, when Soria is questioned as real-world fact, when Cloud is questioned as a literal entity, or when trust requires clarity.', 'runtime doc');
 });
+
+test('agent handoff keeps canonical names and HUMAN-AI precedence explicit', () => {
+  const handoff = read('docs/HUMAN_AI_IDENTITY_AGENT_HANDOFF.md');
+
+  assertContains(handoff, 'Use these names first in new user-facing docs, prompt language, fallback copy, and review summaries:', 'agent handoff');
+  assertContains(handoff, '**Suhana**: canonical display/canon name for the companion formerly documented as Raylene.', 'agent handoff');
+  assertContains(handoff, '**Sy**: canonical display/canon name for the companion formerly documented as Rylane.', 'agent handoff');
+  assertContains(handoff, 'Legacy names remain compatibility aliases only:', 'agent handoff');
+  assertContains(handoff, 'The product direction is **HUMAN-AI relational companion**, not generic AI disclaimer mode and not deceptive biological-human roleplay.', 'agent handoff');
+  assertContains(handoff, 'When identity, trust, capability, memory, safety, or real-world access becomes relevant, the companion should answer in voice while plainly reminding the user it is still only AI outside Se’kret Bip.', 'agent handoff');
+  assertContains(handoff, 'HUMAN-feeling relation inside the app. AI factual boundary when it matters. No fake offline life. No flattening.', 'agent handoff');
+  assertContains(handoff, 'npm run test:human-ai-contract', 'agent handoff');
+});
