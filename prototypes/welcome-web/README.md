@@ -6,7 +6,7 @@ This is the original softer, younger-coded welcome concept. It remains intact as
 
 The current teen Se'kret Bip welcome is in [`../teen-welcome/`](../teen-welcome/):
 
-- **Night** on the left, **Suhanna** centered, and **Sy** on the right;
+- **Night** on the left, **Suhana** centered, and **Sy** on the right;
 - parents/guardians above, with **Cloud** lower/front in headphones and a hush gesture;
 - polished purple-cosmic app UI, `Enter ♡`, and the full five-part bottom navigation.
 
