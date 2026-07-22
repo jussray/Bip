@@ -8,6 +8,7 @@ This pull request is a controlled, review-first trigger test for the Founder Sig
 - Trigger type: pull request opened or updated
 - Branch: `founder-signal-engine-live-proof`
 - Safety mode: review-first only
+- Synchronize marker: `2026-07-22T15:48Z`
 
 ## Expected downstream path
 
