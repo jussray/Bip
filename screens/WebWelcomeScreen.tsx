@@ -1,0 +1,313 @@
+import React from 'react';
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const FAMILY_HERO = require('../prototypes/teen-welcome/assets/sekret-bip-teen-family-v1.jpg');
+
+type WebWelcomeScreenProps = {
+  onEnter: () => void;
+};
+
+const navItems = [
+  { icon: '⌂', label: 'Home' },
+  { icon: '♧', label: 'Family' },
+  { icon: '♥', label: 'Enter', center: true },
+  { icon: '✦', label: 'Moments' },
+  { icon: '•••', label: 'More' },
+] as const;
+
+export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
+  const { width } = useWindowDimensions();
+  const compact = width < 520;
+
+  return (
+    <View style={styles.page}>
+      <View pointerEvents="none" style={styles.ambientTop} />
+      <View pointerEvents="none" style={styles.ambientBottom} />
+
+      <View style={[styles.shell, compact && styles.shellCompact]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          <View style={styles.topBar}>
+            <Pressable accessibilityRole="button" accessibilityLabel="About Se'kret Bip" style={styles.roundButton}>
+              <Text style={styles.roundButtonText}>i</Text>
+            </Pressable>
+
+            <View style={styles.wordmark}>
+              <LinearGradient colors={['#f07bc3', '#8b64ff', '#596be1']} style={styles.wordmarkBadge}>
+                <Text style={styles.wordmarkHeart}>♡</Text>
+              </LinearGradient>
+              <Text style={styles.wordmarkText}>SE’KRET BIP</Text>
+            </View>
+
+            <Pressable accessibilityRole="button" accessibilityLabel="Welcome sound" style={styles.roundButton}>
+              <Text style={styles.music}>♪</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.copy}>
+            <Text style={styles.eyebrow}>YOUR PEOPLE. YOUR PEACE.</Text>
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>Come on in.</Text>
+              <Text style={styles.spark}>✦</Text>
+            </View>
+            <Text style={styles.subtitle}>
+              A safe little world where teens and parents can stay close without losing their own space.
+            </Text>
+          </View>
+
+          <View style={styles.heroWrap}>
+            <View style={styles.heroGlow} />
+            <Image
+              source={FAMILY_HERO}
+              resizeMode="cover"
+              style={styles.hero}
+              accessibilityLabel="Night, Suhana, Sy, Cloud, and their parents together"
+            />
+          </View>
+
+          <View style={styles.namePill}>
+            <Text style={styles.nameText}>Night</Text>
+            <Text style={styles.nameDot}>·</Text>
+            <Text style={styles.nameText}>Suhana</Text>
+            <Text style={styles.nameDot}>·</Text>
+            <Text style={styles.nameText}>Sy</Text>
+          </View>
+
+          <Text style={styles.handNote}>☁  stay awhile. you’re safe here.</Text>
+
+          <Pressable accessibilityRole="button" accessibilityLabel="Enter Se'kret Bip" onPress={onEnter}>
+            {({ pressed }) => (
+              <LinearGradient
+                colors={['#6549e7', '#9c63ed', '#dc68b1']}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={[styles.enterButton, pressed && styles.enterPressed]}
+              >
+                <Text style={styles.enterText}>Enter</Text>
+                <View style={styles.enterHeartBadge}>
+                  <Text style={styles.enterHeart}>♡</Text>
+                </View>
+              </LinearGradient>
+            )}
+          </Pressable>
+        </ScrollView>
+
+        <View style={styles.bottomNav} accessibilityRole="tablist">
+          {navItems.map(item => {
+            const isCenter = 'center' in item && item.center;
+            return (
+              <Pressable
+                key={item.label}
+                accessibilityRole="tab"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: item.label === 'Home' }}
+                onPress={isCenter ? onEnter : undefined}
+                style={[styles.navItem, isCenter && styles.centerNavItem]}
+              >
+                <View style={[styles.navIconWrap, isCenter && styles.centerIconWrap]}>
+                  <Text style={[styles.navIcon, isCenter && styles.centerIcon]}>{item.icon}</Text>
+                </View>
+                <Text style={[styles.navLabel, item.label === 'Home' && styles.navLabelActive]}>{item.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    minHeight: '100vh' as never,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#05030f',
+  },
+  ambientTop: {
+    position: 'absolute',
+    width: 520,
+    height: 520,
+    top: -220,
+    right: -160,
+    borderRadius: 260,
+    backgroundColor: 'rgba(137, 91, 241, 0.22)',
+  },
+  ambientBottom: {
+    position: 'absolute',
+    width: 460,
+    height: 460,
+    bottom: -210,
+    left: -160,
+    borderRadius: 230,
+    backgroundColor: 'rgba(231, 81, 162, 0.15)',
+  },
+  shell: {
+    width: '100%',
+    maxWidth: 430,
+    height: '100vh' as never,
+    maxHeight: 900,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 38,
+    backgroundColor: '#120927',
+    boxShadow: '0 40px 110px rgba(0,0,0,.66)' as never,
+  },
+  shellCompact: {
+    maxWidth: '100%',
+    maxHeight: '100%',
+    borderRadius: 0,
+    borderWidth: 0,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 18,
+  },
+  topBar: {
+    height: 78,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  roundButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1,
+    borderColor: 'rgba(220,199,255,.2)',
+    backgroundColor: 'rgba(255,255,255,.05)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roundButtonText: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  music: { color: '#fff', fontSize: 18 },
+  wordmark: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  wordmarkBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wordmarkHeart: { color: '#fff', fontSize: 20, fontWeight: '700' },
+  wordmarkText: { color: '#f2edff', fontSize: 14, fontWeight: '900', letterSpacing: 3.2 },
+  copy: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 12 },
+  eyebrow: { color: '#bda8ee', fontSize: 12, fontWeight: '800', letterSpacing: 3.2 },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 12 },
+  title: { color: '#fff', fontFamily: 'Georgia', fontSize: 48, lineHeight: 54, letterSpacing: -2 },
+  spark: { color: '#f2a4d5', fontSize: 18, marginLeft: 8, marginTop: 3 },
+  subtitle: {
+    color: '#c9bddf',
+    fontSize: 15,
+    lineHeight: 23,
+    textAlign: 'center',
+    maxWidth: 350,
+    marginTop: 10,
+  },
+  heroWrap: {
+    height: 430,
+    marginTop: 4,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+  },
+  heroGlow: {
+    position: 'absolute',
+    width: 340,
+    height: 340,
+    left: '50%',
+    top: 35,
+    marginLeft: -170,
+    borderRadius: 170,
+    backgroundColor: 'rgba(142,89,255,.18)',
+  },
+  hero: { width: '100%', height: '100%' },
+  namePill: {
+    minHeight: 44,
+    marginHorizontal: 36,
+    marginTop: -36,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.16)',
+    backgroundColor: 'rgba(6,3,18,.9)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  nameText: { color: '#ddcfef', fontFamily: 'Georgia', fontStyle: 'italic', fontSize: 17 },
+  nameDot: { color: '#b469f0', fontSize: 17 },
+  handNote: {
+    color: '#c4aed7',
+    fontSize: 13,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  enterButton: {
+    minHeight: 72,
+    marginHorizontal: 34,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.18)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    boxShadow: '0 16px 30px rgba(101,65,219,.35)' as never,
+  },
+  enterPressed: { opacity: 0.84, transform: [{ scale: 0.99 }] },
+  enterText: { color: '#fff', fontSize: 26, fontWeight: '800' },
+  enterHeartBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,.16)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  enterHeart: { color: '#fff', fontSize: 28, lineHeight: 32 },
+  bottomNav: {
+    height: 92,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(220,199,255,.15)',
+    backgroundColor: 'rgba(7,4,20,.98)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  navItem: { flex: 1, height: 72, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  centerNavItem: { transform: [{ translateY: -12 }] },
+  navIconWrap: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center' },
+  centerIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    backgroundColor: '#b969df',
+    boxShadow: '0 12px 26px rgba(134,92,239,.42)' as never,
+  },
+  navIcon: { color: '#817694', fontSize: 23, fontWeight: '800' },
+  centerIcon: { color: '#fff', fontSize: 22 },
+  navLabel: { color: '#756a89', fontSize: 11, fontWeight: '700' },
+  navLabelActive: { color: '#ddd1ff' },
+});
