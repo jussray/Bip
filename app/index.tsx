@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, ActivityIndicator, Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
+import { WebWelcomeScreen } from '@screens/WebWelcomeScreen';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import {
   hydrateAccountProfile,
@@ -46,8 +47,6 @@ export default function Index() {
       setProfileResolved(false);
       setRequiresAccountUpgrade(false);
       try {
-        // Surface missing Supabase config as a real error so users (and devs)
-        // are never silently walked into a dead-end signup screen.
         if (!isSupabaseConfigured) {
           throw new Error(
             'Account service is not configured.\n\nCheck that EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set correctly in your environment.'
@@ -80,8 +79,6 @@ export default function Index() {
           return;
         }
 
-        // Explicit second-device restore: hydrate the durable Supabase profile,
-        // then reuse it in the post-auth bootstrap so it is fetched only once.
         const profile = await hydrateAccountProfile(buildSide);
         const result = await fetchPostAuthBootstrap(profile?.accountSide ?? buildSide, profile);
         if (cancelled) return;
@@ -187,6 +184,12 @@ export default function Index() {
     verificationState,
   ]);
 
+  // The public web front door stays visible even while account bootstrap runs.
+  // Enter hands control back to the existing auth/onboarding router.
+  if (Platform.OS === 'web' && !splashEntered) {
+    return <WebWelcomeScreen onEnter={() => setSplashEntered(true)} />;
+  }
+
   if (bootstrapError) {
     return (
       <View style={styles.root}>
@@ -205,7 +208,14 @@ export default function Index() {
     );
   }
 
-  if (!isLoading && !isVerificationLoading && authChecked && profileResolved && !splashEntered) {
+  if (
+    Platform.OS !== 'web'
+    && !isLoading
+    && !isVerificationLoading
+    && authChecked
+    && profileResolved
+    && !splashEntered
+  ) {
     return (
       <SplashScreen
         userSide={hasPermanentSession ? effectiveSide : buildSide ?? 'teen'}
