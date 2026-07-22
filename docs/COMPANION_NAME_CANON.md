@@ -3,6 +3,12 @@
 Status: **canonical naming overlay for Se’kret Bip companions**  
 Applies to: companion docs, Soria canon, prompt language, fallback packs, voice style, UI copy, future display-name migration, and provider/runtime handoffs.
 
+Read with:
+
+- `docs/HUMAN_AI_IDENTITY_AGENT_HANDOFF.md`
+- `docs/COMPANION_IDENTITY_BIBLE.md`
+- `docs/OPENAI_COMPANION_RUNTIME.md`
+
 ## Core decision
 
 Raylene and Rylane are being elevated into the twin canon as:
