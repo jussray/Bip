@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const FAMILY_HERO = require('../prototypes/teen-welcome/assets/sekret-bip-teen-family-v1.jpg');
+const FAMILY_HERO = require('../assets/brand/sekret-bip-teen-family-v1.jpg');
 
 type WebWelcomeScreenProps = { onEnter: () => void };
 
@@ -23,14 +23,19 @@ const navItems = [
 ] as const;
 
 export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const compact = width < 520;
+  const shellHeight = compact ? height : Math.min(height, 900);
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, { minHeight: height }]}>
       <View pointerEvents="none" style={styles.ambientTop} />
       <View pointerEvents="none" style={styles.ambientBottom} />
 
-      <View style={[styles.shell, width < 520 && styles.shellCompact]}>
+      <View
+        testID="web-welcome-shell"
+        style={[styles.shell, { height: shellHeight }, compact && styles.shellCompact]}
+      >
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -67,6 +72,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
           <View style={styles.heroWrap}>
             <View style={styles.heroGlow} />
             <Image
+              testID="web-welcome-hero"
               source={FAMILY_HERO}
               resizeMode="cover"
               style={styles.hero}
@@ -87,6 +93,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Se'kret Bip — enter your safe space"
+            accessibilityHint="Continue to account setup or your existing Bip space"
             onPress={onEnter}
           >
             {({ pressed }) => (
@@ -108,19 +115,34 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
         <View style={styles.bottomNav}>
           {navItems.map(item => {
             const isCenter = 'center' in item && item.center;
-            return (
-              <Pressable
-                key={item.label}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-                onPress={isCenter ? onEnter : undefined}
-                style={[styles.navItem, isCenter && styles.centerNavItem]}
-              >
+            const navContent = (
+              <>
                 <View style={[styles.navIconWrap, isCenter && styles.centerIconWrap]}>
                   <Text style={[styles.navIcon, isCenter && styles.centerIcon]}>{item.icon}</Text>
                 </View>
                 <Text style={[styles.navLabel, item.label === 'Home' && styles.navLabelActive]}>{item.label}</Text>
-              </Pressable>
+              </>
+            );
+
+            if (isCenter) {
+              return (
+                <Pressable
+                  key={item.label}
+                  accessibilityRole="button"
+                  accessibilityLabel="Enter"
+                  accessibilityHint="Continue to account setup or your existing Bip space"
+                  onPress={onEnter}
+                  style={[styles.navItem, styles.centerNavItem]}
+                >
+                  {navContent}
+                </Pressable>
+              );
+            }
+
+            return (
+              <View key={item.label} style={styles.navItem}>
+                {navContent}
+              </View>
             );
           })}
         </View>
@@ -132,7 +154,6 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    minHeight: '100vh' as never,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -147,12 +168,12 @@ const styles = StyleSheet.create({
     borderRadius: 230, backgroundColor: 'rgba(231, 81, 162, 0.15)',
   },
   shell: {
-    width: '100%', maxWidth: 430, height: '100vh' as never, maxHeight: 900,
+    width: '100%', maxWidth: 430, maxHeight: 900,
     overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)',
     borderRadius: 38, backgroundColor: '#120927',
     boxShadow: '0 40px 110px rgba(0,0,0,.66)' as never,
   },
-  shellCompact: { maxWidth: '100%', maxHeight: '100%', borderRadius: 0, borderWidth: 0 },
+  shellCompact: { maxWidth: '100%', borderRadius: 0, borderWidth: 0 },
   scrollContent: { flexGrow: 1, paddingBottom: 18 },
   topBar: {
     height: 78, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8,
