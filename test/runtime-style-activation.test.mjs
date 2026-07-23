@@ -60,6 +60,8 @@ after(() => {
 test('runtime actor normalization preserves aliases without substring guessing', () => {
   assert.equal(runtime.normalizeReplyActor('soft'), 'suhana');
   assert.equal(runtime.normalizeReplyActor('raylene'), 'suhana');
+  assert.equal(runtime.normalizeReplyActor('Raylene'), 'suhana');
+  assert.equal(runtime.normalizeReplyActor('Rylane'), 'sy');
   assert.equal(runtime.normalizeReplyActor('Night Se’kret'), 'night');
   assert.equal(runtime.normalizeReplyActor('oracle'), 'sekret');
   assert.equal(runtime.normalizeReplyActor('Se’kret Coach'), 'parentCoach');
@@ -112,6 +114,17 @@ test('Se’kret output is deterministically repaired to hide Oracle and ask zero
   assert.equal(result.questionBudget, 0);
   assert.equal(result.styleRepaired, true);
   assert.deepEqual(result.styleViolationCodes, ['style_oracle_leak', 'style_question_budget']);
+});
+
+test('legacy display names are repaired to Suhana and Sy before a reply reaches the user', () => {
+  const result = runtime.enforceRuntimeStyleResponse({
+    reply: 'Raylene said Rylane has your back.',
+  }, suhana);
+
+  assert.equal(result.reply, 'Suhana said Sy has your back.');
+  assert.equal(result.actorId, 'suhana');
+  assert.equal(result.styleRepaired, true);
+  assert.deepEqual(result.styleViolationCodes, ['style_forbidden_phrase']);
 });
 
 test('named companion output keeps one question and repairs extras', () => {

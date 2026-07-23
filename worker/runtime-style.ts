@@ -79,6 +79,8 @@ const FORBIDDEN_REPLACEMENTS: readonly (readonly [RegExp, string])[] = [
   [/\bi understand your concern\b/gi, 'That matters'],
   [/\bi remember when you told me\b/gi, 'Something in this conversation stands out'],
   [/\boracle\b/gi, "Se'kret"],
+  [/\braylene\b/gi, 'Suhana'],
+  [/\brylane\b/gi, 'Sy'],
 ] as const;
 
 const AVATAR_STATES: readonly CompanionAvatarState[] = [
@@ -197,7 +199,8 @@ function enforceForbiddenPhrases(text: string, forbiddenPhrases: readonly string
   oracleLeak: boolean;
 } {
   const lower = text.toLowerCase();
-  const hasForbidden = forbiddenPhrases.some((phrase) => lower.includes(phrase.toLowerCase()));
+  const hasForbidden = forbiddenPhrases.some((phrase) => lower.includes(phrase.toLowerCase()))
+    || /\b(?:raylene|rylane)\b/i.test(text);
   const oracleLeak = /\boracle\b/i.test(text);
   if (!hasForbidden && !oracleLeak) return { text, repaired: false, oracleLeak: false };
 

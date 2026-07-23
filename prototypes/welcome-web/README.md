@@ -1,14 +1,23 @@
-# Se'kret Bip welcome prototype
+# Bip Jr — preserved original welcome prototype
 
-Focused, framework-free export of the interactive welcome-screen concept for `sekretbip.net` review.
+This is the original softer, younger-coded welcome concept. It remains intact as **Bip Jr** so the earlier visual direction is not lost.
+
+## Current canon
+
+The current teen Se'kret Bip welcome is in [`../teen-welcome/`](../teen-welcome/):
+
+- **Night** on the left, **Suhana** centered, and **Sy** on the right;
+- parents/guardians above, with **Cloud** lower/front in headphones and a hush gesture;
+- polished purple-cosmic app UI, `Enter ♡`, and the full five-part bottom navigation.
+
+The legacy character arrangement inside this preserved prototype is historical reference only; it is not the current character canon.
 
 ## Included
 
-- latest character placement: Night centered and front-facing, Raylene and Raylane in inward-facing profiles, parents welcoming from behind;
-- `Enter ♡` role-selection flow for Teen and Parent;
+- original `Enter ♡` Teen/Parent flow;
 - bottom navigation for Home, Family, Enter, Moments, and More;
-- responsive mobile-first layout, keyboard focus states, reduced-motion support, and meaningful image labels;
-- no authentication, persistence, production routing, or user data collection.
+- responsive mobile-first layout, keyboard focus states, and reduced-motion support;
+- no authentication, persistence, production routing, or Expo runtime changes.
 
 ## Run locally
 
