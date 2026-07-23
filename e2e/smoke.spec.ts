@@ -14,6 +14,36 @@ test('teen splash leads into onboarding welcome', async ({ page }) => {
   await expect(page.getByText('For ages 13 and up')).toBeVisible();
 });
 
+test('web welcome front door exposes only working actions and approved identity', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-hero')).toBeVisible();
+  await expect(page.getByText('Come on in.')).toBeVisible();
+  await expect(page.getByText('Night')).toBeVisible();
+  await expect(page.getByText('Suhana')).toBeVisible();
+  await expect(page.getByText('Sy')).toBeVisible();
+
+  // The main CTA and the center Enter control are the only interactive
+  // actions on this public welcome surface. Decorative nav items must not
+  // pretend to be working buttons.
+  await expect(page.getByRole('button')).toHaveCount(2);
+});
+
+test('web welcome Enter supports keyboard activation', async ({ page }) => {
+  await page.goto('/');
+
+  const splashButton = page.getByRole('button', {
+    name: "Se'kret Bip — enter your safe space",
+  });
+
+  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await splashButton.focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByText("I'm ready")).toBeVisible({ timeout: 15_000 });
+});
+
 test('login deep link renders and survives refresh', async ({ page }) => {
   await page.goto('/login');
 
@@ -57,6 +87,23 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+});
+
+test('frontend entry remains contained on a short narrow phone viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto('/');
+
+  await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
+
+  const hasHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(hasHorizontalOverflow).toBe(false);
+
+  const shellBox = await page.getByTestId('web-welcome-shell').boundingBox();
+  expect(shellBox).not.toBeNull();
+  expect(shellBox!.x).toBeGreaterThanOrEqual(0);
+  expect(shellBox!.x + shellBox!.width).toBeLessThanOrEqual(320);
 });
 
 test('Teen Circle cannot bypass account onboarding from a blank browser session', async ({ page }) => {
