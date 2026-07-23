@@ -24,8 +24,8 @@ export type DailyIntentionSourceLabel =
   | 'manual';
 
 export type DailyIntentionCompanionKey =
-  | 'raylene'
-  | 'rylane'
+  | 'suhana'
+  | 'sy'
   | 'cloud'
   | 'night'
   | 'sekret';
@@ -57,8 +57,8 @@ type Candidate = Omit<DailyIntention, 'position' | 'completed' | 'dismissed'> & 
 };
 
 const COMPANION_KEYS = new Set<DailyIntentionCompanionKey>([
-  'raylene',
-  'rylane',
+  'suhana',
+  'sy',
   'cloud',
   'night',
   'sekret',
@@ -103,7 +103,7 @@ const SIGNAL_PATTERNS: Array<{
 
 function normalizeCompanionKey(value?: string): DailyIntentionCompanionKey | undefined {
   if (!value) return undefined;
-  const normalized = value === 'soft' ? 'raylene' : value === 'oracle' ? 'sekret' : value;
+  const normalized = value === 'soft' ? 'suhana' : value === 'oracle' ? 'sekret' : value;
   return COMPANION_KEYS.has(normalized as DailyIntentionCompanionKey)
     ? normalized as DailyIntentionCompanionKey
     : undefined;
@@ -267,8 +267,8 @@ export function buildDailyIntentions(signals: DailyIntentionSignals): DailyInten
 
 export function isCompanionJournalEntry(entry: JournalEntry): boolean {
   const source = entry.activeTab ?? entry.source;
-  return source === 'raylene'
-    || source === 'rylane'
+  return source === 'suhana'
+    || source === 'sy'
     || source === 'cloud'
     || source === 'night';
 }

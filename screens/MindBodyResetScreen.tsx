@@ -40,9 +40,9 @@ const AVATAR_ASSETS: Record<string, any> = {
 };
 
 const CHARACTER_NAMES: Record<string, string> = {
-  raylene: 'Raylene',
-  soft: 'Raylene',
-  rylane: 'Rylane',
+  raylene: 'Suhana',
+  soft: 'Suhana',
+  rylane: 'Sy',
   cloud: 'Cloud',
   night: 'Night',
 };
@@ -71,7 +71,7 @@ interface MindBodyResetScreenProps {
 export function MindBodyResetScreen({
   screen,
   t,
-  selectedSekret = 'raylene',
+  selectedSekret = 'suhana',
   setScreen,
   onComplete,
   onStartWorkout,
@@ -82,10 +82,10 @@ export function MindBodyResetScreen({
   const isMind = screen === 'mindReset';
   const [activeTool, setActiveTool] = useState<ResetTool | null>(null);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
-  const companionName = CHARACTER_NAMES[selectedSekret] ?? 'Raylene';
-  const charKey: Character = ['raylene', 'rylane', 'cloud', 'night'].includes(selectedSekret)
+  const companionName = CHARACTER_NAMES[selectedSekret] ?? 'Suhana';
+  const charKey: Character = ['suhana', 'sy', 'cloud', 'night'].includes(selectedSekret)
     ? selectedSekret as Character
-    : 'raylene';
+    : 'suhana';
   const bgSource = getRoomBg(charKey, timeOfDay());
   const moodGlow = glowFor(mood);
 

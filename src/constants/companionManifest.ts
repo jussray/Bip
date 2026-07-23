@@ -24,8 +24,8 @@ const buildEntries = <C extends TeenCompanion>(
 
 export const TEEN_COMPANION_MANIFEST = {
   // Batch 0 — Identity Lock: neutral references are live (sourced from Canva canon).
-  raylene: buildEntries('raylene', { neutral: 'production' }),
-  rylane: buildEntries('rylane', { neutral: 'production' }),
+  suhana: buildEntries('suhana', { neutral: 'production' }),
+  sy: buildEntries('sy', { neutral: 'production' }),
   night: buildEntries('night', { neutral: 'production' }),
 } as const;
 

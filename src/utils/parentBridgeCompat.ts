@@ -67,7 +67,7 @@ export async function sendBridgeSignal(params: {
   shareType: string;
   convMode: string | null;
   responsePreference?: BridgeResponsePreference | null;
-  charKey: 'raylene' | 'rylane';
+  charKey: 'suhana' | 'sy';
 }): Promise<void> {
   const sb = getSupabase();
   const userId = await uid();

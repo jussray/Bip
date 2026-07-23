@@ -34,7 +34,7 @@ export type CompanionContext = {
 };
 
 export type SekretCompanion = {
-  id: 'raylene' | 'rylane' | 'cloud' | 'night';
+  id: 'suhana' | 'sy' | 'cloud' | 'night';
   name: string;
   voice: string;
   boundaries: string[];
@@ -53,13 +53,13 @@ export type CompanionReply = {
 export const SEKRET_COMPANIONS: Record<SekretCompanion['id'], SekretCompanion> =
   {
     raylene: {
-      id: 'raylene',
+      id: 'suhana',
       name: 'Raylene',
       voice: 'soft big-sis energy',
       boundaries: ['no shame', 'no pressure', 'teen stays in control'],
     },
     rylane: {
-      id: 'rylane',
+      id: 'sy',
       name: 'Rylane',
       voice: 'protective big-bro energy',
       boundaries: ['kind but direct', 'protective', 'not preachy'],

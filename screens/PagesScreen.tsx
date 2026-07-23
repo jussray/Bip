@@ -78,7 +78,7 @@ const PARENT_PAGES_SECTIONS: SectionDef[] = [
 
 // ── Legacy write-tab definitions (unchanged) ───────────────────────────────
 
-type TeenTab = 'me' | 'oracle' | 'raylene' | 'rylane' | 'cloud' | 'night';
+type TeenTab = 'me' | 'oracle' | 'suhana' | 'sy' | 'cloud' | 'night';
 type ParentTab = 'me' | 'oracle' | 'parentSekret' | 'bridge';
 export type PagesTab = TeenTab | ParentTab;
 
@@ -162,7 +162,7 @@ const TEEN_TABS: TabDefinition[] = [
   { id: 'me', label: 'Me', icon: '\u25cc', title: '', accent: '#c4b5fd' },
   { id: 'oracle', label: 'Se\u2019kret', icon: '\u25c7', title: 'Se\u2019kret Discovery', accent: '#8b7bb8' },
   {
-    id: 'raylene', label: 'Raylene', icon: '\u2726', eyebrow: 'Raylene pulled up',
+    id: 'suhana', label: 'Suhana', icon: '\u2726', eyebrow: 'Suhana pulled up',
     title: 'You been a little too quiet. What happened?',
     subtitle: 'Warm, curious, and already paying attention.', accent: '#e9a8d2',
     prompts: [
@@ -174,7 +174,7 @@ const TEEN_TABS: TabDefinition[] = [
     placeholder: 'Tell it how it happened\u2026',
   },
   {
-    id: 'rylane', label: 'Rylane', icon: '\u2014', eyebrow: 'Rylane keeps it real',
+    id: 'sy', label: 'Sy', icon: '\u2014', eyebrow: 'Sy keeps it real',
     title: 'What\u2019s real right now?',
     subtitle: 'No cushion. No lecture.', accent: '#79aaf2',
     prompts: [
@@ -243,11 +243,11 @@ const PARENT_TABS: TabDefinition[] = [
 const TEEN_TAGS = ['heavy', 'mad', 'numb', 'confused', 'hopeful', 'okay'];
 const PARENT_TAGS = ['reactive', 'worried', 'hurt', 'stuck', 'open', 'steady'];
 
-const PERSONALITY_ORDER: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
+const PERSONALITY_ORDER: PersonalityId[] = ['suhana', 'sy', 'cloud', 'night', 'oracle'];
 
 function tabToStickerCharacter(tab: PagesTab): MiniAvatarCharacter {
-  if (tab === 'raylene') return 'raylene';
-  if (tab === 'rylane') return 'rylane';
+  if (tab === 'suhana') return 'suhana';
+  if (tab === 'sy') return 'sy';
   if (tab === 'cloud') return 'cloud';
   if (tab === 'night') return 'night';
   return null;
@@ -257,7 +257,7 @@ function normalizeSource(entry: JournalEntry): PagesTab {
   const source = entry.activeTab || entry.source;
   if (
     source === 'parentSekret' || source === 'bridge' || source === 'oracle' ||
-    source === 'raylene' || source === 'rylane' || source === 'cloud' || source === 'night'
+    source === 'suhana' || source === 'sy' || source === 'cloud' || source === 'night'
   ) {
     return source;
   }
@@ -279,7 +279,7 @@ interface SekretReplyBubbleProps {
 
 function SekretReplyBubble({ tab, reply, typing, accent }: SekretReplyBubbleProps) {
   const avatarKey = tabToAvatarKey(tab);
-  const voiceCharacter = avatarKey || (tab === 'bridge' ? 'rylane' : tab === 'parentSekret' ? 'raylene' : null);
+  const voiceCharacter = avatarKey || (tab === 'bridge' ? 'sy' : tab === 'parentSekret' ? 'suhana' : null);
   const [audioUri, setAudioUri] = useState('');
   const [loadingVoice, setLoadingVoice] = useState(false);
   if (!voiceCharacter) return null;
@@ -556,9 +556,9 @@ function PagesWorkspace({
 }: SharedPagesProps) {
   const tabs = side === 'teen' ? TEEN_TABS : PARENT_TABS;
   const sections = side === 'teen' ? TEEN_PAGES_SECTIONS : PARENT_PAGES_SECTIONS;
-  const isRylane = selectedSekret === 'rylane';
+  const isSy = selectedSekret === 'sy';
   const parentBg = parentRoomStyle === 'dad' ? '#0c1219' : '#17110e';
-  const charRootBg = side === 'parent' ? parentBg : (isRylane ? '#090c1b' : '#100b18');
+  const charRootBg = side === 'parent' ? parentBg : (isSy ? '#090c1b' : '#100b18');
   const moodTags = side === 'teen' ? TEEN_TAGS : PARENT_TAGS;
 
   // Floating companion — breath loop

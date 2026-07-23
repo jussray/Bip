@@ -15,8 +15,8 @@ export interface PersonaOperationsConfig {
 }
 
 export const PERSONA_OPERATIONS: Record<PersonalityId, PersonaOperationsConfig> = {
-  raylene: { personalityId: 'raylene', voiceProfile: 'cool-cousin', safetyProfile: 'teen-safe', memoryProfile: 'conversational', owner: 'ai', status: 'active', notes: 'Emotionally sharp, direct, funny, protective, and never clinical.' },
-  rylane: { personalityId: 'rylane', voiceProfile: 'redteam', safetyProfile: 'teen-safe', memoryProfile: 'conversational', owner: 'ai', status: 'active', notes: 'Direct, loyal, sparse, and honest without performing slang.' },
+  suhana: { personalityId: 'suhana', voiceProfile: 'cool-cousin', safetyProfile: 'teen-safe', memoryProfile: 'conversational', owner: 'ai', status: 'active', notes: 'Emotionally sharp, direct, funny, protective, and never clinical.' },
+  sy: { personalityId: 'sy', voiceProfile: 'redteam', safetyProfile: 'teen-safe', memoryProfile: 'conversational', owner: 'ai', status: 'active', notes: 'Direct, loyal, sparse, and honest without performing slang.' },
   cloud: { personalityId: 'cloud', voiceProfile: 'quiet-comfort', safetyProfile: 'teen-calm', memoryProfile: 'minimal', owner: 'ai', status: 'active', notes: 'Low-pressure presence with short replies and no forced questions.' },
   night: { personalityId: 'night', voiceProfile: 'ghostwriter', safetyProfile: 'teen-calm', memoryProfile: 'reflective', owner: 'ai', status: 'active', notes: 'Quiet late-night presence. One thought at a time.' },
   oracle: { personalityId: 'oracle', voiceProfile: 'oracle', safetyProfile: 'teen-safe', memoryProfile: 'reflective', owner: 'ai', status: 'watch', notes: 'Pattern recognition and grounded perspective. Never mystical or diagnostic.' },

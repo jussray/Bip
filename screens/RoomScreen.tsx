@@ -27,12 +27,12 @@ const DEBUG_HOTSPOTS = false;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-// Character type imported from constants/theme (raylene | rylane | cloud | night)
+// Character type imported from constants/theme (suhana | sy | cloud | night)
 type TimeOfDay  = 'morning' | 'day' | 'evening' | 'night';
 type Pose =
   // shared baseline
   | 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody'
-  // Raylene extended
+  // Suhana extended
   | 'confident' | 'playful' | 'sad' | 'mad' | 'surprised' | 'crouching'
   // Night extended
   | 'softsmile' | 'tired' | 'annoyed' | 'overwhelmed' | 'protective' | 'lonely'
@@ -156,8 +156,8 @@ const getPresenceLine = (character: Character, timeOfDay: TimeOfDay): string => 
   if (character === 'cloud') return 'Cloud is drifting nearby.';
   if (character === 'night') return timeOfDay === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
   if (timeOfDay === 'night') return 'Cloud is floating around.';
-  if (character === 'raylene') return 'Raylene is nearby.';
-  return 'Rylane is posted up.';
+  if (character === 'suhana') return 'Suhana is nearby.';
+  return 'Sy is posted up.';
 };
 
 const getRoomCopy = (character: Character, timeOfDay: TimeOfDay): string => {
@@ -225,8 +225,8 @@ const getPose = (
     return 'neutral';
   }
 
-  // ── Raylene: expanded 10-emotion palette ──────────────────────────────────
-  if (character === 'raylene') {
+  // ── Suhana: expanded 10-emotion palette ──────────────────────────────────
+  if (character === 'suhana') {
     if (m.includes('overwhelm') || m.includes('stress') || m.includes('anxious')) return 'crouching';
     if (m.includes('sad') || m.includes('cry') || m.includes('hurt'))         return 'sad';
     if (m.includes('angry') || m.includes('mad') || m.includes('frustrat'))   return 'mad';
@@ -240,8 +240,8 @@ const getPose = (
     return 'neutral';
   }
 
-  // ── Rylane: baseline palette (art not yet expanded) ───────────────────────
-  if (character === 'rylane') {
+  // ── Sy: baseline palette (art not yet expanded) ───────────────────────
+  if (character === 'sy') {
     if (m.includes('happy') || m.includes('good') || m.includes('great'))     return 'happy';
     if (m.includes('think') || m.includes('confus') || m.includes('wonder') ||
         m.includes('sad') || m.includes('angry') || m.includes('tired'))      return 'thinking';
@@ -285,54 +285,54 @@ const getGreeting = (character: Character, mood: Mood, timeOfDay: TimeOfDay, isV
   }
 
   if (isVisible && timeOfDay === 'night') {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Come sit. We not doing the most tonight.'
       : 'Aight, you here now. Let\u2019s keep it real.';
   }
 
   if (moodKey.includes('sad')) {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Come sit. I already know it\u2019s been a lot.'
       : 'Nah, I can tell something hit you. Talk to me.';
   }
 
   if (moodKey.includes('angry')) {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Hold on. Who got you like this?'
       : 'Okay, who irritated us today? \uD83D\uDE12';
   }
 
   if (moodKey.includes('tired')) {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'You look tired-tired. Sit down.'
       : 'You been running on fumes huh. Rest your head.';
   }
 
   if (moodKey.includes('happy')) {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Look at you. Something good happened.'
       : 'Aye, that face says good news.';
   }
 
   if (timeOfDay === 'morning') {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Morning. Tell me the real version of today.'
       : 'Morning check-in. What we on?';
   }
 
   if (timeOfDay === 'evening') {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Evening got truth in it. Start wherever.'
       : 'You made it to evening. That counts.';
   }
 
   if (timeOfDay === 'night') {
-    return character === 'raylene'
+    return character === 'suhana'
       ? 'Heavy night huh. You don\u2019t gotta carry it alone.'
       : 'Late night thoughts? Yeah, I figured.';
   }
 
-  return character === 'raylene'
+  return character === 'suhana'
     ? 'Come sit. Tell me the real version.'
     : 'Aight. What we bippin about?';
 };
@@ -352,7 +352,7 @@ export type LastActivitySummary = {
 
 interface RoomScreenProps {
   mood: Mood;
-  selectedSekret: string;           // sekret key: 'soft' | 'rylane' | 'cloud' | 'night'
+  selectedSekret: string;           // sekret key: 'soft' | 'sy' | 'cloud' | 'night'
   setSelectedSekret: (value: string) => void;
   setScreen: (screen: string) => void;
   t: Record<string, any>;
@@ -384,10 +384,10 @@ export function RoomScreen({
 
   // ─── Derived ────────────────────────────────────────────────────────────
   const character: Character =
-    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'sy' ? 'sy' :
     selectedSekret === 'cloud'  ? 'cloud'  :
     selectedSekret === 'night'  ? 'night'  :
-    'raylene';
+    'suhana';
 
   // Resolve the room once for the current visit. Always use the selected
   // character's room at the current time of day — rain vibe overrides time.
@@ -400,7 +400,7 @@ export function RoomScreen({
   const roomImage = getRoomScene(character, roomPhase);
 
   const hotspots = useMemo(() => {
-    if (character === 'rylane') return RYLANE_HOTSPOTS;
+    if (character === 'sy') return RYLANE_HOTSPOTS;
     if (character === 'cloud')  return CLOUD_HOTSPOTS;
     if (character === 'night')  return NIGHT_HOTSPOTS;
     return RAYLENE_HOTSPOTS;
@@ -536,7 +536,7 @@ export function RoomScreen({
 
   // sekretKey maps Character → the key used in selectedSekret / SEKRET_PROFILES
   const sekretKey = (char: Character): string =>
-    char === 'raylene' ? 'soft' : char;
+    char === 'suhana' ? 'soft' : char;
 
   const handleCharacterSwitch = (char: Character) => {
     setSelectedSekret(sekretKey(char));
@@ -549,10 +549,10 @@ export function RoomScreen({
   const getPresence = () => {
     if (sekretMode === 'cloud') return 'Cloud is drifting through.';
     if (sekretMode === 'night') return 'Night mode is on.';
-    if (isSekretVisible) return character === 'raylene' ? 'Raylene is nearby' : 'Rylane is posted up';
+    if (isSekretVisible) return character === 'suhana' ? 'Suhana is nearby' : 'Sy is posted up';
     if (isSekretVisible) {
-      if (character === 'raylene') return 'Raylene is nearby';
-      if (character === 'rylane')  return 'Rylane is posted up';
+      if (character === 'suhana') return 'Suhana is nearby';
+      if (character === 'sy')  return 'Sy is posted up';
       if (character === 'cloud')   return 'Cloud is floating';
       return 'Night is here with you';
     }
@@ -698,8 +698,8 @@ export function RoomScreen({
         <View style={styles.characterToggle}>
           {(
             [
-              { char: 'raylene' as Character, label: '💜 Raylene', active: styles.toggleBtnActivePink },
-              { char: 'rylane'  as Character, label: '⚡ Rylane',  active: styles.toggleBtnActivePurple },
+              { char: 'suhana' as Character, label: '💜 Suhana', active: styles.toggleBtnActivePink },
+              { char: 'sy'  as Character, label: '⚡ Sy',  active: styles.toggleBtnActivePurple },
               { char: 'cloud'   as Character, label: '☁️ Cloud',   active: styles.toggleBtnActiveCloud },
               { char: 'night'   as Character, label: '🌙 Night',   active: styles.toggleBtnActiveNight },
             ] as const
@@ -764,8 +764,8 @@ export function RoomScreen({
           accessibilityLabel={isSekretVisible ? "Hide Se\u2019kret" : "Call Se\u2019kret"}
         >
           <Text style={styles.greetingChar}>
-            {character === 'raylene' ? '💜 Raylene' :
-             character === 'rylane'  ? '⚡ Rylane'  :
+            {character === 'suhana' ? '💜 Suhana' :
+             character === 'sy'  ? '⚡ Sy'  :
              character === 'cloud'   ? "☁️ Cloud Se'kret" :
                                        "🌙 Night Se'kret"}
           </Text>
@@ -790,14 +790,14 @@ export function RoomScreen({
             activeOpacity={0.82}
             accessibilityRole="button"
             accessibilityLabel={`Talk to ${
-              character === 'raylene' ? 'Raylene' :
-              character === 'rylane'  ? 'Rylane'  :
+              character === 'suhana' ? 'Suhana' :
+              character === 'sy'  ? 'Sy'  :
               character === 'cloud'   ? 'Cloud'   : 'Night'
             }`}
           >
             <Text style={styles.sekretCtaText}>
-              {character === 'raylene' ? '💜 Talk to Raylene' :
-               character === 'rylane'  ? '\u26a1 Talk to Rylane'  :
+              {character === 'suhana' ? '💜 Talk to Suhana' :
+               character === 'sy'  ? '\u26a1 Talk to Sy'  :
                character === 'cloud'   ? '\u2601\ufe0f Talk to Cloud'   :
                                          '🌙 Talk to Night'} →
             </Text>

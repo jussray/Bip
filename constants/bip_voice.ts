@@ -3,7 +3,7 @@
 //
 // CHANGES FROM ORIGINAL:
 //   + sekretKeyToCharacter() — maps index.tsx selectedSekret lowercase keys
-//     ('soft', 'rylane', 'cloud', 'night') to CharacterKey ('RAYLENE', etc.)
+//     ('suhana', 'sy', 'cloud', 'night') to CharacterKey ('SUHANA', etc.)
 //     This fixes the silent mismatch where getVoicePack(selectedSekret) always
 //     fell through to the default RAYLENE branch, ignoring character selection.
 //
@@ -779,13 +779,14 @@ export function getVoicePack(character: CharacterKey): VoiceBucket {
 //
 // index.tsx stores selectedSekret as lowercase strings:
 //   'soft'   → maps to RAYLENE (Raylene is the 'soft big sis' profile)
-//   'rylane' → maps to RYLANE
+//   'sy' → maps to SY
 //   'cloud'  → maps to CLOUD
 //   'night'  → maps to NIGHT
 //
 export function sekretKeyToCharacter(selectedSekret: string): CharacterKey {
   switch (selectedSekret) {
-    case 'rylane': return 'RYLANE';
+    case 'sy': return 'SY';
+    case 'rylane': return 'SY'; // legacy alias
     case 'cloud':  return 'CLOUD';
     case 'night':  return 'NIGHT';
     case 'soft':

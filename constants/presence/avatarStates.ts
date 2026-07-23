@@ -54,7 +54,7 @@ export type PresenceState =
  *             headphones, "late night thoughts / protect his peace"). Only
  *             reference-sheet art exists today; per-state art is pending.
  */
-export type PresenceCharacter = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type PresenceCharacter = 'suhana' | 'sy' | 'cloud' | 'night';
 
 /** Display name for each character (for badges, accessibility labels). */
 export const CHARACTER_NAME: Record<PresenceCharacter, string> = {
@@ -78,11 +78,11 @@ export function isAwaitingArt(_character: PresenceCharacter): boolean {
 /** Adapter from the existing selectedSekret string to PresenceCharacter. */
 export function toPresenceCharacter(selectedSekret: string): PresenceCharacter {
   switch (selectedSekret) {
-    case 'rylane': return 'rylane';
+    case 'sy': return 'sy';
     case 'cloud':  return 'cloud';
     case 'night':  return 'night';
     case 'soft':
-    default:       return 'raylene';
+    default:       return 'suhana';
   }
 }
 

@@ -16,16 +16,16 @@ import { THEME_PACKS } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
 import { routeForSide } from '@/shared/routes';
 
-const ROOM_VIBES = ['rylane', 'cloud', 'night', 'rain', 'sunset'] as const;
+const ROOM_VIBES = ['sy', 'cloud', 'night', 'rain', 'sunset'] as const;
 
 type RoomVibe = (typeof ROOM_VIBES)[number];
 
-function resolveRoomVibe(theme: string): RoomVibe | 'raylene' {
-  return ROOM_VIBES.includes(theme as RoomVibe) ? (theme as RoomVibe) : 'raylene';
+function resolveRoomVibe(theme: string): RoomVibe | 'suhana' {
+  return ROOM_VIBES.includes(theme as RoomVibe) ? (theme as RoomVibe) : 'suhana';
 }
 
 function resolveCompanionKey(selectedSekret: string | null | undefined): string {
-  return selectedSekret === 'soft' || !selectedSekret ? 'raylene' : selectedSekret;
+  return selectedSekret === 'soft' || !selectedSekret ? 'suhana' : selectedSekret;
 }
 
 export default function TeenRoomRoute() {

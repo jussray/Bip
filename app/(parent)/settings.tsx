@@ -28,8 +28,8 @@ import { AccountDeletionControls } from '@/components/settings/AccountDeletionCo
 const THEME_ORDER = Object.keys(THEME_PACKS) as (keyof typeof THEME_PACKS)[];
 
 const COMPANIONS = [
-  { key: 'soft', name: 'Raylene', emoji: '💜', title: 'Big Sis', tagline: 'warm · protective · emotionally real' },
-  { key: 'rylane', name: 'Rylane', emoji: '⚡', title: 'Loyal Bro', tagline: 'street smart · down to earth · no cap' },
+  { key: 'soft', name: 'Suhana', emoji: '💜', title: 'Big Sis', tagline: 'warm · protective · emotionally real' },
+  { key: 'sy', name: 'Sy', emoji: '⚡', title: 'Loyal Bro', tagline: 'street smart · down to earth · no cap' },
 ];
 
 const SEKRET_MODES = [

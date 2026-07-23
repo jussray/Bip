@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type TeenPrivateProfile = {
   name: string;
   gender: 'girl' | 'boy' | 'other' | null;
-  choice: 'raylene' | 'rylane' | 'cloud' | 'night';
+  choice: 'suhana' | 'sy' | 'cloud' | 'night';
 };
 
 export type TeenCircleIdentity = {
@@ -12,22 +12,22 @@ export type TeenCircleIdentity = {
 
 export async function loadTeenPrivateProfile(): Promise<TeenPrivateProfile> {
   const raw = await AsyncStorage.getItem('teen_profile_data');
-  if (!raw) return { name: '', gender: null, choice: 'raylene' };
+  if (!raw) return { name: '', gender: null, choice: 'suhana' };
   try {
     const data = JSON.parse(raw) as Partial<TeenPrivateProfile>;
     const gender = data.gender === 'girl' || data.gender === 'boy' || data.gender === 'other'
       ? data.gender
       : null;
-    const choice = data.choice === 'rylane' || data.choice === 'cloud' || data.choice === 'night'
+    const choice = data.choice === 'sy' || data.choice === 'cloud' || data.choice === 'night'
       ? data.choice
-      : 'raylene';
+      : 'suhana';
     return {
       name: typeof data.name === 'string' ? data.name : '',
       gender,
       choice,
     };
   } catch {
-    return { name: '', gender: null, choice: 'raylene' };
+    return { name: '', gender: null, choice: 'suhana' };
   }
 }
 

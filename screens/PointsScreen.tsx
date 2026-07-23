@@ -7,8 +7,8 @@
 // journal, voice, calm, comfort, circle, crew check-ins). No backend needed.
 //
 // Voice:
-//   • Rylane: "the reps stack. respect."
-//   • Raylene: "soft points 💜 you earned every single one."
+//   • Sy: "the reps stack. respect."
+//   • Suhana: "soft points 💜 you earned every single one."
 //
 // Tiers are emotional, not competitive:
 //   • cloud just forming   (0–49)
@@ -55,7 +55,7 @@ const PT_STREAK   = 3;
 interface Props {
   t: Record<string, any>;
   mood: string;
-  selectedSekret: 'rylane' | 'raylene' | string;
+  selectedSekret: 'sy' | 'suhana' | string;
   moodHistory: MoodEntry[];
   journalEntries: JournalEntry[];
   voiceNotes: VoiceNote[];
@@ -73,13 +73,13 @@ export function PointsScreen({
   comfortSessions, crewCheckIns, streakDays,
   setScreen, BottomNav,
 }: Props) {
-  const isRylane = selectedSekret === 'rylane';
+  const isSy = selectedSekret === 'sy';
   const tod = timeOfDay();
-  const bg = getRoomBg(isRylane ? 'rylane' : 'raylene', tod);
+  const bg = getRoomBg(isSy ? 'sy' : 'suhana', tod);
   const glow = glowFor(mood);
-  const accent = isRylane ? '#4DA3FF' : '#e879a3';
-  const softAccent = isRylane ? '#b6dcff' : '#f5b8cf';
-  const cardBg = isRylane ? 'rgba(10,20,40,0.82)' : 'rgba(40,15,40,0.82)';
+  const accent = isSy ? '#4DA3FF' : '#e879a3';
+  const softAccent = isSy ? '#b6dcff' : '#f5b8cf';
+  const cardBg = isSy ? 'rgba(10,20,40,0.82)' : 'rgba(40,15,40,0.82)';
 
   const ledger = usePoints();
 
@@ -169,8 +169,8 @@ export function PointsScreen({
       <ScrollView contentContainerStyle={st.scroll} showsVerticalScrollIndicator={false}>
         <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
           <Text style={[st.eyebrow, { color: softAccent }]}>Bip Points</Text>
-          <Text style={st.title}>{isRylane ? 'the reps stack.' : 'soft points 💜'}</Text>
-          <Text style={st.sub}>{isRylane ? 'quiet proof you kept showing up.' : 'you earned these by coming back to yourself.'}</Text>
+          <Text style={st.title}>{isSy ? 'the reps stack.' : 'soft points 💜'}</Text>
+          <Text style={st.sub}>{isSy ? 'quiet proof you kept showing up.' : 'you earned these by coming back to yourself.'}</Text>
         </Animated.View>
 
         <Animated.View style={[st.hero, { borderColor: glow, backgroundColor: cardBg, transform: [{ scale: breathScale }] }]}>

@@ -3,15 +3,15 @@
  * Helpers for resolving the active Se'kret character from a theme/sekret key.
  */
 
-export type ActiveCharacter = 'raylene' | 'rylane' | 'cloud' | 'night' | null;
+export type ActiveCharacter = 'suhana' | 'sy' | 'cloud' | 'night' | null;
 
 /**
  * Maps any stored sekret/theme key to a typed character identity.
- * 'soft' is the legacy AsyncStorage key for Raylene — kept for backwards compat.
+ * 'soft' is the legacy AsyncStorage key for Suhana — kept for backwards compat.
  */
 export function getActiveCharacter(themeKey: string): ActiveCharacter {
-  if (themeKey === 'raylene' || themeKey === 'soft') return 'raylene';
-  if (themeKey === 'rylane') return 'rylane';
+  if (themeKey === 'suhana' || themeKey === 'soft') return 'suhana';
+  if (themeKey === 'sy') return 'sy';
   if (themeKey === 'cloud') return 'cloud';
   if (themeKey === 'night') return 'night';
   return null;

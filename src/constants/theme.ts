@@ -1,7 +1,7 @@
 /**
  * Canonical theme and compatibility image map.
  *
- * Human companion assets are identity-locked to the approved Raylene, Rylane,
+ * Human companion assets are identity-locked to the approved Suhana, Sy,
  * and Night masters. State-specific keys remain stable so existing screens do
  * not need to change while matching emotional poses are regenerated.
  */
@@ -36,8 +36,8 @@ export const SEKRET_PROFILES: Record<string, SekretProfile> = {
     vibe: 'Warm, expressive, protective, and real.',
     greeting: "Hey love. I'm here. Tell me what's on your mind.",
   },
-  rylane: {
-    name: 'Rylane', emoji: '⚡', title: 'Loyal Bro',
+  sy: {
+    name: 'Sy', emoji: '⚡', title: 'Loyal Bro',
     vibe: 'Quiet loyalty. Keeps it real. Never talks down.',
     greeting: "Aight, I'm here. What's been heavy?",
   },
@@ -85,12 +85,12 @@ export const HEAVY_WORDS = [
   'cry', 'sad', 'scared', 'anxious', 'panic',
 ];
 
-export type VibeKey = 'soft' | 'rylane' | 'cloud' | 'night';
+export type VibeKey = 'soft' | 'sy' | 'cloud' | 'night';
 export type Character = VibeKey;
 export type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
 export type RoomPhase = 'day' | 'evening' | 'night';
 
-const VALID_VIBE_KEYS: VibeKey[] = ['soft', 'rylane', 'cloud', 'night'];
+const VALID_VIBE_KEYS: VibeKey[] = ['soft', 'sy', 'cloud', 'night'];
 
 export function normalizeVibeKey(raw: string | undefined): VibeKey {
   return VALID_VIBE_KEYS.includes(raw as VibeKey) ? (raw as VibeKey) : 'soft';
@@ -102,7 +102,7 @@ export function normalizeCharacterKey(raw: string | undefined): Character {
 
 export const ROOM_BACKGROUNDS: Record<VibeKey, string> = {
   soft: '#4A1028',
-  rylane: '#243447',
+  sy: '#243447',
   cloud: '#151A40',
   night: '#3A2503',
 };

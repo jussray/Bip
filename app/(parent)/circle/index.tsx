@@ -19,7 +19,7 @@ export default function ParentCircleRoute() {
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
   const [tab, setTab] = useState<Tab>('circle');
 
-  const companion = parentRoomStyle === 'dad' ? 'rylane' : 'raylene';
+  const companion = parentRoomStyle === 'dad' ? 'sy' : 'suhana';
   const goTo = (screen: string) => router.push(routeForSide('parent', screen) as any);
 
   return (

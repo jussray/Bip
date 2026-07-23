@@ -25,13 +25,13 @@ import Animated, {
 
 const { width: W } = Dimensions.get('window');
 
-type Sekret = 'raylene' | 'rylane' | 'cloud' | 'night' | 'dad' | 'mom';
+type Sekret = 'suhana' | 'sy' | 'cloud' | 'night' | 'dad' | 'mom';
 
 const PLACEHOLDER = require('../../../../assets/images/archive/bg-raylene-room-day.png');
 
 const SPRITE_IDLE: Record<Sekret, ReturnType<typeof require>> = {
-  raylene: require('../../../../assets/images/companions/raylene/raylene-master.png'),
-  rylane: require('../../../../assets/images/companions/rylane/rylane-master.png'),
+  suhana: require('../../../../assets/images/companions/raylene/raylene-master.png'),
+  sy: require('../../../../assets/images/companions/rylane/rylane-master.png'),
   cloud: require('../../../../assets/images/cloud.png'),
   night: require('../../../../assets/images/companions/night/night-master.png'),
   dad: PLACEHOLDER,

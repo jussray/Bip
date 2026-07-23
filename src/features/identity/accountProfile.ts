@@ -6,7 +6,7 @@ export const ACCOUNT_PROFILE_CACHE_KEY = 'bip_account_profile_cache';
 export type AccountSide = 'teen' | 'parent';
 export type AgeRange = '13-15' | '16-17' | '18-19';
 export type ProfileGender = 'girl' | 'boy' | 'other';
-export type Companion = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type Companion = 'suhana' | 'sy' | 'cloud' | 'night';
 export type ParentRoomStyle = 'mom' | 'dad';
 export type ParentFocus = 'support' | 'listen' | 'repair' | 'learn';
 
@@ -57,8 +57,8 @@ type CircleProfileRow = {
 };
 
 const COMPANION_EMOJI: Record<Companion, string> = {
-  raylene: '💜',
-  rylane: '💙',
+  suhana: '💜',
+  sy: '💙',
   cloud: '☁️',
   night: '🌙',
 };
@@ -76,7 +76,7 @@ function isGender(value: unknown): value is ProfileGender {
 }
 
 function isCompanion(value: unknown): value is Companion {
-  return value === 'raylene' || value === 'rylane' || value === 'cloud' || value === 'night';
+  return value === 'suhana' || value === 'sy' || value === 'cloud' || value === 'night';
 }
 
 function isParentRoomStyle(value: unknown): value is ParentRoomStyle {
@@ -94,7 +94,7 @@ function defaultCircleNickname(side: AccountSide): string {
 function defaultCircleAvatar(input: SaveAccountProfileInput): string {
   if (input.circleAvatarEmoji?.trim()) return input.circleAvatarEmoji.trim();
   if (input.accountSide === 'parent') return input.parentRoomStyle === 'dad' ? '👑' : '💜';
-  return COMPANION_EMOJI[input.selectedCompanion ?? 'raylene'];
+  return COMPANION_EMOJI[input.selectedCompanion ?? 'suhana'];
 }
 
 function sanitizeCircleNickname(value: string | undefined, side: AccountSide): string {

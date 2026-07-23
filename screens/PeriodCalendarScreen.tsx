@@ -1,5 +1,5 @@
 // screens/PeriodCalendarScreen.tsx
-// Se'kret Bip — Cycle Calendar (cycle layer of Womanhood, Raylene-led)
+// Se'kret Bip — Cycle Calendar (cycle layer of Womanhood, Suhana-led)
 // Private. On-device only. No data leaves the phone.
 //
 // Phase 1 polish: time-of-day backdrop (raylene window), mood glow,
@@ -69,8 +69,8 @@ export function PeriodCalendarScreen({
   const [lastPeriodStart, setLastPeriodStart] = useState<string | null>(null);
 
   const time = useMemo(() => getTimeOfDay(), []);
-  // Raylene-led screen, but backdrop respects the chosen companion's room
-  const charKey: 'raylene' | 'rylane' = selectedSekret === 'rylane' ? 'rylane' : 'raylene';
+  // Suhana-led screen, but backdrop respects the chosen companion's room
+  const charKey: 'suhana' | 'sy' = selectedSekret === 'sy' ? 'sy' : 'suhana';
   const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
   const glow = useMemo(() => moodGlow(mood), [mood]);
 

@@ -140,8 +140,8 @@ export const STICKER_MAP: StickerMap = {
  * Falls back to neutral if anything is missing.
  *
  * Usage:
- *   <Image source={getStickerForState('raylene', 'thinking')} />
- *   <Image source={getStickerForState('rylane', 'voiceDay', { timeOfDay: 'day' })} />
+ *   <Image source={getStickerForState('suhana', 'thinking')} />
+ *   <Image source={getStickerForState('sy', 'voiceDay', { timeOfDay: 'day' })} />
  */
 export function getStickerForState(
   character: SekretPersonality,

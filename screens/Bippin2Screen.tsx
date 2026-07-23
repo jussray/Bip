@@ -147,13 +147,13 @@ const getTimeOfDay = (): TimeOfDay => {
   return 'night';
 };
 
-const greetingByTime = (time: TimeOfDay, charName: string, isRylane: boolean) => {
+const greetingByTime = (time: TimeOfDay, charName: string, isSy: boolean) => {
   const verb =
     time === 'morning' ? 'Good morning' :
     time === 'day'     ? 'Hey' :
     time === 'evening' ? 'Good evening' :
                          'Good night';
-  if (isRylane) {
+  if (isSy) {
     return {
       title: `${verb}, ${charName} 🪱`,
       body:
@@ -198,14 +198,14 @@ export function Bippin2Screen({
     notesSent: 0, tipsRead: 0, daysActive: 0, bridgeUsed: false,
   });
 
-  const isRylane      = selectedSekret === 'rylane';
+  const isSy      = selectedSekret === 'sy';
   const isNight       = selectedSekret === 'night';
-  const isManhoodChar = isRylane || isNight;
-  const charName      = isRylane ? 'Rylane' : isNight ? 'Night' : 'Raylene';
-  const charEmoji     = isRylane ? '🪱' : isNight ? '🌙' : '🫶';
-  const artKey        = isNight ? 'night' : (isRylane ? 'rylane' : 'raylene');
+  const isManhoodChar = isSy || isNight;
+  const charName      = isSy ? 'Sy' : isNight ? 'Night' : 'Suhana';
+  const charEmoji     = isSy ? '🪱' : isNight ? '🌙' : '🫶';
+  const artKey        = isNight ? 'night' : (isSy ? 'sy' : 'suhana');
   const art           = ART[artKey];
-  const charKey: Character = isNight ? 'night' : (isRylane ? 'rylane' : 'raylene');
+  const charKey: Character = isNight ? 'night' : (isSy ? 'sy' : 'suhana');
 
   const time = useMemo(() => getTimeOfDay(), []);
   const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
@@ -563,7 +563,7 @@ export function Bippin2Screen({
               <Animated.View style={[styles.streakCard, { backgroundColor: 'rgba(20,12,40,0.78)', borderColor: glow + '88' }, { transform: [{ scale: breathScale }] }]}>
                 <Text style={[styles.streakLabel, { color: idAccent }]}>{streakLabel}</Text>
                 <View style={styles.streakRow}>
-                  <Text style={styles.streakFlame}>{isManhoodChar ? (isRylane ? '🪱' : '🌙') : '🫀'}</Text>
+                  <Text style={styles.streakFlame}>{isManhoodChar ? (isSy ? '🪱' : '🌙') : '🫀'}</Text>
                   <Text style={[styles.streakDays, { color: '#fff' }]}>{streakDays} days</Text>
                 </View>
                 <Text style={styles.streakSub}>{streakSub}</Text>
@@ -574,7 +574,7 @@ export function Bippin2Screen({
 
           <View style={styles.cloudRow}>
             <Animated.Text style={[styles.cloudMascot, { transform: [{ scale: breathScale }] }]}>
-              {isRylane ? '☁️' : '☁️'}
+              {isSy ? '☁️' : '☁️'}
             </Animated.Text>
             <View style={[styles.cloudBubble, { backgroundColor: 'rgba(30,18,55,0.85)', borderColor: glow + '66' }]}>
               <Text style={styles.cloudText}>{cloudSpeech}</Text>
@@ -829,7 +829,7 @@ export function Bippin2Screen({
 
           <View style={scrapCard()}>
             <Text style={[styles.cardLabel, { color: idAccent }]}>
-              BIP FLOW {isManhoodChar ? (isRylane ? '🪱' : '🌙') : '🫶'}
+              BIP FLOW {isManhoodChar ? (isSy ? '🪱' : '🌙') : '🫶'}
             </Text>
             <ScrollView
               horizontal

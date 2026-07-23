@@ -28,8 +28,8 @@ import type { OracleProfile } from '../services/oracleDiscovery';
 
 // ── Profiles (keep in sync with index.tsx SEKRET_PROFILES) ─────────────────
 const SEKRET_PROFILES: Record<string, any> = {
-  soft:   { name: 'Raylene',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
-  rylane: { name: 'Rylane',         emoji: '⚡', title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.',   greeting: "Aight, what\'s actually on your mind? No fake 'I'm fine'." },
+  soft:   { name: 'Suhana',        emoji: '🌸', title: 'Favorite Older Sister', vibe: 'Funny, warm, protective, and impossible to fool.', greeting: 'friend... 😭 okay, what happened?' },
+  rylane: { name: 'Sy',         emoji: '⚡', title: 'Loyal Bro',            vibe: 'Quiet loyalty. Keeps it real. Never talks down.',   greeting: "Aight, what\'s actually on your mind? No fake 'I'm fine'." },
   cloud:  { name: "Cloud Se'kret",  emoji: '☁️', title: 'Quiet Observer',      vibe: 'Notices. Waits. Rarely pushes.',                    greeting: 'something feels different today.' },
   night:  { name: "Night Se'kret",  emoji: '🌙', title: 'The Light Left On',   vibe: 'Presence. Not conversation.',                       greeting: 'rough night?' },
 };
@@ -62,7 +62,7 @@ interface CharacterCopy {
 
 function copyFor(profileKey: string, profileName: string): CharacterCopy {
   switch (profileKey) {
-    case 'rylane':
+    case 'sy':
       return {
         heroTitle:   'Drop a Bip 🤝',
         heroSub:     "Say it how it happened. I'll keep it real.",

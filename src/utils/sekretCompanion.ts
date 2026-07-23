@@ -187,7 +187,7 @@ export async function saveCompanionState(state: CompanionState) {
     const existing = await loadSekretMemory();
     const memory: SekretMemory = {
       ...existing,
-      selectedPersonality: state.personality?.toLowerCase().includes('rylane') ? 'rylane'
+      selectedPersonality: state.personality?.toLowerCase().includes('rylane') ? 'sy'
         : state.personality?.toLowerCase().includes('cloud') ? 'cloud'
         : state.personality?.toLowerCase().includes('night') ? 'night' : 'soft',
       streaks: {

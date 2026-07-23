@@ -94,7 +94,7 @@ export interface AppState {
 export function makeInitialState(): AppState {
   return {
     screen: 'splash',
-    theme: 'raylene',
+    theme: 'suhana',
     selectedSekret: 'soft',
     sekretMode: 'soft',
     userSide: 'teen',

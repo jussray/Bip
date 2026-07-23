@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 
 type Identity = 'girl' | 'boy' | 'other';
-type Companion = 'raylene' | 'rylane' | 'cloud' | 'night';
+type Companion = 'suhana' | 'sy' | 'cloud' | 'night';
 
 const IDENTITIES: { id: Identity; label: string }[] = [
   { id: 'girl', label: 'Girl' },
@@ -14,19 +14,19 @@ const IDENTITIES: { id: Identity; label: string }[] = [
 ];
 
 const COMPANIONS: { id: Companion; label: string }[] = [
-  { id: 'raylene', label: 'Raylene' },
-  { id: 'rylane', label: 'Rylane' },
+  { id: 'suhana', label: 'Suhana' },
+  { id: 'sy', label: 'Sy' },
   { id: 'cloud', label: 'Cloud' },
   { id: 'night', label: 'Night' },
 ];
 
 export default function IdentityScreen() {
   const [identity, setIdentity] = useState<Identity | null>(null);
-  const [choice, setChoice] = useState<Companion>('raylene');
+  const [choice, setChoice] = useState<Companion>('suhana');
 
   function chooseIdentity(next: Identity) {
     setIdentity(next);
-    setChoice(next === 'boy' ? 'rylane' : 'raylene');
+    setChoice(next === 'boy' ? 'sy' : 'suhana');
   }
 
   async function handleNext() {

@@ -5,14 +5,14 @@
  * Layer sits above overlays, below UI chrome.
  *
  * Usage inside RoomBackground children:
- *   <CharacterLayer sekret="raylene" mood={currentMood} />
+ *   <CharacterLayer sekret="suhana" mood={currentMood} />
  */
 
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SekretSprite, type SekretMood } from './SekretSprite';
 
-type Sekret = 'raylene' | 'rylane' | 'cloud' | 'night' | 'dad' | 'mom';
+type Sekret = 'suhana' | 'sy' | 'cloud' | 'night' | 'dad' | 'mom';
 
 interface CharacterLayerProps {
   sekret: Sekret;

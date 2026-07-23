@@ -30,7 +30,7 @@ function isGender(value: string | null): value is ProfileGender {
 }
 
 function isCompanion(value: string): value is Companion {
-  return value === 'raylene' || value === 'rylane' || value === 'cloud' || value === 'night';
+  return value === 'suhana' || value === 'sy' || value === 'cloud' || value === 'night';
 }
 
 export default function ReflectionScreen() {
@@ -79,7 +79,7 @@ export default function ReflectionScreen() {
       ]);
       const age = values[0][1] ?? '';
       const gender = values[1][1];
-      const choice = values[2][1] ?? 'raylene';
+      const choice = values[2][1] ?? 'suhana';
 
       if (!name.trim() || !isAgeRange(age) || !isGender(gender) || !isCompanion(choice)) {
         throw new Error('Your onboarding profile is incomplete. Go back and finish each step.');

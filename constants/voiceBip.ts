@@ -29,8 +29,8 @@ export interface AvatarVoiceProfile {
 
 /** Oracle is intentionally absent: it reasons privately and never speaks. */
 export const AVATAR_VOICE_PROFILES: Record<AvatarVoiceProfileKey, AvatarVoiceProfile> = {
-  raylene: { key: 'raylene', voiceId: VOICE_BIP_VOICE_IDS.rayleneVoiceId, enabled: true,  provider: 'piper' },
-  rylane:  { key: 'rylane',  voiceId: VOICE_BIP_VOICE_IDS.rylaneVoiceId,  enabled: true,  provider: 'piper' },
+  suhana: { key: 'suhana', voiceId: VOICE_BIP_VOICE_IDS.rayleneVoiceId, enabled: true,  provider: 'piper' },
+  sy:      { key: 'sy',      voiceId: VOICE_BIP_VOICE_IDS.rylaneVoiceId,  enabled: true,  provider: 'piper' },
   cloud:   { key: 'cloud',   voiceId: VOICE_BIP_VOICE_IDS.cloudVoiceId,   enabled: true,  provider: 'piper' },
   night:   { key: 'night',   voiceId: VOICE_BIP_VOICE_IDS.nightVoiceId,   enabled: true,  provider: 'piper' },
   sekret:  { key: 'sekret',  voiceId: VOICE_BIP_VOICE_IDS.sekretVoiceId,  enabled: true,  provider: 'piper' },
@@ -65,12 +65,12 @@ export interface VoiceBipAvatarDefinition {
 
 export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefinition> = {
   raylene: {
-    key: 'raylene',
+    key: 'suhana',
     displayName: 'Raylene',
     emoji: '\uD83D\uDC9C',
     role: 'The one who sees it',
     energy: 'Come here. Talk to me.',
-    personality: 'raylene',
+    personality: 'suhana',
     voiceId: VOICE_BIP_VOICE_IDS.rayleneVoiceId,
     accent: '#e9a8d2',
     heroArt: { day: IMAGES.rayleneVoiceDay, night: IMAGES.rayleneVoiceNight },
@@ -94,12 +94,12 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
     archiveTitle: 'Voice Bips with Raylene',
   },
   rylane: {
-    key: 'rylane',
+    key: 'sy',
     displayName: 'Rylane',
     emoji: '\u26A1',
     role: 'Big brother / older cousin',
     energy: 'Aight. Say it straight.',
-    personality: 'rylane',
+    personality: 'sy',
     voiceId: VOICE_BIP_VOICE_IDS.rylaneVoiceId,
     accent: '#8f9cff',
     heroArt: { day: IMAGES.rylaneVoiceDay, night: IMAGES.rylaneVoiceNight },
@@ -181,16 +181,16 @@ export const VOICE_BIP_AVATARS: Record<VoiceBipAvatarKey, VoiceBipAvatarDefiniti
 };
 
 export const VOICE_BIP_AVATAR_KEYS = Object.freeze([
-  'raylene',
-  'rylane',
+  'suhana',
+  'sy',
   'cloud',
   'night',
 ] as const);
 
 export function normalizeVoiceBipAvatar(value?: string): VoiceBipAvatarKey {
   const normalized = (value || '').toLowerCase();
-  if (normalized === 'rylane') return 'rylane';
+  if (normalized === 'rylane' || normalized === 'sy') return 'sy';
   if (normalized === 'cloud') return 'cloud';
   if (normalized === 'night') return 'night';
-  return 'raylene';
+  return 'suhana';
 }

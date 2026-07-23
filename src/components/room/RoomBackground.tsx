@@ -9,8 +9,8 @@
  *   5. children (hotspot layer, character layer, UI chrome)
  *
  * Usage:
- *   <RoomBackground sekret="raylene" variant="evening">
- *     <CharacterLayer sekret="raylene" mood={mood} />
+ *   <RoomBackground sekret="suhana" variant="evening">
+ *     <CharacterLayer sekret="suhana" mood={mood} />
  *     <RoomHotspotLayer hotspots={myHotspots} />
  *     <YourChatUI />
  *   </RoomBackground>
@@ -31,11 +31,11 @@ import type { TimeOfDay } from './overlays';
 
 // ─── Asset map ────────────────────────────────────────────────────────────────
 
-type Sekret = 'raylene' | 'rylane' | 'cloud' | 'night' | 'dad' | 'mom';
+type Sekret = 'suhana' | 'sy' | 'cloud' | 'night' | 'dad' | 'mom';
 type Variant = TimeOfDay;
 
 const ROOM_ASSETS: Record<Sekret, Partial<Record<Variant, ReturnType<typeof require>>>> = {
-  raylene: {
+  suhana: {
     day:          require('../../../assets/images/archive/bg-raylene-room-day.png'),
     midday:       require('../../../assets/images/archive/bg-raylene-room-midday.png'),
     afternoon:    require('../../../assets/images/archive/bg-raylene-room-afternoon.png'),
@@ -44,7 +44,7 @@ const ROOM_ASSETS: Record<Sekret, Partial<Record<Variant, ReturnType<typeof requ
     'deep-night': require('../../../assets/images/archive/bg-raylene-room-deep-night.png'),
     rain:         require('../../../assets/images/archive/bg-raylene-room-rain.png'),
   },
-  rylane: {
+  sy: {
     day:          require('../../../assets/images/archive/bg-rylane-room-day.png'),
     midday:       require('../../../assets/images/archive/bg-rylane-room-midday.png'),
     afternoon:    require('../../../assets/images/archive/bg-rylane-room-afternoon.png'),

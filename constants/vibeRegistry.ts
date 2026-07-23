@@ -23,8 +23,8 @@ import type { ImageSourcePropType } from 'react-native';
 // Never add a 7th without updating VIBE_DISPLAY_ORDER and all consumers.
 
 export const VIBE_KEYS = [
-  'raylene',
-  'rylane',
+  'suhana',
+  'sy',
   'cloud',
   'night',
   'rain',
@@ -35,8 +35,8 @@ export type VibeKey = typeof VIBE_KEYS[number];
 
 /** Ordered as they appear in Vibe Lab UI */
 export const VIBE_DISPLAY_ORDER: VibeKey[] = [
-  'raylene',
-  'rylane',
+  'suhana',
+  'sy',
   'cloud',
   'night',
   'rain',
@@ -49,12 +49,12 @@ export const VIBE_DISPLAY_ORDER: VibeKey[] = [
 
 const LEGACY_ALIAS: Record<string, VibeKey> = {
   // theme.ts era aliases
-  flower:  'raylene',
-  galaxy:  'rylane',
+  flower:  'suhana',
+  galaxy:  'sy',
   neon:    'night',
   // numeric/positional IDs used in early builds
-  '0':     'raylene',
-  '1':     'rylane',
+  '0':     'suhana',
+  '1':     'sy',
   '2':     'cloud',
   '3':     'night',
   '4':     'rain',
@@ -63,12 +63,12 @@ const LEGACY_ALIAS: Record<string, VibeKey> = {
 
 /**
  * Resolve any string — canonical key, legacy alias, or unknown — to a
- * guaranteed VibeKey. Falls back to 'raylene' (the default daytime preset).
+ * guaranteed VibeKey. Falls back to 'suhana' (the default daytime preset).
  */
 export function resolveVibeKey(key?: string | null): VibeKey {
-  if (!key) return 'raylene';
+  if (!key) return 'suhana';
   if ((VIBE_KEYS as readonly string[]).includes(key)) return key as VibeKey;
-  return LEGACY_ALIAS[key] ?? 'raylene';
+  return LEGACY_ALIAS[key] ?? 'suhana';
 }
 
 // ── 3. PRESET IDENTITY ────────────────────────────────────────────────────
@@ -86,28 +86,28 @@ export type VibePresetIdentity = {
   name: string;
   emoji: string;
   tagline: string;
-  character?: 'raylene' | 'rylane' | 'cloud' | 'night'; // undefined = atmosphere-only
+  character?: 'suhana' | 'sy' | 'cloud' | 'night'; // undefined = atmosphere-only
   atmosphereType: VibeAtmosphereType;
   /** True for Rain and Sunset: atmosphere presets, not companion identities */
   isAtmosphereOnly: boolean;
 };
 
 export const PRESET_IDENTITY: Record<VibeKey, VibePresetIdentity> = {
-  raylene: {
-    key: 'raylene',
-    name: "Raylene's Room",
+  suhana: {
+    key: 'suhana',
+    name: "Suhana's Room",
     emoji: '🌸',
     tagline: 'scrapbook soft · fairy lights · yours',
-    character: 'raylene',
+    character: 'suhana',
     atmosphereType: 'companion-day',
     isAtmosphereOnly: false,
   },
-  rylane: {
-    key: 'rylane',
-    name: 'Rylane After Dark',
+  sy: {
+    key: 'sy',
+    name: 'Sy After Dark',
     emoji: '🌃',
     tagline: 'city chill · cool-lit · keeps it real',
-    character: 'rylane',
+    character: 'sy',
     atmosphereType: 'companion-day',
     isAtmosphereOnly: false,
   },

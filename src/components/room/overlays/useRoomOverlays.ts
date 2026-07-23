@@ -8,7 +8,7 @@
 
 import type { TimeOfDay } from './AmbientLight';
 
-export type Sekret = 'raylene' | 'rylane' | 'cloud' | 'night' | 'dad' | 'mom';
+export type Sekret = 'suhana' | 'sy' | 'cloud' | 'night' | 'dad' | 'mom';
 
 export interface RoomOverlayConfig {
   ambientVariant: TimeOfDay;
@@ -18,8 +18,8 @@ export interface RoomOverlayConfig {
 }
 
 const SEKRET_CURTAIN_COLORS: Record<Sekret, string> = {
-  raylene: 'rgba(255,220,200,0.30)',
-  rylane:  'rgba(200,220,255,0.30)',
+  suhana: 'rgba(255,220,200,0.30)',
+  sy:  'rgba(200,220,255,0.30)',
   cloud:   'rgba(240,240,255,0.28)',
   night:   'rgba(180,160,220,0.28)',
   dad:     'rgba(200,210,200,0.30)',

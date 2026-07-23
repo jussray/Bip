@@ -1,5 +1,5 @@
 // screens/ManhoodScreen.tsx
-// Se'kret Bip — Bippin 2: Manhood Dashboard (Rylane-led)
+// Se'kret Bip — Bippin 2: Manhood Dashboard (Sy-led)
 // Layout matches the Manhood mockup:
 //   Hero → Greeting + Streak → Quick Access Grid →
 //   Energy + Sleep cards → Quick Tip → Mood Check-In →
@@ -80,7 +80,7 @@ export function ManhoodScreen({
   const glow = useMemo(() => glowFor(mood), [mood]);
   const greeting = timeGreeting();
   const time = useMemo(() => timeOfDay(), []);
-  const bgSource = useMemo(() => getRoomBg('rylane', time), [time]);
+  const bgSource = useMemo(() => getRoomBg('sy', time), [time]);
   const [checkedMood, setCheckedMood] = useState<string | null>(null);
   const [tipIdx] = useState(() => Math.floor(Math.random() * TIPS.length));
 
@@ -114,7 +114,7 @@ export function ManhoodScreen({
         {/* ── GREETING + STREAK ── */}
         <View style={styles.row}>
           <View style={[cardHalf, { flex: 1.6 }]}>
-            <Text style={styles.greetLabel}>{greeting}, Rylane ⚡</Text>
+            <Text style={styles.greetLabel}>{greeting}, Sy ⚡</Text>
             <Text style={styles.greetBody}>
               Keep building the best{"\n"}version of you.{"\n"}You've got this.
             </Text>

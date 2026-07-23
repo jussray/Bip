@@ -5,7 +5,7 @@
 //   ✓ sendCompanionMessage   — sole AI call for companion replies
 //                              (wraps fetchSekretBrainReply, emits companion_message event,
 //                               runs safety flag detection)
-//   ✓ Raylene / Rylane / Cloud / Night companion tabs
+//   ✓ Suhana / Sy / Cloud / Night companion tabs
 //   ✓ mood tags via AppContext.mood
 //   ✓ companion-specific prompts with rotation
 //   ✓ image / video attachment
@@ -79,8 +79,8 @@ const ACTIVE_BRIDGE_SHARE_STATUSES = new Set(['pending', 'processing', 'ready', 
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
 const COMPANIONS = [
-  { id: 'raylene', name: 'Raylene', accent: '#f08bc5', vibe: 'warm + protective' },
-  { id: 'rylane',  name: 'Rylane',  accent: '#76a7ff', vibe: 'direct + loyal'    },
+  { id: 'suhana', name: 'Suhana', accent: '#f08bc5', vibe: 'warm + protective' },
+  { id: 'sy',  name: 'Sy',  accent: '#76a7ff', vibe: 'direct + loyal'    },
   { id: 'cloud',   name: 'Cloud',   accent: '#8ed9e7', vibe: 'soft + no pressure' },
   { id: 'night',   name: 'Night',   accent: '#9a8ee8', vibe: 'quiet + steady'    },
   { id: 'me',      name: 'Me',      accent: '#b8a9c9', vibe: 'private pages'     },
@@ -90,10 +90,10 @@ const COMPANIONS = [
 type CompanionId = (typeof COMPANIONS)[number]['id'];
 
 // Companions that map directly to SekretCharacterId (excludes 'me' and 'oracle')
-type AiCompanionId = 'raylene' | 'rylane' | 'cloud' | 'night';
+type AiCompanionId = 'suhana' | 'sy' | 'cloud' | 'night';
 
 function isAiTab(id: CompanionId): id is AiCompanionId {
-  return id === 'raylene' || id === 'rylane' || id === 'cloud' || id === 'night';
+  return id === 'suhana' || id === 'sy' || id === 'cloud' || id === 'night';
 }
 
 // ─── Companion prompts (protected: must rotate per companion) ─────────────────
@@ -138,7 +138,7 @@ const PROMPTS: Record<string, string[]> = {
 
 // ─── Avatar image helpers (unchanged from original) ───────────────────────────
 function normalizeAvatar(value?: string): SekretCharacterId {
-  return value === 'rylane' || value === 'cloud' || value === 'night' ? value : 'raylene';
+  return value === 'sy' || value === 'cloud' || value === 'night' ? value : 'suhana';
 }
 
 function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
@@ -196,7 +196,7 @@ export default function TeenPagesRoute() {
 
   // ── Companion state ────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<CompanionId>(() =>
-    (COMPANIONS.some(c => c.id === selectedSekret) ? selectedSekret : 'raylene') as CompanionId,
+    (COMPANIONS.some(c => c.id === selectedSekret) ? selectedSekret : 'suhana') as CompanionId,
   );
   const [avatarState, setAvatarState] = useState<SekretAvatarState>('neutral');
   const { total: totalPoints } = usePoints();
@@ -350,7 +350,7 @@ export default function TeenPagesRoute() {
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
 
     updateSekretMemory({
-      selectedSekret: isAiTab(activeTab) ? activeTab : 'raylene',
+      selectedSekret: isAiTab(activeTab) ? activeTab : 'suhana',
       mood,
       journalEntries: [{ id: String(id), text, mood, date: new Date().toISOString() }],
     }).catch(() => null);

@@ -22,7 +22,7 @@ export interface RoomMemory {
 }
 
 export const DEFAULT_ROOM_MEMORY: RoomMemory = {
-  character: 'raylene',
+  character: 'suhana',
   lastVisit: '',
   lastHotspot: '',
   lastSummon: '',

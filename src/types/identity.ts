@@ -4,7 +4,7 @@ export type AccountRole = 'teen' | 'parent' | 'helper';
 export type AgeBand = 'under13' | '13-15' | '16-17' | '18plus';
 export type CircleScope = 'public' | 'friends' | 'crew' | 'parent';
 export type VisibilityRule = 'anonymous' | 'trusted' | 'linked_parent' | 'private';
-export type CompanionPreference = 'raylene' | 'rylane' | 'cloud' | 'night' | 'oracle' | null;
+export type CompanionPreference = 'suhana' | 'sy' | 'cloud' | 'night' | 'oracle' | null;
 export type ThemePreference = string;
 
 export interface AvatarConfig {

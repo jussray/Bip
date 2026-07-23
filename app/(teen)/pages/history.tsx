@@ -20,8 +20,8 @@ import { useAppContext } from '@/context/AppContext';
 import type { JournalEntry } from '@/types';
 
 const COMPANION_META: Record<string, { label: string; accent: string; emoji: string }> = {
-  raylene: { label: 'Raylene', accent: '#f08bc5', emoji: '💜' },
-  rylane:  { label: 'Rylane',  accent: '#76a7ff', emoji: '⚡' },
+  raylene: { label: 'Suhana', accent: '#f08bc5', emoji: '💜' },
+  rylane:  { label: 'Sy',  accent: '#76a7ff', emoji: '⚡' },
   cloud:   { label: 'Cloud',   accent: '#8ed9e7', emoji: '☁️' },
   night:   { label: 'Night',   accent: '#9a8ee8', emoji: '🌙' },
   me:      { label: 'Me',      accent: '#b8a9c9', emoji: '🪞' },
@@ -29,7 +29,7 @@ const COMPANION_META: Record<string, { label: string; accent: string; emoji: str
 };
 
 const COMPANION_FILTER_ALL = 'all';
-const COMPANION_FILTERS = [COMPANION_FILTER_ALL, 'raylene', 'rylane', 'cloud', 'night', 'me', 'oracle'] as const;
+const COMPANION_FILTERS = [COMPANION_FILTER_ALL, 'suhana', 'sy', 'cloud', 'night', 'me', 'oracle'] as const;
 type CompanionFilterKey = (typeof COMPANION_FILTERS)[number];
 
 type TypeTab = 'all' | 'journal' | 'voice' | 'scrap' | 'video';

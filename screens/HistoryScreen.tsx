@@ -75,7 +75,7 @@ function withinDays<T extends { date?: string }>(items: T[], n: number): number 
 interface Props {
   t: Record<string, any>;
   mood: string;
-  selectedSekret: 'rylane' | 'raylene' | string;
+  selectedSekret: 'sy' | 'suhana' | string;
   moodHistory: MoodEntry[];
   journalEntries: JournalEntry[];
   voiceNotes: VoiceNote[];
@@ -90,13 +90,13 @@ export function HistoryScreen({
   moodHistory, journalEntries, voiceNotes, circlePosts,
   streakDays, setScreen, BottomNav,
 }: Props) {
-  const isRylane = selectedSekret === 'rylane';
+  const isSy = selectedSekret === 'sy';
   const tod = timeOfDay();
-  const bg  = getRoomBg(isRylane ? 'rylane' : 'raylene', tod);
+  const bg  = getRoomBg(isSy ? 'sy' : 'suhana', tod);
   const glow = glowFor(mood);
-  const accent = isRylane ? '#4DA3FF' : '#e879a3';
-  const softAccent = isRylane ? '#b6dcff' : '#f5b8cf';
-  const cardBg = isRylane ? 'rgba(10,20,40,0.82)' : 'rgba(40,15,40,0.82)';
+  const accent = isSy ? '#4DA3FF' : '#e879a3';
+  const softAccent = isSy ? '#b6dcff' : '#f5b8cf';
+  const cardBg = isSy ? 'rgba(10,20,40,0.82)' : 'rgba(40,15,40,0.82)';
 
   // ── Aggregates ─────────────────────────────────────────────────────────────
   const moodCounts = useMemo(() => {
@@ -177,33 +177,33 @@ export function HistoryScreen({
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
 
   // ── Copy ───────────────────────────────────────────────────────────────────
-  const heroTitle = isRylane
+  const heroTitle = isSy
     ? 'respect — look at the reps'
     : "look how far you've come \u{1F49C}";
 
-  const heroSub = isRylane
+  const heroSub = isSy
     ? 'lock in continues. quietly. day by day.'
     : "soft proof that you're actually doing better.";
 
   const streakCopy =
     streakDays <= 0
-      ? (isRylane ? "fresh start. let's build it." : "today counts. that's a start \u{1F49C}")
+      ? (isSy ? "fresh start. let's build it." : "today counts. that's a start \u{1F49C}")
       : streakDays === 1
-        ? (isRylane ? 'day 1. respect.' : 'day 1. proud of you already \u{1F49C}')
-        : (isRylane
+        ? (isSy ? 'day 1. respect.' : 'day 1. proud of you already \u{1F49C}')
+        : (isSy
             ? `${streakDays} days in. legend.`
             : `${streakDays} days in. look at you \u{1F49C}`);
 
   const moodTop = moodBars[0]?.mood;
   const moodLine = moodTop
-    ? (isRylane
+    ? (isSy
         ? `most logged in the last 2 weeks: ${moodTop}. noted.`
         : `most logged in the last 2 weeks: ${moodTop}. that's real info \u{1F49C}`)
-    : (isRylane
+    : (isSy
         ? "no mood logs yet. drop one when you're ready."
         : "no mood logs yet. tap one when you're ready.");
 
-  const stickyAffirmation = isRylane
+  const stickyAffirmation = isSy
     ? '“the reps are quiet. the change is loud.”'
     : '"you\'re actually doing better. it\'s ok to notice."';
 
@@ -226,7 +226,7 @@ export function HistoryScreen({
             ]}
           >
             <Text style={[styles.pillText, { color: softAccent }]}>
-              {isRylane ? '\u{1F9CD} rylane is here' : '☁\uFE0F raylene is here'}
+              {isSy ? '\u{1F9CD} rylane is here' : '☁\uFE0F raylene is here'}
             </Text>
           </Animated.View>
 
@@ -243,7 +243,7 @@ export function HistoryScreen({
           <Text style={styles.cardLine}>{streakCopy}</Text>
           <View style={styles.divider} />
           <Text style={styles.cardSub}>
-            {isRylane
+            {isSy
               ? "streak = days you opened the room. that's it. small reps, real result."
               : 'streak = days you opened the room. soft and small. it counts \u{1F49C}'}
           </Text>
@@ -256,7 +256,7 @@ export function HistoryScreen({
 
           {moodBars.length === 0 ? (
             <Text style={styles.empty}>
-              {isRylane ? 'nothing logged. log one and come back.' : 'nothing here yet. log a mood and come back \u{1F49C}'}
+              {isSy ? 'nothing logged. log one and come back.' : 'nothing here yet. log a mood and come back \u{1F49C}'}
             </Text>
           ) : (
             <View style={{ marginTop: 14, gap: 10 }}>
@@ -288,7 +288,7 @@ export function HistoryScreen({
             <Stat label="mood logs" value={counts7.moods} accent={accent} />
           </View>
           <Text style={styles.cardSub}>
-            {isRylane
+            {isSy
               ? "the reps don't need to be huge. they need to be yours."
               : 'small steps stack \u{1F49C} look at all that softness.'}
           </Text>
@@ -304,7 +304,7 @@ export function HistoryScreen({
             <Stat label="30d circle" value={counts30.circle} accent={accent} />
           </View>
           <Text style={styles.cardSub}>
-            {isRylane
+            {isSy
               ? "numbers are not the point. they're proof the point is working."
               : "these aren't scores. they're soft proof you showed up \u{1F49C}"}
           </Text>
@@ -314,7 +314,7 @@ export function HistoryScreen({
             onPress={() => setScreen('home')}
           >
             <Text style={styles.ctaText}>
-              {isRylane ? 'back to the room →' : 'back to the room \u{1F49C}'}
+              {isSy ? 'back to the room →' : 'back to the room \u{1F49C}'}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -323,7 +323,7 @@ export function HistoryScreen({
         <Animated.View style={[styles.sticky, enter(noteAnim)]}>
           <Text style={styles.stickyText}>{stickyAffirmation}</Text>
           <Text style={styles.stickySig}>
-            {isRylane ? '— rylane' : '— raylene'}
+            {isSy ? '— rylane' : '— raylene'}
           </Text>
         </Animated.View>
 

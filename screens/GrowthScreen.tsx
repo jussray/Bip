@@ -1,5 +1,5 @@
 // screens/GrowthScreen.tsx
-// Se'kret Bip — Growth (Rylane-led life skills hub)
+// Se'kret Bip — Growth (Sy-led life skills hub)
 //
 // Phase 2 build: separates pure "life skills" Growth from Bippin2 (which stays
 // as the Womanhood/Manhood content layer). Same voice and polish patterns as
@@ -170,9 +170,9 @@ export function GrowthScreen({
   t, mood, selectedSekret, setScreen, BottomNav, onMilestone, streakDays = 0,
 }: GrowthScreenProps) {
 
-  const isRylane = selectedSekret === 'rylane';
-  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
-  const charName = isRylane ? 'Rylane' : 'Raylene';
+  const isSy = selectedSekret === 'sy';
+  const charKey: 'suhana' | 'sy' = isSy ? 'sy' : 'suhana';
+  const charName = isSy ? 'Sy' : 'Suhana';
 
   const time     = useMemo(() => timeOfDay(), []);
   const bgSource = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
@@ -243,15 +243,15 @@ export function GrowthScreen({
     onMilestone?.();
   };
 
-  const heroTitle = isRylane ? 'Growth 🪱' : 'Growth 🌱';
-  const heroSub   = isRylane
+  const heroTitle = isSy ? 'Growth 🪱' : 'Growth 🌱';
+  const heroSub   = isSy
     ? 'real life skills. small reps. keep building.'
     : "real life skills. soft pace. you're doing it.";
-  const cloudLine = isRylane
+  const cloudLine = isSy
     ? "pick one. don't overthink it. lock in."
     : 'pick what feels light today. nothing is required 💜';
-  const streakLabel = isRylane ? 'reps streak' : 'showing up streak';
-  const streakNote  = isRylane ? 'respect, fr.' : 'proud of you 💜';
+  const streakLabel = isSy ? 'reps streak' : 'showing up streak';
+  const streakNote  = isSy ? 'respect, fr.' : 'proud of you 💜';
 
   return (
     <ImageBackground source={bgSource} style={styles.root} resizeMode="cover">
@@ -283,7 +283,7 @@ export function GrowthScreen({
               opacity: breathOpacity, transform: [{ scale: breathScale }] },
           ]}>
             <Text style={styles.companionText}>
-              {isRylane ? '⚡' : '💜'}  {charName} is here, no pressure
+              {isSy ? '⚡' : '💜'}  {charName} is here, no pressure
             </Text>
           </Animated.View>
 
@@ -307,7 +307,7 @@ export function GrowthScreen({
           ]}>
             <Text style={[styles.streakLabel, { color: glow }]}>{streakLabel}</Text>
             <View style={styles.streakRow}>
-              <Text style={styles.streakFlame}>{isRylane ? '🪱' : '🫀'}</Text>
+              <Text style={styles.streakFlame}>{isSy ? '🪱' : '🫀'}</Text>
               <Text style={styles.streakDays}>{streakDays} days</Text>
             </View>
             <Text style={styles.streakNote}>{streakNote}</Text>
@@ -347,7 +347,7 @@ export function GrowthScreen({
                       <View style={styles.trackBody}>
                         <Text style={styles.trackLesson}>{track.lesson}</Text>
                         <Text style={[styles.trackHook, { color: glow }]}>
-                          {isRylane ? track.rylaneHook : track.rayleneHook}
+                          {isSy ? track.rylaneHook : track.rayleneHook}
                         </Text>
 
                         <View style={styles.microList}>
@@ -365,7 +365,7 @@ export function GrowthScreen({
                           disabled={done}
                         >
                           <Text style={styles.doneBtnText}>
-                            {done ? 'logged ✓' : (isRylane ? 'bet, did one' : 'i tried one 💜')}
+                            {done ? 'logged ✓' : (isSy ? 'bet, did one' : 'i tried one 💜')}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -381,7 +381,7 @@ export function GrowthScreen({
         <Animated.View style={{ opacity: fadeNote, transform: [{ translateY: transNote }], alignItems: 'center' }}>
           <View style={styles.sticky}>
             <Text style={styles.stickyText}>
-              {isRylane
+              {isSy
                 ? 'one rep is more than zero. keep going.'
                 : 'soft consistency > harsh streaks. you got this 💜'}
             </Text>

@@ -5,7 +5,7 @@
 // masters. Until new matching poses are approved, all human companion states
 // intentionally resolve through their canonical alias file.
 
-export type CharacterKey = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type CharacterKey = 'suhana' | 'sy' | 'cloud' | 'night';
 export type AvatarLayer = 'tolan' | 'mascot';
 
 export type AvatarMood =
@@ -53,7 +53,7 @@ const HUMAN_POSES: AvatarPose[] = ['portrait', 'fullbody', 'standing'];
 
 export const AVATAR_REGISTRY: CharacterAvatar[] = [
   {
-    character: 'raylene',
+    character: 'suhana',
     layer: 'tolan',
     assetKey: 'rayleneNeutral',
     filename: 'raylene-neutral.png',
@@ -68,7 +68,7 @@ export const AVATAR_REGISTRY: CharacterAvatar[] = [
     referenceOnly: false,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     layer: 'tolan',
     assetKey: 'rylaneNeutral',
     filename: 'rylane-neutral.png',

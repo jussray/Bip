@@ -19,7 +19,7 @@ import type { SyncStatus } from '../components/SyncBadge';
 interface Props {
   t: Record<string, any>;
   mood: string;
-  selectedSekret: 'rylane' | 'raylene' | string;
+  selectedSekret: 'sy' | 'suhana' | string;
   crewMembers: CrewMember[];
   setCrewMembers: React.Dispatch<React.SetStateAction<CrewMember[]>>;
   crewCheckIns: CrewCheckIn[];
@@ -49,7 +49,7 @@ export function BipCrewScreen({
   const [showInvite, setShowInvite] = useState(false);
   const [privateLabel, setPrivateLabel] = useState('');
   const [commitment, setCommitment] = useState('');
-  const [emoji, setEmoji] = useState(selectedSekret === 'rylane' ? '⭐' : '💜');
+  const [emoji, setEmoji] = useState(selectedSekret === 'sy' ? '⭐' : '💜');
   const [cadence, setCadence] = useState<'daily' | 'weekly' | 'whenever'>('weekly');
   const [error, setError] = useState<string | null>(null);
 

@@ -43,11 +43,11 @@ export function MoreScreen({
   const founderPreview = isFounderPreviewEnabled();
   const allowSideSwitch = process.env.EXPO_PUBLIC_ENABLE_SIDE_SWITCH === 'true' || isDevTestFamilyEnabled();
   const character = (
-    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'sy' ? 'sy' :
     selectedSekret === 'cloud' ? 'cloud' :
     selectedSekret === 'night' ? 'night' :
-    'raylene'
-  ) as 'raylene' | 'rylane' | 'cloud' | 'night';
+    'suhana'
+  ) as 'suhana' | 'sy' | 'cloud' | 'night';
   const hour = new Date().getHours();
   const timeOfDay = hour >= 5 && hour < 11 ? 'morning' : hour >= 11 && hour < 17 ? 'day' : hour >= 17 && hour < 21 ? 'evening' : 'night';
   const roomBg = getRoomBg(character, timeOfDay as any);

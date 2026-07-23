@@ -25,7 +25,7 @@ export type FurnishCategory =
   | 'accessories'  // headphones, journal, boba, hoodie, backpack
   | 'plants';      // ivy, succulents, potted plants
 
-export type RoomOrigin = 'raylene' | 'rylane' | 'cloud' | 'night' | 'shared';
+export type RoomOrigin = 'suhana' | 'sy' | 'cloud' | 'night' | 'shared';
 
 export interface FurnishItem {
   id:          string;
@@ -64,8 +64,8 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   // ── FURNITURE ──────────────────────────────────────────────────────────────
 
   // Beds
-  item('bed-raylene',    'Purple Fuzzy Bed',   '🛏️',  'furniture', 'raylene', null, ['bed', 'cozy', 'purple', 'sleep']),
-  item('bed-rylane',     'Dark Galaxy Bed',    '🛏️',  'furniture', 'rylane',  null, ['bed', 'dark', 'galaxy', 'sleep']),
+  item('bed-raylene',    'Purple Fuzzy Bed',   '🛏️',  'furniture', 'suhana', null, ['bed', 'cozy', 'purple', 'sleep']),
+  item('bed-rylane',     'Dark Galaxy Bed',    '🛏️',  'furniture', 'sy',     null, ['bed', 'dark', 'galaxy', 'sleep']),
   item('bed-night',      'Starry Night Bed',   '🌙',  'furniture', 'night',   null, ['bed', 'starry', 'dark', 'sleep']),
 
   // Chairs / seating
@@ -73,17 +73,17 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   item('moon-chair',     'Moon Chair',         '🌙',  'furniture', 'night',   null, ['moon', 'chair', 'cozy', 'night']),
 
   // Desks
-  item('desk-raylene',   'Wooden Desk',        '🪵',  'furniture', 'raylene', null, ['desk', 'study', 'wood']),
-  item('desk-rylane',    'Dark Gaming Desk',   '🖥️',  'furniture', 'rylane',  null, ['desk', 'gaming', 'dark', 'city']),
+  item('desk-raylene',   'Wooden Desk',        '🪵',  'furniture', 'suhana', null, ['desk', 'study', 'wood']),
+  item('desk-rylane',    'Dark Gaming Desk',   '🖥️',  'furniture', 'sy',     null, ['desk', 'gaming', 'dark', 'city']),
   item('desk-night',     'Night Study Desk',   '📚',  'furniture', 'night',   null, ['desk', 'books', 'night']),
 
   // Bookshelf / shelving
-  item('shelf-raylene',  'Bookshelf',          '📚',  'furniture', 'raylene', null, ['shelf', 'books', 'raylene']),
-  item('shelf-rylane',   'Trophy Shelf',       '🏆',  'furniture', 'rylane',  null, ['shelf', 'trophies', 'rylane']),
+  item('shelf-raylene',  'Bookshelf',          '📚',  'furniture', 'suhana', null, ['shelf', 'books', 'suhana']),
+  item('shelf-rylane',   'Trophy Shelf',       '🏆',  'furniture', 'sy',     null, ['shelf', 'trophies', 'sy']),
 
   // Rugs
   item('rug-purple',     'Purple Plush Rug',   '🟣',  'furniture', 'shared',  null, ['rug', 'purple', 'cozy', 'floor']),
-  item('rug-sekret',     "SE'KRET Crown Rug",  '👑',  'furniture', 'rylane',  null, ['rug', 'sekret', 'crown', 'rylane']),
+  item('rug-sekret',     "SE'KRET Crown Rug",  '👑',  'furniture', 'sy',     null, ['rug', 'sekret', 'crown', 'sy']),
 
   // ── LIGHTING ───────────────────────────────────────────────────────────────
 
@@ -103,9 +103,9 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   item('fairy-lights',   'Fairy String Lights','✨',   'lighting', 'night',   null, ['lights', 'fairy', 'night', 'cozy']),
 
   // Cloud lamp plush (on Raylene's bed)
-  item('cloud-lamp',     'Cloud Lamp Plush',   '☁️',  'lighting', 'raylene',
+  item('cloud-lamp',     'Cloud Lamp Plush',   '☁️',  'lighting', 'suhana',
     IMAGES.cloudSleepy, // closest existing asset — sleepy cloud
-    ['cloud', 'lamp', 'plush', 'cozy', 'raylene']),
+    ['cloud', 'lamp', 'plush', 'cozy', 'suhana']),
 
   // ── DECOR ──────────────────────────────────────────────────────────────────
 
@@ -118,8 +118,8 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   item('sign-note-self', 'Note to Self Sign',  '📝',  'decor', 'cloud',       null, ['sign', 'note', 'self-love', 'cloud']),
 
   // Checklists
-  item('checklist-woman','Bippin2WomanHood',   '📋',  'decor', 'raylene',     null, ['checklist', 'bippin', 'goals', 'raylene']),
-  item('checklist-mann', 'Bippin2MannHood',    '📋',  'decor', 'rylane',      null, ['checklist', 'bippin', 'goals', 'rylane']),
+  item('checklist-woman','Bippin2WomanHood',   '📋',  'decor', 'suhana',     null, ['checklist', 'bippin', 'goals', 'suhana']),
+  item('checklist-mann', 'Bippin2MannHood',    '📋',  'decor', 'sy',         null, ['checklist', 'bippin', 'goals', 'sy']),
 
   // Photo wall
   item('photo-wall',     'Polaroid Photo Wall','📸',  'decor', 'shared',      null, ['photos', 'polaroid', 'memories', 'wall']),
@@ -129,9 +129,9 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   item('sticky-thoughts','Cloud Thoughts Wall','🌫️',  'decor', 'cloud',       null, ['sticky', 'cloud', 'thoughts', 'brain-dump']),
 
   // Character art / photo pins
-  item('char-art-raylene', 'Raylene Photo',   '💜',  'decor', 'raylene',
+  item('char-art-raylene', 'Suhana Photo',   '💜',  'decor', 'suhana',
     IMAGES.rayleneNeutral, ['photo', 'raylene', 'wall', 'art']),
-  item('char-art-rylane',  'Rylane Photo',    '⚡',  'decor', 'rylane',
+  item('char-art-rylane',  'Sy Photo',    '⚡',  'decor', 'sy',
     IMAGES.rylaneNeutral, ['photo', 'rylane', 'wall', 'art']),
   item('char-art-cloud',   'Cloud Photo',     '☁️',  'decor', 'cloud',
     IMAGES.cloudAvatarNeutral, ['photo', 'cloud', 'wall', 'art']),
@@ -139,13 +139,13 @@ export const FURNISH_CATALOG: FurnishItem[] = [
     IMAGES.nightNeutral, ['photo', 'night', 'wall', 'art']),
 
   // SE'KRET jersey
-  item('jersey-sekret',  "SE'KRET Jersey #23",'👕',  'decor', 'rylane',      null, ['jersey', 'sekret', '23', 'rylane', 'wall']),
+  item('jersey-sekret',  "SE'KRET Jersey #23",'👕',  'decor', 'sy',         null, ['jersey', 'sekret', '23', 'sy', 'wall']),
 
   // ── ACCESSORIES ────────────────────────────────────────────────────────────
 
   // Headphones
-  item('headphones-purple', 'Purple Headphones','🎧', 'accessories', 'raylene', null, ['headphones', 'music', 'purple']),
-  item('headphones-black',  'Black Headphones', '🎧', 'accessories', 'rylane',  null, ['headphones', 'music', 'dark']),
+  item('headphones-purple', 'Purple Headphones','🎧', 'accessories', 'suhana', null, ['headphones', 'music', 'purple']),
+  item('headphones-black',  'Black Headphones', '🎧', 'accessories', 'sy',     null, ['headphones', 'music', 'dark']),
 
   // Journal / notebook (open)
   item('journal-gratitude', 'Gratitude Journal','📓', 'accessories', 'shared',  null, ['journal', 'gratitude', 'writing', 'pages']),
@@ -156,8 +156,8 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   item('boba',             'Boba Iced Coffee',  '🧋', 'accessories', 'shared',  null, ['boba', 'iced coffee', 'drink', 'cozy']),
 
   // Hoodies
-  item('hoodie-raylene',   'Se\'kret Hoodie 💜','👕', 'accessories', 'raylene', null, ['hoodie', 'purple', 'sekret', 'raylene']),
-  item('hoodie-rylane',    'Keep Bippin Hoodie','👕', 'accessories', 'rylane',  null, ['hoodie', 'dark', 'keep-bippin', 'rylane']),
+  item('hoodie-raylene',   'Se\'kret Hoodie 💜','👕', 'accessories', 'suhana', null, ['hoodie', 'purple', 'sekret', 'suhana']),
+  item('hoodie-rylane',    'Keep Bippin Hoodie','👕', 'accessories', 'sy',     null, ['hoodie', 'dark', 'keep-bippin', 'sy']),
 
   // Backpack
   item('backpack-bip',     'Bip Backpack',      '🎒', 'accessories', 'shared',  null, ['backpack', 'bip', 'purple']),
@@ -169,7 +169,7 @@ export const FURNISH_CATALOG: FurnishItem[] = [
   item('record-player',    'Vinyl Record Player','🎵', 'accessories', 'cloud',  null, ['vinyl', 'record', 'music', 'cloud']),
 
   // Basketball
-  item('basketball',       'Basketball',         '🏀', 'accessories', 'rylane', null, ['basketball', 'sports', 'rylane']),
+  item('basketball',       'Basketball',         '🏀', 'accessories', 'sy',    null, ['basketball', 'sports', 'sy']),
 
   // Clock
   item('clock-11-27',      '11:27 Desk Clock',  '🕐', 'accessories', 'night',  null, ['clock', '1127', 'night', 'late']),

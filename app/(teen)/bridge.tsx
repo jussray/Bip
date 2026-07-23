@@ -9,7 +9,7 @@ import { THEME_PACKS, SEKRET_PROFILES } from '@/constants/theme';
 export default function BridgeRoute() {
   const { theme, mood, selectedSekret } = useAppContext();
   const t = THEME_PACKS[theme] ?? THEME_PACKS.neon;
-  const currentSekret = SEKRET_PROFILES[selectedSekret ?? 'rylane'] ?? SEKRET_PROFILES['rylane'] ?? {};
+  const currentSekret = SEKRET_PROFILES[selectedSekret ?? 'sy'] ?? SEKRET_PROFILES['sy'] ?? {};
 
   return (
     <View style={{ flex: 1 }}>

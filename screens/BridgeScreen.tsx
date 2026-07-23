@@ -101,9 +101,9 @@ export function BridgeScreen({
   const [bridgeStatus, setBridgeStatus] = useState<string | null>(null);
 
   const selectedType = SHARE_TYPES.find(s => s.id === shareType);
-  const isRylane = selectedSekret === 'rylane';
-  const charLabel = isRylane ? 'rylane' : 'raylene';
-  const charKey: 'raylene' | 'rylane' = isRylane ? 'rylane' : 'raylene';
+  const isSy = selectedSekret === 'sy';
+  const charLabel = isSy ? 'sy' : 'suhana';
+  const charKey: 'suhana' | 'sy' = isSy ? 'sy' : 'suhana';
 
   const time = useMemo(() => getTimeOfDay(), []);
   const bg   = useMemo(() => getRoomBg(charKey, time), [charKey, time]);
@@ -243,7 +243,7 @@ export function BridgeScreen({
     setConvMode(null);
   };
 
-  const heroCopy = isRylane
+  const heroCopy = isSy
     ? "share something with your person. no pressure. no big speech."
     : "share something with your person — softly. no full explanation needed.";
 
@@ -485,7 +485,7 @@ export function BridgeScreen({
         <Animated.View style={cardStyle(fade3)}>
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
-              {isRylane
+              {isSy
                 ? '"share what you can. they don\'t need the whole story."'
                 : '"soft is brave. you don\'t have to explain everything."'}
             </Text>

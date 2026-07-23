@@ -96,7 +96,7 @@ interface CloudThoughtsScreenProps {
   setScreen:     (screen: string) => void;
   BottomNav:     React.ReactNode;
   backTarget?:   string;         // Fix A4: defaults to 'home'
-  selectedSekret?: string;       // 'soft' | 'rylane' | 'cloud' | 'night'
+  selectedSekret?: string;       // 'soft' | 'sy' | 'cloud' | 'night'
   character?:    MiniStickerCharacter;
   privateProfile?: OracleProfile;
   profileSide?: OracleSide;
@@ -118,10 +118,10 @@ export function CloudThoughtsScreen({
 
   // Character-aware display name
   const characterName =
-    selectedSekret === 'rylane' ? 'Rylane' :
+    selectedSekret === 'sy' ? 'Sy' :
     selectedSekret === 'cloud'  ? 'Cloud'  :
     selectedSekret === 'night'  ? 'Night'  :
-    'Raylene';
+    'Suhana';
 
   const [input,      setInput]      = useState('');
   const [reply,      setReply]      = useState('');
@@ -136,11 +136,11 @@ export function CloudThoughtsScreen({
   // Mood glow + character-aware backdrop
   const glow     = glowFor(mood);
   const charKey = (
-    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'sy' ? 'sy' :
     selectedSekret === 'cloud'  ? 'cloud'  :
     selectedSekret === 'night'  ? 'night'  :
-    'raylene'
-  ) as 'raylene' | 'rylane' | 'cloud' | 'night';
+    'suhana'
+  ) as 'suhana' | 'sy' | 'cloud' | 'night';
   const bgSource = getRoomBg(charKey, timeOfDay());
 
   // Breath loop on hero cloud

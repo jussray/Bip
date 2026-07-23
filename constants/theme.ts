@@ -9,7 +9,7 @@ import type { ImageSourcePropType } from "react-native";
 // never crashes. Replace the fallback with the real asset later — the variable
 // name stays the same so no screen code has to change.
 
-// ── Raylene (updated look — new portraits match Night/Rylane art style) ───
+// ── Suhana (updated look — new portraits match Night/Sy art style) ───
 const rayleneNeutral    = require("../assets/images/raylene-neutral-new.png");
 const rayleneHappy      = require("../assets/images/raylene-happy-new.png");
 const rayleneWriting    = require("../assets/images/raylene-writing.png");       // old style kept
@@ -18,7 +18,7 @@ const rayleneFullbody   = require("../assets/images/raylene-confident-new.png");
 const rayleneHappyV3    = require("../assets/images/raylene-happy-v3.png");      // old style kept
 const rayleneNeutralV3  = rayleneNeutral;
 
-// ── Raylene (new emotions) ─────────────────────────────────────────────────
+// ── Suhana (new emotions) ─────────────────────────────────────────────────
 const rayleneConfident  = require("../assets/images/raylene-confident-new.png");
 const raylenePlayful    = require("../assets/images/raylene-playful-new.png");
 const rayleeneSad       = require("../assets/images/raylene-sad-new.png");
@@ -26,7 +26,7 @@ const rayleeneMad       = require("../assets/images/raylene-mad-new.png");
 const rayleeneSurprised = require("../assets/images/raylene-surprised-new.png");
 const rayleeneCrouching = require("../assets/images/raylene-crouching-new.png");
 
-// ── Raylene (pose variants; voice/window-rainy now have real assets) ──────
+// ── Suhana (pose variants; voice/window-rainy now have real assets) ──────
 const rayleneThinking    = require("../assets/images/raylene-thinking-new.png");
 const rayleneWindowRainy = require("../assets/images/raylene-window-rainy.png");
 const rayleneNightWindow = rayleneWindowRainy; // night window → rainy window (closer semantic)
@@ -41,7 +41,7 @@ const rayleneHappyV2 = rayleneHappy; // fallback → happy
 const rayleneWindowV2 = rayleneWindow; // fallback → window
 const rayleneWindowV3 = rayleneWindow; // fallback → window
 
-// ── Rylane (real assets) ───────────────────────────────────────────────────
+// ── Sy (real assets) ───────────────────────────────────────────────────────
 const rylaneNeutral = require("../assets/images/rylane-neutral.png");
 const rylaneHappy = require("../assets/images/rylane-happy.png");
 const rylaneWriting = require("../assets/images/rylane-writing.png");
@@ -49,7 +49,7 @@ const rylaneWindow = require("../assets/images/rylane-window.png");
 const rylaneFullbody = require("../assets/images/rylane-fullbody.png");
 const rylaneNeutralV2 = require("../assets/images/rylane-neutral-v2.png");
 
-// ── Rylane (thinking now has real asset; voice assets real) ──────────────
+// ── Sy (thinking now has real asset; voice assets real) ──────────────────
 const rylaneThinking   = require("../assets/images/rylane-thinking.png");
 const rylaneProfile    = rylaneFullbody; // fallback → fullbody portrait
 const rylaneVoiceDay   = require("../assets/images/rylane-voice-day.png");
@@ -88,7 +88,7 @@ const bgCloudRoomRain      = require("../assets/images/resized-bg/bg-cloud-room-
 // ── Night Room Backgrounds — REAL ASSETS ──────────────────────────────────
 // Night Room identity: crescent moon chair, galaxy bedding, "Voice Bip Corner"
 // light-box sign, city window with clock, sticky notes everywhere, 2AM energy.
-// NOT Raylene's room — completely different furniture, palette, and spirit.
+// NOT Suhana's room — completely different furniture, palette, and spirit.
 const bgNightRoomDay       = require("../assets/images/resized-bg/bg-night-room-day.jpg");
 const bgNightRoomMidday    = require("../assets/images/resized-bg/bg-night-room-midday.jpg");
 const bgNightRoomAfternoon = require("../assets/images/resized-bg/bg-night-room-afternoon.jpg");
@@ -152,7 +152,7 @@ const bgVoiceBip        = require('../assets/images/resized-bg/voice-bip-bg.jpg'
 // Design mockups live outside assets/ and are never loaded by the application.
 const bgCircle          = require('../assets/images/resized-bg/room-bg-dark.jpg');
 const bgWindow          = require('../assets/images/window.png');
-const bgCalmHero        = rayleneWindow; // hero on Calm = Raylene at the window
+const bgCalmHero        = rayleneWindow; // hero on Calm = Suhana at the window
 
 // ── Cloud / Mascot (all real) ──────────────────────────────────────────────
 const cloud             = require('../assets/images/cloud.png');
@@ -186,7 +186,7 @@ const sekretSplash       = sekretSplashTeen; // ← backward-compat alias
 
 
 export const IMAGES = {
-  // Raylene
+  // Suhana
   rayleneNeutral,
   rayleneNeutralV2,
   rayleneNeutralV3,
@@ -214,7 +214,7 @@ export const IMAGES = {
   raylene_Bippin2Night,
   raylene_PeriodCalendar,
 
-  // Rylane
+  // Sy
   rylaneNeutral,
   rylaneNeutralV2,
   rylaneHappy,
@@ -336,10 +336,10 @@ export const IMAGES = {
   sekretSplashParent,
 } as const;
 
-export type Character = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type Character = 'suhana' | 'sy' | 'cloud' | 'night';
 
 export const AVATARS: Record<string, Record<string, any>> = {
-  raylene: {
+  suhana: {
     neutral:   IMAGES.rayleneNeutral,
     happy:     IMAGES.rayleneHappy,
     thinking:  IMAGES.rayleneThinking,
@@ -411,7 +411,7 @@ export function getRoomPhase(
 }
 
 const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
-  raylene: {
+  suhana: {
     day:       IMAGES.bgRayleneRoomDay,
     midday:    IMAGES.bgRayleneRoomMidday,
     afternoon: IMAGES.bgRayleneRoomAfternoon,
@@ -420,7 +420,7 @@ const ROOM_SCENES: Record<Character, Record<RoomPhase, ImageSourcePropType>> = {
     deepNight: IMAGES.bgRayleneRoomDeepNight,
     rain:      IMAGES.bgRayleneRoomRain,
   },
-  rylane: {
+  sy: {
     day:       IMAGES.bgRylaneRoomDay,
     midday:    IMAGES.bgRylaneRoomMidday,
     afternoon: IMAGES.bgRylaneRoomAfternoon,
@@ -462,7 +462,7 @@ export function getRoomScene(
   phase: RoomPhase | string,
 ): ImageSourcePropType {
   const p = normalizeRoomPhase(phase as string);
-  return ROOM_SCENES[character]?.[p] ?? ROOM_SCENES.raylene.day;
+  return ROOM_SCENES[character]?.[p] ?? ROOM_SCENES.suhana.day;
 }
 
 export function getRoomBg(
@@ -491,7 +491,7 @@ export function getParentRoomBg(
   return IMAGES[`${prefix}${suffix}` as keyof typeof IMAGES];
 }
 
-export type VibeKey = "raylene" | "rylane" | "cloud" | "night" | "rain" | "sunset";
+export type VibeKey = "suhana" | "sy" | "cloud" | "night" | "rain" | "sunset";
 
 export type VibePack = {
   name: string;
@@ -509,8 +509,8 @@ export type VibePack = {
 // Vibes are room atmospheres, not app color skins. Each one is grounded in
 // an existing production room scene so previews and the live room stay honest.
 export const THEME_PACKS: Record<VibeKey, VibePack> = {
-  raylene: {
-    name: "Raylene's Room",
+  suhana: {
+    name: "Suhana's Room",
     emoji: "💜",
     feeling: "scrapbook soft",
     detail: "lavender · warm pink glow · fairy lights",
@@ -521,8 +521,8 @@ export const THEME_PACKS: Record<VibeKey, VibePack> = {
     room: bgRayleneRoomEvening,
     overlay: ["rgba(42,20,61,0.08)", "rgba(87,42,103,0.28)", "rgba(24,9,39,0.62)"],
   },
-  rylane: {
-    name: "Rylane After Dark",
+  sy: {
+    name: "Sy After Dark",
     emoji: "🌃",
     feeling: "city chill",
     detail: "indigo · midnight blue · window lights",
@@ -585,19 +585,19 @@ export const THEME_PACKS: Record<VibeKey, VibePack> = {
 
 export const normalizeVibeKey = (key?: string): VibeKey => {
   if (key && key in THEME_PACKS) return key as VibeKey;
-  if (key === "flower") return "raylene";
-  if (key === "galaxy") return "rylane";
+  if (key === "flower") return "suhana";
+  if (key === "galaxy") return "sy";
   if (key === "neon") return "night";
-  return "raylene";
+  return "suhana";
 };
 
 // Normalize a sekret selector key (e.g. 'soft' from legacy code) to a Character.
-// 'soft' is the internal key for Raylene; all others map 1-to-1.
+// 'soft' is the internal key for Suhana; all others map 1-to-1.
 export const normalizeCharacterKey = (key?: string): Character => {
-  if (key === "rylane") return "rylane";
+  if (key === "sy" || key === "rylane") return "sy";
   if (key === "cloud")  return "cloud";
   if (key === "night")  return "night";
-  return "raylene"; // 'soft', 'raylene', or any unknown → raylene
+  return "suhana"; // 'soft', 'suhana', 'raylene', or any unknown → suhana
 };
 
 export const SEKRET_PROFILES: Record<
@@ -611,14 +611,14 @@ export const SEKRET_PROFILES: Record<
   }
 > = {
   soft: {
-    name: "Raylene",
+    name: "Suhana",
     emoji: "🌸",
     title: "Favorite Older Sister",
     vibe: "Funny, warm, protective, and impossible to fool.",
     greeting: "friend... 😭 okay, what happened?",
   },
-  rylane: {
-    name: "Rylane",
+  sy: {
+    name: "Sy",
     emoji: "⚡",
     title: "Loyal Bro",
     vibe: "Quiet loyalty. Keeps it real. Never talks down.",

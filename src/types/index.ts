@@ -87,7 +87,7 @@ export interface SekretProfile {
 export interface TeenProfile {
   displayName: string;
   ageRange: '13-15' | '16-17' | '18-19' | '';
-  preferredSekret: 'raylene' | 'rylane' | 'cloud' | 'night' | '';
+  preferredSekret: 'suhana' | 'sy' | 'cloud' | 'night' | '';
   setupComplete: boolean;
 }
 
@@ -98,7 +98,7 @@ export interface ParentProfile {
   setupComplete: boolean;
 }
 
-export type PersonalityId = 'raylene' | 'rylane' | 'cloud' | 'night' | 'oracle' | 'parentCoach';
+export type PersonalityId = 'suhana' | 'sy' | 'cloud' | 'night' | 'oracle' | 'parentCoach';
 
 export type ScreenKey =
   | 'home'

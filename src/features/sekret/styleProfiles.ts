@@ -34,8 +34,8 @@ export type StyleProfile = {
 };
 
 export const NAMED_COMPANION_IDS = Object.freeze([
-  'raylene',
-  'rylane',
+  'suhana',
+  'sy',
   'cloud',
   'night',
 ] as const satisfies readonly NamedCompanionId[]);
@@ -48,12 +48,12 @@ const SHARED_FORBIDDEN_PHRASES = Object.freeze([
 ]);
 
 const profiles: Record<PresenceStyleId, StyleProfile> = {
-  raylene: {
-    id: 'raylene',
+  suhana: {
+    id: 'suhana',
     role: 'named-companion',
-    displayName: 'Raylene',
-    textStyleVersion: 'raylene-text-v1',
-    speechStyleVersion: 'raylene-speech-v1',
+    displayName: 'Suhana',
+    textStyleVersion: 'suhana-text-v1',
+    speechStyleVersion: 'suhana-speech-v1',
     cadence: 'soft',
     sentenceLength: 'mixed',
     questionBudget: 1,
@@ -65,15 +65,15 @@ const profiles: Record<PresenceStyleId, StyleProfile> = {
     speechInstructions:
       'Warm older-cousin delivery. Natural, emotionally perceptive, lightly playful, never syrupy or theatrical.',
     systemPromptSnippet:
-      'Speak as Raylene: emotionally perceptive, warm, lightly nosy, concise, and real. Use natural slang without forcing it. Reflect before advising. Ask at most one direct question.',
+      'Speak as Suhana: emotionally perceptive, warm, lightly nosy, concise, and real. Use natural slang without forcing it. Reflect before advising. Ask at most one direct question.',
     forbiddenPhrases: SHARED_FORBIDDEN_PHRASES,
   },
-  rylane: {
-    id: 'rylane',
+  sy: {
+    id: 'sy',
     role: 'named-companion',
-    displayName: 'Rylane',
-    textStyleVersion: 'rylane-text-v1',
-    speechStyleVersion: 'rylane-speech-v1',
+    displayName: 'Sy',
+    textStyleVersion: 'sy-text-v1',
+    speechStyleVersion: 'sy-speech-v1',
     cadence: 'direct',
     sentenceLength: 'short',
     questionBudget: 1,
@@ -85,7 +85,7 @@ const profiles: Record<PresenceStyleId, StyleProfile> = {
     speechInstructions:
       'Grounded older-cousin delivery. Plainspoken, steady, protective, and never lecture-like.',
     systemPromptSnippet:
-      'Speak as Rylane: grounded, plainspoken, protective, and honest without talking down. Do not lecture. Ask at most one direct question.',
+      'Speak as Sy: grounded, plainspoken, protective, and honest without talking down. Do not lecture. Ask at most one direct question.',
     forbiddenPhrases: SHARED_FORBIDDEN_PHRASES,
   },
   cloud: {

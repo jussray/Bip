@@ -7,7 +7,7 @@
 //   - Time-of-day-aware hero backdrop via getRoomBg(character, time)
 //   - Real LinearGradient hero overlay (replaces flat 45% black)
 //   - Cloud companion presence pill + breath loop above hero
-//   - selectedSekret prop wired through (optional, defaults to 'raylene')
+//   - selectedSekret prop wired through (optional, defaults to 'suhana')
 //   - Character-aware tips + greeting + 'says' label
 //   - Mood-tinted glow on breathing circle + 'says' card
 //   - Curly quotes throughout (real Unicode glyphs in JSX text)
@@ -133,7 +133,7 @@ interface CalmScreenProps {
 const PLAN_KEY = '@bip/calm_plan';
 
 export function CalmScreen({
-  t, mood, setMood, setScreen, BottomNav, selectedSekret = 'raylene', onOpenBreathe,
+  t, mood, setMood, setScreen, BottomNav, selectedSekret = 'suhana', onOpenBreathe,
 }: CalmScreenProps) {
 
   const breatheAnim = useRef(new Animated.Value(1)).current;
@@ -151,16 +151,16 @@ export function CalmScreen({
   // Character / time / mood ─────────────────────────────────────────────────
   const hour       = new Date().getHours();
   const timeOfDay  = getTimeOfDay(hour);
-  const isRylane   = selectedSekret === 'rylane';
-  const character  = isRylane ? 'rylane' : 'raylene';
-  const charLabel  = isRylane ? 'rylane' : 'raylene';
-  const charEmoji  = isRylane ? '⚡' : '💜';
+  const isSy   = selectedSekret === 'sy';
+  const character  = isSy ? 'sy' : 'suhana';
+  const charLabel  = isSy ? 'sy' : 'suhana';
+  const charEmoji  = isSy ? '⚡' : '💜';
   const heroArt    = getRoomBg(character, timeOfDay);
   const moodKey    = mood?.toLowerCase?.() ?? mood;
   const moodGlow   = MOOD_GLOW[moodKey] ?? MOOD_GLOW[mood] ?? MOOD_GLOW.Neutral;
 
   // Greeting variant
-  const greetCopy = isRylane
+  const greetCopy = isSy
     ? { title: 'Take a slow breath. 💪', sub: 'you held it together today. respect.' }
     : { title: 'Take a deep breath. 💜', sub: 'you made it through today. that matters.' };
 

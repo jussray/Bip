@@ -9,7 +9,7 @@
 export const VISIBLE_AI_NAME = "Se'kret" as const;
 export const INTERNAL_REASONING_NAME = 'Oracle' as const;
 
-export type NamedCompanionId = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type NamedCompanionId = 'suhana' | 'sy' | 'cloud' | 'night';
 export type InternalAiIdentity = NamedCompanionId | 'sekret' | 'oracle';
 
 export type SekretVisibleSurface =
@@ -26,8 +26,8 @@ export type SekretSuppressedSurface =
   | 'companion-avatar-grid';
 
 const COMPANION_DISPLAY_NAMES: Record<NamedCompanionId, string> = {
-  raylene: 'Raylene',
-  rylane: 'Rylane',
+  raylene: 'Suhana',
+  rylane: 'Sy',
   cloud: 'Cloud',
   night: 'Night',
 };

@@ -20,7 +20,7 @@
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type CharacterKey = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type CharacterKey = 'suhana' | 'sy' | 'cloud' | 'night';
 
 export type MoodTag =
   | 'neutral' | 'happy' | 'calm' | 'focused' | 'reflective'
@@ -60,7 +60,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
 
   // ── Raylene ─────────────────────────────────────────────────────────────────
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneNeutral',
     filename: 'raylene-neutral.png',
     type: 'character',
@@ -72,7 +72,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneNeutralV3',
     filename: 'raylene-neutral-v3.png',
     type: 'character',
@@ -84,7 +84,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneHappy',
     filename: 'raylene-happy.png',
     type: 'character',
@@ -96,7 +96,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneHappyV3',
     filename: 'raylene-happy-v3.png',
     type: 'character',
@@ -108,7 +108,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneWriting',
     filename: 'raylene-writing.png',
     type: 'character',
@@ -120,7 +120,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneWindow',
     filename: 'raylene-window.png',
     type: 'character',
@@ -132,7 +132,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneWindowRainy',
     filename: 'raylene-window-rainy.png',
     type: 'character',
@@ -144,7 +144,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneFullbody',
     filename: 'raylene-fullbody.png',
     type: 'character',
@@ -156,7 +156,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneVoiceDay',
     filename: 'raylene-voice-day.png',
     type: 'character',
@@ -168,7 +168,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneVoiceNight',
     filename: 'raylene-voice-night.png',
     type: 'character',
@@ -180,7 +180,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'raylene_Bippin2Day',
     filename: 'raylene-bippin2-day.png',
     type: 'character',
@@ -194,7 +194,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
 
   // ── Raylene — missing from disk (referenceOnly, share IMAGES keys as fallback) ─
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneThinking',
     filename: 'raylene-thinking.png',
     type: 'character',
@@ -206,7 +206,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'rayleneThinking',
     filename: 'raylene-period-calendar-day.png',
     type: 'character',
@@ -218,7 +218,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'raylene_Bippin2Day',
     filename: 'raylene-bippin2-night.png',
     type: 'character',
@@ -232,7 +232,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
 
   // ── Rylane ──────────────────────────────────────────────────────────────────
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneNeutral',
     filename: 'rylane-neutral.png',
     type: 'character',
@@ -244,7 +244,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneNeutralV2',
     filename: 'rylane-neutral-v2.png',
     type: 'character',
@@ -256,7 +256,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneHappy',
     filename: 'rylane-happy.png',
     type: 'character',
@@ -268,7 +268,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneThinking',
     filename: 'rylane-thinking.png',
     type: 'character',
@@ -280,7 +280,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneWriting',
     filename: 'rylane-writing.png',
     type: 'character',
@@ -292,7 +292,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneWindow',
     filename: 'rylane-window.png',
     type: 'character',
@@ -304,7 +304,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneWindowDay',
     filename: 'rylane-window-day.png',
     type: 'character',
@@ -316,7 +316,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneFullbody',
     filename: 'rylane-fullbody.png',
     type: 'character',
@@ -328,7 +328,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneVoiceDay',
     filename: 'rylane-voice-day.png',
     type: 'character',
@@ -340,7 +340,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: true,
   },
   {
-    character: 'rylane',
+    character: 'sy',
     assetKey: 'rylaneVoiceNight',
     filename: 'rylane-voice-night.png',
     type: 'character',
@@ -466,7 +466,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
 
   // ── UUID reference files (unidentified art references — never render) ──────────
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_0E3D4BD6',
     filename: '0E3D4BD6-E079-435A-9557-B02E7024656E.png',
     type: 'uuid-reference',
@@ -478,7 +478,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_284231DD',
     filename: '284231DD-7319-4872-AB67-0811F42132F4.png',
     type: 'uuid-reference',
@@ -490,7 +490,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_2A27D30A',
     filename: '2A27D30A-F5F2-4853-BFB5-100BAC56A34C.png',
     type: 'uuid-reference',
@@ -502,7 +502,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_4BB4A7DF',
     filename: '4BB4A7DF-3B8C-4170-91B4-62FB2F404F68.png',
     type: 'uuid-reference',
@@ -514,7 +514,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_5397B783',
     filename: '5397B783-61B8-47A4-8A46-98C418B0AEF1.png',
     type: 'uuid-reference',
@@ -526,7 +526,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_5886DDCD',
     filename: '5886DDCD-4B72-4B62-BE54-E06E521E77AD.png',
     type: 'uuid-reference',
@@ -538,7 +538,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_68238EB5',
     filename: '68238EB5-14B3-4B30-B45F-0F7006410B43.png',
     type: 'uuid-reference',
@@ -550,7 +550,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_6AEA1FF8',
     filename: '6AEA1FF8-29D1-4BFF-8AD6-ADB0D1A4F256.png',
     type: 'uuid-reference',
@@ -562,7 +562,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_6F71DD53',
     filename: '6F71DD53-E869-4C34-B485-97792510119F.png',
     type: 'uuid-reference',
@@ -574,7 +574,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_7814EE18',
     filename: '7814EE18-ECA9-4C7E-8F6A-959085A0BD20.png',
     type: 'uuid-reference',
@@ -586,7 +586,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_ACC1D780',
     filename: 'ACC1D780-D22F-4CED-8CC1-3B0868C3F4E1.png',
     type: 'uuid-reference',
@@ -598,7 +598,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_AD015F7B',
     filename: 'AD015F7B-2956-430D-8CBA-97382DAE39CB.png',
     type: 'uuid-reference',
@@ -610,7 +610,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_AFA90A45',
     filename: 'AFA90A45-003E-4AF4-825A-D8C1C02CC275.png',
     type: 'uuid-reference',
@@ -622,7 +622,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_B8350F20',
     filename: 'B8350F20-D4AB-4256-B4F0-EDA698B28130.png',
     type: 'uuid-reference',
@@ -634,7 +634,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_E250BCEA',
     filename: 'E250BCEA-A80A-4D90-A382-1FDE4C714702.png',
     type: 'uuid-reference',
@@ -646,7 +646,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_E88CD2C7',
     filename: 'E88CD2C7-C930-4632-9B33-27463A71DDB9.png',
     type: 'uuid-reference',
@@ -658,7 +658,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_EFF1CA3D',
     filename: 'EFF1CA3D-E615-48E0-8D70-4A0A68AAFB8A.png',
     type: 'uuid-reference',
@@ -670,7 +670,7 @@ export const CHARACTER_ASSETS: CharacterAsset[] = [
     renderable: false,
   },
   {
-    character: 'raylene',
+    character: 'suhana',
     assetKey: 'uuid_F952C378',
     filename: 'F952C378-5A26-4287-8CDE-60C5059FA7E9.png',
     type: 'uuid-reference',

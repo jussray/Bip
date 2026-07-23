@@ -36,7 +36,7 @@ import type { CompanionReplySource } from '@/contracts/sekretApi';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type CompanionId = SekretCharacterId; // 'raylene' | 'rylane' | 'cloud' | 'night' | 'sekret'
+export type CompanionId = SekretCharacterId; // 'suhana' | 'sy' | 'cloud' | 'night' | 'sekret'
 export type { SekretAvatarState };
 
 export type CompanionSurface =
@@ -47,7 +47,7 @@ export type CompanionSurface =
   | 'circle'         // circle post helper
   | 'parentBridge'   // bridge sharing screen
   | 'selfDiscovery'  // oracle / self-discovery flow
-  | 'pages';         // Pages companion tabs (raylene/rylane)
+  | 'pages';         // Pages companion tabs (suhana/sy)
 
 export interface CompanionReplyInput {
   companionId: CompanionId;
@@ -92,22 +92,22 @@ export interface CompanionProfile {
 // Greetings come from companionCurriculum (single source of truth for identity).
 
 export const COMPANION_PROFILES: Record<CompanionId, CompanionProfile> = {
-  raylene: {
-    id:          'raylene',
-    name:        'Raylene',
+  suhana: {
+    id:          'suhana',
+    name:        'Suhana',
     emoji:       '🌸',
     title:       'Soft Big Sis',
     vibe:        'Warm, expressive, protective, and real.',
-    greeting:    COMPANION_CURRICULUM.raylene.greeting,
+    greeting:    COMPANION_CURRICULUM.suhana.greeting,
     accentColor: '#FF4FA3',
   },
-  rylane: {
-    id:          'rylane',
-    name:        'Rylane',
+  sy: {
+    id:          'sy',
+    name:        'Sy',
     emoji:       '⚡',
     title:       'Loyal Bro',
     vibe:        'Quiet loyalty. Keeps it real. Never talks down.',
-    greeting:    COMPANION_CURRICULUM.rylane.greeting,
+    greeting:    COMPANION_CURRICULUM.sy.greeting,
     accentColor: '#7C83FF',
   },
   cloud: {
@@ -140,7 +140,7 @@ export const COMPANION_PROFILES: Record<CompanionId, CompanionProfile> = {
 };
 
 // ── Companion ID normalizer ────────────────────────────────────────────────────
-// Handles legacy keys: 'soft' → 'raylene', 'oracle' → 'sekret', etc.
+// Handles legacy keys: 'soft' → 'suhana', 'oracle' → 'sekret', etc.
 
 export function toCompanionId(value: string): CompanionId {
   return normalizeSekretCharacter(value);
@@ -221,7 +221,7 @@ export async function sendCompanionMessage(
  * history is empty. Sourced from COMPANION_CURRICULUM (single source of truth).
  */
 export function getCompanionGreeting(id: CompanionId): string {
-  return COMPANION_PROFILES[id]?.greeting ?? COMPANION_PROFILES.raylene.greeting;
+  return COMPANION_PROFILES[id]?.greeting ?? COMPANION_PROFILES.suhana.greeting;
 }
 
 // ── Presence message ───────────────────────────────────────────────────────────

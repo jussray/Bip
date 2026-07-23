@@ -82,7 +82,7 @@ interface ComfortScreenProps {
 
 export function ComfortScreen({
   t, setScreen, onComplete, BottomNav,
-  selectedSekret = 'raylene', character, mood, companion, syncStatus,
+  selectedSekret = 'suhana', character, mood, companion, syncStatus,
 }: ComfortScreenProps) {
 
   const [checked, setChecked] = useState<number[]>([]);
@@ -91,27 +91,27 @@ export function ComfortScreen({
   const cloudFadeAnim = useRef(new Animated.Value(1)).current;
 
   // Character / mood ────────────────────────────────────────────────────────
-  const isRylane = selectedSekret === 'rylane';
-  const charLabel = isRylane ? 'rylane' : 'raylene';
-  const charEmoji = isRylane ? '⚡' : '💜';
+  const isSy = selectedSekret === 'sy';
+  const charLabel = isSy ? 'sy' : 'suhana';
+  const charEmoji = isSy ? '⚡' : '💜';
   const moodKey   = mood?.toLowerCase?.() ?? mood ?? '';
   const moodGlow  = MOOD_GLOW[moodKey] ?? MOOD_GLOW[mood ?? ''] ?? MOOD_GLOW.Tired;
 
   // Copy variants ───────────────────────────────────────────────────────────
-  const heroCopy = isRylane
+  const heroCopy = isSy
     ? { title: 'Comfort Mode 🚨', sub: "Heavy moment. I'm right here." }
     : { title: 'Comfort Mode 🚨', sub: 'When it feels heavy, Bip stays with you.' }; // default
 
-  const notAloneCopy = isRylane
+  const notAloneCopy = isSy
     ? { title: "You're not in this alone.",  sub: 'No fix. No fix-it talk. Just here.' }
     : { title: 'You are not alone in this moment.', sub: 'This is a safe space. Take your time. No rush.' };
 
-  const allDoneCopy = isRylane
+  const allDoneCopy = isSy
     ? `${charEmoji} that was step by step. real respect.`
     : `${charEmoji} you did it. one small step at a time.`;
 
-  const calmBtnCopy = isRylane ? '🌙 Slide into Calm Space' : '🌙 Go to Calm Space';
-  const betterCopy  = isRylane
+  const calmBtnCopy = isSy ? '🌙 Slide into Calm Space' : '🌙 Go to Calm Space';
+  const betterCopy  = isSy
     ? "I'm good now ›"
     : "I'm feeling a little better ›";
 

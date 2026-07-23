@@ -84,7 +84,7 @@ const SEKRET_SAYS = [
 
 function getSekretAvatar(selectedSekret: string | null): number {
   switch (selectedSekret) {
-    case 'rylane': return IMAGES.rylaneNeutral;
+    case 'sy': return IMAGES.rylaneNeutral;
     case 'cloud':  return IMAGES.cloud;
     case 'night':  return IMAGES.nightRelaxed ?? IMAGES.nightNeutral;
     default:       return IMAGES.rayleneNeutral;
@@ -93,7 +93,7 @@ function getSekretAvatar(selectedSekret: string | null): number {
 
 function getSekretName(selectedSekret: string | null): string {
   switch (selectedSekret) {
-    case 'rylane': return 'Rylane';
+    case 'sy': return 'Sy';
     case 'cloud':  return "Cloud Se'kret";
     case 'night':  return "Night Se'kret";
     default:       return "Se'kret";

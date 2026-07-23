@@ -26,8 +26,8 @@ const GENDER_OPTIONS: { id: Gender; label: string; desc: string }[] = [
 ];
 
 const ALL_OPTIONS = [
-  { id: 'raylene', label: 'Raylene', desc: 'Warm + protective' },
-  { id: 'rylane', label: 'Rylane', desc: 'Direct + loyal' },
+  { id: 'suhana', label: 'Suhana', desc: 'Warm + protective' },
+  { id: 'sy', label: 'Sy', desc: 'Direct + loyal' },
   { id: 'cloud', label: 'Cloud', desc: 'Soft + no pressure' },
   { id: 'night', label: 'Night', desc: 'Quiet + steady' },
 ] as const;
@@ -35,9 +35,9 @@ const ALL_OPTIONS = [
 type OptionId = Companion;
 
 function sekretToChoice(s: string): OptionId {
-  if (s === 'soft') return 'raylene';
-  const valid: OptionId[] = ['raylene', 'rylane', 'cloud', 'night'];
-  return valid.includes(s as OptionId) ? (s as OptionId) : 'raylene';
+  if (s === 'soft') return 'suhana';
+  const valid: OptionId[] = ['suhana', 'sy', 'cloud', 'night'];
+  return valid.includes(s as OptionId) ? (s as OptionId) : 'suhana';
 }
 
 export default function TeenProfile() {
@@ -113,7 +113,7 @@ export default function TeenProfile() {
         selectedCompanion: choice,
         circleNickname: circleName.trim() || 'anonymous bip',
       });
-      setSelectedSekret(choice === 'raylene' ? 'soft' : choice);
+      setSelectedSekret(choice === 'suhana' ? 'soft' : choice);
       router.replace('/(teen)/room');
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Unable to save your profile.');

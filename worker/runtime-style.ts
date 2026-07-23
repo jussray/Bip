@@ -96,8 +96,8 @@ export function normalizeReplyActor(value: unknown): ReplyActorId | null {
   if (typeof value !== 'string') return null;
   const raw = value.trim().toLowerCase().replace(/[’']/g, '').replace(/[\s_-]+/g, '');
 
-  if (raw === 'raylene' || raw === 'soft' || raw === 'star') return 'raylene';
-  if (raw === 'rylane' || raw === 'bro') return 'rylane';
+  if (raw === 'suhana' || raw === 'raylene' || raw === 'soft' || raw === 'star') return 'suhana';
+  if (raw === 'sy' || raw === 'rylane' || raw === 'bro') return 'sy';
   if (raw === 'cloud' || raw === 'cloudsekret') return 'cloud';
   if (raw === 'night' || raw === 'nightsekret') return 'night';
   if (raw === 'sekret' || raw === 'secret' || raw === 'oracle') return 'sekret';

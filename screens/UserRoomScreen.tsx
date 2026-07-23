@@ -61,9 +61,9 @@ export interface UserRoomConfig {
 }
 
 const DEFAULT_USER_ROOM: UserRoomConfig = {
-  baseRoomId:   'raylene',
+  baseRoomId:   'suhana',
   lightingMode: 'auto',
-  companionId:  'raylene',
+  companionId:  'suhana',
   roomName:     '',
   placedItems:  [],
   vibeOverlay:  'none',
@@ -262,8 +262,8 @@ const getTimeOfDay = (): TimeOfDay => {
 const getPresenceLine = (companion: Character, tod: TimeOfDay): string => {
   if (companion === 'cloud') return 'Cloud is drifting nearby.';
   if (companion === 'night') return tod === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
-  if (companion === 'raylene') return 'Raylene is nearby.';
-  return 'Rylane is posted up.';
+  if (companion === 'suhana') return 'Suhana is nearby.';
+  return 'Sy is posted up.';
 };
 
 const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
@@ -280,7 +280,7 @@ const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
     if (tod === 'night') return 'window';
     return 'neutral';
   }
-  if (character === 'raylene') {
+  if (character === 'suhana') {
     if (m.includes('overwhelm') || m.includes('anxious'))   return 'crouching';
     if (m.includes('sad')  || m.includes('hurt'))           return 'sad';
     if (m.includes('angry') || m.includes('mad'))           return 'mad';
@@ -290,7 +290,7 @@ const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
     if (tod === 'night') return 'window';
     return 'neutral';
   }
-  if (character === 'rylane') {
+  if (character === 'sy') {
     if (m.includes('happy') || m.includes('good'))          return 'happy';
     if (m.includes('think') || m.includes('sad') || m.includes('angry')) return 'thinking';
     if (tod === 'night') return 'window';
@@ -328,7 +328,7 @@ const CATEGORY_META: Record<FurnishCategory | 'all', { label: string; emoji: str
 
 type VLTab = 'room' | 'lighting' | 'companion' | 'decor' | 'vibe';
 type DecorFilter = 'all' | FurnishCategory;
-const CHARACTERS: Character[] = ['raylene', 'rylane', 'cloud', 'night'];
+const CHARACTERS: Character[] = ['suhana', 'sy', 'cloud', 'night'];
 
 interface VibeLab2SheetProps {
   visible: boolean;
@@ -669,9 +669,9 @@ export function UserRoomScreen({
 
   // Derive initial companion from selectedSekret so first load feels right
   const initialCompanion: Character =
-    selectedSekret === 'rylane' ? 'rylane' :
+    selectedSekret === 'sy' ? 'sy' :
     selectedSekret === 'cloud'  ? 'cloud'  :
-    selectedSekret === 'night'  ? 'night'  : 'raylene';
+    selectedSekret === 'night'  ? 'night'  : 'suhana';
 
   const [userRoom, setUserRoom] = useState<UserRoomConfig>({
     ...DEFAULT_USER_ROOM,

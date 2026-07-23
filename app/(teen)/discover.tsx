@@ -17,7 +17,7 @@ const COMPANION_UNLOCK_PTS: Record<string, number> = {
   raylene: 0, rylane: 50, cloud: 150, night: 350,
 };
 
-const COMPANIONS = ['raylene', 'rylane', 'cloud', 'night'] as const;
+const COMPANIONS = ['suhana', 'sy', 'cloud', 'night'] as const;
 
 const TOOLS = [
   { emoji: '🌊', title: 'Breathe',        desc: 'Two minutes of calm.',      route: '/(teen)/calm'     },

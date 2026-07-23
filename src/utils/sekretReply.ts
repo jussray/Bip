@@ -10,8 +10,8 @@ import { buildReplyRequest } from '../services/ai/buildReplyRequest';
 import type { PagesTab } from '../../screens/PagesScreen';
 import type { ChatMessage } from '../../src/services/ai/chat';
 
-export type PagesAvatarKey = 'raylene' | 'rylane' | 'cloud' | 'night';
-const REPLY_TABS = new Set<PagesTab>(['raylene', 'rylane', 'cloud', 'night']);
+export type PagesAvatarKey = 'suhana' | 'sy' | 'cloud' | 'night';
+const REPLY_TABS = new Set<PagesTab>(['suhana', 'sy', 'cloud', 'night']);
 
 const avatarState: Record<PagesAvatarKey, SekretAvatarState> = {
   raylene: 'neutral',
@@ -70,8 +70,8 @@ function installDynamicAvatar(
   });
 }
 
-installDynamicAvatar('rayleneNeutral', 'raylene');
-installDynamicAvatar('rylaneNeutral', 'rylane');
+installDynamicAvatar('rayleneNeutral', 'suhana');
+installDynamicAvatar('rylaneNeutral', 'sy');
 installDynamicAvatar('cloudAvatarNeutral', 'cloud');
 installDynamicAvatar('nightNeutral', 'night');
 

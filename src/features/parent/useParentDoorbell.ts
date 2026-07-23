@@ -5,7 +5,7 @@ import { fetchLinkedTeenId } from '@/utils/parentLink';
 export interface ParentDoorbellEvent {
   id: number;
   type: 'mood' | 'thought' | 'need' | 'win' | 'other';
-  companion: 'raylene' | 'rylane';
+  companion: 'suhana' | 'sy';
   mode: string | null;
   sentAt: string;
 }
@@ -52,7 +52,7 @@ export function useParentDoorbell() {
       setEvents((data ?? []).map(row => ({
         id: Number(row.id),
         type: normalizeType(String(row.share_type ?? 'other')),
-        companion: row.char_key === 'rylane' ? 'rylane' : 'raylene',
+        companion: row.char_key === 'sy' ? 'sy' : 'suhana',
         mode: row.conv_mode ? String(row.conv_mode) : null,
         sentAt: String(row.sent_at),
       })));

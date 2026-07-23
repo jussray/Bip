@@ -87,13 +87,13 @@ function localFallback(
   const mirror = mayMirrorProfanity(relationship);
 
   if (isShortContinuation) {
-    if (personalityId === 'rylane') return "Aight, I'm here. Talk.";
+    if (personalityId === 'sy') return "Aight, I'm here. Talk.";
     if (personalityId === 'cloud') return "Hey. No pressure — whatever you want to say, or nothing at all.";
     if (personalityId === 'night') return 'Still here. No rush.';
     return 'Hey! Random or did something actually happen?';
   }
 
-  if (personalityId === 'rylane') {
+  if (personalityId === 'sy') {
     if (angry) return mirror
       ? 'Yeah, that shit would set anybody off. Before you move on it, what line got crossed?'
       : 'Yeah, that would set anybody off. Before you move on it, what line got crossed?';

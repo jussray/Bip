@@ -101,7 +101,7 @@ export default function WomanhoodGuide() {
   }, [fadeIn, breath]);
 
   const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
-  const bg = getRoomBg('raylene', 'day');
+  const bg = getRoomBg('suhana', 'day');
   const accent = '#c084fc';
   const soft   = '#f3e8ff';
 

@@ -16,7 +16,7 @@ import type { ParentRoomStyle } from '@screens/ParentRoomScreen';
 
 export function useAppState() {
   const [screen, setScreen]                   = useState('splash');
-  const [theme, setTheme]                     = useState('raylene');
+  const [theme, setTheme]                     = useState('suhana');
   const [selectedSekret, setSelectedSekret]   = useState('soft');
   const [sekretMode, setSekretMode]           = useState('soft');
   const [userSide, setUserSide]               = useState<'teen' | 'parent'>('teen');

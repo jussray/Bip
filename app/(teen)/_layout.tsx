@@ -17,7 +17,7 @@ function TabIcon({ emoji }: { emoji: string }) {
 }
 
 function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
-  const companionId = toCompanionId(selectedSekret ?? 'raylene');
+  const companionId = toCompanionId(selectedSekret ?? 'suhana');
   const { experience, clear } = useSafetyCheck(companionId, true);
 
   return (
@@ -124,11 +124,11 @@ export default function TeenLayout() {
   // Founder Preview bypasses only route/onboarding visibility in development.
   // Individual screens still enforce authentication, consent, accepted links,
   // RLS, microphone permissions, and safety checks.
-  if (founderPreview) return <TeenTabs selectedSekret={selectedSekret ?? 'raylene'} />;
+  if (founderPreview) return <TeenTabs selectedSekret={selectedSekret ?? 'suhana'} />;
 
   if (isLoading || !profileChecked) return <View style={{ flex: 1, backgroundColor: '#0d0820' }} />;
   if (effectiveUserSide === 'parent') return <Redirect href="/(parent)/room" />;
   if (effectiveUserSide !== 'teen') return <Redirect href="/" />;
   if (!profileComplete) return <Redirect href="/(onboarding)/welcome" />;
-  return <TeenTabs selectedSekret={selectedSekret ?? 'raylene'} />;
+  return <TeenTabs selectedSekret={selectedSekret ?? 'suhana'} />;
 }

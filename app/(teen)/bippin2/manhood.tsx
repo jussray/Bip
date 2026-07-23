@@ -101,7 +101,7 @@ export default function ManhoodGuide() {
   }, [fadeIn, breath]);
 
   const breathScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
-  const bg = getRoomBg('rylane', 'day');
+  const bg = getRoomBg('sy', 'day');
   const accent = '#4DA3FF';
   const soft   = '#B6DCFF';
 

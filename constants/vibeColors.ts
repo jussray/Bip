@@ -273,8 +273,8 @@ export type VibePalette = {
 // ── VIBE PACKS ────────────────────────────────────────────────────────────
 
 export const VIBE_PACKS: Record<VibeKey, VibePalette> = {
-  raylene: {
-    key: 'raylene',
+  suhana: {
+    key: 'suhana',
     bg: '#FFF8EE', card: '#FFF1E6', cardAlt: '#FFE8D6',
     accentA: '#FFB289', accentB: '#FFD166', accentC: '#F4A0C8',
     textHigh: '#2C1A0E', textMid: '#7A5030', textLow: '#B08060',
@@ -290,8 +290,8 @@ export const VIBE_PACKS: Record<VibeKey, VibePalette> = {
     divider: 'rgba(44,26,14,0.08)',
     selectorRing: '#FFB289',
   },
-  rylane: {
-    key: 'rylane',
+  sy: {
+    key: 'sy',
     bg: '#EFF6FA', card: '#E4EFF6', cardAlt: '#D6E8F3',
     accentA: '#7EC8E3', accentB: '#A8E6CF', accentC: '#FFB289',
     textHigh: '#0E2433', textMid: '#3A6070', textLow: '#7AACBA',

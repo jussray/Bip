@@ -1,11 +1,11 @@
 import type { ImageSourcePropType } from 'react-native';
 
-export const TEEN_COMPANIONS = ['raylene', 'rylane', 'night'] as const;
+export const TEEN_COMPANIONS = ['suhana', 'sy', 'night'] as const;
 export type TeenCompanion = (typeof TEEN_COMPANIONS)[number];
 
 export const TEEN_COMPANION_POSES = {
-  raylene: ['neutral', 'happy', 'listening', 'thinking', 'writing', 'encouraging', 'sleepy'],
-  rylane: ['neutral', 'happy', 'listening', 'thinking', 'writing', 'encouraging', 'calm'],
+  suhana: ['neutral', 'happy', 'listening', 'thinking', 'writing', 'encouraging', 'sleepy'],
+  sy: ['neutral', 'happy', 'listening', 'thinking', 'writing', 'encouraging', 'calm'],
   night: ['neutral', 'happy', 'headphones', 'thinking', 'listening', 'writing', 'comfort', 'window', 'rain'],
 } as const;
 

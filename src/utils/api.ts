@@ -13,7 +13,7 @@ import type {
 } from '@/contracts/sekretApi';
 import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
 
-export type VisibleSekretCharacterId = 'raylene' | 'rylane' | 'cloud' | 'night';
+export type VisibleSekretCharacterId = 'suhana' | 'sy' | 'cloud' | 'night';
 export type SekretCharacterId = VisibleSekretCharacterId | 'sekret';
 export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'parentBridge' | 'selfDiscovery';
 export type SekretAvatarState = CompanionAvatarState;
@@ -38,13 +38,13 @@ export interface SekretVoiceResponse {
   traceId?: string;
 }
 
-export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'raylene'): SekretCharacterId {
-  const raw = (value ?? '').trim().toLowerCase().replace(/[’']/g, '');
-  if (raw === 'raylene' || raw.includes('raylene')) return 'raylene';
-  if (raw === 'rylane' || raw.includes('rylane')) return 'rylane';
-  if (raw === 'cloud' || raw.includes('cloud')) return 'cloud';
-  if (raw === 'night' || raw.includes('night')) return 'night';
-  if (raw === 'sekret' || raw === 'secret' || raw === 'oracle' || raw.includes('sekret')) return 'sekret';
+export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = ‘suhana’): SekretCharacterId {
+  const raw = (value ?? ‘’).trim().toLowerCase().replace(/[‘’]/g, ‘’);
+  if (raw === ‘suhana’ || raw.includes(‘suhana’) || raw.includes(‘raylene’)) return ‘suhana’;
+  if (raw === ‘sy’ || raw === ‘rylane’ || raw.includes(‘rylane’) || raw.includes(‘sy’)) return ‘sy’;
+  if (raw === ‘cloud’ || raw.includes(‘cloud’)) return ‘cloud’;
+  if (raw === ‘night’ || raw.includes(‘night’)) return ‘night’;
+  if (raw === ‘sekret’ || raw === ‘secret’ || raw === ‘oracle’ || raw.includes(‘sekret’)) return ‘sekret’;
   return fallback;
 }
 
@@ -104,7 +104,7 @@ function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrai
     };
   }
   const replies: Record<SekretCharacterId, string[]> = {
-    raylene: [
+    suhana: [
       ‘Okay, I hear you. Which part feels the loudest right now?’,
       ‘You do not have to make it sound neat. Tell me the messy version.’,
       ‘That is a lot to sit with. Do you need comfort, honesty, or a plan?’,
@@ -121,7 +121,7 @@ function fallbackReply(characterId: SekretCharacterId, text: string): SekretBrai
       ‘What would it feel like to let someone actually help you with this?’,
       ‘You are not too much. Which part has been feeling the loudest lately?’,
     ],
-    rylane: [
+    sy: [
       ‘Yeah, that is real. What is the part you have not said out loud yet?’,
       ‘I hear you. Do you want to vent or figure out your next move?’,
       ‘You do not have to act unbothered in here. Give me the honest version.’,

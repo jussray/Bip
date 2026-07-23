@@ -1,6 +1,6 @@
 export type CompanionId =
-  | 'raylene'
-  | 'rylane'
+  | 'suhana'
+  | 'sy'
   | 'cloud'
   | 'night'
   | 'sekret'

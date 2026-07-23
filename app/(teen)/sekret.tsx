@@ -29,7 +29,7 @@ import {
 } from '@/constants/theme';
 import type { PersonalityId } from '@/types';
 
-const PERSONALITY_ORDER: PersonalityId[] = ['raylene', 'rylane', 'cloud', 'night', 'oracle'];
+const PERSONALITY_ORDER: PersonalityId[] = ['suhana', 'sy', 'cloud', 'night', 'oracle'];
 
 const TEEN_SHORTCUTS = [
   { label: 'Write It Out', emoji: '✏️', route: TEEN_ROUTES.pages },
@@ -41,7 +41,7 @@ const TEEN_SHORTCUTS = [
 export default function TeenSekretRoute() {
   const { selectedSekret } = useAppContext();
   const charKey = useMemo(
-    () => normalizeCharacterKey(selectedSekret ?? 'raylene'),
+    () => normalizeCharacterKey(selectedSekret ?? 'suhana'),
     [selectedSekret],
   );
   const roomPhase = useMemo(() => getRoomPhase(new Date().getHours()), []);

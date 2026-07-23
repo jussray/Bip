@@ -88,7 +88,7 @@ function computeStreaks(sessions: ComfortSession[]): { current: number; longest:
 interface Props {
   t: Record<string, any>;
   mood: string;
-  selectedSekret: 'rylane' | 'raylene' | string;
+  selectedSekret: 'sy' | 'suhana' | string;
   comfortSessions: ComfortSession[];
   setScreen: (s: string) => void;
   BottomNav: React.ReactNode;
@@ -106,13 +106,13 @@ const TYPE_META: Record<string, { label: string; emoji: string; color: string }>
 export function ComfortStreaksScreen({
   t, mood, selectedSekret, comfortSessions, setScreen, BottomNav,
 }: Props) {
-  const isRylane = selectedSekret === 'rylane';
+  const isSy = selectedSekret === 'sy';
   const tod = timeOfDay();
-  const bg = getRoomBg(isRylane ? 'rylane' : 'raylene', tod);
+  const bg = getRoomBg(isSy ? 'sy' : 'suhana', tod);
   const glow = glowFor(mood);
-  const accent = isRylane ? '#4DA3FF' : '#e879a3';
-  const softAccent = isRylane ? '#b6dcff' : '#f5b8cf';
-  const cardBg = isRylane ? 'rgba(10,20,40,0.82)' : 'rgba(40,15,40,0.82)';
+  const accent = isSy ? '#4DA3FF' : '#e879a3';
+  const softAccent = isSy ? '#b6dcff' : '#f5b8cf';
+  const cardBg = isSy ? 'rgba(10,20,40,0.82)' : 'rgba(40,15,40,0.82)';
 
   // ── Aggregates ─────────────────────────────────────────────────────────────
   const { current, longest } = useMemo(
@@ -187,28 +187,28 @@ export function ComfortStreaksScreen({
   const breathOpacity = breath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] });
 
   // ── Copy ───────────────────────────────────────────────────────────────────
-  const heroTitle = isRylane ? 'comfort streaks' : 'comfort streaks \u{1F49C}';
-  const heroSub = isRylane
+  const heroTitle = isSy ? 'comfort streaks' : 'comfort streaks \u{1F49C}';
+  const heroSub = isSy
     ? "soft reps. consistent. that's the move."
     : 'soft on soft. cozy on cozy. you keep showing up.';
 
   const currentCopy =
     current <= 0
-      ? (isRylane ? 'no current streak. today can start it.' : 'no current streak. today can start one \u{1F49C}')
+      ? (isSy ? 'no current streak. today can start it.' : 'no current streak. today can start one \u{1F49C}')
       : current === 1
-        ? (isRylane ? 'day 1. respect.' : 'day 1. proud of you \u{1F49C}')
-        : (isRylane
+        ? (isSy ? 'day 1. respect.' : 'day 1. proud of you \u{1F49C}')
+        : (isSy
             ? `${current} days in a row. lock in continues.`
             : `${current} days in a row \u{1F49C} look at you`);
 
   const longestCopy =
     longest <= 0
-      ? (isRylane ? "no record yet. let's build one." : 'no record yet. soft beginnings \u{1F49C}')
-      : (isRylane
+      ? (isSy ? "no record yet. let's build one." : 'no record yet. soft beginnings \u{1F49C}')
+      : (isSy
           ? `your longest run: ${longest} days. legend.`
           : `your longest run: ${longest} days \u{1F49C} that's yours forever`);
 
-  const stickyAffirmation = isRylane
+  const stickyAffirmation = isSy
     ? '“the streak is the work. not the number.”'
     : "“cozy is a discipline too. you're doing it.”";
 
@@ -231,7 +231,7 @@ export function ComfortStreaksScreen({
             ]}
           >
             <Text style={[styles.pillText, { color: softAccent }]}>
-              {isRylane ? '\u{1F9CD} rylane is here' : '☁\uFE0F raylene is here'}
+              {isSy ? '\u{1F9CD} rylane is here' : '☁\uFE0F raylene is here'}
             </Text>
           </Animated.View>
 
@@ -275,7 +275,7 @@ export function ComfortStreaksScreen({
             ))}
           </View>
           <Text style={styles.cardSub}>
-            {isRylane
+            {isSy
               ? 'each dot = a day you opened a comfort tool. simple.'
               : 'each filled dot = a day you took a soft minute for yourself \u{1F49C}'}
           </Text>
@@ -305,7 +305,7 @@ export function ComfortStreaksScreen({
 
           {recent.length === 0 ? (
             <Text style={styles.empty}>
-              {isRylane
+              {isSy
                 ? 'no sessions logged yet. open a comfort tool and it counts.'
                 : 'no sessions logged yet. open a comfort tool and it counts \u{1F49C}'}
             </Text>
@@ -334,7 +334,7 @@ export function ComfortStreaksScreen({
               onPress={() => setScreen('comfort')}
             >
               <Text style={styles.ctaText}>
-                {isRylane ? 'open comfort →' : 'open comfort \u{1F49C}'}
+                {isSy ? 'open comfort →' : 'open comfort \u{1F49C}'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -342,7 +342,7 @@ export function ComfortStreaksScreen({
               onPress={() => setScreen('calm')}
             >
               <Text style={styles.ctaText}>
-                {isRylane ? 'open calm →' : 'open calm \u{1F49C}'}
+                {isSy ? 'open calm →' : 'open calm \u{1F49C}'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -352,7 +352,7 @@ export function ComfortStreaksScreen({
         <Animated.View style={[styles.sticky, enter(noteAnim)]}>
           <Text style={styles.stickyText}>{stickyAffirmation}</Text>
           <Text style={styles.stickySig}>
-            {isRylane ? '— rylane' : '— raylene'}
+            {isSy ? '— rylane' : '— raylene'}
           </Text>
         </Animated.View>
 
