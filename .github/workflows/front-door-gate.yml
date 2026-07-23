@@ -27,18 +27,20 @@ env:
   EXPO_NO_TELEMETRY: '1'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
 
 jobs:
   verify-front-door:
-    name: Typecheck and focused Playwright
+    name: No-new-type-errors and focused Playwright
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 20
 
     steps:
       - name: Check out exact pull-request head
         uses: actions/checkout@v4
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
 
       - name: Record and verify exact head
         shell: bash
@@ -46,8 +48,8 @@ jobs:
           set -euo pipefail
           mkdir -p test-results
           ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
-          printf 'expected_head_sha=%s\nactual_head_sha=%s\nworkflow_run_id=%s\n' \
-            "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$GITHUB_RUN_ID" \
+          printf 'expected_head_sha=%s\nactual_head_sha=%s\nbase_sha=%s\nworkflow_run_id=%s\n' \
+            "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$BASE_SHA" "$GITHUB_RUN_ID" \
             | tee test-results/exact-head.txt
           test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
 
@@ -60,11 +62,57 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
-      - name: Type-check exact head
+      - name: Compare TypeScript diagnostics with base
         shell: bash
         run: |
-          set -o pipefail
-          npm run type-check 2>&1 | tee test-results/typecheck.log
+          set -euo pipefail
+          BASE_DIR="$RUNNER_TEMP/front-door-base"
+
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$BASE_DIR" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$BASE_DIR/node_modules"
+
+          set +e
+          (cd "$BASE_DIR" && npx tsc --noEmit --pretty false) > test-results/typecheck-base.log 2>&1
+          BASE_STATUS=$?
+          npx tsc --noEmit --pretty false > test-results/typecheck-head.log 2>&1
+          HEAD_STATUS=$?
+          set -e
+
+          normalize_diagnostics() {
+            grep -E 'error TS[0-9]+:' "$1" \
+              | sed -E 's/^([^(:]+)\([0-9]+,[0-9]+\): /\1: /' \
+              | sort -u || true
+          }
+
+          normalize_diagnostics test-results/typecheck-base.log > test-results/typecheck-base.normalized.log
+          normalize_diagnostics test-results/typecheck-head.log > test-results/typecheck-head.normalized.log
+          comm -13 \
+            test-results/typecheck-base.normalized.log \
+            test-results/typecheck-head.normalized.log \
+            > test-results/typecheck-new-errors.log
+
+          printf 'base_status=%s\nhead_status=%s\nbase_diagnostics=%s\nhead_diagnostics=%s\nnew_diagnostics=%s\n' \
+            "$BASE_STATUS" \
+            "$HEAD_STATUS" \
+            "$(wc -l < test-results/typecheck-base.normalized.log)" \
+            "$(wc -l < test-results/typecheck-head.normalized.log)" \
+            "$(wc -l < test-results/typecheck-new-errors.log)" \
+            | tee test-results/typecheck-summary.txt
+
+          if [[ -s test-results/typecheck-new-errors.log ]]; then
+            echo 'New TypeScript diagnostics introduced by this PR:'
+            cat test-results/typecheck-new-errors.log
+            exit 1
+          fi
+
+          if [[ "$HEAD_STATUS" -ne 0 && ! -s test-results/typecheck-head.normalized.log ]]; then
+            echo 'TypeScript failed without parseable diagnostics.'
+            cat test-results/typecheck-head.log
+            exit 1
+          fi
+
+          echo 'No new TypeScript diagnostics relative to the exact base SHA.'
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
