@@ -48,6 +48,19 @@ export default function Index() {
       setRequiresAccountUpgrade(false);
       try {
         if (!isSupabaseConfigured) {
+          // Local previews and Playwright intentionally run without account
+          // credentials. Treat that as a blank browser session so the public
+          // entrance and onboarding remain testable. Production still fails
+          // closed instead of walking a real user into an account dead end.
+          if (process.env.NODE_ENV !== 'production') {
+            if (!cancelled) {
+              setHasPermanentSession(false);
+              setRequiredConsentsComplete(false);
+              setAccountProfile(null);
+            }
+            return;
+          }
+
           throw new Error(
             'Account service is not configured.\n\nCheck that EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set correctly in your environment.'
           );
