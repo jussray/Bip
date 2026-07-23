@@ -7,6 +7,8 @@ on:
     paths:
       - app/index.tsx
       - screens/WebWelcomeScreen.tsx
+      - src/middleware/auth.ts
+      - src/utils/supabase.ts
       - assets/brand/sekret-bip-teen-family-v1.jpg
       - e2e/smoke.spec.ts
       - playwright.config.ts
@@ -46,11 +48,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p test-results
+          mkdir -p gate-evidence
           ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
           printf 'expected_head_sha=%s\nactual_head_sha=%s\nbase_sha=%s\nworkflow_run_id=%s\n' \
             "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$BASE_SHA" "$GITHUB_RUN_ID" \
-            | tee test-results/exact-head.txt
+            | tee gate-evidence/exact-head.txt
           test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
@@ -73,9 +75,9 @@ jobs:
           ln -s "$GITHUB_WORKSPACE/node_modules" "$BASE_DIR/node_modules"
 
           set +e
-          (cd "$BASE_DIR" && npx tsc --noEmit --pretty false) > test-results/typecheck-base.log 2>&1
+          (cd "$BASE_DIR" && npx tsc --noEmit --pretty false) > gate-evidence/typecheck-base.log 2>&1
           BASE_STATUS=$?
-          npx tsc --noEmit --pretty false > test-results/typecheck-head.log 2>&1
+          npx tsc --noEmit --pretty false > gate-evidence/typecheck-head.log 2>&1
           HEAD_STATUS=$?
           set -e
 
@@ -85,30 +87,30 @@ jobs:
               | sort -u || true
           }
 
-          normalize_diagnostics test-results/typecheck-base.log > test-results/typecheck-base.normalized.log
-          normalize_diagnostics test-results/typecheck-head.log > test-results/typecheck-head.normalized.log
+          normalize_diagnostics gate-evidence/typecheck-base.log > gate-evidence/typecheck-base.normalized.log
+          normalize_diagnostics gate-evidence/typecheck-head.log > gate-evidence/typecheck-head.normalized.log
           comm -13 \
-            test-results/typecheck-base.normalized.log \
-            test-results/typecheck-head.normalized.log \
-            > test-results/typecheck-new-errors.log
+            gate-evidence/typecheck-base.normalized.log \
+            gate-evidence/typecheck-head.normalized.log \
+            > gate-evidence/typecheck-new-errors.log
 
           printf 'base_status=%s\nhead_status=%s\nbase_diagnostics=%s\nhead_diagnostics=%s\nnew_diagnostics=%s\n' \
             "$BASE_STATUS" \
             "$HEAD_STATUS" \
-            "$(wc -l < test-results/typecheck-base.normalized.log)" \
-            "$(wc -l < test-results/typecheck-head.normalized.log)" \
-            "$(wc -l < test-results/typecheck-new-errors.log)" \
-            | tee test-results/typecheck-summary.txt
+            "$(wc -l < gate-evidence/typecheck-base.normalized.log)" \
+            "$(wc -l < gate-evidence/typecheck-head.normalized.log)" \
+            "$(wc -l < gate-evidence/typecheck-new-errors.log)" \
+            | tee gate-evidence/typecheck-summary.txt
 
-          if [[ -s test-results/typecheck-new-errors.log ]]; then
+          if [[ -s gate-evidence/typecheck-new-errors.log ]]; then
             echo 'New TypeScript diagnostics introduced by this PR:'
-            cat test-results/typecheck-new-errors.log
+            cat gate-evidence/typecheck-new-errors.log
             exit 1
           fi
 
-          if [[ "$HEAD_STATUS" -ne 0 && ! -s test-results/typecheck-head.normalized.log ]]; then
+          if [[ "$HEAD_STATUS" -ne 0 && ! -s gate-evidence/typecheck-head.normalized.log ]]; then
             echo 'TypeScript failed without parseable diagnostics.'
-            cat test-results/typecheck-head.log
+            cat gate-evidence/typecheck-head.log
             exit 1
           fi
 
@@ -123,7 +125,7 @@ jobs:
           set -o pipefail
           npx playwright test e2e/smoke.spec.ts \
             --grep "teen splash leads into onboarding welcome|web welcome|frontend entry" \
-            --trace on 2>&1 | tee test-results/playwright.log
+            --trace on 2>&1 | tee gate-evidence/playwright.log
 
       - name: Upload exact-head evidence
         if: always()
@@ -131,6 +133,7 @@ jobs:
         with:
           name: front-door-evidence-${{ env.EXPECTED_HEAD_SHA }}
           path: |
+            gate-evidence/
             test-results/
             playwright-report/
           if-no-files-found: warn
