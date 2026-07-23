@@ -49,8 +49,8 @@ interface ShotRecord {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const CHARACTERS: CharacterId[] = [
-  'raylene',
-  'rylane',
+  'suhana',
+  'sy',
   'cloud',
   'night',
   'sekret',
@@ -198,7 +198,7 @@ const shotHistory: ShotRecord[] = [];
 let shotCounter = 0;
 
 function FirePanel() {
-  const [characterId, setCharacterId] = useState<CharacterId>('raylene');
+  const [characterId, setCharacterId] = useState<CharacterId>('suhana');
   const [surface, setSurface] = useState<Surface>('journal');
   const [userText, setUserText] = useState('');
   const [mood, setMood] = useState('');

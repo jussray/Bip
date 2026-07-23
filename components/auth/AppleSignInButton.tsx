@@ -15,7 +15,7 @@
 import React from 'react';
 import { Platform, StyleSheet } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { supabase } from '@/services/supabase';
+import { getSupabase } from '@/utils/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 interface Props {
@@ -39,6 +39,9 @@ export default function AppleSignInButton({ onSuccess, onError }: Props) {
       if (!credential.identityToken) {
         throw new Error('No identity token returned from Apple.');
       }
+
+      const supabase = getSupabase();
+      if (!supabase) throw new Error('Auth unavailable. Check the Supabase app configuration.');
 
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',

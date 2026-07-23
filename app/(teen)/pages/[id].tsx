@@ -37,15 +37,15 @@ type CompanionMeta = {
 };
 
 const COMPANION_META: Record<string, CompanionMeta> = {
-  raylene: { label: 'Raylene', accent: '#f08bc5', emoji: '💜', avatarId: 'raylene' },
-  rylane:  { label: 'Rylane',  accent: '#76a7ff', emoji: '⚡', avatarId: 'rylane'  },
+  suhana: { label: 'Suhana', accent: '#f08bc5', emoji: '💜', avatarId: 'suhana' },
+  sy:     { label: 'Sy',     accent: '#76a7ff', emoji: '⚡', avatarId: 'sy'     },
   cloud:   { label: 'Cloud',   accent: '#8ed9e7', emoji: '☁️', avatarId: 'cloud'   },
   night:   { label: 'Night',   accent: '#9a8ee8', emoji: '🌙', avatarId: 'night'   },
   me:      { label: 'Me',      accent: '#b8a9c9', emoji: '🪞', avatarId: null },
   oracle:  { label: 'Oracle',  accent: '#c7b87a', emoji: '🔮', avatarId: null },
 };
 
-const AI_COMPANIONS = new Set<SekretCharacterId>(['raylene', 'rylane', 'cloud', 'night']);
+const AI_COMPANIONS = new Set<SekretCharacterId>(['suhana', 'sy', 'cloud', 'night']);
 
 const CHECK_IN_MOODS = [
   { emoji: '😔', label: 'alone' },

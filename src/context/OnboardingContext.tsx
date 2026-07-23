@@ -6,12 +6,12 @@
  * for the current Supabase user (fire-and-forget — never blocks UI).
  */
 import React, { createContext, useContext, useCallback } from 'react';
-import { advanceStage } from '@/services/onboarding';
+import { advanceStage, type OnboardingStage } from '@/services/onboarding';
 import { getSupabase } from '@/utils/supabase';
 
 interface OnboardingContextValue {
   /** Fire-and-forget: advance the onboarding state machine for the current user. */
-  advance: (event: string, payload?: Record<string, unknown>) => void;
+  advance: (event: OnboardingStage, payload?: Record<string, unknown>) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue>({
@@ -19,7 +19,7 @@ const OnboardingContext = createContext<OnboardingContextValue>({
 });
 
 export function OnboardingProvider({ children }: { children: React.ReactNode }) {
-  const advance = useCallback((event: string, payload?: Record<string, unknown>) => {
+  const advance = useCallback((event: OnboardingStage, payload?: Record<string, unknown>) => {
     getSupabase()
       ?.auth.getUser()
       .then(({ data }) => {
