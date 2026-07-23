@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('teen splash leads into onboarding welcome', async ({ page }) => {
+test('teen splash leads into age-bucket onboarding', async ({ page }) => {
   await page.goto('/');
 
   const splashButton = page.getByRole('button', {
@@ -10,8 +10,8 @@ test('teen splash leads into onboarding welcome', async ({ page }) => {
   await expect(splashButton).toBeVisible({ timeout: 30_000 });
   await splashButton.click();
 
-  await expect(page.getByText("I'm ready")).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('For ages 13 and up')).toBeVisible();
+  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
 });
 
 test('web welcome front door exposes only working actions and approved identity', async ({ page }) => {
@@ -42,7 +42,8 @@ test('web welcome Enter supports keyboard activation', async ({ page }) => {
   await splashButton.focus();
   await page.keyboard.press('Enter');
 
-  await expect(page.getByText("I'm ready")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
 });
 
 test('login deep link renders and survives refresh', async ({ page }) => {
