@@ -28,6 +28,7 @@ test('web welcome front door exposes only working actions and approved identity'
   // actions on this public welcome surface. Decorative nav items must not
   // pretend to be working buttons.
   await expect(page.getByRole('button')).toHaveCount(2);
+  await page.screenshot({ path: 'test-results/front-door-desktop.png', fullPage: true });
 });
 
 test('web welcome Enter supports keyboard activation', async ({ page }) => {
@@ -87,6 +88,7 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  await page.screenshot({ path: 'test-results/front-door-390x844.png' });
 });
 
 test('frontend entry remains contained on a short narrow phone viewport', async ({ page }) => {
@@ -104,6 +106,7 @@ test('frontend entry remains contained on a short narrow phone viewport', async 
   expect(shellBox).not.toBeNull();
   expect(shellBox!.x).toBeGreaterThanOrEqual(0);
   expect(shellBox!.x + shellBox!.width).toBeLessThanOrEqual(320);
+  await page.screenshot({ path: 'test-results/front-door-320x568.png' });
 });
 
 test('Teen Circle cannot bypass account onboarding from a blank browser session', async ({ page }) => {
