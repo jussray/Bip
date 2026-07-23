@@ -401,10 +401,10 @@ test('baseline separates repository truth, live catalog observation, and behavio
   assert.equal(baseline.verification.liveCatalogObserved, true);
   assert.equal(baseline.verification.liveBehaviorVerified, false);
   assert.equal(baseline.verification.externalEffectsSafelyStubbed, false);
-  assert.equal(baseline.functions.length, 11);
-  assert.equal(repositoryFunctions.size, 10);
-  assert.equal(baseline.attachments.length, 14);
-  assert.equal(repositoryAttachments.size, 13);
+  assert.equal(baseline.functions.length, 13);
+  assert.equal(repositoryFunctions.size, 12);
+  assert.equal(baseline.attachments.length, 16);
+  assert.equal(repositoryAttachments.size, 15);
 });
 
 test('live-only legacy points trigger drift is explicit and remains unresolved', () => {
@@ -447,7 +447,25 @@ test('reviewed repository trigger functions pin search_path and revoke client EX
       normalizeSearchPath(reviewed.searchPath),
       `${signature} search_path changed without baseline review`,
     );
-    assert.equal(reviewed.clientExecuteRevokedLive, true);
+    // clientExecuteRevokedLive asserts a verified LIVE catalog fact. A function
+    // that is reviewed and migration-complete but not yet deployed (deployedLive:
+    // false) must not claim that live fact — it must say so honestly instead of
+    // either lying (true) or being blocked from ever landing a reviewed baseline
+    // entry until it ships. Once deployed, re-run live catalog parity and flip
+    // deployedLive/clientExecuteRevokedLive to true together.
+    if (reviewed.deployedLive === false) {
+      assert.equal(
+        reviewed.clientExecuteRevokedLive,
+        false,
+        `${signature} is not deployed live; clientExecuteRevokedLive must not claim live verification`,
+      );
+      assert.ok(
+        typeof reviewed.deploymentStatus === 'string' && reviewed.deploymentStatus.length > 0,
+        `${signature} must document why it is not yet deployed live`,
+      );
+    } else {
+      assert.equal(reviewed.clientExecuteRevokedLive, true);
+    }
 
     const privilege = state.privileges.get(signature);
     assert.ok(privilege, `missing privilege state for ${signature}`);

@@ -32,7 +32,11 @@ test('age onboarding screen stores assurance metadata instead of raw evidence', 
   assert.match(screen, /guardian_required/);
   assert.match(screen, /raw_evidence_stored:\s*false/);
 
-  assert.doesNotMatch(screen, /upload.*id|selfie|video.*proof|date of birth/i);
+  // Match actual collection-request phrasing ("upload your ID", "take a
+  // selfie"), not the screen's own reassurance copy that mentions these
+  // words only to say they are NOT collected (e.g. "No ID image, selfie,
+  // video, or raw proof is stored").
+  assert.doesNotMatch(screen, /(upload|submit|take|record|capture|scan|provide|enter)\s+(a |an |your )?(id|selfie|video proof|date of birth)/i);
 });
 
 test('welcome is a one-page onboarding entry without bypassing age assurance', async () => {
@@ -49,7 +53,10 @@ test('welcome is a one-page onboarding entry without bypassing age assurance', a
   assert.match(welcome, /handleParent/);
 
   assert.doesNotMatch(welcome, /router\.push\('\/\(onboarding\)\/age'/);
-  assert.doesNotMatch(welcome, /upload.*id|selfie|video.*proof|date of birth/i);
+  // Same rationale as the age screen test above: match actual
+  // collection-request phrasing, not welcome.tsx's own reassurance copy
+  // ("No raw ID, selfie, video, or full birth date is collected here").
+  assert.doesNotMatch(welcome, /(upload|submit|take|record|capture|scan|provide|enter)\s+(a |an |your )?(id|selfie|video proof|date of birth)/i);
 });
 
 test('auth layout prevents direct teen signup before age assurance', async () => {

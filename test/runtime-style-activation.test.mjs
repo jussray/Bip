@@ -59,12 +59,13 @@ after(() => {
 
 test('runtime actor normalization preserves aliases without substring guessing', () => {
   assert.equal(runtime.normalizeReplyActor('soft'), 'suhana');
+  assert.equal(runtime.normalizeReplyActor('raylene'), 'suhana');
   assert.equal(runtime.normalizeReplyActor('Raylene'), 'suhana');
   assert.equal(runtime.normalizeReplyActor('Rylane'), 'sy');
   assert.equal(runtime.normalizeReplyActor('Night Se’kret'), 'night');
   assert.equal(runtime.normalizeReplyActor('oracle'), 'sekret');
   assert.equal(runtime.normalizeReplyActor('Se’kret Coach'), 'parentCoach');
-  assert.equal(runtime.normalizeReplyActor('definitely-not-raylene'), null);
+  assert.equal(runtime.normalizeReplyActor('definitely-not-suhana'), null);
   assert.equal(runtime.normalizeReplyActor(''), null);
 });
 

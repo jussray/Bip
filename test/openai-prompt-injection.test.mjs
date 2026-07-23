@@ -155,7 +155,7 @@ test('runtime style contract uses HUMAN-AI relational language with factual AI b
   const styleProfiles = read('src/features/sekret/styleProfiles.ts');
 
   assert.match(runtimeStyle, /HUMAN-AI relational companion/);
-  assert.match(runtimeStyle, /still only AI outside Se\\'kret Bip/);
+  assert.match(runtimeStyle, /still only AI outside Se'kret Bip/);
   assert.match(runtimeStyle, /Soria-life details as in-world companion canon/);
   assert.match(styleProfiles, /Use HUMAN-AI relational mode every reply/);
   assert.match(styleProfiles, /Soria-life texture/);
