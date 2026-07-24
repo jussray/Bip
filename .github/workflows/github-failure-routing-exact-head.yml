@@ -51,6 +51,16 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
+      - name: Record direct-gate start on review issue
+        if: ${{ github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          body="$(printf '## Direct exact-head gate started\n\n- Exact head: `%s`\n- Run: %s\n- Event: `push`\n\nCompletion will be recorded separately.' "$EXPECTED_HEAD_SHA" "$RUN_URL")"
+          gh issue comment 619 --repo "$GITHUB_REPOSITORY" --body "$body"
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
