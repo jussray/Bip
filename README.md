@@ -47,6 +47,12 @@ Keep these proof layers separate:
 
 A green signal in one layer does not silently prove the others.
 
+## Founder Control Room README sync
+
+Founder Control Room owns the README sync decision for nontrivial incidents, fixes, merges, deployment changes, migration changes, validation changes, and authority changes. Record the README impact as `required`, `not_required`, or `deferred_with_reason`. When the value is `required`, update this README in the same pull request whenever practical and keep repository, hosted-check, deployment, database, browser, and device witnesses distinct.
+
+A zero-step or no-log GitHub Actions failure remains `runner_startup_failure` infrastructure evidence, not a code regression. Follow [`.control-room/README_SYNC_POLICY.md`](.control-room/README_SYNC_POLICY.md) before claiming the documentation impact is complete.
+
 ## Latest merged progress
 
 ### Polished web welcome front door
