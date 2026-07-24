@@ -1,6 +1,6 @@
 # Se'kret Bip — Documentation Map
 
-**Last reviewed:** 2026-07-16  
+**Last reviewed:** 2026-07-23  
 **Owner issue:** [#456](https://github.com/jussray/Sekret-Bip/issues/456)
 
 This file explains which documents are authoritative, what each one owns, and how stale planning material must be handled.
@@ -10,15 +10,29 @@ This file explains which documents are authoritative, what each one owns, and ho
 | Question | Canonical source |
 |---|---|
 | What is implemented, verified, or released? | `implementation-ledger.json` plus validated extensions |
+| What repository and evidence model should an agent use today? | `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md` |
 | What are we doing right now? | `SPRINT.md` |
 | How do we get from here to launch? | `docs/LAUNCH_ROADMAP.md` |
 | What exists today in human language? | `docs/CURRENT_STATUS.md` |
-| How are frontend, Supabase, Worker, and deployment wired? | `docs/WIRING_STATUS.md` |
+| How are frontend, onboarding, Supabase, Worker, and deployment wired? | `docs/WIRING_STATUS.md` |
 | How does production release work? | `DEPLOYMENT.md` |
 | What blocks legal and operational launch? | `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md` |
 | What authorization proof exists? | `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md` and security evidence files |
 
 ## Authority levels
+
+### Level 0 — inspected external truth
+
+These are not repository files, but they can override stale repository claims when inspected correctly:
+
+- current GitHub branch, PR, commit, checks, jobs, and logs;
+- live Supabase migrations, catalog, grants, policies, and rollback-contained probes;
+- Cloudflare Pages and Worker build/deployment records;
+- deployed `release.json` and health witnesses;
+- production Playwright;
+- physical-device and real-account journey evidence.
+
+Every Level 0 claim must name the exact repository, SHA, environment, time window, and witness type. A result from one system does not silently prove another.
 
 ### Level 1 — live operating truth
 
@@ -26,6 +40,7 @@ These files may direct current implementation and release decisions:
 
 - `implementation-ledger.json`
 - `implementation-ledger.extensions/*.json`
+- `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`
 - `SPRINT.md`
 - `docs/LAUNCH_ROADMAP.md`
 - `docs/CURRENT_STATUS.md`
@@ -33,7 +48,7 @@ These files may direct current implementation and release decisions:
 - `DEPLOYMENT.md`
 - `.control-room/repository.manifest.json`
 
-When these disagree, stop and reconcile them against code, live Supabase, Cloudflare, tests, and the exact deployed SHA. Do not choose the most convenient statement.
+When these disagree, stop and reconcile them against Level 0 evidence. Do not choose the most convenient statement.
 
 ### Level 2 — architecture and product contracts
 
@@ -68,8 +83,8 @@ Evidence is valid only for the commit, environment, accounts, and time window it
 
 These inform decisions but do not authorize work or change implementation status:
 
-- `docs/strategy/`
-- `docs/industry-signals/`
+- `docs/strategy/`;
+- `docs/industry-signals/`;
 - design explorations and handoff concepts;
 - future feature proposals;
 - archived sprint notes and historical audits.
@@ -77,6 +92,20 @@ These inform decisions but do not authorize work or change implementation status
 A Level 4 idea becomes active work only after founder approval, dependency review, privacy and safety review, issue ownership, and reconciliation with the launch roadmap and ledger.
 
 ## Document roles
+
+### `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`
+
+Current agent-orientation overlay. The filename preserves the original July 20 reset, while the document header records the latest refresh date.
+
+It owns:
+
+- current reviewed repository baseline;
+- material merges and open repair candidates;
+- stale mental models that must not be repeated;
+- evidence-separation rules;
+- the immediate proof loop.
+
+It does not convert a draft PR body into merged truth or a local test report into hosted proof.
 
 ### `SPRINT.md`
 
@@ -106,7 +135,15 @@ It does not promise dates without known capacity and evidence owners.
 
 ### `docs/CURRENT_STATUS.md`
 
-Human-readable snapshot of the current product. It summarizes the ledger and production truth without duplicating every test result.
+Human-readable snapshot of the current product. It summarizes the ledger and current evidence without duplicating every test result.
+
+It must clearly separate merged code, exact-head proof, merge-SHA proof, deployment evidence, live Supabase evidence, production-browser evidence, and device proof.
+
+### `docs/WIRING_STATUS.md`
+
+Human-readable map of active routes, services, tables, Worker paths, compatibility boundaries, and known wiring gaps.
+
+A path appearing in code is not enough to call it reliable. The active import path, schema, tests, and runtime witness must agree.
 
 ### `implementation-ledger.json`
 
@@ -114,7 +151,7 @@ Machine-checked feature state. It owns status words such as `planned`, `contract
 
 ## Stale-document policy
 
-A planning or audit file that is no longer current must do one of three things:
+A planning, audit, agent, or status file that is no longer current must do one of three things:
 
 1. **Update** — reconcile it with current truth and retain its role.
 2. **Archive** — add a top-of-file banner:
@@ -123,25 +160,37 @@ A planning or audit file that is no longer current must do one of three things:
 
 3. **Remove** — only when the file is truly obsolete, unsafe, secret-bearing, misleading beyond repair, or has no preservation value.
 
-Do not leave an old sprint or roadmap looking current. A stale date in small text is not an adequate warning.
+Do not leave an old sprint, PR snapshot, or roadmap looking current. A stale date in small text is not an adequate warning.
+
+## Claim freshness rules
+
+- A PR body is the author's proposed scope and self-reported evidence, not independent proof.
+- A merged PR is repository history, not automatic production proof.
+- A GitHub workflow must have jobs, executed steps, and the exact intended SHA to count as check evidence.
+- A Cloudflare deployment badge proves only the named build or deployment.
+- A live Supabase claim requires the intended project and current catalog or probe evidence.
+- A screenshot or design file proves appearance, not auth, data, privacy, deployment, or device behavior.
+- An email or prior chat summary must be rechecked before it is copied into a current-status document.
 
 ## Naming rules
 
 - Use `CURRENT`, `LAUNCH`, or `ROADMAP` only for canonical active documents.
 - Historical files should include `HISTORICAL`, `ARCHIVED`, or a clear dated snapshot in the title.
-- Avoid parallel files named `ROADMAP_NEW`, `FINAL_ROADMAP`, `SPRINT_LATEST`, or `STATUS_REAL`. Those names are how documentation develops trust issues.
+- Avoid parallel files named `ROADMAP_NEW`, `FINAL_ROADMAP`, `SPRINT_LATEST`, or `STATUS_REAL`.
 - One topic should have one canonical active owner document, with supporting detail linked beneath it.
+- Use Suhana and Sy as canonical display/canon names while preserving `raylene` and `rylane` only where compatibility requires the legacy identifiers.
 
 ## Update protocol
 
-When a PR changes product scope, architecture, release state, or launch sequence:
+When a PR changes product scope, architecture, release state, wiring, or launch sequence:
 
-1. verify the actual repository and runtime state;
-2. update the ledger or add a validated extension;
+1. inspect the actual repository and relevant external witnesses;
+2. update the ledger or add a validated extension when feature state changed;
 3. update only the canonical documents whose ownership changed;
 4. label preserved historical material clearly;
-5. run implementation-evidence and documentation contract tests;
-6. merge only after the documentation describes the tested content rather than the hoped-for future.
+5. keep local, exact-head, merge-SHA, deployment, live-data, browser, and device evidence separate;
+6. run implementation-evidence and documentation contract tests;
+7. merge only after the documentation describes the tested content rather than the hoped-for future.
 
 ## Privacy boundary
 
