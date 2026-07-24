@@ -2,6 +2,14 @@ import { expect, test } from '@playwright/test';
 
 const LOCKED_BOTTOM_NAV = ['Room', 'Pages', 'Calm', 'Circle', 'More'];
 
+function normalizeTabLabel(label: string): string {
+  return label
+    .normalize('NFKC')
+    .replace(/^[^\p{L}\p{N}]+/u, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/(teen)/room');
   await page.waitForLoadState('domcontentloaded');
@@ -12,7 +20,7 @@ test('keeps the existing teen bottom navigation locked', async ({ page }) => {
   await expect(tabs).toHaveCount(LOCKED_BOTTOM_NAV.length, { timeout: 30_000 });
 
   const labels = await tabs.allInnerTexts();
-  const normalized = labels.map(label => label.replace(/\s+/g, ' ').trim());
+  const normalized = labels.map(normalizeTabLabel);
   expect(normalized).toEqual(LOCKED_BOTTOM_NAV);
 });
 
