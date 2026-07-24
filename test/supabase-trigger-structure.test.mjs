@@ -545,6 +545,23 @@ test('SPRINT tracks structural, catalog, drift, and behavioral gates separately'
   assert.match(sprint, /Do not mark trigger assurance verified/i);
 });
 
+test('trigger behavior phase 1 proves apply_point_transaction, handle_bip_event_points, enforce_circle_anonymity, and auto_resolve_issue_on_event_resolve', () => {
+  const phase = baseline.behaviorProbePhases.find((entry) => entry.phase === 'trigger_behavior_phase1');
+  assert.ok(phase, 'trigger_behavior_phase1 evidence is missing from the baseline');
+  assert.equal(phase.transactionOutcome, 'rolled_back');
+  assert.equal(phase.syntheticRowsRetained, 0);
+  assert.equal(phase.failedChecks, 0);
+  assert.ok(phase.passedChecks > 0);
+  assert.ok(fs.existsSync(path.join(root, phase.probePath)), `${phase.probePath} must exist`);
+
+  for (const signature of phase.coveredFunctions) {
+    const reviewed = repositoryFunctions.get(signature.toLowerCase());
+    assert.ok(reviewed, `${signature} must be a reviewed baseline function`);
+    assert.equal(reviewed.behaviorVerified, true, `${signature} must be marked behaviorVerified`);
+    assert.equal(reviewed.behaviorEvidence, 'trigger_behavior_phase1');
+  }
+});
+
 test.todo(
-  'run external-effect-safe rollback-contained behavior probes for safety, identity, relationship, points, Control Room, Bridge, and auth-profile triggers',
+  'run external-effect-safe rollback-contained behavior probes for the remaining safety, auth-profile, and relationship-cleanup triggers listed in trigger_behavior_phase1.notCoveredThisPhase',
 );

@@ -16,6 +16,40 @@
     "liveBehaviorVerified": false,
     "externalEffectsSafelyStubbed": false
   },
+  "behaviorProbePhases": [
+    {
+      "phase": "trigger_behavior_phase1",
+      "probePath": "supabase/probes/trigger_behavior_phase1.sql",
+      "observedAt": "2026-07-24",
+      "transactionOutcome": "rolled_back",
+      "passedChecks": 7,
+      "failedChecks": 0,
+      "syntheticRowsRetained": 0,
+      "coveredFunctions": [
+        "public.apply_point_transaction()",
+        "public.auto_resolve_issue_on_event_resolve()",
+        "public.enforce_circle_anonymity()",
+        "public.handle_bip_event_points()"
+      ],
+      "proofSummary": [
+        "apply_point_transaction() accumulates point_balances.available across sequential point_transactions inserts for the same user rather than overwriting it",
+        "handle_bip_event_points() awards the documented point value for a known event_type and inserts zero rows for an unrecognized one",
+        "enforce_circle_anonymity() rejects is_identity_revealed=true on a public circle post and allows it on a friends circle post",
+        "auto_resolve_issue_on_event_resolve() leaves a linked control_room_issues row open while any linked audit_events row is unresolved, and resolves it only once all linked events are resolved"
+      ],
+      "notCoveredThisPhase": {
+        "public.trigger_safety_scan()": "Calls net.http_post to the deployed safety-scan Edge Function. pg_net requests are queued outside the enclosing transaction and are not undone by ROLLBACK, so this function must never be exercised with real scannable content in a probe. Only its early-return guards could be safely probed in a future phase, without ever supplying content that reaches the http_post call.",
+        "public.initialize_account_verification()": "Attached to auth.users AFTER INSERT. Behavioral proof requires writing to auth.users, a different risk class from ordinary public-schema rows; deferred until explicitly authorized.",
+        "public.initialize_app_profile()": "Same auth.users AFTER INSERT constraint as initialize_account_verification().",
+        "public.sync_app_profile_email_from_auth()": "Attached to auth.users AFTER UPDATE; same constraint.",
+        "public.cleanup_crew_relationship_access()": "Deferred to a future bounded phase to keep this phase small and reviewable, not because it is unsafe.",
+        "public.record_bridge_signal_activity()": "Deferred to a future bounded phase for the same reason.",
+        "public.award_points_for_app_activity()": "Documented live-only catalog drift (repositoryExpected: false); behavior proof for a function slated for retirement is lower value than for canonical paths.",
+        "public.enforce_onboarding_state_transition()": "deployedLive: false -- cannot be behaviorally probed against a project where the function does not exist yet.",
+        "public.handle_first_mood_log()": "deployedLive: false -- same constraint."
+      }
+    }
+  ],
   "catalogDrift": [
     {
       "kind": "live_only_legacy_trigger_path",
@@ -36,7 +70,8 @@
       "risk": "high",
       "rationale": "Applies server-owned point ledger effects after transaction inserts.",
       "clientExecuteRevokedLive": true,
-      "behaviorVerified": false
+      "behaviorVerified": true,
+      "behaviorEvidence": "trigger_behavior_phase1"
     },
     {
       "signature": "public.auto_resolve_issue_on_event_resolve()",
@@ -44,7 +79,8 @@
       "risk": "high",
       "rationale": "Mutates Control Room issue state from audit-event resolution changes.",
       "clientExecuteRevokedLive": true,
-      "behaviorVerified": false
+      "behaviorVerified": true,
+      "behaviorEvidence": "trigger_behavior_phase1"
     },
     {
       "signature": "public.award_points_for_app_activity()",
@@ -70,7 +106,8 @@
       "risk": "critical",
       "rationale": "Enforces pseudonymous Circle identity before post writes become durable.",
       "clientExecuteRevokedLive": true,
-      "behaviorVerified": false
+      "behaviorVerified": true,
+      "behaviorEvidence": "trigger_behavior_phase1"
     },
     {
       "signature": "public.handle_bip_event_points()",
@@ -78,7 +115,8 @@
       "risk": "high",
       "rationale": "Awards idempotent point transactions from Bip events.",
       "clientExecuteRevokedLive": true,
-      "behaviorVerified": false
+      "behaviorVerified": true,
+      "behaviorEvidence": "trigger_behavior_phase1"
     },
     {
       "signature": "public.initialize_account_verification()",
