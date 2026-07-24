@@ -14,14 +14,16 @@ const artifactDir = process.env.PLAYWRIGHT_ARTIFACT_DIR
 
 export default defineConfig({
   testDir: './e2e',
-  // Production specs require the repository-controlled Supabase client config.
-  // This dev server intentionally runs with Supabase disabled, so those specs
-  // run only through playwright.production.config.ts against the live domain.
+  // Production specs require repository-controlled browser configuration.
+  // This default dev server intentionally runs with Supabase disabled so it
+  // can prove graceful local fallback. The intercepted signup transport proof
+  // runs through playwright.auth-transport.config.ts with fake public values.
   // Room specs use a dedicated founder-preview config and remain isolated here.
   testIgnore: [
     '**/production-smoke.spec.ts',
     '**/production-password-recovery.spec.ts',
     '**/production-auth-reachability.spec.ts',
+    '**/production-signup-transport.spec.ts',
     '**/rooms/**',
   ],
   fullyParallel: true,
@@ -60,6 +62,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       EXPO_PUBLIC_SUPABASE_URL: '',
+      EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: '',
       EXPO_PUBLIC_SUPABASE_ANON_KEY: '',
     },
   },
