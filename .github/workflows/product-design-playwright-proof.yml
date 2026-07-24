@@ -45,6 +45,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Type-check exact head
+        run: npm run type-check
+
       - run: npx playwright install --with-deps chromium
 
       - name: Capture exact-head Product Design evidence
