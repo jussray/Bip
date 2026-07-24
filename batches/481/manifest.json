@@ -19,23 +19,23 @@
       "branch": "batch/481-01-control-room-core",
       "base": "main",
       "pullRequest": 604,
-      "status": "draft",
+      "status": "merged",
       "contract": "batches/481/01-control-room-core.md"
     },
     {
       "order": 2,
       "id": "founder-operator",
-      "branch": "batch/481-02-founder-operator",
-      "base": "batch/481-01-control-room-core",
+      "branch": "batch/481-02-founder-operator-current-main",
+      "base": "main",
       "pullRequest": null,
-      "status": "planned",
+      "status": "draft",
       "contract": "batches/481/02-founder-operator.md"
     },
     {
       "order": 3,
       "id": "github-failure-routing",
       "branch": "batch/481-03-github-failure-routing",
-      "base": "batch/481-02-founder-operator",
+      "base": "batch/481-02-founder-operator-current-main",
       "pullRequest": null,
       "status": "planned",
       "contract": "batches/481/03-github-failure-routing.md"
