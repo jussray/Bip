@@ -21,8 +21,8 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 
 ## Current repository truth
 
-**Last refreshed:** July 23, 2026  
-**Reviewed `main`:** `9cd5d6d4641160b9425320e31482a4bd05eb25c2`
+**Last refreshed:** July 24, 2026  
+**Reviewed `main`:** `59bf26a957f195a75d49fea69b9a9f83a666d447`
 
 Read these before making current-state claims:
 
@@ -57,6 +57,36 @@ A zero-step or no-log GitHub Actions failure remains `runner_startup_failure` in
 
 ## Latest merged progress
 
+### Canonical onboarding-state and verification repair
+
+PR #595 merged at `f0669991807106f01bd8bcedc3fbc00986f5ae3b`.
+
+It repaired the active onboarding path so it targets `user_onboarding_state`, checks Supabase failures, prevents conflicting or regressive state writes, waits for confirmed writes before navigation, preserves historical import paths as compatibility re-exports, clears the known TypeScript and prototype-lint blockers, and adds an exact-head onboarding verification workflow.
+
+This proves the repository repair was merged. It does not by itself prove the live database, a production deployment, founder access on a physical device, or a complete real-account onboarding journey.
+
+### Authenticated RPC behavior contracts
+
+PR #596 merged at `1239841a5e3474cdc1108c255bf1eb138f8a9a97`.
+
+It added positive and negative source-contract coverage for `redeem_crew_invite(text, text)`, including authentication, invite-state, self-linking, blocked-relationship, profile-completion, and server-owned display-name boundaries.
+
+That is static repository contract evidence, not live Supabase execution proof. The remaining untested high-blast-radius authenticated RPCs stay in the verification queue.
+
+### Bridge Learning Oracle grounding boundary
+
+PR #600 merged at `da87cc9e679f67d5d60105f33d8d372da990108c`.
+
+It documents search-grounded Oracle teaching as a planned future slice, not an implemented feature. No endpoint, provider call, schema, secret, deployment, or teen-facing runtime was added.
+
+### Trigger behavior proof phase 1
+
+PR #601 merged at `0ada7d9e7f91c36fee38452f036b663536ecaae5`.
+
+A rollback-contained live Supabase probe verified the documented behavior of four bounded `SECURITY DEFINER` trigger functions. Seven checks passed and a follow-up read confirmed that no synthetic rows remained.
+
+The repository intentionally keeps global live-behavior verification false because other reviewed triggers remain untested, undeployed, live-only drift, or too high-risk for the same probe method.
+
 ### Polished web welcome front door
 
 PR #594 merged the responsive polished welcome screen into the Expo web root.
@@ -83,24 +113,6 @@ The PR reported 877 passing unit tests locally. The complete repository gate did
 Suhana and Sy are the canonical display/canon names.
 
 Legacy identifiers `raylene` and `rylane` remain only where database, storage, route, fixture, analytics, or saved-state compatibility requires them. User-facing and AI-facing paths must normalize legacy values instead of leaking retired display names.
-
-## Current repair queue
-
-### PR #595 — onboarding-state and type-check repair
-
-Draft PR #595 reports that active onboarding screens use `src/services/onboarding.ts`, which targets `onboarding_state`, a table that no repository migration creates. The real hardened table is `user_onboarding_state`.
-
-It also reports that active screens call `markActivated()` while the current active service does not define it, and that a more complete duplicate implementation exists outside the active import path.
-
-Until reviewed and merged, treat this as an open runtime risk.
-
-The branch reports 906 passing unit tests locally, one remaining TypeScript error from an unused Apple sign-in component importing an uninstalled package, and two pre-existing prototype lint errors.
-
-### PR #596 — Crew invite RPC behavior contract
-
-Draft PR #596 adds static positive and negative contract coverage for `redeem_crew_invite(text, text)` and reports 911 passing unit tests locally. No exact-head GitHub Actions run is attached yet.
-
-Draft PR bodies and local reports are proposed evidence, not merged or independently verified truth.
 
 ## Why Se'kret Bip exists
 
@@ -167,7 +179,8 @@ Documentation and demos must not imply broader parent visibility than the server
 - permanent-account restrictions for sampled private self-data;
 - fail-closed negative-auth source contracts for `account-delete` and `safety-scan`;
 - safety-scan durable output restricted to reduced metadata;
-- structural trigger inventory and migration-history parity improvements.
+- structural trigger inventory and migration-history parity improvements;
+- rollback-contained live behavior proof for four bounded `SECURITY DEFINER` trigger functions.
 
 ### Planned, not implemented
 
@@ -176,7 +189,8 @@ Documentation and demos must not imply broader parent visibility than the server
 - scheduled reflection jobs;
 - relationship phases derived from durable evidence;
 - inter-companion coordination;
-- L5 cross-companion synthesis and consented autonomous goal proposals.
+- L5 cross-companion synthesis and consented autonomous goal proposals;
+- Bridge Learning Oracle search grounding and teaching endpoint.
 
 L5 is blocked until L4 reaches `verified`.
 
@@ -199,13 +213,13 @@ A controlled internal demo may use synthetic or non-sensitive data while unfinis
 
 Current launch-critical blockers include:
 
-1. canonical onboarding-state repair and founder access recovery on a real device;
-2. complete repository type, lint, test, bundle, audit, and Playwright proof;
-3. live migration and catalog verification for recent trigger-history repairs;
+1. founder access recovery plus a complete real-account onboarding journey on a physical device;
+2. complete repository type, lint, test, bundle, audit, and Playwright proof against the exact release candidate;
+3. remaining live migration, catalog, and behavior verification for trigger-history repairs and high-risk database functions;
 4. controlled production proof for Bridge and parent relationship journeys;
 5. account deletion across database, Auth, Storage, caches, relationship access, retries, receipts, and isolation;
 6. focused denial and behavior proof for remaining private surfaces and high-blast-radius RPCs;
-7. trigger behavioral assurance with controlled external effects;
+7. controlled trigger assurance for paths with external effects or `auth.users` writes;
 8. physical-device, accessibility, offline, notification, moderation, and failure-state QA;
 9. legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness;
 10. exact production evidence for features still marked integrated rather than verified or released.
