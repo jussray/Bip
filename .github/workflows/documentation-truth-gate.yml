@@ -14,6 +14,8 @@ on:
       - docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md
       - docs/WIRING_STATUS.md
       - test/launch-documentation-contract.test.mjs
+      - test/control-room-readme-sync.test.mjs
+      - test/supabase-trigger-structure.test.mjs
       - implementation-ledger.json
       - implementation-ledger.extensions/**
       - .github/workflows/documentation-truth-gate.yml
@@ -33,7 +35,7 @@ env:
 
 jobs:
   verify-documentation-truth:
-    name: Exact head, documentation contract, and ledger
+    name: Exact head, documentation contracts, and ledger
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -64,12 +66,15 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
-      - name: Run launch documentation contract
+      - name: Run documentation authority contracts
         shell: bash
         run: |
           set -o pipefail
-          node --test test/launch-documentation-contract.test.mjs \
-            2>&1 | tee documentation-evidence/documentation-contract.log
+          node --test \
+            test/launch-documentation-contract.test.mjs \
+            test/control-room-readme-sync.test.mjs \
+            test/supabase-trigger-structure.test.mjs \
+            2>&1 | tee documentation-evidence/documentation-contracts.log
 
       - name: Verify implementation ledger claims
         shell: bash
