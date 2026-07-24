@@ -36,8 +36,8 @@
       "id": "github-failure-routing",
       "branch": "batch/481-03-github-failure-routing",
       "base": "batch/481-02-founder-operator",
-      "pullRequest": null,
-      "status": "planned",
+      "pullRequest": 608,
+      "status": "draft",
       "contract": "batches/481/03-github-failure-routing.md"
     },
     {
