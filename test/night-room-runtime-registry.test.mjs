@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const registryPath = new URL('../src/config/nightRoomAssetRegistry.ts', import.meta.url);
+const companionRegistryPath = new URL('../src/config/companionRuntimeRegistry.ts', import.meta.url);
 const spritePath = new URL('../src/components/room/character/SekretSprite.tsx', import.meta.url);
 const neutralAssetPath = new URL('../assets/images/companions/teen/night/neutral.png', import.meta.url);
 
@@ -48,17 +49,21 @@ test('Night registry uses one real canonical PNG and explicit fallbacks', async 
   }
 });
 
-test('SekretSprite routes Night through the typed registry', async () => {
-  const sprite = await readFile(spritePath, 'utf8');
+test('SekretSprite routes Night through the shared companion registry', async () => {
+  const [companionRegistry, sprite] = await Promise.all([
+    readFile(companionRegistryPath, 'utf8'),
+    readFile(spritePath, 'utf8'),
+  ]);
 
   assert.match(
-    sprite,
-    /import\s*\{\s*getNightPoseAsset\s*\}\s*from\s*'@\/config\/nightRoomAssetRegistry'/,
+    companionRegistry,
+    /import\s*\{\s*getNightPoseAsset\s*\}\s*from\s*'\.\/nightRoomAssetRegistry'/,
   );
-  assert.match(sprite, /night:\s*getNightPoseAsset\('neutral'\)\.source/);
+  assert.match(companionRegistry, /source:\s*getNightPoseAsset\('neutral'\)\.source/);
+  assert.match(sprite, /getCompanionRuntime\(sekret\)/);
   assert.doesNotMatch(
     sprite,
-    /night:\s*require\([^\n]*night-master\.png/,
-    'Night must not bypass the canonical registry',
+    /night-master\.png/,
+    'Night must not bypass the canonical registry chain',
   );
 });
