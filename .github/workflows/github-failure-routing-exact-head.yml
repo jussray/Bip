@@ -21,6 +21,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: github-failure-routing-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   CI: true
   EXPO_NO_TELEMETRY: '1'
