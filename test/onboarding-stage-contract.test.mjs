@@ -6,6 +6,7 @@ const service = fs.readFileSync(new URL('../src/services/onboarding.ts', import.
 const context = fs.readFileSync(new URL('../src/context/OnboardingContext.tsx', import.meta.url), 'utf8');
 const legacyServicePath = fs.readFileSync(new URL('../services/onboarding.ts', import.meta.url), 'utf8');
 const legacyContextPath = fs.readFileSync(new URL('../context/OnboardingContext.tsx', import.meta.url), 'utf8');
+const welcome = fs.readFileSync(new URL('../app/(onboarding)/welcome.tsx', import.meta.url), 'utf8');
 const age = fs.readFileSync(new URL('../app/(onboarding)/age.tsx', import.meta.url), 'utf8');
 const consent = fs.readFileSync(new URL('../app/(onboarding)/consent.tsx', import.meta.url), 'utf8');
 const storage = fs.readFileSync(new URL('../src/utils/storage.ts', import.meta.url), 'utf8');
@@ -69,12 +70,25 @@ test('markActivated uses the same conflict-safe stage path with valid activation
   assert.match(service, /\^\[a-z0-9_\]\+\$/);
 });
 
-test('onboarding context awaits the write attempt before an awaiting screen navigates', () => {
+test('onboarding context awaits writes and returns truthful success status', () => {
   const body = functionBody(context, 'OnboardingProvider', 'useOnboarding');
-  assert.match(context, /\) => Promise<void>/);
+  assert.match(context, /\) => Promise<boolean>/);
+  assert.match(context, /advance: async \(\) => false/);
+  assert.match(body, /if \(!client\) return false/);
   assert.match(body, /await client\.auth\.getUser\(\)/);
   assert.match(body, /await advanceStage\(data\.user\.id, stage, payload\)/);
+  assert.match(body, /return true/);
+  assert.match(body, /return false/);
   assert.doesNotMatch(body, /advanceStage\([^\n]+\.catch\(\(\) => null\)/);
+});
+
+test('age-first welcome awaits writes and exposes canonical companion names', () => {
+  assert.match(welcome, /await advance\('age_verified'/);
+  assert.match(welcome, /await advance\('role_selected', \{ role: 'parent' \}\)/);
+  assert.match(welcome, /'💜 Suhana'/);
+  assert.match(welcome, /'💙 Sy'/);
+  assert.doesNotMatch(welcome, /'💜 Raylene'/);
+  assert.doesNotMatch(welcome, /'💙 Rylane'/);
 });
 
 test('historical root paths are preserved as compatibility entry points', () => {
