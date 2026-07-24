@@ -29,9 +29,11 @@ on:
       - worker/health.ts
       - prototypes/teen-welcome/app.js
       - prototypes/welcome-web/app.js
+      - docs/archive/code-snapshots/**
       - test/onboarding-stage-contract.test.mjs
       - test/bridge-learning-teaching-contract.test.mjs
       - test/journal-avatar-presentation.test.mjs
+      - e2e/smoke.spec.ts
       - package.json
       - package-lock.json
       - .github/workflows/onboarding-type-gate.yml
@@ -52,9 +54,9 @@ env:
 
 jobs:
   verify-onboarding-and-types:
-    name: Typecheck, lint, unit, and onboarding smoke
+    name: Typecheck, lint, unit, bundle, and onboarding smoke
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Check out exact pull-request head
@@ -111,6 +113,12 @@ jobs:
           set -o pipefail
           npm test 2>&1 | tee gate-evidence/unit-tests.log
 
+      - name: Verify production bundle export
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run verify:bundle 2>&1 | tee gate-evidence/bundle.log
+
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
@@ -119,7 +127,7 @@ jobs:
         run: |
           set -o pipefail
           npx playwright test e2e/smoke.spec.ts \
-            --grep "teen splash leads into onboarding welcome|login deep link|signup deep link" \
+            --grep "teen splash leads into age-bucket onboarding|login deep link|signup deep link" \
             --trace on 2>&1 | tee gate-evidence/playwright.log
 
       - name: Upload exact-head evidence
