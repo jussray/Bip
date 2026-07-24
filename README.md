@@ -1,5 +1,7 @@
 # Se'kret Bip 💜
 
+🌐 **Official site:** [sekretbip.net](https://sekretbip.net)
+
 > **Copyright © 2024–2026 Juss Ray. All rights reserved.**  
 > Proprietary software. No license to use, copy, modify, or distribute is granted. See [LICENSE](LICENSE).
 
