@@ -9,6 +9,7 @@ on:
       - src/context/OnboardingContext.tsx
       - services/onboarding.ts
       - context/OnboardingContext.tsx
+      - app/(auth)/**
       - app/(onboarding)/**
       - components/auth/AppleSignInButton.tsx
       - components/companions/AIDisclosureModal.tsx
