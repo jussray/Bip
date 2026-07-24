@@ -27,8 +27,8 @@
       "id": "founder-operator",
       "branch": "batch/481-02-founder-operator",
       "base": "batch/481-01-control-room-core",
-      "pullRequest": null,
-      "status": "planned",
+      "pullRequest": 606,
+      "status": "draft",
       "contract": "batches/481/02-founder-operator.md"
     },
     {
