@@ -89,6 +89,11 @@ export default function AuthLayout() {
   if (signupGateState === 'needs-parental-consent') return <Redirect href="/(onboarding)/parental-consent" />;
 
   return (
-    <Stack screenOptions={{ headerShown: false }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { overflow: 'hidden' },
+      }}
+    />
   );
 }
