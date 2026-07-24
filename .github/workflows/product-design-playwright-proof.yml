@@ -6,6 +6,7 @@ on:
     paths:
       - 'app/**'
       - 'src/**'
+      - 'screens/**'
       - 'assets/**'
       - 'e2e/product-design-review.spec.ts'
       - 'playwright.config.ts'
@@ -17,12 +18,25 @@ on:
 permissions:
   contents: read
 
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
 jobs:
   product-design-proof:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - uses: actions/setup-node@v4
         with:
@@ -43,7 +57,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: product-design-playwright-${{ github.event.pull_request.head.sha || github.sha }}
+          name: product-design-playwright-${{ env.EXPECTED_HEAD_SHA }}
           path: artifacts/product-design-playwright
           if-no-files-found: error
           retention-days: 30
