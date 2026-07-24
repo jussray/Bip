@@ -31,6 +31,17 @@ for (const viewport of VIEWPORTS) {
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
     expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight);
 
+    const enterButton = page.getByTestId('web-welcome-enter');
+    const bottomNav = page.getByTestId('web-welcome-bottom-nav');
+    await expect(enterButton).toBeVisible();
+    await expect(bottomNav).toBeVisible();
+
+    const enterBox = await enterButton.boundingBox();
+    const navBox = await bottomNav.boundingBox();
+    expect(enterBox).not.toBeNull();
+    expect(navBox).not.toBeNull();
+    expect(enterBox!.y + enterBox!.height).toBeLessThanOrEqual(navBox!.y - 8);
+
     const screenshot = await page.screenshot({
       fullPage: true,
       animations: 'disabled',
