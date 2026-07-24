@@ -1,3 +1,5 @@
+/* global document */
+
 const screens = [...document.querySelectorAll("[data-screen]")];
 const navButtons = [...document.querySelectorAll(".bottom-nav [data-panel]")];
 
@@ -24,7 +26,11 @@ function show(panel) {
   navButtons.forEach((button) => {
     const active = button.dataset.panel === panel;
     button.classList.toggle("active", active);
-    active ? button.setAttribute("aria-current", "page") : button.removeAttribute("aria-current");
+    if (active) {
+      button.setAttribute("aria-current", "page");
+    } else {
+      button.removeAttribute("aria-current");
+    }
   });
 }
 
