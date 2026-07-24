@@ -31,54 +31,19 @@
     "format": "png",
     "background": "transparent",
     "aspectRatio": "2:3",
-    "minimumSize": "1536x2304"
+    "minimumSize": "1536x2304",
+    "runtimeDirectory": "assets/images/companions/teen/night"
   },
   "poses": [
-    {
-      "id": "neutral",
-      "file": "assets/images/companions/night/night-neutral.png",
-      "prompt": "Neutral standing pose, relaxed shoulders, quiet eye contact, hands naturally at sides, calm guarded energy."
-    },
-    {
-      "id": "thinking",
-      "file": "assets/images/companions/night/night-thinking.png",
-      "prompt": "Quiet thinking pose, seated or standing with one hand near the chin, eyes angled slightly away, reflective rather than distressed, silhouette readable at mobile size."
-    },
-    {
-      "id": "window",
-      "file": "assets/images/companions/night/night-window.png",
-      "prompt": "Three-quarter back view looking toward a window, one hand near hoodie pocket, reflective late-night posture."
-    },
-    {
-      "id": "writing",
-      "file": "assets/images/companions/night/night-writing.png",
-      "prompt": "Seated at a desk writing in a journal, natural grip, head slightly lowered, thoughtful focus."
-    },
-    {
-      "id": "headphones",
-      "file": "assets/images/companions/night/night-headphones.png",
-      "prompt": "Seated low with headphones on, one knee raised, calm listening posture, hands relaxed."
-    },
-    {
-      "id": "microphone",
-      "file": "assets/images/companions/night/night-microphone.png",
-      "prompt": "Standing at a microphone, one hand lightly holding the stand, speaking softly, grounded posture."
-    },
-    {
-      "id": "moonChair",
-      "file": "assets/images/companions/night/night-moon-chair.png",
-      "prompt": "Relaxed seated pose designed to fit naturally inside a crescent moon chair, one elbow resting, quiet presence."
-    },
-    {
-      "id": "listening",
-      "file": "assets/images/companions/night/night-listening.png",
-      "prompt": "Seated facing the user, leaning slightly forward, attentive eyes, hands loosely joined, safe listening energy."
-    },
-    {
-      "id": "resting",
-      "file": "assets/images/companions/night/night-resting.png",
-      "prompt": "Deep-night resting pose, seated with head supported by one hand, tired but present, not asleep."
-    }
+    { "id": "neutral", "file": "assets/images/companions/teen/night/neutral.png", "prompt": "Neutral standing pose, relaxed shoulders, quiet eye contact, hands naturally at sides, calm guarded energy." },
+    { "id": "thinking", "file": "assets/images/companions/teen/night/thinking.png", "prompt": "Quiet thinking pose, seated or standing with one hand near the chin, eyes angled slightly away, reflective rather than distressed, silhouette readable at mobile size." },
+    { "id": "window", "file": "assets/images/companions/teen/night/window.png", "prompt": "Three-quarter back view looking toward a window, one hand near hoodie pocket, reflective late-night posture." },
+    { "id": "writing", "file": "assets/images/companions/teen/night/writing.png", "prompt": "Seated at a desk writing in a journal, natural grip, head slightly lowered, thoughtful focus." },
+    { "id": "headphones", "file": "assets/images/companions/teen/night/headphones.png", "prompt": "Seated low with headphones on, one knee raised, calm listening posture, hands relaxed." },
+    { "id": "microphone", "file": "assets/images/companions/teen/night/microphone.png", "prompt": "Standing at a microphone, one hand lightly holding the stand, speaking softly, grounded posture." },
+    { "id": "moonChair", "file": "assets/images/companions/teen/night/moon-chair.png", "prompt": "Relaxed seated pose designed to fit naturally inside a crescent moon chair, one elbow resting, quiet presence." },
+    { "id": "listening", "file": "assets/images/companions/teen/night/listening.png", "prompt": "Seated facing the user, leaning slightly forward, attentive eyes, hands loosely joined, safe listening energy." },
+    { "id": "resting", "file": "assets/images/companions/teen/night/resting.png", "prompt": "Deep-night resting pose, seated with head supported by one hand, tired but present, not asleep." }
   ],
   "roomPhaseRule": "Use the clean Night room master. Preserve exact walls, window, crescent chair, desk, microphone, record player, journals, signs, furniture scale, perspective, camera position, and object placement. Change lighting, sky, practical lights, shadows, rain, and ambience only.",
   "roomPhases": [
