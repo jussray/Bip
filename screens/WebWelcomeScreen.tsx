@@ -69,7 +69,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
             </Text>
           </View>
 
-          <View style={styles.heroWrap}>
+          <View style={[styles.heroWrap, compact && styles.heroWrapCompact]}>
             <View style={styles.heroGlow} />
             <Image
               testID="web-welcome-hero"
@@ -91,6 +91,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
           <Text style={styles.handNote}>☁  stay awhile. you’re safe here.</Text>
 
           <Pressable
+            testID="web-welcome-enter"
             accessibilityRole="button"
             accessibilityLabel="Se'kret Bip — enter your safe space"
             accessibilityHint="Continue to account setup or your existing Bip space"
@@ -112,7 +113,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
           </Pressable>
         </ScrollView>
 
-        <View style={styles.bottomNav}>
+        <View testID="web-welcome-bottom-nav" style={styles.bottomNav}>
           {navItems.map(item => {
             const isCenter = 'center' in item && item.center;
             const navContent = (
@@ -200,6 +201,7 @@ const styles = StyleSheet.create({
     maxWidth: 350, marginTop: 10,
   },
   heroWrap: { height: 430, marginTop: 4, overflow: 'hidden', justifyContent: 'flex-end' },
+  heroWrapCompact: { height: 360 },
   heroGlow: {
     position: 'absolute', width: 340, height: 340, left: '50%', top: 35,
     marginLeft: -170, borderRadius: 170, backgroundColor: 'rgba(142,89,255,.18)',
