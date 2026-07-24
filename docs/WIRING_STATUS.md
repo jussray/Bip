@@ -1,11 +1,27 @@
 # Se'kret Bip — Backend Wiring Status
 
-Last reviewed: 2026-07-13
+**Last reviewed:** 2026-07-23  
+**Repository baseline:** `main` at `9cd5d6d4641160b9425320e31482a4bd05eb25c2`
 
 `implementation-ledger.json` is the machine-checked status source. This page describes the current runtime and data wiring in human-readable form.
 
+## Evidence boundary
+
+A path can be:
+
+- present in the repository;
+- type-checked or tested at one PR head;
+- merged into `main`;
+- deployed by Cloudflare;
+- aligned with live Supabase;
+- observed in a production browser;
+- observed on a physical device.
+
+Those are different states. This file does not collapse them.
+
 ## Implemented runtime paths
 
+- Expo Router teen and parent route groups
 - Supabase authentication and persisted sessions
 - Local-first AsyncStorage restore and cloud synchronization
 - Teen Circle and Parent Circle data flows
@@ -21,20 +37,56 @@ Last reviewed: 2026-07-13
 - Period-calendar synchronization
 - Bridge signals, messages, summaries, consent, and revocation contracts
 - Founder Control Room operational ingestion and metadata-only telemetry
-- Canonical Se'kret identity and companion-style wrapper in Worker reply and voice paths
-- Exact-production-release verification for Worker and Pages deployments
+- Canonical Se'kret identity and companion-style wrapper in Worker reply paths
+- Exact-production-release verification machinery for Worker and Pages deployments
+- Responsive polished web welcome screen merged through PR #594
 
 ## Current route model
 
 The app uses Expo Router route groups:
 
+- auth routes: `app/(auth)/`
+- onboarding routes: `app/(onboarding)/`
 - teen routes: `app/(teen)/`
 - parent routes: `app/(parent)/`
 - founder/internal routes: `app/(dev)/`
 
-Mind + Body Reset uses `app/(teen)/mind-body-reset.tsx` as the hub and the hidden `app/(teen)/body-workout.tsx` route for timer-driven movement routines.
+The public web root now renders the polished welcome screen before handing control to the existing auth and onboarding router. PR #594's exact head passed focused Playwright for render, click and keyboard entry, age-bucket continuation, and narrow-phone overflow.
+
+That scoped proof does not establish the full current merge SHA, live-domain auth behavior, Supabase state, or physical-device behavior.
 
 Older references to `app/(main)/`, `app/parent/`, or a global string router are historical and must not be used for new work.
+
+## Authentication and onboarding wiring
+
+### Confirmed structure
+
+- Supabase client: `src/utils/supabase.ts`
+- environment source: `src/utils/env.ts`
+- post-auth bootstrap: `src/services/auth/postAuthBootstrap.ts`
+- onboarding routes: `app/(onboarding)/`
+- age-assurance model: `src/features/onboarding/ageAssurance.ts`
+- required consent service: `services/consentService.ts`
+- hardened onboarding table and trigger migrations: `supabase/migrations/`
+
+### Open wiring inconsistency on `main`
+
+Draft PR #595 reports that the active onboarding screens import `src/services/onboarding.ts`, while that service targets `onboarding_state`, a table that no migration creates. The repository's real hardened table is `user_onboarding_state`.
+
+The same branch reports that active screens call `markActivated()`, while the current active service does not define it, and that a more complete duplicate implementation exists outside the active import path.
+
+Until #595 is reviewed, verified, and merged, treat onboarding progression as **integrated but not reliable enough for founder-access proof**.
+
+Required repair properties:
+
+- one canonical context and service;
+- `user_onboarding_state` as the durable table;
+- real `onboarding_stage` values;
+- baseline insertion that cannot overwrite existing progress;
+- allowlisted payload columns;
+- stage and timestamp updates that satisfy the database trigger;
+- tests against the active import path;
+- no second live state system.
 
 ## Frontend-to-Worker contract
 
@@ -43,12 +95,23 @@ The migrated frontend runtime uses one contract spine:
 1. `src/contracts/sekretApi.ts` defines companion, surface, history, reply, voice, transcription, avatar-state, and stable-error types.
 2. `src/services/backend/sekretClient.ts` resolves the canonical backend URL, adds authenticated headers, applies timeouts, parses response metadata, and maps HTTP/network failures.
 3. `src/services/ai/chat.ts`, `src/utils/api.ts`, and `src/services/ai/workerClient.ts` consume the shared client instead of maintaining independent direct Worker fetches.
-4. `worker/runtime-style.ts` guarantees an avatar state from safety, tone, and comfort-tool metadata.
+4. `worker/runtime-style.ts` applies the authoritative identity and style contract and repairs legacy display-name leaks.
 5. `test/worker-contract-spine.test.mjs` prevents migrated surfaces from silently creating new transport paths.
 
-Exact-head CI, Type Check, Quality Gate, Regression, Pre-Push, Companion Lab, and Playwright passed before PR #398 merged.
+The contract spine is integrated. Exact production observation and full user-facing error-state proof remain required.
 
-This path is integrated, not yet released. Exact-production-release observation and full user-facing error-state proof remain required.
+## Companion identity wiring
+
+Canonical display/canon names are:
+
+- Suhana, with legacy internal identifier `raylene` where compatibility still requires it;
+- Sy, with legacy internal identifier `rylane` where compatibility still requires it;
+- Cloud;
+- Night.
+
+PR #592 merged runtime output repair for legacy display-name leaks. Draft PR #595 continues propagation through remaining app, safety, voice, and service paths.
+
+The persisted `app_profiles.selected_companion` database vocabulary still accepts legacy identifiers. Do not rename stored values or database constraints without a dedicated compatibility migration. Normalize at boundaries where persisted identifiers become user-facing or AI-facing behavior.
 
 ## Database source of truth
 
@@ -59,54 +122,56 @@ npx supabase link --project-ref <project-ref>
 npx supabase db push
 ```
 
-Do not use a second bootstrap schema. Migration ordering must remain replay-safe for an empty database, and repository migration versions must match the versions recorded by the live project.
+Do not use a second bootstrap schema. Migration ordering must remain replay-safe for an empty database, and repository migration versions must match versions recorded by the live project.
 
-Current verified migration parity includes:
+PR #577 merged repository-history parity improvements for reviewed trigger functions, including search-path and client EXECUTE statements and a missing migration representation for the already-live auth-email synchronization trigger.
 
-- `20260713011803_harden_config_table_grants`
-- `20260713230600_harden_private_self_data_permanent_accounts`
+Some onboarding trigger functions are repository-complete but explicitly recorded as not yet observed live. Do not mark them deployed or behaviorally verified until live catalog parity is rerun after migration deployment.
+
+## Trigger assurance
+
+Current trigger assurance includes:
+
+- a reviewed structural inventory;
+- explicit latest-definition handling;
+- search-path and client EXECUTE expectations;
+- attachment inventory;
+- duplicate and orphan detection;
+- read-only live observations for selected functions.
+
+It does **not** yet include complete behavior verification.
+
+Behavioral proof must control external effects from `pg_net`, Edge Functions, notification systems, and queues, remain rollback-contained where possible, retain explicit cleanup evidence, and leave zero synthetic private rows.
+
+## Authorization state
+
+Verified live evidence includes sampled:
+
+- owner access for private rows;
+- cross-user read and update denial;
+- anonymous denial;
+- zero synthetic probe residue;
+- server-only configuration tables with no client grants;
+- `notification_deliveries` as service-role-only;
+- retirement of obsolete Edge Functions;
+- permanent-account enforcement for selected private tables;
+- removal of `anon` grants from selected private tables;
+- rollback-contained private-self-data checks.
+
+Supabase static advisor warnings remain inventory signals. Executable predicates and rollback-contained probes are the authorization evidence.
+
+`account-delete` and `safety-scan` intentionally use dedicated custom-auth boundaries rather than ordinary user JWT verification. Their negative-auth source contracts are merged; live configuration and end-to-end behavior remain separate proof.
 
 ## Activity and reset wiring
 
 Reset completions use the existing activity path:
 
-1. Guided or workout UI requires meaningful elapsed participation before completion is emitted.
-2. `src/features/activity/events.ts` writes only minimal routine metadata to `public.bip_events`.
-3. `public.bip_events_award_points` invokes the existing `public.handle_bip_event_points()` trigger function.
-4. Eligible events create server-owned point transactions through the existing points model.
+1. guided or workout UI requires meaningful elapsed participation;
+2. `src/features/activity/events.ts` writes minimal routine metadata to `public.bip_events`;
+3. `public.bip_events_award_points` invokes `public.handle_bip_event_points()`;
+4. eligible events create server-owned point transactions through the existing points model.
 
-No workout-history table, raw mood-content column, or second point ledger is introduced.
-
-## Authorization state
-
-Verified live evidence currently includes:
-
-- sampled owner access for private rows;
-- cross-user read and update denial;
-- anonymous denial;
-- zero synthetic probe residue;
-- server-only configuration tables with no client grants;
-- `notification_deliveries` documented and verified as service-role-only;
-- three obsolete Edge Functions retired behind platform JWT verification;
-- live inspection of the restored `bip_events` trigger;
-- permanent-account enforcement for `comfort_sessions` and `room_memory`;
-- removal of all `anon` table grants from those two private tables;
-- reduction of authenticated table privileges to SELECT, INSERT, UPDATE, and DELETE only;
-- one consolidated permanent-owner RLS policy per table;
-- a rollback-contained live proof passing 7 of 7 checks without retained application rows.
-
-The relevant evidence paths are:
-
-- `supabase/migrations/20260713230600_harden_private_self_data_permanent_accounts.sql`
-- `supabase/probes/authorization_private_self_data_phase1.sql`
-- `security/private-self-data-hardening.json`
-- `test/private-self-data-hardening.test.mjs`
-
-Supabase's static advisor still warns that policies assigned to `authenticated` may include anonymous Auth sessions. It does not evaluate the explicit `public.is_non_anonymous_user()` predicate. Treat the warning as an inventory signal, not as proof of access. The executable JWT-claim probe is the authorization evidence.
-
-Only `account-delete` and `safety-scan` intentionally remain outside platform JWT verification because they use dedicated server-to-server boundaries. They still require focused negative-auth tests.
-
-See `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`, `security/supabase-authorization-baseline.json`, and `security/private-self-data-hardening.json`.
+No second workout-history table, raw mood-content column, or parallel points ledger is authorized.
 
 ## Parent and Bridge status
 
@@ -115,37 +180,20 @@ The linked-account data model is implemented, including parent links, Bridge sig
 The parent product remains an enforced release gate. It is not production-complete until evidence covers:
 
 - parent splash and onboarding;
-- pending, active, expired, revoked, blocked, and deleted states;
+- guardian verification;
+- pending, active, expired, revoked, blocked, and deleted relationship states;
 - controlled two-account Bridge production journeys;
-- Parent Circle privacy validation;
+- Parent Circle privacy;
 - Parent Coach boundaries;
 - period-sharing permissions;
 - minimal-content notifications;
-- complete relationship and privacy tests.
+- unlink, deletion, cleanup, and second-user isolation.
 
-Bridge remains under controlled rollout. A runtime path existing is not permission to broaden parent visibility.
-
-The next Supabase authorization slice should harden Bridge relationship and share tables against anonymous-authenticated sessions before the controlled two-account proof is promoted.
-
-## Companion status
-
-Current companion runtime includes:
-
-- unified reply payloads;
-- one shared typed frontend Worker transport;
-- short-term conversation history;
-- approved RoomMemory and conversation context;
-- canonical actor identity and style profiles;
-- deterministic question-budget and forbidden-identity enforcement;
-- Worker-supplied avatar state;
-- Worker and TTS style-version metadata;
-- metadata-only provider telemetry.
-
-Durable semantic memory, persistent goals, scheduled reflection, and inter-companion coordination are not implemented. L4 remains blocked until its ownership, provenance, correction, expiry, deletion, RLS, denial-test, rollout, and rollback contracts are approved.
+A runtime path existing is not permission to broaden parent visibility.
 
 ## Deployment status
 
-Production authority is Cloudflare native Git integration:
+Production authority remains Cloudflare native Git integration:
 
 - Pages project: `sekret-bip`
 - Worker: `sekret-backend`
@@ -156,24 +204,38 @@ The release verifier requires:
 1. a successful exact-commit Worker build;
 2. a deployed `release.json` marker matching the exact `main` SHA;
 3. a healthy canonical Worker endpoint;
-4. read-only production Playwright against protected teen and parent routes.
+4. read-only production Playwright against protected teen and parent routes;
+5. retained evidence that names the exact observed commit.
 
-The retired `release-health` Supabase function and stale `control_room_releases` rows are not production release oracles. Canonical Cloudflare deployment evidence comes from the native verifier and its artifacts.
+Cloudflare preview or deployment success does not prove GitHub checks, Supabase migrations, RLS, auth journeys, or device behavior.
 
-The private-self-data hardening is a live Supabase migration. Its evidence is migration parity and the database authorization probe, not a Cloudflare deployment badge.
+The current `main` merge SHA does not yet have a complete repository-wide GitHub Actions proof set.
+
+## Current repository-quality debt
+
+Draft PR #595 reports:
+
+- 906 passing unit tests locally;
+- one remaining TypeScript error caused by `expo-apple-authentication` being imported by an unused component while the package is not installed;
+- two pre-existing lint errors under `prototypes/`.
+
+Resolve or intentionally remove the unused Apple sign-in path before claiming a clean type gate. Repair or explicitly isolate the prototype lint failures before claiming a clean repository lint gate.
+
+Draft PR #596 reports 911 passing unit tests locally after adding one Crew invite RPC contract file. No exact-head GitHub Actions run is attached yet.
 
 ## Remaining wiring gates
 
-- physical iOS/Android plus manual timer, accessibility, and movement-safety QA for Mind + Body Reset;
-- exact-production-release and user-facing state proof for the shared frontend Worker contract;
+- canonical onboarding-state repair and exact-head proof;
+- complete repository type, lint, test, bundle, audit, and Playwright gates;
+- deployment and live catalog proof for the PR #577 trigger-history migrations;
 - controlled Bridge production proof;
-- account deletion and storage cleanup proof;
-- anonymous-auth policy hardening for remaining Bridge, activity, points/rewards, tasks, relationships, and private surfaces;
-- behavior tests for authenticated database functions with broad operational impact;
-- negative tests for the two remaining custom-auth Edge Functions;
-- password-breach protection planning and Auth regressions;
-- production observation of companion style-version telemetry;
-- legal, moderation, accessibility, and app-store readiness.
+- account deletion and Storage cleanup proof;
+- anonymous-auth hardening for remaining private surfaces;
+- behavior tests for remaining authenticated database functions with broad impact;
+- trigger behavioral assurance with controlled external effects;
+- production observation of companion style and Worker-contract metadata;
+- physical iOS/Android, accessibility, offline, notification, moderation, and failure-state QA;
+- legal, safeguarding, support, app-store, backup, restore, incident, and rollback readiness.
 
 ## Validation
 
@@ -185,7 +247,8 @@ npm run verify:bundle
 npm run audit:control-room
 npm run validate:companions
 npm run test:e2e
+npm run test:e2e:production
 npm run verify:prepush
 ```
 
-Do not mark a path complete merely because code exists. Completion requires the route, service, authorization boundary, tests, rollout, telemetry, and rollback to agree.
+Do not mark a path complete merely because code exists. Completion requires the route, service, authorization boundary, tests, rollout, telemetry, deployment witness, and rollback to agree.

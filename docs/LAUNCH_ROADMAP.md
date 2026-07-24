@@ -1,7 +1,7 @@
 # Se'kret Bip — Visual Launch Roadmap
 
-**Last reviewed:** 2026-07-16  
-**Repository baseline:** `ab5cf40b398e02536764b5b806b6f3aec0a9161c`  
+**Last reviewed:** 2026-07-23  
+**Repository baseline:** `9cd5d6d4641160b9425320e31482a4bd05eb25c2`  
 **Owner issue:** [#456](https://github.com/jussray/Sekret-Bip/issues/456)
 
 This is the canonical founder-readable map from the current repository state to launch. It describes **sequence and evidence**, not unsupported calendar promises.
@@ -12,10 +12,10 @@ This is the canonical founder-readable map from the current repository state to 
 
 ```mermaid
 flowchart LR
-    A[Foundation integrated<br/>routes, auth, Supabase, Worker, Pages] --> B[Launch trust spine<br/>runtime truth, auth denial, exact releases]
+    A[Foundation integrated<br/>routes, auth, Supabase, Worker, Pages] --> B[Launch trust spine<br/>canonical onboarding, runtime truth, auth denial, exact releases]
     B --> C[Relationship proof<br/>Bridge, parent lifecycle, revocation, deletion]
     C --> D[Device quality proof<br/>iOS, Android, accessibility, safety, offline]
-    D --> E[Controlled alpha<br/>small invited cohort, synthetic or approved data]
+    D --> E[Controlled alpha<br/>small invited cohort, approved data and explicit stop conditions]
     E --> F[Launch clearance<br/>legal, store, moderation, support, operations]
     F --> G[Public launch<br/>observe, learn, improve]
 
@@ -32,15 +32,27 @@ flowchart LR
 | **Blocked** | Work may not advance until the named dependency or safety boundary is satisfied. |
 | **Planned** | Direction is documented; no implementation claim is made. |
 
+## Current checkpoint
+
+- PR #594 merged the polished web welcome screen and passed a focused exact-head front-door gate.
+- PR #577 merged test, lockfile, JSX, and trigger migration-history repairs.
+- The current `main` merge SHA does not yet have the complete repository-wide gate attached.
+- Draft PR #595 reports a split onboarding-state runtime path and remaining type/lint debt.
+- Draft PR #596 adds one authenticated Crew invite RPC behavior contract.
+- Founder Access Recovery Gate issue #563 remains the first user-facing launch blocker.
+
+Draft PR descriptions and local test reports are proposed evidence. They do not change phase state until reviewed, verified, and merged.
+
 ## Phase 0 — Foundation integrated
 
 **Outcome:** one shippable technical spine exists.
 
-- Teen and parent route groups are present.
+- Auth, onboarding, teen, parent, and founder/internal route groups are present.
 - Supabase Auth, Postgres, RLS, Storage, migrations, and Edge Functions are integrated.
 - The canonical Cloudflare Worker and Pages release path exist.
-- Frontend-to-Worker contracts, stable failures, trace IDs, and release verification exist.
+- Frontend-to-Worker contracts, stable failures, trace IDs, and release verification machinery exist.
 - Core teen spaces, companions, Pages, Calm tools, Circle surfaces, and relationship contracts exist at varying evidence levels.
+- The polished web front door is integrated.
 
 **Truth boundary:** Phase 0 means the foundation is integrated. It does not mean every product journey is released or safe for public teen data.
 
@@ -48,17 +60,28 @@ flowchart LR
 
 **Current phase.**
 
-**Goal:** make every important launch claim observable, deniable, and reversible.
+**Goal:** make every important launch claim observable, deniable, reversible, and attached to one canonical runtime path.
 
 Launch-critical outcomes:
 
-1. Complete focused anonymous and cross-user denial proof for remaining private surfaces.
-2. Complete positive and negative behavior tests for high-blast-radius authenticated database functions.
-3. Keep custom-auth Edge Functions fail-closed and metadata-only where applicable.
-4. Verify each production-changing merge through the exact Worker check, `release.json`, backend health, and production Playwright.
-5. Preserve rollback evidence and avoid using stale dashboards or retired probes as release truth.
+1. Resolve the onboarding-state split so active screens, service, table, enum, trigger rules, and tests agree.
+2. Complete founder access recovery with one real account on a physical device.
+3. Reach a clean repository type, lint, unit, bundle, audit, and applicable Playwright gate.
+4. Complete focused anonymous and cross-user denial proof for remaining private surfaces.
+5. Complete positive and negative behavior tests for high-blast-radius authenticated database functions.
+6. Complete trigger behavioral assurance with controlled external effects and cleanup evidence.
+7. Keep custom-auth Edge Functions fail-closed and metadata-only where applicable.
+8. Verify each production-changing merge through the exact Worker check, `release.json`, backend health, and production Playwright.
+9. Preserve rollback evidence and avoid stale dashboards, retired probes, and unbound deployment badges as release truth.
 
-**Exit evidence:** security contracts pass, production SHA matches the tested merge, and unresolved failures have an explicit owner and rollback.
+**Exit evidence:**
+
+- one canonical auth and onboarding path reaches the intended route on device;
+- the exact merge SHA passes the required repository gate;
+- launch-critical security contracts pass;
+- live migration and authorization state matches the intended repository state;
+- production SHA matches the tested release;
+- unresolved failures have an explicit owner, impact, next gate, and rollback.
 
 ## Phase 2 — Relationship and privacy lifecycle proof
 
@@ -77,7 +100,7 @@ Required journeys:
 - a second user remains isolated throughout;
 - deletion covers database rows, Storage objects, local caches, retries, and durable receipts.
 
-**Exit evidence:** controlled two-account production proof with cleanup, denial, revocation, and deletion receipts.
+**Exit evidence:** controlled two-account production proof with cleanup, denial, revocation, unlink, deletion, and isolation receipts.
 
 ## Phase 3 — Device quality, accessibility, and safety
 
@@ -87,13 +110,13 @@ Required evidence:
 
 - physical iOS and Android smoke journeys;
 - signup, login, onboarding, Room, Pages, Calm, Circle, More, and parent-link navigation;
-- keyboard, screen-reader, contrast, motion, and touch-target review;
-- offline, timeout, rate-limit, malformed-response, and unavailable-voice states;
+- keyboard, screen-reader, contrast, motion, orientation, safe-area, and touch-target review;
+- offline, timeout, rate-limit, malformed-response, safety, and unavailable-voice states;
 - timer and movement-safety QA for Mind + Body Reset;
 - notification content remains minimal and privacy-safe;
 - no raw teen content enters logs, release evidence, or Control Room panels.
 
-**Exit evidence:** device runbook completed with reproducible failures converted into owned issues.
+**Exit evidence:** device runbook completed with reproducible failures converted into owned issues and no launch-critical unknown state.
 
 ## Phase 4 — Controlled alpha
 
@@ -107,6 +130,7 @@ Alpha rules:
 - metadata-only product health metrics;
 - clear unavailable and unfinished states;
 - fast rollback for Worker, Pages, database, and feature-control changes;
+- explicit success, pause, rollback, and stop conditions;
 - no claim that Se'kret Bip diagnoses, treats, or replaces emergency support.
 
 Founder decisions required before entry:
@@ -115,7 +139,7 @@ Founder decisions required before entry:
 - free versus paid boundary, if monetization is tested;
 - support response expectations;
 - which unfinished features are hidden, controlled, or explicitly labeled;
-- success and stop conditions.
+- success, pause, rollback, and stop conditions.
 
 ## Phase 5 — Launch clearance
 
@@ -130,7 +154,7 @@ Required gates:
 - production monitoring, incident response, backup, restore, and rollback runbooks;
 - support ownership and escalation path;
 - launch messaging that matches verified product behavior;
-- pricing, entitlements, and purchase restoration evidence if paid features ship.
+- pricing, entitlements, and purchase-restoration evidence if paid features ship.
 
 **Exit evidence:** every applicable item in `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md` has an owner, proof, and an honest state.
 
@@ -151,25 +175,28 @@ First-loop priorities:
 
 | Workstream | Current state | Launch critical? | Next proof |
 |---|---|---:|---|
-| Release truth and runtime contracts | Integrated; evidence continues per merge | Yes | Exact deployed SHA, Worker health, production Playwright |
-| Supabase authorization | Contract with several passed slices | Yes | Remaining private-surface denial and RPC behavior suites |
+| Documentation and repository truth | Refreshed through July 23 | Yes | Keep canonical Markdown, ledger, PR, and runtime witnesses aligned |
+| Auth and onboarding | Integrated with an open wiring risk | Yes | Review and verify PR #595, then complete founder device journey |
+| Release truth and runtime contracts | Integrated; evidence continues per merge | Yes | Full gate on exact head and merge SHA, then exact deployed SHA proof |
+| Supabase authorization | Contract with several passed slices | Yes | Remaining private-surface denial, RPC behavior, and trigger behavior suites |
 | Teen Room and companion experience | Integrated | Yes | Physical-device, accessibility, offline, and failure-state QA |
-| Daily intentions | Integrated, privacy-scoped | No | Exact production observation and device layout QA |
+| Canonical Suhana/Sy naming | Runtime repair merged; compatibility migration incomplete | Yes | Normalize remaining user/AI boundaries without breaking stored legacy IDs |
+| Daily Intentions | Integrated, privacy-scoped | No | Exact production observation and device layout QA |
 | Bridge and parent lifecycle | Integrated, controlled | Yes | Complete two-account production journey and revocation proof |
-| Account deletion | Integrated, release-blocking proof incomplete | Yes | Database, Storage, local cache, retry, and isolation receipts |
+| Account deletion | Integrated, release-blocking proof incomplete | Yes | Database, Storage, local cache, retry, receipt, and isolation proof |
 | Mind + Body Reset | Integrated, internal | Conditional | Physical-device timer, accessibility, and movement-safety QA |
-| Circle and trusted relationships | Mixed integrated surfaces | Yes if included at launch | Moderation, anonymity, relationship, and notification proof |
+| Circle and trusted relationships | Mixed integrated surfaces | Yes if included at launch | Moderation, anonymity, relationship, notification, and RPC proof |
 | Legal, safeguarding, accessibility, store readiness | In progress | Yes | Named owners and evidence for every applicable gate |
-| L4 continuity memory | Planned | No | Smallest safe schema and one consumer only after auth gates |
+| L4 continuity memory | Planned | No | Smallest safe schema and one consumer after launch trust gates |
 | L5 synthesis | Blocked | No | L4 must reach `verified`; separate consent contract required |
 
 ## Scope rules
 
 - Launch is not blocked on L4 or L5 unless the founder explicitly changes launch scope.
 - A feature can remain preserved in the repository while hidden or controlled for launch.
-- A green PR proves reviewed integration, not production behavior.
+- A green PR proves only reviewed integration and the evidence that actually ran.
 - A successful deployment proves an artifact moved, not that the full user journey is safe.
-- Raw teen journals, private messages, voice transcripts, safety evidence, and user identifiers never belong in roadmap evidence.
+- Raw teen journals, private messages, voice transcripts, safety evidence, and broad user identifiers never belong in roadmap evidence.
 - Dates may be added only when capacity, dependency, and evidence owners are known.
 
 ## How this roadmap changes
@@ -179,7 +206,8 @@ A roadmap change must update:
 1. this file when phase sequence, scope, or launch gates change;
 2. `SPRINT.md` when current execution changes;
 3. `docs/CURRENT_STATUS.md` when verified current state changes;
-4. `implementation-ledger.json` or a validated ledger extension when implementation claims change;
-5. the relevant issue, test, production witness, and rollback evidence.
+4. `docs/WIRING_STATUS.md` when active runtime ownership or a wiring blocker changes;
+5. `implementation-ledger.json` or a validated extension when implementation state changes;
+6. the relevant issue, test, production witness, and rollback evidence.
 
 Research and founder ideas live in `docs/strategy/` or `docs/industry-signals/` until explicitly promoted. They do not silently become launch commitments.

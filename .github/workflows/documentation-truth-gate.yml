@@ -1,0 +1,88 @@
+name: Documentation Truth Exact-Head Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - README.md
+      - AGENTS.md
+      - SPRINT.md
+      - docs/CURRENT_STATUS.md
+      - docs/DOCUMENTATION_MAP.md
+      - docs/LAUNCH_ROADMAP.md
+      - docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md
+      - docs/WIRING_STATUS.md
+      - test/launch-documentation-contract.test.mjs
+      - implementation-ledger.json
+      - implementation-ledger.extensions/**
+      - .github/workflows/documentation-truth-gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-truth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  verify-documentation-truth:
+    name: Exact head, documentation contract, and ledger
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p documentation-evidence
+          ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+          printf 'expected_head_sha=%s\nactual_head_sha=%s\nworkflow_run_id=%s\n' \
+            "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$GITHUB_RUN_ID" \
+            | tee documentation-evidence/exact-head.txt
+          test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Run launch documentation contract
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test test/launch-documentation-contract.test.mjs \
+            2>&1 | tee documentation-evidence/documentation-contract.log
+
+      - name: Verify implementation ledger claims
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run verify:implementation-ledger \
+            2>&1 | tee documentation-evidence/implementation-ledger.log
+
+      - name: Upload exact-head evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-truth-evidence-${{ env.EXPECTED_HEAD_SHA }}
+          path: documentation-evidence/
+          if-no-files-found: error
+          retention-days: 14

@@ -1,75 +1,154 @@
-# Repo Knowledge Refresh — 2026-07-20
+# Repo Knowledge Refresh — baseline 2026-07-20, refreshed 2026-07-23
 
-This is the current agent-orientation checkpoint for Se'kret Bip after the late-July repo surge. Use it to prevent stale agents from operating from the old pre-router or pre-Control-Room map.
+This is the current agent-orientation checkpoint for Se'kret Bip. It began as the July 20 reset after the late-July repository surge and was refreshed on July 23 after PRs #594 and #577 merged.
 
-## Why this exists
-
-A 17-day-old mental model is no longer safe in this repository. The July 3, 2026 shipping-fix audit commit `990b3cab6986ecdefe65966aa226bdecaf5649e2` is now hundreds of commits behind `main`. A focused compare from that commit to `main` showed `main` **878 commits ahead** with new agent skills, Control Room manifests, Expo Router auth/onboarding surfaces, Cloudflare and GitHub workflow changes, Product Design assets/tokens, companion canon docs, and runtime evidence scaffolding.
-
-Do not treat older summaries that say the app is a one-file prototype, has no `app/` directory, has no Supabase auth, or has no route groups as current truth. Those were once useful drift reports; they are now stale unless tied to the exact commit they inspected.
+Use this file to prevent stale agents, email summaries, issue snapshots, and prior chat conclusions from operating from an old repository map.
 
 ## Current repository authority
 
 - Canonical active repo: `jussray/Sekret-Bip`.
 - Default branch: `main`.
-- Current product architecture: React Native + Expo Router + TypeScript frontend, Supabase Auth/Postgres/RLS/Storage/Edge Functions, Cloudflare Worker API, and Cloudflare Pages web deployment.
-- Current app shape includes `app/(auth)`, `app/(onboarding)`, `app/(teen)`, `app/(parent)`, `app/(dev)`, Worker code, Supabase migrations/functions, `e2e/` Playwright tests, `.agents/skills/*`, Control Room docs/manifests, and Product Design/design-token artifacts.
-- Cloudflare Worker authority currently names the backend Worker as `sekret-backend`; Cloudflare Pages project authority is `sekret-bip`.
+- Current reviewed `main`: `9cd5d6d4641160b9425320e31482a4bd05eb25c2`.
+- That commit is the merge of PR #577.
+- Current architecture: React Native + Expo Router + TypeScript frontend, Supabase Auth/Postgres/RLS/Storage/Edge Functions, Cloudflare Worker API, and Cloudflare Pages web deployment.
+- Canonical backend Worker: `sekret-backend`.
+- Canonical Pages project: `sekret-bip`.
+- Schema source of truth: `supabase/migrations/`.
 
-## Current checkpoint observed in this refresh
+The app is not a one-file prototype. It has active `app/(auth)`, `app/(onboarding)`, `app/(teen)`, `app/(parent)`, and `app/(dev)` route groups, Worker code, Supabase migrations and functions, Playwright tests, agent skills, Control Room manifests, design artifacts, and implementation evidence.
 
-- `main` contains `4daaa99449ef8570869c2c79b8a41c5cdfa5a676`, `fix forgot password JSX string`, repairing the malformed JSX newline in `app/(auth)/forgot-password.tsx`.
-- Draft PR #567, branch `agent/fix-cloudflare-worker-name`, now points at `f8cb7cb9ccf0de5207a5a921179e71ee972f9d33` after receiving the same JSX export fix on top of the Worker-name change.
-- PR #567 currently changes exactly `wrangler.toml` and `app/(auth)/forgot-password.tsx`.
-- GitHub showed `Cookie Contract Mirror` completed successfully on PR #567 head `f8cb7cb9ccf0de5207a5a921179e71ee972f9d33`.
-- No local build, Playwright, or Expo export was run from ChatGPT's runtime during this refresh because that runtime could not resolve `github.com`. Treat this as connector-verified repo state, not local build proof.
-- Cloudflare Pages/Expo export success is still a separate witness. Do not infer Cloudflare success from the GitHub cookie-contract check.
+## What changed since the July 20 snapshot
 
-## Active launch/product-design bottleneck
+### PR #594 merged the polished web front door
 
-Founder Access Recovery Gate remains the primary user-facing blocker until Ray can personally get inside Se'kret Bip on device.
+PR #594 promoted the approved responsive welcome screen into the Expo web root.
 
-The proof path is:
+Its exact head `e3f8f38bced1e3a5b27ef9fd35a3d5b06019ba9c` passed:
 
-1. signup renders and submits with the intended Supabase client/env;
-2. login renders and authenticates a permanent account;
-3. session persists across reload/app restart;
-4. email confirmation and deep-link redirects do not trap the account;
-5. consent saves before durable age/role/onboarding milestones;
-6. age, role, name, and onboarding routes do not dead-end;
-7. logout clears private transient onboarding/account cache;
-8. Ray verifies the path on device.
+- Cookie Contract Mirror;
+- Front Door Exact-Head Gate;
+- base-versus-head TypeScript diagnostic comparison with no new diagnostics;
+- focused Playwright for render, click and keyboard entry, age-bucket continuation, and narrow-phone overflow.
 
-No launch-proof language is allowed until that real device/user journey is observed.
+This is real exact-head proof for the scoped front-door change. It is not proof of the later merge SHA, `sekretbip.net`, Supabase Auth, RLS, production deployment, native devices, or founder access.
 
-## Product Design instruction
+### PR #577 merged test and migration-history repairs
 
-For Product Design work, prioritize the founder/account access recovery journey before broad visual exploration:
+PR #577 merged into `main` at `9cd5d6d4641160b9425320e31482a4bd05eb25c2`.
 
-- login;
-- signup;
-- forgot password;
-- reset password;
-- email confirmation/deep link;
-- onboarding welcome/age/consent/role/name path;
-- post-auth bootstrap route;
-- logout/session cleanup.
+It:
 
-Use screenshots, rendered prototypes, Playwright/web evidence, and device evidence as distinct proof layers. Figma, Canva, and static design artifacts may guide visual decisions, but they do not prove Supabase auth, route persistence, consent writes, session storage, Cloudflare deployment, or real device behavior.
+- repaired 18 failing or stale unit-test assertions;
+- preserved the intended safety and authorization contracts;
+- aligned the `expo-splash-screen` lockfile range;
+- repaired the forgot-password JSX string syntax;
+- added migration-history parity for reviewed trigger-function search paths, client EXECUTE revokes, and the auth-email synchronization trigger;
+- recorded onboarding trigger functions honestly as repository-complete but not yet observed live.
+
+The PR reported 877 passing unit tests locally. Its exact rebased head passed the focused front-door gate. The complete repository gate did not execute against the merge commit on `main`.
+
+### Canonical companion naming advanced
+
+Suhana and Sy are the canonical display/canon names.
+
+Legacy identifiers `raylene` and `rylane` may remain where database, storage, analytics, route, fixture, or compatibility contracts still require them. User-facing and AI-facing paths must normalize legacy values rather than leak retired display names.
+
+PR #592 merged runtime repair for legacy display-name output. Draft PR #595 continues propagation through remaining app, voice, safety, and service paths.
+
+## Current open repair candidates
+
+### PR #595 — onboarding-state and type-check repair
+
+PR #595 is draft and not merged truth.
+
+It reports that the active onboarding screens write through `src/services/onboarding.ts` to `onboarding_state`, a table that no repository migration creates. The real hardened table is `user_onboarding_state`.
+
+It also reports that active screens call `markActivated()` while the current active service does not define it, and that a more complete duplicate implementation exists outside the live import path.
+
+Treat this as the first runtime repair until review disproves it.
+
+The branch reports:
+
+- 906 passing unit tests locally;
+- one remaining TypeScript error from `expo-apple-authentication` in an unused component;
+- two pre-existing prototype lint errors;
+- only Cookie Contract Mirror attached to the exact head.
+
+### PR #596 — Crew invite RPC behavior contract
+
+PR #596 is draft and not merged truth.
+
+It adds static positive and negative behavior coverage for `redeem_crew_invite(text, text)` and reports 911 passing unit tests locally. No exact-head GitHub Actions run is attached.
+
+## Current primary user-facing blocker
+
+Founder Access Recovery Gate issue #563 remains the primary user-facing launch blocker.
+
+Ray must personally prove on a real device that one permanent account can:
+
+1. sign up through the intended Supabase client and environment;
+2. log in;
+3. survive confirmation and recovery links;
+4. persist a session;
+5. record required consent;
+6. advance age, role, name, and onboarding state through one canonical path;
+7. reach the correct teen or parent route;
+8. log out and clear private transient state.
+
+No controlled-alpha-ready or launch-proof language is allowed until that journey is observed.
+
+## Current launch blockers
+
+- canonical onboarding-state wiring and founder access recovery;
+- complete repository type, lint, test, bundle, audit, and Playwright proof;
+- live deployment and catalog verification for the PR #577 migration-history repairs;
+- complete account deletion across database, Auth, Storage, caches, relationship access, retries, receipts, and second-user isolation;
+- controlled Bridge and parent two-account production proof;
+- remaining anonymous and cross-user authorization proof;
+- behavior coverage for remaining high-blast-radius authenticated RPCs;
+- trigger behavioral assurance with controlled external effects;
+- physical-device, accessibility, offline, notification, moderation, and failure-state QA;
+- legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness.
+
+## Evidence separation rules
+
+Never blend these witnesses:
+
+1. repository code state;
+2. local test reports;
+3. GitHub Actions exact-head state;
+4. merge-SHA state on `main`;
+5. Cloudflare build or deployment state;
+6. live Supabase migration and authorization state;
+7. production-browser state;
+8. physical-device and real-account state;
+9. Product Design, Figma, Canva, or static mockup state.
+
+A valid claim must name the repository, branch or PR, exact SHA, environment, evidence type, and what remains unproved.
+
+If GitHub Actions has no jobs, no steps, or no logs, classify it as infrastructure evidence, not a code regression.
+
+Cloudflare success does not prove GitHub checks, Supabase, auth, RLS, Playwright, or devices. GitHub success does not prove Cloudflare or live production. A screenshot does not prove runtime data boundaries.
 
 ## Agent operating rules from this refresh
 
-1. Start every nontrivial session with `AGENTS.md`, `SPRINT.md`, `.agents/skills/bip-current-state/SKILL.md`, and the most relevant issue/PR authority.
-2. For release, CI, Cloudflare, or cross-repo truth, check Founder Control Room authority before claiming completion.
-3. Keep repository state, GitHub Actions state, Cloudflare build/deploy state, Supabase state, Playwright state, device state, and Product Design state separate. Do not blend witnesses.
-4. If GitHub Actions has no jobs, no steps, or no logs, classify that as infrastructure evidence, not a code regression.
-5. If Cloudflare fails after the JSX repair, classify the next concrete failure from the new log instead of reusing the previous syntax-error diagnosis.
-6. Do not delete preserved Ray/Juss work to make the repo look cleaner. Mark stale paths, preserve future lanes behind docs/flags/routes, and only remove unsafe or truly obsolete material.
-7. Do not perform production deploys, Supabase DDL/DML, credential changes, paid-capacity changes, external publication, deletion, or DNS/Worker authority changes without explicit founder approval.
+1. Start nontrivial work with `AGENTS.md`, `SPRINT.md`, this refresh, `.agents/skills/bip-current-state/SKILL.md`, and the relevant issue or PR authority.
+2. Check the real repository before repeating an email, issue, or prior-chat conclusion.
+3. Check Founder Control Room before cross-repo, CI, outage, Cloudflare, release, or production claims.
+4. Treat draft PR bodies as proposed diagnoses and self-reported local evidence, not merged truth.
+5. Preserve legacy identifiers only where compatibility requires them; use Suhana and Sy for display/canon truth.
+6. Do not create a second onboarding, auth, schema, deployment, or state authority.
+7. Do not delete preserved Ray/Juss work merely to make the repository look cleaner.
+8. Do not perform production deploys, Supabase mutations, credential changes, paid-capacity changes, external publication, destructive deletion, or DNS/Worker authority changes without explicit founder approval.
 
 ## Immediate next proof loop
 
-- Watch the Cloudflare build for PR #567 head `f8cb7cb9ccf0de5207a5a921179e71ee972f9d33`.
-- If it fails, repair the new concrete failure only.
-- If it passes, run the founder access recovery Product Design QA and auth/onboarding proof path.
-- Update the relevant PR/issue docs with exact-head evidence, but keep launch-proof claims blocked until Ray verifies the app on device.
+1. Review and exact-head verify PR #595.
+2. Resolve the Apple-auth TypeScript decision and prototype lint errors.
+3. Rebase and exact-head verify PR #596 after #595 changes the base.
+4. Run the full repository gate on the resulting exact head and merge SHA.
+5. Deploy and verify the intended Supabase migrations before claiming live parity.
+6. Complete founder access recovery on device.
+7. Continue deletion, Bridge, authorization, RPC, trigger, mobile-quality, and launch-operations proof in the order defined by `SPRINT.md`.
+
+When this file conflicts with an older dated snapshot, issue description, email, or chat summary, verify the current repository and update the stale source. Do not select the most convenient version.
