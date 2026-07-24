@@ -83,8 +83,8 @@ test('founder and agent entry points use the same current-truth system', async (
   assert.match(readme, /Suhana, Sy, Cloud, and Night/);
   assert.match(status, /Privacy-safe Daily Intentions/);
   assert.match(status, /L5 remains blocked until L4 reaches `verified`/);
-  assert.match(refresh, /Draft PR #595/);
-  assert.match(refresh, /Draft PR #596/);
+  assert.match(refresh, /PR #595 is draft/);
+  assert.match(refresh, /PR #596 is draft/);
   assert.match(strategy, /Signal or idea/);
   assert.match(strategy, /Launch-roadmap placement/);
 });
