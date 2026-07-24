@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test';
 
 const LOCKED_BOTTOM_NAV = ['Room', 'Pages', 'Calm', 'Circle', 'More'];
 
+function normalizeTabLabel(label: string): string {
+  return label
+    .replace(/[^\p{L}\p{N}’'\- ]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/(teen)/room');
   await page.waitForLoadState('domcontentloaded');
@@ -12,13 +19,12 @@ test('keeps the existing teen bottom navigation locked', async ({ page }) => {
   await expect(tabs).toHaveCount(LOCKED_BOTTOM_NAV.length, { timeout: 30_000 });
 
   const labels = await tabs.allInnerTexts();
-  const normalized = labels.map(label => label.replace(/\s+/g, ' ').trim());
-  expect(normalized).toEqual(LOCKED_BOTTOM_NAV);
+  expect(labels.map(normalizeTabLabel)).toEqual(LOCKED_BOTTOM_NAV);
 });
 
 test('keeps feature routes out of the visible bottom navigation', async ({ page }) => {
   const tabs = page.locator('[role="tab"]');
-  const labels = (await tabs.allInnerTexts()).join(' ');
+  const labels = (await tabs.allInnerTexts()).map(normalizeTabLabel).join(' ');
   expect(labels).not.toMatch(/Bridge|Bippin|Voice Bip|Se’kret|Se'kret|User Room|Rewards|Crew/i);
 });
 
