@@ -98,7 +98,7 @@ test.describe('Founder Operator access boundary', () => {
     await page.setViewportSize({ width: 390, height: 844 });
   });
 
-  test('verified founder profile opens the Founder Operator surface', async ({ page }) => {
+  test('verified founder profile opens the Founder Operator surface', async ({ page }, testInfo) => {
     const interceptedCount = await installFakeSession(page, {
       user_id: USER_ID,
       email: user.email,
@@ -120,10 +120,10 @@ test.describe('Founder Operator access boundary', () => {
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     );
     expect(hasHorizontalOverflow).toBe(false);
-    await page.screenshot({ path: 'reports/control-room/playwright/founder-operator/founder-open.png', fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('founder-open.png'), fullPage: true });
   });
 
-  test('non-founder profile remains locked out of every Control Room surface', async ({ page }) => {
+  test('non-founder profile remains locked out of every Control Room surface', async ({ page }, testInfo) => {
     const interceptedCount = await installFakeSession(page, {
       user_id: USER_ID,
       email: user.email,
@@ -140,6 +140,6 @@ test.describe('Founder Operator access boundary', () => {
     await expect(page.getByText('Founder Operator', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Operations', exact: true })).toHaveCount(0);
     expect(interceptedCount()).toBeGreaterThan(0);
-    await page.screenshot({ path: 'reports/control-room/playwright/founder-operator/non-founder-locked.png', fullPage: true });
+    await page.screenshot({ path: testInfo.outputPath('non-founder-locked.png'), fullPage: true });
   });
 });
