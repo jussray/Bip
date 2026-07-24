@@ -8,7 +8,7 @@ test('login routes into the forgot-password journey with accessible controls', a
   await forgotLink.click();
 
   await expect(page).toHaveURL(/\/forgot-password$/);
-  await expect(page.getByText('Forgot password?', { exact: true })).toBeVisible();
+  await expect(page.getByText('Forgot password?', { exact: true }).last()).toBeVisible();
   await expect(page.getByLabel('Account email')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Send password reset email' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Back to Sign In' })).toBeVisible();
