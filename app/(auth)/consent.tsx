@@ -2,15 +2,16 @@
  * app/(auth)/consent.tsx
  *
  * Terms / Privacy / Voice-biometric consent screen.
- * Reached from age-gate with params: { dob, accountType }.
+ * Reached from:
+ *   • age-gate  (first launch)  — params: { dob, accountType }
+ *   • index.tsx (ToS/PP update) — params: { dob, accountType, reConsent: 'true' }
  *
  * On completion:
- *   1. Writes 'compliance_v1_done' = 'true' to AsyncStorage (offline-first gate).
+ *   1. Writes compliance keys to AsyncStorage (offline-first gate).
  *   2. Calls record_initial_consent() RPC to persist to Supabase when online.
  *   3. Routes to the normal onboarding flow (index → profile).
  *
- * Terms version: "tos-v1.0"   — bump this string to re-prompt existing users.
- * Privacy version: "pp-v1.0"  — bump to re-prompt.
+ * Version strings live in src/utils/compliance.ts — bump there to re-prompt everyone.
  */
 import React, { useState } from 'react';
 import {
@@ -26,9 +27,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { getSupabase } from '@/utils/supabase';
-
-const TOS_VERSION     = 'tos-v1.0';
-const PRIVACY_VERSION = 'pp-v1.0';
+import { TOS_VERSION, PRIVACY_VERSION } from '@utils/compliance';
 
 interface CheckRowProps {
   checked: boolean;
@@ -55,7 +54,10 @@ function CheckRow({ checked, onToggle, title, body, required }: CheckRowProps) {
 }
 
 export default function ConsentScreen() {
-  const { dob, accountType } = useLocalSearchParams<{ dob: string; accountType: string }>();
+  const { dob, accountType, reConsent } = useLocalSearchParams<{
+    dob: string; accountType: string; reConsent?: string;
+  }>();
+  const isReConsent = reConsent === 'true';
 
   const [tosChecked,     setTos]     = useState(false);
   const [privacyChecked, setPrivacy] = useState(false);
@@ -116,11 +118,15 @@ export default function ConsentScreen() {
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
 
-        <Text style={s.kicker}>ALMOST THERE</Text>
-        <Text style={s.title}>A few things before you go in</Text>
+        <Text style={s.kicker}>{isReConsent ? 'WE UPDATED OUR TERMS' : 'ALMOST THERE'}</Text>
+        <Text style={s.title}>
+          {isReConsent ? 'A few things changed' : 'A few things before you go in'}
+        </Text>
         <Text style={s.sub}>
-          Se'kret Bip stores personal conversations and voice notes.
-          Read these and check each one — they're short.
+          {isReConsent
+            ? "We've updated our Terms or Privacy Policy. Please review and re-confirm — it'll only take a moment."
+            : "Se'kret Bip stores personal conversations and voice notes. Read these and check each one — they're short."
+          }
         </Text>
 
         <CheckRow

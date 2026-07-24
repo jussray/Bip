@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useAppContext } from '@/context/AppContext';
 import { SplashScreen } from '@screens/SplashScreen';
+import { checkCompliance } from '@utils/compliance';
 
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
@@ -12,9 +13,18 @@ export default function Index() {
 
   useEffect(() => {
     if (isLoading) return;
-    AsyncStorage.getItem('compliance_v1_done').then(val => {
-      if (val !== 'true') {
+    checkCompliance().then(result => {
+      if (result.status === 'needs_age_gate') {
         router.replace('/(auth)/age-gate');
+      } else if (result.status === 'needs_consent') {
+        router.replace({
+          pathname: '/(auth)/consent',
+          params: {
+            dob:         result.dob,
+            accountType: result.accountType,
+            reConsent:   'true',
+          },
+        });
       } else {
         setComplianceReady(true);
       }
