@@ -16,8 +16,9 @@ test('loopback server is token gated and command allowlisted', () => {
   assert.doesNotMatch(server, /spawn\([^\n]*req\./);
   assert.doesNotMatch(server, /new RegExp\([^\n]*authorization/i);
   assert.match(agent, /Unknown or disallowed mission/);
-  assert.doesNotMatch(client, /FounderOperatorPlan/);
-  assert.doesNotMatch(server, /founder-operator\/plans/);
+  assert.match(client, /FounderOperatorPlan/);
+  assert.match(server, /founder-operator\/plans/);
+  assert.doesNotMatch(server, /spawn\([^\n]*plan/);
 });
 
 test('timeout targets the complete process tree and retains the lock until it stops', () => {
