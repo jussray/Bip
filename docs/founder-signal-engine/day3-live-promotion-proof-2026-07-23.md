@@ -11,6 +11,7 @@ Create a fresh, controlled GitHub event that proves the Founder Signal Engine ca
 - Branch: `founder-signal-engine-day3-live-proof-20260723`
 - Mode: controlled publishing proof
 - Date: 2026-07-23
+- Synchronize marker: `2026-07-24T03:33Z`
 
 ## Verified facts available to the promotion engine
 
