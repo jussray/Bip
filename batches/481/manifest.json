@@ -28,23 +28,23 @@
       "branch": "batch/481-02-founder-operator-current-main",
       "base": "main",
       "pullRequest": 616,
-      "status": "draft",
+      "status": "merged",
       "contract": "batches/481/02-founder-operator.md"
     },
     {
       "order": 3,
       "id": "github-failure-routing",
-      "branch": "batch/481-03-github-failure-routing",
-      "base": "batch/481-02-founder-operator-current-main",
+      "branch": "batch/481-03-github-failure-routing-current-main",
+      "base": "main",
       "pullRequest": null,
-      "status": "planned",
+      "status": "draft",
       "contract": "batches/481/03-github-failure-routing.md"
     },
     {
       "order": 4,
       "id": "room-production-product-design",
       "branch": "batch/481-04-room-production-product-design",
-      "base": "batch/481-03-github-failure-routing",
+      "base": "batch/481-03-github-failure-routing-current-main",
       "pullRequest": null,
       "status": "planned",
       "contract": "batches/481/04-room-production-product-design.md"
