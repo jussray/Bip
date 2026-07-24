@@ -49,6 +49,7 @@ import { TEEN_ROUTES } from '@/teen/routes';
 import { updateSekretMemory } from '../../../services/sekretMemory';
 import {
   fetchSekretVoice,
+  normalizeSekretCharacter,
   type SekretAvatarState,
   type SekretCharacterId,
   type SekretHistoryTurn,
@@ -78,9 +79,12 @@ import { syncJournal } from '@/utils/sync';
 const ACTIVE_BRIDGE_SHARE_STATUSES = new Set(['pending', 'processing', 'ready', 'viewed']);
 
 // ─── Companion manifest ───────────────────────────────────────────────────────
+// id stays on the persisted app_profiles.selected_companion vocabulary
+// (raylene/rylane, DB-constrained — see constants/voiceBip.ts); name is the
+// current canonical display text.
 const COMPANIONS = [
-  { id: 'raylene', name: 'Raylene', accent: '#f08bc5', vibe: 'warm + protective' },
-  { id: 'rylane',  name: 'Rylane',  accent: '#76a7ff', vibe: 'direct + loyal'    },
+  { id: 'raylene', name: 'Suhana', accent: '#f08bc5', vibe: 'warm + protective' },
+  { id: 'rylane',  name: 'Sy',     accent: '#76a7ff', vibe: 'direct + loyal'    },
   { id: 'cloud',   name: 'Cloud',   accent: '#8ed9e7', vibe: 'soft + no pressure' },
   { id: 'night',   name: 'Night',   accent: '#9a8ee8', vibe: 'quiet + steady'    },
   { id: 'me',      name: 'Me',      accent: '#b8a9c9', vibe: 'private pages'     },
@@ -138,13 +142,16 @@ const PROMPTS: Record<string, string[]> = {
 
 // ─── Avatar image helpers (unchanged from original) ───────────────────────────
 function normalizeAvatar(value?: string): SekretCharacterId {
-  return value === 'rylane' || value === 'cloud' || value === 'night' ? value : 'raylene';
+  if (value === 'sy' || value === 'rylane') return 'sy';
+  if (value === 'cloud') return 'cloud';
+  if (value === 'night') return 'night';
+  return 'suhana';
 }
 
 function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
   const map: Record<SekretCharacterId, Record<SekretAvatarState, any>> = {
-    raylene: { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
-    rylane:  { neutral: IMAGES.rylaneNeutral,  listening: IMAGES.rylaneThinking,  thinking: IMAGES.rylaneThinking,  comforting: IMAGES.rylaneWindow,  happy: IMAGES.rylaneHappy,  concerned: IMAGES.rylaneWindow,  responding: IMAGES.rylaneFullbody },
+    suhana: { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
+    sy:      { neutral: IMAGES.rylaneNeutral,  listening: IMAGES.rylaneThinking,  thinking: IMAGES.rylaneThinking,  comforting: IMAGES.rylaneWindow,  happy: IMAGES.rylaneHappy,  concerned: IMAGES.rylaneWindow,  responding: IMAGES.rylaneFullbody },
     cloud:   { neutral: IMAGES.cloudAvatarNeutral, listening: IMAGES.cloudAvatarThinking, thinking: IMAGES.cloudAvatarThinking, comforting: IMAGES.cloudAvatarWindow, happy: IMAGES.cloudAvatarHappy, concerned: IMAGES.cloudAvatarWindow, responding: IMAGES.cloudAvatarWriting },
     night:   { neutral: IMAGES.nightNeutral, listening: IMAGES.nightListening, thinking: IMAGES.nightThinking, comforting: IMAGES.nightRelaxed, happy: IMAGES.nightHappy, concerned: IMAGES.nightProtective, responding: IMAGES.nightSoftsmile },
     sekret:  { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
@@ -256,7 +263,11 @@ export default function TeenPagesRoute() {
   const companion = COMPANIONS.find(c => c.id === activeTab) ?? COMPANIONS[0];
 
   const aiCompanion = isAiTab(activeTab);
-  const companionAvatarId: AiCompanionId | null = aiCompanion ? activeTab : null;
+  // activeTab/AiCompanionId is the persisted app_profiles.selected_companion
+  // vocabulary (raylene/rylane); normalize to the canonical SekretCharacterId
+  // (suhana/sy) at this boundary, since everything downstream (voice, avatar
+  // rendering) speaks the canonical vocabulary.
+  const companionAvatarId: SekretCharacterId | null = aiCompanion ? normalizeSekretCharacter(activeTab) : null;
 
   // Entries for current tab, chronological (oldest first for chat timeline)
   const threadEntries = useMemo(

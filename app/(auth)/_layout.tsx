@@ -13,7 +13,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Redirect, Stack, useLocalSearchParams, useSegments } from 'expo-router';
+import { Redirect, Stack, useGlobalSearchParams, useSegments } from 'expo-router';
 
 import { AGE_ASSURANCE_STORAGE_KEYS } from '@/features/onboarding/ageAssurance';
 
@@ -28,7 +28,10 @@ const ALLOWED_TEEN_AGE_STATUSES = new Set([
 
 export default function AuthLayout() {
   const segments = useSegments();
-  const params = useLocalSearchParams<{ side?: string }>();
+  // This layout gates a child route, so it must read the globally focused URL
+  // params. useLocalSearchParams() can omit child-route query parameters here,
+  // which previously sent `/(auth)/signup?side=parent` into teen age assurance.
+  const params = useGlobalSearchParams<{ side?: string }>();
   const [signupGateState, setSignupGateState] = useState<SignupGateState>('checking');
 
   const isSignupRoute = useMemo(

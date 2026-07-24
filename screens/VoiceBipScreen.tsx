@@ -368,7 +368,7 @@ export function VoiceBipScreen({
     ].slice(-20);
     setSekretReply(reply);
     setIsVoiceLoading(true);
-    const audio = await fetchSekretVoice({ reply, characterId: avatarKey });
+    const audio = await fetchSekretVoice({ reply, characterId: avatar.personality });
     if (audio) setReplyAudioUri(`data:${audio.contentType};base64,${audio.audioBase64}`);
     setIsVoiceLoading(false);
     setIsThinking(false);

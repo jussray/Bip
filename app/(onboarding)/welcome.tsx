@@ -56,7 +56,7 @@ export default function Welcome() {
     setUserSide(decision.nextSide);
 
     if (decision.allowed) {
-      advance('age_verified', {
+      await advance('age_verified', {
         age_bucket: decision.ageBucket,
         age_verification_status: decision.status,
         age_verification_method: decision.method,
@@ -71,7 +71,7 @@ export default function Welcome() {
   async function handleParent() {
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, 'parent');
     setUserSide('parent');
-    advance('role_selected', { role: 'parent' });
+    await advance('role_selected', { role: 'parent' });
     router.push('/(onboarding)/parent-splash');
   }
 
@@ -126,7 +126,7 @@ export default function Welcome() {
         ) : null}
 
         <View style={styles.companionRow}>
-          {['💜 Raylene', '💙 Rylane', '☁️ Cloud', '🌙 Night'].map(label => (
+          {['💜 Suhana', '💙 Sy', '☁️ Cloud', '🌙 Night'].map(label => (
             <View key={label} style={styles.companionChip}>
               <Text style={styles.companionText}>{label}</Text>
             </View>

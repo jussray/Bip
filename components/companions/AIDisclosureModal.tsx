@@ -8,7 +8,7 @@
  *   const [showDisclosure, setShowDisclosure] = useState(!profile.ai_disclosure_accepted_at);
  *   <AIDisclosureModal
  *     visible={showDisclosure}
- *     companionName="Raylene"
+ *     companionName="Suhana"
  *     onAccept={() => setShowDisclosure(false)}
  *   />
  */
@@ -21,7 +21,7 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import { supabase } from '@/services/supabase';
+import { getSupabase } from '@/utils/supabase';
 
 interface Props {
   visible: boolean;
@@ -32,6 +32,8 @@ interface Props {
 export default function AIDisclosureModal({ visible, companionName, onAccept }: Props) {
   const handleAccept = async () => {
     try {
+      const supabase = getSupabase();
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         await supabase
