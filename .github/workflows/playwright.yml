@@ -20,6 +20,7 @@ on:
       - 'test/release-metadata.test.mjs'
       - 'test/room-production-contract.test.mjs'
       - 'playwright.config.ts'
+      - 'playwright.auth-transport.config.ts'
       - 'playwright.production.config.ts'
       - 'playwright.founder-preview.config.ts'
       - 'playwright.room.config.ts'
@@ -44,6 +45,7 @@ on:
       - 'test/release-metadata.test.mjs'
       - 'test/room-production-contract.test.mjs'
       - 'playwright.config.ts'
+      - 'playwright.auth-transport.config.ts'
       - 'playwright.production.config.ts'
       - 'playwright.founder-preview.config.ts'
       - 'playwright.room.config.ts'
@@ -91,6 +93,9 @@ jobs:
       - name: Run Playwright smoke and guardrail tests
         run: npx playwright test
 
+      - name: Verify signup retry transport without contacting Auth
+        run: npm run test:e2e:auth-transport
+
       - name: Verify founder-preview Comfort and Cloud routes
         run: npx playwright test --config=playwright.founder-preview.config.ts
 
@@ -104,6 +109,7 @@ jobs:
           name: playwright-report
           path: |
             playwright-report/
+            playwright-report-auth-transport/
             playwright-report-founder-preview/
             .room-foreman/runs/
           if-no-files-found: ignore
