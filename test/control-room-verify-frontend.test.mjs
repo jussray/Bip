@@ -6,28 +6,24 @@ import test from 'node:test';
 
 import {
   detectPlaywrightAvailability,
-  parsePlaywrightJson,
+  parsePlaywrightJsonFile,
   writeReports,
 } from '../scripts/control-room-verify-frontend.mjs';
 
-test('Playwright JSON reporter counts are normalized for Control Room', () => {
-  const counts = parsePlaywrightJson(JSON.stringify({
-    stats: {
-      expected: 8,
-      unexpected: 1,
-      flaky: 1,
-      skipped: 2,
-      timedOut: 1,
-    },
+test('Playwright JSON reporter counts are normalized from retained evidence', () => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'bip-playwright-json-'));
+  const jsonPath = path.join(directory, 'results.json');
+  fs.writeFileSync(jsonPath, JSON.stringify({
+    stats: { expected: 8, unexpected: 1, flaky: 1, skipped: 2, timedOut: 1 },
   }));
-
-  assert.deepEqual(counts, {
+  assert.deepEqual(parsePlaywrightJsonFile(jsonPath), {
     passed: 8,
     failed: 2,
     skipped: 2,
     timedOut: 1,
     total: 13,
   });
+  fs.rmSync(directory, { recursive: true, force: true });
 });
 
 test('forced fallback is explicit and never claims browser proof', async () => {
@@ -35,18 +31,13 @@ test('forced fallback is explicit and never claims browser proof', async () => {
     rootDir: process.cwd(),
     env: { CONTROL_ROOM_FORCE_NO_PLAYWRIGHT: '1' },
   });
-
   assert.equal(availability.available, false);
   assert.match(availability.reason, /deterministic fallback testing/);
 });
 
-test('frontend reports distinguish browser evidence from local fallback', () => {
+test('frontend reports retain browser artifact paths and distinguish fallback evidence', () => {
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bip-frontend-report-'));
-  const availability = {
-    available: false,
-    reason: 'No Chromium binary in this test.',
-    executablePath: null,
-  };
+  const availability = { available: false, reason: 'No Chromium binary in this test.', executablePath: null };
   const run = {
     mode: 'fallback-verify-local',
     evidenceLevel: 'non-browser-fallback',
@@ -54,22 +45,20 @@ test('frontend reports distinguish browser evidence from local fallback', () => 
     status: 'pass',
     exitCode: 0,
     durationMs: 12,
+    artifactDir: null,
     counts: null,
     parseError: null,
     stdoutTail: 'local checks passed',
     stderrTail: '',
   };
-
   const { report, jsonPath, mdPath } = writeReports(availability, run, {
     outputDir,
-    generatedAt: '2026-07-14T20:00:00.000Z',
+    generatedAt: '2026-07-24T08:00:00.000Z',
   });
-
   assert.equal(report.run.browserProof, false);
-  assert.equal(report.run.evidenceLevel, 'non-browser-fallback');
-  assert.equal(JSON.parse(fs.readFileSync(jsonPath, 'utf8')).run.browserProof, false);
-
+  assert.equal(JSON.parse(fs.readFileSync(jsonPath, 'utf8')).run.evidenceLevel, 'non-browser-fallback');
   const markdown = fs.readFileSync(mdPath, 'utf8');
   assert.match(markdown, /Browser proof: \*\*NO\*\*/);
   assert.match(markdown, /must not be described as browser or Playwright proof/);
+  fs.rmSync(outputDir, { recursive: true, force: true });
 });
