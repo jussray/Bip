@@ -35,13 +35,13 @@ This sprint does **not** promise public launch. It closes evidence gaps required
 - PR #577: 18 stale or failing unit-test assertions repaired without weakening intended safety/auth contracts.
 - PR #577: trigger-function migration-history parity improvements, lockfile range correction, and forgot-password JSX repair.
 - PR #592: runtime repair for legacy Raylene/Rylane display-name leaks while preserving compatibility aliases.
+- PR #597: canonical Markdown truth refresh plus exact-head documentation and ledger verification.
 
 ### Proof limits
 
-- The current `main` merge commit is `9cd5d6d4641160b9425320e31482a4bd05eb25c2`.
-- The complete repository gate has not executed against that merge SHA.
-- PR #594's exact-head gate is valid for its scoped front-door head, not automatic proof of the later merge commit or live domain.
-- PR #577 reported 877 passing unit tests locally, but type-check debt remained outside its focused scope.
+- The documentation baseline is merged, but every later runtime PR must still synchronize with current `main` and rerun its complete exact-head gate.
+- PR #594's exact-head gate is valid for its scoped front-door head, not automatic proof of a later merge SHA or live domain.
+- PR #577 reported 877 passing unit tests locally, but its merge commit did not receive the complete repository gate.
 - Cloudflare deployment comments, GitHub Actions results, live Supabase state, production-browser behavior, and physical-device behavior remain separate witnesses.
 
 ## Current repair queue
@@ -50,31 +50,31 @@ This sprint does **not** promise public launch. It closes evidence gaps required
 
 **Status:** draft, not merged.
 
-The branch reports a real runtime inconsistency:
+The branch is repairing a real runtime inconsistency:
 
 - active screens import `src/services/onboarding.ts`;
-- that service targets `onboarding_state`, which no repository migration creates;
+- the old active service targeted `onboarding_state`, which no repository migration creates;
 - the real hardened table is `user_onboarding_state`;
-- active screens call `markActivated()`, which the current active service does not define;
-- a more complete duplicate implementation exists outside the active import path.
+- active screens call `markActivated()`;
+- a stronger duplicate implementation existed outside the active import path.
 
 Required outcome:
 
 - one canonical onboarding context and service;
 - real table and enum names;
 - safe baseline-row creation without clobbering progress;
-- allowed-column writes only;
+- checked errors and conflict-safe writes;
 - stage and timestamp updates that satisfy database trigger rules;
 - tests that inspect the implementation users actually execute;
-- no duplicate active state system left behind.
+- preserved historical paths without a second active state system.
 
-The branch reports 906 passing unit tests locally, one remaining TypeScript error from `expo-apple-authentication` in an unused component, and two pre-existing prototype lint errors. Only Cookie Contract Mirror is currently attached to its exact head.
+Recent exact-head runs have passed TypeScript, lint, focused onboarding contracts, the full unit suite on pre-sync heads, bundle export, and front-door Playwright. Browser traces exposed and drove repairs for stale auth assertions, retired companion labels, and the parent-signup query boundary. After PR #597 merged, the branch was synchronized with current `main`; its full suite then exposed two documentation-contract regressions on `main`, now being repaired separately before the final #595 gate is accepted.
 
 ### 2. PR #596 — Crew invite RPC behavior contract
 
 **Status:** draft, not merged.
 
-The branch adds static positive and negative coverage for `redeem_crew_invite(text, text)` and reports 911 passing unit tests locally. It currently has no exact-head GitHub Actions run.
+The branch adds static positive and negative coverage for `redeem_crew_invite(text, text)` and reports 911 passing unit tests locally. It must be rebased and exact-head verified after the onboarding/type lane settles.
 
 Keep the scope focused, but use its inventory to continue behavior coverage for the remaining untested authenticated SECURITY DEFINER RPCs.
 
@@ -114,6 +114,19 @@ No founder-access, alpha-ready, or launch-proof language is allowed until this j
 - `account-delete` and `safety-scan` have fail-closed negative-auth source contracts.
 - PR #577 improved structural trigger-function and migration-history coverage.
 
+### SECURITY DEFINER trigger assurance
+
+Keep the trigger program split into distinct proof gates:
+
+- **Structural migration-history coverage:** inventory application-owned SECURITY DEFINER trigger functions, latest-definition wins, effective `search_path`, client-role EXECUTE revocation, attachments, drops, duplicates, and orphan detection.
+- **Read-only live catalog parity:** compare repository expectations with the intended Supabase project's function configuration, ACLs, trigger attachments, and definition fingerprints before behavioral writes.
+- **Drift classification:** record repository-only, live-only, or definition drift explicitly instead of selecting the most convenient source.
+- **External-effect-safe behavioral harness:** isolate or stub `pg_net`, Edge Functions, notifications, queues, and other effects that could escape a database rollback.
+- **Behavioral proof:** cover owner, cross-user, anonymous-session, alternate-row-shape, idempotency, duplicate-trigger, and cleanup cases.
+- Preserve rollback-contained evidence with **zero retained synthetic rows** and explicit cleanup receipts.
+
+Do not mark trigger assurance verified from structural migration-history coverage or read-only live catalog parity alone. The external-effect-safe behavioral harness must pass against the intended target first.
+
 ### Completion work
 
 - verify repository migration history against the live catalog after the new migrations are deployed;
@@ -121,7 +134,7 @@ No founder-access, alpha-ready, or launch-proof language is allowed until this j
 - isolate or safely stub external effects such as `pg_net`, Edge Functions, notifications, and queues;
 - add positive and negative behavior tests for remaining high-blast-radius authenticated RPCs;
 - continue bounded anonymous-auth hardening for launch-critical private surfaces;
-- preserve zero retained synthetic private rows and explicit cleanup evidence.
+- preserve zero retained synthetic rows and explicit cleanup evidence.
 
 Do not mark trigger assurance verified from structure or read-only catalog observation alone.
 
@@ -180,19 +193,18 @@ Use Playwright for web and release guardrails. Use Maestro for physical mobile j
 
 ## Immediate execution order
 
-1. Complete this Markdown truth refresh and use it as the new orientation baseline.
-2. Review, repair, and exact-head verify PR #595.
-3. Resolve the `expo-apple-authentication` decision and the two prototype lint errors so the full type and lint gates can actually pass.
-4. Rebase and exact-head verify PR #596 after #595 changes the base.
-5. Run the complete repository gate on the resulting exact head and then on the merge commit.
-6. Deploy and verify the PR #577 trigger-history migrations in the intended Supabase project before claiming live parity.
-7. Continue the next bounded private-surface authorization and authenticated-RPC behavior slices.
-8. Complete founder access recovery on a real device.
-9. Complete account deletion and the controlled Bridge two-account journey.
-10. Run mobile, accessibility, offline, notification, moderation, and failure-state QA.
-11. Prepare the controlled-alpha decision packet with scope, cohort, metrics, rollback thresholds, support, and stop conditions.
-12. Only after launch-critical work is complete, design the smallest safe L4 schema and one real consumer.
-13. Only after L4 reaches `verified`, consider an L5 consent contract.
+1. Keep the canonical Markdown and documentation contracts green on `main`.
+2. Review, repair, and exact-head verify PR #595 against the merged documentation baseline.
+3. Rebase and exact-head verify PR #596 after #595 changes the base.
+4. Run the complete repository gate on the resulting exact head and then on the merge commit.
+5. Deploy and verify the PR #577 trigger-history migrations in the intended Supabase project before claiming live parity.
+6. Continue the next bounded private-surface authorization and authenticated-RPC behavior slices.
+7. Complete founder access recovery on a real device.
+8. Complete account deletion and the controlled Bridge two-account journey.
+9. Run mobile, accessibility, offline, notification, moderation, and failure-state QA.
+10. Prepare the controlled-alpha decision packet with scope, cohort, metrics, rollback thresholds, support, and stop conditions.
+11. Only after launch-critical work is complete, design the smallest safe L4 schema and one real consumer.
+12. Only after L4 reaches `verified`, consider an L5 consent contract.
 
 ## Explicit non-goals
 
