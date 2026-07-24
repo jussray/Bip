@@ -21,6 +21,7 @@ permissions:
   contents: read
   actions: read
   issues: write
+  pull-requests: write
 
 concurrency:
   group: github-failure-routing-${{ github.event.pull_request.number || github.ref }}
@@ -155,13 +156,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+      - name: Ensure draft review pull request exists
+        id: ensure-pr
+        if: ${{ github.event_name == 'push' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          pr_url="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$GITHUB_REF_NAME" --base main --state open --json url --jq '.[0].url // empty')"
+          if [ -z "$pr_url" ]; then
+            cat > /tmp/batch-481-3-pr.md <<'EOF'
+          ## REALITY
+
+          Current-main replacement for superseded stacked PR #608. The clean branch contains only the focused Batch 3 GitHub failure-routing delta and its exact-head rehearsal workflow.
+
+          Tracks #619.
+
+          ## GATE
+
+          Keep draft until exact-head PR checks, mergeability, and review-thread read-back are green. This workflow creates the draft review surface only. It does not mark ready, approve, merge, deploy, or mutate production.
+          EOF
+            pr_url="$(gh pr create --repo "$GITHUB_REPOSITORY" --draft --base main --head "$GITHUB_REF_NAME" --title 'Batch 481.3: Route GitHub failures through Control Room' --body-file /tmp/batch-481-3-pr.md)"
+          fi
+          echo "pr_url=$pr_url" >> "$GITHUB_OUTPUT"
+
       - name: Record direct-gate outcome on review issue
         if: ${{ always() && github.event_name == 'push' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GATE_STATUS: ${{ job.status }}
+          PR_OUTCOME: ${{ steps.ensure-pr.outcome }}
+          PR_URL: ${{ steps.ensure-pr.outputs.pr_url }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
-          body="$(printf '## Direct exact-head gate\n\n- Exact head: `%s`\n- Job status: `%s`\n- Run: %s\n- Event: `push`\n\nThis result is branch verification only. It does not replace draft-PR creation, mergeability, or review-thread gates.' "$EXPECTED_HEAD_SHA" "$GATE_STATUS" "$RUN_URL")"
+          body="$(printf '## Direct exact-head gate\n\n- Exact head: `%s`\n- Job status: `%s`\n- Draft-PR step: `%s`\n- Draft PR: %s\n- Run: %s\n- Event: `push`\n\nThis result does not replace mergeability or review-thread gates, and it grants no merge or deployment authority.' "$EXPECTED_HEAD_SHA" "$GATE_STATUS" "$PR_OUTCOME" "${PR_URL:-not-created}" "$RUN_URL")"
           gh issue comment 619 --repo "$GITHUB_REPOSITORY" --body "$body"
