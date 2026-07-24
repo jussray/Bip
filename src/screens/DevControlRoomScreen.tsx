@@ -9,10 +9,10 @@ import WorkerPanel from '@/features/control-room/WorkerPanel';
 import FallbackTelemetryPanel from '@/features/control-room/FallbackTelemetryPanel';
 import { getCurrentFounderProfile, isFounderProfile, type FounderProfile } from '@/services/founderAudit';
 
-type ControlRoomSurface = 'operator' | 'operations' | 'fallbacks' | 'guardian-reviews' | 'prompt-os' | 'worker';
+type ControlRoomSurface = 'founder-operator' | 'operations' | 'fallbacks' | 'guardian-reviews' | 'prompt-os' | 'worker';
 
 export default function DevControlRoomScreen() {
-  const [surface, setSurface] = useState<ControlRoomSurface>('operator');
+  const [surface, setSurface] = useState<ControlRoomSurface>('founder-operator');
   const [profile, setProfile] = useState<FounderProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +50,7 @@ export default function DevControlRoomScreen() {
   return <View style={styles.root}>
     <View style={styles.switcher}>
       {([
-        ['operator', 'Operator'],
+        ['founder-operator', 'Operator'],
         ['operations', 'Operations'],
         ['fallbacks', 'Fallbacks'],
         ['guardian-reviews', 'Guardians'],
@@ -63,7 +63,7 @@ export default function DevControlRoomScreen() {
       ))}
     </View>
     <View style={styles.content}>
-      {surface === 'operator'
+      {surface === 'founder-operator'
         ? <FounderOperatorPanel />
         : surface === 'operations'
           ? <DevControlRoomWorkspace />
