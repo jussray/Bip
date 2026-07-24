@@ -59,31 +59,36 @@ The PR reported 877 passing unit tests locally. Its exact rebased head passed th
 
 ## Open repair candidates
 
-### PR #595 — onboarding-state and type-check repair
+### PR #595 — canonical onboarding-state and repository-gate repair
 
-PR #595 is a draft, not merged truth.
+PR #595 is a draft and is not merged truth.
 
-It reports that the active onboarding screens currently write through `src/services/onboarding.ts` to `onboarding_state`, a table that no migration creates, while the real hardened table is `user_onboarding_state`. It also reports that live screens call `markActivated()` even though the current active service does not define it.
+The original branch diagnosis was valid: active onboarding screens wrote through `src/services/onboarding.ts` to `onboarding_state`, a table no migration creates, while the hardened table is `user_onboarding_state`. The active service also lacked `markActivated()` even though live onboarding screens called it.
 
-The branch proposes to:
+The current branch now proposes a preservation-first repair:
 
-- consolidate the duplicate onboarding-state implementations;
-- target `user_onboarding_state` with the real stage model;
-- preserve stage progression and trigger requirements;
-- propagate Suhana and Sy through remaining runtime-facing paths;
-- repair several type errors and duplicate feature-flag keys.
+- one canonical `src/` onboarding service and context;
+- the real table and stage enum;
+- checked database errors and bounded compare-and-swap retries;
+- local progress mirrored only after confirmed server writes;
+- truthful success/failure status from onboarding writes;
+- historical root paths retained as compatibility re-exports with exact recovery coordinates;
+- Suhana and Sy restored on remaining user-facing and AI-facing boundaries while legacy database IDs remain at persisted compatibility seams;
+- the unapproved Apple native dependency removed from the active type graph while its prior implementation is archived;
+- known TypeScript and prototype-lint blockers repaired;
+- an exact-head gate covering typecheck, lint, focused contracts, the full unit suite, bundle export, and focused Playwright.
 
-The branch reports 906 passing unit tests locally, one remaining TypeScript error from the uninstalled `expo-apple-authentication` package in an unused component, and two pre-existing lint errors under `prototypes/`. Only Cookie Contract Mirror is currently attached to its exact head.
+Executed exact-head evidence has already proved zero TypeScript diagnostics, repository lint, focused contracts, the full unit suite, bundle export, and the independent front-door gate on recent branch heads. Browser traces then exposed two final test-and-routing issues: an ambiguous password locator and a parent-signup query that was incorrectly routed into teen age assurance. Both are repaired on the current branch, whose final exact-head checks must still complete before promotion.
 
-Until #595 is reviewed, verified, and merged, the onboarding-state inconsistency remains an open runtime risk.
+Until #595 is reviewed, fully green at one exact head, and merged through the separately approved auth/onboarding gate, the current `main` onboarding-state inconsistency remains an open runtime risk.
 
 ### PR #596 — Crew invite RPC behavior contract
 
-PR #596 is a draft, not merged truth.
+PR #596 is a draft and is not merged truth.
 
 It adds static positive and negative contract coverage for `redeem_crew_invite(text, text)`, including caller identity, malformed and unknown codes, relationship state, blocked/self/duplicate cases, completed-profile requirements, and server-owned display-name behavior.
 
-The branch reports 911 passing unit tests locally. No exact-head GitHub Actions run is currently attached.
+The branch reports 911 passing unit tests locally. It must be rebased and exact-head verified after the onboarding/type lane settles.
 
 ## Integrated foundation
 
@@ -96,6 +101,7 @@ The branch reports 911 passing unit tests locally. No exact-head GitHub Actions 
 - Versioned Se'kret identity and named-companion style contracts
 - Suhana and Sy as canonical display/canon names, with `raylene` and `rylane` retained only where compatibility still requires the legacy identifiers
 - Teen Room, Pages, voice reflection, Calm tools, Circle surfaces, rewards infrastructure, and trusted-relationship surfaces
+- **Privacy-safe Daily Intentions** with local deterministic generation, explicit mode controls, and owner-only durable metadata
 - Mind + Body Reset regulation tools and timer-driven bodyweight routines
 - Bridge linking, consent, summary, revocation, and controlled-rollout contracts
 - Founder Control Room operational sources and repository capability claims
@@ -120,7 +126,11 @@ Trigger assurance is still not behaviorally complete. Repository structure and r
 
 Auth, consent, age assurance, profile bootstrap, and onboarding routes exist. Founder Access Recovery Gate issue #563 remains the primary user-facing blocker until one real account can complete signup, login, confirmation or recovery, consent, onboarding, route bootstrap, persistence, logout, and cache cleanup on device.
 
-The onboarding-state wiring inconsistency described in draft PR #595 must be resolved or disproved before this path is treated as reliable.
+The onboarding-state wiring inconsistency being repaired in draft PR #595 must be merged and then proven in the intended database and real-device journey before this path is treated as reliable.
+
+### Privacy-safe Daily Intentions
+
+The Teen User Room can generate up to three local-first intentions from broad mood and app-action inputs, with Basic, explicit opt-in Personalized, and Off modes. The durable record excludes raw journal text, conversation excerpts, voice transcripts, Circle content, parent summaries, safety evidence, names, emails, and other private source material. Exact production observation and physical-device layout and interaction QA remain incomplete.
 
 ### Frontend-to-Worker contract spine
 
@@ -144,14 +154,13 @@ Physical iOS and Android journeys, screen-reader behavior, keyboard and focus be
 
 ## Launch-critical blockers
 
-- resolve or disprove the active onboarding-state wiring inconsistency;
+- complete and merge the canonical onboarding-state repair through its separate approval gate;
 - complete founder access recovery on a real device and account;
 - complete controlled Bridge and parent relationship production proof;
 - complete account deletion and Storage cleanup proof;
 - continue anonymous and cross-user denial proof for remaining launch-critical private surfaces;
 - add positive and negative behavior tests for the remaining high-blast-radius authenticated RPCs;
 - complete trigger behavioral assurance with safe external-effect controls;
-- resolve the remaining TypeScript and prototype lint debt before claiming a clean repository gate;
 - complete physical-device, accessibility, offline, notification, moderation, and failure-state QA;
 - complete legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness;
 - obtain exact production evidence for features still marked integrated rather than verified or released.
