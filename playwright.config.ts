@@ -14,10 +14,15 @@ const artifactDir = process.env.PLAYWRIGHT_ARTIFACT_DIR
 
 export default defineConfig({
   testDir: './e2e',
+  // Production specs require the repository-controlled Supabase client config.
+  // This dev server intentionally runs with Supabase disabled, so those specs
+  // run only through playwright.production.config.ts against the live domain.
+  // Room specs use a dedicated founder-preview config and remain isolated here.
   testIgnore: [
     '**/production-smoke.spec.ts',
     '**/production-password-recovery.spec.ts',
     '**/production-auth-reachability.spec.ts',
+    '**/rooms/**',
   ],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),

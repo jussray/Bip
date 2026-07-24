@@ -43,7 +43,7 @@
     "verify:local": "node scripts/control-room-local.js",
     "verify:local:ingest": "npm run verify:local; CONTROL_ROOM_INGEST=1 npm run audit:control-room:local-report",
     "verify:cloudflare-native": "node scripts/verify-cloudflare-native-deploy.mjs",
-    "verify:prepush": "npm run verify:mcp && npm run verify:cookies && npm run verify:implementation-ledger && npm run audit:runtime-assets && npm run audit:control-room && npm run validate:companions && npm run test:control-room-core && npm run test:founder-operator && npm run test:github-failure-routing && npm test && npm run type-check && npm run lint && npm run verify:bundle && npm run verify:room-archives",
+    "verify:prepush": "npm run verify:mcp && npm run verify:cookies && npm run verify:implementation-ledger && npm run audit:runtime-assets && npm run audit:control-room && npm run validate:companions && npm run test:control-room-core && npm run test:founder-operator && npm run test:github-failure-routing && npm run room:foreman:verify && npm run test:room-production && npm test && npm run type-check && npm run lint && npm run verify:bundle && npm run verify:room-archives",
     "test:device-sync": "node --test scripts/test-device-sync.mjs",
     "test:oracle": "node scripts/test-oracle-discovery.mjs",
     "test:voice-intelligence": "node scripts/test-voice-intelligence.mjs",
@@ -66,7 +66,13 @@
     "test:founder-operator": "node --test test/control-room-founder-operator-contract.test.mjs test/control-room-founder-operator-server.test.mjs test/control-room-founder-operator.test.mjs",
     "control-room:github-failures:scan": "node scripts/control-room-ingest-github-failures.mjs",
     "control-room:github-failures:ingest": "CONTROL_ROOM_GITHUB_INGEST=1 node scripts/control-room-ingest-github-failures.mjs",
-    "test:github-failure-routing": "node --test test/control-room-github-failure-routing.test.mjs"
+    "test:github-failure-routing": "node --test test/control-room-github-failure-routing.test.mjs",
+    "test:e2e:rooms": "playwright test --config=playwright.room.config.ts",
+    "room:foreman": "node scripts/room-production-foreman.mjs",
+    "room:foreman:plan": "node scripts/room-production-foreman.mjs --mode plan",
+    "room:foreman:verify": "node scripts/room-production-foreman.mjs --mode verify",
+    "room:foreman:interactive": "node scripts/room-production-foreman.mjs --mode interactive",
+    "test:room-production": "node --test test/room-production-contract.test.mjs"
   },
   "dependencies": {
     "@expo/log-box": "^56.0.13",
