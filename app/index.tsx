@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -8,8 +8,20 @@ import { SplashScreen } from '@screens/SplashScreen';
 export default function Index() {
   const { userSide, setUserSide, isLoading } = useAppContext();
   const [pendingSide, setPendingSide] = useState<'teen' | 'parent' | null>(null);
+  const [complianceReady, setComplianceReady] = useState(false);
 
-  if (isLoading) {
+  useEffect(() => {
+    if (isLoading) return;
+    AsyncStorage.getItem('compliance_v1_done').then(val => {
+      if (val !== 'true') {
+        router.replace('/(auth)/age-gate');
+      } else {
+        setComplianceReady(true);
+      }
+    });
+  }, [isLoading]);
+
+  if (isLoading || !complianceReady) {
     return (
       <View style={styles.root}>
         <ActivityIndicator color="#c4b5fd" />
