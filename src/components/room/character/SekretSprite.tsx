@@ -1,16 +1,8 @@
 /**
- * src/components/room/character/SekretSprite.tsx
- *
- * Renders a Se'kret character sprite with:
- *   • Idle bob: gentle vertical bounce loop
- *   • Mood pulse: scale bump when `mood` prop changes
- *   • Variant crossfade: opacity swap when `sekret` or `variant` changes
- *
- * Raylene, Rylane, and Night now resolve to their approved canonical masters.
- * Until matching mood poses are regenerated, every mood keeps the approved
- * identity instead of falling back to an old character or room screenshot.
+ * Renders a Se'kret character sprite with idle and mood motion.
+ * Night resolves through the static room registry so unavailable generated
+ * poses fail safely to the approved canonical neutral master.
  */
-
 import React, { useEffect, useRef } from 'react';
 import { Dimensions, Image } from 'react-native';
 import Animated, {
@@ -22,6 +14,7 @@ import Animated, {
   withSpring,
   Easing,
 } from 'react-native-reanimated';
+import { getNightPoseAsset } from '@/config/nightRoomAssetRegistry';
 
 const { width: W } = Dimensions.get('window');
 
@@ -33,7 +26,7 @@ const SPRITE_IDLE: Record<Sekret, ReturnType<typeof require>> = {
   raylene: require('../../../../assets/images/companions/raylene/raylene-master.png'),
   rylane: require('../../../../assets/images/companions/rylane/rylane-master.png'),
   cloud: require('../../../../assets/images/cloud.png'),
-  night: require('../../../../assets/images/companions/night/night-master.png'),
+  night: getNightPoseAsset('neutral').source,
   dad: PLACEHOLDER,
   mom: PLACEHOLDER,
 };
@@ -43,14 +36,13 @@ export type SekretMood = 'neutral' | 'happy' | 'sad' | 'anxious' | 'calm' | 'exc
 interface SekretSpriteProps {
   sekret: Sekret;
   mood?: SekretMood;
-  /** Width of sprite; height scales proportionally. */
   size?: number;
 }
 
 export function SekretSprite({ sekret, mood = 'neutral', size = W * 0.45 }: SekretSpriteProps) {
   const prevMood = useRef<SekretMood>(mood);
-
   const bobY = useSharedValue(0);
+
   useEffect(() => {
     bobY.value = withRepeat(
       withSequence(

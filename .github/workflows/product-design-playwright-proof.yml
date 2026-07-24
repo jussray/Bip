@@ -9,6 +9,7 @@ on:
       - 'screens/**'
       - 'assets/**'
       - 'e2e/product-design-review.spec.ts'
+      - 'test/night-room-runtime-registry.test.mjs'
       - 'playwright.config.ts'
       - 'package.json'
       - 'package-lock.json'
@@ -44,6 +45,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Type-check exact head
+        run: npm run type-check
+
+      - name: Verify Night runtime registry contract
+        run: node --test test/night-room-runtime-registry.test.mjs
 
       - run: npx playwright install --with-deps chromium
 
