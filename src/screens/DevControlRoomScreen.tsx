@@ -41,7 +41,12 @@ export default function DevControlRoomScreen() {
     return <View style={styles.center}>
       <Text style={styles.lock}>🔒</Text>
       <Text style={styles.lockTitle}>Developer tools locked</Text>
-      <TouchableOpacity style={styles.primary} onPress={() => router.replace('/')}>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Back to Bip"
+        style={styles.primary}
+        onPress={() => router.replace('/')}
+      >
         <Text style={styles.primaryText}>Back to Bip</Text>
       </TouchableOpacity>
     </View>;
@@ -57,7 +62,14 @@ export default function DevControlRoomScreen() {
         ['prompt-os', 'Prompt OS'],
         ['worker', 'Worker'],
       ] as const).map(([id, label]) => (
-        <TouchableOpacity key={id} style={[styles.button, surface === id && styles.active]} onPress={() => setSurface(id)}>
+        <TouchableOpacity
+          key={id}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          accessibilityState={{ selected: surface === id }}
+          style={[styles.button, surface === id && styles.active]}
+          onPress={() => setSurface(id)}
+        >
           <Text style={[styles.label, surface === id && styles.activeLabel]}>{label}</Text>
         </TouchableOpacity>
       ))}
