@@ -38,6 +38,7 @@ function TeenTabs({ selectedSekret }: { selectedSekret: string }) {
         <Tabs.Screen name="calm/breathe" options={{ href: null }} />
         <Tabs.Screen name="circle" options={{ title: 'Circle', tabBarIcon: () => <TabIcon emoji="🌐" /> }} />
         <Tabs.Screen name="circle/feed" options={{ href: null }} />
+        <Tabs.Screen name="circle/feed-v2" options={{ href: null }} />
         <Tabs.Screen name="more" options={{ title: 'More', tabBarIcon: () => <TabIcon emoji="•••" /> }} />
         <Tabs.Screen name="user-room" options={{ href: null }} />
         <Tabs.Screen name="sekret" options={{ href: null }} />

@@ -3,7 +3,8 @@
   "sourcePullRequest": 481,
   "sourceBranch": "feat/playwright-room-production-engine-current",
   "assemblyBranch": "control-room/room-operator-current-main",
-  "status": "decomposing",
+  "status": "batched",
+  "coverage": "batches/481/COVERAGE.md",
   "rules": {
     "stacked": true,
     "exactHeadEvidenceRequired": true,
@@ -45,8 +46,8 @@
       "id": "room-production-product-design",
       "branch": "batch/481-04-room-production-product-design",
       "base": "batch/481-03-github-failure-routing",
-      "pullRequest": null,
-      "status": "planned",
+      "pullRequest": 610,
+      "status": "draft",
       "contract": "batches/481/04-room-production-product-design.md"
     }
   ]

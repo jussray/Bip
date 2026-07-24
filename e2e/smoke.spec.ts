@@ -145,7 +145,7 @@ test('Parent Bridge fails closed until guardian verification is complete', async
   await page.goto('/bridge?bipDevSide=parent');
 
   await expect(page.getByText('GUARDIAN ACCESS')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Guardian verification is required.')).toBeVisible();
+  await expect(page.getByText('Guardian verification required.')).toBeVisible();
   await expect(page.getByText(/Linking to a teen is a separate consent step/)).toBeVisible();
   await expect(page.getByText(/No journal, voice note, or private source is shared automatically/)).toBeVisible();
   await expect(page.getByText('Submit for guardian review')).toBeVisible();

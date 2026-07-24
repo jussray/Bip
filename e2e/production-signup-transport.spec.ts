@@ -33,9 +33,18 @@ test('public signup stays retryable when no Auth request reaches the server', as
   });
 
   await page.goto('/signup?side=teen');
-  await page.getByPlaceholder('email').fill('fresh-public-signup@example.invalid');
-  await page.getByPlaceholder('password (8+ characters)').fill('PlaywrightOnly-123!');
-  await page.getByPlaceholder('confirm password').fill('PlaywrightOnly-123!');
+  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i }).click();
+  await page.getByRole('button', { name: /Continue with teen setup/i }).click();
+
+  await expect(page.getByText('create your space')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('textbox', { name: 'Email' }).fill('fresh-public-signup@example.invalid');
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill('PlaywrightOnly-123!');
+  await page.getByRole('textbox', { name: 'Confirm password', exact: true }).fill('PlaywrightOnly-123!');
+  await page.getByRole('button', { name: 'Next' }).click();
+
+  await page.getByRole('textbox', { name: 'Username' }).fill('fresh_public_signup');
+  await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Create Account' }).click();
 
   await expect(page.getByRole('alert')).toHaveText(
