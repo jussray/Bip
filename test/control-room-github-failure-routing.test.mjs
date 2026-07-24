@@ -8,6 +8,7 @@ const scanner = read('scripts/control-room-ingest-github-failures.mjs');
 const docs = read('docs/CONTROL_ROOM_GITHUB_FAILURES.md');
 const ci = read('.github/workflows/ci.yml');
 const watcher = read('.github/workflows/control-room-github-failures.yml');
+const exactGate = read('.github/workflows/github-failure-routing-exact-head.yml');
 const packageJson = JSON.parse(read('package.json'));
 
 test('GitHub failures route through Founder Control Room first', () => {
@@ -58,7 +59,7 @@ test('scanner supports exact current runs and completed main push failures', () 
   assert.match(scanner, /run\.event === 'push'/);
 });
 
-test('CI and major workflow failures invoke the scanner automatically', () => {
+test('CI and major workflow failures invoke the scanner automatically without recursion', () => {
   assert.match(ci, /route-failure:/);
   assert.match(ci, /needs: \[lint, type-check, test, build, audit\]/);
   assert.match(ci, /CONTROL_ROOM_GITHUB_RUN_ID: \$\{\{ github\.run_id \}\}/);
@@ -70,6 +71,11 @@ test('CI and major workflow failures invoke the scanner automatically', () => {
   assert.match(watcher, /Implementation Evidence/);
   assert.match(watcher, /Playwright Smoke and Guardrails/);
   assert.match(watcher, /github\.event\.workflow_run\.id/);
+
+  const watchedWorkflowBlock = watcher.match(/workflows:\s*([\s\S]*?)\n\s*types:/)?.[1] || '';
+  assert.doesNotMatch(watchedWorkflowBlock, /Founder Control Room GitHub Failure Router/);
+  assert.doesNotMatch(watchedWorkflowBlock, /GitHub Failure Routing Exact-Head Gate/);
+  assert.match(exactGate, /select\(\.name != "GitHub Failure Routing Exact-Head Gate"\)/);
 });
 
 test('credentials stay server-side and out of issue metadata', () => {
@@ -90,5 +96,9 @@ test('scan and ingest commands are explicitly exposed', () => {
   assert.equal(
     packageJson.scripts['control-room:github-failures:ingest'],
     'CONTROL_ROOM_GITHUB_INGEST=1 node scripts/control-room-ingest-github-failures.mjs',
+  );
+  assert.equal(
+    packageJson.scripts['test:github-failure-routing'],
+    'node --test test/control-room-github-failure-routing.test.mjs',
   );
 });
