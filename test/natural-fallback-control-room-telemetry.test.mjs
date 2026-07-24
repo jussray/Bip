@@ -61,8 +61,8 @@ test('Control Room renders founder-visible fallback telemetry surface', () => {
   const panel = read('src/features/control-room/FallbackTelemetryPanel.tsx');
 
   assert.match(screen, /FallbackTelemetryPanel/);
-  assert.match(screen, /'fallbacks'/);
-  assert.match(screen, />Fallbacks</);
+  assert.match(screen, /\['fallbacks', 'Fallbacks'\]/);
+  assert.match(screen, /surface === 'fallbacks'[\s\S]*<FallbackTelemetryPanel \/>/);
   assert.match(panel, /Fallback Telemetry/);
   assert.match(panel, /loadControlRoomAnalytics\(30\)/);
   assert.match(panel, /fallback\.byCompanion/);
