@@ -18,8 +18,8 @@
       "id": "control-room-core",
       "branch": "batch/481-01-control-room-core",
       "base": "main",
-      "pullRequest": null,
-      "status": "planned",
+      "pullRequest": 604,
+      "status": "draft",
       "contract": "batches/481/01-control-room-core.md"
     },
     {
