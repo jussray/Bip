@@ -28,6 +28,7 @@ on:
       - src/features/control-room/WorkerPanel.tsx
       - worker/health.ts
       - prototypes/teen-welcome/app.js
+      - prototypes/welcome-web/app.js
       - test/onboarding-stage-contract.test.mjs
       - test/bridge-learning-teaching-contract.test.mjs
       - test/journal-avatar-presentation.test.mjs
