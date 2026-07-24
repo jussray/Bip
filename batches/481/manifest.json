@@ -27,7 +27,7 @@
       "id": "founder-operator",
       "branch": "batch/481-02-founder-operator-current-main",
       "base": "main",
-      "pullRequest": null,
+      "pullRequest": 616,
       "status": "draft",
       "contract": "batches/481/02-founder-operator.md"
     },
