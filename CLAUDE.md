@@ -17,25 +17,59 @@ This file governs Claude (claude.ai, Claude Code, MCP-connected sessions) when w
 **Role:** Private creative universe and world-building system for the Se’kret Bip brand — characters, lore, stories, production tools, and IP assets.
 **Separation:** Strictly separate from Chief AI ops, JBH, Think Tank, L99, and Untold Stories in all dimensions.
 
+## Current-facing canon
+
+- Suhana
+- Sy
+- Night
+- Cloud
+
+Legacy database and code keys such as `raylene` and `rylane` are compatibility identifiers only. Do not rename, reinterpret, or migrate them without a dedicated database migration, rollback plan, generated-type update, and client compatibility proof.
+
+## Room-production contract
+
+The first production vertical slice is Night only. The teen bottom navigation remains exactly:
+
+`Room`, `Pages`, `Calm`, `Circle`, `More`
+
+Companion rooms are permanent focused destinations. Dashboard cards, streaks, reminders, rewards, and account clutter belong in the User Room.
+
+Read `docs/ROOM_PRODUCTION_SUPABASE_TRUTH.md` before changing room persistence or companion identifiers.
+
+## Supabase boundary
+
+Room-production work is schema-neutral unless the pull request explicitly declares a database migration. Do not:
+
+- apply migrations;
+- alter RLS policies;
+- add direct client writes;
+- change character-key constraints;
+- claim Supabase security completion.
+
+The existing Supabase security-advisor backlog must be treated as separate remediation work and never hidden inside Product Design completion language.
+
 ## Non-Negotiable Boundaries
 
 - Never expose unreleased characters, lore, story arcs, proprietary world-building systems, or IP assets to public or model-visible contexts.
 - Never blend Se’kret Bip IP with other project content.
 - Credentials, signing keys, and platform tokens must stay in vault — never in code or PR descriptions.
 - All production-touching actions require explicit founder approval.
+- Never claim a feature is complete from documentation or a manifest alone.
+- Zero-step or no-log GitHub Actions failures are infrastructure evidence, not code proof.
 
 ## Required Loop
 
-1. Observe exact branch, world-state, IP asset inventory, and deployment boundary.
+1. Observe exact branch, world-state, IP asset inventory, deployment boundary, and Supabase compatibility state.
 2. Complete 5W1H and identify authority or safety gaps.
-3. Red-team IP exposure, lore consistency, canon integrity, and rollback.
-4. Choose smallest reversible action preserving existing work.
-5. Implement within confirmed repository role.
-6. Report proven, inferred, blocked, and next owner.
+3. Red-team IP exposure, lore consistency, canon integrity, persistence compatibility, and rollback.
+4. Choose the smallest reversible action preserving existing work.
+5. Implement within the confirmed repository role.
+6. Require the exact pull-request head to prove applicable unit, type, lint, browser, and retained-artifact gates.
+7. Report proven, inferred, blocked, and next owner.
 
 ## Approval Gates
 
-Require explicit founder approval before: merging, publishing, deploying, releasing IP assets, changing platform configurations, rotating secrets, or external communications.
+Require explicit founder approval before: merging, publishing, deploying, releasing IP assets, changing platform configurations, rotating secrets, applying database migrations, or external communications.
 
 ## Output Format
 
