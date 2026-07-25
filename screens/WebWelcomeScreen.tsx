@@ -15,7 +15,7 @@ const TEEN_HERO = require('../assets/brand/sekret-bip-teen-family-v1.jpg');
 const BIP_JR_HERO = require('../assets/images/parent-space-splash.png');
 
 type WebWelcomeScreenProps = {
-  onEnter: () => void;
+  onEnter: (side: AccountSide) => void;
   variant?: AccountSide;
 };
 
@@ -42,6 +42,30 @@ function getPreviewVariant(variant: AccountSide): AccountSide {
   return override === 'teen' || override === 'parent' ? override : variant;
 }
 
+function playWelcomeTone(): void {
+  if (typeof window === 'undefined') return;
+  const AudioContextCtor = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextCtor) return;
+
+  const context = new AudioContextCtor();
+  const gain = context.createGain();
+  gain.gain.setValueAtTime(0.0001, context.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.08, context.currentTime + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.75);
+  gain.connect(context.destination);
+
+  [523.25, 659.25, 783.99].forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.value = frequency;
+    oscillator.connect(gain);
+    oscillator.start(context.currentTime + index * 0.1);
+    oscillator.stop(context.currentTime + 0.75);
+  });
+
+  window.setTimeout(() => void context.close(), 900);
+}
+
 export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
   const compact = width < 520;
@@ -63,6 +87,14 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
     }
   }, [screen]);
 
+  const toggleSound = () => {
+    setSoundOn(value => {
+      const next = !value;
+      if (next) playWelcomeTone();
+      return next;
+    });
+  };
+
   return (
     <View style={[styles.page, { minHeight: height }]}>
       <View pointerEvents="none" style={styles.ambientTop} />
@@ -82,7 +114,7 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
             <LinearGradient colors={['#f07bc3', '#8b64ff', '#596be1']} style={styles.wordmarkBadge}><Text style={styles.wordmarkHeart}>♡</Text></LinearGradient>
             <Text style={styles.wordmarkText}>{screen === 'bip-jr' ? 'BIP JR' : 'SE’KRET BIP'}</Text>
           </View>
-          <Pressable accessibilityRole="button" accessibilityLabel={soundOn ? 'Turn welcome sound off' : 'Turn welcome sound on'} accessibilityState={{ selected: soundOn }} onPress={() => setSoundOn(value => !value)} style={[styles.roundButton, soundOn && styles.roundButtonActive]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={soundOn ? 'Turn welcome sound off' : 'Play welcome sound'} accessibilityState={{ selected: soundOn }} onPress={toggleSound} style={[styles.roundButton, soundOn && styles.roundButtonActive]}>
             <Text style={styles.music}>{soundOn ? '♫' : '♪'}</Text>
           </Pressable>
         </View>
@@ -113,8 +145,8 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
             <Panel onBack={() => setScreen('home')} symbol="♡" eyebrow="STEP INTO YOUR SPACE" title="Who’s entering today?">
               <Text style={styles.panelIntro}>Choose your side. The real account flow begins after this welcome.</Text>
               <View style={styles.roleGrid}>
-                <Pressable accessibilityRole="button" accessibilityLabel="Enter Teen Side" onPress={onEnter} style={({ pressed }) => [styles.roleCard, pressed && styles.pressed]}><Text style={styles.roleIcon}>✦</Text><Text style={styles.roleTitle}>Teen</Text><Text style={styles.roleBody}>My space, my pace</Text></Pressable>
-                <Pressable accessibilityRole="button" accessibilityLabel="Enter Parent Side" onPress={onEnter} style={({ pressed }) => [styles.roleCard, pressed && styles.pressed]}><Text style={[styles.roleIcon, styles.parentIcon]}>♡</Text><Text style={styles.roleTitle}>Parent</Text><Text style={styles.roleBody}>Stay close, stay trusted</Text></Pressable>
+                <Pressable testID="web-welcome-enter-teen" accessibilityRole="button" accessibilityLabel="Enter Teen Side" onPress={() => onEnter('teen')} style={({ pressed }) => [styles.roleCard, pressed && styles.pressed]}><Text style={styles.roleIcon}>✦</Text><Text style={styles.roleTitle}>Teen</Text><Text style={styles.roleBody}>My space, my pace</Text></Pressable>
+                <Pressable testID="web-welcome-enter-parent" accessibilityRole="button" accessibilityLabel="Enter Parent Side" onPress={() => onEnter('parent')} style={({ pressed }) => [styles.roleCard, pressed && styles.pressed]}><Text style={[styles.roleIcon, styles.parentIcon]}>♡</Text><Text style={styles.roleTitle}>Parent</Text><Text style={styles.roleBody}>Stay close, stay trusted</Text></Pressable>
               </View>
               <Pressable accessibilityRole="button" onPress={() => setScreen('home')}><Text style={styles.textLink}>Not ready yet? Go back</Text></Pressable>
             </Panel>
@@ -123,11 +155,11 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
           {activeCopy && (
             <Panel onBack={() => setScreen('home')} symbol={activeCopy.symbol} eyebrow={activeCopy.eyebrow} title={activeCopy.title}>
               <Text style={styles.panelIntro}>{activeCopy.body}</Text>
-              <View style={styles.comingCard}><View style={styles.pulseDot} /><View style={styles.comingCopy}><Text style={styles.comingTitle}>Concept destination</Text><Text style={styles.comingBody}>This entry is ready for the next Se’kret Bip screen to be connected.</Text></View></View>
+              <View style={styles.comingCard}><View style={styles.pulseDot} /><View style={styles.comingCopy}><Text style={styles.comingTitle}>Preview destination</Text><Text style={styles.comingBody}>Explore this public preview, then use Enter to continue into the real account flow.</Text></View></View>
               {screen === 'more' && (
-                <Pressable accessibilityRole="button" onPress={() => setScreen('bip-jr')} style={styles.bipJrLink}><Text style={styles.bipJrMark}>☁</Text><View style={styles.bipJrCopy}><Text style={styles.bipJrTitle}>Bip Jr</Text><Text style={styles.bipJrBody}>The softer original, kept as its own world.</Text></View><Text style={styles.bipJrArrow}>→</Text></Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel="Open Bip Jr welcome" onPress={() => setScreen('bip-jr')} style={styles.bipJrLink}><Text style={styles.bipJrMark}>☁</Text><View style={styles.bipJrCopy}><Text style={styles.bipJrTitle}>Bip Jr</Text><Text style={styles.bipJrBody}>The softer original, kept as its own world.</Text></View><Text style={styles.bipJrArrow}>→</Text></Pressable>
               )}
-              <EnterButton label="Return home" onPress={() => setScreen('home')} compact />
+              <EnterButton label="Choose a side" onPress={() => setScreen('enter')} compact />
             </Panel>
           )}
 
@@ -135,7 +167,8 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
             <Panel onBack={() => setScreen('more')} symbol="☁" eyebrow="THE SOFTER ORIGINAL" title="Bip Jr">
               <Text style={styles.panelIntro}>A separate, younger welcome world, kept intact while the main Se’kret Bip experience grows with teens.</Text>
               <View style={styles.bipJrArtWrap}><Image testID="web-welcome-hero-bip-jr" source={BIP_JR_HERO} resizeMode="contain" style={styles.bipJrHero} accessibilityLabel="The Bip Jr family welcome artwork" /><Text style={styles.bipJrFloatingHeart}>♡</Text></View>
-              <EnterButton label="Go to teen welcome" onPress={() => setScreen('home')} compact />
+              <EnterButton label="Enter Bip Jr" onPress={() => onEnter('parent')} compact />
+              <Pressable accessibilityRole="button" onPress={() => setScreen('home')}><Text style={styles.textLink}>Go to teen welcome</Text></Pressable>
             </Panel>
           )}
         </ScrollView>
