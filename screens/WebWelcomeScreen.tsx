@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
   page: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#05030f' },
   ambientTop: { position: 'absolute', width: 520, height: 520, top: -220, right: -160, borderRadius: 260, backgroundColor: 'rgba(137,91,241,.22)' },
   ambientBottom: { position: 'absolute', width: 460, height: 460, bottom: -210, left: -160, borderRadius: 230, backgroundColor: 'rgba(231,81,162,.15)' },
-  starField: { ...StyleSheet.absoluteFillObject }, star: { position: 'absolute', color: 'rgba(232,216,255,.34)', fontSize: 18 },
+  starField: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }, star: { position: 'absolute', color: 'rgba(232,216,255,.34)', fontSize: 18 },
   shell: { width: '100%', maxWidth: 430, maxHeight: 900, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,.13)', borderRadius: 42, backgroundColor: '#120927', boxShadow: '0 40px 110px rgba(0,0,0,.66)' as never },
   shellCompact: { maxWidth: '100%', borderRadius: 0, borderWidth: 0 },
   topBar: { height: 76, paddingHorizontal: 18, paddingTop: 14, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
