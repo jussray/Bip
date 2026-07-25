@@ -18,7 +18,7 @@ test('web welcome front door exposes only working actions and approved identity'
   await page.goto('/');
 
   await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('web-welcome-hero')).toBeVisible();
+  await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible();
   await expect(page.getByText('Come on in.')).toBeVisible();
   await expect(page.getByText('Night')).toBeVisible();
   await expect(page.getByText('Suhana')).toBeVisible();
