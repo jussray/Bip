@@ -1,0 +1,97 @@
+name: Auth Email Contract Exact-Head Gate
+
+on:
+  pull_request:
+    paths:
+      - app/(auth)/signup.tsx
+      - test/signup-email-contract.test.mjs
+      - package.json
+      - package-lock.json
+      - .github/workflows/auth-email-contract-gate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auth-email-contract-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+
+jobs:
+  verify-auth-email-contract:
+    name: Exact-head type safety and signup email contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
+
+      - name: Verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+          echo "expected_head_sha=$EXPECTED_HEAD_SHA"
+          echo "actual_head_sha=$ACTUAL_HEAD_SHA"
+          test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compare TypeScript diagnostics with base
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_DIR="$RUNNER_TEMP/auth-email-base"
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$BASE_DIR" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$BASE_DIR/node_modules"
+
+          set +e
+          (cd "$BASE_DIR" && npx tsc --noEmit --pretty false) > /tmp/typecheck-base.log 2>&1
+          BASE_STATUS=$?
+          npx tsc --noEmit --pretty false > /tmp/typecheck-head.log 2>&1
+          HEAD_STATUS=$?
+          set -e
+
+          normalize_diagnostics() {
+            grep -E 'error TS[0-9]+:' "$1" \
+              | sed -E 's/^([^(:]+)\([0-9]+,[0-9]+\): /\1: /' \
+              | sort -u || true
+          }
+
+          normalize_diagnostics /tmp/typecheck-base.log > /tmp/typecheck-base.normalized.log
+          normalize_diagnostics /tmp/typecheck-head.log > /tmp/typecheck-head.normalized.log
+          comm -13 /tmp/typecheck-base.normalized.log /tmp/typecheck-head.normalized.log > /tmp/typecheck-new-errors.log
+
+          if [[ -s /tmp/typecheck-new-errors.log ]]; then
+            echo 'New TypeScript diagnostics introduced by this PR:'
+            cat /tmp/typecheck-new-errors.log
+            exit 1
+          fi
+
+          if [[ "$HEAD_STATUS" -ne 0 && ! -s /tmp/typecheck-head.normalized.log ]]; then
+            cat /tmp/typecheck-head.log
+            exit 1
+          fi
+
+          echo "base_status=$BASE_STATUS head_status=$HEAD_STATUS"
+          echo 'No new TypeScript diagnostics relative to the exact base SHA.'
+
+      - name: Run signup email contract tests
+        run: node --test test/signup-email-contract.test.mjs
