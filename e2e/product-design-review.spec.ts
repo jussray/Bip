@@ -41,6 +41,14 @@ for (const variant of VARIANTS) {
       await expect(page.getByTestId(variant.heroTestId)).toBeVisible();
       await expect(page.getByText(variant.identityText, { exact: true })).toBeVisible();
 
+      if (variant.name === 'teen') {
+        const subtitleBox = await page.getByTestId('web-welcome-subtitle').boundingBox();
+        const heroBox = await page.getByTestId('web-welcome-hero-wrap').boundingBox();
+        expect(subtitleBox).not.toBeNull();
+        expect(heroBox).not.toBeNull();
+        expect(subtitleBox!.y + subtitleBox!.height).toBeLessThanOrEqual(heroBox!.y - 4);
+      }
+
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
         clientWidth: document.documentElement.clientWidth,
