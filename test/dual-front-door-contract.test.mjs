@@ -15,10 +15,10 @@ test('teen front door keeps canonical accessible names without a visible caption
 
 test('Bip Jr remains a separate parent-side welcome world', () => {
   assert.match(welcome, /parent-space-splash\.png/);
-  assert.match(welcome, /THE SOFTER ORIGINAL/);
-  assert.match(welcome, /activeVariant === 'parent' \? 'bip-jr' : 'home'/);
+  assert.match(welcome, /YOUR FAMILY\. YOUR SPACE\./);
+  assert.match(welcome, /const isBipJr = activeVariant === 'parent'/);
   assert.match(welcome, /bipDevSide/);
-  assert.match(welcome, /onEnter\('parent'\)/);
+  assert.match(welcome, /onEnter\(activeVariant\)/);
   assert.match(index, /variant=\{publicWelcomeSide\}/);
 });
 
@@ -30,9 +30,11 @@ test('explicit Enter choice outranks preview and build defaults', () => {
   assert.match(index, /signup\?side=\$\{publicEntrySide\}/);
 });
 
-test('both variants retain explicit Enter controls and bottom navigation', () => {
-  assert.match(welcome, /web-welcome-enter-teen/);
-  assert.match(welcome, /web-welcome-enter-parent/);
-  assert.match(welcome, /web-welcome-bottom-nav/);
+test('each preview variant uses one direct Enter control with variant-specific accessible copy', () => {
+  assert.match(welcome, /testID="web-welcome-enter"/);
+  assert.match(welcome, /Bip Jr — enter your family space/);
+  assert.match(welcome, /Se'kret Bip — enter your safe space/);
+  assert.match(welcome, /onPress=\{\(\) => onEnter\(activeVariant\)\}/);
+  assert.doesNotMatch(welcome, /web-welcome-enter-teen|web-welcome-enter-parent|web-welcome-bottom-nav/);
   assert.match(welcome, /accessibilityRole="button"/);
 });
