@@ -11,20 +11,20 @@ const VARIANTS = [
     url: '/?bipDevSide=teen',
     heroTestId: 'web-welcome-hero-teen',
     identityText: 'YOUR PEOPLE. YOUR PEACE.',
-    enter: { kind: 'testId', value: 'web-welcome-enter' },
+    enterName: "Se'kret Bip — enter your safe space",
   },
   {
-    name: 'bip-jr',
+    name: 'parent',
     url: '/?bipDevSide=parent',
     heroTestId: 'web-welcome-hero-bip-jr',
-    identityText: 'THE SOFTER ORIGINAL',
-    enter: { kind: 'role', value: 'Enter Bip Jr' },
+    identityText: 'YOUR FAMILY. YOUR SPACE.',
+    enterName: 'Bip Jr — enter your family space',
   },
 ] as const;
 
 for (const variant of VARIANTS) {
   for (const viewport of VIEWPORTS) {
-    test(`Product Design evidence: ${variant.name} ${viewport.name} front door`, async ({ page }, testInfo) => {
+    test(`rollback evidence: ${variant.name} ${viewport.name} front door`, async ({ page }, testInfo) => {
       const consoleErrors: string[] = [];
       const pageErrors: string[] = [];
 
@@ -36,18 +36,11 @@ for (const variant of VARIANTS) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await page.goto(variant.url, { waitUntil: 'networkidle' });
 
-      await expect(page.locator('body')).toBeVisible();
-      await expect(page.locator('body')).not.toHaveText(/^\s*$/);
+      await expect(page.getByTestId('web-welcome-shell')).toBeVisible();
       await expect(page.getByTestId(variant.heroTestId)).toBeVisible();
       await expect(page.getByText(variant.identityText, { exact: true })).toBeVisible();
-
-      if (variant.name === 'teen') {
-        const subtitleBox = await page.getByTestId('web-welcome-subtitle').boundingBox();
-        const heroBox = await page.getByTestId('web-welcome-hero-wrap').boundingBox();
-        expect(subtitleBox).not.toBeNull();
-        expect(heroBox).not.toBeNull();
-        expect(subtitleBox!.y + subtitleBox!.height).toBeLessThanOrEqual(heroBox!.y - 4);
-      }
+      await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
+      await expect(page.getByTestId('web-welcome-bottom-nav')).toBeVisible();
 
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
@@ -59,26 +52,8 @@ for (const variant of VARIANTS) {
       expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
       expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight);
 
-      const enterButton = variant.enter.kind === 'testId'
-        ? page.getByTestId(variant.enter.value)
-        : page.getByRole('button', { name: variant.enter.value, exact: true });
-      const bottomNav = page.getByTestId('web-welcome-bottom-nav');
-      await enterButton.scrollIntoViewIfNeeded();
-      await expect(enterButton).toBeVisible();
-      await expect(bottomNav).toBeVisible();
-
-      const enterBox = await enterButton.boundingBox();
-      const navBox = await bottomNav.boundingBox();
-      expect(enterBox).not.toBeNull();
-      expect(navBox).not.toBeNull();
-      expect(enterBox!.y + enterBox!.height).toBeLessThanOrEqual(navBox!.y - 8);
-
-      const screenshot = await page.screenshot({
-        fullPage: true,
-        animations: 'disabled',
-      });
-      await testInfo.attach(`${variant.name}-${viewport.name}-front-door.png`, {
-        body: screenshot,
+      await testInfo.attach(`${variant.name}-${viewport.name}-rollback-front-door.png`, {
+        body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
         contentType: 'image/png',
       });
 
@@ -88,27 +63,16 @@ for (const variant of VARIANTS) {
   }
 }
 
-test('Teen Enter keeps the teen onboarding path after role choice', async ({ page }) => {
+test('Teen entry preserves the teen onboarding path', async ({ page }) => {
   await page.goto('/?bipDevSide=teen', { waitUntil: 'networkidle' });
   await page.getByTestId('web-welcome-enter').click();
-  await expect(page.getByTestId('web-welcome-enter-teen')).toBeVisible();
-  await expect(page.getByTestId('web-welcome-enter-parent')).toBeVisible();
-  await page.getByTestId('web-welcome-enter-teen').click();
   await expect(page).toHaveURL(/\/welcome(?:\?|$)/);
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
 });
 
-test('Parent role choice keeps the parent onboarding path', async ({ page }) => {
-  await page.goto('/?bipDevSide=teen', { waitUntil: 'networkidle' });
-  await page.getByTestId('web-welcome-enter').click();
-  await page.getByTestId('web-welcome-enter-parent').click();
-  await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
-  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
-});
-
-test('Bip Jr Enter keeps the parent onboarding path', async ({ page }) => {
+test('Parent entry preserves the parent onboarding path', async ({ page }) => {
   await page.goto('/?bipDevSide=parent', { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: 'Enter Bip Jr', exact: true }).click();
+  await page.getByTestId('web-welcome-enter').click();
   await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
   await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
 });
