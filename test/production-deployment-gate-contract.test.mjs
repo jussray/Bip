@@ -17,5 +17,6 @@ test('production Playwright verifies both public variants and their Enter paths'
   assert.match(productionSmoke, /web-welcome-hero-bip-jr/);
   assert.match(productionSmoke, /How old are you\?/);
   assert.match(productionSmoke, /enter your parent space/);
-  assert.match(productionSmoke, />Suhana</);
+  assert.match(productionSmoke, /web-welcome-suhana/);
+  assert.match(productionSmoke, /toHaveText\('Suhana'\)/);
 });
