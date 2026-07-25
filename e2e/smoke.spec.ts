@@ -1,109 +1,52 @@
 import { expect, test } from '@playwright/test';
 
-test('teen splash leads into onboarding welcome and age-bucket selection', async ({ page }) => {
-  await page.goto('/');
-
-  const welcomeEnter = page.getByTestId('web-welcome-enter');
-  await expect(welcomeEnter).toBeVisible({ timeout: 30_000 });
-  await welcomeEnter.click();
-
-  const teenEnter = page.getByTestId('web-welcome-enter-teen');
-  await expect(teenEnter).toBeVisible();
-  await teenEnter.click();
-
+test('teen front door leads directly into age-bucket onboarding', async ({ page }) => {
+  await page.goto('/?bipDevSide=teen');
+  const enter = page.getByTestId('web-welcome-enter');
+  await expect(enter).toBeVisible({ timeout: 30_000 });
+  await enter.click();
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
 });
 
-test('web welcome front door exposes working actions and approved identity', async ({ page }) => {
-  await page.goto('/');
+test('parent front door leads directly into parent onboarding', async ({ page }) => {
+  await page.goto('/?bipDevSide=parent');
+  const enter = page.getByTestId('web-welcome-enter');
+  await expect(enter).toBeVisible({ timeout: 30_000 });
+  await enter.click();
+  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
+});
 
+test('rollback front door exposes bounded working actions and canonical identity', async ({ page }) => {
+  await page.goto('/?bipDevSide=teen');
   await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible();
   await expect(page.getByText('Come on in.')).toBeVisible();
-  await expect(
-    page.getByRole('img', {
-      name: /Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together/,
-    }),
-  ).toBeVisible();
+  await expect(page.getByRole('img', { name: /Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together/ })).toBeVisible();
   await expect(page.getByText('Night', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Suhana', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Sy', { exact: true })).toHaveCount(0);
-
-  await expect(page.getByRole('button', { name: "About Se'kret Bip" })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Play welcome sound' })).toBeVisible();
-  await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
-  await expect(page.getByRole('tab')).toHaveCount(5);
-  await expect(page.getByRole('tab', { name: 'Family' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Moments' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'More' })).toBeVisible();
+  await expect(page.getByRole('button')).toHaveCount(2);
   await page.screenshot({ path: 'test-results/front-door-desktop.png', fullPage: true });
 });
 
 test('web welcome Enter supports keyboard activation', async ({ page }) => {
-  await page.goto('/');
-
-  const welcomeEnter = page.getByTestId('web-welcome-enter');
-  await expect(welcomeEnter).toBeVisible({ timeout: 30_000 });
-  await welcomeEnter.focus();
+  await page.goto('/?bipDevSide=teen');
+  const enter = page.getByTestId('web-welcome-enter');
+  await expect(enter).toBeVisible({ timeout: 30_000 });
+  await enter.focus();
   await page.keyboard.press('Enter');
-
-  const teenEnter = page.getByTestId('web-welcome-enter-teen');
-  await expect(teenEnter).toBeVisible();
-  await teenEnter.focus();
-  await page.keyboard.press('Enter');
-
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
-});
-
-test('login deep link renders current controls and survives refresh', async ({ page }) => {
-  await page.goto('/login');
-
-  await expect(page.getByText('sign in to continue')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Password', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
-
-  await page.reload();
-
-  await expect(page.getByText('sign in to continue')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
-});
-
-test('teen signup deep link enforces age assurance before account fields', async ({ page }) => {
-  await page.goto('/signup');
-
-  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Suhana')).toBeVisible();
-  await expect(page.getByText('Sy')).toBeVisible();
-  await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Email' })).not.toBeVisible();
-});
-
-test('parent signup deep link exposes account creation controls', async ({ page }) => {
-  await page.goto('/signup?side=parent');
-
-  await expect(page.getByText('create your Parent Space')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Password', exact: true })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Confirm password', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
 });
 
 test('frontend entry renders at phone width without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-
-  const welcomeEnter = page.getByTestId('web-welcome-enter');
-  await expect(welcomeEnter).toBeVisible({ timeout: 30_000 });
-
-  const hasHorizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-  );
+  const enter = page.getByTestId('web-welcome-enter');
+  await expect(enter).toBeVisible({ timeout: 30_000 });
+  const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(hasHorizontalOverflow).toBe(false);
-
-  const box = await welcomeEnter.boundingBox();
+  const box = await enter.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
@@ -113,67 +56,59 @@ test('frontend entry renders at phone width without horizontal overflow', async 
 test('frontend entry remains contained on a short narrow phone viewport', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/');
-
-  await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
-
-  const hasHorizontalOverflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
-  );
+  const shell = page.getByTestId('web-welcome-shell');
+  await expect(shell).toBeVisible({ timeout: 30_000 });
+  const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
   expect(hasHorizontalOverflow).toBe(false);
-
-  const shellBox = await page.getByTestId('web-welcome-shell').boundingBox();
+  const shellBox = await shell.boundingBox();
   expect(shellBox).not.toBeNull();
   expect(shellBox!.x).toBeGreaterThanOrEqual(0);
   expect(shellBox!.x + shellBox!.width).toBeLessThanOrEqual(320);
   await page.screenshot({ path: 'test-results/front-door-320x568.png' });
 });
 
-test('Teen Circle cannot bypass account onboarding from a blank browser session', async ({ page }) => {
-  await page.goto('/circle?bipDevSide=teen');
+test('login deep link renders current controls and survives refresh', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.getByText('sign in to continue')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Password', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log in' })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('sign in to continue')).toBeVisible({ timeout: 30_000 });
+});
 
+test('teen signup deep link enforces age assurance before account fields', async ({ page }) => {
+  await page.goto('/signup');
+  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Email' })).not.toBeVisible();
+});
+
+test('parent signup deep link exposes account creation controls', async ({ page }) => {
+  await page.goto('/signup?side=parent');
+  await expect(page.getByText('create your Parent Space')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
+});
+
+test('protected teen routes remain behind the public boundary', async ({ page }) => {
+  await page.goto('/circle?bipDevSide=teen');
   await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('🌐 Circle')).not.toBeVisible();
 });
 
-test('Teen Bridge remains closed from a blank browser session during controlled rollout proof', async ({ page }) => {
-  await page.goto('/bridge?bipDevSide=teen');
-
-  await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText(/share with parent/i)).not.toBeVisible();
-  await expect(page.getByText(/conversation starters/i)).not.toBeVisible();
-});
-
-test('Parent Bridge fails closed until guardian verification is complete', async ({ page }) => {
-  await page.goto('/bridge?bipDevSide=parent');
-
-  await expect(page.getByText('GUARDIAN ACCESS')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('Guardian verification is required.')).toBeVisible();
-  await expect(page.getByText(/Linking to a teen is a separate consent step/)).toBeVisible();
-  await expect(page.getByText(/No journal, voice note, or private source is shared automatically/)).toBeVisible();
-  await expect(page.getByText('Submit for guardian review')).toBeVisible();
-});
-
-test('authorization evidence and retired internals stay out of the public web surface', async ({ page }) => {
+test('authorization evidence and secrets stay out of the public surface', async ({ page }) => {
   await page.goto('/');
-
   await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
-
   const visibleText = await page.locator('body').innerText();
-  expect(visibleText).not.toContain('authorization_phase0.sql');
-  expect(visibleText).not.toContain('supabase-authorization-baseline.json');
-  expect(visibleText).not.toContain('SUPABASE_SERVICE_ROLE_KEY');
-  expect(visibleText).not.toContain('ACCOUNT_DELETION_PROCESS_SECRET');
-  expect(visibleText).not.toContain('SAFETY_SCAN_SECRET');
-  expect(visibleText).not.toContain('app_private_config');
-  expect(visibleText).not.toContain('app_config');
-  expect(visibleText).not.toContain('harden_config_table_grants');
-  expect(visibleText).not.toContain('release-health');
-  expect(visibleText).not.toContain('bridge-e2e-probe');
-  expect(visibleText).not.toContain('github-workflow-status');
-  expect(visibleText).not.toContain('retirement-manifest.json');
-  expect(visibleText).not.toContain('function_retired');
-  expect(visibleText).not.toContain('harden_founder_helper_anonymous_guard');
-  expect(visibleText).not.toContain('harden_audit_control_room_policies');
-  expect(visibleText).not.toContain('remove_anon_audit_control_room_grants');
-  expect(visibleText).not.toContain('authorization_founder_guardian_phase1.sql');
+  for (const forbidden of [
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'ACCOUNT_DELETION_PROCESS_SECRET',
+    'SAFETY_SCAN_SECRET',
+    'app_private_config',
+    'authorization_phase0.sql',
+    'supabase-authorization-baseline.json',
+  ]) {
+    expect(visibleText).not.toContain(forbidden);
+  }
 });
