@@ -24,7 +24,8 @@ test('splash and safe pre-auth onboarding routes are reachable before login', ()
   assert.match(rootLayout, /'age'/);
   assert.match(rootLayout, /const isPublicRoot = first === ''/);
   assert.doesNotMatch(index, /if \(!user\) \{\s*router\.replace\('\/\(auth\)\/login'\)/);
-  assert.match(index, /router\.replace\(buildSide === 'parent' \? '\/\(onboarding\)\/parent-splash' : '\/\(onboarding\)\/welcome'\)/);
+  assert.match(index, /const publicEntrySide: AccountSide = previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
+  assert.match(index, /router\.replace\(publicEntrySide === 'parent' \? '\/\(onboarding\)\/parent-splash' : '\/\(onboarding\)\/welcome'\)/);
 });
 
 test('age and account side survive into permanent account creation', () => {
