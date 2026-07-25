@@ -6,6 +6,7 @@ import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
 import { WebWelcomeScreen } from '@screens/WebWelcomeScreen';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
+import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 import {
   hydrateAccountProfile,
   type AccountProfile,
@@ -37,8 +38,10 @@ export default function Index() {
   const [splashEntered, setSplashEntered] = useState(false);
   const [routed, setRouted] = useState(false);
   const buildSide = useMemo(getBuildSide, []);
+  const previewSide = useMemo(getDevSplitViewSideOverride, []);
   const effectiveSide: AccountSide = accountProfile?.accountSide ?? buildSide ?? userSide ?? 'teen';
-  const publicWelcomeSide: AccountSide = buildSide ?? userSide ?? 'teen';
+  const publicWelcomeSide: AccountSide = previewSide ?? buildSide ?? userSide ?? 'teen';
+  const publicEntrySide: AccountSide = previewSide ?? buildSide ?? userSide ?? 'teen';
 
   useEffect(() => {
     let cancelled = false;
@@ -133,9 +136,9 @@ export default function Index() {
     async function route() {
       if (!hasPermanentSession) {
         if (requiresAccountUpgrade) {
-          router.replace(`/(auth)/signup?side=${effectiveSide}` as never);
+          router.replace(`/(auth)/signup?side=${publicEntrySide}` as never);
         } else {
-          router.replace(buildSide === 'parent' ? '/(onboarding)/parent-splash' : '/(onboarding)/welcome');
+          router.replace(publicEntrySide === 'parent' ? '/(onboarding)/parent-splash' : '/(onboarding)/welcome');
         }
         return;
       }
@@ -181,12 +184,12 @@ export default function Index() {
     accountProfile,
     authChecked,
     bootstrapError,
-    buildSide,
     effectiveSide,
     hasPermanentSession,
     isLoading,
     isVerificationLoading,
     profileResolved,
+    publicEntrySide,
     requiredConsentsComplete,
     requiresAccountUpgrade,
     routed,
