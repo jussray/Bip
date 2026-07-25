@@ -135,7 +135,7 @@ export default function Index() {
         if (requiresAccountUpgrade) {
           router.replace(`/(auth)/signup?side=${effectiveSide}` as never);
         } else {
-          router.replace(buildSide === 'parent' ? '/(onboarding)/parent-splash' : '/(onboarding)/welcome');
+          router.replace(effectiveSide === 'parent' ? '/(onboarding)/parent-splash' : '/(onboarding)/welcome');
         }
         return;
       }
@@ -198,7 +198,11 @@ export default function Index() {
     return (
       <WebWelcomeScreen
         variant={publicWelcomeSide}
-        onEnter={() => setSplashEntered(true)}
+        onEnter={(side) => {
+          setRouted(false);
+          setUserSide(side);
+          setSplashEntered(true);
+        }}
       />
     );
   }
