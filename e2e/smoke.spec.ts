@@ -81,7 +81,7 @@ test('parent signup deep link exposes account creation controls', async ({ page 
 
   await expect(page.getByText('create your Parent Space')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Password', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Password (8+ characters)', exact: true })).toBeVisible();
   await expect(page.getByRole('textbox', { name: 'Confirm password', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
 });
