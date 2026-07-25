@@ -15,7 +15,8 @@ test('teen front door keeps canonical names and approved teen artwork', () => {
 test('Bip Jr front door is a separate parent-build variant', () => {
   assert.match(welcome, /parent-space-splash\.png/);
   assert.match(welcome, /YOUR FAMILY\. YOUR SPACE\./);
-  assert.match(welcome, /variant === 'parent'/);
+  assert.match(welcome, /activeVariant === 'parent'/);
+  assert.match(welcome, /bipDevSide/);
   assert.match(index, /variant=\{publicWelcomeSide\}/);
   assert.match(index, /buildSide \?\? userSide \?\? 'teen'/);
 });
