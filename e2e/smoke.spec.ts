@@ -21,9 +21,14 @@ test('web welcome front door exposes working actions and approved identity', asy
   await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible();
   await expect(page.getByText('Come on in.')).toBeVisible();
-  await expect(page.getByText('Night')).toBeVisible();
-  await expect(page.getByText('Suhana')).toBeVisible();
-  await expect(page.getByText('Sy')).toBeVisible();
+  await expect(
+    page.getByRole('img', {
+      name: /Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together/,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText('Night', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Suhana', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Sy', { exact: true })).toHaveCount(0);
 
   await expect(page.getByRole('button', { name: "About Se'kret Bip" })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Play welcome sound' })).toBeVisible();
