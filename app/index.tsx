@@ -36,12 +36,13 @@ export default function Index() {
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
   const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [splashEntered, setSplashEntered] = useState(false);
+  const [selectedEntrySide, setSelectedEntrySide] = useState<AccountSide | null>(null);
   const [routed, setRouted] = useState(false);
   const buildSide = useMemo(getBuildSide, []);
   const previewSide = useMemo(getDevSplitViewSideOverride, []);
   const effectiveSide: AccountSide = accountProfile?.accountSide ?? buildSide ?? userSide ?? 'teen';
   const publicWelcomeSide: AccountSide = previewSide ?? buildSide ?? userSide ?? 'teen';
-  const publicEntrySide: AccountSide = previewSide ?? buildSide ?? userSide ?? 'teen';
+  const publicEntrySide: AccountSide = selectedEntrySide ?? previewSide ?? buildSide ?? userSide ?? 'teen';
 
   useEffect(() => {
     let cancelled = false;
@@ -197,11 +198,17 @@ export default function Index() {
     verificationState,
   ]);
 
+  // This watched entrypoint intentionally participates in the exact-head release gate.
   if (Platform.OS === 'web' && !splashEntered) {
     return (
       <WebWelcomeScreen
         variant={publicWelcomeSide}
-        onEnter={() => setSplashEntered(true)}
+        onEnter={(side) => {
+          setRouted(false);
+          setSelectedEntrySide(side);
+          setUserSide(side);
+          setSplashEntered(true);
+        }}
       />
     );
   }

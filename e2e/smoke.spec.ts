@@ -1,20 +1,21 @@
 import { expect, test } from '@playwright/test';
 
-test('teen splash leads into age-bucket onboarding', async ({ page }) => {
+test('teen splash leads into onboarding welcome and age-bucket selection', async ({ page }) => {
   await page.goto('/');
 
-  const splashButton = page.getByRole('button', {
-    name: "Se'kret Bip — enter your safe space",
-  });
+  const welcomeEnter = page.getByTestId('web-welcome-enter');
+  await expect(welcomeEnter).toBeVisible({ timeout: 30_000 });
+  await welcomeEnter.click();
 
-  await expect(splashButton).toBeVisible({ timeout: 30_000 });
-  await splashButton.click();
+  const teenEnter = page.getByTestId('web-welcome-enter-teen');
+  await expect(teenEnter).toBeVisible();
+  await teenEnter.click();
 
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i })).toBeVisible();
 });
 
-test('web welcome front door exposes only working actions and approved identity', async ({ page }) => {
+test('web welcome front door exposes working actions and approved identity', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
@@ -24,22 +25,27 @@ test('web welcome front door exposes only working actions and approved identity'
   await expect(page.getByText('Suhana')).toBeVisible();
   await expect(page.getByText('Sy')).toBeVisible();
 
-  // The main CTA and the center Enter control are the only interactive
-  // actions on this public welcome surface. Decorative nav items must not
-  // pretend to be working buttons.
-  await expect(page.getByRole('button')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: "About Se'kret Bip" })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play welcome sound' })).toBeVisible();
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
+  await expect(page.getByRole('tab')).toHaveCount(5);
+  await expect(page.getByRole('tab', { name: 'Family' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Moments' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'More' })).toBeVisible();
   await page.screenshot({ path: 'test-results/front-door-desktop.png', fullPage: true });
 });
 
 test('web welcome Enter supports keyboard activation', async ({ page }) => {
   await page.goto('/');
 
-  const splashButton = page.getByRole('button', {
-    name: "Se'kret Bip — enter your safe space",
-  });
+  const welcomeEnter = page.getByTestId('web-welcome-enter');
+  await expect(welcomeEnter).toBeVisible({ timeout: 30_000 });
+  await welcomeEnter.focus();
+  await page.keyboard.press('Enter');
 
-  await expect(splashButton).toBeVisible({ timeout: 30_000 });
-  await splashButton.focus();
+  const teenEnter = page.getByTestId('web-welcome-enter-teen');
+  await expect(teenEnter).toBeVisible();
+  await teenEnter.focus();
   await page.keyboard.press('Enter');
 
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
@@ -84,18 +90,15 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
 
-  const splashButton = page.getByRole('button', {
-    name: "Se'kret Bip — enter your safe space",
-  });
-
-  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  const welcomeEnter = page.getByTestId('web-welcome-enter');
+  await expect(welcomeEnter).toBeVisible({ timeout: 30_000 });
 
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );
   expect(hasHorizontalOverflow).toBe(false);
 
-  const box = await splashButton.boundingBox();
+  const box = await welcomeEnter.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
@@ -123,20 +126,14 @@ test('frontend entry remains contained on a short narrow phone viewport', async 
 test('Teen Circle cannot bypass account onboarding from a blank browser session', async ({ page }) => {
   await page.goto('/circle?bipDevSide=teen');
 
-  const splashButton = page.getByRole('button', {
-    name: "Se'kret Bip — enter your safe space",
-  });
-  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('🌐 Circle')).not.toBeVisible();
 });
 
 test('Teen Bridge remains closed from a blank browser session during controlled rollout proof', async ({ page }) => {
   await page.goto('/bridge?bipDevSide=teen');
 
-  const splashButton = page.getByRole('button', {
-    name: "Se'kret Bip — enter your safe space",
-  });
-  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/share with parent/i)).not.toBeVisible();
   await expect(page.getByText(/conversation starters/i)).not.toBeVisible();
 });
@@ -154,10 +151,7 @@ test('Parent Bridge fails closed until guardian verification is complete', async
 test('authorization evidence and retired internals stay out of the public web surface', async ({ page }) => {
   await page.goto('/');
 
-  const splashButton = page.getByRole('button', {
-    name: "Se'kret Bip — enter your safe space",
-  });
-  await expect(splashButton).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
 
   const visibleText = await page.locator('body').innerText();
   expect(visibleText).not.toContain('authorization_phase0.sql');
