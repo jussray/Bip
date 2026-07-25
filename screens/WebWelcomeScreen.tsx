@@ -9,10 +9,15 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import type { AccountSide } from '@/features/identity/accountProfile';
 
-const FAMILY_HERO = require('../assets/brand/sekret-bip-teen-family-v1.jpg');
+const TEEN_HERO = require('../assets/brand/sekret-bip-teen-family-v1.jpg');
+const BIP_JR_HERO = require('../assets/images/parent-space-splash.png');
 
-type WebWelcomeScreenProps = { onEnter: () => void };
+type WebWelcomeScreenProps = {
+  onEnter: () => void;
+  variant?: AccountSide;
+};
 
 const navItems = [
   { icon: '⌂', label: 'Home' },
@@ -22,10 +27,25 @@ const navItems = [
   { icon: '•••', label: 'More' },
 ] as const;
 
-export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
+export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
   const compact = width < 520;
   const shellHeight = compact ? height : Math.min(height, 900);
+  const isBipJr = variant === 'parent';
+
+  const copy = isBipJr
+    ? {
+        eyebrow: 'YOUR FAMILY. YOUR SPACE.',
+        subtitle: 'A safe little world where families can stay close while every child still has room to grow.',
+        hero: BIP_JR_HERO,
+        heroLabel: 'The updated Bip Jr family welcome artwork',
+      }
+    : {
+        eyebrow: 'YOUR PEOPLE. YOUR PEACE.',
+        subtitle: 'A safe little world where teens and parents can stay close without losing their own space.',
+        hero: TEEN_HERO,
+        heroLabel: 'Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together',
+      };
 
   return (
     <View style={[styles.page, { minHeight: height }]}>
@@ -34,6 +54,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
 
       <View
         testID="web-welcome-shell"
+        accessibilityLabel={isBipJr ? 'Bip Jr welcome' : "Se'kret Bip teen welcome"}
         style={[styles.shell, { height: shellHeight }, compact && styles.shellCompact]}
       >
         <ScrollView
@@ -50,7 +71,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
               <LinearGradient colors={['#f07bc3', '#8b64ff', '#596be1']} style={styles.wordmarkBadge}>
                 <Text style={styles.wordmarkHeart}>♡</Text>
               </LinearGradient>
-              <Text style={styles.wordmarkText}>SE’KRET BIP</Text>
+              <Text style={styles.wordmarkText}>{isBipJr ? 'BIP JR' : 'SE’KRET BIP'}</Text>
             </View>
 
             <View accessibilityLabel="Welcome sound" style={styles.roundButton}>
@@ -59,41 +80,48 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
           </View>
 
           <View style={styles.copy}>
-            <Text style={styles.eyebrow}>YOUR PEOPLE. YOUR PEACE.</Text>
+            <Text testID="web-welcome-eyebrow" style={styles.eyebrow}>{copy.eyebrow}</Text>
             <View style={styles.titleRow}>
               <Text style={styles.title}>Come on in.</Text>
               <Text style={styles.spark}>✦</Text>
             </View>
-            <Text style={styles.subtitle}>
-              A safe little world where teens and parents can stay close without losing their own space.
-            </Text>
+            <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
 
-          <View style={[styles.heroWrap, compact && styles.heroWrapCompact]}>
+          <View style={[styles.heroWrap, compact && styles.heroWrapCompact, isBipJr && styles.heroWrapBipJr]}>
             <View style={styles.heroGlow} />
             <Image
-              testID="web-welcome-hero"
-              source={FAMILY_HERO}
-              resizeMode="cover"
-              style={styles.hero}
-              accessibilityLabel="Night, Suhana, Sy, Cloud, and their parents together"
+              testID={isBipJr ? 'web-welcome-hero-bip-jr' : 'web-welcome-hero-teen'}
+              source={copy.hero}
+              resizeMode={isBipJr ? 'contain' : 'cover'}
+              style={[styles.hero, isBipJr && styles.heroBipJr]}
+              accessibilityLabel={copy.heroLabel}
             />
           </View>
 
-          <View style={styles.namePill}>
-            <Text style={styles.nameText}>Night</Text>
-            <Text style={styles.nameDot}>·</Text>
-            <Text style={styles.nameText}>Suhana</Text>
-            <Text style={styles.nameDot}>·</Text>
-            <Text style={styles.nameText}>Sy</Text>
-          </View>
+          {!isBipJr && (
+            <>
+              <View style={styles.namePill} accessibilityLabel="Night, Suhana, and Sy">
+                <Text style={styles.nameText}>Night</Text>
+                <Text style={styles.nameDot}>·</Text>
+                <Text testID="web-welcome-suhana" style={styles.nameText}>Suhana</Text>
+                <Text style={styles.nameDot}>·</Text>
+                <Text style={styles.nameText}>Sy</Text>
+              </View>
+              <Text style={styles.handNote}>☁  stay awhile. you’re safe here.</Text>
+            </>
+          )}
 
-          <Text style={styles.handNote}>☁  stay awhile. you’re safe here.</Text>
+          {isBipJr && (
+            <Text testID="web-welcome-bip-jr-note" style={styles.bipJrNote}>
+              Built for trust. Made for real families.
+            </Text>
+          )}
 
           <Pressable
             testID="web-welcome-enter"
             accessibilityRole="button"
-            accessibilityLabel="Se'kret Bip — enter your safe space"
+            accessibilityLabel={isBipJr ? 'Bip Jr — enter your family space' : "Se'kret Bip — enter your safe space"}
             accessibilityHint="Continue to account setup or your existing Bip space"
             onPress={onEnter}
           >
@@ -140,11 +168,7 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
               );
             }
 
-            return (
-              <View key={item.label} style={styles.navItem}>
-                {navContent}
-              </View>
-            );
+            return <View key={item.label} style={styles.navItem}>{navContent}</View>;
           })}
         </View>
       </View>
@@ -153,38 +177,14 @@ export function WebWelcomeScreen({ onEnter }: WebWelcomeScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  page: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    backgroundColor: '#05030f',
-  },
-  ambientTop: {
-    position: 'absolute', width: 520, height: 520, top: -220, right: -160,
-    borderRadius: 260, backgroundColor: 'rgba(137, 91, 241, 0.22)',
-  },
-  ambientBottom: {
-    position: 'absolute', width: 460, height: 460, bottom: -210, left: -160,
-    borderRadius: 230, backgroundColor: 'rgba(231, 81, 162, 0.15)',
-  },
-  shell: {
-    width: '100%', maxWidth: 430, maxHeight: 900,
-    overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)',
-    borderRadius: 38, backgroundColor: '#120927',
-    boxShadow: '0 40px 110px rgba(0,0,0,.66)' as never,
-  },
+  page: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', backgroundColor: '#05030f' },
+  ambientTop: { position: 'absolute', width: 520, height: 520, top: -220, right: -160, borderRadius: 260, backgroundColor: 'rgba(137, 91, 241, 0.22)' },
+  ambientBottom: { position: 'absolute', width: 460, height: 460, bottom: -210, left: -160, borderRadius: 230, backgroundColor: 'rgba(231, 81, 162, 0.15)' },
+  shell: { width: '100%', maxWidth: 430, maxHeight: 900, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)', borderRadius: 38, backgroundColor: '#120927', boxShadow: '0 40px 110px rgba(0,0,0,.66)' as never },
   shellCompact: { maxWidth: '100%', borderRadius: 0, borderWidth: 0 },
   scrollContent: { flexGrow: 1, paddingBottom: 18 },
-  topBar: {
-    height: 78, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  roundButton: {
-    width: 42, height: 42, borderRadius: 21, borderWidth: 1,
-    borderColor: 'rgba(220,199,255,.2)', backgroundColor: 'rgba(255,255,255,.05)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  topBar: { height: 78, paddingHorizontal: 18, paddingTop: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  roundButton: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: 'rgba(220,199,255,.2)', backgroundColor: 'rgba(255,255,255,.05)', alignItems: 'center', justifyContent: 'center' },
   roundButtonText: { color: '#fff', fontSize: 22, fontWeight: '700' },
   music: { color: '#fff', fontSize: 18 },
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -196,53 +196,28 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 12 },
   title: { color: '#fff', fontFamily: 'Georgia', fontSize: 48, lineHeight: 54, letterSpacing: -2 },
   spark: { color: '#f2a4d5', fontSize: 18, marginLeft: 8, marginTop: 3 },
-  subtitle: {
-    color: '#c9bddf', fontSize: 15, lineHeight: 23, textAlign: 'center',
-    maxWidth: 350, marginTop: 10,
-  },
+  subtitle: { color: '#c9bddf', fontSize: 15, lineHeight: 23, textAlign: 'center', maxWidth: 350, marginTop: 10 },
   heroWrap: { height: 430, marginTop: 4, overflow: 'hidden', justifyContent: 'flex-end' },
   heroWrapCompact: { height: 360 },
-  heroGlow: {
-    position: 'absolute', width: 340, height: 340, left: '50%', top: 35,
-    marginLeft: -170, borderRadius: 170, backgroundColor: 'rgba(142,89,255,.18)',
-  },
+  heroWrapBipJr: { marginHorizontal: 18, marginTop: 14, borderRadius: 34, backgroundColor: '#0d1732' },
+  heroGlow: { position: 'absolute', width: 340, height: 340, left: '50%', top: 35, marginLeft: -170, borderRadius: 170, backgroundColor: 'rgba(142,89,255,.18)' },
   hero: { width: '100%', height: '100%' },
-  namePill: {
-    minHeight: 44, marginHorizontal: 36, marginTop: -36, borderRadius: 20,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,.16)',
-    backgroundColor: 'rgba(6,3,18,.9)', flexDirection: 'row',
-    alignItems: 'center', justifyContent: 'center', gap: 10,
-  },
+  heroBipJr: { borderRadius: 34 },
+  namePill: { minHeight: 44, marginHorizontal: 36, marginTop: -36, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,.16)', backgroundColor: 'rgba(6,3,18,.9)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   nameText: { color: '#ddcfef', fontFamily: 'Georgia', fontStyle: 'italic', fontSize: 17 },
   nameDot: { color: '#b469f0', fontSize: 17 },
-  handNote: {
-    color: '#c4aed7', fontSize: 13, fontStyle: 'italic', textAlign: 'center',
-    marginTop: 8, marginBottom: 12,
-  },
-  enterButton: {
-    minHeight: 72, marginHorizontal: 34, borderRadius: 24, borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.18)', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 16, boxShadow: '0 16px 30px rgba(101,65,219,.35)' as never,
-  },
+  handNote: { color: '#c4aed7', fontSize: 13, fontStyle: 'italic', textAlign: 'center', marginTop: 8, marginBottom: 12 },
+  bipJrNote: { color: '#a99dbb', fontSize: 13, textAlign: 'center', marginTop: 12, marginBottom: 14 },
+  enterButton: { minHeight: 72, marginHorizontal: 34, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,.18)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, boxShadow: '0 16px 30px rgba(101,65,219,.35)' as never },
   enterPressed: { opacity: 0.84, transform: [{ scale: 0.99 }] },
   enterText: { color: '#fff', fontSize: 26, fontWeight: '800' },
-  enterHeartBadge: {
-    width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,.16)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  enterHeartBadge: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,.16)', alignItems: 'center', justifyContent: 'center' },
   enterHeart: { color: '#fff', fontSize: 28, lineHeight: 32 },
-  bottomNav: {
-    height: 92, borderTopWidth: 1, borderTopColor: 'rgba(220,199,255,.15)',
-    backgroundColor: 'rgba(7,4,20,.98)', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-around', paddingHorizontal: 8, paddingBottom: 8,
-  },
+  bottomNav: { height: 92, borderTopWidth: 1, borderTopColor: 'rgba(220,199,255,.15)', backgroundColor: 'rgba(7,4,20,.98)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 8, paddingBottom: 8 },
   navItem: { flex: 1, height: 72, alignItems: 'center', justifyContent: 'center', gap: 5 },
   centerNavItem: { transform: [{ translateY: -12 }] },
   navIconWrap: { width: 44, height: 38, alignItems: 'center', justifyContent: 'center' },
-  centerIconWrap: {
-    width: 64, height: 64, borderRadius: 22, backgroundColor: '#b969df',
-    boxShadow: '0 12px 26px rgba(134,92,239,.42)' as never,
-  },
+  centerIconWrap: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#b969df', boxShadow: '0 12px 26px rgba(134,92,239,.42)' as never },
   navIcon: { color: '#817694', fontSize: 23, fontWeight: '800' },
   centerIcon: { color: '#fff', fontSize: 22 },
   navLabel: { color: '#756a89', fontSize: 11, fontWeight: '700' },
