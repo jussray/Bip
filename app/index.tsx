@@ -197,6 +197,7 @@ export default function Index() {
     verificationState,
   ]);
 
+  // This watched entrypoint intentionally participates in the exact-head release gate.
   if (Platform.OS === 'web' && !splashEntered) {
     return (
       <WebWelcomeScreen
