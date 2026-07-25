@@ -2,6 +2,8 @@
 
 Use these instructions whenever an AI coding agent works in this repository.
 
+Before material planning, implementation, review, automation, publishing, deployment, migration, or cross-repository coordination, read [`AGENTS_FOUNDER_INTELLIGENCE.md`](./AGENTS_FOUNDER_INTELLIGENCE.md), which loads the Founder Intelligence Constitution and Se'kret Bip's heightened teen privacy, consent, safety, dignity, and anti-surveillance duties.
+
 > **Before making any claim about current PR, deployment, migration, backend state, GitHub Actions status, Cloudflare status, Supabase state, or release truth, inspect the real repository and read `SPRINT.md`, `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`, and `.agents/skills/bip-repo-truth/SKILL.md`. Also check Founder Control Room when release, CI, outage, or cross-repo truth is involved.**
 
 ## Current repository checkpoint
