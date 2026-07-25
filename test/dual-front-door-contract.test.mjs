@@ -5,10 +5,11 @@ import test from 'node:test';
 const welcome = readFileSync('screens/WebWelcomeScreen.tsx', 'utf8');
 const index = readFileSync('app/index.tsx', 'utf8');
 
-test('teen front door keeps canonical names and approved teen artwork', () => {
+test('teen front door keeps canonical accessible names without a visible caption', () => {
   assert.match(welcome, /sekret-bip-teen-family-v1\.jpg/);
-  assert.match(welcome, />Suhana</);
+  assert.doesNotMatch(welcome, />Suhana</);
   assert.doesNotMatch(welcome, /Suhanna/);
+  assert.doesNotMatch(welcome, /namePill|nameText|nameDot/);
   assert.match(welcome, /Night on the left, Suhana in the center, Sy on the right/);
 });
 
