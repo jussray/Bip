@@ -38,6 +38,7 @@ export default function Index() {
   const [routed, setRouted] = useState(false);
   const buildSide = useMemo(getBuildSide, []);
   const effectiveSide: AccountSide = accountProfile?.accountSide ?? buildSide ?? userSide ?? 'teen';
+  const publicWelcomeSide: AccountSide = buildSide ?? userSide ?? 'teen';
 
   useEffect(() => {
     let cancelled = false;
@@ -48,10 +49,6 @@ export default function Index() {
       setRequiresAccountUpgrade(false);
       try {
         if (!isSupabaseConfigured) {
-          // Local previews and Playwright intentionally run without account
-          // credentials. Treat that as a blank browser session so the public
-          // entrance and onboarding remain testable. Production still fails
-          // closed instead of walking a real user into an account dead end.
           if (process.env.NODE_ENV !== 'production') {
             if (!cancelled) {
               setHasPermanentSession(false);
@@ -197,10 +194,13 @@ export default function Index() {
     verificationState,
   ]);
 
-  // The public web front door stays visible even while account bootstrap runs.
-  // Enter hands control back to the existing auth/onboarding router.
   if (Platform.OS === 'web' && !splashEntered) {
-    return <WebWelcomeScreen onEnter={() => setSplashEntered(true)} />;
+    return (
+      <WebWelcomeScreen
+        variant={publicWelcomeSide}
+        onEnter={() => setSplashEntered(true)}
+      />
+    );
   }
 
   if (bootstrapError) {
