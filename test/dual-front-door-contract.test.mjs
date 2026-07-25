@@ -19,12 +19,12 @@ test('Bip Jr remains a separate parent-side welcome world', () => {
   assert.match(welcome, /bipDevSide/);
   assert.match(welcome, /onEnter\('parent'\)/);
   assert.match(index, /variant=\{publicWelcomeSide\}/);
-  assert.match(index, /previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
 });
 
-test('Enter preserves the selected public side through onboarding routing', () => {
+test('explicit Enter choice outranks preview and build defaults', () => {
   assert.match(index, /getDevSplitViewSideOverride/);
-  assert.match(index, /const publicEntrySide: AccountSide = previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
+  assert.match(index, /const publicEntrySide: AccountSide = selectedEntrySide \?\? previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
+  assert.match(index, /setSelectedEntrySide\(side\)/);
   assert.match(index, /publicEntrySide === 'parent' \? '\/\(onboarding\)\/parent-splash' : '\/\(onboarding\)\/welcome'/);
   assert.match(index, /signup\?side=\$\{publicEntrySide\}/);
 });
