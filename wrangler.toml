@@ -1,4 +1,4 @@
-name = "sekret"
+name = "sekret-backend"
 main = "worker/observed-index.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
