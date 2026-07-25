@@ -27,11 +27,18 @@ const navItems = [
   { icon: '•••', label: 'More' },
 ] as const;
 
+function getPreviewVariant(variant: AccountSide): AccountSide {
+  if (typeof window === 'undefined') return variant;
+  const override = new URLSearchParams(window.location.search).get('bipDevSide');
+  return override === 'teen' || override === 'parent' ? override : variant;
+}
+
 export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
   const compact = width < 520;
   const shellHeight = compact ? height : Math.min(height, 900);
-  const isBipJr = variant === 'parent';
+  const activeVariant = getPreviewVariant(variant);
+  const isBipJr = activeVariant === 'parent';
 
   const copy = isBipJr
     ? {
