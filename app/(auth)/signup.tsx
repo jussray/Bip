@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -14,6 +13,7 @@ import {
   View,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVerificationContext } from '@/context/VerificationContext';
 import type { AccountSide } from '@/features/identity/accountProfile';
