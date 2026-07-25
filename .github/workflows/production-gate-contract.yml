@@ -1,0 +1,56 @@
+name: Production Gate Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-cloudflare.yml'
+      - '.github/workflows/production-gate-contract.yml'
+      - 'e2e/production-smoke.spec.ts'
+      - 'playwright.production.config.ts'
+      - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'test/production-deployment-gate-contract.test.mjs'
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  validate-production-gate:
+    name: Validate production proof contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Type-check production proof
+        run: npm run type-check
+
+      - name: Verify production gate contract
+        run: node --test test/production-deployment-gate-contract.test.mjs
+
+      - name: Compile and list production Playwright tests
+        run: npx playwright test --config=playwright.production.config.ts e2e/production-smoke.spec.ts --list

@@ -1,6 +1,22 @@
 name: Verify Cloudflare Native Deployment
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'screens/**'
+      - 'assets/**'
+      - 'src/**'
+      - 'worker/**'
+      - 'scripts/write-release-metadata.mjs'
+      - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'e2e/production-smoke.spec.ts'
+      - 'playwright.production.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'wrangler.toml'
+      - '.github/workflows/deploy-cloudflare.yml'
   workflow_dispatch:
 
 concurrency:
@@ -32,6 +48,16 @@ jobs:
     steps:
       - name: Check out deployed commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Record and verify exact main head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_RELEASE_SHA" "$actual"
+          test "$actual" = "$EXPECTED_RELEASE_SHA"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -63,9 +89,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cloudflare-native-deployment-evidence
+          name: cloudflare-native-deployment-evidence-${{ github.sha }}
           path: |
             artifacts/cloudflare-native-deploy.json
             playwright-report-production/
+            test-results-production/
           if-no-files-found: warn
           retention-days: 14

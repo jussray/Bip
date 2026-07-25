@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test';
 
 const expectedReleaseSha = process.env.EXPECTED_RELEASE_SHA?.trim().toLowerCase();
 
+async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  );
+  expect(overflow).toBe(false);
+}
+
 test('production exposes the exact expected release commit', async ({ request }) => {
   test.skip(!expectedReleaseSha, 'EXPECTED_RELEASE_SHA is required for exact production release proof.');
 
@@ -23,22 +30,50 @@ test('production exposes the exact expected release commit', async ({ request })
   });
 });
 
-// A blank/unauthenticated session on a protected route lands on the splash
-// onboarding entry point, not a bare /login form — confirmed against real
-// production by the sibling "Teen Circle cannot bypass account onboarding"
-// and "Parent Bridge fails closed until guardian verification is complete"
-// checks in e2e/smoke.spec.ts, which run in every environment (they don't
-// depend on isSupabaseConfigured the way a /login redirect assumption
-// would). These two extend that same proven pattern to a plain teen-only
-// and parent-only screen instead of Circle/Bridge specifically.
+test('production Teen front door renders and Enter reaches Teen onboarding', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?bipDevSide=teen', { waitUntil: 'networkidle' });
 
+  await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-eyebrow')).toHaveText('YOUR PEOPLE. YOUR PEACE.');
+  await expect(page.getByTestId('web-welcome-suhana')).toHaveText('Suhana');
+  await expectNoHorizontalOverflow(page);
+
+  await testInfo.attach('production-teen-front-door.png', {
+    body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
+    contentType: 'image/png',
+  });
+
+  await page.getByTestId('web-welcome-enter').click();
+  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
+});
+
+test('production Bip Jr front door renders and Enter reaches parent onboarding', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?bipDevSide=parent', { waitUntil: 'networkidle' });
+
+  await expect(page.getByTestId('web-welcome-hero-bip-jr')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-eyebrow')).toHaveText('YOUR FAMILY. YOUR SPACE.');
+  await expect(page.getByTestId('web-welcome-suhana')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+
+  await testInfo.attach('production-bip-jr-front-door.png', {
+    body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
+    contentType: 'image/png',
+  });
+
+  await page.getByTestId('web-welcome-enter').click();
+  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 30_000 });
+});
+
+// A blank/unauthenticated session on a protected route lands on the splash
+// onboarding entry point, not a bare /login form.
 test('unauthenticated visitor cannot reach a protected teen route from a blank session', async ({ page }) => {
   const consoleErrors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
 
-  // comfort.tsx exists only under app/(teen)/ — an unambiguous teen route.
   await page.goto('/comfort');
 
   const splashButton = page.getByRole('button', {
@@ -56,8 +91,6 @@ test('unauthenticated visitor cannot reach a protected parent route from a blank
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
 
-  // approvals.tsx exists only under app/(parent)/ and renders a real screen
-  // (unlike dashboard.tsx, which is just <Redirect href="/(parent)/bridge..." />).
   await page.goto('/approvals');
 
   const splashButton = page.getByRole('button', {
@@ -108,7 +141,6 @@ test('signup recovers from an ambiguous Supabase timeout without creating a real
       return;
     }
 
-    // Never let this verification test mutate or inspect real production Auth.
     await route.fulfill({
       status: 400,
       contentType: 'application/json',

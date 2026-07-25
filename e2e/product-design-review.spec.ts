@@ -74,3 +74,17 @@ for (const variant of VARIANTS) {
     });
   }
 }
+
+test('Teen Enter keeps the teen onboarding path', async ({ page }) => {
+  await page.goto('/?bipDevSide=teen', { waitUntil: 'networkidle' });
+  await page.getByTestId('web-welcome-enter').click();
+  await expect(page).toHaveURL(/\/welcome(?:\?|$)/);
+  await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
+});
+
+test('Bip Jr Enter keeps the parent onboarding path', async ({ page }) => {
+  await page.goto('/?bipDevSide=parent', { waitUntil: 'networkidle' });
+  await page.getByTestId('web-welcome-enter').click();
+  await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
+  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
+});
