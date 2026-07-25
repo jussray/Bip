@@ -5,7 +5,7 @@ import test from 'node:test';
 const welcome = readFileSync('screens/WebWelcomeScreen.tsx', 'utf8');
 const index = readFileSync('app/index.tsx', 'utf8');
 
-test('teen front door keeps canonical names and approved teen artwork', () => {
+ test('teen front door keeps canonical names and approved teen artwork', () => {
   assert.match(welcome, /sekret-bip-teen-family-v1\.jpg/);
   assert.match(welcome, />Suhana</);
   assert.doesNotMatch(welcome, /Suhanna/);
@@ -18,7 +18,14 @@ test('Bip Jr front door is a separate parent-build variant', () => {
   assert.match(welcome, /activeVariant === 'parent'/);
   assert.match(welcome, /bipDevSide/);
   assert.match(index, /variant=\{publicWelcomeSide\}/);
-  assert.match(index, /buildSide \?\? userSide \?\? 'teen'/);
+  assert.match(index, /previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
+});
+
+test('Enter preserves the selected public side through onboarding routing', () => {
+  assert.match(index, /getDevSplitViewSideOverride/);
+  assert.match(index, /const publicEntrySide: AccountSide = previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
+  assert.match(index, /publicEntrySide === 'parent' \? '\/\(onboarding\)\/parent-splash' : '\/\(onboarding\)\/welcome'/);
+  assert.match(index, /signup\?side=\$\{publicEntrySide\}/);
 });
 
 test('both variants retain a usable Enter control and bottom navigation', () => {
