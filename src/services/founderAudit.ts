@@ -36,7 +36,9 @@ export interface FounderAuditCard {
 }
 
 export interface FounderBusinessSnapshot {
-  users: number;
+  // A trustworthy cross-account total needs an approved founder-only aggregate RPC.
+  // Returning null prevents own-row RLS from masquerading as the global user count.
+  users: number | null;
   openIssues: number;
   unresolvedAudits: number;
   releases: number;
@@ -129,7 +131,11 @@ export function isFounderProfile(profile: FounderProfile | null): boolean {
 }
 
 export function isFounderBusinessProfile(profile: FounderProfile | null): boolean {
-  return Boolean(profile?.role === 'founder' && profile.can_manage_app);
+  return Boolean(
+    profile?.role === 'founder'
+      && profile.can_manage_app
+      && profile.can_view_audits,
+  );
 }
 
 export async function getCurrentFounderProfile(): Promise<FounderProfile | null> {
@@ -158,9 +164,12 @@ export async function getFounderBusinessSnapshot(): Promise<FounderBusinessSnaps
   const sb = getSupabase();
   if (!sb) return null;
 
-  const [usersResult, issuesResult, auditsResult, releasesResult, latestReleaseResult] = await Promise.all([
-    sb.from('app_profiles').select('user_id', { count: 'exact', head: true }),
-    sb.from('control_room_issues').select('id', { count: 'exact', head: true }).neq('status', 'resolved'),
+  const [issuesResult, auditsResult, releasesResult, latestReleaseResult] = await Promise.all([
+    sb
+      .from('control_room_issues')
+      .select('id', { count: 'exact', head: true })
+      .neq('status', 'resolved')
+      .neq('status', 'ignored'),
     sb.from('audit_events').select('id', { count: 'exact', head: true }).eq('resolved', false),
     sb.from('control_room_releases').select('id', { count: 'exact', head: true }),
     sb
@@ -171,12 +180,12 @@ export async function getFounderBusinessSnapshot(): Promise<FounderBusinessSnaps
       .maybeSingle(),
   ]);
 
-  const firstError = [usersResult.error, issuesResult.error, auditsResult.error, releasesResult.error, latestReleaseResult.error]
+  const firstError = [issuesResult.error, auditsResult.error, releasesResult.error, latestReleaseResult.error]
     .find(Boolean);
   if (firstError) throw firstError;
 
   return {
-    users: usersResult.count ?? 0,
+    users: null,
     openIssues: issuesResult.count ?? 0,
     unresolvedAudits: auditsResult.count ?? 0,
     releases: releasesResult.count ?? 0,
