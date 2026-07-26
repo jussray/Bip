@@ -37,7 +37,10 @@ export function getSupabase(): SupabaseClient | null {
       storage:            AsyncStorage,
       autoRefreshToken:   true,
       persistSession:     true,
-      detectSessionInUrl: false,
+      // Web confirmation/recovery links return with auth parameters in the URL.
+      // Supabase must consume those parameters so a brand-new external user gets
+      // a durable session instead of landing back on the public screen unsigned.
+      detectSessionInUrl: Platform.OS === 'web',
       lock:               processLock,
     },
   });
