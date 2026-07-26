@@ -6,7 +6,7 @@ create or replace function public.initialize_app_profile()
 returns trigger
 language plpgsql
 security definer
-set search_path = pg_catalog, pg_temp
+set search_path = public, auth
 as $$
 declare
   v_side text;
