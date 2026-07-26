@@ -9,6 +9,8 @@ import {
   sanitizeStripeEvent,
 } from '../lib/juss-beautiful-hair/payment-policy.mjs';
 
+const ALLOWED_PRICE_IDS = ['price_123'];
+
 test('classifies checkout, payment status, refund, and discount requests', () => {
   assert.equal(classifyPaymentRequest('Send me a payment link'), PAYMENT_ACTIONS.CREATE_CHECKOUT);
   assert.equal(classifyPaymentRequest('Did my payment go through?'), PAYMENT_ACTIONS.CHECK_STATUS);
@@ -18,7 +20,12 @@ test('classifies checkout, payment status, refund, and discount requests', () =>
 
 test('requires founder review for refunds and discounts', () => {
   for (const message of ['Refund my order', 'Give me a coupon']) {
-    const result = routePaymentRequest({ message, consent: true, stripePriceId: 'price_123' });
+    const result = routePaymentRequest({
+      message,
+      consent: true,
+      stripePriceId: 'price_123',
+      allowedStripePriceIds: ALLOWED_PRICE_IDS,
+    });
     assert.equal(result.route, PAYMENT_ROUTES.FOUNDER_REVIEW);
     assert.equal(result.automatedActionAllowed, false);
     assert.equal(result.reason, 'financial_approval_required');
@@ -31,13 +38,40 @@ test('uses verified Stripe events as the only payment-status truth', () => {
   assert.equal(result.automatedActionAllowed, false);
 });
 
-test('allows server checkout only with consent and an approved Stripe price', () => {
+test('allows server checkout only with consent and an explicitly allowlisted Stripe price', () => {
   assert.equal(
-    routePaymentRequest({ message: 'Send checkout', consent: false, stripePriceId: 'price_123' }).automatedActionAllowed,
+    routePaymentRequest({
+      message: 'Send checkout',
+      consent: false,
+      stripePriceId: 'price_123',
+      allowedStripePriceIds: ALLOWED_PRICE_IDS,
+    }).automatedActionAllowed,
     false,
   );
   assert.equal(
-    routePaymentRequest({ message: 'Send checkout', consent: true, stripePriceId: 'not-a-price' }).automatedActionAllowed,
+    routePaymentRequest({
+      message: 'Send checkout',
+      consent: true,
+      stripePriceId: 'not-a-price',
+      allowedStripePriceIds: ALLOWED_PRICE_IDS,
+    }).automatedActionAllowed,
+    false,
+  );
+  assert.equal(
+    routePaymentRequest({
+      message: 'Send checkout',
+      consent: true,
+      stripePriceId: 'price_unapproved',
+      allowedStripePriceIds: ALLOWED_PRICE_IDS,
+    }).automatedActionAllowed,
+    false,
+  );
+  assert.equal(
+    routePaymentRequest({
+      message: 'Send checkout',
+      consent: true,
+      stripePriceId: 'price_123',
+    }).automatedActionAllowed,
     false,
   );
 
@@ -45,6 +79,7 @@ test('allows server checkout only with consent and an approved Stripe price', ()
     message: 'Send checkout',
     consent: true,
     stripePriceId: 'price_123',
+    allowedStripePriceIds: ALLOWED_PRICE_IDS,
   });
   assert.equal(approved.route, PAYMENT_ROUTES.SERVER_CHECKOUT);
   assert.equal(approved.automatedActionAllowed, true);
