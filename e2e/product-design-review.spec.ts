@@ -40,7 +40,7 @@ for (const variant of VARIANTS) {
       await expect(page.getByTestId(variant.heroTestId)).toBeVisible();
       await expect(page.getByText(variant.identityText, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
-      await expect(page.getByTestId('web-welcome-bottom-nav')).toBeVisible();
+      await expect(page.getByTestId('web-welcome-bottom-nav')).toHaveCount(0);
 
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
