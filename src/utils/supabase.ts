@@ -12,6 +12,7 @@ import 'react-native-url-polyfill/auto';
 import { AppState, Platform } from 'react-native';
 import { createClient, processLock, type SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { PASSWORD_RECOVERY_PATH } from '@/features/auth/passwordRecovery';
 import { SUPABASE_URL, SUPABASE_ANON, isSupabaseReady } from './env';
 
 export const isSupabaseConfigured = isSupabaseReady;
@@ -29,6 +30,15 @@ function installNativeAutoRefresh(client: SupabaseClient) {
   });
 }
 
+function shouldDetectSessionInUrl(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+  // Confirmation links may be consumed globally. Password recovery is handled by
+  // ResetPasswordScreen so its one-time PKCE code cannot be exchanged twice.
+  return !pathname.endsWith(PASSWORD_RECOVERY_PATH);
+}
+
 export function getSupabase(): SupabaseClient | null {
   if (!isSupabaseConfigured) return null;
   if (_client) return _client;
@@ -37,10 +47,7 @@ export function getSupabase(): SupabaseClient | null {
       storage:            AsyncStorage,
       autoRefreshToken:   true,
       persistSession:     true,
-      // Web confirmation/recovery links return with auth parameters in the URL.
-      // Supabase must consume those parameters so a brand-new external user gets
-      // a durable session instead of landing back on the public screen unsigned.
-      detectSessionInUrl: Platform.OS === 'web',
+      detectSessionInUrl: shouldDetectSessionInUrl(),
       lock:               processLock,
     },
   });
