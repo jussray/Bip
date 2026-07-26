@@ -31,7 +31,11 @@ export default function FounderBusinessScreen() {
         setProfile(nextProfile);
         if (isFounderBusinessProfile(nextProfile)) {
           const nextSnapshot = await getFounderBusinessSnapshot();
-          if (active) setSnapshot(nextSnapshot);
+          if (!active) return;
+          setSnapshot(nextSnapshot);
+          if (!nextSnapshot) {
+            setError('Business data is unavailable. No totals were inferred or replaced with zero.');
+          }
         }
       } catch {
         if (active) setError('Business data could not be loaded. Your access was not changed.');
@@ -60,7 +64,7 @@ export default function FounderBusinessScreen() {
         <Text style={styles.lock}>🔐</Text>
         <Text style={styles.lockTitle}>Founder access required</Text>
         <Text style={styles.lockCopy}>
-          This side only opens for the signed-in Supabase profile with the founder role and app-management permission.
+          This side only opens for the signed-in Supabase profile with the founder role, app-management permission, and audit-view permission.
         </Text>
         <TouchableOpacity
           accessibilityRole="button"
@@ -74,7 +78,16 @@ export default function FounderBusinessScreen() {
     );
   }
 
+  const snapshotAvailable = snapshot !== null;
   const latestRelease = snapshot?.latestRelease;
+  const releaseTitle = snapshotAvailable
+    ? latestRelease?.release_key ?? 'No release recorded'
+    : 'Unavailable';
+  const releaseMeta = !snapshotAvailable
+    ? 'Release evidence could not be loaded.'
+    : latestRelease
+      ? `${latestRelease.status} · ${new Date(latestRelease.deployed_at).toLocaleString()}`
+      : 'No release evidence has been recorded yet.';
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.content}>
@@ -89,7 +102,7 @@ export default function FounderBusinessScreen() {
             accessibilityRole="button"
             accessibilityLabel="Open Founder Control Room"
             style={styles.primary}
-            onPress={() => router.push('/dev/control-room')}
+            onPress={() => router.push('/control-room')}
           >
             <Text style={styles.primaryText}>Open Control Room</Text>
           </TouchableOpacity>
@@ -107,20 +120,16 @@ export default function FounderBusinessScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.metrics}>
-        <Metric label="Accounts" value={snapshot?.users ?? 0} />
-        <Metric label="Open issues" value={snapshot?.openIssues ?? 0} />
-        <Metric label="Unresolved audits" value={snapshot?.unresolvedAudits ?? 0} />
-        <Metric label="Releases" value={snapshot?.releases ?? 0} />
+        <Metric label="Accounts" value={snapshotAvailable ? snapshot.users : null} />
+        <Metric label="Open issues" value={snapshotAvailable ? snapshot.openIssues : null} />
+        <Metric label="Unresolved audits" value={snapshotAvailable ? snapshot.unresolvedAudits : null} />
+        <Metric label="Releases" value={snapshotAvailable ? snapshot.releases : null} />
       </View>
 
       <View style={styles.releaseCard}>
         <Text style={styles.sectionLabel}>LATEST RELEASE</Text>
-        <Text style={styles.releaseTitle}>{latestRelease?.release_key ?? 'No release recorded'}</Text>
-        <Text style={styles.releaseMeta}>
-          {latestRelease
-            ? `${latestRelease.status} · ${new Date(latestRelease.deployed_at).toLocaleString()}`
-            : 'Control Room release evidence will appear here.'}
-        </Text>
+        <Text style={styles.releaseTitle}>{releaseTitle}</Text>
+        <Text style={styles.releaseMeta}>{releaseMeta}</Text>
       </View>
 
       <Text style={styles.sectionTitle}>Business tools</Text>
@@ -137,10 +146,10 @@ export default function FounderBusinessScreen() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value }: { label: string; value: number | null }) {
   return (
     <View style={styles.metricCard}>
-      <Text style={styles.metricValue}>{value}</Text>
+      <Text style={styles.metricValue}>{value === null ? 'Unavailable' : value}</Text>
       <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
