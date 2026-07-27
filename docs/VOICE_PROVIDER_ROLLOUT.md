@@ -67,7 +67,8 @@ It never returns provider credentials or legacy display names.
 - [x] ElevenLabs timestamp adapter is implemented.
 - [x] Canonical IDs are returned on success and error paths.
 - [x] Focused source-contract tests cover routing, fallback, bindings, and retired-name non-leakage.
-- [ ] Typecheck and test suite pass on the exact PR head.
+- [x] Runtime-style metadata fields match the existing `RuntimeStyleContract`.
+- [ ] Typecheck and test suite pass on the exact PR head. No GitHub Actions run has started for the latest head yet.
 - [ ] Wrangler dry-run succeeds on the exact PR head.
 - [ ] Cloudflare account has the required Workers AI binding and secrets.
 - [ ] Deployed canary proves Cloudflare success, premium timing success, one fallback, and typed failure.
