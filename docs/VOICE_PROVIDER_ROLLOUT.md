@@ -70,7 +70,7 @@ It never returns provider credentials or legacy display names.
 - [x] Runtime-style metadata fields match the existing `RuntimeStyleContract`.
 - [ ] Typecheck and test suite pass on the exact PR head. No GitHub Actions run has started for the latest head yet.
 - [ ] Wrangler dry-run succeeds on the exact PR head.
-- [ ] Cloudflare account has the required Workers AI binding and secrets.
+- [ ] Cloudflare account-level binding/secret/deploy verification. The Cloudflare connector was unavailable in this chat, so this cannot be claimed complete.
 - [ ] Deployed canary proves Cloudflare success, premium timing success, one fallback, and typed failure.
 - [ ] Targeted Playwright proves the real mobile voice and Rive lip-sync flow.
 
