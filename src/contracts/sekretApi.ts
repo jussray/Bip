@@ -63,10 +63,24 @@ export interface CompanionReplyData {
   traceId?: string;
 }
 
+export type VoiceProvider =
+  | 'cloudflare-aura-1'
+  | 'cloudflare-aura-2'
+  | 'elevenlabs-flash';
+
+export interface CharacterAlignment {
+  characters: string[];
+  characterStartTimesSeconds: number[];
+  characterEndTimesSeconds: number[];
+}
+
 export interface VoiceSynthesisRequest {
   reply: string;
   characterId: CompanionId | LegacyCompanionId;
   format?: 'mp3' | 'opus' | 'aac' | 'flac' | 'wav';
+  requiresPreciseLipSync?: boolean;
+  includeTiming?: boolean;
+  lipSync?: 'standard' | 'precise';
 }
 
 export interface VoiceSynthesisData {
@@ -74,6 +88,12 @@ export interface VoiceSynthesisData {
   contentType?: string;
   characterId?: CompanionId | LegacyCompanionId;
   voiceSource?: string;
+  voiceProvider?: VoiceProvider;
+  primaryVoiceProvider?: VoiceProvider;
+  model?: string;
+  voiceId?: string;
+  usedFallback?: boolean;
+  timing?: CharacterAlignment;
   traceId?: string;
 }
 
