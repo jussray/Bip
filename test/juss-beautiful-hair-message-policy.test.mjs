@@ -41,7 +41,7 @@ test('blocks unverified inventory, delivery, refund, and discount claims', () =>
   }
 });
 
-test('allows only an explicitly approved FAQ answer', () => {
+test('allows only an explicitly approved FAQ answer for an approved intent', () => {
   const result = routeMessage({
     message: 'How much are bundles?',
     approvedFaqAnswer: 'Approved catalog answer',
@@ -50,6 +50,19 @@ test('allows only an explicitly approved FAQ answer', () => {
   assert.equal(result.route, ROUTES.AUTOMATED_FAQ);
   assert.equal(result.replyAllowed, true);
   assert.equal(result.answer, 'Approved catalog answer');
+});
+
+test('unknown messages still escalate when an FAQ answer string is supplied', () => {
+  const result = routeMessage({
+    message: 'Can you tell me something else?',
+    approvedFaqAnswer: 'Stale or mismatched answer',
+  });
+
+  assert.equal(result.intent, INTENTS.UNKNOWN);
+  assert.equal(result.route, ROUTES.HUMAN_REVIEW);
+  assert.equal(result.replyAllowed, false);
+  assert.equal(result.reason, 'unknown_intent');
+  assert.equal('answer' in result, false);
 });
 
 test('builds stable event keys and rejects incomplete trace data', () => {
@@ -64,10 +77,12 @@ test('builds stable event keys and rejects incomplete trace data', () => {
   );
 });
 
-test('maps a review-safe HubSpot lead payload without claiming consent', () => {
+test('omits CRM-visible customer data when consent is not granted', () => {
   const lead = toHubSpotLead({
     customerName: 'Customer',
+    contactMethod: 'customer@example.com',
     message: 'Where is my order?',
+    productInterest: 'Bundles',
     consent: false,
     trace: {
       pageId: '235882889600658',
@@ -76,11 +91,39 @@ test('maps a review-safe HubSpot lead payload without claiming consent', () => {
     },
   });
 
-  assert.equal(lead.source, 'Facebook Messenger');
-  assert.equal(lead.business, 'Juss Beautiful Hair');
-  assert.equal(lead.intent, INTENTS.ORDER_STATUS);
-  assert.equal(lead.humanFollowUpRequired, true);
-  assert.equal(lead.consentStatus, 'not_granted');
+  assert.deepEqual(lead, {
+    source: 'Facebook Messenger',
+    business: 'Juss Beautiful Hair',
+    intent: INTENTS.ORDER_STATUS,
+    humanFollowUpRequired: true,
+    consentStatus: 'not_granted',
+  });
+  assert.equal('customerName' in lead, false);
+  assert.equal('contactMethod' in lead, false);
+  assert.equal('productInterest' in lead, false);
+  assert.equal('conversationSummary' in lead, false);
+  assert.equal('trace' in lead, false);
+});
+
+test('includes consented lead data only after explicit consent', () => {
+  const lead = toHubSpotLead({
+    customerName: 'Customer',
+    contactMethod: 'customer@example.com',
+    message: 'How much are bundles?',
+    productInterest: 'Bundles',
+    consent: true,
+    trace: {
+      pageId: '235882889600658',
+      senderId: 'customer-1',
+      messageId: 'mid.1',
+    },
+  });
+
+  assert.equal(lead.consentStatus, 'granted');
+  assert.equal(lead.customerName, 'Customer');
+  assert.equal(lead.contactMethod, 'customer@example.com');
+  assert.equal(lead.productInterest, 'Bundles');
+  assert.equal(lead.conversationSummary, 'How much are bundles?');
   assert.deepEqual(lead.trace, {
     pageId: '235882889600658',
     senderId: 'customer-1',
