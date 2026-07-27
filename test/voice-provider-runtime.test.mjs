@@ -23,10 +23,12 @@ test('voice entry preserves auth, origin, content-type, and rate-limit boundarie
 test('voice entry returns canonical IDs and typed provider metadata', async () => {
   const source = await read('worker/voice-entry.ts');
   assert.match(source, /characterId: route\.canonicalCharacterId/);
+  assert.match(source, /actorRole: style\.role/);
   assert.match(source, /voiceProvider: result\.provider/);
   assert.match(source, /primaryVoiceProvider: result\.primaryProvider/);
   assert.match(source, /usedFallback: result\.usedFallback/);
   assert.match(source, /timing: result\.timing/);
+  assert.match(source, /questionBudget: style\.maxQuestions/);
   assert.doesNotMatch(source, /characterId must be raylene/);
   assert.doesNotMatch(source, /characterId must be rylane/);
 });
