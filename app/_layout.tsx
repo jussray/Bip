@@ -40,19 +40,16 @@ function RouteBoundary() {
     if (!sb) return;
 
     const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
-      if (session) return;
-      if (event === 'SIGNED_OUT') {
-        void (async () => {
-          try {
-            await clearPrivateAccountCache();
-            await clearProfileIdentityCache();
-          } finally {
-            router.replace('/(auth)/login');
-          }
-        })();
-        return;
-      }
-      router.replace('/(auth)/login');
+      if (session || event !== 'SIGNED_OUT') return;
+
+      void (async () => {
+        try {
+          await clearPrivateAccountCache();
+          await clearProfileIdentityCache();
+        } finally {
+          router.replace('/(auth)/login');
+        }
+      })();
     });
     return () => subscription.unsubscribe();
   }, []);
