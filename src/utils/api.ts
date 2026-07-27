@@ -6,10 +6,13 @@
  * timeout, status-code, and trace behavior.
  */
 import type {
+  CharacterAlignment,
   CompanionAvatarState,
   CompanionHistoryTurn,
   CompanionReplyRequest,
   CompanionReplySource,
+  VoiceProvider,
+  VoiceSynthesisRequest,
 } from '@/contracts/sekretApi';
 import {
   createNaturalFallbackResponse,
@@ -25,6 +28,9 @@ export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'par
 export type SekretAvatarState = CompanionAvatarState;
 export type SekretReplySource = CompanionReplySource;
 export type SekretHistoryTurn = CompanionHistoryTurn;
+export type SekretVoiceRequest = Omit<VoiceSynthesisRequest, 'characterId'> & {
+  characterId: SekretCharacterId;
+};
 
 export interface SekretBrainResponse {
   reply: string;
@@ -42,6 +48,12 @@ export interface SekretVoiceResponse {
   audioBase64: string;
   contentType: string;
   characterId: SekretCharacterId;
+  voiceProvider?: VoiceProvider;
+  primaryVoiceProvider?: VoiceProvider;
+  model?: string;
+  voiceId?: string;
+  usedFallback: boolean;
+  timing?: CharacterAlignment;
   traceId?: string;
 }
 
@@ -217,10 +229,7 @@ export async function fetchSekretBrainReply(input: {
   };
 }
 
-export async function fetchSekretVoice(input: {
-  reply: string;
-  characterId: SekretCharacterId;
-}): Promise<SekretVoiceResponse | null> {
+export async function fetchSekretVoice(input: SekretVoiceRequest): Promise<SekretVoiceResponse | null> {
   if (!WORKER_BASE_URL || !input.reply.trim()) return null;
   const result = await sekretClient.synthesizeVoice(input);
   if (!result.ok || !result.data.audioBase64 || !result.data.contentType) return null;
@@ -228,6 +237,12 @@ export async function fetchSekretVoice(input: {
     audioBase64: result.data.audioBase64,
     contentType: result.data.contentType,
     characterId: normalizeSekretCharacter(result.data.characterId, input.characterId),
+    voiceProvider: result.data.voiceProvider,
+    primaryVoiceProvider: result.data.primaryVoiceProvider,
+    model: result.data.model,
+    voiceId: result.data.voiceId,
+    usedFallback: result.data.usedFallback ?? result.meta.fallbackUsed,
+    timing: result.data.timing,
     traceId: result.data.traceId ?? result.meta.traceId,
   };
 }
