@@ -86,7 +86,7 @@ Do not stop at “code written.”
 - Re-run the defined gates on the exact PR head.
 - Resolve critical review threads.
 - Verify Cloudflare/Founder Control Room when deployment or release truth is involved.
-- Update stale PR and tracker descriptions so the record matches reality.
+- When the current task scope and explicit founder approval authorize repository-host mutations, update stale PR and tracker descriptions so the record matches reality. Otherwise, report the stale record and leave it unchanged.
 - Merge only with an exact-head guard.
 - Verify the merge SHA and post-merge deployment/runtime state.
 - Record remaining debt as a separate issue rather than hiding it in “done.”
