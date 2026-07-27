@@ -63,7 +63,12 @@ function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
     || body.lipSync === 'precise';
 }
 
-async function enforceRateLimit(request: Request, env: Env, principal: { kind: string; userId?: string }, cors: Record<string, string>): Promise<Response | null> {
+async function enforceRateLimit(
+  request: Request,
+  env: Env,
+  principal: { kind: string; userId?: string },
+  cors: Record<string, string>,
+): Promise<Response | null> {
   if (!env.SEKRET_RATE_LIMITER) return null;
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
   const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
@@ -123,7 +128,7 @@ async function handleVoice(request: Request, env: Env, cors: Record<string, stri
       audioBase64: result.audioBase64,
       contentType: result.contentType,
       characterId: route.canonicalCharacterId,
-      actorRole: style.actorRole,
+      actorRole: style.role,
       voiceProvider: result.provider,
       primaryVoiceProvider: result.primaryProvider,
       voiceSource: result.provider,
@@ -134,7 +139,7 @@ async function handleVoice(request: Request, env: Env, cors: Record<string, stri
       aiGenerated: true,
       textStyleVersion: style.textStyleVersion,
       speechStyleVersion: style.speechStyleVersion,
-      questionBudget: style.questionBudget,
+      questionBudget: style.maxQuestions,
       styleDecision: 'allow',
     }, 200, cors);
   } catch (error) {
