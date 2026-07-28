@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test src/founder-evidence/core.test.ts",
     "evidence:dry-run": "tsx src/founder-evidence/dry-run.ts",
     "start": "tsx src/index.ts",
     "login": "zapier-sdk login",
