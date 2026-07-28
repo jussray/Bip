@@ -23,6 +23,11 @@ jobs:
         with:
           node-version: 20
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Materialize verified canonical lockfile
         run: node tools/zapier/scripts/sync-lockfile.mjs
 
@@ -32,5 +37,5 @@ jobs:
       - name: Typecheck Zapier SDK tooling
         run: npm --prefix tools/zapier run typecheck
 
-      - name: Test founder evidence engine
+      - name: Test founder evidence engine and XLSX parser
         run: npm --prefix tools/zapier test
