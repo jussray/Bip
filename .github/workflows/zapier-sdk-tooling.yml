@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  typecheck:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -29,5 +29,8 @@ jobs:
       - name: Install isolated tooling dependencies
         run: npm ci --prefix tools/zapier --ignore-scripts --no-audit --no-fund
 
-      - name: Typecheck Zapier SDK bootstrap
+      - name: Typecheck Zapier SDK tooling
         run: npm --prefix tools/zapier run typecheck
+
+      - name: Test founder evidence engine
+        run: npm --prefix tools/zapier test
