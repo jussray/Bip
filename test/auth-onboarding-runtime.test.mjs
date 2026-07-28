@@ -23,6 +23,7 @@ test('splash and safe pre-auth onboarding routes are reachable before login', ()
   assert.match(rootLayout, /'welcome'/);
   assert.match(rootLayout, /'age'/);
   assert.match(rootLayout, /const isPublicRoot = first === ''/);
+  assert.match(rootLayout, /if \(session \|\| event !== 'SIGNED_OUT'\) return;/);
   assert.doesNotMatch(index, /if \(!user\) \{\s*router\.replace\('\/\(auth\)\/login'\)/);
   assert.match(index, /const publicEntrySide: AccountSide = selectedEntrySide \?\? previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
   assert.match(index, /router\.replace\(publicEntrySide === 'parent' \? '\/\(onboarding\)\/parent-splash' : '\/\(onboarding\)\/welcome'\)/);
