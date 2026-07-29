@@ -14,7 +14,7 @@ Before planning, editing, or claiming completion, establish and state:
 Inspect repository and runtime truth for unknowns. Ask the user only when a missing answer would materially change the safe solution or authority. Re-run 5W1H after red-team/OODA findings change the plan. Finish by mapping the result, evidence, remaining blocker, and next owner back to these six questions.
 
 
-Last reviewed: 2026-07-13
+Last reviewed: 2026-07-29
 
 ## Trigger
 
@@ -28,7 +28,7 @@ This skill is a reviewed snapshot, not permanent truth. Before editing:
 
 1. verify the current branch and `main` SHA;
 2. read `implementation-ledger.json`;
-3. read `docs/CURRENT_STATUS.md`, `docs/WIRING_STATUS.md`, and `DEPLOYMENT.md`;
+3. read `docs/LAUNCH_GATE_STATUS_2026-07-29.md`, `docs/CURRENT_STATUS.md`, `docs/WIRING_STATUS.md`, and `DEPLOYMENT.md`;
 4. inspect the actual files and workflows involved;
 5. update this skill in the same PR when its snapshot becomes stale.
 
@@ -62,7 +62,8 @@ src/services/                client service boundaries
 src/context/                 application context and gating
 worker/                      canonical Cloudflare Worker source
 worker/runtime-style.ts      identity/style runtime enforcement
-worker/observed-index.ts     configured Worker entry point
+worker/voice-entry.ts         configured Worker entry point
+worker/observed-index.ts     delegated ordinary HTTP handler
 supabase/migrations/         schema source of truth
 supabase/functions/          Edge Functions
 security/                    machine-readable security evidence
@@ -77,7 +78,7 @@ Do not invent a remembered monolithic character, state, or routing file. Inspect
 ### Backend Worker
 
 - name: `sekret-backend`
-- entry point: verify against current `wrangler.toml`, currently `worker/observed-index.ts`
+- entry point: verify against current `wrangler.toml`, currently `worker/voice-entry.ts`
 - deployment: Cloudflare Workers Builds through native Git integration
 
 Owns:
@@ -100,7 +101,7 @@ Owns:
 - Expo web export;
 - browser routes and static assets;
 - custom domain;
-- public `release.json` commit marker;
+- public `/.well-known/sekret-release.json` commit marker;
 - client bootstrap.
 
 ### Boundary rules
@@ -111,12 +112,16 @@ Owns:
 - GitHub Actions verifies deployment but does not become a second upload authority;
 - the retired Supabase `release-health` function is never valid release evidence.
 
+## Current release warning
+
+[P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) is open: the live Pages domain currently falls through to the application instead of serving JSON at both marker paths. Local build output, a green Worker check, or a Pages configuration statement does not prove the frontend release until the public well-known marker is restored.
+
 ## Exact-release verification
 
 A production claim requires:
 
 1. successful `Workers Builds: sekret-backend` for the exact commit;
-2. deployed `release.json` matching the expected `main` SHA;
+2. deployed `/.well-known/sekret-release.json` matching the expected `main` SHA;
 3. successful canonical Worker health check;
 4. read-only production Playwright;
 5. retained evidence artifact.
@@ -130,7 +135,7 @@ The Worker and TTS paths consume canonical identity/style contracts.
 Required invariants:
 
 - Se'kret is a continuity presence, not a selectable named companion;
-- Raylene, Rylane, Cloud, and Night remain distinct named companions;
+- Suhana, Sy, Cloud, and Night remain distinct named companions; legacy identifiers remain only at verified compatibility seams.
 - internal-only identities do not leak into user-visible text, speech, archives, notifications, or accessibility labels;
 - question budgets and deterministic repair are enforced;
 - telemetry remains metadata-only;
