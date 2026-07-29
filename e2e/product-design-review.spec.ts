@@ -37,10 +37,31 @@ for (const variant of VARIANTS) {
       await page.goto(variant.url, { waitUntil: 'networkidle' });
 
       await expect(page.getByTestId('web-welcome-shell')).toBeVisible();
-      await expect(page.getByTestId(variant.heroTestId)).toBeVisible();
+      const hero = page.getByTestId(variant.heroTestId);
+      await expect(hero).toBeVisible();
       await expect(page.getByText(variant.identityText, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
       await expect(page.getByTestId('web-welcome-bottom-nav')).toHaveCount(0);
+
+      const heroPaint = await hero.evaluate((element) => {
+        const image = element instanceof HTMLImageElement ? element : null;
+        const style = window.getComputedStyle(element);
+        return {
+          isImage: image !== null,
+          complete: image?.complete ?? false,
+          naturalWidth: image?.naturalWidth ?? 0,
+          naturalHeight: image?.naturalHeight ?? 0,
+          opacity: style.opacity,
+          objectFit: style.objectFit,
+        };
+      });
+
+      expect(heroPaint.isImage).toBe(true);
+      expect(heroPaint.complete).toBe(true);
+      expect(heroPaint.naturalWidth).toBeGreaterThan(0);
+      expect(heroPaint.naturalHeight).toBeGreaterThan(0);
+      expect(heroPaint.opacity).toBe('1');
+      expect(heroPaint.objectFit).toBe(variant.name === 'teen' ? 'cover' : 'contain');
 
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
