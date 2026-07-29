@@ -18,6 +18,7 @@ const BIP_JR_HERO = require('../assets/images/parent-space-splash.png');
 type WebWelcomeScreenProps = {
   onEnter: (side: AccountSide) => void;
   variant?: AccountSide;
+  showSignIn?: boolean;
 };
 
 function getPreviewVariant(variant: AccountSide): AccountSide {
@@ -26,7 +27,7 @@ function getPreviewVariant(variant: AccountSide): AccountSide {
   return override === 'teen' || override === 'parent' ? override : variant;
 }
 
-export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreenProps) {
+export function WebWelcomeScreen({ onEnter, variant = 'teen', showSignIn = false }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
   const compact = width < 520;
   const shellHeight = compact ? height : Math.min(height, 900);
@@ -105,16 +106,18 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
             )}
           </Pressable>
 
-          <Pressable
-            testID="web-welcome-sign-in"
-            accessibilityRole="button"
-            accessibilityLabel="Sign in to your existing Se'kret Bip account"
-            onPress={() => router.push(`/(auth)/login?side=${activeVariant}` as never)}
-            style={({ pressed }) => [styles.signInButton, pressed && styles.signInPressed]}
-          >
-            <Text style={styles.signInPrompt}>Already have an account?</Text>
-            <Text style={styles.signInText}>Sign in</Text>
-          </Pressable>
+          {showSignIn && (
+            <Pressable
+              testID="web-welcome-sign-in"
+              accessibilityRole="button"
+              accessibilityLabel="Sign in to your existing Se'kret Bip account"
+              onPress={() => router.push(`/(auth)/login?side=${activeVariant}` as never)}
+              style={({ pressed }) => [styles.signInButton, pressed && styles.signInPressed]}
+            >
+              <Text style={styles.signInPrompt}>Already have an account?</Text>
+              <Text style={styles.signInText}>Sign in</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </View>
     </View>
