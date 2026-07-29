@@ -39,12 +39,15 @@ test('each preview variant uses one direct Enter control with variant-specific a
   assert.match(welcome, /accessibilityRole="button"/);
 });
 
-test('returning users can reach sign-in without entering onboarding first', () => {
+test('account-return action is fail-closed until the caller proves no restored session exists', () => {
+  assert.match(welcome, /showSignIn\?: boolean/);
+  assert.match(welcome, /showSignIn = false/);
+  assert.match(welcome, /\{showSignIn && \(/);
   assert.match(welcome, /testID="web-welcome-sign-in"/);
   assert.match(welcome, /Already have an account\?/);
   assert.match(welcome, />Sign in</);
   assert.match(welcome, /router\.push\(`\/\(auth\)\/login\?side=\$\{activeVariant\}` as never\)/);
-  assert.match(welcome, /Sign in to your existing Se'kret Bip account/);
+  assert.doesNotMatch(index, /showSignIn=\{true\}/);
 });
 
 test('primary entry language matches the approved front-door promise', () => {
