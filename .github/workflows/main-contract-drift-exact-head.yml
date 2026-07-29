@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - 'config/cloudflare-targets.json'
+      - 'docs/CLOUDFLARE_OWNERSHIP.md'
+      - 'docs/CLOUDFLARE_EMAIL_ROUTING.md'
+      - 'docs/MAIN_CONTRACT_DRIFT_REPAIR.md'
+      - 'reports/control-room/2026-07-29-main-contract-drift-repair.md'
       - 'test/cloudflare-worker-consolidation.test.mjs'
       - 'test/cloudflare-worker-identity.test.mjs'
       - 'test/controlled-alpha-activation.test.mjs'
@@ -70,6 +74,8 @@ jobs:
         with:
           name: main-contract-drift-evidence-${{ env.EXPECTED_HEAD_SHA }}
           path: |
+            docs/CLOUDFLARE_OWNERSHIP.md
+            docs/CLOUDFLARE_EMAIL_ROUTING.md
             docs/MAIN_CONTRACT_DRIFT_REPAIR.md
             reports/control-room/2026-07-29-main-contract-drift-repair.md
           if-no-files-found: error
