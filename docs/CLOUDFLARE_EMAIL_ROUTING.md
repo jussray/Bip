@@ -1,14 +1,14 @@
 # Cloudflare Email Routing for Se'kret Bip
 
-Last reviewed: 2026-07-18
+Last reviewed: 2026-07-29
 
 ## Canonical handler
 
 Incoming Bip email belongs to the existing production Worker named `sekret-backend`.
 
-The Worker entry point remains `worker/observed-index.ts`. It exports both:
+The Worker entry point is `worker/voice-entry.ts`. It exports both:
 
-- `fetch()` for the HTTP/API backend;
+- `fetch()` for the HTTP/API backend, delegating ordinary traffic to `worker/observed-index.ts`;
 - `email()` for inbound email processing through `worker/email-router.ts`.
 
 The Cloudflare dashboard may still contain a legacy Worker named `bip-mail`. That Worker is a cutover source, not the canonical destination. Do not create or preserve a second Wrangler configuration for mail.
@@ -33,7 +33,7 @@ From the repository root, use the existing root configuration:
 npm run deploy:worker
 ```
 
-The root `wrangler.toml` deploys `worker/observed-index.ts` as `sekret-backend`. Do not deploy `worker/email-router.ts` directly under the same Worker name, because that would replace the HTTP/API entry point.
+`deploy:worker` delegates to `deploy:api:production`, which invokes `wrangler deploy`. The root `wrangler.toml` deploys `worker/voice-entry.ts` as `sekret-backend`. Do not deploy `worker/email-router.ts` directly under the same Worker name, because that would replace the HTTP/API entry point.
 
 ## Cut over from `bip-mail`
 
