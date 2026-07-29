@@ -11,8 +11,18 @@ export interface PiperTtsEnv {
 
 export type PiperCharacterId = 'suhana' | 'sy' | 'cloud' | 'night' | 'sekret' | 'parentCoach';
 
+/**
+ * These defaults must match the model stems baked into services/piper-tts/Dockerfile.
+ * Environment overrides remain available so the provider can be swapped without
+ * changing the mobile client or the canonical Worker contract.
+ */
 const DEFAULT_PIPER_VOICES: Record<PiperCharacterId, string> = {
-  suhana: 'suhana', sy: 'sy', cloud: 'cloud', night: 'night', sekret: 'sekret', parentCoach: 'parentCoach',
+  suhana: 'en_US-amy-medium',
+  sy: 'en_US-ryan-medium',
+  cloud: 'en_US-amy-low',
+  night: 'en_US-lessac-low',
+  sekret: 'en_US-amy-medium',
+  parentCoach: 'en_US-amy-medium',
 };
 
 function getPiperVoice(characterId: PiperCharacterId, env: PiperTtsEnv): string {
