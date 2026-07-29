@@ -1,0 +1,82 @@
+name: Main Contract Drift Exact-Head Gate
+
+on:
+  pull_request:
+    paths:
+      - 'config/cloudflare-targets.json'
+      - 'docs/CLOUDFLARE_OWNERSHIP.md'
+      - 'docs/CLOUDFLARE_EMAIL_ROUTING.md'
+      - 'docs/MAIN_CONTRACT_DRIFT_REPAIR.md'
+      - 'reports/control-room/2026-07-29-main-contract-drift-repair.md'
+      - 'test/cloudflare-worker-consolidation.test.mjs'
+      - 'test/cloudflare-worker-identity.test.mjs'
+      - 'test/controlled-alpha-activation.test.mjs'
+      - 'test/main-contract-drift-proof.test.mjs'
+      - '.github/workflows/main-contract-drift-exact-head.yml'
+      - 'package.json'
+      - 'wrangler.toml'
+      - 'worker/voice-entry.ts'
+      - '.github/workflows/deploy-cloudflare.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-contract-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      EXPO_NO_TELEMETRY: '1'
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Run repaired contract tests
+        run: >-
+          node --test
+          test/cloudflare-worker-consolidation.test.mjs
+          test/cloudflare-worker-identity.test.mjs
+          test/controlled-alpha-activation.test.mjs
+          test/main-contract-drift-proof.test.mjs
+
+      - name: Run complete unit suite
+        run: npm test
+
+      - name: Type-check exact head
+        run: npm run type-check
+
+      - name: Upload exact-head evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-contract-drift-evidence-${{ env.EXPECTED_HEAD_SHA }}
+          path: |
+            docs/CLOUDFLARE_OWNERSHIP.md
+            docs/CLOUDFLARE_EMAIL_ROUTING.md
+            docs/MAIN_CONTRACT_DRIFT_REPAIR.md
+            reports/control-room/2026-07-29-main-contract-drift-repair.md
+          if-no-files-found: error
+          retention-days: 30
