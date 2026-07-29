@@ -9,10 +9,13 @@ on:
       - AGENTS.md
       - SPRINT.md
       - docs/CURRENT_STATUS.md
+      - docs/LAUNCH_GATE_STATUS_2026-07-29.md
       - docs/DOCUMENTATION_MAP.md
       - docs/LAUNCH_ROADMAP.md
       - docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md
       - docs/WIRING_STATUS.md
+      - DEPLOYMENT.md
+      - .agents/skills/bip-architecture/SKILL.md
       - test/launch-documentation-contract.test.mjs
       - test/control-room-readme-sync.test.mjs
       - test/supabase-trigger-structure.test.mjs
