@@ -122,7 +122,6 @@ export default function ForgotPasswordScreen() {
     }
   }
 
-  // ─ Sent state ─────────────────────────────────────────────────────────────
   if (sent) {
     return (
       <View style={styles.root}>
@@ -137,7 +136,7 @@ export default function ForgotPasswordScreen() {
           </Text>
           <TouchableOpacity
             style={styles.btn}
-            onPress={() => router.replace('/(auth)/login')}
+            onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="Back to Sign In"
           >
@@ -156,7 +155,6 @@ export default function ForgotPasswordScreen() {
     );
   }
 
-  // ─ Form ───────────────────────────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={styles.root}
@@ -166,7 +164,6 @@ export default function ForgotPasswordScreen() {
       <View style={styles.bgDot2} pointerEvents="none" />
 
       <Animated.View style={[styles.inner, { transform: [{ translateX: shakeAnim }] }]}>
-        {/* Logo */}
         <View style={styles.logoWrap}>
           <Text style={styles.logoMark}>Bip</Text>
           <Text style={styles.logoHeart}>💜</Text>
@@ -216,7 +213,7 @@ export default function ForgotPasswordScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={() => router.back()}
           style={styles.linkBtn}
           accessibilityRole="link"
           accessibilityLabel="Back to Sign In"
