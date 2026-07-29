@@ -4,10 +4,13 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../app/(auth)/forgot-password.tsx', import.meta.url), 'utf8');
 
-test('password recovery returns to the existing sign-in route', () => {
-  const returnCalls = source.match(/onPress=\{\(\) => router\.back\(\)\}/g) ?? [];
+test('password recovery preserves the existing sign-in route and handles direct entry', () => {
+  assert.match(
+    source,
+    /function returnToSignIn\(\) \{\s*if \(router\.canGoBack\(\)\) \{\s*router\.back\(\);\s*return;\s*\}\s*router\.replace\('\/\(auth\)\/login'\);\s*\}/,
+  );
+  const returnCalls = source.match(/onPress=\{returnToSignIn\}/g) ?? [];
   assert.equal(returnCalls.length, 2);
-  assert.doesNotMatch(source, /router\.replace\('\/\(auth\)\/login'\)/);
 });
 
 test('password recovery keeps neutral account-disclosure copy', () => {
