@@ -38,3 +38,16 @@ test('each preview variant uses one direct Enter control with variant-specific a
   assert.doesNotMatch(welcome, /web-welcome-enter-teen|web-welcome-enter-parent|web-welcome-bottom-nav/);
   assert.match(welcome, /accessibilityRole="button"/);
 });
+
+test('returning users can reach sign-in without entering onboarding first', () => {
+  assert.match(welcome, /testID="web-welcome-sign-in"/);
+  assert.match(welcome, /Already have an account\?/);
+  assert.match(welcome, />Sign in</);
+  assert.match(welcome, /router\.push\(`\/\(auth\)\/login\?side=\$\{activeVariant\}` as never\)/);
+  assert.match(welcome, /Sign in to your existing Se'kret Bip account/);
+});
+
+test('primary entry language matches the approved front-door promise', () => {
+  assert.match(welcome, />Enter Se’kret Bip</);
+  assert.doesNotMatch(welcome, />Night|>Suhana|>Sy/);
+});
