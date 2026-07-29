@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "reviewedAt": "2026-07-18",
+  "reviewedAt": "2026-07-29",
   "production": {
     "pages": {
       "name": "sekret-bip",
@@ -10,7 +10,7 @@
     },
     "worker": {
       "name": "sekret-backend",
-      "entrypoint": "worker/observed-index.ts",
+      "entrypoint": "worker/voice-entry.ts",
       "roles": [
         "authenticated-api",
         "sekret-reply",
