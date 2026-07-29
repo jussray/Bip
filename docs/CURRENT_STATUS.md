@@ -70,7 +70,7 @@ It:
 
 The PR reported 877 passing unit tests locally. Its exact rebased head passed the focused Front Door Exact-Head Gate, but the complete repository gate did not execute against the merge commit on `main`.
 
-## Open repair candidates
+## Historical repair candidates — July 23 (resolved or superseded)
 
 ### PR #595 — canonical onboarding-state and repository-gate repair
 
