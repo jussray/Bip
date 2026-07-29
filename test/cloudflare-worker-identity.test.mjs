@@ -15,6 +15,7 @@ const eas = JSON.parse(read('eas.json'));
 const WORKER_NAME = 'sekret-backend';
 const WORKER_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
 const ALPHA_WORKER_URL = 'https://sekret-backend-alpha.mcgill-raylene.workers.dev';
+const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.json';
 // Founder-approved controlled-alpha isolation (wrangler.alpha.toml,
 // docs/CLOUDFLARE_OWNERSHIP.md, reports/control-room/founder-operator/
 // 20260718-controlled-alpha-activation/system-map.md): preview builds
@@ -22,7 +23,7 @@ const ALPHA_WORKER_URL = 'https://sekret-backend-alpha.mcgill-raylene.workers.de
 // Worker instead of the canonical one.
 const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
- test('Wrangler targets the canonical Worker name', () => {
+test('Wrangler targets the canonical Worker name', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
 });
 
@@ -30,7 +31,7 @@ test('production verification proves the exact Worker and Pages release', () => 
   assert.ok(workflow.includes('npm run test:e2e:production'));
   assert.ok(workflow.includes('scripts/verify-cloudflare-native-deploy.mjs'));
   assert.ok(workflow.includes(`${WORKER_URL}/health`));
-  assert.ok(workflow.includes('https://sekretbip.net/release.json'));
+  assert.ok(workflow.includes(RELEASE_MARKER_URL));
   assert.ok(workflow.includes('EXPECTED_RELEASE_SHA: ${{ github.sha }}'));
   assert.ok(workflow.includes('checks: read'));
   assert.ok(verifier.includes(`Workers Builds: ${WORKER_NAME}`));
