@@ -4,13 +4,28 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const CURRENT_BASELINE = '9cd5d6d4641160b9425320e31482a4bd05eb25c2';
+const CURRENT_BASELINE = 'eeebc15ebd3dc9b420dab04def0d121f41524670';
+const CURRENT_GATE = 'docs/LAUNCH_GATE_STATUS_2026-07-29.md';
+
+test('launch-gate status distinguishes repository, deployment, browser, and device evidence', async () => {
+  const gate = await read(CURRENT_GATE);
+
+  assert.match(gate, new RegExp(CURRENT_BASELINE));
+  assert.match(gate, /Do not declare public launch ready/);
+  assert.match(gate, /P0 blocker/);
+  assert.match(gate, /\.well-known\/sekret-release\.json/);
+  assert.match(gate, /Wrangler is not authenticated/);
+  assert.match(gate, /PR #690 is a draft/);
+  assert.match(gate, /PR #692 .*not mergeable/);
+});
 
 test('launch roadmap is visual, phased, current, evidence-based, and privacy-safe', async () => {
   const roadmap = await read('docs/LAUNCH_ROADMAP.md');
 
   assert.match(roadmap, /```mermaid/);
-  assert.match(roadmap, /Repository baseline:.*9cd5d6d4641160b9425320e31482a4bd05eb25c2/);
+  assert.match(roadmap, new RegExp(CURRENT_BASELINE));
+  assert.match(roadmap, /Current 2026-07-29 checkpoint/);
+  assert.match(roadmap, /P0 #696/);
   assert.match(roadmap, /Phase 0 — Foundation integrated/);
   assert.match(roadmap, /Phase 1 — Launch trust spine/);
   assert.match(roadmap, /Phase 2 — Relationship and privacy lifecycle proof/);
@@ -18,12 +33,8 @@ test('launch roadmap is visual, phased, current, evidence-based, and privacy-saf
   assert.match(roadmap, /Phase 4 — Controlled alpha/);
   assert.match(roadmap, /Phase 5 — Launch clearance/);
   assert.match(roadmap, /Phase 6 — Public launch and learning loop/);
-
-  assert.match(roadmap, /Resolve the onboarding-state split/);
-  assert.match(roadmap, /Founder Access Recovery Gate issue #563/);
-  assert.match(roadmap, /A green PR proves only reviewed integration/);
+  assert.match(roadmap, /\.well-known\/sekret-release\.json/);
   assert.match(roadmap, /Launch is not blocked on L4 or L5/);
-  assert.match(roadmap, /L5 synthesis \| Blocked/);
   assert.match(roadmap, /Raw teen journals, private messages, voice transcripts, safety evidence/);
   assert.match(roadmap, /Dates may be added only when capacity, dependency, and evidence owners are known/);
 });
@@ -31,12 +42,10 @@ test('launch roadmap is visual, phased, current, evidence-based, and privacy-saf
 test('current sprint is a bounded launch execution handoff tied to current main', async () => {
   const sprint = await read('SPRINT.md');
 
-  assert.match(sprint, /Sprint theme:.*Restore one current truth layer/);
-  assert.match(sprint, /Verified repository baseline reviewed/);
+  assert.match(sprint, /Sprint theme/);
   assert.match(sprint, new RegExp(CURRENT_BASELINE));
-  assert.match(sprint, /Move Se'kret Bip.*controlled-alpha readiness/s);
-  assert.match(sprint, /PR #595 — canonical onboarding-state path/);
-  assert.match(sprint, /PR #596 — Crew invite RPC behavior contract/);
+  assert.match(sprint, /Restore one current truth layer and remove false launch signals/);
+  assert.match(sprint, /P0 release blocker/);
   assert.match(sprint, /Immediate execution order/);
   assert.match(sprint, /Explicit non-goals/);
   assert.match(sprint, /Definition of done/);
@@ -45,9 +54,10 @@ test('current sprint is a bounded launch execution handoff tied to current main'
   assert.match(sprint, /A green PR proves only the scope and evidence that actually ran against its exact head/);
 });
 
-test('documentation map defines external evidence, repository authority, and stale-document handling', async () => {
+test('documentation map defines current authority and stale-document handling', async () => {
   const map = await read('docs/DOCUMENTATION_MAP.md');
 
+  assert.match(map, /LAUNCH_GATE_STATUS_2026-07-29/);
   assert.match(map, /Level 0 — inspected external truth/);
   assert.match(map, /Level 1 — live operating truth/);
   assert.match(map, /Level 2 — architecture and product contracts/);
@@ -60,33 +70,31 @@ test('documentation map defines external evidence, repository authority, and sta
 });
 
 test('founder and agent entry points use the same current-truth system', async () => {
-  const [readme, status, sprint, wiring, refresh, agents, strategy] = await Promise.all([
+  const [readme, status, sprint, wiring, refresh, agents, deployment, architectureSkill] = await Promise.all([
     read('README.md'),
     read('docs/CURRENT_STATUS.md'),
     read('SPRINT.md'),
     read('docs/WIRING_STATUS.md'),
     read('docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md'),
     read('AGENTS.md'),
-    read('docs/strategy/README.md'),
+    read('DEPLOYMENT.md'),
+    read('.agents/skills/bip-architecture/SKILL.md'),
   ]);
-
-  for (const document of [readme, status, sprint]) {
-    assert.match(document, /docs\/LAUNCH_ROADMAP\.md/);
-  }
 
   for (const document of [readme, status, sprint, wiring, refresh, agents]) {
     assert.match(document, new RegExp(CURRENT_BASELINE));
   }
 
-  assert.match(readme, /docs\/DOCUMENTATION_MAP\.md/);
-  assert.match(readme, /SPRINT\.md/);
+  for (const document of [readme, status, sprint, refresh, agents]) {
+    assert.match(document, /LAUNCH_GATE_STATUS_2026-07-29/);
+  }
+
   assert.match(readme, /Suhana, Sy, Cloud, and Night/);
   assert.match(status, /Privacy-safe Daily Intentions/);
-  assert.match(status, /L5 remains blocked until L4 reaches `verified`/);
-  assert.match(refresh, /PR #595 is draft/);
-  assert.match(refresh, /PR #596 is draft/);
-  assert.match(strategy, /Signal or idea/);
-  assert.match(strategy, /Launch-roadmap placement/);
+  assert.match(deployment, /\.well-known\/sekret-release\.json/);
+  assert.match(deployment, /P0 release gate/);
+  assert.match(architectureSkill, /worker\/voice-entry\.ts/);
+  assert.match(architectureSkill, /P0 #696/);
 });
 
 test('ledger extension records the documentation contract', async () => {
