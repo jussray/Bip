@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -47,6 +48,8 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen', showSignIn = false
         hero: TEEN_HERO,
         heroLabel: 'Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together',
       };
+  const heroTestID = isBipJr ? 'web-welcome-hero-bip-jr' : 'web-welcome-hero-teen';
+  const heroUri = Image.resolveAssetSource(copy.hero).uri;
 
   return (
     <View style={[styles.page, { minHeight: height }]}>
@@ -75,13 +78,28 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen', showSignIn = false
 
           <View style={[styles.heroWrap, compact && styles.heroWrapCompact, isBipJr && styles.heroWrapBipJr]}>
             <View style={styles.heroGlow} />
-            <Image
-              testID={isBipJr ? 'web-welcome-hero-bip-jr' : 'web-welcome-hero-teen'}
-              source={copy.hero}
-              resizeMode={isBipJr ? 'contain' : 'cover'}
-              style={[styles.hero, isBipJr && styles.heroBipJr]}
-              accessibilityLabel={copy.heroLabel}
-            />
+            {Platform.OS === 'web' ? (
+              <img
+                data-testid={heroTestID}
+                src={heroUri}
+                alt={copy.heroLabel}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: isBipJr ? 'contain' : 'cover',
+                  borderRadius: isBipJr ? 34 : 0,
+                }}
+              />
+            ) : (
+              <Image
+                testID={heroTestID}
+                source={copy.hero}
+                resizeMode={isBipJr ? 'contain' : 'cover'}
+                style={[styles.hero, isBipJr && styles.heroBipJr]}
+                accessibilityLabel={copy.heroLabel}
+              />
+            )}
           </View>
 
           {!isBipJr && <Text style={styles.handNote}>☁  stay awhile. you’re safe here.</Text>}
