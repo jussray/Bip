@@ -206,23 +206,17 @@ Cloudflare preview or deployment success does not prove GitHub checks, Supabase 
 
 The current `main` merge SHA does not yet have a complete repository-wide GitHub Actions proof set.
 
-## Current repository-quality debt
+## Current repository-quality evidence boundary
 
-Draft PR #595 reports:
+PR #695’s exact-head gate passed its scoped contract tests, complete unit suite, and type-check before merge. That is strong scoped evidence, not a repository-wide proof for the current `main` merge SHA.
 
-- 906 passing unit tests locally;
-- one remaining TypeScript error caused by `expo-apple-authentication` being imported by an unused component while the package is not installed;
-- two pre-existing lint errors under `prototypes/`.
-
-Resolve or intentionally remove the unused Apple sign-in path before claiming a clean type gate. Repair or explicitly isolate the prototype lint failures before claiming a clean repository lint gate.
-
-Draft PR #596 reports 911 passing unit tests locally after adding one Crew invite RPC contract file. No exact-head GitHub Actions run is attached yet.
+PR #690 and PR #692 are draft branches. Their previous checks cannot be reused after their content or base changes. Do not call the repository clean, release-ready, or production-deployed without an executed gate for the exact target head and the independent live release witness.
 
 ## Remaining wiring gates
 
-- canonical onboarding-state repair and exact-head proof;
-- complete repository type, lint, test, bundle, audit, and Playwright gates;
-- deployment and live catalog proof for the PR #577 trigger-history migrations;
+- real-account and physical-device onboarding proof for the canonical merged path;
+- exact-head type, lint, test, bundle, audit, and Playwright gates for each merge candidate and release target;
+- P0 public release-marker restoration and exact deployment proof under #696;
 - controlled Bridge production proof;
 - account deletion and Storage cleanup proof;
 - anonymous-auth hardening for remaining private surfaces;
