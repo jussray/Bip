@@ -8,6 +8,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { AccountSide } from '@/features/identity/accountProfile';
 
@@ -98,10 +99,21 @@ export function WebWelcomeScreen({ onEnter, variant = 'teen' }: WebWelcomeScreen
                 end={{ x: 1, y: 0.5 }}
                 style={[styles.enterButton, pressed && styles.enterPressed]}
               >
-                <Text style={styles.enterText}>Enter</Text>
+                <Text style={styles.enterText}>Enter Se’kret Bip</Text>
                 <View style={styles.enterHeartBadge}><Text style={styles.enterHeart}>♡</Text></View>
               </LinearGradient>
             )}
+          </Pressable>
+
+          <Pressable
+            testID="web-welcome-sign-in"
+            accessibilityRole="button"
+            accessibilityLabel="Sign in to your existing Se'kret Bip account"
+            onPress={() => router.push(`/(auth)/login?side=${activeVariant}` as never)}
+            style={({ pressed }) => [styles.signInButton, pressed && styles.signInPressed]}
+          >
+            <Text style={styles.signInPrompt}>Already have an account?</Text>
+            <Text style={styles.signInText}>Sign in</Text>
           </Pressable>
         </ScrollView>
       </View>
@@ -139,7 +151,11 @@ const styles = StyleSheet.create({
   handNote: { color: '#c4aed7', fontSize: 13, fontStyle: 'italic', textAlign: 'center', marginTop: 8, marginBottom: 12 },
   enterButton: { minHeight: 72, marginHorizontal: 34, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,.18)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16, boxShadow: '0 16px 30px rgba(101,65,219,.35)' as never },
   enterPressed: { opacity: .84, transform: [{ scale: .99 }] },
-  enterText: { color: '#fff', fontSize: 26, fontWeight: '800' },
+  enterText: { color: '#fff', fontSize: 23, fontWeight: '800' },
   enterHeartBadge: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,.16)', alignItems: 'center', justifyContent: 'center' },
   enterHeart: { color: '#fff', fontSize: 28, lineHeight: 32 },
+  signInButton: { minHeight: 48, marginHorizontal: 34, marginTop: 10, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  signInPressed: { opacity: .7 },
+  signInPrompt: { color: '#a99dbc', fontSize: 14 },
+  signInText: { color: '#f1d3ff', fontSize: 14, fontWeight: '900', textDecorationLine: 'underline' },
 });
