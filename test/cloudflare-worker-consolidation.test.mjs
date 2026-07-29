@@ -12,6 +12,7 @@ function read(relativePath) {
 
 const targets = JSON.parse(read('config/cloudflare-targets.json'));
 const wrangler = read('wrangler.toml');
+const voiceEntry = read('worker/voice-entry.ts');
 const observedIndex = read('worker/observed-index.ts');
 const backendRouter = read('worker/index.ts');
 const replyWorker = read('worker/sekret-reply.ts');
@@ -27,22 +28,24 @@ test('production Cloudflare authority is exactly Pages plus one Worker', () => {
   assert.equal(targets.production.pages.buildCommand, 'npm run build:web');
   assert.equal(targets.production.pages.outputDirectory, 'dist');
   assert.equal(targets.production.worker.name, 'sekret-backend');
-  assert.equal(targets.production.worker.entrypoint, 'worker/observed-index.ts');
+  assert.equal(targets.production.worker.entrypoint, 'worker/voice-entry.ts');
 });
 
-test('sekret-backend owns both HTTP and inbound email handlers', () => {
+test('sekret-backend owns voice, ordinary HTTP, and inbound email handlers', () => {
   assert.match(wrangler, /^name = "sekret-backend"$/m);
-  assert.match(wrangler, /^main = "worker\/observed-index\.ts"$/m);
+  assert.match(wrangler, /^main = "worker\/voice-entry\.ts"$/m);
+  assert.ok(voiceEntry.includes("import observedWorker from './observed-index';"));
+  assert.ok(voiceEntry.includes("import emailRouter from './email-router';"));
+  assert.match(voiceEntry, /async fetch\(/);
+  assert.match(voiceEntry, /async email\(/);
+  assert.ok(voiceEntry.includes('return observedWorker.fetch(request, env as never, ctx)'));
+  assert.ok(voiceEntry.includes('await emailRouter.email(message)'));
   assert.ok(observedIndex.includes("import worker from './index';"));
-  assert.ok(observedIndex.includes("import emailRouter from './email-router';"));
-  assert.match(observedIndex, /async fetch\(/);
-  assert.match(observedIndex, /async email\(/);
-  assert.ok(observedIndex.includes('await emailRouter.email(message)'));
 });
 
 test('Sekret runtime routes remain inside the canonical backend code path', () => {
   assert.ok(backendRouter.includes('/api/sekret/reply'));
-  assert.ok(backendRouter.includes('/api/sekret/voice'));
+  assert.ok(voiceEntry.includes('/api/sekret/voice'));
   assert.ok(replyWorker.includes('/api/sekret/transcribe'));
   assert.ok(backendRouter.includes('/api/bridge/summary/generate'));
   assert.ok(targets.production.worker.roles.includes('sekret-reply'));
