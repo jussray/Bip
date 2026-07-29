@@ -165,7 +165,7 @@ export default function ForgotPasswordScreen() {
       <View style={styles.bgDot1} pointerEvents="none" />
       <View style={styles.bgDot2} pointerEvents="none" />
 
-      <Animated.View style={[styles.inner, { transform: [{ translateX: shakeAnim }] }] }>
+      <Animated.View style={[styles.inner, { transform: [{ translateX: shakeAnim }] }]}>
         {/* Logo */}
         <View style={styles.logoWrap}>
           <Text style={styles.logoMark}>Bip</Text>
