@@ -68,5 +68,6 @@ test('controlled-alpha commands are explicit and cannot silently deploy producti
     pkg.scripts['preview:worker:alpha'],
     'wrangler dev --config wrangler.alpha.toml',
   );
-  assert.equal(pkg.scripts['deploy:worker'], 'wrangler deploy');
+  assert.equal(pkg.scripts['deploy:api:production'], 'wrangler deploy');
+  assert.equal(pkg.scripts['deploy:worker'], 'npm run deploy:api:production');
 });
