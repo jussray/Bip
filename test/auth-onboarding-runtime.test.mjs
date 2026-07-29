@@ -40,6 +40,13 @@ test('age and account side survive into permanent account creation', () => {
   assert.match(signup, /AsyncStorage\.setItem\(ONBOARDING_SIDE_KEY, preferredSide\)/);
 });
 
+test('login normalizes structured transport failures before rendering', () => {
+  assert.match(login, /function authErrorMessage\(error: unknown\): string/);
+  assert.match(login, /message\.includes\('failed to fetch'\)/);
+  assert.match(login, /setError\(readableAuthError\(authErr\)\)/);
+  assert.doesNotMatch(login, /setError\(authErr\.message\)/);
+});
+
 test('login and signup wait for the same post-auth fetch contract before routing', () => {
   const signInIndex = login.indexOf('signInWithPassword');
   const loginBootstrapIndex = login.indexOf('const bootstrap = await fetchPostAuthBootstrap', signInIndex);

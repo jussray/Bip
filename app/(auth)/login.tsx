@@ -24,11 +24,35 @@ import type { AccountSide } from '@/features/identity/accountProfile';
 import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
 
+function authErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    return typeof message === 'string' ? message : '';
+  }
+  return '';
+}
+
+function isAuthTransportError(error: unknown): boolean {
+  const message = authErrorMessage(error).toLowerCase();
+  return (
+    message.includes('failed to fetch')
+    || message.includes('network request failed')
+    || message.includes('load failed')
+    || message.includes('request timeout')
+    || message.includes('request timed out')
+    || message.includes('context deadline exceeded')
+    || message.includes('gateway timeout')
+  );
+}
+
 function readableAuthError(error: unknown): string {
-  if (error instanceof TypeError && error.message.toLowerCase().includes('failed to fetch')) {
+  if (isAuthTransportError(error)) {
     return 'Could not reach the account server. Check your connection and try again.';
   }
-  if (error instanceof Error && error.message) return error.message;
+  const message = authErrorMessage(error);
+  if (message) return message;
   return 'Something went wrong while signing in. Please try again.';
 }
 
@@ -85,7 +109,7 @@ export default function LoginScreen() {
     try {
       const { error: authErr } = await sb.auth.signInWithPassword({ email: e, password: p });
       if (authErr) {
-        setError(authErr.message);
+        setError(readableAuthError(authErr));
         shakeCard();
         return;
       }
