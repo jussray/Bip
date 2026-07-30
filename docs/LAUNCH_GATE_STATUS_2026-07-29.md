@@ -1,7 +1,9 @@
 # Se'kret Bip — Current launch-gate status
 
 **Last reviewed:** 2026-07-29  
-**Reviewed repository ref:** `main` at `eeebc15ebd3dc9b420dab04def0d121f41524670`  
+**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+
+Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
 **Scope:** current repository and read-only public-production evidence  
 **Authority:** this document is the active 2026-07-29 launch-status overlay. It does not turn a repository merge or a green CI run into deployment, database, device, or launch evidence.
 
@@ -15,14 +17,14 @@ Tracked blocker: [#696](https://github.com/jussray/Sekret-Bip/issues/696).
 
 | Area | Current evidence | Status |
 | --- | --- | --- |
-| Canonical repository ref | `eeebc15` is the reviewed `main` ref after PR #695 | repository truth only |
+| Canonical application baseline | `2a3d11` is the reviewed application ref after PR #698; later documentation-only commits do not alter that code baseline | repository truth only |
 | Cloudflare operator docs | PR #695 passed its exact-head contract, full unit suite, and type-check before merge | merged documentation truth |
 | Public welcome artwork | A fresh browser review showed the approved family artwork painting on the live welcome screen | visual observation only; not version proof |
 | Public release marker | Both `/.well-known/sekret-release.json` and `/release.json` returned app fallbacks instead of JSON | **P0 blocker** |
 | Local web build | `npm run build:web` emitted both marker files in `dist` | local build proof only |
 | Cloudflare dashboard | Wrangler is not authenticated in this environment | not inspected or changed |
 | Restored-session sign-in | PR #688 merged a fail-closed repository behavior | repository proof only |
-| Password recovery | PR #690 is a draft with a direct-entry fallback added; it needs fresh exact-head checks and current-base verification | not merge-ready |
+| Password recovery | PR #698 is merged with a direct-entry fallback after current-base exact-head checks; PR #690 is closed as preserved history | repository/CI only; live auth and device proof still required |
 | Calm controls | PR #692 was retargeted to `main` and is currently not mergeable; it needs a clean rebase, exact-head checks, and Product Design review | not merge-ready |
 
 ## Required release sequence
@@ -41,4 +43,4 @@ Tracked blocker: [#696](https://github.com/jussray/Sekret-Bip/issues/696).
 
 ## Reading older documents
 
-Some retained status, sprint, roadmap, and wiring detail predates the reviewed ref above. It is preserved as historical context only where this current-status overlay says otherwise. Before acting, re-check `main`, active PR heads, executed jobs, and the live marker.
+Some retained status, sprint, roadmap, and wiring detail predates the reviewed application baseline above. It is preserved as historical context only where this current-status overlay says otherwise. Before acting, re-check `main`, active PR heads, executed jobs, and the live marker.
