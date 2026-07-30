@@ -74,7 +74,7 @@ The PR reported 877 passing unit tests locally. Its exact rebased head passed th
 
 ### PR #595 — canonical onboarding-state and repository-gate repair
 
-PR #595 is a draft and is not merged truth.
+**Historical July 23 status:** PR #595 was then a draft. It merged at `f0669991807106f01bd8bcedc3fbc00986f5ae3b`; see the current authority overlay above.
 
 The original branch diagnosis was valid: active onboarding screens wrote through `src/services/onboarding.ts` to `onboarding_state`, a table no migration creates, while the hardened table is `user_onboarding_state`. The active service also lacked `markActivated()` even though live onboarding screens called it.
 
@@ -93,11 +93,11 @@ The current branch now proposes a preservation-first repair:
 
 Executed exact-head evidence has already proved zero TypeScript diagnostics, repository lint, focused contracts, the full unit suite, bundle export, and the independent front-door gate on recent branch heads. Browser traces then exposed two final test-and-routing issues: an ambiguous password locator and a parent-signup query that was incorrectly routed into teen age assurance. Both are repaired on the current branch, whose final exact-head checks must still complete before promotion.
 
-Until #595 is reviewed, fully green at one exact head, and merged through the separately approved auth/onboarding gate, the current `main` onboarding-state inconsistency remains an open runtime risk.
+The former repository split is resolved in merged history. The remaining current launch gate is a real-account, database, and physical-device onboarding proof.
 
 ### PR #596 — Crew invite RPC behavior contract
 
-PR #596 is a draft and is not merged truth.
+**Historical July 23 status:** PR #596 was then a draft. It merged at `1239841a5e3474cdc1108c255bf1eb138f8a9a97`; see the current authority overlay above.
 
 It adds static positive and negative contract coverage for `redeem_crew_invite(text, text)`, including caller identity, malformed and unknown codes, relationship state, blocked/self/duplicate cases, completed-profile requirements, and server-owned display-name behavior.
 
@@ -118,7 +118,7 @@ The branch reports 911 passing unit tests locally. It must be rebased and exact-
 - Mind + Body Reset regulation tools and timer-driven bodyweight routines
 - Bridge linking, consent, summary, revocation, and controlled-rollout contracts
 - Founder Control Room operational sources and repository capability claims
-- Exact-release verification machinery using Worker checks, `release.json`, backend health, production Playwright, and retained evidence
+- Exact-release verification machinery using Worker checks, `/.well-known/sekret-release.json`, backend health, production Playwright, and retained evidence
 
 ## Verified authorization and operations slices
 
@@ -139,7 +139,7 @@ Trigger assurance is still not behaviorally complete. Repository structure and r
 
 Auth, consent, age assurance, profile bootstrap, and onboarding routes exist. Founder Access Recovery Gate issue #563 remains the primary user-facing blocker until one real account can complete signup, login, confirmation or recovery, consent, onboarding, route bootstrap, persistence, logout, and cache cleanup on device.
 
-The onboarding-state wiring inconsistency being repaired in draft PR #595 must be merged and then proven in the intended database and real-device journey before this path is treated as reliable.
+The merged onboarding-state path still needs intended-database and real-device proof before the journey is treated as launch reliable.
 
 ### Privacy-safe Daily Intentions
 
