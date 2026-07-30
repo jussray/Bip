@@ -1,7 +1,9 @@
 # Se'kret Bip — Current Status
 
 **Last reviewed:** 2026-07-29  
-**Repository baseline:** `main` at `eeebc15ebd3dc9b420dab04def0d121f41524670`  
+**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+
+Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
 **Current launch gate:** `docs/LAUNCH_GATE_STATUS_2026-07-29.md`  
 **Roadmap:** `docs/LAUNCH_ROADMAP.md`  
 **Current execution:** `SPRINT.md`
@@ -15,10 +17,10 @@ This block supersedes the historical July 23 progress narrative retained below.
 - PR #691 repaired main contract authority; PR #695 reconciled the canonical Cloudflare operator documentation.
 - **Public launch remains blocked:** live release-marker URLs return application fallbacks instead of JSON. Track [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696).
 - The canonical release marker is `/.well-known/sekret-release.json`; the legacy `/release.json` path is not release authority.
-- PR #690 and PR #692 are drafts. Neither is current merge, deployment, or launch truth.
+- PR #698 is merged; #690 is closed as its preserved historical candidate. PR #692 remains a draft and is not current merge, deployment, or launch truth.
 - The live welcome screen visually paints its approved family artwork, but that observation cannot identify the deployed commit while the marker is missing.
 
-> **Historical context below.** It may explain earlier decisions, but it must not override this current authority overlay, the reviewed `main` ref, or live evidence.
+> **Historical context below.** It may explain earlier decisions, but it must not override this current authority overlay, the reviewed application baseline, or live evidence.
 
 ## Truth rules
 
