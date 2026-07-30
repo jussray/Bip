@@ -14,6 +14,7 @@ on:
       - docs/LAUNCH_ROADMAP.md
       - docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md
       - docs/WIRING_STATUS.md
+      - docs/CLOUDFLARE_WORKER_CONSOLIDATION.md
       - DEPLOYMENT.md
       - .agents/skills/bip-architecture/SKILL.md
       - test/launch-documentation-contract.test.mjs
