@@ -2,6 +2,10 @@
 
 Last reviewed: 2026-07-29
 
+## Current release gate
+
+[P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) is open: the local build emits the marker but the live Pages domain does not serve JSON at the canonical well-known path. The topology below is repository authority and intended production configuration; it is not a substitute for an exact deployed frontend witness.
+
 ## Canonical production split
 
 Se'kret Bip has two canonical Cloudflare production deployment targets, both sourced from `main`:
@@ -20,7 +24,7 @@ Dashboard existence does not create architectural authority. `config/cloudflare-
 
 ### `sekret-backend` — single production Worker
 
-Verified by `wrangler.toml`, Worker identity tests, and Cloudflare Workers Builds:
+Repository authority is defined by `wrangler.toml`, Worker identity tests, and the expected Cloudflare Workers Builds check:
 
 - Worker name: `sekret-backend`;
 - entry point: `worker/voice-entry.ts`;
@@ -51,14 +55,14 @@ Canonical responsibilities:
 - bootstrap the React Native Web application;
 - expose the public non-sensitive `/.well-known/sekret-release.json` commit marker.
 
-Cloudflare Pages builds from `main` through the GitHub App with:
+The intended Cloudflare Pages Git build contract is:
 
 ```text
 Build command: npm run build:web
 Output directory: dist
 ```
 
-GitHub Actions does not run a second production upload.
+GitHub Actions does not run a second production upload. A dashboard configuration statement and a green repository check do not prove the live marker; use #696’s acceptance evidence.
 
 ## Request flow
 
