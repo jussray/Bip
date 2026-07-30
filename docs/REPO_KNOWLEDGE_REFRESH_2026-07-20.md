@@ -1,11 +1,11 @@
-# Repo Knowledge Refresh — baseline 2026-07-20, refreshed 2026-07-29
+# Repo Knowledge Refresh — baseline 2026-07-20, refreshed 2026-07-30
 
 This is the current agent-orientation checkpoint for Se'kret Bip. It preserves the July 20 filename for continuity but supersedes the earlier July 23 status narrative.
 
 ## Current repository authority
 
 - Default branch: `main`.
-- Reviewed `main`: `eeebc15ebd3dc9b420dab04def0d121f41524670`.
+- Reviewed application baseline: `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`. Later documentation-only merges may advance `main` without changing application evidence.
 - Current launch gate: `docs/LAUNCH_GATE_STATUS_2026-07-29.md`.
 - P0 live-release blocker: [#696](https://github.com/jussray/Sekret-Bip/issues/696).
 - Canonical frontend: Cloudflare Pages project `sekret-bip`.
@@ -33,7 +33,7 @@ The local web build emits both `dist/.well-known/sekret-release.json` and `dist/
 
 ## Open merge candidates
 
-- PR #690 is a draft password-recovery continuation fix. It now includes a direct-entry fallback and must rerun its exact-head checks against current `main`.
+- PR #698 is the merged password-recovery continuation fix with a direct-entry fallback. PR #690 is closed as preserved historical review evidence; live auth, email-delivery, reset-link, production, and device proof remain separate.
 - PR #692 is a draft Calm-controls repair. It was retargeted to `main`, is not currently mergeable, and needs a clean rebase plus Product Design and exact-head evidence.
 
 ## Evidence discipline
