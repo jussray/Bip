@@ -32,6 +32,17 @@ Move Se'kret Bip toward controlled-alpha readiness by binding every launch claim
 1. PR #690 — password recovery must preserve the prior sign-in route and safely fall back for a direct recovery link. Fresh exact-head checks, zero review threads, and zero base drift are required.
 2. PR #692 — Calm controls is retargeted to `main` but currently requires a clean rebase before Product Design review, exact-head checks, or merge consideration.
 
+## Database assurance still required
+
+**SECURITY DEFINER trigger assurance** remains a separate launch gate. The repository must retain:
+
+- structural migration-history coverage;
+- read-only live catalog parity;
+- an external-effect-safe behavioral harness; and
+- explicit cleanup evidence with zero retained synthetic rows.
+
+Do not mark trigger assurance verified from repository structure or catalog observation alone. The behavioral harness must pass against the intended target without allowing external side effects to escape rollback.
+
 ## Immediate execution order
 
 1. Cloudflare administrator resolves #696 and records the exact Pages build, marker response, Worker health, and production Playwright evidence.
