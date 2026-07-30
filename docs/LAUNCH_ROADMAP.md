@@ -48,7 +48,7 @@ flowchart LR
 - PR #577 merged test, lockfile, JSX, and trigger migration-history repairs.
 - The current `main` merge SHA does not yet have the complete repository-wide gate attached.
 - Historical note: PR #595 later merged the canonical onboarding-state repair; its former draft diagnosis is preserved only as context.
-- Draft PR #596 adds one authenticated Crew invite RPC behavior contract.
+- PR #596 merged one authenticated Crew invite RPC behavior contract; live behavior remains a separately scoped proof.
 - Founder Access Recovery Gate issue #563 remains the first user-facing launch blocker.
 
 Draft PR descriptions and local test reports are proposed evidence. They do not change phase state until reviewed, verified, and merged.
@@ -186,7 +186,7 @@ First-loop priorities:
 | Workstream | Current state | Launch critical? | Next proof |
 |---|---|---:|---|
 | Documentation and repository truth | Refreshed through July 23 | Yes | Keep canonical Markdown, ledger, PR, and runtime witnesses aligned |
-| Auth and onboarding | Integrated with an open wiring risk | Yes | Review and verify PR #595, then complete founder device journey |
+| Auth and onboarding | Canonical repository path merged; live and device journey proof incomplete | Yes | Complete founder device journey and retain exact environment evidence |
 | Release truth and runtime contracts | Integrated; evidence continues per merge | Yes | Full gate on exact head and merge SHA, then exact deployed SHA proof |
 | Supabase authorization | Contract with several passed slices | Yes | Remaining private-surface denial, RPC behavior, and trigger behavior suites |
 | Teen Room and companion experience | Integrated | Yes | Physical-device, accessibility, offline, and failure-state QA |
