@@ -1,12 +1,22 @@
 # Se'kret Bip — Visual Launch Roadmap
 
-**Last reviewed:** 2026-07-23  
-**Repository baseline:** `9cd5d6d4641160b9425320e31482a4bd05eb25c2`  
+**Last reviewed:** 2026-07-29  
+**Repository baseline:** `eeebc15ebd3dc9b420dab04def0d121f41524670`  
 **Owner issue:** [#456](https://github.com/jussray/Sekret-Bip/issues/456)
 
 This is the canonical founder-readable map from the current repository state to launch. It describes **sequence and evidence**, not unsupported calendar promises.
 
-`implementation-ledger.json` remains the machine-checked feature-state source. `SPRINT.md` owns the current execution window. `docs/CURRENT_STATUS.md` summarizes what exists now.
+`implementation-ledger.json` remains the machine-checked feature-state source. `SPRINT.md` owns the current execution window. `docs/CURRENT_STATUS.md` summarizes what exists now. `docs/LAUNCH_GATE_STATUS_2026-07-29.md` is the active release-gate overlay.
+
+## Current 2026-07-29 checkpoint
+
+**Public launch is blocked.** The local web build emits the release marker, but the live Pages domain returns application fallbacks at both public marker paths. See [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696).
+
+- PR #595 and PR #596 are merged history; they are not current draft blockers.
+- PR #688, PR #691, and PR #695 are merged repository repairs.
+- PR #690 and PR #692 remain draft, separately evidence-gated merge candidates.
+- The canonical production marker is `/.well-known/sekret-release.json`, not the legacy `/release.json` path.
+- A visual live welcome-screen check showed the approved artwork painting; because the marker is missing, it cannot prove the served commit.
 
 ## The launch path
 
@@ -32,13 +42,13 @@ flowchart LR
 | **Blocked** | Work may not advance until the named dependency or safety boundary is satisfied. |
 | **Planned** | Direction is documented; no implementation claim is made. |
 
-## Current checkpoint
+## Historical checkpoint — 2026-07-23 (preserved)
 
 - PR #594 merged the polished web welcome screen and passed a focused exact-head front-door gate.
 - PR #577 merged test, lockfile, JSX, and trigger migration-history repairs.
 - The current `main` merge SHA does not yet have the complete repository-wide gate attached.
-- Draft PR #595 reports a split onboarding-state runtime path and remaining type/lint debt.
-- Draft PR #596 adds one authenticated Crew invite RPC behavior contract.
+- Historical note: PR #595 later merged the canonical onboarding-state repair; its former draft diagnosis is preserved only as context.
+- PR #596 merged one authenticated Crew invite RPC behavior contract; live behavior remains a separately scoped proof.
 - Founder Access Recovery Gate issue #563 remains the first user-facing launch blocker.
 
 Draft PR descriptions and local test reports are proposed evidence. They do not change phase state until reviewed, verified, and merged.
@@ -64,14 +74,14 @@ Draft PR descriptions and local test reports are proposed evidence. They do not 
 
 Launch-critical outcomes:
 
-1. Resolve the onboarding-state split so active screens, service, table, enum, trigger rules, and tests agree.
+1. Preserve the canonical onboarding-state path and complete a real founder-access journey on a physical device.
 2. Complete founder access recovery with one real account on a physical device.
 3. Reach a clean repository type, lint, unit, bundle, audit, and applicable Playwright gate.
 4. Complete focused anonymous and cross-user denial proof for remaining private surfaces.
 5. Complete positive and negative behavior tests for high-blast-radius authenticated database functions.
 6. Complete trigger behavioral assurance with controlled external effects and cleanup evidence.
 7. Keep custom-auth Edge Functions fail-closed and metadata-only where applicable.
-8. Verify each production-changing merge through the exact Worker check, `release.json`, backend health, and production Playwright.
+8. Verify each production-changing merge through the exact Worker check, `/.well-known/sekret-release.json`, backend health, and production Playwright.
 9. Preserve rollback evidence and avoid stale dashboards, retired probes, and unbound deployment badges as release truth.
 
 **Exit evidence:**
@@ -176,7 +186,7 @@ First-loop priorities:
 | Workstream | Current state | Launch critical? | Next proof |
 |---|---|---:|---|
 | Documentation and repository truth | Refreshed through July 23 | Yes | Keep canonical Markdown, ledger, PR, and runtime witnesses aligned |
-| Auth and onboarding | Integrated with an open wiring risk | Yes | Review and verify PR #595, then complete founder device journey |
+| Auth and onboarding | Canonical repository path merged; live and device journey proof incomplete | Yes | Complete founder device journey and retain exact environment evidence |
 | Release truth and runtime contracts | Integrated; evidence continues per merge | Yes | Full gate on exact head and merge SHA, then exact deployed SHA proof |
 | Supabase authorization | Contract with several passed slices | Yes | Remaining private-surface denial, RPC behavior, and trigger behavior suites |
 | Teen Room and companion experience | Integrated | Yes | Physical-device, accessibility, offline, and failure-state QA |

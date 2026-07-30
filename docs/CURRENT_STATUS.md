@@ -1,11 +1,24 @@
 # Se'kret Bip — Current Status
 
-**Last reviewed:** 2026-07-23  
-**Repository baseline:** `main` at `9cd5d6d4641160b9425320e31482a4bd05eb25c2`  
+**Last reviewed:** 2026-07-29  
+**Repository baseline:** `main` at `eeebc15ebd3dc9b420dab04def0d121f41524670`  
+**Current launch gate:** `docs/LAUNCH_GATE_STATUS_2026-07-29.md`  
 **Roadmap:** `docs/LAUNCH_ROADMAP.md`  
 **Current execution:** `SPRINT.md`
 
-This is the human-readable product snapshot. `implementation-ledger.json` and validated extensions remain the machine-checked source for feature state, evidence, rollout controls, and blockers.
+## Current authority overlay
+
+This block supersedes the historical July 23 progress narrative retained below.
+
+- PR #595 and PR #596 are merged repository history, not open repair candidates.
+- PR #688 merged a fail-closed restored-session account-switching boundary.
+- PR #691 repaired main contract authority; PR #695 reconciled the canonical Cloudflare operator documentation.
+- **Public launch remains blocked:** live release-marker URLs return application fallbacks instead of JSON. Track [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696).
+- The canonical release marker is `/.well-known/sekret-release.json`; the legacy `/release.json` path is not release authority.
+- PR #690 and PR #692 are drafts. Neither is current merge, deployment, or launch truth.
+- The live welcome screen visually paints its approved family artwork, but that observation cannot identify the deployed commit while the marker is missing.
+
+> **Historical context below.** It may explain earlier decisions, but it must not override this current authority overlay, the reviewed `main` ref, or live evidence.
 
 ## Truth rules
 
@@ -57,11 +70,11 @@ It:
 
 The PR reported 877 passing unit tests locally. Its exact rebased head passed the focused Front Door Exact-Head Gate, but the complete repository gate did not execute against the merge commit on `main`.
 
-## Open repair candidates
+## Historical repair candidates — July 23 (resolved or superseded)
 
 ### PR #595 — canonical onboarding-state and repository-gate repair
 
-PR #595 is a draft and is not merged truth.
+**Historical July 23 status:** PR #595 was then a draft. It merged at `f0669991807106f01bd8bcedc3fbc00986f5ae3b`; see the current authority overlay above.
 
 The original branch diagnosis was valid: active onboarding screens wrote through `src/services/onboarding.ts` to `onboarding_state`, a table no migration creates, while the hardened table is `user_onboarding_state`. The active service also lacked `markActivated()` even though live onboarding screens called it.
 
@@ -80,11 +93,11 @@ The current branch now proposes a preservation-first repair:
 
 Executed exact-head evidence has already proved zero TypeScript diagnostics, repository lint, focused contracts, the full unit suite, bundle export, and the independent front-door gate on recent branch heads. Browser traces then exposed two final test-and-routing issues: an ambiguous password locator and a parent-signup query that was incorrectly routed into teen age assurance. Both are repaired on the current branch, whose final exact-head checks must still complete before promotion.
 
-Until #595 is reviewed, fully green at one exact head, and merged through the separately approved auth/onboarding gate, the current `main` onboarding-state inconsistency remains an open runtime risk.
+The former repository split is resolved in merged history. The remaining current launch gate is a real-account, database, and physical-device onboarding proof.
 
 ### PR #596 — Crew invite RPC behavior contract
 
-PR #596 is a draft and is not merged truth.
+**Historical July 23 status:** PR #596 was then a draft. It merged at `1239841a5e3474cdc1108c255bf1eb138f8a9a97`; see the current authority overlay above.
 
 It adds static positive and negative contract coverage for `redeem_crew_invite(text, text)`, including caller identity, malformed and unknown codes, relationship state, blocked/self/duplicate cases, completed-profile requirements, and server-owned display-name behavior.
 
@@ -105,7 +118,7 @@ The branch reports 911 passing unit tests locally. It must be rebased and exact-
 - Mind + Body Reset regulation tools and timer-driven bodyweight routines
 - Bridge linking, consent, summary, revocation, and controlled-rollout contracts
 - Founder Control Room operational sources and repository capability claims
-- Exact-release verification machinery using Worker checks, `release.json`, backend health, production Playwright, and retained evidence
+- Exact-release verification machinery using Worker checks, `/.well-known/sekret-release.json`, backend health, production Playwright, and retained evidence
 
 ## Verified authorization and operations slices
 
@@ -126,7 +139,7 @@ Trigger assurance is still not behaviorally complete. Repository structure and r
 
 Auth, consent, age assurance, profile bootstrap, and onboarding routes exist. Founder Access Recovery Gate issue #563 remains the primary user-facing blocker until one real account can complete signup, login, confirmation or recovery, consent, onboarding, route bootstrap, persistence, logout, and cache cleanup on device.
 
-The onboarding-state wiring inconsistency being repaired in draft PR #595 must be merged and then proven in the intended database and real-device journey before this path is treated as reliable.
+The merged onboarding-state path still needs intended-database and real-device proof before the journey is treated as launch reliable.
 
 ### Privacy-safe Daily Intentions
 

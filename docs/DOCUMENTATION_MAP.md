@@ -1,9 +1,13 @@
 # Se'kret Bip — Documentation Map
 
-**Last reviewed:** 2026-07-23  
+**Last reviewed:** 2026-07-29  
 **Owner issue:** [#456](https://github.com/jussray/Sekret-Bip/issues/456)
 
 This file explains which documents are authoritative, what each one owns, and how stale planning material must be handled.
+
+## Current launch-status overlay
+
+Read `docs/LAUNCH_GATE_STATUS_2026-07-29.md` first when the work concerns the current repository, release, deployment, or launch decision. It records the reviewed `main` ref and the live Pages marker blocker in [#696](https://github.com/jussray/Sekret-Bip/issues/696).
 
 ## Read these first
 
@@ -11,11 +15,11 @@ This file explains which documents are authoritative, what each one owns, and ho
 |---|---|
 | What is implemented, verified, or released? | `implementation-ledger.json` plus validated extensions |
 | What repository and evidence model should an agent use today? | `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md` |
-| What are we doing right now? | `SPRINT.md` |
+| What are we doing right now? | `SPRINT.md` plus `docs/LAUNCH_GATE_STATUS_2026-07-29.md` |
 | How do we get from here to launch? | `docs/LAUNCH_ROADMAP.md` |
 | What exists today in human language? | `docs/CURRENT_STATUS.md` |
 | How are frontend, onboarding, Supabase, Worker, and deployment wired? | `docs/WIRING_STATUS.md` |
-| How does production release work? | `DEPLOYMENT.md` |
+| What is the current release-gate state? | `docs/LAUNCH_GATE_STATUS_2026-07-29.md` and `DEPLOYMENT.md` |
 | What blocks legal and operational launch? | `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md` |
 | What authorization proof exists? | `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md` and security evidence files |
 
@@ -28,7 +32,7 @@ These are not repository files, but they can override stale repository claims wh
 - current GitHub branch, PR, commit, checks, jobs, and logs;
 - live Supabase migrations, catalog, grants, policies, and rollback-contained probes;
 - Cloudflare Pages and Worker build/deployment records;
-- deployed `release.json` and health witnesses;
+- deployed `/.well-known/sekret-release.json` and health witnesses;
 - production Playwright;
 - physical-device and real-account journey evidence.
 
@@ -36,10 +40,13 @@ Every Level 0 claim must name the exact repository, SHA, environment, time windo
 
 ### Level 1 — live operating truth
 
+The 2026-07-29 launch-status overlay is the current-state authority for the reviewed ref. Older retained status and roadmap detail is historical context unless it agrees with that overlay and Level 0 witnesses.
+
 These files may direct current implementation and release decisions:
 
 - `implementation-ledger.json`
 - `implementation-ledger.extensions/*.json`
+- `docs/LAUNCH_GATE_STATUS_2026-07-29.md`
 - `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`
 - `SPRINT.md`
 - `docs/LAUNCH_ROADMAP.md`
@@ -92,6 +99,10 @@ These inform decisions but do not authorize work or change implementation status
 A Level 4 idea becomes active work only after founder approval, dependency review, privacy and safety review, issue ownership, and reconciliation with the launch roadmap and ledger.
 
 ## Document roles
+
+### `docs/LAUNCH_GATE_STATUS_2026-07-29.md`
+
+Current launch-status overlay. It owns the reviewed repository ref, open P0 release gate, current PR classification, and the explicit distinction between repository, deployment, browser, and device evidence.
 
 ### `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`
 

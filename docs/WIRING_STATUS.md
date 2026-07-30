@@ -1,9 +1,17 @@
 # Se'kret Bip — Backend Wiring Status
 
-**Last reviewed:** 2026-07-23  
-**Repository baseline:** `main` at `9cd5d6d4641160b9425320e31482a4bd05eb25c2`
+**Last reviewed:** 2026-07-29  
+**Repository baseline:** `main` at `eeebc15ebd3dc9b420dab04def0d121f41524670`
 
 `implementation-ledger.json` is the machine-checked status source. This page describes the current runtime and data wiring in human-readable form.
+
+## Current wiring delta
+
+- Canonical production Worker entry point: `worker/voice-entry.ts` for `sekret-backend`.
+- Canonical frontend release marker: `/.well-known/sekret-release.json`.
+- [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) is open because the live Pages domain serves an app fallback instead of that JSON marker.
+- Local build output and repository configuration do not prove the live Pages artifact or current frontend SHA.
+- PR #595 is merged; PR #690 and PR #692 are drafts and not current runtime truth.
 
 ## Evidence boundary
 
@@ -69,24 +77,11 @@ Older references to `app/(main)/`, `app/parent/`, or a global string router are 
 - required consent service: `services/consentService.ts`
 - hardened onboarding table and trigger migrations: `supabase/migrations/`
 
-### Open wiring inconsistency on `main`
+### Canonical repository path; live journey still required
 
-Draft PR #595 reports that the active onboarding screens import `src/services/onboarding.ts`, while that service targets `onboarding_state`, a table that no migration creates. The repository's real hardened table is `user_onboarding_state`.
+PR #595 merged the repository repair for the active onboarding-state path. The canonical durable table is `user_onboarding_state`, and current repository work must not restore a parallel `onboarding_state` path.
 
-The same branch reports that active screens call `markActivated()`, while the current active service does not define it, and that a more complete duplicate implementation exists outside the active import path.
-
-Until #595 is reviewed, verified, and merged, treat onboarding progression as **integrated but not reliable enough for founder-access proof**.
-
-Required repair properties:
-
-- one canonical context and service;
-- `user_onboarding_state` as the durable table;
-- real `onboarding_stage` values;
-- baseline insertion that cannot overwrite existing progress;
-- allowlisted payload columns;
-- stage and timestamp updates that satisfy the database trigger;
-- tests against the active import path;
-- no second live state system.
+This is repository evidence, not a complete founder-access proof. A real-account, physical-device journey and the related database, auth, network, failure, and cleanup witnesses still remain launch gates.
 
 ## Frontend-to-Worker contract
 
@@ -109,7 +104,7 @@ Canonical display/canon names are:
 - Cloud;
 - Night.
 
-PR #592 merged runtime output repair for legacy display-name leaks. Draft PR #595 continues propagation through remaining app, safety, voice, and service paths.
+PR #592 merged runtime output repair for legacy display-name leaks. PR #595 is merged repository history; remaining user-facing and AI-facing normalization must preserve legacy stored identifiers and gain its own scoped proof.
 
 The persisted `app_profiles.selected_companion` database vocabulary still accepts legacy identifiers. Do not rename stored values or database constraints without a dedicated compatibility migration. Normalize at boundaries where persisted identifiers become user-facing or AI-facing behavior.
 
@@ -202,7 +197,7 @@ Production authority remains Cloudflare native Git integration:
 The release verifier requires:
 
 1. a successful exact-commit Worker build;
-2. a deployed `release.json` marker matching the exact `main` SHA;
+2. a deployed `/.well-known/sekret-release.json` marker matching the exact `main` SHA;
 3. a healthy canonical Worker endpoint;
 4. read-only production Playwright against protected teen and parent routes;
 5. retained evidence that names the exact observed commit.
@@ -211,23 +206,17 @@ Cloudflare preview or deployment success does not prove GitHub checks, Supabase 
 
 The current `main` merge SHA does not yet have a complete repository-wide GitHub Actions proof set.
 
-## Current repository-quality debt
+## Current repository-quality evidence boundary
 
-Draft PR #595 reports:
+PR #695’s exact-head gate passed its scoped contract tests, complete unit suite, and type-check before merge. That is strong scoped evidence, not a repository-wide proof for the current `main` merge SHA.
 
-- 906 passing unit tests locally;
-- one remaining TypeScript error caused by `expo-apple-authentication` being imported by an unused component while the package is not installed;
-- two pre-existing lint errors under `prototypes/`.
-
-Resolve or intentionally remove the unused Apple sign-in path before claiming a clean type gate. Repair or explicitly isolate the prototype lint failures before claiming a clean repository lint gate.
-
-Draft PR #596 reports 911 passing unit tests locally after adding one Crew invite RPC contract file. No exact-head GitHub Actions run is attached yet.
+PR #690 and PR #692 are draft branches. Their previous checks cannot be reused after their content or base changes. Do not call the repository clean, release-ready, or production-deployed without an executed gate for the exact target head and the independent live release witness.
 
 ## Remaining wiring gates
 
-- canonical onboarding-state repair and exact-head proof;
-- complete repository type, lint, test, bundle, audit, and Playwright gates;
-- deployment and live catalog proof for the PR #577 trigger-history migrations;
+- real-account and physical-device onboarding proof for the canonical merged path;
+- exact-head type, lint, test, bundle, audit, and Playwright gates for each merge candidate and release target;
+- P0 public release-marker restoration and exact deployment proof under #696;
 - controlled Bridge production proof;
 - account deletion and Storage cleanup proof;
 - anonymous-auth hardening for remaining private surfaces;

@@ -8,21 +8,17 @@ Before material planning, implementation, review, automation, publishing, deploy
 
 ## Current repository checkpoint
 
-- Canonical repo: `jussray/Sekret-Bip`.
 - Default branch: `main`.
-- Current reviewed `main`: `9cd5d6d4641160b9425320e31482a4bd05eb25c2`.
-- PR #594 merged the polished web welcome screen and passed a focused exact-head front-door gate.
-- PR #577 merged test and trigger-history repairs.
-- Draft PR #595 reports an active onboarding-state wiring split and remaining type/lint debt.
-- Draft PR #596 adds Crew invite RPC behavior-contract coverage.
+- Current reviewed `main`: `eeebc15ebd3dc9b420dab04def0d121f41524670`.
+- Read `docs/LAUNCH_GATE_STATUS_2026-07-29.md` before making any current launch, deployment, or production claim.
+- P0: [#696](https://github.com/jussray/Sekret-Bip/issues/696) — the live Pages release marker does not currently return JSON.
+- Canonical frontend: Cloudflare Pages `sekret-bip`.
+- Canonical backend: `sekret-backend` via `worker/voice-entry.ts`.
+- Canonical marker: `/.well-known/sekret-release.json`.
+- Merged current-state repairs include PRs #595, #596, #688, #691, and #695.
+- Open drafts #690 and #692 are not merge or launch truth; each must be current with `main`, exact-head green, and visually or behaviorally verified for its scope.
 
-Do not repeat the old PR #567-era Cloudflare snapshot, the old 878-commits-ahead count, or any prior email/chat conclusion without rechecking the current repository.
-
-## Canonical repository
-
-`jussray/Sekret-Bip` is the active Se'kret Bip working repository.
-
-Other Bip-named repositories are historical or investigate-only unless Founder Control Room explicitly names one for provenance capture. Do not implement active Bip work in those repos. Port useful findings here through a focused PR.
+Do not use old PR descriptions, a local build, a screenshot, a green branch check, or the legacy `/release.json` path as production evidence. Keep repository, CI, Cloudflare, Supabase, browser, device, and account evidence separate.
 
 ## Current repo map
 
@@ -65,15 +61,16 @@ If GitHub Actions has no jobs, no steps, or no logs, classify it as infrastructu
 
 ## Current primary repair boundary
 
-Until reviewed and merged, treat the onboarding-state split described in draft PR #595 as an open runtime risk:
+PR #595 merged the canonical repository onboarding-state repair. Do not recreate a parallel onboarding state path or reintroduce `onboarding_state` as a current durable authority.
 
-- active screens import `src/services/onboarding.ts`;
-- that service reportedly targets `onboarding_state`, which no repository migration creates;
-- the real hardened table is `user_onboarding_state`;
-- active screens reportedly call `markActivated()` while the active service does not define it;
-- a duplicate implementation exists outside the active import path.
+The remaining launch boundary is proof, not a claimed code split:
 
-Do not create a third onboarding state system. Select one canonical path, preserve required compatibility, test the active imports, and align the service, table, enum, trigger rules, and runtime consumers.
+- complete a real founder-access and onboarding journey on a physical device;
+- verify intended Supabase behavior and failure handling in the target environment;
+- preserve the canonical service, table, enum, trigger rules, and active imports;
+- keep compatibility only where a tested existing consumer requires it.
+
+No merged code path is automatic production, device, or real-account evidence.
 
 ## Companion naming boundary
 

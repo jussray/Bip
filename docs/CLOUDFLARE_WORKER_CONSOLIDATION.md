@@ -1,6 +1,6 @@
 # Cloudflare Worker Consolidation
 
-Last reviewed: 2026-07-18
+Last reviewed: 2026-07-29
 
 ## Decision
 
@@ -13,11 +13,13 @@ The dashboard Workers `bip-mail` and `sekret` are legacy migration candidates. T
 
 `sekret-backend-alpha` is a separate founder-gated non-production service and is outside this production cleanup.
 
+> **Current release boundary:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) is open because the live Pages marker is not served as JSON. Do not treat the frontend marker completion item below as satisfied until its exact public witness exists.
+
 ## Why one production Worker is sufficient
 
-`worker/observed-index.ts` already exports both Cloudflare handler types:
+`worker/voice-entry.ts` is the configured production Worker entry point and exports both Cloudflare handler types:
 
-- `fetch()` delegates authenticated HTTP/API work to the backend router;
+- `fetch()` delegates ordinary HTTP/API work to `worker/observed-index.ts`;
 - `email()` delegates inbound mail to `worker/email-router.ts`.
 
 The backend router already owns Sekret reply, voice, transcription, Bridge summary, authentication, rate limiting, safety, push, and supporting business logic. A second production `sekret` Worker would duplicate that authority.
@@ -75,7 +77,7 @@ Rollback: restore the previous route or binding to `sekret` if the canonical bac
 
 The consolidation is complete only when all of the following are true:
 
-- `sekret-bip` serves the frontend and exact release marker;
+- `sekret-bip` serves the frontend and the exact `/.well-known/sekret-release.json` marker;
 - `sekret-backend` passes health, Sekret reply, voice, transcription, and Bridge checks;
 - all supported email aliases route through `sekret-backend`;
 - `bip-mail` and `sekret` have no routes, triggers, bindings, or traffic;

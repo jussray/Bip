@@ -21,33 +21,20 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 
 ## Current repository truth
 
-**Last refreshed:** July 24, 2026  
-**Reviewed `main`:** `59bf26a957f195a75d49fea69b9a9f83a666d447`
+**Last refreshed:** 2026-07-29  
+**Reviewed `main`:** `eeebc15ebd3dc9b420dab04def0d121f41524670`  
+**Active launch gate:** [`docs/LAUNCH_GATE_STATUS_2026-07-29.md`](docs/LAUNCH_GATE_STATUS_2026-07-29.md)
 
-Read these before making current-state claims:
+The current repository has merged the onboarding repair (PR #595), Crew invite contract (PR #596), restored-session fail-closed boundary (PR #688), main-contract repair (PR #691), and Cloudflare operator-document reconciliation (PR #695).
 
-- [`docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`](docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md)
-- [`SPRINT.md`](SPRINT.md)
-- [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md)
-- [`docs/WIRING_STATUS.md`](docs/WIRING_STATUS.md)
-- [`docs/DOCUMENTATION_MAP.md`](docs/DOCUMENTATION_MAP.md)
-- [`implementation-ledger.json`](implementation-ledger.json)
+**Public launch is blocked.** A fresh read-only production check found that neither public release-marker URL returns JSON. The local web build emits the marker, but the live Pages domain does not serve it. Follow [P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) before claiming an exact deployed frontend commit.
 
-Any summary that describes the app as a one-file prototype, missing `app/`, missing Supabase Auth, or missing Expo Router route groups is stale unless it names the exact old commit it inspected.
+Current drafts remain evidence-gated:
 
-Keep these proof layers separate:
+- PR #690: password-recovery route continuity with a direct-entry fallback; fresh checks and current-base proof are required.
+- PR #692: Calm controls; retargeted to `main`, currently not mergeable, and requires a clean rebase plus Product Design and exact-head proof.
 
-- repository code;
-- local checks;
-- exact-head GitHub checks;
-- checks against the merge SHA on `main`;
-- Cloudflare build or deployment evidence;
-- live Supabase migrations and authorization evidence;
-- production-browser evidence;
-- physical-device and real-account evidence;
-- Figma, Canva, screenshots, and static design evidence.
-
-A green signal in one layer does not silently prove the others.
+Read the launch-gate status before making current-state, deployment, or launch claims. Historical milestones below are preserved context; they do not override the reviewed ref or live evidence above.
 
 ## Founder Control Room README sync
 
@@ -55,7 +42,7 @@ Founder Control Room owns the README sync decision for nontrivial incidents, fix
 
 A zero-step or no-log GitHub Actions failure remains `runner_startup_failure` infrastructure evidence, not a code regression. Follow [`.control-room/README_SYNC_POLICY.md`](.control-room/README_SYNC_POLICY.md) before claiming the documentation impact is complete.
 
-## Latest merged progress
+## Historical merged progress (preserved context)
 
 ### Canonical onboarding-state and verification repair
 
@@ -156,6 +143,8 @@ Documentation and demos must not imply broader parent visibility than the server
 
 ## Current implementation state
 
+> **Release evidence warning:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) is open. Repository machinery and local build output exist, but the live Pages marker currently does not return JSON. Do not read this implementation inventory as a production-release claim.
+
 ### Integrated
 
 - Expo Router auth, onboarding, teen, parent, and founder/internal route groups
@@ -167,7 +156,7 @@ Documentation and demos must not imply broader parent visibility than the server
 - Mind + Body Reset regulation and workout flows
 - Founder Control Room operational data sources and repository capability contracts
 - Bridge data model, consent contracts, and controlled rollout paths
-- Exact production release verification machinery using Worker checks, `release.json`, health verification, production Playwright, and retained evidence
+- Exact production release verification machinery using Worker checks, `/.well-known/sekret-release.json`, health verification, production Playwright, and retained evidence
 - Runtime-truth gates that compare repository claims with live Supabase and deployment witnesses
 
 ### Verified authorization and security slices

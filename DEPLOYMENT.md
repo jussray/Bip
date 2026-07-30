@@ -1,8 +1,10 @@
 # Se'kret Bip — Deployment Guide
 
-Last reviewed: 2026-07-18
+Last reviewed: 2026-07-29
 
 ## Current production direction
+
+> **P0 release gate:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) is open. The repository build emits the marker, but fresh public checks received app fallbacks rather than JSON at both public marker paths. Treat all Pages configuration below as the intended repository contract until a Cloudflare administrator records an exact deployed release witness.
 
 - Web: Cloudflare Pages through the Cloudflare GitHub App
 - API and AI relay: Cloudflare Workers Builds through the Cloudflare GitHub App
@@ -15,8 +17,8 @@ Legacy compatibility files are not a second production authority.
 
 Cloudflare native Git integration is the production deployment authority for this repository:
 
-- `Cloudflare Pages` deploys the `sekret-bip` Pages project from pushes to `main`.
-- `Workers Builds: sekret-backend` deploys the canonical backend Worker from pushes to `main`.
+- `Cloudflare Pages` is the intended deployment authority for the `sekret-bip` Pages project from pushes to `main`.
+- `Workers Builds: sekret-backend` is the intended canonical backend Worker release signal for pushes to `main`.
 - GitHub Actions does **not** upload code to Cloudflare and does not require a Cloudflare deployment token.
 - `.github/workflows/deploy-cloudflare.yml` verifies the latest `main` release instead of creating a competing deployment.
 - Older verification runs are cancelled when a newer `main` commit arrives.
@@ -71,7 +73,7 @@ Private Worker routes must verify authenticated identity and must not trust a us
 
 ## Cloudflare Pages
 
-The canonical Pages project is `sekret-bip`, deployed by the Cloudflare GitHub App after a push to `main`.
+The intended canonical Pages project is `sekret-bip`, using Cloudflare Git integration from `main`. A repository setting is not deployment proof; verify its live artifact under #696.
 
 The repository owns the frontend build contract:
 
@@ -82,7 +84,7 @@ The repository owns the frontend build contract:
 
 Do not rely on the Pages project's historical default Node version. Expo SDK 56 requires Node 22.13 or newer, and the repository pin keeps older and newer Cloudflare build systems on the same supported runtime.
 
-Cloudflare Pages injects `CF_PAGES_COMMIT_SHA` and `CF_PAGES_BRANCH` during the build. `npm run build:web` writes those values to the public, non-sensitive `dist/release.json` file after Expo export.
+Cloudflare Pages injects `CF_PAGES_COMMIT_SHA` and `CF_PAGES_BRANCH` during the build. `npm run build:web` writes those values to public, non-sensitive marker files after Expo export. The canonical verification path is `dist/.well-known/sekret-release.json`; `dist/release.json` is a compatibility artifact, not release authority.
 
 Manual local direct upload remains an emergency administrator fallback:
 
@@ -94,22 +96,22 @@ Configure only public client variables in the Pages build environment. Keep serv
 
 ## Exact production verification
 
-The automatic verifier proves the current `main` commit through independent runtime evidence:
+The automatic verifier can prove the current `main` commit only after every independent runtime witness succeeds:
 
 1. The exact commit has a successful `Workers Builds: sekret-backend` check.
-2. `https://sekretbip.net/release.json` reports the exact same commit SHA and `main` branch.
+2. `https://sekretbip.net/.well-known/sekret-release.json` returns JSON reporting the exact same commit SHA and `main` branch.
 3. The canonical Worker health endpoint responds successfully.
 4. Read-only production Playwright verifies the release marker and protected teen and parent routes.
 
 ```bash
 curl --fail https://sekret-backend.mcgill-raylene.workers.dev/health
-curl --fail https://sekretbip.net/release.json
+curl --fail https://sekretbip.net/.well-known/sekret-release.json
 npm run test:e2e:production
 ```
 
 The Cloudflare Pages check remains useful diagnostic evidence, but the deployed release marker is the authoritative Pages proof because it observes the artifact serving traffic.
 
-The verifier stores commit-scoped Worker evidence, the Pages release marker, and Playwright output as a GitHub Actions artifact.
+The verifier stores commit-scoped Worker evidence, the Pages release marker, and Playwright output as a GitHub Actions artifact. A failed or missing marker blocks this proof; it must not be reclassified as a green deployment.
 
 ## Native builds
 
