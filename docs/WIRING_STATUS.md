@@ -1,7 +1,9 @@
 # Se'kret Bip — Backend Wiring Status
 
 **Last reviewed:** 2026-07-29  
-**Repository baseline:** `main` at `eeebc15ebd3dc9b420dab04def0d121f41524670`
+**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`
+
+Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
 
 `implementation-ledger.json` is the machine-checked status source. This page describes the current runtime and data wiring in human-readable form.
 
@@ -11,7 +13,7 @@
 - Canonical frontend release marker: `/.well-known/sekret-release.json`.
 - [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) is open because the live Pages domain serves an app fallback instead of that JSON marker.
 - Local build output and repository configuration do not prove the live Pages artifact or current frontend SHA.
-- PR #595 is merged; PR #690 and PR #692 are drafts and not current runtime truth.
+- PR #595 and PR #698 are merged repository history; PR #690 is closed as preserved history. PR #692 remains a draft and is not current runtime truth.
 
 ## Evidence boundary
 
@@ -210,7 +212,7 @@ The current `main` merge SHA does not yet have a complete repository-wide GitHub
 
 PR #695’s exact-head gate passed its scoped contract tests, complete unit suite, and type-check before merge. That is strong scoped evidence, not a repository-wide proof for the current `main` merge SHA.
 
-PR #690 and PR #692 are draft branches. Their previous checks cannot be reused after their content or base changes. Do not call the repository clean, release-ready, or production-deployed without an executed gate for the exact target head and the independent live release witness.
+PR #698 has exact-head merge evidence but it does not prove live auth, email delivery, reset links, production, or device behavior. PR #692 remains a draft branch whose previous checks cannot be reused after content or base changes. Do not call the repository clean, release-ready, or production-deployed without an executed gate for the exact target head and the independent live release witness.
 
 ## Remaining wiring gates
 

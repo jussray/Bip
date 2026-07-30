@@ -7,7 +7,7 @@ This file explains which documents are authoritative, what each one owns, and ho
 
 ## Current launch-status overlay
 
-Read `docs/LAUNCH_GATE_STATUS_2026-07-29.md` first when the work concerns the current repository, release, deployment, or launch decision. It records the reviewed `main` ref and the live Pages marker blocker in [#696](https://github.com/jussray/Sekret-Bip/issues/696).
+Read `docs/LAUNCH_GATE_STATUS_2026-07-29.md` first when the work concerns the current repository, release, deployment, or launch decision. It records the reviewed application baseline and the live Pages marker blocker in [#696](https://github.com/jussray/Sekret-Bip/issues/696).
 
 ## Read these first
 

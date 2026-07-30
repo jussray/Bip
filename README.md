@@ -22,16 +22,18 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 ## Current repository truth
 
 **Last refreshed:** 2026-07-29  
-**Reviewed `main`:** `eeebc15ebd3dc9b420dab04def0d121f41524670`  
+**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+
+This is the last reviewed application-code baseline; later documentation-only merges may advance `main` without changing application evidence.
 **Active launch gate:** [`docs/LAUNCH_GATE_STATUS_2026-07-29.md`](docs/LAUNCH_GATE_STATUS_2026-07-29.md)
 
-The current repository has merged the onboarding repair (PR #595), Crew invite contract (PR #596), restored-session fail-closed boundary (PR #688), main-contract repair (PR #691), and Cloudflare operator-document reconciliation (PR #695).
+The current repository has merged the onboarding repair (PR #595), Crew invite contract (PR #596), restored-session fail-closed boundary (PR #688), main-contract repair (PR #691), Cloudflare operator-document reconciliation (PR #695), and password-recovery route continuity (PR #698).
 
 **Public launch is blocked.** A fresh read-only production check found that neither public release-marker URL returns JSON. The local web build emits the marker, but the live Pages domain does not serve it. Follow [P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) before claiming an exact deployed frontend commit.
 
 Current drafts remain evidence-gated:
 
-- PR #690: password-recovery route continuity with a direct-entry fallback; fresh checks and current-base proof are required.
+- PR #698: password-recovery route continuity is merged; PR #690 is closed as the preserved historical candidate.
 - PR #692: Calm controls; retargeted to `main`, currently not mergeable, and requires a clean rebase plus Product Design and exact-head proof.
 
 Read the launch-gate status before making current-state, deployment, or launch claims. Historical milestones below are preserved context; they do not override the reviewed ref or live evidence above.
