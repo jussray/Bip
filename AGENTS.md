@@ -61,15 +61,16 @@ If GitHub Actions has no jobs, no steps, or no logs, classify it as infrastructu
 
 ## Current primary repair boundary
 
-Until reviewed and merged, treat the onboarding-state split described in draft PR #595 as an open runtime risk:
+PR #595 merged the canonical repository onboarding-state repair. Do not recreate a parallel onboarding state path or reintroduce `onboarding_state` as a current durable authority.
 
-- active screens import `src/services/onboarding.ts`;
-- that service reportedly targets `onboarding_state`, which no repository migration creates;
-- the real hardened table is `user_onboarding_state`;
-- active screens reportedly call `markActivated()` while the active service does not define it;
-- a duplicate implementation exists outside the active import path.
+The remaining launch boundary is proof, not a claimed code split:
 
-Do not create a third onboarding state system. Select one canonical path, preserve required compatibility, test the active imports, and align the service, table, enum, trigger rules, and runtime consumers.
+- complete a real founder-access and onboarding journey on a physical device;
+- verify intended Supabase behavior and failure handling in the target environment;
+- preserve the canonical service, table, enum, trigger rules, and active imports;
+- keep compatibility only where a tested existing consumer requires it.
+
+No merged code path is automatic production, device, or real-account evidence.
 
 ## Companion naming boundary
 
