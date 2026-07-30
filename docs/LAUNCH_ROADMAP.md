@@ -47,7 +47,7 @@ flowchart LR
 - PR #594 merged the polished web welcome screen and passed a focused exact-head front-door gate.
 - PR #577 merged test, lockfile, JSX, and trigger migration-history repairs.
 - The current `main` merge SHA does not yet have the complete repository-wide gate attached.
-- Draft PR #595 reports a split onboarding-state runtime path and remaining type/lint debt.
+- Historical note: PR #595 later merged the canonical onboarding-state repair; its former draft diagnosis is preserved only as context.
 - Draft PR #596 adds one authenticated Crew invite RPC behavior contract.
 - Founder Access Recovery Gate issue #563 remains the first user-facing launch blocker.
 
