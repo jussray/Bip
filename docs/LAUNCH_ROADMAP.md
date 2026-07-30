@@ -1,7 +1,9 @@
 # Se'kret Bip — Visual Launch Roadmap
 
 **Last reviewed:** 2026-07-29  
-**Repository baseline:** `eeebc15ebd3dc9b420dab04def0d121f41524670`  
+**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+
+Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
 **Owner issue:** [#456](https://github.com/jussray/Sekret-Bip/issues/456)
 
 This is the canonical founder-readable map from the current repository state to launch. It describes **sequence and evidence**, not unsupported calendar promises.
@@ -14,7 +16,7 @@ This is the canonical founder-readable map from the current repository state to 
 
 - PR #595 and PR #596 are merged history; they are not current draft blockers.
 - PR #688, PR #691, and PR #695 are merged repository repairs.
-- PR #690 and PR #692 remain draft, separately evidence-gated merge candidates.
+- PR #698 is merged repository history; #690 is closed as preserved history. PR #692 remains the separately evidence-gated draft merge candidate.
 - The canonical production marker is `/.well-known/sekret-release.json`, not the legacy `/release.json` path.
 - A visual live welcome-screen check showed the approved artwork painting; because the marker is missing, it cannot prove the served commit.
 
