@@ -9,14 +9,14 @@ Before material planning, implementation, review, automation, publishing, deploy
 ## Current repository checkpoint
 
 - Default branch: `main`.
-- Current reviewed `main`: `eeebc15ebd3dc9b420dab04def0d121f41524670`.
+- Reviewed application baseline: `2a3d11efa094be2b9ae0a6095a1d84f21844f85b` (later documentation-only merges may advance `main` without changing application evidence).
 - Read `docs/LAUNCH_GATE_STATUS_2026-07-29.md` before making any current launch, deployment, or production claim.
 - P0: [#696](https://github.com/jussray/Sekret-Bip/issues/696) — the live Pages release marker does not currently return JSON.
 - Canonical frontend: Cloudflare Pages `sekret-bip`.
 - Canonical backend: `sekret-backend` via `worker/voice-entry.ts`.
 - Canonical marker: `/.well-known/sekret-release.json`.
-- Merged current-state repairs include PRs #595, #596, #688, #691, and #695.
-- Open drafts #690 and #692 are not merge or launch truth; each must be current with `main`, exact-head green, and visually or behaviorally verified for its scope.
+- Merged current-state repairs include PRs #595, #596, #688, #691, #695, and #698.
+- PR #698 is merged repository history; #690 is closed as superseded history. PR #692 is the remaining draft and is not merge or launch truth until current with `main`, exact-head green, and visually verified for its scope.
 
 Do not use old PR descriptions, a local build, a screenshot, a green branch check, or the legacy `/release.json` path as production evidence. Keep repository, CI, Cloudflare, Supabase, browser, device, and account evidence separate.
 
