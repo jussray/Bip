@@ -143,6 +143,8 @@ Documentation and demos must not imply broader parent visibility than the server
 
 ## Current implementation state
 
+> **Release evidence warning:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) is open. Repository machinery and local build output exist, but the live Pages marker currently does not return JSON. Do not read this implementation inventory as a production-release claim.
+
 ### Integrated
 
 - Expo Router auth, onboarding, teen, parent, and founder/internal route groups
@@ -154,7 +156,7 @@ Documentation and demos must not imply broader parent visibility than the server
 - Mind + Body Reset regulation and workout flows
 - Founder Control Room operational data sources and repository capability contracts
 - Bridge data model, consent contracts, and controlled rollout paths
-- Exact production release verification machinery using Worker checks, `release.json`, health verification, production Playwright, and retained evidence
+- Exact production release verification machinery using Worker checks, `/.well-known/sekret-release.json`, health verification, production Playwright, and retained evidence
 - Runtime-truth gates that compare repository claims with live Supabase and deployment witnesses
 
 ### Verified authorization and security slices
