@@ -82,12 +82,19 @@ test('branch hygiene classifies prohibited duplicate naming without deleting ref
   const branchSha = git(root, 'rev-parse', 'HEAD');
   git(root, 'update-ref', 'refs/remotes/origin/fix/reminder-v2', branchSha);
 
-  const audit = auditBranchHygiene({ rootDir: root, staleDays: 30 });
-  assert.equal(audit.headBranch, 'fix/reminder-v2');
-  const branch = audit.branches.find((entry) => entry.name === 'fix/reminder-v2');
-  assert.ok(branch);
-  assert.equal(branch.prohibitedName, true);
-  assert.equal(branch.classification, 'current-mission-branch');
-  assert.equal(branch.deletionAuthorized, false);
-  assert.equal(git(root, 'rev-parse', 'refs/remotes/origin/fix/reminder-v2'), branchSha);
+  const previousHeadRef = process.env.GITHUB_HEAD_REF;
+  delete process.env.GITHUB_HEAD_REF;
+  try {
+    const audit = auditBranchHygiene({ rootDir: root, staleDays: 30 });
+    assert.equal(audit.headBranch, 'fix/reminder-v2');
+    const branch = audit.branches.find((entry) => entry.name === 'fix/reminder-v2');
+    assert.ok(branch);
+    assert.equal(branch.prohibitedName, true);
+    assert.equal(branch.classification, 'current-mission-branch');
+    assert.equal(branch.deletionAuthorized, false);
+    assert.equal(git(root, 'rev-parse', 'refs/remotes/origin/fix/reminder-v2'), branchSha);
+  } finally {
+    if (previousHeadRef === undefined) delete process.env.GITHUB_HEAD_REF;
+    else process.env.GITHUB_HEAD_REF = previousHeadRef;
+  }
 });
