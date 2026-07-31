@@ -1,5 +1,7 @@
 # Se'kret Bip — Current launch-gate status
 
+> Historical snapshot. Do not use this file as current implementation, roadmap, security, or deployment truth. See `docs/DOCUMENTATION_MAP.md`. Superseded by `docs/LAUNCH_GATE_STATUS_2026-07-31.md`.
+
 **Last reviewed:** 2026-07-29  
 **Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
 

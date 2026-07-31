@@ -1,7 +1,7 @@
 # Se'kret Bip — Backend Wiring Status
 
-**Last reviewed:** 2026-07-29  
-**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`
+**Last reviewed:** 2026-07-31  
+**Reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`
 
 Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
 
@@ -12,8 +12,9 @@ Documentation-only merges may advance `main` after this application baseline wit
 - Canonical production Worker entry point: `worker/voice-entry.ts` for `sekret-backend`.
 - Canonical frontend release marker: `/.well-known/sekret-release.json`.
 - [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) is open because the live Pages domain serves an app fallback instead of that JSON marker.
+- [#646](https://github.com/jussray/Sekret-Bip/issues/646) is open: Cloudflare branch controls for the production-named Workers are not yet proven main-only. Do not create new implementation branches while this gate is open.
 - Local build output and repository configuration do not prove the live Pages artifact or current frontend SHA.
-- PR #595 and PR #698 are merged repository history; PR #690 is closed as preserved history. PR #692 remains a draft and is not current runtime truth.
+- PR #595, PR #698, PR #700 (Calm mood/plan controls), and PR #701 (canonical companion naming in Settings) are merged repository history; PR #690 and PR #692 are closed as preserved history.
 
 ## Evidence boundary
 
@@ -212,7 +213,7 @@ The current `main` merge SHA does not yet have a complete repository-wide GitHub
 
 PR #695’s exact-head gate passed its scoped contract tests, complete unit suite, and type-check before merge. That is strong scoped evidence, not a repository-wide proof for the current `main` merge SHA.
 
-PR #698 has exact-head merge evidence but it does not prove live auth, email delivery, reset links, production, or device behavior. PR #692 remains a draft branch whose previous checks cannot be reused after content or base changes. Do not call the repository clean, release-ready, or production-deployed without an executed gate for the exact target head and the independent live release witness.
+PR #698 has exact-head merge evidence but it does not prove live auth, email delivery, reset links, production, or device behavior. PR #700 and PR #701 have their own exact-head Calm/Product Design and repository gate evidence at their respective merge heads. Do not call the repository clean, release-ready, or production-deployed without an executed gate for the exact target head and the independent live release witness.
 
 ## Remaining wiring gates
 

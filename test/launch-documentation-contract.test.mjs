@@ -4,8 +4,8 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const CURRENT_APPLICATION_BASELINE = '2a3d11efa094be2b9ae0a6095a1d84f21844f85b';
-const CURRENT_GATE = 'docs/LAUNCH_GATE_STATUS_2026-07-29.md';
+const CURRENT_APPLICATION_BASELINE = '824b4dcffb9e0ffc7468a002f0390cbba98d79ae';
+const CURRENT_GATE = 'docs/LAUNCH_GATE_STATUS_2026-07-31.md';
 
 test('launch-gate status distinguishes repository, deployment, browser, and device evidence', async () => {
   const gate = await read(CURRENT_GATE);
@@ -17,7 +17,9 @@ test('launch-gate status distinguishes repository, deployment, browser, and devi
   assert.match(gate, /Wrangler is not authenticated/);
   assert.match(gate, /PR #698 is merged/);
   assert.match(gate, /PR #690 is closed/);
-  assert.match(gate, /PR #692 .*not mergeable/);
+  assert.match(gate, /PR #692.*closed/);
+  assert.match(gate, /PR #700/);
+  assert.match(gate, /#646/);
 });
 
 test('launch roadmap is visual, phased, current, evidence-based, and privacy-safe', async () => {
@@ -25,7 +27,7 @@ test('launch roadmap is visual, phased, current, evidence-based, and privacy-saf
 
   assert.match(roadmap, /```mermaid/);
   assert.match(roadmap, new RegExp(CURRENT_APPLICATION_BASELINE));
-  assert.match(roadmap, /Current 2026-07-29 checkpoint/);
+  assert.match(roadmap, /Current 2026-07-31 checkpoint/);
   assert.match(roadmap, /P0 #696/);
   assert.match(roadmap, /Phase 0 — Foundation integrated/);
   assert.match(roadmap, /Phase 1 — Launch trust spine/);
@@ -58,7 +60,7 @@ test('current sprint is a bounded launch execution handoff tied to current main'
 test('documentation map defines current authority and stale-document handling', async () => {
   const map = await read('docs/DOCUMENTATION_MAP.md');
 
-  assert.match(map, /LAUNCH_GATE_STATUS_2026-07-29/);
+  assert.match(map, /LAUNCH_GATE_STATUS_2026-07-31/);
   assert.match(map, /Level 0 — inspected external truth/);
   assert.match(map, /Level 1 — live operating truth/);
   assert.match(map, /Level 2 — architecture and product contracts/);
@@ -87,7 +89,7 @@ test('founder and agent entry points use the same current-truth system', async (
   }
 
   for (const document of [readme, status, sprint, refresh, agents]) {
-    assert.match(document, /LAUNCH_GATE_STATUS_2026-07-29/);
+    assert.match(document, /LAUNCH_GATE_STATUS_2026-07-31/);
   }
 
   assert.match(readme, /Suhana, Sy, Cloud, and Night/);

@@ -21,20 +21,23 @@ Se'kret Bip is a privacy-first emotional growth and self-expression app for teen
 
 ## Current repository truth
 
-**Last refreshed:** 2026-07-29  
-**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+**Last refreshed:** 2026-07-31  
+**Reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
 
 This is the last reviewed application-code baseline; later documentation-only merges may advance `main` without changing application evidence.
-**Active launch gate:** [`docs/LAUNCH_GATE_STATUS_2026-07-29.md`](docs/LAUNCH_GATE_STATUS_2026-07-29.md)
+**Active launch gate:** [`docs/LAUNCH_GATE_STATUS_2026-07-31.md`](docs/LAUNCH_GATE_STATUS_2026-07-31.md)
 
-The current repository has merged the onboarding repair (PR #595), Crew invite contract (PR #596), restored-session fail-closed boundary (PR #688), main-contract repair (PR #691), Cloudflare operator-document reconciliation (PR #695), and password-recovery route continuity (PR #698).
+The current repository has merged the onboarding repair (PR #595), Crew invite contract (PR #596), restored-session fail-closed boundary (PR #688), main-contract repair (PR #691), Cloudflare operator-document reconciliation (PR #695), password-recovery route continuity (PR #698), the reconstructed Calm mood/plan controls repair (PR #700), canonical companion naming in Settings (PR #701), and the repository failure-truth, branch-hygiene, and post-merge gate-verification auditors (PR #703, #704, #706).
 
-**Public launch is blocked.** A fresh read-only production check found that neither public release-marker URL returns JSON. The local web build emits the marker, but the live Pages domain does not serve it. Follow [P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) before claiming an exact deployed frontend commit.
+**Public launch is blocked** on two open founder gates:
+
+- [P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) — neither public release-marker URL returns JSON, so an exact deployed frontend commit cannot be claimed.
+- [Issue #646](https://github.com/jussray/Sekret-Bip/issues/646) — Cloudflare branch controls for the production-named Workers are not yet proven main-only; ordinary PR branches have repeatedly triggered automatic production deployments before merge.
 
 Current drafts remain evidence-gated:
 
 - PR #698: password-recovery route continuity is merged; PR #690 is closed as the preserved historical candidate.
-- PR #692: Calm controls; retargeted to `main`, currently not mergeable, and requires a clean rebase plus Product Design and exact-head proof.
+- PR #692: Calm controls; closed and preserved as historical source after its implementation was reconstructed as a focused branch and merged via PR #700.
 
 Read the launch-gate status before making current-state, deployment, or launch claims. Historical milestones below are preserved context; they do not override the reviewed ref or live evidence above.
 

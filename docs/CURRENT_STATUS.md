@@ -1,23 +1,28 @@
 # Se'kret Bip — Current Status
 
-**Last reviewed:** 2026-07-29  
-**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+**Last reviewed:** 2026-07-31  
+**Reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
 
 Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
-**Current launch gate:** `docs/LAUNCH_GATE_STATUS_2026-07-29.md`  
+**Current launch gate:** `docs/LAUNCH_GATE_STATUS_2026-07-31.md`  
 **Roadmap:** `docs/LAUNCH_ROADMAP.md`  
 **Current execution:** `SPRINT.md`
 
 ## Current authority overlay
 
-This block supersedes the historical July 23 progress narrative retained below.
+This block supersedes the 2026-07-29 authority overlay retained below, which itself superseded the historical July 23 progress narrative.
 
 - PR #595 and PR #596 are merged repository history, not open repair candidates.
 - PR #688 merged a fail-closed restored-session account-switching boundary.
 - PR #691 repaired main contract authority; PR #695 reconciled the canonical Cloudflare operator documentation.
-- **Public launch remains blocked:** live release-marker URLs return application fallbacks instead of JSON. Track [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696).
+- PR #698 is merged; #690 is closed as its preserved historical candidate.
+- PR #700 merged the reconstructed Calm mood/plan controls repair; PR #692, its stale-base predecessor, is closed and preserved only as historical source.
+- PR #701 merged canonical Suhana/Sy companion naming in Teen and Parent Settings.
+- PR #703, #704, and #706 added and hardened the repository failure-truth auditor, branch-hygiene inventory gate, and post-merge Repository Truth/Calm/Product Design verification, and repaired a parser typo that had blocked shared TypeScript/test lanes.
+- **Public launch remains blocked on two founder gates:**
+  - live release-marker URLs return application fallbacks instead of JSON — track [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696);
+  - Cloudflare branch controls for `sekret-backend`, `sekret`, and `bip-mail` are not yet proven main-only — track [#646](https://github.com/jussray/Sekret-Bip/issues/646). Ordinary PR branches have repeatedly triggered automatic production-named Worker deployments before merge; do not create new implementation branches while this gate is open.
 - The canonical release marker is `/.well-known/sekret-release.json`; the legacy `/release.json` path is not release authority.
-- PR #698 is merged; #690 is closed as its preserved historical candidate. PR #692 remains a draft and is not current merge, deployment, or launch truth.
 - The live welcome screen visually paints its approved family artwork, but that observation cannot identify the deployed commit while the marker is missing.
 
 > **Historical context below.** It may explain earlier decisions, but it must not override this current authority overlay, the reviewed application baseline, or live evidence.
