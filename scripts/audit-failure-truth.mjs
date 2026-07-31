@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOTS = ['app', 'src', 'screens', 'hooks', 'services', 'worker', 'components'];
 const EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
@@ -210,4 +211,5 @@ function main() {
   console.log(`Report: ${path.relative(rootDir, reportPath)}`);
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1]}`).href) main();
+const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
+if (import.meta.url === invokedPath) main();
