@@ -3,6 +3,8 @@ name: Repository Truth Gate
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +18,7 @@ env:
   CI: true
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  DIFF_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
 
 jobs:
   repository-truth:
@@ -27,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
-          fetch-depth: 1
+          fetch-depth: 2
 
       - name: Record and verify exact head
         shell: bash
@@ -35,13 +38,26 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts
           ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
-          printf 'expected_head_sha=%s\nactual_head_sha=%s\nworkflow_run_id=%s\n' \
-            "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$GITHUB_RUN_ID" \
+          printf 'event_name=%s\nexpected_head_sha=%s\nactual_head_sha=%s\ndiff_base_sha=%s\nworkflow_run_id=%s\n' \
+            "$GITHUB_EVENT_NAME" "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$DIFF_BASE_SHA" "$GITHUB_RUN_ID" \
             | tee artifacts/exact-head.txt
           test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
 
       - name: Fetch blobless remote branch history for inventory
         run: git fetch --filter=blob:none --no-tags origin '+refs/heads/*:refs/remotes/origin/*' --prune
+
+      - name: Resolve verification base
+        id: verification_base
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE_SHA="$DIFF_BASE_SHA"
+          if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            BASE_SHA="$(git rev-parse HEAD^)"
+          fi
+          git cat-file -e "$BASE_SHA^{commit}"
+          printf 'base_sha=%s\n' "$BASE_SHA" | tee -a artifacts/exact-head.txt
+          printf 'base_sha=%s\n' "$BASE_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Use repository Node version
         uses: actions/setup-node@v4
@@ -52,25 +68,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Parse-check repository truth auditor
+        run: node --check scripts/audit-failure-truth.mjs
+
       - name: Verify repository-truth gate contracts
         run: node --test test/repository-truth-gates.test.mjs
 
-      - name: Audit failure truth on changed lines
+      - name: Audit failure truth on current change
         id: failure_truth
         continue-on-error: true
-        run: node scripts/audit-failure-truth.mjs --strict --changed-since=origin/main --report=artifacts/failure-truth-report.json
+        run: node scripts/audit-failure-truth.mjs --strict --changed-since=${{ steps.verification_base.outputs.base_sha }} --report=artifacts/failure-truth-report.json
 
       - name: Audit branch hygiene
         id: branch_hygiene
         continue-on-error: true
         env:
-          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref || github.ref_name }}
         run: node scripts/audit-branch-hygiene.mjs --report=artifacts/branch-hygiene-report.json
 
       - name: Verify implementation ledger
         id: implementation_ledger
         continue-on-error: true
-        run: node scripts/verify-implementation-ledger.mjs --changed-since=origin/main
+        run: node scripts/verify-implementation-ledger.mjs --changed-since=${{ steps.verification_base.outputs.base_sha }}
 
       - name: Record aggregate truth conclusion
         if: always()
@@ -81,8 +100,10 @@ jobs:
           IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
         run: |
           set -euo pipefail
-          printf '{\n  "schemaVersion": 1,\n  "exactHead": "%s",\n  "failureTruth": "%s",\n  "branchHygiene": "%s",\n  "implementationLedger": "%s"\n}\n' \
+          printf '{\n  "schemaVersion": 1,\n  "eventName": "%s",\n  "exactHead": "%s",\n  "diffBase": "%s",\n  "failureTruth": "%s",\n  "branchHygiene": "%s",\n  "implementationLedger": "%s"\n}\n' \
+            "$GITHUB_EVENT_NAME" \
             "$EXPECTED_HEAD_SHA" \
+            "${{ steps.verification_base.outputs.base_sha }}" \
             "$FAILURE_TRUTH_OUTCOME" \
             "$BRANCH_HYGIENE_OUTCOME" \
             "$IMPLEMENTATION_LEDGER_OUTCOME" \

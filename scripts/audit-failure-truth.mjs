@@ -209,14 +209,14 @@ export function auditFailureTruth({ rootDir = process.cwd() } = {}) {
   const findings = [];
 
   for (const root of ROOTS) {
-    for (const absolutePath of walk(path.join(rootDir,root)) {
+    for (const absolutePath of walk(path.join(rootDir, root))) {
       const relativePath = path.relative(rootDir, absolutePath).replaceAll('\\', '/');
       const source = fs.readFileSync(absolutePath, 'utf8');
       const blocks = catchesIn(source);
 
       blocks.forEach((block, catchIndex) => {
         const suspiciousRules = SUSPICIOUS_RULES.filter((rule) => rule.pattern.test(block.body)).map((rule) => rule.id);
-        const allowlisted = matchingAllowlist(allowlist,relativePath, block.body);
+        const allowlisted = matchingAllowlist(allowlist, relativePath, block.body);
         const classifier = CLASSIFIERS.find(([, pattern]) => pattern.test(block.body));
         const classification = suspiciousRules.length > 0
           ? 'suspicious-success'

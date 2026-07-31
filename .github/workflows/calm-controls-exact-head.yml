@@ -2,6 +2,15 @@ name: Calm Controls Exact-Head Gate
 
 on:
   pull_request:
+    branches: [main]
+    paths:
+      - 'src/screens/CalmScreen.tsx'
+      - 'app/(teen)/calm/**'
+      - 'test/calm-plan-controls.test.mjs'
+      - 'docs/CALM_CONTROLS_STRIDE.md'
+      - '.github/workflows/calm-controls-exact-head.yml'
+  push:
+    branches: [main]
     paths:
       - 'src/screens/CalmScreen.tsx'
       - 'app/(teen)/calm/**'
@@ -23,7 +32,7 @@ jobs:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
       EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
-      - name: Check out exact pull-request head
+      - name: Check out exact event head
         uses: actions/checkout@v4
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
@@ -34,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
-          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          printf 'event=%s\nexpected=%s\nactual=%s\n' "$GITHUB_EVENT_NAME" "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node

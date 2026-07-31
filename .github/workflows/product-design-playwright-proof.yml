@@ -16,6 +16,21 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/product-design-playwright-proof.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'src/**'
+      - 'screens/**'
+      - 'assets/**'
+      - 'e2e/product-design-review.spec.ts'
+      - 'test/night-room-runtime-registry.test.mjs'
+      - 'test/companion-runtime-contracts.test.mjs'
+      - 'test/dual-front-door-contract.test.mjs'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/product-design-playwright-proof.yml'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out exact event head
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
 
@@ -38,7 +54,7 @@ jobs:
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
-          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          printf 'event=%s\nexpected=%s\nactual=%s\n' "$GITHUB_EVENT_NAME" "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - uses: actions/setup-node@v4
