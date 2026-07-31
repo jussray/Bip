@@ -10,6 +10,7 @@
     "Repository-truth reports are uploaded as commit-scoped workflow artifacts and historical cleanup remains separately approved."
   ],
   "contractPaths": [
+    "REPO_HEALTH_DUPLICATES.md",
     "config/failure-truth-allowlist.json",
     "scripts/audit-failure-truth.mjs",
     "scripts/audit-branch-hygiene.mjs",
