@@ -48,6 +48,27 @@ Room-production work is schema-neutral unless the pull request explicitly declar
 
 The existing Supabase security-advisor backlog must be treated as separate remediation work and never hidden inside Product Design completion language.
 
+## Never signal success on failure
+
+Do not show a success message or set a success flag inside a `catch` block.
+
+If an operation throws or returns a failure Result, the user-visible state must reflect failure. Success may appear only after the intended operation completed and the relevant result was verified.
+
+Truthful fallback and graceful degradation are allowed when they are represented honestly. A fallback reply must remain labeled as fallback; a failed reminder must never say it was set.
+
+Run `node scripts/audit-failure-truth.mjs --strict` when failure handling changes. Any exception must be narrow, reasoned, and registered in `config/failure-truth-allowlist.json`.
+
+## Branch hygiene
+
+Maintain one active implementation branch and one pull request per logical change.
+
+- Branch once from current `main` as `fix/*`, `chore/*`, or `feat/*`.
+- Continue review fixes, CI repairs, and main synchronization on that branch.
+- Do not create duplicate `-v2`, `-v3`, `-current-main`, `-copy`, `-backup`, or `-duplicate` branches to restart the same work.
+- Do not delete historical branches automatically or without reviewed evidence and explicit authority.
+
+Read `REPO_HEALTH_DUPLICATES.md` and run `node scripts/audit-branch-hygiene.mjs` for repository-health work.
+
 ## Non-Negotiable Boundaries
 
 - Never expose unreleased characters, lore, story arcs, proprietary world-building systems, or IP assets to public or model-visible contexts.
