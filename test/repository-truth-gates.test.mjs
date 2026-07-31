@@ -153,6 +153,55 @@ test('changed-line scope still catches suspicious success introduced inside an e
   assert.equal(scoped[0].classification, 'suspicious-success');
 });
 
+test('changed-line scope works when exact head and main are fetched as shallow tips', () => {
+  const source = temporaryDirectory('failure-truth-shallow-source');
+  initialiseRepository(source);
+  write(source, 'config/failure-truth-allowlist.json', '{"schemaVersion":1,"entries":[]}\n');
+  write(source, 'src/reminder.ts', `
+    export async function saveReminder() {
+      try { await scheduleReminder(); }
+      catch (error) {
+        console.warn('schedule failed', error);
+      }
+    }
+  `);
+  commitAll(source, 'main fixture');
+
+  git(source, 'checkout', '-b', 'fix/shallow-truth');
+  write(source, 'src/reminder.ts', `
+    export async function saveReminder() {
+      try { await scheduleReminder(); }
+      catch {
+        setReminderSuccess(true);
+      }
+    }
+  `);
+  commitAll(source, 'branch fixture');
+
+  const checkoutParent = temporaryDirectory('failure-truth-shallow-checkout');
+  const checkout = path.join(checkoutParent, 'repo');
+  execFileSync(
+    'git',
+    ['clone', '--depth=1', '--branch', 'fix/shallow-truth', `file://${source}`, checkout],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
+  );
+  git(checkout, 'fetch', '--depth=1', 'origin', 'main:refs/remotes/origin/main');
+  assert.throws(
+    () => git(checkout, 'merge-base', 'origin/main', 'HEAD'),
+    /Command failed/,
+  );
+
+  const findings = auditFailureTruth({ rootDir: checkout });
+  const scoped = scopeFailureTruthFindings({
+    rootDir: checkout,
+    findings,
+    changedSince: 'origin/main',
+  });
+
+  assert.equal(scoped.length, 1);
+  assert.equal(scoped[0].classification, 'suspicious-success');
+});
+
 test('repository truth workflow scopes strict pull-request enforcement to origin/main', () => {
   const workflow = fs.readFileSync(
     path.join(repositoryRoot, '.github/workflows/repository-truth-gate.yml'),

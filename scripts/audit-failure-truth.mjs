@@ -127,7 +127,7 @@ function loadAllowlist(rootDir) {
   }
   for (const entry of parsed.entries) {
     if (!entry.path || !entry.contains || !entry.classification || !entry.reason) {
-      throw new Error('Every failure-truth-allowlist entry requires path, contains, classification, and reason.');
+      throw new Error('Every failure-truth allowlist entry requires path, contains, classification, and reason.');
     }
   }
   return parsed.entries;
@@ -138,6 +138,7 @@ function matchingAllowlist(entries, relativePath, body) {
 }
 
 function changedLineRanges(rootDir, changedSince) {
+  // Compare commit trees directly so exact-head shallow checkouts do not need a merge base.
   const output = execFileSync(
     'git',
     [
@@ -146,7 +147,8 @@ function changedLineRanges(rootDir, changedSince) {
       '--no-ext-diff',
       '--no-renames',
       '--diff-filter=ACMR',
-      `${changedSince}...HEAD`,
+      changedSince,
+      'HEAD',
       '--',
       ...ROOTS,
     ],
@@ -207,14 +209,14 @@ export function auditFailureTruth({ rootDir = process.cwd() } = {}) {
   const findings = [];
 
   for (const root of ROOTS) {
-    for (const absolutePath of walk(path.join(rootDir, root))) {
+    for (const absolutePath of walk(path.join(rootDir,root)) {
       const relativePath = path.relative(rootDir, absolutePath).replaceAll('\\', '/');
       const source = fs.readFileSync(absolutePath, 'utf8');
       const blocks = catchesIn(source);
 
       blocks.forEach((block, catchIndex) => {
         const suspiciousRules = SUSPICIOUS_RULES.filter((rule) => rule.pattern.test(block.body)).map((rule) => rule.id);
-        const allowlisted = matchingAllowlist(allowlist, relativePath, block.body);
+        const allowlisted = matchingAllowlist(allowlist,relativePath, block.body);
         const classifier = CLASSIFIERS.find(([, pattern]) => pattern.test(block.body));
         const classification = suspiciousRules.length > 0
           ? 'suspicious-success'
