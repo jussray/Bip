@@ -18,13 +18,13 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout exact head with branch history
+      - name: Checkout exact head
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
 
-      - name: Fetch all remote branches for inventory
-        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+      - name: Fetch blobless remote branch history for inventory
+        run: git fetch --filter=blob:none --no-tags origin '+refs/heads/*:refs/remotes/origin/*' --prune
 
       - name: Use repository Node version
         uses: actions/setup-node@v4
