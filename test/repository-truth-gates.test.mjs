@@ -202,14 +202,28 @@ test('changed-line scope works when exact head and main are fetched as shallow t
   assert.equal(scoped[0].classification, 'suspicious-success');
 });
 
-test('repository truth workflow scopes strict pull-request enforcement to origin/main', () => {
+test('repository truth workflow verifies PR and post-merge heads against the event base', () => {
   const workflow = fs.readFileSync(
     path.join(repositoryRoot, '.github/workflows/repository-truth-gate.yml'),
     'utf8',
   );
+
+  assert.match(workflow, /pull_request:\n\s+branches: \[main\]/);
+  assert.match(workflow, /push:\n\s+branches: \[main\]/);
   assert.match(
     workflow,
-    /audit-failure-truth\.mjs --strict --changed-since=origin\/main --report=/,
+    /DIFF_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.before \|\| '' \}\}/,
+  );
+  assert.match(workflow, /BASE_SHA="\$DIFF_BASE_SHA"/);
+  assert.match(workflow, /BASE_SHA="\$\(git rev-parse HEAD\^\)"/);
+  assert.match(workflow, /node --check scripts\/audit-failure-truth\.mjs/);
+  assert.match(
+    workflow,
+    /audit-failure-truth\.mjs --strict --changed-since=\$\{\{ steps\.verification_base\.outputs\.base_sha \}\} --report=/,
+  );
+  assert.match(
+    workflow,
+    /verify-implementation-ledger\.mjs --changed-since=\$\{\{ steps\.verification_base\.outputs\.base_sha \}\}/,
   );
 });
 
