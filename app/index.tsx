@@ -165,10 +165,11 @@ export default function Index() {
           router.replace('/(dev)/control-room' as never);
           return;
         }
-      } catch {
+      } catch (error) {
         // Founder-status lookup is a routing convenience only; any failure
         // (including a signed-in account with no app_profiles row yet)
         // falls through to the ordinary teen/parent front door below.
+        console.warn('Founder-status lookup failed during front-door routing', error);
       }
       if (!active) return;
 
