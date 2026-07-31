@@ -1,0 +1,111 @@
+name: Repository Truth Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-truth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  repository-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
+          printf 'expected_head_sha=%s\nactual_head_sha=%s\nworkflow_run_id=%s\n' \
+            "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$GITHUB_RUN_ID" \
+            | tee artifacts/exact-head.txt
+          test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
+
+      - name: Fetch blobless remote branch history for inventory
+        run: git fetch --filter=blob:none --no-tags origin '+refs/heads/*:refs/remotes/origin/*' --prune
+
+      - name: Use repository Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify repository-truth gate contracts
+        run: node --test test/repository-truth-gates.test.mjs
+
+      - name: Audit failure truth strictly
+        id: failure_truth
+        continue-on-error: true
+        run: node scripts/audit-failure-truth.mjs --strict --report=artifacts/failure-truth-report.json
+
+      - name: Audit branch hygiene
+        id: branch_hygiene
+        continue-on-error: true
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: node scripts/audit-branch-hygiene.mjs --report=artifacts/branch-hygiene-report.json
+
+      - name: Verify implementation ledger
+        id: implementation_ledger
+        continue-on-error: true
+        run: node scripts/verify-implementation-ledger.mjs --changed-since=origin/main
+
+      - name: Record aggregate truth conclusion
+        if: always()
+        shell: bash
+        env:
+          FAILURE_TRUTH_OUTCOME: ${{ steps.failure_truth.outcome }}
+          BRANCH_HYGIENE_OUTCOME: ${{ steps.branch_hygiene.outcome }}
+          IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
+        run: |
+          set -euo pipefail
+          printf '{\n  "schemaVersion": 1,\n  "exactHead": "%s",\n  "failureTruth": "%s",\n  "branchHygiene": "%s",\n  "implementationLedger": "%s"\n}\n' \
+            "$EXPECTED_HEAD_SHA" \
+            "$FAILURE_TRUTH_OUTCOME" \
+            "$BRANCH_HYGIENE_OUTCOME" \
+            "$IMPLEMENTATION_LEDGER_OUTCOME" \
+            | tee artifacts/repository-truth-conclusion.json
+
+      - name: Upload repository-truth evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-truth-${{ env.EXPECTED_HEAD_SHA }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce repository-truth conclusion
+        if: always()
+        shell: bash
+        env:
+          FAILURE_TRUTH_OUTCOME: ${{ steps.failure_truth.outcome }}
+          BRANCH_HYGIENE_OUTCOME: ${{ steps.branch_hygiene.outcome }}
+          IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
+        run: |
+          set -euo pipefail
+          test "$FAILURE_TRUTH_OUTCOME" = success
+          test "$BRANCH_HYGIENE_OUTCOME" = success
+          test "$IMPLEMENTATION_LEDGER_OUTCOME" = success
