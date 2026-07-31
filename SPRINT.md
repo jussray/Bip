@@ -1,9 +1,9 @@
 # Se'kret Bip — Current Sprint
 
-**Sprint date:** 2026-07-29  
+**Sprint date:** 2026-07-31  
 **Default branch:** `main`  
-**Verified application baseline reviewed:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
-**Current launch-gate source:** `docs/LAUNCH_GATE_STATUS_2026-07-29.md`
+**Verified application baseline reviewed:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
+**Current launch-gate source:** `docs/LAUNCH_GATE_STATUS_2026-07-31.md`
 
 `implementation-ledger.json` remains the machine-checked feature-state source. A green PR proves only the scope and evidence that actually ran against its exact head.
 
@@ -23,15 +23,23 @@ Move Se'kret Bip toward controlled-alpha readiness by binding every launch claim
 - PR #691 repaired stale main-contract authority.
 - PR #695 reconciled canonical Cloudflare operator documents and passed its exact-head gate, unit suite, and type-check.
 - PR #698 preserved the active sign-in route through password recovery with exact-head type, lint, unit, bundle, onboarding-smoke, and Product Design/Playwright evidence.
+- PR #700 reconstructed the Calm mood/plan controls repair as a focused four-file branch, with a passing Calm Controls Exact-Head Gate and Product Design Playwright proof. PR #692, its stale mixed-stack predecessor, is closed and preserved only as historical source.
+- PR #701 merged canonical Suhana/Sy companion naming in Teen and Parent Settings.
+- PR #703 and #704 added and hardened a repository failure-truth auditor and branch-hygiene inventory gate.
+- PR #706 repaired a failure-truth parser typo that had blocked shared TypeScript/test lanes, and made Repository Truth, Calm, and Product Design gates run correctly on both PR heads and pushes to `main`.
 
 ### P0 release blocker
 
 [P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) is open: the local Expo build emits both release markers, but live `sekretbip.net` serves application fallbacks instead of JSON at the canonical well-known marker and the legacy marker. Do not claim an exact deployed web SHA, production release, or public launch until this is fixed and independently witnessed.
 
+### Cloudflare branch-control gate
+
+[Issue #646](https://github.com/jussray/Sekret-Bip/issues/646) is open: ordinary PR branches, including documentation-only and single-surface UI branches, have repeatedly triggered automatic production-named Worker deployments for `sekret-backend`, `sekret`, and `bip-mail` before merge or review. Do not create new implementation (product-code) branches or merge existing ones until a Cloudflare administrator records branch-control settings proving non-main branches cannot deploy the production Workers.
+
 ### Review and proof lanes
 
 1. PR #698 merged the password-recovery route-continuity repair; its exact-head checks are repository evidence only. PR #690 is closed as preserved historical review evidence.
-2. PR #692 — Calm controls is retargeted to `main` but currently requires a clean rebase before Product Design review, exact-head checks, or merge consideration.
+2. PR #700 and PR #701 are merged; their exact-head checks are repository evidence only. Real-account, browser, and device proof for the surfaces they touch remain separate gates.
 
 ## Database assurance still required
 
@@ -47,8 +55,8 @@ Do not mark trigger assurance verified from repository structure or catalog obse
 ## Immediate execution order
 
 1. Cloudflare administrator resolves #696 and records the exact Pages build, marker response, Worker health, and production Playwright evidence.
-2. Retain PR #698's merged exact-head evidence, then complete its separate real-account, email-delivery, reset-link, production-deployment, and physical-device proof; do not infer those witnesses from the merge.
-3. Rebase/reconstruct PR #692 from current `main`; inspect the real Calm user path and capture Product Design evidence before merge.
+2. Cloudflare administrator resolves #646 by disabling non-main Worker builds for `sekret-backend`, `sekret`, and `bip-mail` and recording branch-control settings evidence; do not create or merge further implementation branches until then.
+3. Retain PR #698, #700, and #701's merged exact-head evidence, then complete their separate real-account, browser, and physical-device proof; do not infer those witnesses from the merge.
 4. Keep the canonical Markdown and documentation contracts aligned with the live gate and current `main`.
 5. Continue the independent launch gates: authorization, deletion, parent/Bridge lifecycle, accessibility, device QA, legal, safeguarding, moderation, support, backup, restore, incident response, and rollback.
 

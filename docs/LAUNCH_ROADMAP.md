@@ -1,18 +1,28 @@
 # Se'kret Bip — Visual Launch Roadmap
 
-**Last reviewed:** 2026-07-29  
-**Reviewed application baseline:** `2a3d11efa094be2b9ae0a6095a1d84f21844f85b`  
+**Last reviewed:** 2026-07-31  
+**Reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
 
 Documentation-only merges may advance `main` after this application baseline without changing the app evidence.
 **Owner issue:** [#456](https://github.com/jussray/Sekret-Bip/issues/456)
 
 This is the canonical founder-readable map from the current repository state to launch. It describes **sequence and evidence**, not unsupported calendar promises.
 
-`implementation-ledger.json` remains the machine-checked feature-state source. `SPRINT.md` owns the current execution window. `docs/CURRENT_STATUS.md` summarizes what exists now. `docs/LAUNCH_GATE_STATUS_2026-07-29.md` is the active release-gate overlay.
+`implementation-ledger.json` remains the machine-checked feature-state source. `SPRINT.md` owns the current execution window. `docs/CURRENT_STATUS.md` summarizes what exists now. `docs/LAUNCH_GATE_STATUS_2026-07-31.md` is the active release-gate overlay.
 
-## Current 2026-07-29 checkpoint
+## Current 2026-07-31 checkpoint
 
-**Public launch is blocked.** The local web build emits the release marker, but the live Pages domain returns application fallbacks at both public marker paths. See [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696).
+**Public launch is blocked on two founder gates.** The local web build emits the release marker, but the live Pages domain returns application fallbacks at both public marker paths — see [P0 #696](https://github.com/jussray/Sekret-Bip/issues/696). Separately, ordinary PR branches have repeatedly triggered automatic production-named Worker deployments before merge or review — see [#646](https://github.com/jussray/Sekret-Bip/issues/646). Do not create or merge implementation branches while #646 is open.
+
+- PR #595, PR #596, PR #688, PR #691, and PR #695 are merged repository repairs, not current draft blockers.
+- PR #698 is merged repository history; #690 is closed as preserved history.
+- PR #700 reconstructed the Calm mood/plan controls repair as a focused branch and merged; PR #692, its stale mixed-stack predecessor, is closed and preserved only as historical source.
+- PR #701 merged canonical Suhana/Sy companion naming in Teen and Parent Settings.
+- PR #703, #704, and #706 added and hardened the repository failure-truth auditor, branch-hygiene inventory gate, and post-merge Repository Truth/Calm/Product Design verification.
+- The canonical production marker is `/.well-known/sekret-release.json`, not the legacy `/release.json` path.
+- A visual live welcome-screen check showed the approved artwork painting; because the marker is missing, it cannot prove the served commit.
+
+## Historical checkpoint — 2026-07-29 (preserved)
 
 - PR #595 and PR #596 are merged history; they are not current draft blockers.
 - PR #688, PR #691, and PR #695 are merged repository repairs.
