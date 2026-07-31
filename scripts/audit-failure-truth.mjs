@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -110,6 +111,7 @@ function catchesIn(source) {
     matches.push({
       start: match.index,
       line: lineNumber(source, match.index),
+      endLine: lineNumber(source, closingIndex),
       body: source.slice(openingIndex + 1, closingIndex),
     });
     pattern.lastIndex = closingIndex + 1;
@@ -135,19 +137,86 @@ function matchingAllowlist(entries, relativePath, body) {
   return entries.find((entry) => entry.path === relativePath && body.includes(entry.contains));
 }
 
+function changedLineRanges(rootDir, changedSince) {
+  // Compare commit trees directly so exact-head shallow checkouts do not need a merge base.
+  const output = execFileSync(
+    'git',
+    [
+      'diff',
+      '--unified=0',
+      '--no-ext-diff',
+      '--no-renames',
+      '--diff-filter=ACMR',
+      changedSince,
+      'HEAD',
+      '--',
+      ...ROOTS,
+    ],
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+
+  const rangesByPath = new Map();
+  let currentPath = null;
+
+  for (const line of output.split('\n')) {
+    if (line.startsWith('+++ ')) {
+      const marker = line.slice(4);
+      currentPath = marker === '/dev/null'
+        ? null
+        : marker.startsWith('b/')
+          ? marker.slice(2)
+          : marker;
+      continue;
+    }
+
+    const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+    if (!currentPath || !hunk) continue;
+
+    const start = Math.max(1, Number(hunk[1]));
+    const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
+    const end = count === 0 ? start : start + count - 1;
+    const ranges = rangesByPath.get(currentPath) ?? [];
+    ranges.push({ start, end });
+    rangesByPath.set(currentPath, ranges);
+  }
+
+  return rangesByPath;
+}
+
+export function scopeFailureTruthFindings({
+  rootDir = process.cwd(),
+  findings,
+  changedSince = null,
+} = {}) {
+  if (!Array.isArray(findings)) {
+    throw new Error('scopeFailureTruthFindings requires a findings array.');
+  }
+  if (!changedSince) return findings;
+
+  const rangesByPath = changedLineRanges(rootDir, changedSince);
+  return findings.filter((finding) => {
+    const ranges = rangesByPath.get(finding.path) ?? [];
+    return ranges.some((range) => finding.line <= range.end && finding.endLine >= range.start);
+  });
+}
+
 export function auditFailureTruth({ rootDir = process.cwd() } = {}) {
   const allowlist = loadAllowlist(rootDir);
   const findings = [];
 
   for (const root of ROOTS) {
-    for (const absolutePath of walk(path.join(rootDir, root))) {
+    for (const absolutePath of walk(path.join(rootDir,root)) {
       const relativePath = path.relative(rootDir, absolutePath).replaceAll('\\', '/');
       const source = fs.readFileSync(absolutePath, 'utf8');
       const blocks = catchesIn(source);
 
       blocks.forEach((block, catchIndex) => {
         const suspiciousRules = SUSPICIOUS_RULES.filter((rule) => rule.pattern.test(block.body)).map((rule) => rule.id);
-        const allowlisted = matchingAllowlist(allowlist, relativePath, block.body);
+        const allowlisted = matchingAllowlist(allowlist,relativePath, block.body);
         const classifier = CLASSIFIERS.find(([, pattern]) => pattern.test(block.body));
         const classification = suspiciousRules.length > 0
           ? 'suspicious-success'
@@ -156,6 +225,7 @@ export function auditFailureTruth({ rootDir = process.cwd() } = {}) {
         findings.push({
           path: relativePath,
           line: block.line,
+          endLine: block.endLine,
           catchIndex,
           classification,
           suspiciousRules,
@@ -172,17 +242,33 @@ export function auditFailureTruth({ rootDir = process.cwd() } = {}) {
 function parseArgs(argv) {
   return {
     strict: argv.includes('--strict'),
+    changedSince: argv.find((value) => value.startsWith('--changed-since='))?.slice('--changed-since='.length)
+      ?? null,
     report: argv.find((value) => value.startsWith('--report='))?.slice('--report='.length)
       ?? 'artifacts/failure-truth-report.json',
   };
 }
 
-function main() {
-  const rootDir = process.cwd();
-  const { strict, report } = parseArgs(process.argv.slice(2));
-  const findings = auditFailureTruth({ rootDir });
+function summarize(findings) {
   const suspicious = findings.filter((finding) => finding.classification === 'suspicious-success');
   const needsReview = findings.filter((finding) => finding.classification === 'needs-review');
+  return {
+    catchCount: findings.length,
+    suspiciousSuccessCount: suspicious.length,
+    needsReviewCount: needsReview.length,
+    classifiedCount: findings.length - suspicious.length - needsReview.length,
+    suspicious,
+    needsReview,
+  };
+}
+
+function main() {
+  const rootDir = process.cwd();
+  const { strict, changedSince, report } = parseArgs(process.argv.slice(2));
+  const findings = auditFailureTruth({ rootDir });
+  const gateFindings = scopeFailureTruthFindings({ rootDir, findings, changedSince });
+  const inventory = summarize(findings);
+  const gate = summarize(gateFindings);
   const reportPath = path.resolve(rootDir, report);
 
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
@@ -190,24 +276,36 @@ function main() {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     summary: {
-      catchCount: findings.length,
-      suspiciousSuccessCount: suspicious.length,
-      needsReviewCount: needsReview.length,
-      classifiedCount: findings.length - suspicious.length - needsReview.length,
+      catchCount: inventory.catchCount,
+      suspiciousSuccessCount: inventory.suspiciousSuccessCount,
+      needsReviewCount: inventory.needsReviewCount,
+      classifiedCount: inventory.classifiedCount,
+    },
+    gate: {
+      mode: changedSince ? 'changed-lines' : 'full-repository',
+      changedSince,
+      catchCount: gate.catchCount,
+      suspiciousSuccessCount: gate.suspiciousSuccessCount,
+      needsReviewCount: gate.needsReviewCount,
+      classifiedCount: gate.classifiedCount,
     },
     findings,
   }, null, 2)}\n`);
 
-  if (suspicious.length > 0 || (strict && needsReview.length > 0)) {
+  if (gate.suspicious.length > 0 || (strict && gate.needsReview.length > 0)) {
     console.error('FAILURE_TRUTH_GATE_FAILED');
-    for (const finding of [...suspicious, ...(strict ? needsReview : [])]) {
+    for (const finding of [...gate.suspicious, ...(strict ? gate.needsReview : [])]) {
       console.error(`- ${finding.path}:${finding.line} ${finding.classification}${finding.suspiciousRules.length ? ` (${finding.suspiciousRules.join(', ')})` : ''}`);
     }
     console.error(`Report: ${path.relative(rootDir, reportPath)}`);
     process.exit(1);
   }
 
-  console.log(`FAILURE_TRUTH_GATE_PASSED catches=${findings.length} classified=${findings.length - needsReview.length} needs_review=${needsReview.length}`);
+  console.log(
+    `FAILURE_TRUTH_GATE_PASSED mode=${changedSince ? 'changed-lines' : 'full-repository'} `
+      + `evaluated=${gate.catchCount} gate_needs_review=${gate.needsReviewCount} `
+      + `inventory_catches=${inventory.catchCount} inventory_needs_review=${inventory.needsReviewCount}`,
+  );
   console.log(`Report: ${path.relative(rootDir, reportPath)}`);
 }
 

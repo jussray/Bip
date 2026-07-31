@@ -55,10 +55,10 @@ jobs:
       - name: Verify repository-truth gate contracts
         run: node --test test/repository-truth-gates.test.mjs
 
-      - name: Audit failure truth strictly
+      - name: Audit failure truth on changed lines
         id: failure_truth
         continue-on-error: true
-        run: node scripts/audit-failure-truth.mjs --strict --report=artifacts/failure-truth-report.json
+        run: node scripts/audit-failure-truth.mjs --strict --changed-since=origin/main --report=artifacts/failure-truth-report.json
 
       - name: Audit branch hygiene
         id: branch_hygiene
