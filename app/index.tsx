@@ -17,6 +17,7 @@ import {
   resolveParentEntryState,
   routeForParentEntryState,
 } from '@/services/parentEntryState';
+import { getCurrentFounderProfile, isFounderProfile } from '@/services/founderAudit';
 
 function getBuildSide(): AccountSide | null {
   const variant = process.env.EXPO_PUBLIC_APP_VARIANT;
@@ -157,6 +158,19 @@ export default function Index() {
         );
         return;
       }
+
+      try {
+        const founderProfile = await getCurrentFounderProfile();
+        if (active && isFounderProfile(founderProfile)) {
+          router.replace('/(dev)/control-room' as never);
+          return;
+        }
+      } catch {
+        // Founder-status lookup is a routing convenience only; any failure
+        // (including a signed-in account with no app_profiles row yet)
+        // falls through to the ordinary teen/parent front door below.
+      }
+      if (!active) return;
 
       if (accountProfile.accountSide === 'parent') {
         try {

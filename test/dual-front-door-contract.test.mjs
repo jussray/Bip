@@ -54,3 +54,24 @@ test('primary entry language matches the approved front-door promise', () => {
   assert.match(welcome, />Enter Se’kret Bip</);
   assert.doesNotMatch(welcome, />Night|>Suhana|>Sy/);
 });
+
+test('a founder account gets its own front door instead of dead-ending in the teen or parent surface (#563)', () => {
+  assert.match(index, /import \{ getCurrentFounderProfile, isFounderProfile \} from '@\/services\/founderAudit'/);
+  assert.match(index, /const founderProfile = await getCurrentFounderProfile\(\)/);
+  assert.match(index, /isFounderProfile\(founderProfile\)/);
+  assert.match(index, /router\.replace\('\/\(dev\)\/control-room' as never\)/);
+
+  // The founder check must run after the shared consent/onboarding gates
+  // (so a founder account still completes real onboarding once), and
+  // before the parent/teen room routing it takes priority over.
+  const onboardingGateIndex = index.indexOf("accountProfile?.onboardingComplete");
+  const founderCheckIndex = index.indexOf('getCurrentFounderProfile()');
+  const parentBranchIndex = index.indexOf("accountProfile.accountSide === 'parent'");
+  assert.ok(onboardingGateIndex !== -1 && founderCheckIndex !== -1 && parentBranchIndex !== -1);
+  assert.ok(onboardingGateIndex < founderCheckIndex, 'founder check must run after the onboarding-complete gate');
+  assert.ok(founderCheckIndex < parentBranchIndex, 'founder check must run before the parent/teen room routing');
+
+  // A failed or non-founder lookup must fall through to the ordinary
+  // teen/parent front door rather than trap the account.
+  assert.match(index, /Founder-status lookup is a routing convenience only/);
+});
