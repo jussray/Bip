@@ -562,6 +562,23 @@ test('trigger behavior phase 1 proves apply_point_transaction, handle_bip_event_
   }
 });
 
+test('trigger behavior phase 2 proves cleanup_crew_relationship_access and record_bridge_signal_activity', () => {
+  const phase = baseline.behaviorProbePhases.find((entry) => entry.phase === 'trigger_behavior_phase2');
+  assert.ok(phase, 'trigger_behavior_phase2 evidence is missing from the baseline');
+  assert.equal(phase.transactionOutcome, 'rolled_back');
+  assert.equal(phase.syntheticRowsRetained, 0);
+  assert.equal(phase.failedChecks, 0);
+  assert.ok(phase.passedChecks > 0);
+  assert.ok(fs.existsSync(path.join(root, phase.probePath)), `${phase.probePath} must exist`);
+
+  for (const signature of phase.coveredFunctions) {
+    const reviewed = repositoryFunctions.get(signature.toLowerCase());
+    assert.ok(reviewed, `${signature} must be a reviewed baseline function`);
+    assert.equal(reviewed.behaviorVerified, true, `${signature} must be marked behaviorVerified`);
+    assert.equal(reviewed.behaviorEvidence, 'trigger_behavior_phase2');
+  }
+});
+
 test.todo(
-  'run external-effect-safe rollback-contained behavior probes for the remaining safety, auth-profile, and relationship-cleanup triggers listed in trigger_behavior_phase1.notCoveredThisPhase',
+  'run external-effect-safe rollback-contained behavior probes for the remaining safety and auth-profile triggers listed in trigger_behavior_phase2.notCoveredThisPhase',
 );
