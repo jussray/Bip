@@ -1,6 +1,7 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const PROHIBITED_BRANCH = /(?:^|[-/])(?:v\d+|current-main|copy|backup|duplicate)(?:$|[-/])/i;
 const DEFAULT_STALE_DAYS = 30;
@@ -139,4 +140,5 @@ function main() {
   console.log(`Report: ${path.relative(rootDir, reportPath)}`);
 }
 
-if (import.meta.url === new URL(`file://${process.argv[1]}`).href) main();
+const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
+if (import.meta.url === invokedPath) main();
