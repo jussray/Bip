@@ -1,0 +1,59 @@
+name: Repository Truth Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-truth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout exact head with branch history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all remote branches for inventory
+        run: git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
+
+      - name: Use repository Node version
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Verify repository-truth gate contracts
+        run: node --test test/repository-truth-gates.test.mjs
+
+      - name: Audit failure truth strictly
+        run: node scripts/audit-failure-truth.mjs --strict --report=artifacts/failure-truth-report.json
+
+      - name: Audit branch hygiene
+        env:
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+        run: node scripts/audit-branch-hygiene.mjs --report=artifacts/branch-hygiene-report.json
+
+      - name: Verify implementation ledger
+        run: node scripts/verify-implementation-ledger.mjs --changed-since=origin/main
+
+      - name: Upload repository-truth evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-truth-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/*.json
+          if-no-files-found: warn
+          retention-days: 30
