@@ -18,7 +18,10 @@ test('current repository authority stays internally consistent', () => {
   assert.match(wrangler, /^main = "worker\/voice-entry\.ts"$/m);
   assert.ok(workflow.includes('https://sekretbip.net/.well-known/sekret-release.json'));
   assert.equal(pkg.scripts['deploy:worker'], 'npm run deploy:api:production');
-  assert.equal(pkg.scripts['deploy:api:production'], 'wrangler deploy');
+  assert.equal(
+    pkg.scripts['deploy:api:production'],
+    'node scripts/assert-production-deploy-branch.mjs && wrangler deploy',
+  );
   assert.ok(ownership.includes('`worker/voice-entry.ts`'));
   assert.ok(emailRouting.includes('`worker/voice-entry.ts`'));
   assert.ok(!ownership.includes('https://sekretbip.net/release.json'));
