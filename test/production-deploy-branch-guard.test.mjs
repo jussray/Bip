@@ -16,7 +16,12 @@ test('normalizes common branch reference formats', () => {
 
 test('allows Workers Builds production branch main', () => {
   const result = assertProductionDeployBranch({
-    env: { WORKERS_CI: '1', WORKERS_CI_BRANCH: 'main' },
+    env: {
+      WORKERS_CI: '1',
+      WORKERS_CI_BRANCH: 'main',
+      GITHUB_HEAD_REF: 'feature/ignored-in-workers-context',
+      GITHUB_REF_NAME: '712/merge',
+    },
     readGitBranch: noGitBranch,
   });
 
@@ -34,9 +39,20 @@ test('blocks Workers Builds feature branches before Wrangler executes', () => {
   );
 });
 
+test('fails closed when Workers Builds omits its branch variable', () => {
+  assert.throws(
+    () =>
+      assertProductionDeployBranch({
+        env: { WORKERS_CI: '1', GITHUB_HEAD_REF: 'main' },
+        readGitBranch: noGitBranch,
+      }),
+    /WORKERS_CI_BRANCH did not provide branch authority/,
+  );
+});
+
 test('allows Cloudflare Pages production branch main', () => {
   const result = assertProductionDeployBranch({
-    env: { CI: 'true', CF_PAGES_BRANCH: 'main' },
+    env: { CF_PAGES: '1', CF_PAGES_BRANCH: 'main' },
     readGitBranch: noGitBranch,
   });
 
@@ -44,18 +60,30 @@ test('allows Cloudflare Pages production branch main', () => {
   assert.equal(result.source, 'CF_PAGES_BRANCH');
 });
 
-test('rejects conflicting provider and GitHub branch evidence', () => {
+test('fails closed when Pages omits its branch variable', () => {
   assert.throws(
     () =>
-      resolveDeployBranch({
-        env: {
-          WORKERS_CI_BRANCH: 'main',
-          GITHUB_HEAD_REF: 'feature/conflict',
-        },
+      assertProductionDeployBranch({
+        env: { CF_PAGES: '1' },
         readGitBranch: noGitBranch,
       }),
-    /Conflicting deployment branch evidence/,
+    /CF_PAGES_BRANCH did not provide branch authority/,
   );
+});
+
+test('prefers the real GitHub PR head over the synthetic merge ref', () => {
+  const result = resolveDeployBranch({
+    env: {
+      GITHUB_HEAD_REF: 'fix/cloudflare-production-branch-fuse-20260802',
+      GITHUB_REF_NAME: '712/merge',
+    },
+    readGitBranch: noGitBranch,
+  });
+
+  assert.deepEqual(result, {
+    branch: 'fix/cloudflare-production-branch-fuse-20260802',
+    source: 'GITHUB_HEAD_REF',
+  });
 });
 
 test('uses the local git branch when provider evidence is absent', () => {
