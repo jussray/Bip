@@ -3,12 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PRODUCTION_BRANCH = 'main';
-const PROVIDER_BRANCH_KEYS = [
-  'WORKERS_CI_BRANCH',
-  'CF_PAGES_BRANCH',
-  'GITHUB_HEAD_REF',
-  'GITHUB_REF_NAME',
-];
 
 export function normalizeBranch(value) {
   return String(value ?? '')
@@ -30,21 +24,31 @@ function readCurrentGitBranch() {
 }
 
 export function resolveDeployBranch({ env = process.env, readGitBranch = readCurrentGitBranch } = {}) {
-  const providerEvidence = PROVIDER_BRANCH_KEYS
-    .map((key) => ({ key, branch: normalizeBranch(env[key]) }))
-    .filter(({ branch }) => branch);
+  const workersBranch = normalizeBranch(env.WORKERS_CI_BRANCH);
+  const pagesBranch = normalizeBranch(env.CF_PAGES_BRANCH);
+  const githubHeadBranch = normalizeBranch(env.GITHUB_HEAD_REF);
+  const githubRefBranch = normalizeBranch(env.GITHUB_REF_NAME);
 
-  const uniqueProviderBranches = [...new Set(providerEvidence.map(({ branch }) => branch))];
-  if (uniqueProviderBranches.length > 1) {
-    const detail = providerEvidence.map(({ key, branch }) => `${key}=${branch}`).join(', ');
-    throw new Error(`Conflicting deployment branch evidence: ${detail}`);
+  if (env.WORKERS_CI === '1') {
+    if (!workersBranch) {
+      return { branch: '', source: 'WORKERS_CI_BRANCH' };
+    }
+    return { branch: workersBranch, source: 'WORKERS_CI_BRANCH' };
   }
 
-  if (uniqueProviderBranches.length === 1) {
-    return {
-      branch: uniqueProviderBranches[0],
-      source: providerEvidence.map(({ key }) => key).join('+'),
-    };
+  if (env.CF_PAGES === '1' || pagesBranch) {
+    if (!pagesBranch) {
+      return { branch: '', source: 'CF_PAGES_BRANCH' };
+    }
+    return { branch: pagesBranch, source: 'CF_PAGES_BRANCH' };
+  }
+
+  if (githubHeadBranch) {
+    return { branch: githubHeadBranch, source: 'GITHUB_HEAD_REF' };
+  }
+
+  if (githubRefBranch) {
+    return { branch: githubRefBranch, source: 'GITHUB_REF_NAME' };
   }
 
   const gitBranch = normalizeBranch(readGitBranch());
@@ -53,7 +57,7 @@ export function resolveDeployBranch({ env = process.env, readGitBranch = readCur
   }
 
   const localOverride = normalizeBranch(env.SEKRET_DEPLOY_BRANCH);
-  const isProviderOrCi = env.WORKERS_CI === '1' || env.CI === 'true';
+  const isProviderOrCi = env.WORKERS_CI === '1' || env.CF_PAGES === '1' || env.CI === 'true';
   if (
     localOverride &&
     env.SEKRET_PRODUCTION_DEPLOY_APPROVED === '1' &&
@@ -70,10 +74,10 @@ export function assertProductionDeployBranch(options = {}) {
 
   if (!result.branch) {
     throw new Error(
-      'Production deployment blocked: branch authority is unknown. ' +
+      `Production deployment blocked: ${result.source} did not provide branch authority. ` +
         'Run from main, or for a deliberate local detached-head release set ' +
         'SEKRET_DEPLOY_BRANCH=main and SEKRET_PRODUCTION_DEPLOY_APPROVED=1. ' +
-        'CI and Workers Builds may not use this override.',
+        'CI, Workers Builds, and Pages may not use this override.',
     );
   }
 
