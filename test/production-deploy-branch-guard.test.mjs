@@ -102,7 +102,7 @@ test('fails closed when CI branch authority is unavailable', () => {
         env: { CI: 'true' },
         readGitBranch: noGitBranch,
       }),
-    /branch authority is unknown/,
+    /did not provide branch authority/,
   );
 });
 
@@ -126,7 +126,7 @@ test('permits an explicit detached-head override only outside CI', () => {
         },
         readGitBranch: noGitBranch,
       }),
-    /branch authority is unknown/,
+    /did not provide branch authority/,
   );
 });
 
