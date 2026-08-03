@@ -7,9 +7,13 @@ on:
     paths:
       - app/index.tsx
       - screens/WebWelcomeScreen.tsx
+      - constants/frontDoorTheme.ts
+      - constants/vibeColors.ts
+      - test/dual-front-door-contract.test.mjs
       - src/middleware/auth.ts
       - src/utils/supabase.ts
       - assets/brand/sekret-bip-teen-family-v1.jpg
+      - assets/images/parent-space-splash.png
       - e2e/smoke.spec.ts
       - playwright.config.ts
       - package.json
@@ -63,6 +67,13 @@ jobs:
 
       - name: Install repository dependencies
         run: npm ci
+
+      - name: Run front-door source contracts
+        shell: bash
+        run: |
+          set -o pipefail
+          node --test test/dual-front-door-contract.test.mjs \
+            2>&1 | tee gate-evidence/front-door-contracts.log
 
       - name: Compare TypeScript diagnostics with base
         shell: bash
@@ -124,7 +135,7 @@ jobs:
         run: |
           set -o pipefail
           npx playwright test e2e/smoke.spec.ts \
-            --grep "teen splash leads into onboarding welcome|web welcome|frontend entry" \
+            --grep "teen front door|parent front door|rollback front door|web welcome|frontend entry" \
             --trace on 2>&1 | tee gate-evidence/playwright.log
 
       - name: Upload exact-head evidence
