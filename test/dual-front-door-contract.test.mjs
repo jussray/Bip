@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const welcome = readFileSync('screens/WebWelcomeScreen.tsx', 'utf8');
+const theme = readFileSync('constants/frontDoorTheme.ts', 'utf8');
 const index = readFileSync('app/index.tsx', 'utf8');
 
 test('teen front door keeps canonical accessible names without a visible caption', () => {
@@ -13,12 +14,23 @@ test('teen front door keeps canonical accessible names without a visible caption
   assert.match(welcome, /Night on the left, Suhana in the center, Sy on the right/);
 });
 
-test('Bip Jr remains a separate parent-side welcome world', () => {
+test('presentation audience is separate from account role', () => {
+  assert.match(welcome, /export type WelcomeAudience = 'teen' \| 'bip-jr'/);
+  assert.match(welcome, /welcomeAudienceForAccountSide\(side: AccountSide\)/);
+  assert.match(welcome, /accountSideForWelcomeAudience\(audience: WelcomeAudience\)/);
+  assert.match(welcome, /audienceOverride === 'teen' \|\| audienceOverride === 'bip-jr'/);
+  assert.match(welcome, /legacySideOverride === 'teen' \|\| legacySideOverride === 'parent'/);
+  assert.match(welcome, /const entrySide = accountSideForWelcomeAudience\(activeAudience\)/);
+  assert.match(welcome, /onEnter\(entrySide\)/);
+  assert.doesNotMatch(welcome, /const isBipJr = activeVariant === 'parent'/);
+});
+
+test('Bip Jr remains a separate welcome world while preserving role compatibility', () => {
   assert.match(welcome, /parent-space-splash\.png/);
   assert.match(welcome, /YOUR FAMILY\. YOUR SPACE\./);
-  assert.match(welcome, /const isBipJr = activeVariant === 'parent'/);
+  assert.match(welcome, /const isBipJr = activeAudience === 'bip-jr'/);
+  assert.match(welcome, /bipDevAudience/);
   assert.match(welcome, /bipDevSide/);
-  assert.match(welcome, /onEnter\(activeVariant\)/);
   assert.match(index, /variant=\{publicWelcomeSide\}/);
 });
 
@@ -30,11 +42,39 @@ test('explicit Enter choice outranks preview and build defaults', () => {
   assert.match(index, /signup\?side=\$\{publicEntrySide\}/);
 });
 
-test('each preview variant uses one direct Enter control with variant-specific accessible copy', () => {
+test('front door consumes one canonical token extension instead of screen-local colors', () => {
+  assert.match(welcome, /import \{ FRONT_DOOR_THEME \} from '@\/constants\/frontDoorTheme'/);
+  assert.match(theme, /import \{ MOTION, RADIUS, SPACE, TYPE \} from '\.\/vibeColors'/);
+  assert.match(theme, /heroSafeArea/);
+  assert.match(theme, /teen:/);
+  assert.match(theme, /bipJr:/);
+  assert.doesNotMatch(welcome, /#[0-9A-Fa-f]{3,8}/);
+  assert.doesNotMatch(welcome, /rgba\(/);
+});
+
+test('About is a real accessible action and sound-like decoration is not interactive', () => {
+  assert.match(welcome, /testID="web-welcome-about"/);
+  assert.match(welcome, /accessibilityState=\{\{ expanded: aboutOpen \}\}/);
+  assert.match(welcome, /setAboutOpen\(value => !value\)/);
+  assert.match(welcome, /testID="web-welcome-about-panel"/);
+  assert.match(welcome, /importantForAccessibility="no-hide-descendants"/);
+  assert.doesNotMatch(welcome, /accessibilityLabel="Welcome sound"/);
+});
+
+test('hero safe-area contract protects artwork from the primary action', () => {
+  assert.match(welcome, /testID="web-welcome-hero-safe-area"/);
+  assert.match(welcome, /heroContract\.bottomGap/);
+  assert.match(welcome, /shortViewport/);
+  assert.match(welcome, /heroContract\.shortHeight/);
+  assert.match(welcome, /heroContract\.compactHeight/);
+  assert.match(welcome, /heroContract\.desktopHeight/);
+});
+
+test('each preview audience uses one direct Enter control with truthful accessible copy', () => {
   assert.match(welcome, /testID="web-welcome-enter"/);
-  assert.match(welcome, /Bip Jr — enter your family space/);
-  assert.match(welcome, /Se'kret Bip — enter your safe space/);
-  assert.match(welcome, /onPress=\{\(\) => onEnter\(activeVariant\)\}/);
+  assert.match(welcome, /Bip Jr family welcome — continue to family setup/);
+  assert.match(welcome, /Se'kret Bip teen welcome — continue to age setup/);
+  assert.match(welcome, /onPress=\{\(\) => onEnter\(entrySide\)\}/);
   assert.doesNotMatch(welcome, /web-welcome-enter-teen|web-welcome-enter-parent|web-welcome-bottom-nav/);
   assert.match(welcome, /accessibilityRole="button"/);
 });
@@ -46,13 +86,14 @@ test('account-return action is fail-closed until the caller proves no restored s
   assert.match(welcome, /testID="web-welcome-sign-in"/);
   assert.match(welcome, /Already have an account\?/);
   assert.match(welcome, />Sign in</);
-  assert.match(welcome, /router\.push\(`\/\(auth\)\/login\?side=\$\{activeVariant\}` as never\)/);
+  assert.match(welcome, /router\.push\(`\/\(auth\)\/login\?side=\$\{entrySide\}` as never\)/);
   assert.doesNotMatch(index, /showSignIn=\{true\}/);
 });
 
-test('primary entry language matches the approved front-door promise', () => {
+test('primary entry language matches the approved front-door promise without absolute safety claims', () => {
   assert.match(welcome, />Enter Se’kret Bip</);
   assert.doesNotMatch(welcome, />Night|>Suhana|>Sy/);
+  assert.doesNotMatch(welcome, /safe little world|you’re safe here|enter your safe space/i);
 });
 
 test('a founder account gets its own front door instead of dead-ending in the teen or parent surface (#563)', () => {
@@ -61,17 +102,11 @@ test('a founder account gets its own front door instead of dead-ending in the te
   assert.match(index, /isFounderProfile\(founderProfile\)/);
   assert.match(index, /router\.replace\('\/\(dev\)\/control-room' as never\)/);
 
-  // The founder check must run after the shared consent/onboarding gates
-  // (so a founder account still completes real onboarding once), and
-  // before the parent/teen room routing it takes priority over.
   const onboardingGateIndex = index.indexOf("accountProfile?.onboardingComplete");
   const founderCheckIndex = index.indexOf('getCurrentFounderProfile()');
   const parentBranchIndex = index.indexOf("accountProfile.accountSide === 'parent'");
   assert.ok(onboardingGateIndex !== -1 && founderCheckIndex !== -1 && parentBranchIndex !== -1);
   assert.ok(onboardingGateIndex < founderCheckIndex, 'founder check must run after the onboarding-complete gate');
   assert.ok(founderCheckIndex < parentBranchIndex, 'founder check must run before the parent/teen room routing');
-
-  // A failed or non-founder lookup must fall through to the ordinary
-  // teen/parent front door rather than trap the account.
   assert.match(index, /Founder-status lookup is a routing convenience only/);
 });
