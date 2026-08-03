@@ -8,17 +8,17 @@ const VIEWPORTS = [
 const VARIANTS = [
   {
     name: 'teen',
-    url: '/?bipDevSide=teen',
+    url: '/?bipDevAudience=teen',
     heroTestId: 'web-welcome-hero-teen',
     identityText: 'YOUR PEOPLE. YOUR PEACE.',
-    enterName: "Se'kret Bip — enter your safe space",
+    enterName: "Se'kret Bip teen welcome — continue to age setup",
   },
   {
-    name: 'parent',
-    url: '/?bipDevSide=parent',
+    name: 'bip-jr',
+    url: '/?bipDevAudience=bip-jr',
     heroTestId: 'web-welcome-hero-bip-jr',
     identityText: 'YOUR FAMILY. YOUR SPACE.',
-    enterName: 'Bip Jr — enter your family space',
+    enterName: 'Bip Jr family welcome — continue to family setup',
   },
 ] as const;
 
@@ -64,14 +64,14 @@ for (const variant of VARIANTS) {
 }
 
 test('Teen entry preserves the teen onboarding path', async ({ page }) => {
-  await page.goto('/?bipDevSide=teen', { waitUntil: 'networkidle' });
+  await page.goto('/?bipDevAudience=teen', { waitUntil: 'networkidle' });
   await page.getByTestId('web-welcome-enter').click();
   await expect(page).toHaveURL(/\/welcome(?:\?|$)/);
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
 });
 
-test('Parent entry preserves the parent onboarding path', async ({ page }) => {
-  await page.goto('/?bipDevSide=parent', { waitUntil: 'networkidle' });
+test('Bip Jr entry preserves the parent onboarding path', async ({ page }) => {
+  await page.goto('/?bipDevAudience=bip-jr', { waitUntil: 'networkidle' });
   await page.getByTestId('web-welcome-enter').click();
   await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
   await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
