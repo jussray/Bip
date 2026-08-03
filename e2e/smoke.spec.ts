@@ -35,10 +35,11 @@ test('web welcome About control is keyboard accessible and reveals truthful scop
   await page.goto('/?bipDevAudience=teen');
   const about = page.getByTestId('web-welcome-about');
   await expect(about).toBeVisible({ timeout: 30_000 });
-  await expect(about).toHaveAttribute('aria-expanded', 'false');
+  await expect(about).toHaveAccessibleName("About Se'kret Bip");
+  await expect(page.getByTestId('web-welcome-about-panel')).toHaveCount(0);
   await about.focus();
   await page.keyboard.press('Enter');
-  await expect(about).toHaveAttribute('aria-expanded', 'true');
+  await expect(about).toHaveAccessibleName("Close About Se'kret Bip");
   await expect(page.getByTestId('web-welcome-about-panel')).toContainText('Two welcome worlds. One connected family.');
   await expect(page.getByText(/Account setup and age-appropriate permissions decide what each person can access/)).toBeVisible();
 });
@@ -123,10 +124,24 @@ test('frontend entry remains contained at tablet width', async ({ page }) => {
 test('web welcome remains stable when reduced motion is requested', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/?bipDevAudience=teen');
-  await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
+  const shell = page.getByTestId('web-welcome-shell');
+  await expect(shell).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
-  const animatedElements = await page.locator('[style*="animation"], [style*="transition"]').count();
-  expect(animatedElements).toBe(0);
+  const activeMotion = await shell.evaluate(element => {
+    const nodes = [element, ...element.querySelectorAll('*')];
+    return nodes.flatMap(node => {
+      const style = window.getComputedStyle(node);
+      const hasAnimation = style.animationName !== 'none'
+        && style.animationDuration.split(',').some(value => Number.parseFloat(value) > 0);
+      const hasTransition = style.transitionDuration
+        .split(',')
+        .some(value => Number.parseFloat(value) > 0);
+      return hasAnimation || hasTransition
+        ? [{ tag: node.tagName, animation: style.animationName, animationDuration: style.animationDuration, transitionDuration: style.transitionDuration }]
+        : [];
+    });
+  });
+  expect(activeMotion).toEqual([]);
 });
 
 test('login deep link renders current controls and survives refresh', async ({ page }) => {
