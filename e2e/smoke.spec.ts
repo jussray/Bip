@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('teen front door leads directly into age-bucket onboarding', async ({ page }) => {
-  await page.goto('/?bipDevSide=teen');
+  await page.goto('/?bipDevAudience=teen');
   const enter = page.getByTestId('web-welcome-enter');
   await expect(enter).toBeVisible({ timeout: 30_000 });
   await enter.click();
@@ -10,15 +10,16 @@ test('teen front door leads directly into age-bucket onboarding', async ({ page 
 });
 
 test('parent front door leads directly into parent onboarding', async ({ page }) => {
-  await page.goto('/?bipDevSide=parent');
+  await page.goto('/?bipDevAudience=bip-jr');
   const enter = page.getByTestId('web-welcome-enter');
   await expect(enter).toBeVisible({ timeout: 30_000 });
+  await expect(enter).toHaveAccessibleName('Bip Jr family welcome — continue to family setup');
   await enter.click();
   await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
 });
 
 test('rollback front door exposes bounded working actions and canonical identity', async ({ page }) => {
-  await page.goto('/?bipDevSide=teen');
+  await page.goto('/?bipDevAudience=teen');
   await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible();
   await expect(page.getByText('Come on in.')).toBeVisible();
@@ -30,8 +31,20 @@ test('rollback front door exposes bounded working actions and canonical identity
   await page.screenshot({ path: 'test-results/front-door-desktop.png', fullPage: true });
 });
 
+test('web welcome About control is keyboard accessible and reveals truthful scope', async ({ page }) => {
+  await page.goto('/?bipDevAudience=teen');
+  const about = page.getByTestId('web-welcome-about');
+  await expect(about).toBeVisible({ timeout: 30_000 });
+  await expect(about).toHaveAttribute('aria-expanded', 'false');
+  await about.focus();
+  await page.keyboard.press('Enter');
+  await expect(about).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByTestId('web-welcome-about-panel')).toContainText('Two welcome worlds. One connected family.');
+  await expect(page.getByText(/Account setup and age-appropriate permissions decide what each person can access/)).toBeVisible();
+});
+
 test('web welcome Enter supports keyboard activation', async ({ page }) => {
-  await page.goto('/?bipDevSide=teen');
+  await page.goto('/?bipDevAudience=teen');
   const enter = page.getByTestId('web-welcome-enter');
   await expect(enter).toBeVisible({ timeout: 30_000 });
   await enter.focus();
@@ -39,9 +52,36 @@ test('web welcome Enter supports keyboard activation', async ({ page }) => {
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
 });
 
+test('web welcome hero safe area keeps the primary action below teen artwork', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?bipDevAudience=teen');
+  const heroSafeArea = page.getByTestId('web-welcome-hero-safe-area');
+  const enter = page.getByTestId('web-welcome-enter');
+  await expect(heroSafeArea).toBeVisible({ timeout: 30_000 });
+  await expect(enter).toBeVisible();
+  const heroBox = await heroSafeArea.boundingBox();
+  const enterBox = await enter.boundingBox();
+  expect(heroBox).not.toBeNull();
+  expect(enterBox).not.toBeNull();
+  expect(enterBox!.y).toBeGreaterThanOrEqual(heroBox!.y + heroBox!.height);
+});
+
+test('web welcome hero safe area keeps the primary action below Bip Jr artwork', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?bipDevAudience=bip-jr');
+  const heroSafeArea = page.getByTestId('web-welcome-hero-safe-area');
+  const enter = page.getByTestId('web-welcome-enter');
+  await expect(page.getByTestId('web-welcome-hero-bip-jr')).toBeVisible({ timeout: 30_000 });
+  const heroBox = await heroSafeArea.boundingBox();
+  const enterBox = await enter.boundingBox();
+  expect(heroBox).not.toBeNull();
+  expect(enterBox).not.toBeNull();
+  expect(enterBox!.y).toBeGreaterThanOrEqual(heroBox!.y + heroBox!.height);
+});
+
 test('frontend entry renders at phone width without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?bipDevAudience=teen');
   const enter = page.getByTestId('web-welcome-enter');
   await expect(enter).toBeVisible({ timeout: 30_000 });
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -50,12 +90,12 @@ test('frontend entry renders at phone width without horizontal overflow', async 
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);
   expect(box!.x + box!.width).toBeLessThanOrEqual(390);
-  await page.screenshot({ path: 'test-results/front-door-390x844.png' });
+  await page.screenshot({ path: 'test-results/front-door-390x844.png', fullPage: true });
 });
 
 test('frontend entry remains contained on a short narrow phone viewport', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 568 });
-  await page.goto('/');
+  await page.goto('/?bipDevAudience=teen');
   const shell = page.getByTestId('web-welcome-shell');
   await expect(shell).toBeVisible({ timeout: 30_000 });
   const hasHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
@@ -64,7 +104,29 @@ test('frontend entry remains contained on a short narrow phone viewport', async 
   expect(shellBox).not.toBeNull();
   expect(shellBox!.x).toBeGreaterThanOrEqual(0);
   expect(shellBox!.x + shellBox!.width).toBeLessThanOrEqual(320);
-  await page.screenshot({ path: 'test-results/front-door-320x568.png' });
+  await page.screenshot({ path: 'test-results/front-door-320x568.png', fullPage: true });
+});
+
+test('frontend entry remains contained at tablet width', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.goto('/?bipDevAudience=bip-jr');
+  const shell = page.getByTestId('web-welcome-shell');
+  await expect(shell).toBeVisible({ timeout: 30_000 });
+  const shellBox = await shell.boundingBox();
+  expect(shellBox).not.toBeNull();
+  expect(shellBox!.width).toBeLessThanOrEqual(430);
+  expect(shellBox!.x).toBeGreaterThanOrEqual(0);
+  expect(shellBox!.x + shellBox!.width).toBeLessThanOrEqual(768);
+  await page.screenshot({ path: 'test-results/front-door-tablet-768x1024.png', fullPage: true });
+});
+
+test('web welcome remains stable when reduced motion is requested', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/?bipDevAudience=teen');
+  await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
+  const animatedElements = await page.locator('[style*="animation"], [style*="transition"]').count();
+  expect(animatedElements).toBe(0);
 });
 
 test('login deep link renders current controls and survives refresh', async ({ page }) => {
@@ -92,7 +154,7 @@ test('parent signup deep link exposes account creation controls', async ({ page 
 });
 
 test('protected teen routes remain behind the public boundary', async ({ page }) => {
-  await page.goto('/circle?bipDevSide=teen');
+  await page.goto('/circle?bipDevAudience=teen');
   await expect(page.getByTestId('web-welcome-enter')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('🌐 Circle')).not.toBeVisible();
 });
