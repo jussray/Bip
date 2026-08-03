@@ -128,7 +128,7 @@ test('web welcome remains stable when reduced motion is requested', async ({ pag
   await expect(shell).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
   const activeMotion = await shell.evaluate(element => {
-    const nodes = [element, ...element.querySelectorAll('*')];
+    const nodes = [element, ...Array.from(element.querySelectorAll('*'))];
     return nodes.flatMap(node => {
       const style = window.getComputedStyle(node);
       const hasAnimation = style.animationName !== 'none'
