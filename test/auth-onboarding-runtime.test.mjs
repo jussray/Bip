@@ -64,6 +64,20 @@ test('login and signup wait for the same post-auth fetch contract before routing
   assert.match(bootstrap, /A permanent signed-in account is required/);
 });
 
+test('authorized founder login routes before public consent and onboarding gates', () => {
+  const founderLookupIndex = bootstrap.indexOf('const founderProfile = await getCurrentFounderProfile()');
+  const founderRouteIndex = bootstrap.indexOf("nextRoute: '/(dev)/control-room'");
+  const profileHydrationIndex = bootstrap.indexOf('const profile = prehydratedProfile === undefined');
+  const consentLoadIndex = bootstrap.indexOf('await consentService.load(user.id)');
+
+  assert.match(bootstrap, /isFounderProfile\(founderProfile\)/);
+  assert.ok(founderLookupIndex >= 0);
+  assert.ok(founderRouteIndex > founderLookupIndex);
+  assert.ok(profileHydrationIndex > founderRouteIndex);
+  assert.ok(consentLoadIndex > founderRouteIndex);
+  assert.match(bootstrap, /requiredConsentsComplete: false/);
+});
+
 test('required consent is explicit, persisted, and not inferred from navigation', () => {
   assert.match(consent, /accessibilityRole="checkbox"/);
   assert.match(consent, /I reviewed the Privacy Policy/);
