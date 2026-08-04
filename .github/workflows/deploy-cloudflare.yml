@@ -11,6 +11,7 @@ on:
       - 'worker/**'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'scripts/publish-production-release-observation.mjs'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
       - 'package.json'
@@ -26,6 +27,7 @@ concurrency:
 permissions:
   contents: read
   checks: read
+  issues: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -45,6 +47,7 @@ jobs:
       BACKEND_HEALTH_URL: https://sekret-backend.mcgill-raylene.workers.dev/health
       SUPABASE_RUNTIME_HEALTH_URL: https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/runtime-contract-health
       EXPECTED_RELEASE_SHA: ${{ github.sha }}
+      RELEASE_OBSERVATION_ISSUE: '696'
     steps:
       - name: Check out deployed commit
         uses: actions/checkout@v4
@@ -96,3 +99,7 @@ jobs:
             test-results-production/
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Publish exact production release observation
+        if: success()
+        run: node scripts/publish-production-release-observation.mjs
