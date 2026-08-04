@@ -9,6 +9,7 @@ function read(path) {
 const wrangler = read('wrangler.toml');
 const workflow = read('.github/workflows/deploy-cloudflare.yml');
 const verifier = read('scripts/verify-cloudflare-native-deploy.mjs');
+const releaseObserver = read('scripts/publish-production-release-observation.mjs');
 const packageJson = JSON.parse(read('package.json'));
 const eas = JSON.parse(read('eas.json'));
 
@@ -30,12 +31,17 @@ test('Wrangler targets the canonical Worker name', () => {
 test('production verification proves the exact Worker and Pages release', () => {
   assert.ok(workflow.includes('npm run test:e2e:production'));
   assert.ok(workflow.includes('scripts/verify-cloudflare-native-deploy.mjs'));
+  assert.ok(workflow.includes('scripts/publish-production-release-observation.mjs'));
   assert.ok(workflow.includes(`${WORKER_URL}/health`));
   assert.ok(workflow.includes(RELEASE_MARKER_URL));
   assert.ok(workflow.includes('EXPECTED_RELEASE_SHA: ${{ github.sha }}'));
+  assert.ok(workflow.includes("RELEASE_OBSERVATION_ISSUE: '696'"));
   assert.ok(workflow.includes('checks: read'));
+  assert.ok(workflow.includes('issues: write'));
   assert.ok(verifier.includes(`Workers Builds: ${WORKER_NAME}`));
   assert.ok(verifier.includes('Pages release marker'));
+  assert.ok(releaseObserver.includes('sekret-production-release-observation'));
+  assert.ok(releaseObserver.includes('validateReleaseEvidence'));
   assert.ok(packageJson.scripts['build:web'].includes('write-release-metadata.mjs'));
 });
 
