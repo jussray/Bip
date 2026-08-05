@@ -44,6 +44,11 @@ export default function Index() {
   const effectiveSide: AccountSide = accountProfile?.accountSide ?? buildSide ?? userSide ?? 'teen';
   const publicWelcomeSide: AccountSide = previewSide ?? buildSide ?? userSide ?? 'teen';
   const publicEntrySide: AccountSide = selectedEntrySide ?? previewSide ?? buildSide ?? userSide ?? 'teen';
+  const canOfferSignIn = authChecked
+    && profileResolved
+    && !hasPermanentSession
+    && !requiresAccountUpgrade
+    && !bootstrapError;
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +223,7 @@ export default function Index() {
     return (
       <WebWelcomeScreen
         variant={publicWelcomeSide}
+        showSignIn={canOfferSignIn}
         onEnter={(side) => {
           setRouted(false);
           setSelectedEntrySide(side);
