@@ -6,7 +6,7 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), '
 
 const signup = read('app/(auth)/signup.tsx');
 const signupInsertMigration = read('supabase/migrations/20260726093000_external_user_signup_defaults.sql');
-const signupUpdateMigration = read('supabase/migrations/20260805170500_sync_app_profile_on_auth_metadata_update.sql');
+const signupUpdateMigration = read('supabase/migrations/20260805170500_extend_auth_profile_sync_identity.sql');
 const frontDoor = read('app/index.tsx');
 const humanSafeContract = read('docs/HUMAN_SAFE_BUILD_CONTRACT.md');
 
@@ -45,9 +45,17 @@ test('profile initialization covers new users and anonymous account upgrades wit
     /raw_user_meta_data\s*->>\s*'(role|founder|can_manage_app|can_view_audits|verification_status)'/,
   );
 
-  assert.match(signupUpdateMigration, /after update of raw_user_meta_data, email on auth\.users/);
-  assert.match(signupUpdateMigration, /old\.raw_user_meta_data is distinct from new\.raw_user_meta_data/);
-  assert.match(signupUpdateMigration, /execute function public\.initialize_app_profile\(\)/);
+  assert.match(signupUpdateMigration, /create or replace function public\.sync_app_profile_email_from_auth\(\)/i);
+  assert.match(signupUpdateMigration, /after update of email, raw_user_meta_data on auth\.users/i);
+  assert.match(signupUpdateMigration, /old\.raw_user_meta_data is distinct from new\.raw_user_meta_data/i);
+  assert.match(signupUpdateMigration, /account_side = coalesce\(public\.app_profiles\.account_side, excluded\.account_side\)/i);
+  assert.match(signupUpdateMigration, /private_display_name = coalesce\(public\.app_profiles\.private_display_name, excluded\.private_display_name\)/i);
+  assert.match(signupUpdateMigration, /execute function public\.sync_app_profile_email_from_auth\(\)/i);
+  assert.doesNotMatch(signupUpdateMigration, /initialize_app_profile_on_auth_update/i);
+  assert.doesNotMatch(
+    signupUpdateMigration,
+    /raw_user_meta_data\s*->>\s*'(role|founder|can_manage_app|can_view_audits|verification_status)'/,
+  );
 });
 
 test('front-door bootstrap never leaves the human with an unlabeled spinner', () => {
