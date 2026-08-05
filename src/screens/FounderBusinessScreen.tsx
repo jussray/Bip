@@ -10,10 +10,26 @@ import {
 } from '@/services/founderAudit';
 
 const tools = [
-  { title: 'Users & onboarding', detail: 'Account roles, activation, verification, and onboarding health.' },
-  { title: 'Content & approvals', detail: 'Founder review queues, publishing decisions, and moderation status.' },
-  { title: 'Orders & revenue', detail: 'Commerce, rewards, inventory, fulfillment, and revenue signals.' },
-  { title: 'Product health', detail: 'Releases, open issues, audit events, and operational proof.' },
+  {
+    title: 'Users & onboarding',
+    detail: 'Account roles, activation, verification, and onboarding health.',
+    status: 'Planned · no live tool yet',
+  },
+  {
+    title: 'Content & approvals',
+    detail: 'Founder review queues, publishing decisions, and moderation status.',
+    status: 'Planned · no live tool yet',
+  },
+  {
+    title: 'Orders & revenue',
+    detail: 'Commerce, rewards, inventory, fulfillment, and revenue signals.',
+    status: 'Planned · no live tool yet',
+  },
+  {
+    title: 'Product health',
+    detail: 'Releases, open issues, audit events, and operational proof.',
+    status: 'Planned · no live tool yet',
+  },
 ] as const;
 
 export default function FounderBusinessScreen() {
@@ -138,7 +154,7 @@ export default function FounderBusinessScreen() {
           <View key={tool.title} style={styles.toolCard}>
             <Text style={styles.toolTitle}>{tool.title}</Text>
             <Text style={styles.toolDetail}>{tool.detail}</Text>
-            <Text style={styles.comingSoon}>Foundation connected</Text>
+            <Text style={styles.comingSoon}>{tool.status}</Text>
           </View>
         ))}
       </View>

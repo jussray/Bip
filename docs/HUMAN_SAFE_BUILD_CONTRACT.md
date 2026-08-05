@@ -22,6 +22,20 @@ Every user-facing flow must provide the applicable state with clear language and
 
 Use accessible status semantics and preserve the existing product language and visual system.
 
+A spinner by itself is not a complete loading state when the user can be left waiting. Pair blocking progress with visible status copy and an accessible announcement that explains what the system is doing.
+
+## Truthful readiness language
+
+Labels such as `connected`, `live`, `healthy`, `available`, `complete`, and `passed` are runtime claims. Use them only when the named path has current authoritative evidence.
+
+When a surface is scaffolded, planned, unavailable, denied, or not yet connected, say that directly. Never turn missing proof into success-colored copy, decorative health, or a numeric zero.
+
+## Durable identity handoff
+
+Identity state required after confirmation, reload, logout/login, or another-device use must cross an approved durable auth/profile boundary. Local cache may support recovery and offline UX, but it must not be the only authority for Teen versus Parent side, username, or another routing-critical account fact.
+
+User-controlled signup metadata may carry approved self-descriptive fields such as account side and username. It must never grant or copy role, founder status, verification, authorization, moderation, or administrative permissions.
+
 ## Where `null` remains valid
 
 `null` may remain in data, parser, service, storage, cache, and optional-value contracts when it explicitly means `not found`, `not configured`, or `not applicable`.

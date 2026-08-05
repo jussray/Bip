@@ -79,7 +79,7 @@ test('each preview audience uses one direct Enter control with truthful accessib
   assert.match(welcome, /accessibilityRole="button"/);
 });
 
-test('account-return action is fail-closed until the caller proves no restored session exists', () => {
+test('account-return action appears only after a clean no-session restoration result', () => {
   assert.match(welcome, /showSignIn\?: boolean/);
   assert.match(welcome, /showSignIn = false/);
   assert.match(welcome, /\{showSignIn && \(/);
@@ -87,6 +87,13 @@ test('account-return action is fail-closed until the caller proves no restored s
   assert.match(welcome, /Already have an account\?/);
   assert.match(welcome, />Sign in</);
   assert.match(welcome, /router\.push\(`\/\(auth\)\/login\?side=\$\{entrySide\}` as never\)/);
+
+  assert.match(index, /const canOfferSignIn = authChecked/);
+  assert.match(index, /&& profileResolved/);
+  assert.match(index, /&& !hasPermanentSession/);
+  assert.match(index, /&& !requiresAccountUpgrade/);
+  assert.match(index, /&& !bootstrapError/);
+  assert.match(index, /showSignIn=\{canOfferSignIn\}/);
   assert.doesNotMatch(index, /showSignIn=\{true\}/);
 });
 
