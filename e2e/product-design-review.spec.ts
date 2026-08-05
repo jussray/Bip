@@ -37,10 +37,12 @@ for (const variant of VARIANTS) {
       await page.goto(variant.url, { waitUntil: 'networkidle' });
 
       await expect(page.getByTestId('web-welcome-shell')).toBeVisible();
+      await expect(page.getByTestId('web-welcome-living-world')).toBeVisible();
       await expect(page.getByTestId(variant.heroTestId)).toBeVisible();
       await expect(page.getByText(variant.identityText, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
       await expect(page.getByTestId('web-welcome-bottom-nav')).toHaveCount(0);
+      await expect(page.getByText('Night · Suhana · Sy', { exact: true })).toHaveCount(0);
 
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
@@ -62,6 +64,55 @@ for (const variant of VARIANTS) {
     });
   }
 }
+
+test('reduced motion is still from the first rendered hero frame', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.addInitScript(() => {
+    const samples: Array<{ top: number; left: number; width: number; height: number }> = [];
+    Object.defineProperty(window, '__sekretReducedMotionSamples', {
+      configurable: true,
+      value: samples,
+    });
+
+    const capture = () => {
+      const hero = document.querySelector('[data-testid="web-welcome-hero-motion"]');
+      if (hero instanceof HTMLElement) {
+        const rect = hero.getBoundingClientRect();
+        samples.push({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        });
+      }
+      window.requestAnimationFrame(capture);
+    };
+
+    window.requestAnimationFrame(capture);
+  });
+
+  await page.goto('/?bipDevAudience=teen', { waitUntil: 'networkidle' });
+  await expect(page.getByTestId('web-welcome-hero-motion')).toBeVisible();
+  await page.waitForTimeout(400);
+
+  const samples = await page.evaluate(() => (
+    window as typeof window & {
+      __sekretReducedMotionSamples?: Array<{
+        top: number;
+        left: number;
+        width: number;
+        height: number;
+      }>;
+    }
+  ).__sekretReducedMotionSamples ?? []);
+
+  expect(samples.length).toBeGreaterThan(2);
+
+  for (const key of ['top', 'left', 'width', 'height'] as const) {
+    const values = samples.map(sample => sample[key]);
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(0.5);
+  }
+});
 
 test('Teen entry preserves the teen onboarding path', async ({ page }) => {
   await page.goto('/?bipDevAudience=teen', { waitUntil: 'networkidle' });
