@@ -44,6 +44,11 @@ export default function Index() {
   const effectiveSide: AccountSide = accountProfile?.accountSide ?? buildSide ?? userSide ?? 'teen';
   const publicWelcomeSide: AccountSide = previewSide ?? buildSide ?? userSide ?? 'teen';
   const publicEntrySide: AccountSide = selectedEntrySide ?? previewSide ?? buildSide ?? userSide ?? 'teen';
+  const canOfferSignIn = authChecked
+    && profileResolved
+    && !hasPermanentSession
+    && !requiresAccountUpgrade
+    && !bootstrapError;
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +223,7 @@ export default function Index() {
     return (
       <WebWelcomeScreen
         variant={publicWelcomeSide}
+        showSignIn={canOfferSignIn}
         onEnter={(side) => {
           setRouted(false);
           setSelectedEntrySide(side);
@@ -263,14 +269,22 @@ export default function Index() {
   }
 
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Opening Se'kret Bip"
+      accessibilityLiveRegion="polite"
+    >
       <ActivityIndicator color="#c4b5fd" />
+      <Text style={styles.loadingText}>Opening your Se’kret Bip space…</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#090711', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  loadingText: { color: '#b9afc5', fontSize: 14, lineHeight: 21, textAlign: 'center', marginTop: 12 },
   errorTitle: { color: '#fff', fontSize: 22, fontWeight: '900', textAlign: 'center', marginBottom: 12 },
   errorBody: { color: '#b9afc5', fontSize: 14, lineHeight: 21, textAlign: 'center', marginBottom: 24 },
   retry: { minWidth: 160, height: 52, borderRadius: 16, backgroundColor: '#6d28d9', alignItems: 'center', justifyContent: 'center' },
