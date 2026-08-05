@@ -181,10 +181,12 @@ test('teen signup deep link enforces age assurance before account fields', async
   await expect(page.getByRole('textbox', { name: 'Email' })).not.toBeVisible();
 });
 
-test('parent signup deep link exposes account creation controls', async ({ page }) => {
+test('parent signup deep link exposes accessible account creation controls', async ({ page }) => {
   await page.goto('/signup?side=parent');
   await expect(page.getByText('create your Parent Space')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show password', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show password confirmation', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next' })).toBeVisible();
 });
 
