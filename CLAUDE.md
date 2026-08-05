@@ -88,6 +88,23 @@ Read `REPO_HEALTH_DUPLICATES.md` and run `node scripts/audit-branch-hygiene.mjs`
 6. Require the exact pull-request head to prove applicable unit, type, lint, browser, and retained-artifact gates.
 7. Report proven, inferred, blocked, and next owner.
 
+## Governed Gap-to-Merge Workflow
+
+When the founder invokes `/gaps`, `/blueprint`, `/rent`, `/implement`, `/review`, `/merge`, `/cont`, or equivalent stacked language, load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute its phases in order:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+This workflow is authoritative for the repair loop:
+
+- read current repository, `main`, PR, Founder Control Room, provider, database, and review evidence before judging;
+- label claims `VERIFIED`, `INFERRED`, `UNKNOWN`, or `BLOCKED`;
+- treat failed lookups as `UNKNOWN`, not absence;
+- require executed steps and logs before claiming a code regression;
+- require Playwright or device proof for changed rendered behavior;
+- keep production mutation separate unless explicitly authorized;
+- never merge merely because GitHub reports `mergeable: true`;
+- stop if the verified final head changes before merge.
+
 ## Approval Gates
 
 Require explicit founder approval before: merging, publishing, deploying, releasing IP assets, changing platform configurations, rotating secrets, applying database migrations, or external communications.

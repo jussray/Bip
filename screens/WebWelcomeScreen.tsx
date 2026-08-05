@@ -61,7 +61,8 @@ export function WebWelcomeScreen({
 }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  const motionEnabled = reduceMotion === false;
   const compact = width < 520;
   const shortViewport = compact && height < 700;
   const shellHeight = compact ? height : Math.min(height, 900);
@@ -87,7 +88,9 @@ export function WebWelcomeScreen({
       .then(value => {
         if (mounted) setReduceMotion(value);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (mounted) setReduceMotion(true);
+      });
 
     const subscription = AccessibilityInfo.addEventListener?.(
       'reduceMotionChanged',
@@ -101,7 +104,9 @@ export function WebWelcomeScreen({
   }, []);
 
   useEffect(() => {
-    if (reduceMotion) {
+    if (!motionEnabled) {
+      worldPulse.stopAnimation();
+      heroDrift.stopAnimation();
       worldPulse.setValue(0.35);
       heroDrift.setValue(0);
       return;
@@ -147,14 +152,10 @@ export function WebWelcomeScreen({
       pulseLoop.stop();
       driftLoop.stop();
     };
-  }, [heroDrift, reduceMotion, worldPulse]);
+  }, [heroDrift, motionEnabled, worldPulse]);
 
-  const ambientMotionStyle = reduceMotion
+  const ambientMotionStyle = motionEnabled
     ? {
-        opacity: 0.84,
-        transform: [{ scale: 1 }],
-      }
-    : {
         opacity: worldPulse.interpolate({
           inputRange: [0, 1],
           outputRange: [0.72, 1],
@@ -167,12 +168,13 @@ export function WebWelcomeScreen({
             }),
           },
         ],
-      };
-  const heroMotionStyle = reduceMotion
-    ? {
-        transform: [{ translateY: 0 }, { scale: 1 }],
       }
     : {
+        opacity: 0.84,
+        transform: [{ scale: 1 }],
+      };
+  const heroMotionStyle = motionEnabled
+    ? {
         transform: [
           {
             translateY: heroDrift.interpolate({
@@ -187,13 +189,12 @@ export function WebWelcomeScreen({
             }),
           },
         ],
-      };
-  const sparkMotionStyle = reduceMotion
-    ? {
-        opacity: 0.86,
-        transform: [{ translateY: 0 }, { rotate: '0deg' }],
       }
     : {
+        transform: [{ translateY: 0 }, { scale: 1 }],
+      };
+  const sparkMotionStyle = motionEnabled
+    ? {
         opacity: worldPulse.interpolate({
           inputRange: [0, 1],
           outputRange: [0.62, 1],
@@ -212,6 +213,10 @@ export function WebWelcomeScreen({
             }),
           },
         ],
+      }
+    : {
+        opacity: 0.86,
+        transform: [{ translateY: 0 }, { rotate: '0deg' }],
       };
 
   const copy = isBipJr
@@ -316,6 +321,7 @@ export function WebWelcomeScreen({
             style={{ paddingBottom: heroContract.bottomGap }}
           >
             <Animated.View
+              testID="web-welcome-hero-motion"
               style={[
                 styles.heroWrap,
                 { height: heroHeight },
