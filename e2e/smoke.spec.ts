@@ -27,8 +27,28 @@ test('rollback front door exposes bounded working actions and canonical identity
   await expect(page.getByText('Night', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Suhana', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Sy', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button')).toHaveCount(2);
+  await expect(page.getByTestId('web-welcome-sign-in')).toBeVisible();
+  await expect(page.getByRole('button')).toHaveCount(3);
   await page.screenshot({ path: 'test-results/front-door-desktop.png', fullPage: true });
+});
+
+test('returning Teen user can reach sign in after no-session restoration', async ({ page }) => {
+  await page.goto('/?bipDevAudience=teen');
+  const signIn = page.getByTestId('web-welcome-sign-in');
+  await expect(signIn).toBeVisible({ timeout: 30_000 });
+  await expect(signIn).toHaveAccessibleName("Sign in to your existing Se'kret Bip account");
+  await signIn.click();
+  await expect(page).toHaveURL(/\/login\?side=teen(?:&|$)/);
+  await expect(page.getByText('sign in to continue')).toBeVisible({ timeout: 15_000 });
+});
+
+test('returning Bip Jr user preserves the parent side when opening sign in', async ({ page }) => {
+  await page.goto('/?bipDevAudience=bip-jr');
+  const signIn = page.getByTestId('web-welcome-sign-in');
+  await expect(signIn).toBeVisible({ timeout: 30_000 });
+  await signIn.click();
+  await expect(page).toHaveURL(/\/login\?side=parent(?:&|$)/);
+  await expect(page.getByText('sign in to continue')).toBeVisible({ timeout: 15_000 });
 });
 
 test('web welcome About control is keyboard accessible and reveals truthful scope', async ({ page }) => {
