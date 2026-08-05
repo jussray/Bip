@@ -80,6 +80,20 @@ function normalizeSide(value: string | undefined): AccountSide {
   return value === 'parent' ? 'parent' : 'teen';
 }
 
+type SignupMetadata = Readonly<{
+  account_side: AccountSide;
+  username: string;
+  signup_source: 'sekret-bip';
+}>;
+
+function buildSignupMetadata(side: AccountSide, username: string): SignupMetadata {
+  return {
+    account_side: side,
+    username: username.trim(),
+    signup_source: 'sekret-bip',
+  };
+}
+
 function loginRoute(side: AccountSide): string {
   return `/(auth)/login?side=${side}`;
 }
@@ -155,6 +169,7 @@ export default function SignupScreen() {
     sb: NonNullable<ReturnType<typeof getSupabase>>,
     signupEmail: string,
     signupPassword: string,
+    metadata: SignupMetadata,
     initialError: unknown,
   ): Promise<boolean> {
     await delay(SIGNUP_RECOVERY_DELAY_MS);
@@ -176,8 +191,11 @@ export default function SignupScreen() {
       if (!isAmbiguousSignupError(probeError)) return false;
     }
     try {
-      const { data: retryData, error: retryError } =
-        await sb.auth.signUp({ email: signupEmail, password: signupPassword });
+      const { data: retryData, error: retryError } = await sb.auth.signUp({
+        email: signupEmail,
+        password: signupPassword,
+        options: { data: metadata },
+      });
       if (!retryError) {
         if (retryData.session?.user) {
           await finishAuthenticatedSignup(retryData.session.user.id);
@@ -237,6 +255,7 @@ export default function SignupScreen() {
     setError('');
     const e = email.trim();
     const p = password;
+    const metadata = buildSignupMetadata(preferredSide, username);
 
     setLoading(true);
     const sb = getSupabase();
@@ -264,10 +283,14 @@ export default function SignupScreen() {
         if (refreshErr0 || !refreshed0.user?.is_anonymous) {
           await sb.auth.signOut();
         } else {
-          const { error: upgradeError } = await sb.auth.updateUser({ email: e, password: p });
+          const { error: upgradeError } = await sb.auth.updateUser({
+            email: e,
+            password: p,
+            data: metadata,
+          });
           if (upgradeError) {
             if (isAmbiguousSignupError(upgradeError)) {
-              const recovered = await recoverAmbiguousSignup(sb, e, p, upgradeError);
+              const recovered = await recoverAmbiguousSignup(sb, e, p, metadata, upgradeError);
               if (recovered) return;
             }
             const msg = upgradeError.message.toLowerCase();
@@ -291,10 +314,14 @@ export default function SignupScreen() {
         }
       }
 
-      const { data: signUpData, error: authErr } = await sb.auth.signUp({ email: e, password: p });
+      const { data: signUpData, error: authErr } = await sb.auth.signUp({
+        email: e,
+        password: p,
+        options: { data: metadata },
+      });
       if (authErr) {
         if (isAmbiguousSignupError(authErr)) {
-          const recovered = await recoverAmbiguousSignup(sb, e, p, authErr);
+          const recovered = await recoverAmbiguousSignup(sb, e, p, metadata, authErr);
           if (recovered) return;
         }
         setError(readableAuthError(authErr));
@@ -311,7 +338,7 @@ export default function SignupScreen() {
       if (isAmbiguousSignupError(caught)) {
         const sb2 = getSupabase();
         if (sb2) {
-          const recovered = await recoverAmbiguousSignup(sb2, e, p, caught);
+          const recovered = await recoverAmbiguousSignup(sb2, e, p, metadata, caught);
           if (recovered) return;
         }
       }
@@ -415,7 +442,7 @@ export default function SignupScreen() {
                   <Text style={s.eyeText}>{pwVisible ? '🙈' : '👁'}</Text>
                 </Pressable>
               </View>
-              <View style={[s.inputWrap, { marginBottom: 4 }]}>
+              <View style={[s.inputWrap, { marginBottom: 4 }]}> 
                 <TextInput
                   style={[s.input, { paddingRight: 52 }]}
                   placeholder="Confirm password"
@@ -453,7 +480,7 @@ export default function SignupScreen() {
           {step === 1 && (
             <View style={s.stepInner}>
               <Text style={s.stepHint}>Choose a username people will know you by.</Text>
-              <View style={[s.inputWrap, { marginBottom: 4 }]}>
+              <View style={[s.inputWrap, { marginBottom: 4 }]}> 
                 <Text style={s.atSign}>@</Text>
                 <TextInput
                   style={[s.input, { paddingLeft: 4 }]}
