@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Image,
   Pressable,
   ScrollView,
@@ -73,6 +75,102 @@ export function WebWelcomeScreen({
     : compact
       ? heroContract.compactHeight
       : heroContract.desktopHeight;
+  const worldPulse = useRef(new Animated.Value(0)).current;
+  const heroDrift = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(worldPulse, {
+          toValue: 1,
+          duration: 3200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(worldPulse, {
+          toValue: 0,
+          duration: 3200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const driftLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroDrift, {
+          toValue: 1,
+          duration: 4200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(heroDrift, {
+          toValue: 0,
+          duration: 4200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    pulseLoop.start();
+    driftLoop.start();
+
+    return () => {
+      pulseLoop.stop();
+      driftLoop.stop();
+    };
+  }, [heroDrift, worldPulse]);
+
+  const ambientMotionStyle = {
+    opacity: worldPulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.72, 1],
+    }),
+    transform: [
+      {
+        scale: worldPulse.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.08],
+        }),
+      },
+    ],
+  };
+  const heroMotionStyle = {
+    transform: [
+      {
+        translateY: heroDrift.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -8],
+        }),
+      },
+      {
+        scale: worldPulse.interpolate({
+          inputRange: [0, 1],
+          outputRange: [1, 1.018],
+        }),
+      },
+    ],
+  };
+  const sparkMotionStyle = {
+    opacity: worldPulse.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0.62, 1],
+    }),
+    transform: [
+      {
+        translateY: heroDrift.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -5],
+        }),
+      },
+      {
+        rotate: worldPulse.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0deg', '9deg'],
+        }),
+      },
+    ],
+  };
 
   const copy = isBipJr
     ? {
@@ -94,8 +192,19 @@ export function WebWelcomeScreen({
 
   return (
     <View style={[styles.page, { minHeight: height }]}>
-      <View pointerEvents="none" style={styles.ambientTop} />
-      <View pointerEvents="none" style={styles.ambientBottom} />
+      <Animated.View pointerEvents="none" style={[styles.ambientTop, ambientMotionStyle]} />
+      <Animated.View pointerEvents="none" style={[styles.ambientBottom, ambientMotionStyle]} />
+      <View
+        pointerEvents="none"
+        testID="web-welcome-living-world"
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+        style={styles.livingWorld}
+      >
+        <Animated.Text style={[styles.livingMoon, sparkMotionStyle]}>☾</Animated.Text>
+        <Animated.Text style={[styles.livingStar, sparkMotionStyle]}>✦</Animated.Text>
+        <Animated.Text style={[styles.livingCloud, sparkMotionStyle]}>☁</Animated.Text>
+      </View>
       <View
         testID="web-welcome-shell"
         accessibilityLabel={isBipJr ? 'Bip Jr welcome' : "Se'kret Bip teen welcome"}
@@ -133,7 +242,7 @@ export function WebWelcomeScreen({
               importantForAccessibility="no-hide-descendants"
               style={styles.decorativeSpark}
             >
-              <Text style={styles.decorativeSparkText}>✦</Text>
+              <Animated.Text style={[styles.decorativeSparkText, sparkMotionStyle]}>✦</Animated.Text>
             </View>
           </View>
 
@@ -155,7 +264,7 @@ export function WebWelcomeScreen({
             <Text testID="web-welcome-eyebrow" style={styles.eyebrow}>{copy.eyebrow}</Text>
             <View style={styles.titleRow}>
               <Text style={styles.title}>Come on in.</Text>
-              <Text style={styles.spark}>✦</Text>
+              <Animated.Text style={[styles.spark, sparkMotionStyle]}>✦</Animated.Text>
             </View>
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
@@ -164,14 +273,15 @@ export function WebWelcomeScreen({
             testID="web-welcome-hero-safe-area"
             style={{ paddingBottom: heroContract.bottomGap }}
           >
-            <View
+            <Animated.View
               style={[
                 styles.heroWrap,
                 { height: heroHeight },
                 isBipJr && styles.heroWrapBipJr,
+                heroMotionStyle,
               ]}
             >
-              <View style={styles.heroGlow} />
+              <Animated.View style={[styles.heroGlow, ambientMotionStyle]} />
               <Image
                 testID={isBipJr ? 'web-welcome-hero-bip-jr' : 'web-welcome-hero-teen'}
                 source={copy.hero}
@@ -179,7 +289,7 @@ export function WebWelcomeScreen({
                 style={[styles.hero, isBipJr && styles.heroBipJr]}
                 accessibilityLabel={copy.heroLabel}
               />
-            </View>
+            </Animated.View>
           </View>
 
           <Text style={styles.handNote}>{copy.note}</Text>
@@ -250,6 +360,44 @@ const styles = StyleSheet.create({
     left: -160,
     borderRadius: RADIUS.pill,
     backgroundColor: color.ambientPink,
+  },
+  livingWorld: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    overflow: 'hidden',
+  },
+  livingMoon: {
+    position: 'absolute',
+    top: 96,
+    right: 42,
+    color: color.lilacLight,
+    fontSize: 34,
+    opacity: 0.72,
+    textShadowColor: color.heroGlow,
+    textShadowRadius: 18,
+  },
+  livingStar: {
+    position: 'absolute',
+    top: 188,
+    left: 28,
+    color: color.pinkLight,
+    fontSize: 22,
+    opacity: 0.68,
+    textShadowColor: color.ambientPink,
+    textShadowRadius: 16,
+  },
+  livingCloud: {
+    position: 'absolute',
+    bottom: 116,
+    right: 34,
+    color: color.textHigh,
+    fontSize: 26,
+    opacity: 0.28,
+    textShadowColor: color.heroGlow,
+    textShadowRadius: 18,
   },
   shell: {
     width: '100%',
