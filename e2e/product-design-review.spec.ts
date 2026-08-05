@@ -37,10 +37,12 @@ for (const variant of VARIANTS) {
       await page.goto(variant.url, { waitUntil: 'networkidle' });
 
       await expect(page.getByTestId('web-welcome-shell')).toBeVisible();
+      await expect(page.getByTestId('web-welcome-living-world')).toBeVisible();
       await expect(page.getByTestId(variant.heroTestId)).toBeVisible();
       await expect(page.getByText(variant.identityText, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
       await expect(page.getByTestId('web-welcome-bottom-nav')).toHaveCount(0);
+      await expect(page.getByText('Night · Suhana · Sy', { exact: true })).toHaveCount(0);
 
       const metrics = await page.evaluate(() => ({
         scrollWidth: document.documentElement.scrollWidth,
