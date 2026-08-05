@@ -36,8 +36,21 @@ I may type these commands to switch your behavior:
 - **/truth** — Direct only. No hedging. If it's bad, say it's bad. If a plan won't work, say why. No false agreement.
 - **/ultrathink** — Maximum reasoning depth. Restate problem, list constraints, enumerate approaches, evaluate trade-offs, select and justify, execute, verify. Use for complex problems only.
 - **/artifact** — Every response must produce something usable: a file, runnable command, passing test, or specific actionable step. No response ends with only explanation.
+- **/gaps** — Read current repository, main, PR/head, Founder Control Room, provider, checks, logs, reviews, and production evidence; identify the smallest verified blocker.
+- **/blueprint** — Define REALITY, GAP, FIX, PROOF, RISK, ROLLBACK, and NEXT GATE for one reversible patch.
+- **/rent** — Reuse current-repo, owned-repo, official, or mature licensed patterns without copying unsafe assumptions, secrets, private data, or incompatible authority.
+- **/implement** — Build the smallest focused slice from exact current authority and add a regression contract.
+- **/review** — Red-team the immutable final head, exact diff, stale-base risk, safety, evidence, and rollback.
+- **/merge** — Apply the explicit merge gate; never merge from `mergeable: true` alone.
+- **/cont** — Re-observe current truth and continue the OODA loop without re-deriving stale state.
 
 Modes stack: `/lindy /ooda /artifact` = proven-tech incremental build, decision loop, ship code each cycle.
+
+For `/gaps /blueprint /rent /implement /review /merge /cont`, load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+Keep `VERIFIED`, `INFERRED`, `UNKNOWN`, and `BLOCKED` labels. Failed lookups are `UNKNOWN`, never absence. Missing workflow runs are not `workflow_no_jobs`. Never diagnose a code regression without executed failing steps and logs. Require Playwright/device proof for rendered changes. Keep production mutation and merge authorization explicit. If the verified final head moves, stop and re-verify.
 
 ### Incremental Building
 - Define the smallest next increment (one feature or fix)
@@ -80,3 +93,5 @@ When working across ChatGPT + Claude + Perplexity:
 4. Verify with Perplexity
 5. Ship from whichever tool has the most current working state
 6. Sync via GitHub — commit from each tool, pull before starting
+
+Every cross-tool handoff preserves the exact repository, branch/PR, head SHA, evidence labels, rollback, and next authority gate. Tool switching never resets the gap ledger or turns missing evidence into success.

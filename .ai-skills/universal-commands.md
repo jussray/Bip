@@ -14,8 +14,107 @@
 | `/truth` | Truth Mode | No hedging, direct, no false agreement | Low |
 | `/ultrathink` | Deep Reasoning | Maximum reasoning depth, systematic analysis | High |
 | `/artifact` | Working Deliverable | Must produce runnable code/file/test/command, not just text | Medium |
+| `/gaps` | Evidence Gap Audit | Read current authority and identify the smallest verified blocker | Medium |
+| `/blueprint` | Safe Work Order | Define REALITY/GAP/FIX/PROOF/RISK/ROLLBACK/NEXT GATE | Medium |
+| `/rent` | Proven Pattern Reuse | Reuse mature mechanics without copying unsafe assumptions | Medium |
+| `/implement` | Reversible Repair | Ship the smallest focused patch and regression contract | Medium |
+| `/review` | Final-Head Red Team | Review exact diff, authority, safety, proof, and rollback | Medium |
+| `/merge` | Explicit Merge Gate | Merge only after exact-head proof and explicit authority | Medium |
+| `/cont` | Governed Continuation | Re-observe current state and continue the OODA loop | Low |
+
+## Governed repair stack
+
+The canonical full workflow lives at `.ai-skills/skills/gap-blueprint-implement-review.md`.
+
+When the user invokes the commands separately or in one stacked instruction, execute them in this order:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+Always preserve:
+
+- authoritative repository, `main`, branch/PR, and immutable head SHA;
+- `VERIFIED`, `INFERRED`, `UNKNOWN`, and `BLOCKED` labels;
+- separation between code, CI, provider, database, deployment, browser, device, and founder authority;
+- executed-step/log requirements before a code-regression claim;
+- Playwright or device evidence for rendered changes;
+- rollback and explicit merge authority.
+
+A failed lookup is `UNKNOWN`, not absence. A missing workflow run is not `workflow_no_jobs`. GitHub `mergeable: true` is not merge authorization. If the verified head moves, stop and re-verify.
 
 ## Detailed Usage
+
+### /gaps
+**When to use:** At the start of repair work, after a failed audit, when two branches claim overlapping truth, or before deciding what to fix.
+
+**What the AI does:**
+1. Reads current repository, `main`, PR/head, Founder Control Room, provider, checks, jobs, steps, logs, reviews, and production evidence.
+2. Builds a gap ledger with expected behavior, observed evidence, authority layer, human impact, risk, and smallest next proof.
+3. Stops broad discovery when one smallest actionable blocker is verified.
+
+---
+
+### /blueprint
+**When to use:** After `/gaps` identifies a verified blocker.
+
+**What the AI does:**
+- Produces `REALITY`, `GAP`, `FIX`, `PROOF`, `RISK`, `ROLLBACK`, and `NEXT GATE`.
+- Separates unrelated authority layers rather than combining them into one large patch.
+- Pins the intended base and immutable verification target.
+
+---
+
+### /rent
+**When to use:** Before inventing a new implementation or workflow.
+
+**What the AI does:**
+- Searches current-repo passing patterns first, then adjacent owned repos, official provider/framework guidance, and mature licensed open source.
+- Records what was adapted and what was rejected for privacy, authorization, accessibility, rollback, or evidence reasons.
+- Rents the mechanic, not branding, secrets, private data, stale generated code, or incompatible assumptions.
+
+---
+
+### /implement
+**When to use:** When a focused work order and authority boundary are known.
+
+**What the AI does:**
+- Starts from exact current `main` unless another base is explicitly authoritative.
+- Uses one compliant branch and one logical PR.
+- Touches only required files and adds a focused regression contract.
+- Preserves typed/data-layer `null` while translating human-facing absence into truthful states.
+
+---
+
+### /review
+**When to use:** After the immutable final head has verification evidence.
+
+**What the AI does:**
+- Reviews exact diff, stale-base and overlapping-PR risk, unresolved threads, auth/privacy/RLS/secret paths, false success, accessibility, recovery, and rollback.
+- Rejects production, database, provider, or launch claims that exceed the evidence.
+- Treats green checks as necessary but not sufficient.
+
+---
+
+### /merge
+**When to use:** Only after review and exact-head proof.
+
+**What the AI does:**
+- Verifies the final head is current with its intended base.
+- Requires all applicable jobs to genuinely execute and pass.
+- Requires zero blocking review threads and the applicable Product Design/external gates.
+- Requires explicit founder or governed merge authority.
+- Stops rather than merging when a required condition is `UNKNOWN` or `BLOCKED`.
+
+---
+
+### /cont
+**When to use:** After a merge or hold decision.
+
+**What the AI does:**
+- Re-reads current `main`, open PRs, issues, external state, and retained evidence.
+- Chooses the next smallest reversible move.
+- Notifies only when a failure is new, changes classification, `main` changes, or the actionable next step changes.
+
+---
 
 ### /redteam
 **When to use:** Before deploying, after writing a security feature, when reviewing architecture.
@@ -143,6 +242,7 @@ Use `/lindy /confess` together — prefer proven solutions AND honestly state wh
 | `/truth /human` | Direct, natural feedback without padding |
 | `/lindy /ooda /artifact` | Proven-tech incremental build with decision loop |
 | `/redteam /truth /artifact` | Brutally honest code review with fixes |
+| `/gaps /blueprint /rent /implement /review /merge /cont` | Full evidence-gated repair and continuation loop |
 
 ---
 

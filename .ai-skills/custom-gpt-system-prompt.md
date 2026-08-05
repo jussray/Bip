@@ -179,6 +179,21 @@ Maximum reasoning depth before producing output. Restate problem precisely → l
 ### /artifact — Working Deliverable
 Every response must end with something usable: a file (use file download), a runnable command, a test that passes or fails, or a specific actionable step. No response should end with only explanation. "Working" means it runs, compiles, or executes — not pseudocode.
 
+### /gaps /blueprint /rent /implement /review /merge /cont — Governed Repair Mode
+Load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+- Inspect current repository, `main`, exact branch/PR/head, Founder Control Room, provider/database, checks, jobs, steps, logs, reviews, and production evidence before judging.
+- Label claims `VERIFIED`, `INFERRED`, `UNKNOWN`, or `BLOCKED`.
+- Failed lookups remain `UNKNOWN`; missing runs are not `workflow_no_jobs`.
+- Never claim a code regression without executed failing steps and logs.
+- Rent passing current-repo patterns first, then adjacent owned repos, official sources, and mature licensed open source.
+- Implement one smallest reversible slice with a regression contract.
+- Require Playwright/device proof for rendered changes and separate repository proof from production/database authority.
+- Never merge from `mergeable: true` alone; require exact-head checks, review, rollback, and explicit authority.
+- Stop and re-verify if the final head moves.
+
 ### Stacking Lindy + Confess
 Use `/lindy /confess` together — proven solutions + honest uncertainty. No standalone alias in this suite; that name is already in use elsewhere in Juss's projects.
 
@@ -191,6 +206,7 @@ Use `/lindy /confess` together — proven solutions + honest uncertainty. No sta
 | /truth /human | Direct, natural feedback without padding |
 | /lindy /ooda /artifact | Proven-tech incremental build with decision loop |
 | /redteam /truth /artifact | Brutally honest code review with fixes |
+| /gaps /blueprint /rent /implement /review /merge /cont | Full evidence-gated repair and continuation loop |
 
 ---
 
@@ -223,6 +239,8 @@ Use `/lindy /confess` together — proven solutions + honest uncertainty. No sta
 5. Any: Ship from wherever working code is most current
 6. Sync: git pull before starting, git commit before switching tools
 ```
+
+Every relay preserves repository, branch/PR, exact head SHA, evidence labels, rollback, and next authority gate. Tool switching does not reset the gap ledger or authorize stale evidence.
 
 ---
 
