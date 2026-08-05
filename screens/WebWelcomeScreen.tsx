@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  AccessibilityInfo,
   Animated,
   Easing,
   Image,
@@ -60,6 +61,7 @@ export function WebWelcomeScreen({
 }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const compact = width < 520;
   const shortViewport = compact && height < 700;
   const shellHeight = compact ? height : Math.min(height, 900);
@@ -79,6 +81,32 @@ export function WebWelcomeScreen({
   const heroDrift = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let mounted = true;
+
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then(value => {
+        if (mounted) setReduceMotion(value);
+      })
+      .catch(() => {});
+
+    const subscription = AccessibilityInfo.addEventListener?.(
+      'reduceMotionChanged',
+      setReduceMotion,
+    );
+
+    return () => {
+      mounted = false;
+      subscription?.remove?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      worldPulse.setValue(0.35);
+      heroDrift.setValue(0);
+      return;
+    }
+
     const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(worldPulse, {
@@ -119,58 +147,72 @@ export function WebWelcomeScreen({
       pulseLoop.stop();
       driftLoop.stop();
     };
-  }, [heroDrift, worldPulse]);
+  }, [heroDrift, reduceMotion, worldPulse]);
 
-  const ambientMotionStyle = {
-    opacity: worldPulse.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.72, 1],
-    }),
-    transform: [
-      {
-        scale: worldPulse.interpolate({
+  const ambientMotionStyle = reduceMotion
+    ? {
+        opacity: 0.84,
+        transform: [{ scale: 1 }],
+      }
+    : {
+        opacity: worldPulse.interpolate({
           inputRange: [0, 1],
-          outputRange: [1, 1.08],
+          outputRange: [0.72, 1],
         }),
-      },
-    ],
-  };
-  const heroMotionStyle = {
-    transform: [
-      {
-        translateY: heroDrift.interpolate({
+        transform: [
+          {
+            scale: worldPulse.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 1.08],
+            }),
+          },
+        ],
+      };
+  const heroMotionStyle = reduceMotion
+    ? {
+        transform: [{ translateY: 0 }, { scale: 1 }],
+      }
+    : {
+        transform: [
+          {
+            translateY: heroDrift.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -8],
+            }),
+          },
+          {
+            scale: worldPulse.interpolate({
+              inputRange: [0, 1],
+              outputRange: [1, 1.018],
+            }),
+          },
+        ],
+      };
+  const sparkMotionStyle = reduceMotion
+    ? {
+        opacity: 0.86,
+        transform: [{ translateY: 0 }, { rotate: '0deg' }],
+      }
+    : {
+        opacity: worldPulse.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, -8],
+          outputRange: [0.62, 1],
         }),
-      },
-      {
-        scale: worldPulse.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1.018],
-        }),
-      },
-    ],
-  };
-  const sparkMotionStyle = {
-    opacity: worldPulse.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0.62, 1],
-    }),
-    transform: [
-      {
-        translateY: heroDrift.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -5],
-        }),
-      },
-      {
-        rotate: worldPulse.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['0deg', '9deg'],
-        }),
-      },
-    ],
-  };
+        transform: [
+          {
+            translateY: heroDrift.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -5],
+            }),
+          },
+          {
+            rotate: worldPulse.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0deg', '9deg'],
+            }),
+          },
+        ],
+      };
 
   const copy = isBipJr
     ? {
