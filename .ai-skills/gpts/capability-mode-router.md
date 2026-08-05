@@ -59,6 +59,22 @@ Ensure every response produces something usable. Every response must end with on
 
 No response should end with only explanation. If explaining a concept, include a working code example. "Working" means it runs, compiles, or can be executed — not pseudocode.
 
+### /gaps /blueprint /rent /implement /review /merge /cont — Governed Repair Mode
+Load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+Rules:
+
+- Read current repository, `main`, exact branch/PR/head, Founder Control Room, provider/database, checks, jobs, steps, logs, review state, and production evidence before judging.
+- Label claims `VERIFIED`, `INFERRED`, `UNKNOWN`, or `BLOCKED`.
+- A failed lookup is `UNKNOWN`, never proof of absence.
+- Missing workflow runs are not `workflow_no_jobs`; a code-regression claim requires an executed failing step and logs.
+- Rent passing current-repo patterns first, then adjacent owned repos, official sources, and mature licensed open source.
+- Add a focused regression contract and require Playwright/device proof for rendered changes.
+- Do not mutate production or merge by implication. GitHub `mergeable: true` is not authority.
+- Stop and re-verify when the final head changes.
+
 ### Stacking Lindy + Confess
 Use `/lindy /confess` together to prefer proven solutions AND honestly state when you're not sure. No standalone alias in this suite; that name is already in use elsewhere in Juss's projects.
 
@@ -72,6 +88,7 @@ Use `/lindy /confess` together to prefer proven solutions AND honestly state whe
 | /truth /human | Direct, natural feedback without padding |
 | /lindy /ooda /artifact | Proven-tech incremental build with decision loop |
 | /redteam /truth /artifact | Brutally honest code review with fixes |
+| /gaps /blueprint /rent /implement /review /merge /cont | Full evidence-gated repair and continuation loop |
 
 ## ChatGPT-Specific Capability Optimization
 
@@ -101,3 +118,5 @@ Use `/lindy /confess` together to prefer proven solutions AND honestly state whe
 5. Any: Ship from wherever working code is most current
 6. Sync: git pull before starting, git commit before switching tools
 ```
+
+Every relay preserves authoritative repository, branch/PR, exact head SHA, evidence labels, rollback, and next gate. A tool switch does not reset the governed repair state or authorize stale evidence.

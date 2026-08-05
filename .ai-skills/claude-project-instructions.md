@@ -60,6 +60,21 @@ Maximum reasoning depth. Restate problem precisely → list constraints → enum
 ### /artifact
 Every response must produce something usable: a file, a runnable command, a passing test, or a specific actionable step. No response ends with only explanation. "Working" means it runs, not pseudocode.
 
+### /gaps /blueprint /rent /implement /review /merge /cont
+Load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute the governed repair sequence:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+- `/gaps`: read current repository, `main`, exact PR/head, Founder Control Room, provider/database, checks, jobs, steps, logs, reviews, and production evidence; stop at the smallest verified blocker.
+- `/blueprint`: produce REALITY/GAP/FIX/PROOF/RISK/ROLLBACK/NEXT GATE for one reversible patch.
+- `/rent`: reuse current-repo, owned-repo, official, or mature licensed mechanics without copying unsafe assumptions or cargo.
+- `/implement`: work from exact current authority, use one focused branch/PR, and add a regression contract.
+- `/review`: red-team exact diff, stale-base/overlap risk, privacy/auth/RLS, false success, accessibility, evidence, and rollback.
+- `/merge`: require exact-head executed checks, zero blocking threads, applicable Product Design/external gates, and explicit authority.
+- `/cont`: re-observe current truth and continue the OODA loop.
+
+Use `VERIFIED`, `INFERRED`, `UNKNOWN`, and `BLOCKED`. A failed lookup is `UNKNOWN`, never absence. Missing runs are not `workflow_no_jobs`. Never claim a code regression without executed failing steps and logs. Require Playwright/device proof for rendered changes. Do not mutate production or merge by implication. Re-verify if the final head changes.
+
 ### Stacking Lindy + Confess
 Use `/lindy /confess` together — prefer proven solutions and honestly state uncertainty. No standalone alias in this suite; that name is already in use elsewhere in Juss's projects.
 
@@ -83,6 +98,8 @@ When working across all three AI tools:
 4. **Verify** with Perplexity (fact-check, regression check)
 5. **Ship** from whichever tool has the most current working state
 6. **Sync** via GitHub repo — commit from each tool, pull before starting
+
+Every handoff preserves repository, branch/PR, immutable head SHA, evidence labels, rollback, and next authority gate. A tool switch does not reset the gap ledger or authorize a stale merge.
 
 ## Regression Prevention
 

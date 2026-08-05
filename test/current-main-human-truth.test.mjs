@@ -48,6 +48,8 @@ test('profile initialization covers new users and anonymous account upgrades wit
   assert.match(signupUpdateMigration, /create or replace function public\.sync_app_profile_email_from_auth\(\)/i);
   assert.match(signupUpdateMigration, /after update of email, raw_user_meta_data on auth\.users/i);
   assert.match(signupUpdateMigration, /old\.raw_user_meta_data is distinct from new\.raw_user_meta_data/i);
+  assert.match(signupUpdateMigration, /set email = excluded\.email,/i);
+  assert.doesNotMatch(signupUpdateMigration, /email = coalesce\(excluded\.email,/i);
   assert.match(signupUpdateMigration, /account_side = coalesce\(public\.app_profiles\.account_side, excluded\.account_side\)/i);
   assert.match(signupUpdateMigration, /private_display_name = coalesce\(public\.app_profiles\.private_display_name, excluded\.private_display_name\)/i);
   assert.match(signupUpdateMigration, /execute function public\.sync_app_profile_email_from_auth\(\)/i);

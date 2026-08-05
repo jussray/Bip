@@ -43,7 +43,7 @@ begin
     now()
   )
   on conflict (user_id) do update
-    set email = coalesce(excluded.email, public.app_profiles.email),
+    set email = excluded.email,
         account_side = coalesce(public.app_profiles.account_side, excluded.account_side),
         private_display_name = coalesce(public.app_profiles.private_display_name, excluded.private_display_name),
         profile_updated_at = case

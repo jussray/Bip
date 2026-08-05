@@ -30,6 +30,14 @@ This file governs ChatGPT (chat.openai.com, desktop, API, Codex tasks) when work
 - PR descriptions must not expose unreleased IP, story beats, or character details.
 - Include rollback steps before requesting merge.
 
+## Governed Gap-to-Merge Workflow
+
+When the founder invokes `/gaps`, `/blueprint`, `/rent`, `/implement`, `/review`, `/merge`, `/cont`, or equivalent stacked language, load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+The loop must read current repository, `main`, PR, Founder Control Room, provider, database, checks, jobs, steps, logs, and review evidence before judging. Label claims `VERIFIED`, `INFERRED`, `UNKNOWN`, or `BLOCKED`. A failed lookup is `UNKNOWN`, never absence. Missing runs are not `workflow_no_jobs`. Never claim a code regression without an executed failing step and logs. Require Playwright or device proof for rendered changes. Do not mutate production or merge without explicit authority, and stop if the verified head moves before merge.
+
 ## Approval Gates
 
 Require explicit founder approval before: merging, publishing, deploying, releasing IP, changing platform configs, or rotating secrets.

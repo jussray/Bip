@@ -16,6 +16,12 @@ Five installable skills for Perplexity Computer:
 | **intent-repair-reader** | Parse human intent from typos using context clues, keyboard analysis, phonics |
 | **capability-mode-router** | Command system: /redteam, /lindy, /ooda, /human, /confess, /truth, /ultrathink, /artifact |
 
+### Governed repair workflow
+
+| Skill | Purpose |
+|-------|---------|
+| `skills/gap-blueprint-implement-review.md` | `/gaps → /blueprint → /rent → /implement → /verify → /review → /merge gate → /cont` with exact-head evidence, rollback, and authority separation |
+
 ### Cross-Platform Adapters (`cross-platform/`)
 
 | File | For | How to Use |
@@ -32,6 +38,7 @@ Five installable skills for Perplexity Computer:
 1. Install each skill from `perplexity-skills/` (use `save_custom_skill`)
 2. Skills auto-activate based on task context
 3. Type command shortcuts like `/lindy /artifact` in any conversation
+4. For a full governed repair loop, invoke `/gaps /blueprint /rent /implement /review /merge /cont`
 
 ### On Claude
 1. Create a Claude Project for each of your repos
@@ -39,6 +46,7 @@ Five installable skills for Perplexity Computer:
 3. Add your repo files to the project knowledge base
 4. Load `HUMAN_SAFE_BUILD.md` as an always-on project rule
 5. Type commands like `/redteam` or `/ooda` in chat
+6. Load `skills/gap-blueprint-implement-review.md` for end-to-end repair work
 
 ### On ChatGPT
 1. Go to Settings → Custom Instructions
@@ -47,6 +55,7 @@ Five installable skills for Perplexity Computer:
 4. Or create a Custom GPT with the full instructions as system prompt
 5. Keep `HUMAN_SAFE_BUILD.md` attached or copied into the project instructions
 6. Type commands like `/lindy /artifact` in chat
+7. Load `skills/gap-blueprint-implement-review.md` for the governed repair loop
 
 ## Command Reference
 
@@ -60,8 +69,19 @@ Five installable skills for Perplexity Computer:
 | `/truth` | No hedging, direct truth, no false agreement |
 | `/ultrathink` | Maximum reasoning depth for complex problems |
 | `/artifact` | Must produce working code/file/test, not just text |
+| `/gaps` | Inspect current authority and stop at the smallest verified blocker |
+| `/blueprint` | Define REALITY/GAP/FIX/PROOF/RISK/ROLLBACK/NEXT GATE |
+| `/rent` | Reuse proven mechanics without copying unsafe assumptions or cargo |
+| `/implement` | Ship the smallest reversible slice with a focused regression contract |
+| `/review` | Red-team the immutable final head, authority boundaries, and rollback |
+| `/merge` | Apply the explicit merge gate; never merge from `mergeable: true` alone |
+| `/cont` | Re-observe current truth and continue the OODA loop |
 
 Commands stack: `/lindy /ooda /artifact` = proven-tech incremental build with decision loop, shipping code each cycle.
+
+The full stacked repair command routes to `.ai-skills/skills/gap-blueprint-implement-review.md` and executes:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
 
 ## Human-safe build contract
 
@@ -88,6 +108,8 @@ Verify  → Perplexity (fact-check, regression check)
 Ship    → From whichever tool has the most current working state
 Sync    → GitHub repo (commit from each tool, pull before starting)
 ```
+
+Every handoff must preserve the authoritative repository, branch/PR, exact head SHA, evidence labels, rollback, and next authority gate. A tool switch does not reset the gap ledger or convert missing evidence into success.
 
 ## Academic Grounding
 
