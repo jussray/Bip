@@ -8,6 +8,12 @@ on:
       - ".control-room/repository.manifest.json"
       - "scripts/verify-control-room-tests.mjs"
       - "test/control-room-tests-catalog.test.mjs"
+      - "test/ai-skill-gap-blueprint-workflow.test.mjs"
+      - ".ai-skills/**"
+      - ".cursor/rules"
+      - "CLAUDE.md"
+      - "CHATGPT.md"
+      - "PERPLEXITY.md"
       - "package.json"
       - ".github/workflows/**"
   push:
@@ -17,6 +23,12 @@ on:
       - ".control-room/repository.manifest.json"
       - "scripts/verify-control-room-tests.mjs"
       - "test/control-room-tests-catalog.test.mjs"
+      - "test/ai-skill-gap-blueprint-workflow.test.mjs"
+      - ".ai-skills/**"
+      - ".cursor/rules"
+      - "CLAUDE.md"
+      - "CHATGPT.md"
+      - "PERPLEXITY.md"
       - "package.json"
       - ".github/workflows/**"
   workflow_dispatch:
@@ -61,6 +73,9 @@ jobs:
 
       - name: Run focused catalog contracts
         run: node --test test/control-room-tests-catalog.test.mjs
+
+      - name: Run governed gap-to-merge workflow contract
+        run: node --test test/ai-skill-gap-blueprint-workflow.test.mjs
 
       - name: Verify dynamic package-script and workflow inventory
         run: node scripts/verify-control-room-tests.mjs
