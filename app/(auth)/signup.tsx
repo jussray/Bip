@@ -438,11 +438,16 @@ export default function SignupScreen() {
                   onChangeText={t => { setPassword(t); setError(''); }}
                   accessibilityLabel="Password"
                 />
-                <Pressable style={s.eyeBtn} onPress={() => setPwVisible(v => !v)}>
+                <Pressable
+                  style={s.eyeBtn}
+                  onPress={() => setPwVisible(v => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={pwVisible ? 'Hide password' : 'Show password'}
+                >
                   <Text style={s.eyeText}>{pwVisible ? '🙈' : '👁'}</Text>
                 </Pressable>
               </View>
-              <View style={[s.inputWrap, { marginBottom: 4 }]}> 
+              <View style={[s.inputWrap, { marginBottom: 4 }]}>
                 <TextInput
                   style={[s.input, { paddingRight: 52 }]}
                   placeholder="Confirm password"
@@ -457,7 +462,12 @@ export default function SignupScreen() {
                   returnKeyType="next"
                   accessibilityLabel="Confirm password"
                 />
-                <Pressable style={s.eyeBtn} onPress={() => setCfVisible(v => !v)}>
+                <Pressable
+                  style={s.eyeBtn}
+                  onPress={() => setCfVisible(v => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={cfVisible ? 'Hide password confirmation' : 'Show password confirmation'}
+                >
                   <Text style={s.eyeText}>{cfVisible ? '🙈' : '👁'}</Text>
                 </Pressable>
               </View>
@@ -480,7 +490,7 @@ export default function SignupScreen() {
           {step === 1 && (
             <View style={s.stepInner}>
               <Text style={s.stepHint}>Choose a username people will know you by.</Text>
-              <View style={[s.inputWrap, { marginBottom: 4 }]}> 
+              <View style={[s.inputWrap, { marginBottom: 4 }]}>
                 <Text style={s.atSign}>@</Text>
                 <TextInput
                   style={[s.input, { paddingLeft: 4 }]}
