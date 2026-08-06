@@ -18,6 +18,7 @@ on:
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
+      - 'test/resumable-production-verification.test.mjs'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
       - 'package.json'
@@ -26,9 +27,14 @@ on:
       - '.github/workflows/deploy-cloudflare.yml'
       - '.github/workflows/production-gate-contract.yml'
   workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact release commit to reconcile after a partial or interrupted deployment
+        required: false
+        type: string
 
 concurrency:
-  group: cloudflare-native-production
+  group: cloudflare-native-production-${{ inputs.target_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
@@ -38,6 +44,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DEPLOYMENT_SHA: ${{ inputs.target_sha || github.sha }}
 
 jobs:
   verify-native-deployment:
@@ -53,16 +60,16 @@ jobs:
       FRONTEND_RELEASE_URL: https://sekretbip.net/.well-known/sekret-release.json
       BACKEND_HEALTH_URL: https://api.sekretbip.net/health
       SUPABASE_RUNTIME_HEALTH_URL: https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/runtime-contract-health
-      EXPECTED_RELEASE_SHA: ${{ github.sha }}
+      EXPECTED_RELEASE_SHA: ${{ inputs.target_sha || github.sha }}
       RELEASE_OBSERVATION_ISSUE: '696'
     steps:
-      - name: Check out deployed commit
+      - name: Check out release commit under verification
         id: checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.DEPLOYMENT_SHA }}
 
-      - name: Record and verify exact main head
+      - name: Record and verify exact target head
         id: exact_head
         shell: bash
         run: |
@@ -84,6 +91,8 @@ jobs:
 
       - name: Wait for exact frontend and backend Worker checks plus release marker
         id: cloudflare_release
+        env:
+          GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
         run: node scripts/verify-cloudflare-native-deploy.mjs
 
       - name: Verify backend health
@@ -109,7 +118,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: cloudflare-native-deployment-evidence-${{ github.sha }}
+          name: cloudflare-native-deployment-evidence-${{ env.DEPLOYMENT_SHA }}
           path: |
             artifacts/cloudflare-native-deploy.json
             playwright-report-production/
