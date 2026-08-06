@@ -3,6 +3,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 export const RELEASE_OBSERVATION_MARKER = '<!-- sekret-production-release-observation -->';
+export const RELEASE_BLOCKER_MARKER = '<!-- sekret-production-release-blocker -->';
 
 function normalizeSha(value) {
   return String(value ?? '').trim().toLowerCase();
@@ -62,6 +63,16 @@ function safeValue(value, fallback = 'not reported') {
   return text || fallback;
 }
 
+function safeList(value) {
+  return Array.isArray(value) && value.length > 0
+    ? value.map((entry) => safeValue(entry)).join(', ')
+    : 'none';
+}
+
+function objectOrEmpty(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
 export function buildReleaseObservationComment({
   evidence,
   expectedSha,
@@ -101,6 +112,59 @@ This receipt is generated only after the exact-SHA Cloudflare observer, release 
 `;
 }
 
+export function buildReleaseBlockerComment({
+  evidence,
+  expectedSha,
+  repository,
+  runId,
+  stepOutcomes = {},
+  serverUrl = 'https://github.com',
+}) {
+  const normalizedExpected = normalizeSha(expectedSha);
+  if (!normalizedExpected) throw new Error('Expected release SHA is required.');
+
+  const payload = objectOrEmpty(evidence);
+  const pagesRelease = objectOrEmpty(payload.pagesRelease);
+  const checkSummary = objectOrEmpty(payload.checkSummary);
+  const requiredChecks = objectOrEmpty(payload.requiredChecks);
+  const observedSha = normalizeSha(payload.commitSha || payload.expectedSha);
+  const pagesSha = normalizeSha(pagesRelease.commitSha || pagesRelease.expectedSha);
+  const runUrl = `${serverUrl}/${repository}/actions/runs/${runId}`;
+  const stepLines = Object.entries(objectOrEmpty(stepOutcomes))
+    .map(([name, outcome]) => `- ${name}: \`${safeValue(outcome)}\``)
+    .join('\n') || '- no step outcomes were reported';
+  const workerLines = Object.entries(requiredChecks)
+    .map(([name, check]) => `- ${name}: status \`${safeValue(check?.status)}\`, conclusion \`${safeValue(check?.conclusion)}\``)
+    .join('\n') || '- no required check result was retained';
+
+  return `${RELEASE_BLOCKER_MARKER}
+## BLOCKED: exact production release not verified
+
+- Intended main SHA: \`${normalizedExpected}\`
+- Evidence SHA: \`${observedSha || 'missing'}\`
+- Evidence status: \`${safeValue(payload.status, 'evidence missing')}\`
+- Readiness state: \`${safeValue(payload.readinessState, 'unknown')}\`
+- Pages marker SHA: \`${pagesSha || 'missing'}\`
+- Pages marker exact: \`${pagesRelease.complete === true && pagesSha === normalizedExpected ? 'yes' : 'no'}\`
+- Workflow run: ${runUrl}
+
+### Verification step outcomes
+${stepLines}
+
+### Required Cloudflare checks
+${workerLines}
+
+### Retained blockers
+- Missing checks: \`${safeList(checkSummary.missing)}\`
+- Pending checks: \`${safeList(checkSummary.pending)}\`
+- Failed checks: \`${safeList(checkSummary.failed)}\`
+- Unsuccessful checks: \`${safeList(checkSummary.unsuccessful)}\`
+- Observer error: \`${safeValue(payload.observerError, 'none reported')}\`
+
+This is a blocked-attempt receipt, not a production pass. It must never be used as exact-release, backend-health, Supabase-health, Playwright, or launch evidence. A separate VERIFIED receipt is written only after every required production witness succeeds.
+`;
+}
+
 async function readResponseBody(response) {
   const text = await response.text();
   if (!text) return null;
@@ -128,11 +192,15 @@ export async function upsertReleaseObservation({
   repository,
   issueNumber,
   comment,
+  marker = RELEASE_OBSERVATION_MARKER,
 }) {
   if (!token) throw new Error('GITHUB_TOKEN is required.');
   if (!repository || !repository.includes('/')) throw new Error('GITHUB_REPOSITORY is required.');
   if (!Number.isInteger(issueNumber) || issueNumber <= 0) {
     throw new Error('A positive release observation issue number is required.');
+  }
+  if (!marker || !comment.includes(marker)) {
+    throw new Error('The release observation comment must include its marker.');
   }
 
   const headers = {
@@ -145,7 +213,7 @@ export async function upsertReleaseObservation({
   const commentsUrl = `${apiUrl}/repos/${repository}/issues/${issueNumber}/comments?per_page=100`;
   const comments = await githubRequest(fetchImpl, commentsUrl, {headers});
   const existing = Array.isArray(comments)
-    ? comments.find((entry) => typeof entry?.body === 'string' && entry.body.includes(RELEASE_OBSERVATION_MARKER))
+    ? comments.find((entry) => typeof entry?.body === 'string' && entry.body.includes(marker))
     : null;
 
   if (existing?.id) {
@@ -163,6 +231,33 @@ export async function upsertReleaseObservation({
     body: JSON.stringify({body: comment}),
   });
   return {action: 'created', commentId: created?.id ?? null};
+}
+
+function readEvidence(evidencePath, expectedSha, fallbackStatus) {
+  if (fs.existsSync(evidencePath)) {
+    return JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+  }
+  return {
+    version: 3,
+    commitSha: normalizeSha(expectedSha),
+    expectedSha: normalizeSha(expectedSha),
+    status: fallbackStatus,
+    complete: false,
+    readinessState: 'evidence-missing',
+    observerError: `Evidence file was not found at ${evidencePath}.`,
+    checkSummary: {missing: [], pending: [], failed: [], unsuccessful: []},
+    requiredChecks: {},
+    pagesRelease: {commitSha: null, expectedSha: normalizeSha(expectedSha), complete: false},
+  };
+}
+
+function parseStepOutcomes(value) {
+  if (!value) return {};
+  try {
+    return objectOrEmpty(JSON.parse(value));
+  } catch {
+    return {parse_error: 'invalid RELEASE_STEP_OUTCOMES JSON'};
+  }
 }
 
 export async function publishProductionReleaseObservation(env = process.env) {
@@ -188,10 +283,39 @@ export async function publishProductionReleaseObservation(env = process.env) {
   return result;
 }
 
+export async function publishProductionReleaseBlocker(env = process.env) {
+  const evidencePath = env.CLOUDFLARE_EVIDENCE_PATH || 'artifacts/cloudflare-native-deploy.json';
+  const expectedSha = env.EXPECTED_RELEASE_SHA || env.GITHUB_SHA;
+  const evidence = readEvidence(evidencePath, expectedSha, env.VERIFICATION_JOB_STATUS || 'failed');
+  const issueNumber = Number(env.RELEASE_OBSERVATION_ISSUE || '696');
+  const comment = buildReleaseBlockerComment({
+    evidence,
+    expectedSha,
+    repository: env.GITHUB_REPOSITORY,
+    runId: env.GITHUB_RUN_ID,
+    stepOutcomes: parseStepOutcomes(env.RELEASE_STEP_OUTCOMES),
+    serverUrl: env.GITHUB_SERVER_URL || 'https://github.com',
+  });
+
+  const result = await upsertReleaseObservation({
+    apiUrl: env.GITHUB_API_URL || 'https://api.github.com',
+    token: env.GITHUB_TOKEN,
+    repository: env.GITHUB_REPOSITORY,
+    issueNumber,
+    comment,
+    marker: RELEASE_BLOCKER_MARKER,
+  });
+  console.log(JSON.stringify(result));
+  return result;
+}
+
 const isDirectExecution = process.argv[1]
   && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isDirectExecution) {
-  publishProductionReleaseObservation().catch((error) => {
+  const publish = process.env.RELEASE_OBSERVATION_MODE === 'blocked'
+    ? publishProductionReleaseBlocker
+    : publishProductionReleaseObservation;
+  publish().catch((error) => {
     console.error(error instanceof Error ? error.stack ?? error.message : String(error));
     process.exit(1);
   });
