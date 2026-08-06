@@ -51,7 +51,7 @@ jobs:
       CLOUDFLARE_EVIDENCE_PATH: artifacts/cloudflare-native-deploy.json
       PRODUCTION_BASE_URL: https://sekretbip.net
       FRONTEND_RELEASE_URL: https://sekretbip.net/.well-known/sekret-release.json
-      BACKEND_HEALTH_URL: https://sekret-backend.mcgill-raylene.workers.dev/health
+      BACKEND_HEALTH_URL: https://api.sekretbip.net/health
       SUPABASE_RUNTIME_HEALTH_URL: https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/runtime-contract-health
       EXPECTED_RELEASE_SHA: ${{ github.sha }}
       RELEASE_OBSERVATION_ISSUE: '696'
