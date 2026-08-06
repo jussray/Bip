@@ -10,7 +10,7 @@
       "env": {
         "APP_VARIANT": "teen",
         "EXPO_PUBLIC_APP_VARIANT": "teen",
-        "EXPO_PUBLIC_BACKEND_URL": "https://sekret-backend.mcgill-raylene.workers.dev"
+        "EXPO_PUBLIC_BACKEND_URL": "https://api.sekretbip.net"
       },
       "ios": {
         "simulator": true,
@@ -23,7 +23,7 @@
       "env": {
         "APP_VARIANT": "parent",
         "EXPO_PUBLIC_APP_VARIANT": "parent",
-        "EXPO_PUBLIC_BACKEND_URL": "https://sekret-backend.mcgill-raylene.workers.dev"
+        "EXPO_PUBLIC_BACKEND_URL": "https://api.sekretbip.net"
       },
       "ios": {
         "simulator": true,
@@ -63,7 +63,7 @@
         "APP_VARIANT": "teen",
         "EXPO_PUBLIC_APP_VARIANT": "teen",
         "EXPO_PUBLIC_RELEASE_AUDIENCE": "public",
-        "EXPO_PUBLIC_BACKEND_URL": "https://sekret-backend.mcgill-raylene.workers.dev"
+        "EXPO_PUBLIC_BACKEND_URL": "https://api.sekretbip.net"
       }
     },
     "parent-production": {
@@ -75,7 +75,7 @@
         "APP_VARIANT": "parent",
         "EXPO_PUBLIC_APP_VARIANT": "parent",
         "EXPO_PUBLIC_RELEASE_AUDIENCE": "public",
-        "EXPO_PUBLIC_BACKEND_URL": "https://sekret-backend.mcgill-raylene.workers.dev"
+        "EXPO_PUBLIC_BACKEND_URL": "https://api.sekretbip.net"
       }
     }
   }

@@ -8,13 +8,15 @@ function read(path) {
 
 const wrangler = read('wrangler.toml');
 const workflow = read('.github/workflows/deploy-cloudflare.yml');
+const productionEnv = read('.env.production');
 const verifier = read('scripts/verify-cloudflare-native-deploy.mjs');
 const releaseObserver = read('scripts/publish-production-release-observation.mjs');
 const packageJson = JSON.parse(read('package.json'));
 const eas = JSON.parse(read('eas.json'));
 
 const WORKER_NAME = 'sekret-backend';
-const WORKER_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
+const PRODUCTION_WORKER_URL = 'https://api.sekretbip.net';
+const LEGACY_WORKERS_DEV_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
 const ALPHA_WORKER_URL = 'https://sekret-backend-alpha.mcgill-raylene.workers.dev';
 const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.json';
 // Founder-approved controlled-alpha isolation (wrangler.alpha.toml,
@@ -24,15 +26,18 @@ const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.jso
 // Worker instead of the canonical one.
 const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
-test('Wrangler targets the canonical Worker name', () => {
+test('Wrangler targets the canonical Worker name and production custom domain', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
+  assert.match(wrangler, /^pattern = "api\.sekretbip\.net"$/m);
+  assert.match(wrangler, /^custom_domain = true$/m);
 });
 
 test('production verification proves the exact Worker and Pages release', () => {
   assert.ok(workflow.includes('npm run test:e2e:production'));
   assert.ok(workflow.includes('scripts/verify-cloudflare-native-deploy.mjs'));
   assert.ok(workflow.includes('scripts/publish-production-release-observation.mjs'));
-  assert.ok(workflow.includes(`${WORKER_URL}/health`));
+  assert.ok(workflow.includes(`${PRODUCTION_WORKER_URL}/health`));
+  assert.equal(workflow.includes(`${LEGACY_WORKERS_DEV_URL}/health`), false);
   assert.ok(workflow.includes(RELEASE_MARKER_URL));
   assert.ok(workflow.includes('EXPECTED_RELEASE_SHA: ${{ github.sha }}'));
   assert.ok(workflow.includes("RELEASE_OBSERVATION_ISSUE: '696'"));
@@ -43,6 +48,20 @@ test('production verification proves the exact Worker and Pages release', () => 
   assert.ok(releaseObserver.includes('sekret-production-release-observation'));
   assert.ok(releaseObserver.includes('validateReleaseEvidence'));
   assert.ok(packageJson.scripts['build:web'].includes('write-release-metadata.mjs'));
+});
+
+test('production web and native clients use the canonical backend custom domain', () => {
+  assert.ok(productionEnv.includes(`EXPO_PUBLIC_BACKEND_URL=${PRODUCTION_WORKER_URL}`));
+  assert.equal(productionEnv.includes(LEGACY_WORKERS_DEV_URL), false);
+
+  for (const [profileName, profile] of Object.entries(eas.build)) {
+    const expected = ALPHA_ROUTED_PROFILES.has(profileName) ? ALPHA_WORKER_URL : PRODUCTION_WORKER_URL;
+    assert.equal(
+      profile.env?.EXPO_PUBLIC_BACKEND_URL,
+      expected,
+      `${profileName} must point to ${expected}`,
+    );
+  }
 });
 
 test('only the newest main release verifier remains active', () => {
@@ -56,15 +75,4 @@ test('GitHub Actions does not require Cloudflare deployment credentials', () => 
   assert.equal(workflow.includes('CLOUDFLARE_ACCOUNT_ID'), false);
   assert.equal(workflow.includes('wrangler deploy'), false);
   assert.equal(workflow.includes('wrangler pages deploy'), false);
-});
-
-test('all EAS profiles point to the canonical Worker URL, except the approved controlled-alpha preview isolation', () => {
-  for (const [profileName, profile] of Object.entries(eas.build)) {
-    const expected = ALPHA_ROUTED_PROFILES.has(profileName) ? ALPHA_WORKER_URL : WORKER_URL;
-    assert.equal(
-      profile.env?.EXPO_PUBLIC_BACKEND_URL,
-      expected,
-      `${profileName} must point to ${expected}`,
-    );
-  }
 });

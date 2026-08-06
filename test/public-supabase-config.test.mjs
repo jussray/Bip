@@ -43,6 +43,10 @@ test('production Expo export receives the canonical public Supabase config', () 
   );
   assert.match(
     productionEnv,
+    /^EXPO_PUBLIC_BACKEND_URL=https:\/\/api\.sekretbip\.net$/m,
+  );
+  assert.doesNotMatch(
+    productionEnv,
     /^EXPO_PUBLIC_BACKEND_URL=https:\/\/sekret-backend\.mcgill-raylene\.workers\.dev$/m,
   );
   assert.doesNotMatch(gitignore, /^\.env\.production$/m);

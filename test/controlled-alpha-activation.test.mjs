@@ -31,9 +31,13 @@ test('preview builds use the isolated alpha Worker while production stays canoni
   assert.equal(eas.build['parent-preview'].env.EXPO_PUBLIC_RELEASE_AUDIENCE, 'beta');
   assert.equal(
     eas.build.production.env.EXPO_PUBLIC_BACKEND_URL,
-    'https://sekret-backend.mcgill-raylene.workers.dev',
+    'https://api.sekretbip.net',
   );
   assert.equal(eas.build.production.env.EXPO_PUBLIC_RELEASE_AUDIENCE, 'public');
+  assert.equal(
+    eas.build['parent-production'].env.EXPO_PUBLIC_BACKEND_URL,
+    'https://api.sekretbip.net',
+  );
   assert.equal(eas.build['parent-production'].env.EXPO_PUBLIC_RELEASE_AUDIENCE, 'public');
 });
 
