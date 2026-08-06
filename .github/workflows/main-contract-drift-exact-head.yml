@@ -12,6 +12,8 @@ on:
       - 'test/cloudflare-worker-identity.test.mjs'
       - 'test/controlled-alpha-activation.test.mjs'
       - 'test/main-contract-drift-proof.test.mjs'
+      - 'supabase/migrations/20260806024500_harden_uos_set_updated_at_search_path.sql'
+      - 'test/uos-trigger-search-path.test.mjs'
       - '.github/workflows/main-contract-drift-exact-head.yml'
       - 'package.json'
       - 'wrangler.toml'
@@ -61,6 +63,7 @@ jobs:
           test/cloudflare-worker-identity.test.mjs
           test/controlled-alpha-activation.test.mjs
           test/main-contract-drift-proof.test.mjs
+          test/uos-trigger-search-path.test.mjs
 
       - name: Run complete unit suite
         run: npm test
