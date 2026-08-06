@@ -50,11 +50,13 @@ jobs:
       RELEASE_OBSERVATION_ISSUE: '696'
     steps:
       - name: Check out deployed commit
+        id: checkout
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
 
       - name: Record and verify exact main head
+        id: exact_head
         shell: bash
         run: |
           set -euo pipefail
@@ -63,32 +65,40 @@ jobs:
           test "$actual" = "$EXPECTED_RELEASE_SHA"
 
       - name: Set up Node
+        id: setup_node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
 
       - name: Install repository dependencies
+        id: install
         run: npm ci
 
       - name: Wait for exact frontend and backend Worker checks plus release marker
+        id: cloudflare_release
         run: node scripts/verify-cloudflare-native-deploy.mjs
 
       - name: Verify backend health
+        id: backend_health
         run: |
           curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$BACKEND_HEALTH_URL"
 
       - name: Verify Supabase runtime contracts
+        id: supabase_health
         run: |
           curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$SUPABASE_RUNTIME_HEALTH_URL"
 
       - name: Install Chromium
+        id: chromium
         run: npx playwright install --with-deps chromium
 
       - name: Verify exact deployed frontend with Playwright
+        id: production_playwright
         run: npm run test:e2e:production
 
       - name: Upload deployment evidence
+        id: upload_evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -102,4 +112,13 @@ jobs:
 
       - name: Publish exact production release observation
         if: success()
+        run: node scripts/publish-production-release-observation.mjs
+
+      - name: Publish blocked exact production observation
+        if: failure()
+        env:
+          RELEASE_OBSERVATION_MODE: blocked
+          VERIFICATION_JOB_STATUS: failure
+          RELEASE_STEP_OUTCOMES: >-
+            {"checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
         run: node scripts/publish-production-release-observation.mjs
