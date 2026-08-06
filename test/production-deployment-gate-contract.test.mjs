@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const workflow = readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
+const productionConfig = readFileSync('playwright.production.config.ts', 'utf8');
 const productionSmoke = readFileSync('e2e/production-smoke.spec.ts', 'utf8');
 
 test('production verification runs after relevant main pushes', () => {
@@ -13,10 +14,14 @@ test('production verification runs after relevant main pushes', () => {
 });
 
 test('production Playwright verifies both public variants and their Enter paths', () => {
+  assert.match(productionConfig, /testMatch/);
   assert.match(productionSmoke, /web-welcome-hero-teen/);
   assert.match(productionSmoke, /web-welcome-hero-bip-jr/);
+  assert.match(productionSmoke, /YOUR PEOPLE\. YOUR PEACE\./);
+  assert.match(productionSmoke, /YOUR FAMILY\. YOUR SPACE\./);
   assert.match(productionSmoke, /How old are you\?/);
   assert.match(productionSmoke, /enter your parent space/);
   assert.match(productionSmoke, /web-welcome-suhana/);
-  assert.match(productionSmoke, /toHaveText\('Suhana'\)/);
+  assert.match(productionSmoke, /toHaveCount\(0\)/);
+  assert.doesNotMatch(productionSmoke, /toHaveText\('Suhana'\)/);
 });
