@@ -5,19 +5,26 @@ on:
     branches: [main]
     paths:
       - 'app/**'
+      - 'app.config.ts'
+      - 'app.json'
       - 'screens/**'
       - 'assets/**'
       - 'src/**'
       - 'worker/**'
+      - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/publish-production-release-observation.mjs'
+      - 'test/cloudflare-pages-build-environment.test.mjs'
+      - 'test/release-metadata-bootstrap.test.mjs'
+      - 'test/release-metadata.test.mjs'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
       - 'package.json'
       - 'package-lock.json'
       - 'wrangler.toml'
       - '.github/workflows/deploy-cloudflare.yml'
+      - '.github/workflows/production-gate-contract.yml'
   workflow_dispatch:
 
 concurrency:
