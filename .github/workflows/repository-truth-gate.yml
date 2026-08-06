@@ -72,7 +72,7 @@ jobs:
         run: node --check scripts/audit-failure-truth.mjs
 
       - name: Verify repository-truth gate contracts
-        run: node --test test/repository-truth-gates.test.mjs
+        run: node --test test/repository-truth-gates.test.mjs test/resumable-production-verification.test.mjs
 
       - name: Audit failure truth on current change
         id: failure_truth
