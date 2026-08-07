@@ -26,6 +26,8 @@ test('live onboarding email smoke is explicit opt-in only', () => {
   assert.match(source, /test\.skip\(!shouldRunInvite/);
   assert.match(workflow, /pull_request:/);
   assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /\n  push:/);
+  assert.match(workflow, /group: live-signup-proof-\$\{\{ github\.repository \}\}/);
   assert.match(workflow, /git log -1 --pretty=%B \| grep -Fq '\[live-signup-proof\]'/);
   assert.match(workflow, /steps\.opt_in\.outputs\.enabled == 'true'/);
   assert.doesNotMatch(workflow, /wrangler deploy|deploy:web:production|deploy:api:production/);
