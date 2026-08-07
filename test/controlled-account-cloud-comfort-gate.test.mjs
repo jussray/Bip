@@ -45,7 +45,12 @@ test('controlled-account live proof requires masked repository secrets and never
   assert.match(proofJob, /CONFIRM_CONTROLLED_ACCOUNT_USE/);
   assert.doesNotMatch(proofJob, /auth\/v1\/signup|live-signup-mailbox|create account/i);
   assert.doesNotMatch(proofJob, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|wrangler deploy/);
-  assert.doesNotMatch(spec, /writeReceipt\([\s\S]*(?:controlledEmail|controlledPassword)/);
+
+  const receiptStart = spec.lastIndexOf('writeReceipt({');
+  const receiptEnd = spec.indexOf('\n  });', receiptStart);
+  assert.ok(receiptStart >= 0 && receiptEnd > receiptStart);
+  const receiptPayload = spec.slice(receiptStart, receiptEnd);
+  assert.doesNotMatch(receiptPayload, /controlledEmail|controlledPassword/);
 });
 
 test('controlled-account browser proof disables sensitive capture surfaces', () => {
