@@ -32,7 +32,9 @@ test('live onboarding email smoke separates always-run readiness from explicit l
   assert.match(workflow, /preview_url:/);
   assert.match(workflow, /confirm_live_write:/);
   assert.doesNotMatch(workflow, /\n  push:/);
-  assert.match(workflow, /group: live-signup-proof-\$\{\{ github\.repository \}\}/);
+  assert.match(workflow, /group: live-signup-/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch'.*'write'.*github\.event\.pull_request\.number/);
+  assert.match(workflow, /cancel-in-progress:.*github\.event_name == 'pull_request'/);
   assert.doesNotMatch(workflow, /\[live-signup-proof\]/);
   assert.match(workflow, /GITHUB_EVENT_NAME.*workflow_dispatch/);
   assert.match(workflow, /CONFIRM_LIVE_WRITE.*true/);
