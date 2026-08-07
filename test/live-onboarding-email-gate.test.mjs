@@ -41,14 +41,20 @@ test('opaque 504 signup responses enter the existing ambiguous recovery path', (
   assert.match(source, /The account server received your signup request, but confirmation is delayed/);
 });
 
-test('live signup tolerates bounded Auth latency and captures endpoint evidence', () => {
+test('live signup tolerates bounded Auth latency and distinguishes transport noise from page failures', () => {
   const source = readText(specPath);
 
-  assert.match(source, /test\.setTimeout\(120_000\)/);
+  assert.match(source, /test\.setTimeout\(180_000\)/);
   assert.match(source, /authObservations/);
+  assert.match(source, /networkConsoleErrors/);
+  assert.match(source, /pageErrors/);
+  assert.match(source, /page\.on\('pageerror'/);
   assert.match(source, /signup should leave its pending state/);
-  assert.match(source, /timeout: 90_000/);
+  assert.match(source, /timeout: 120_000/);
   assert.match(source, /getByText\('Check your email', \{ exact: true \}\)/);
+  assert.match(source, /authObservations\.some\(\(observation\) => observation\.path\.endsWith\('\/signup'\)\)/);
+  assert.match(source, /expect\(pageErrors\)\.toEqual\(\[\]\)/);
+  assert.doesNotMatch(source, /expect\(consoleErrors\)\.toEqual\(\[\]\)/);
   assert.doesNotMatch(source, /getByText\(\/consent\|privacy\|continue\/i\)/);
 });
 
