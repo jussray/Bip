@@ -10,6 +10,8 @@ const executablePath =
 export default defineConfig({
   testDir: './e2e',
   testMatch: ['live-onboarding-email.spec.ts'],
+  timeout: 120_000,
+  expect: { timeout: 60_000 },
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
