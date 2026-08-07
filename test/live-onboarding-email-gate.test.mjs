@@ -79,6 +79,9 @@ test('readiness mode reaches final Teen signup submit without creating an accoun
   assert.match(source, /getByPlaceholder\('username'\)/);
   assert.match(source, /getByRole\('button', \{ name: \/create account\/i \}\)/);
   assert.match(source, /expect\(accountWriteAttempted\)\.toBe\(false\)/);
+  assert.match(source, /const visibleAlert = \(await alert\.count\(\)\) > 0/);
+  assert.match(source, /textContent\(\{ timeout: 500 \}\)/);
+  assert.doesNotMatch(source, /visibleAlert: await alert\.textContent/);
 
   const readinessStart = workflow.indexOf('      - name: Prove exact-preview browser readiness without account write');
   const readinessEnd = workflow.indexOf('\n      - name:', readinessStart + 1);
