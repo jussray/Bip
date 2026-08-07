@@ -11,6 +11,20 @@ on:
       - 'scripts/live-signup-mailbox.mjs'
       - 'test/live-onboarding-email-gate.test.mjs'
   workflow_dispatch:
+    inputs:
+      target_sha:
+        description: 'Exact PR head SHA to prove'
+        required: true
+        type: string
+      preview_url:
+        description: 'Exact isolated Cloudflare Pages preview URL'
+        required: true
+        type: string
+      confirm_live_write:
+        description: 'Allow one disposable signup/email confirmation transaction'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,8 +36,8 @@ concurrency:
 env:
   CI: true
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  LIVE_ONBOARDING_BASE_URL: https://fix-production-signup-age-co.sekret-bip.pages.dev
-  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  LIVE_ONBOARDING_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_url || 'https://fix-production-signup-age-co.sekret-bip.pages.dev' }}
+  EXPECTED_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || github.event.pull_request.head.sha }}
 
 jobs:
   live-signup-proof:
@@ -44,21 +58,22 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Require explicit live-write opt-in
+      - name: Resolve live-write authority
         id: opt_in
         shell: bash
+        env:
+          CONFIRM_LIVE_WRITE: ${{ inputs.confirm_live_write || false }}
         run: |
           set -euo pipefail
-          if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] || git log -1 --pretty=%B | grep -Fq '[live-signup-proof]'; then
+          if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] && [ "$CONFIRM_LIVE_WRITE" = 'true' ]; then
             echo 'enabled=true' >> "$GITHUB_OUTPUT"
-            echo 'Live signup proof explicitly enabled for this exact head.'
+            echo 'Live signup transaction explicitly enabled for this exact head.'
           else
             echo 'enabled=false' >> "$GITHUB_OUTPUT"
-            echo 'Live signup proof not enabled; no account write will occur.'
+            echo 'Readiness-only mode: no account or email write will occur.'
           fi
 
       - name: Verify isolated preview is exact head
-        if: steps.opt_in.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -90,23 +105,25 @@ jobs:
           NODE
 
       - name: Set up Node
-        if: steps.opt_in.outputs.enabled == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
 
-      - name: Prepare disposable guest identity and mailbox
-        if: steps.opt_in.outputs.enabled == 'true'
-        run: node scripts/live-signup-mailbox.mjs create
-
       - name: Install dependencies
-        if: steps.opt_in.outputs.enabled == 'true'
         run: npm ci
 
       - name: Install Chromium
-        if: steps.opt_in.outputs.enabled == 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Prove exact-preview browser readiness without account write
+        env:
+          LIVE_ONBOARDING_PHASE: readiness
+        run: npx playwright test --config=playwright.live-onboarding.config.ts
+
+      - name: Prepare disposable guest identity and mailbox
+        if: steps.opt_in.outputs.enabled == 'true'
+        run: node scripts/live-signup-mailbox.mjs create
 
       - name: Create disposable account through exact preview UI
         if: steps.opt_in.outputs.enabled == 'true'
@@ -134,7 +151,7 @@ jobs:
         run: node scripts/live-signup-mailbox.mjs cleanup
 
       - name: Upload live signup proof
-        if: always() && steps.opt_in.outputs.enabled == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: live-signup-proof-${{ env.EXPECTED_HEAD_SHA }}
