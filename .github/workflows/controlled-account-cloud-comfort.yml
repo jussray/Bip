@@ -1,6 +1,13 @@
 name: Controlled Account Cloud Comfort Proof
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/controlled-account-cloud-comfort.yml'
+      - 'playwright.controlled-account.config.ts'
+      - 'e2e/controlled-account-cloud-comfort.spec.ts'
+      - 'test/controlled-account-cloud-comfort-gate.test.mjs'
   workflow_dispatch:
     inputs:
       target_sha:
@@ -17,18 +24,60 @@ permissions:
   contents: read
 
 concurrency:
-  group: controlled-account-cloud-comfort-${{ github.repository }}
-  cancel-in-progress: false
+  group: controlled-account-cloud-comfort-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CI: true
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  EXPECTED_HEAD_SHA: ${{ inputs.target_sha }}
+  EXPECTED_HEAD_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.target_sha || github.event.pull_request.head.sha }}
   SEKRET_CONTROLLED_ACCOUNT_BASE_URL: https://sekretbip.net
   PRODUCTION_RELEASE_URL: https://sekretbip.net/.well-known/sekret-release.json
 
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    name: Compile and lock controlled-account proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Run controlled-account safety contract
+        run: node --test test/controlled-account-cloud-comfort-gate.test.mjs
+
+      - name: Run zero-error TypeScript
+        run: npm run type-check
+
+      - name: Compile and list controlled-account Playwright proof
+        env:
+          EXPECTED_HEAD_SHA: ${{ env.EXPECTED_HEAD_SHA }}
+        run: npx playwright test --config=playwright.controlled-account.config.ts --list
+
   proof:
+    if: github.event_name == 'workflow_dispatch'
     name: Exact-production authenticated Cloud and Comfort
     runs-on: ubuntu-24.04
     timeout-minutes: 20
