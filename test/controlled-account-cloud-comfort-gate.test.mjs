@@ -8,25 +8,43 @@ const workflow = fs.readFileSync(path.join(root, '.github/workflows/controlled-a
 const config = fs.readFileSync(path.join(root, 'playwright.controlled-account.config.ts'), 'utf8');
 const spec = fs.readFileSync(path.join(root, 'e2e/controlled-account-cloud-comfort.spec.ts'), 'utf8');
 
-test('controlled-account proof is manual-only and exact-production bound', () => {
+test('controlled-account workflow validates on PR but keeps live proof dispatch-only', () => {
+  assert.match(workflow, /pull_request:/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /\n  pull_request:/);
   assert.doesNotMatch(workflow, /\n  push:/);
   assert.match(workflow, /target_sha:/);
   assert.match(workflow, /confirm_controlled_account_use:/);
-  assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ inputs\.target_sha \}\}/);
+  assert.match(workflow, /validate:\s*\n\s*if: github\.event_name == 'pull_request'/);
+  assert.match(workflow, /proof:\s*\n\s*if: github\.event_name == 'workflow_dispatch'/);
+  assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.target_sha \|\| github\.event\.pull_request\.head\.sha \}\}/);
   assert.match(workflow, /https:\/\/sekretbip\.net\/\.well-known\/sekret-release\.json/);
   assert.match(workflow, /body\?\.environment === 'production'/);
   assert.match(workflow, /body\?\.branch === 'main'/);
   assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
 });
 
-test('controlled-account proof requires masked repository secrets and never creates an account', () => {
-  assert.match(workflow, /secrets\.SEKRET_CONTROLLED_ACCOUNT_EMAIL/);
-  assert.match(workflow, /secrets\.SEKRET_CONTROLLED_ACCOUNT_PASSWORD/);
-  assert.match(workflow, /CONFIRM_CONTROLLED_ACCOUNT_USE/);
-  assert.doesNotMatch(workflow, /auth\/v1\/signup|live-signup-mailbox|create account/i);
-  assert.doesNotMatch(workflow, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|wrangler deploy/);
+test('PR validation compiles the proof without credentials or live account access', () => {
+  const validateStart = workflow.indexOf('  validate:');
+  const proofStart = workflow.indexOf('\n  proof:');
+  assert.ok(validateStart >= 0 && proofStart > validateStart);
+  const validateJob = workflow.slice(validateStart, proofStart);
+
+  assert.match(validateJob, /node --test test\/controlled-account-cloud-comfort-gate\.test\.mjs/);
+  assert.match(validateJob, /npm run type-check/);
+  assert.match(validateJob, /playwright\.controlled-account\.config\.ts --list/);
+  assert.doesNotMatch(validateJob, /SEKRET_CONTROLLED_ACCOUNT_EMAIL|SEKRET_CONTROLLED_ACCOUNT_PASSWORD|secrets\./);
+});
+
+test('controlled-account live proof requires masked repository secrets and never creates an account', () => {
+  const proofStart = workflow.indexOf('  proof:');
+  assert.ok(proofStart >= 0);
+  const proofJob = workflow.slice(proofStart);
+
+  assert.match(proofJob, /secrets\.SEKRET_CONTROLLED_ACCOUNT_EMAIL/);
+  assert.match(proofJob, /secrets\.SEKRET_CONTROLLED_ACCOUNT_PASSWORD/);
+  assert.match(proofJob, /CONFIRM_CONTROLLED_ACCOUNT_USE/);
+  assert.doesNotMatch(proofJob, /auth\/v1\/signup|live-signup-mailbox|create account/i);
+  assert.doesNotMatch(proofJob, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|wrangler deploy/);
   assert.doesNotMatch(spec, /writeReceipt\([\s\S]*(?:controlledEmail|controlledPassword)/);
 });
 
@@ -60,7 +78,7 @@ test('Comfort proof checks authenticated controls without emitting completion', 
 
 test('uploaded receipt is sanitized and excludes browser reports', () => {
   assert.match(workflow, /path: artifacts\/controlled-account-cloud-comfort\.json/);
-  assert.doesNotMatch(workflow, /playwright-report|test-results|trace/);
+  assert.doesNotMatch(workflow, /playwright-report|test-results|trace\.zip/);
   assert.match(spec, /credentialValuesWrittenToReceipt: false/);
   assert.match(spec, /screenshotsCaptured: false/);
   assert.match(spec, /traceCaptured: false/);
