@@ -49,6 +49,7 @@ async function api(path, options = {}) {
 }
 
 function collectionMembers(body) {
+  if (Array.isArray(body)) return body;
   if (!body || typeof body !== 'object') return [];
   const members = body['hydra:member'] ?? body.member ?? [];
   return Array.isArray(members) ? members : [];
