@@ -95,6 +95,8 @@ test('live signup proof uses a dedicated exact-target Playwright config', () => 
   assert.match(config, /timeout: 120_000/);
   assert.match(config, /workers: 1/);
   assert.match(config, /retries: 0/);
+  assert.match(config, /args: \['--no-proxy-server'\]/);
+  assert.doesNotMatch(config, /proxy:\s*\{/);
   assert.doesNotMatch(config, /production-smoke\.spec\.ts|production-signup-transport\.spec\.ts/);
   assert.match(workflow, /npx playwright test --config=playwright\.live-onboarding\.config\.ts/);
 });
