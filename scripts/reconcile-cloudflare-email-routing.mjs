@@ -80,7 +80,7 @@ async function discoverZone(config) {
 }
 
 async function ensureRoutingDns(config) {
-  const settings = await cfRequest(config, `/zones/${config.zoneId}/email/routing`);
+  const settings = await cfRequest(config, `/zones/${config.zoneId}/email/routing/dns`);
   const current = settings?.result;
   if (current?.enabled === true && current?.status === 'ready') {
     console.log(`EMAIL_ROUTING_DNS_OK zone=${config.zoneName}`);
