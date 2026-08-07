@@ -23,6 +23,20 @@ test('controlled-account workflow validates on PR but keeps live proof dispatch-
   assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
 });
 
+test('live proof binds requested SHA to GitHub current main before reading controlled account secrets', () => {
+  const proofStart = workflow.indexOf('  proof:');
+  assert.ok(proofStart >= 0);
+  const proofJob = workflow.slice(proofStart);
+
+  const currentMainStep = proofJob.indexOf('Require requested head to equal current main');
+  const productionStep = proofJob.indexOf('Verify canonical production serves exact current main');
+  const authorityStep = proofJob.indexOf('Require explicit controlled-account authority');
+  assert.ok(currentMainStep >= 0 && productionStep > currentMainStep && authorityStep > productionStep);
+  assert.match(proofJob, /git ls-remote origin refs\/heads\/main/);
+  assert.match(proofJob, /test \"\$current_main\" = \"\$EXPECTED_HEAD_SHA\"/);
+  assert.match(proofJob, /String\(body\?\.commitSha \?\? ''\)\.toLowerCase\(\) === expected/);
+});
+
 test('PR validation compiles the proof without credentials or live account access', () => {
   const validateStart = workflow.indexOf('  validate:');
   const proofStart = workflow.indexOf('\n  proof:');
