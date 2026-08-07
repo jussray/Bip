@@ -10,23 +10,13 @@ on:
       - 'app/(auth)/signup.tsx'
       - 'scripts/live-signup-mailbox.mjs'
       - 'test/live-onboarding-email-gate.test.mjs'
-  push:
-    branches:
-      - fix/production-signup-age-continue
-    paths:
-      - '.github/workflows/live-signup-proof.yml'
-      - 'playwright.live-onboarding.config.ts'
-      - 'e2e/live-onboarding-email.spec.ts'
-      - 'app/(auth)/signup.tsx'
-      - 'scripts/live-signup-mailbox.mjs'
-      - 'test/live-onboarding-email-gate.test.mjs'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: live-signup-proof-${{ github.event.pull_request.number || github.ref }}
+  group: live-signup-proof-${{ github.repository }}
   cancel-in-progress: false
 
 env:
