@@ -94,13 +94,16 @@ test('PR live signup proof fails closed until an isolated exact-head Pages previ
   assert.doesNotMatch(workflow, /LIVE_ONBOARDING_BASE_URL: https:\/\/sekretbip\.net/);
 });
 
-test('live signup proof mailbox is disposable, non-personal, and cleaned up', () => {
+test('live signup proof mailbox is disposable, non-personal, single-pass decoded, and cleaned up', () => {
   const workflow = readText(workflowPath);
   const mailbox = readText(mailboxPath);
 
   assert.match(mailbox, /https:\/\/api\.mail\.tm/);
   assert.match(mailbox, /https:\/\/mail\.tm/);
   assert.match(mailbox, /if \(Array\.isArray\(body\)\) return body;/);
+  assert.match(mailbox, /decodeUrlSeparatorsOnce/);
+  assert.doesNotMatch(mailbox, /normalizeHtmlEntities/);
+  assert.doesNotMatch(mailbox, /replaceAll\('&amp;'/);
   assert.match(mailbox, /\/domains\?page=1/);
   assert.match(mailbox, /\/accounts/);
   assert.match(mailbox, /\/token/);
