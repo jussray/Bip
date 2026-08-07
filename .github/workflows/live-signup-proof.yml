@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/live-signup-proof.yml'
+      - 'playwright.live-onboarding.config.ts'
       - 'e2e/live-onboarding-email.spec.ts'
       - 'test/live-onboarding-email-gate.test.mjs'
   push:
@@ -12,6 +13,7 @@ on:
       - fix/production-signup-age-continue
     paths:
       - '.github/workflows/live-signup-proof.yml'
+      - 'playwright.live-onboarding.config.ts'
       - 'e2e/live-onboarding-email.spec.ts'
       - 'test/live-onboarding-email-gate.test.mjs'
   workflow_dispatch:
@@ -99,7 +101,7 @@ jobs:
         if: steps.opt_in.outputs.enabled == 'true'
         env:
           LIVE_ONBOARDING_PHASE: signup
-        run: npm run test:e2e:live-onboarding-email
+        run: npx playwright test --config=playwright.live-onboarding.config.ts
 
       - name: Prove returning-user sign in
         if: steps.opt_in.outputs.enabled == 'true'
@@ -107,7 +109,7 @@ jobs:
           LIVE_ONBOARDING_PHASE: signin
           LIVE_SIGNIN_ATTEMPTS: '10'
           LIVE_SIGNIN_RETRY_MS: '30000'
-        run: npm run test:e2e:live-onboarding-email
+        run: npx playwright test --config=playwright.live-onboarding.config.ts
 
       - name: Upload live signup proof
         if: always() && steps.opt_in.outputs.enabled == 'true'
@@ -116,8 +118,7 @@ jobs:
           name: live-signup-proof-${{ env.EXPECTED_HEAD_SHA }}
           path: |
             artifacts/live-signup-proof-account.json
-            playwright-report-production/
+            playwright-report-live-onboarding/
             test-results/
-            test-results-production/
           if-no-files-found: warn
           retention-days: 14
