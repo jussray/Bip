@@ -8,8 +8,11 @@ const liveUsername = (process.env.LIVE_ONBOARDING_USERNAME?.trim() || `pw_${Date
   .slice(0, 24);
 const inviteEmail = process.env.LIVE_PARENT_INVITE_EMAIL?.trim();
 const phase = process.env.LIVE_ONBOARDING_PHASE?.trim().toLowerCase() || 'signup';
+const signInAttempts = Number.parseInt(process.env.LIVE_SIGNIN_ATTEMPTS?.trim() || '10', 10);
+const signInRetryMs = Number.parseInt(process.env.LIVE_SIGNIN_RETRY_MS?.trim() || '30000', 10);
 
 const shouldRunSignup = phase === 'signup' || phase === 'all';
+const shouldRunSignIn = phase === 'signin' || phase === 'all';
 const shouldRunInvite = phase === 'invite' || phase === 'all';
 
 type InviteResponseBody = {
@@ -52,6 +55,7 @@ async function signInTeen(page: Page) {
   }
 
   await expect(page.getByRole('button', { name: /log in/i })).toHaveCount(0, { timeout: 45_000 });
+  await expect(page).not.toHaveURL(/\/login(?:\?|$)/, { timeout: 45_000 });
 }
 
 test.describe('live onboarding email smoke', () => {
@@ -92,11 +96,40 @@ test.describe('live onboarding email smoke', () => {
       phase,
       checkpoint,
       note: checkpoint === 'signup_confirmation_email'
-        ? 'Verify this inbox before running LIVE_ONBOARDING_PHASE=invite.'
+        ? 'Confirm this disposable test inbox before returning-user sign-in proof completes.'
         : 'The account reached post-auth onboarding; email confirmation may be disabled for this project.',
     });
 
     expect(consoleErrors).toEqual([]);
+  });
+
+  test('confirmed teen account can return through sign in', async ({ page }) => {
+    test.skip(!shouldRunSignIn, 'Set LIVE_ONBOARDING_PHASE=signin or all to run returning sign-in proof.');
+    test.skip(!liveEmail, 'LIVE_ONBOARDING_EMAIL is required for returning sign-in proof.');
+
+    let lastFailure = 'sign-in was not attempted';
+    let signedIn = false;
+
+    for (let attempt = 1; attempt <= Math.max(signInAttempts, 1); attempt += 1) {
+      try {
+        await signInTeen(page);
+        signedIn = true;
+        await attachPageState(page, 'returning-teen-sign-in', {
+          email: liveEmail,
+          phase,
+          attempt,
+          checkpoint: 'authenticated_returning_user',
+        });
+        break;
+      } catch (error) {
+        lastFailure = error instanceof Error ? error.message : String(error);
+        if (attempt < Math.max(signInAttempts, 1)) {
+          await page.waitForTimeout(Math.max(signInRetryMs, 1000));
+        }
+      }
+    }
+
+    expect(signedIn, `Returning teen sign-in never completed: ${lastFailure}`).toBe(true);
   });
 
   test('confirmed teen account can send parent invite email', async ({ page }) => {
