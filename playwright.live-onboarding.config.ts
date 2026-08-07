@@ -31,7 +31,10 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        ...(executablePath ? { launchOptions: { executablePath } } : {}),
+        launchOptions: {
+          ...(executablePath ? { executablePath } : {}),
+          args: ['--no-proxy-server'],
+        },
       },
     },
   ],
