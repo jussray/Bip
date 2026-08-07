@@ -8,6 +8,7 @@ const specPath = path.join(root, 'e2e/live-onboarding-email.spec.ts');
 const liveConfigPath = path.join(root, 'playwright.live-onboarding.config.ts');
 const workflowPath = path.join(root, '.github/workflows/live-signup-proof.yml');
 const mailboxPath = path.join(root, 'scripts/live-signup-mailbox.mjs');
+const signupSourcePath = path.join(root, 'app/(auth)/signup.tsx');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -28,6 +29,16 @@ test('live onboarding email smoke is explicit opt-in only', () => {
   assert.match(workflow, /git log -1 --pretty=%B \| grep -Fq '\[live-signup-proof\]'/);
   assert.match(workflow, /steps\.opt_in\.outputs\.enabled == 'true'/);
   assert.doesNotMatch(workflow, /wrangler deploy|deploy:web:production|deploy:api:production/);
+});
+
+test('opaque 504 signup responses enter the existing ambiguous recovery path', () => {
+  const source = readText(signupSourcePath);
+
+  assert.match(source, /function authErrorStatus\(error: unknown\): number \| null/);
+  assert.match(source, /if \(authErrorStatus\(error\) === 504\) return true;/);
+  assert.match(source, /const status = authErrorStatus\(error\);\s*return status !== null && status >= 400;/);
+  assert.match(source, /if \(isAmbiguousSignupError\(authErr\)\) \{[\s\S]*recoverAmbiguousSignup\(sb, e, p, metadata, authErr\)/);
+  assert.match(source, /The account server received your signup request, but confirmation is delayed/);
 });
 
 test('live signup tolerates bounded Auth latency and captures endpoint evidence', () => {
