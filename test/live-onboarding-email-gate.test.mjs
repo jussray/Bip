@@ -5,7 +5,7 @@ import test from 'node:test';
 
 const root = process.cwd();
 const specPath = path.join(root, 'e2e/live-onboarding-email.spec.ts');
-const packagePath = path.join(root, 'package.json');
+const liveConfigPath = path.join(root, 'playwright.live-onboarding.config.ts');
 const workflowPath = path.join(root, '.github/workflows/live-signup-proof.yml');
 
 function readText(filePath) {
@@ -39,6 +39,18 @@ test('live onboarding email smoke proves returning-user authentication with boun
   assert.match(source, /not\.toHaveURL\(\/\\\/login/);
 });
 
+test('live signup proof uses a dedicated production Playwright config', () => {
+  const config = readText(liveConfigPath);
+  const workflow = readText(workflowPath);
+
+  assert.match(config, /PRODUCTION_BASE_URL/);
+  assert.match(config, /testMatch: \['live-onboarding-email\.spec\.ts'\]/);
+  assert.match(config, /workers: 1/);
+  assert.match(config, /retries: 0/);
+  assert.doesNotMatch(config, /production-smoke\.spec\.ts|production-signup-transport\.spec\.ts/);
+  assert.match(workflow, /npx playwright test --config=playwright\.live-onboarding\.config\.ts/);
+});
+
 test('live signup proof workflow is exact-head, disposable, and non-deploying', () => {
   const workflow = readText(workflowPath);
 
@@ -60,13 +72,4 @@ test('live onboarding email smoke proves provider acceptance, not just code gene
   assert.match(source, /\.email\?\.status\)\.toBe\('sent'\)/);
   assert.match(source, /\.email\?\.error_code \?\? null\)\.toBeNull\(\)/);
   assert.doesNotMatch(source, /code created, but email did not send[\s\S]*latestInvite\?\.status\)\.toBeLessThan\(500\)/);
-});
-
-test('package exposes the founder-assisted live onboarding email command', () => {
-  const pkg = JSON.parse(readText(packagePath));
-
-  assert.equal(
-    pkg.scripts['test:e2e:live-onboarding-email'],
-    'playwright test --config=playwright.production.config.ts e2e/live-onboarding-email.spec.ts',
-  );
 });
