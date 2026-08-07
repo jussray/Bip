@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       target_sha:
-        description: 'Exact deployed main SHA to verify'
+        description: 'Exact deployed current-main SHA to verify'
         required: true
         type: string
       confirm_controlled_account_use:
@@ -83,13 +83,13 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Check out exact deployed head
+      - name: Check out exact requested head
         uses: actions/checkout@v4
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
           fetch-depth: 1
 
-      - name: Record and verify exact head
+      - name: Record and verify exact requested head
         shell: bash
         run: |
           set -euo pipefail
@@ -97,29 +97,16 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Require explicit controlled-account authority
+      - name: Require requested head to equal current main
         shell: bash
-        env:
-          CONFIRM_CONTROLLED_ACCOUNT_USE: ${{ inputs.confirm_controlled_account_use }}
-          CONTROLLED_EMAIL: ${{ secrets.SEKRET_CONTROLLED_ACCOUNT_EMAIL }}
-          CONTROLLED_PASSWORD: ${{ secrets.SEKRET_CONTROLLED_ACCOUNT_PASSWORD }}
         run: |
           set -euo pipefail
-          test "$CONFIRM_CONTROLLED_ACCOUNT_USE" = 'true' || {
-            echo '::error::Controlled account proof requires confirm_controlled_account_use=true.'
-            exit 1
-          }
-          test -n "$CONTROLLED_EMAIL" || {
-            echo '::error::Missing SEKRET_CONTROLLED_ACCOUNT_EMAIL repository secret.'
-            exit 1
-          }
-          test -n "$CONTROLLED_PASSWORD" || {
-            echo '::error::Missing SEKRET_CONTROLLED_ACCOUNT_PASSWORD repository secret.'
-            exit 1
-          }
-          echo 'Controlled account authority and masked credentials are present.'
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          test -n "$current_main"
+          printf 'requested=%s\ncurrent_main=%s\n' "$EXPECTED_HEAD_SHA" "$current_main"
+          test "$current_main" = "$EXPECTED_HEAD_SHA"
 
-      - name: Verify canonical production serves exact head
+      - name: Verify canonical production serves exact current main
         shell: bash
         run: |
           set -euo pipefail
@@ -149,7 +136,7 @@ jobs:
                 body?.environment === 'production' &&
                 body?.branch === 'main'
               ) {
-                console.log(`Canonical production verified at exact head ${expected}.`);
+                console.log(`Canonical production verified at exact current main ${expected}.`);
                 process.exit(0);
               }
             } catch (error) {
@@ -157,8 +144,30 @@ jobs:
             }
             await new Promise(resolve => setTimeout(resolve, 5000));
           }
-          throw new Error(`Canonical production did not reach exact head ${expected}: ${JSON.stringify(last)}`);
+          throw new Error(`Canonical production did not reach exact current main ${expected}: ${JSON.stringify(last)}`);
           NODE
+
+      - name: Require explicit controlled-account authority
+        shell: bash
+        env:
+          CONFIRM_CONTROLLED_ACCOUNT_USE: ${{ inputs.confirm_controlled_account_use }}
+          CONTROLLED_EMAIL: ${{ secrets.SEKRET_CONTROLLED_ACCOUNT_EMAIL }}
+          CONTROLLED_PASSWORD: ${{ secrets.SEKRET_CONTROLLED_ACCOUNT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_CONTROLLED_ACCOUNT_USE" = 'true' || {
+            echo '::error::Controlled account proof requires confirm_controlled_account_use=true.'
+            exit 1
+          }
+          test -n "$CONTROLLED_EMAIL" || {
+            echo '::error::Missing SEKRET_CONTROLLED_ACCOUNT_EMAIL repository secret.'
+            exit 1
+          }
+          test -n "$CONTROLLED_PASSWORD" || {
+            echo '::error::Missing SEKRET_CONTROLLED_ACCOUNT_PASSWORD repository secret.'
+            exit 1
+          }
+          echo 'Controlled account authority and masked credentials are present.'
 
       - name: Set up Node
         uses: actions/setup-node@v4
