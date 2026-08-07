@@ -11,6 +11,7 @@ const phase = process.env.LIVE_ONBOARDING_PHASE?.trim().toLowerCase() || 'signup
 const signInAttempts = Number.parseInt(process.env.LIVE_SIGNIN_ATTEMPTS?.trim() || '3', 10);
 const signInRetryMs = Number.parseInt(process.env.LIVE_SIGNIN_RETRY_MS?.trim() || '5000', 10);
 
+const shouldRunReadiness = phase === 'readiness' || phase === 'all';
 const shouldRunSignup = phase === 'signup' || phase === 'all';
 const shouldRunSignIn = phase === 'signin' || phase === 'all';
 const shouldRunInvite = phase === 'invite' || phase === 'all';
@@ -66,6 +67,32 @@ async function signInTeen(page: Page) {
 }
 
 test.describe('live onboarding email smoke', () => {
+  test('exact preview reaches Teen signup form without an account write', async ({ page }) => {
+    test.setTimeout(90_000);
+    test.skip(!shouldRunReadiness, 'Set LIVE_ONBOARDING_PHASE=readiness or all to run exact-preview readiness proof.');
+
+    const pageErrors: string[] = [];
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.message);
+    });
+
+    await page.goto('/signup?side=teen');
+    await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i }).click();
+    await page.getByRole('button', { name: /Continue with teen setup/i }).click();
+    await expect(page.getByPlaceholder('Email address')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByPlaceholder('Password (8+ characters)')).toBeVisible({ timeout: 30_000 });
+
+    await attachPageState(page, 'live-signup-readiness', {
+      phase,
+      checkpoint: 'teen_signup_form_ready',
+      accountWriteAttempted: false,
+      pageErrors,
+    });
+
+    expect(pageErrors).toEqual([]);
+  });
+
   test('signup reaches the real email confirmation checkpoint', async ({ page }) => {
     test.setTimeout(180_000);
     test.skip(!shouldRunSignup, 'Set LIVE_ONBOARDING_PHASE=signup or all to run signup email smoke.');
