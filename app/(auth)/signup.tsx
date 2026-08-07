@@ -30,14 +30,21 @@ import {
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ─── Error helpers (unchanged) ────────────────────────────────────────────
+// ─── Error helpers ────────────────────────────────────────────────────────
 function authErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   return '';
 }
 
+function authErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object' || !('status' in error)) return null;
+  const status = Number((error as { status?: unknown }).status);
+  return Number.isFinite(status) ? status : null;
+}
+
 function isAmbiguousSignupError(error: unknown): boolean {
+  if (authErrorStatus(error) === 504) return true;
   const msg = authErrorMessage(error).toLowerCase();
   return (
     msg.includes('failed to fetch') ||
@@ -60,9 +67,8 @@ function isConfirmationPendingError(error: unknown): boolean {
 }
 
 function hasAuthServerResponse(error: unknown): boolean {
-  if (!error || typeof error !== 'object' || !('status' in error)) return false;
-  const status = Number((error as { status?: unknown }).status);
-  return Number.isFinite(status) && status >= 400;
+  const status = authErrorStatus(error);
+  return status !== null && status >= 400;
 }
 
 function readableAuthError(error: unknown): string {
