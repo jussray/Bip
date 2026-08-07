@@ -7,6 +7,7 @@ on:
       - '.github/workflows/live-signup-proof.yml'
       - 'playwright.live-onboarding.config.ts'
       - 'e2e/live-onboarding-email.spec.ts'
+      - 'app/(auth)/signup.tsx'
       - 'scripts/live-signup-mailbox.mjs'
       - 'test/live-onboarding-email-gate.test.mjs'
   push:
@@ -16,6 +17,7 @@ on:
       - '.github/workflows/live-signup-proof.yml'
       - 'playwright.live-onboarding.config.ts'
       - 'e2e/live-onboarding-email.spec.ts'
+      - 'app/(auth)/signup.tsx'
       - 'scripts/live-signup-mailbox.mjs'
       - 'test/live-onboarding-email-gate.test.mjs'
   workflow_dispatch:
@@ -30,7 +32,7 @@ concurrency:
 env:
   CI: true
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  PRODUCTION_BASE_URL: https://sekretbip.net
+  LIVE_ONBOARDING_BASE_URL: https://fix-production-signup-age-co.sekret-bip.pages.dev
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
@@ -65,6 +67,38 @@ jobs:
             echo 'Live signup proof not enabled; no account write will occur.'
           fi
 
+      - name: Verify isolated preview is exact head
+        if: steps.opt_in.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const base = process.env.LIVE_ONBOARDING_BASE_URL;
+          const expected = process.env.EXPECTED_HEAD_SHA;
+          const parsedBase = new URL(base);
+          if (!parsedBase.hostname.endsWith('.pages.dev') || parsedBase.hostname === 'sekretbip.net') {
+            throw new Error(`Live signup PR proof must target an isolated Pages preview, got ${parsedBase.hostname}`);
+          }
+          const markerUrl = new URL('/.well-known/sekret-release.json', base);
+          const deadline = Date.now() + 240_000;
+          let last = null;
+          while (Date.now() < deadline) {
+            try {
+              const response = await fetch(`${markerUrl}?proof=${Date.now()}`, { cache: 'no-store' });
+              const body = response.ok ? await response.json() : null;
+              last = { status: response.status, commitSha: body?.commitSha ?? null, environment: body?.environment ?? null };
+              if (response.ok && body?.commitSha === expected && body?.environment === 'preview') {
+                console.log(`Exact isolated preview verified: ${parsedBase.hostname} @ ${expected}`);
+                process.exit(0);
+              }
+            } catch (error) {
+              last = { error: error instanceof Error ? error.message : String(error) };
+            }
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          }
+          throw new Error(`Exact preview did not reach ${expected}: ${JSON.stringify(last)}`);
+          NODE
+
       - name: Set up Node
         if: steps.opt_in.outputs.enabled == 'true'
         uses: actions/setup-node@v4
@@ -84,7 +118,7 @@ jobs:
         if: steps.opt_in.outputs.enabled == 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Create disposable account through production UI
+      - name: Create disposable account through exact preview UI
         if: steps.opt_in.outputs.enabled == 'true'
         env:
           LIVE_ONBOARDING_PHASE: signup
