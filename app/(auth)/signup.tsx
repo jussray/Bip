@@ -156,7 +156,7 @@ export default function SignupScreen() {
     ]).start();
   }
 
-  // ─── Auth helpers (logic unchanged) ──────────────────────────────────────
+  // ─── Auth helpers ───────────────────────────────────────────────────────
   const finishAuthenticatedSignup = useCallback(async (_userId: string) => {
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
     const bootstrap = await fetchPostAuthBootstrap(preferredSide);
@@ -196,6 +196,18 @@ export default function SignupScreen() {
     } catch (probeError) {
       if (!isAmbiguousSignupError(probeError)) return false;
     }
+
+    // A real HTTP response means Auth received the first signup. Never submit
+    // signUp again here: duplicate submissions can emit duplicate confirmation
+    // emails and consume the project-wide email-send quota.
+    if (initialSignupReachedAuth) {
+      showConfirmationSuccess(
+        `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
+      );
+      return true;
+    }
+
+    // Only a transport failure with no Auth response may retry signup once.
     try {
       const { data: retryData, error: retryError } = await sb.auth.signUp({
         email: signupEmail,
@@ -216,15 +228,14 @@ export default function SignupScreen() {
         );
         return true;
       }
-      const retryReachedAuth = hasAuthServerResponse(retryError);
-      if (isAmbiguousSignupError(retryError) && (initialSignupReachedAuth || retryReachedAuth)) {
+      if (isAmbiguousSignupError(retryError) && hasAuthServerResponse(retryError)) {
         showConfirmationSuccess(
           `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
         );
         return true;
       }
     } catch (retryError) {
-      if (isAmbiguousSignupError(retryError) && initialSignupReachedAuth) {
+      if (isAmbiguousSignupError(retryError) && hasAuthServerResponse(retryError)) {
         showConfirmationSuccess(
           `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
         );
