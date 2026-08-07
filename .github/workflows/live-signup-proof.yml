@@ -7,6 +7,7 @@ on:
       - '.github/workflows/live-signup-proof.yml'
       - 'playwright.live-onboarding.config.ts'
       - 'e2e/live-onboarding-email.spec.ts'
+      - 'scripts/live-signup-mailbox.mjs'
       - 'test/live-onboarding-email-gate.test.mjs'
   push:
     branches:
@@ -15,6 +16,7 @@ on:
       - '.github/workflows/live-signup-proof.yml'
       - 'playwright.live-onboarding.config.ts'
       - 'e2e/live-onboarding-email.spec.ts'
+      - 'scripts/live-signup-mailbox.mjs'
       - 'test/live-onboarding-email-gate.test.mjs'
   workflow_dispatch:
 
@@ -78,24 +80,9 @@ jobs:
         if: steps.opt_in.outputs.enabled == 'true'
         run: npx playwright install --with-deps chromium
 
-      - name: Prepare disposable guest identity
+      - name: Prepare disposable guest identity and mailbox
         if: steps.opt_in.outputs.enabled == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts
-          email="sekretbip+pw-${GITHUB_RUN_ID}@gmail.com"
-          username="pw${GITHUB_RUN_ID}"
-          password="$(node -e "console.log(require('node:crypto').randomBytes(18).toString('base64url') + 'Aa9!')")"
-          echo "::add-mask::$password"
-          {
-            printf 'LIVE_ONBOARDING_EMAIL=%s\n' "$email"
-            printf 'LIVE_ONBOARDING_USERNAME=%s\n' "$username"
-            printf 'LIVE_ONBOARDING_PASSWORD=%s\n' "$password"
-          } >> "$GITHUB_ENV"
-          node -e "const fs=require('node:fs'); fs.writeFileSync('artifacts/live-signup-proof-account.json', JSON.stringify({email: process.argv[1], username: process.argv[2], runId: process.env.GITHUB_RUN_ID, headSha: process.env.EXPECTED_HEAD_SHA}, null, 2))" "$email" "$username"
-          printf 'Disposable live signup email: %s\n' "$email"
-          printf 'Disposable live signup username: %s\n' "$username"
+        run: node scripts/live-signup-mailbox.mjs create
 
       - name: Create disposable account through production UI
         if: steps.opt_in.outputs.enabled == 'true'
@@ -103,13 +90,24 @@ jobs:
           LIVE_ONBOARDING_PHASE: signup
         run: npx playwright test --config=playwright.live-onboarding.config.ts
 
+      - name: Confirm disposable signup email
+        if: steps.opt_in.outputs.enabled == 'true'
+        env:
+          LIVE_MAILBOX_TIMEOUT_MS: '120000'
+          LIVE_MAILBOX_POLL_MS: '3000'
+        run: node scripts/live-signup-mailbox.mjs confirm
+
       - name: Prove returning-user sign in
         if: steps.opt_in.outputs.enabled == 'true'
         env:
           LIVE_ONBOARDING_PHASE: signin
-          LIVE_SIGNIN_ATTEMPTS: '10'
-          LIVE_SIGNIN_RETRY_MS: '30000'
+          LIVE_SIGNIN_ATTEMPTS: '3'
+          LIVE_SIGNIN_RETRY_MS: '5000'
         run: npx playwright test --config=playwright.live-onboarding.config.ts
+
+      - name: Remove disposable mailbox
+        if: always() && steps.opt_in.outputs.enabled == 'true'
+        run: node scripts/live-signup-mailbox.mjs cleanup
 
       - name: Upload live signup proof
         if: always() && steps.opt_in.outputs.enabled == 'true'
@@ -118,6 +116,8 @@ jobs:
           name: live-signup-proof-${{ env.EXPECTED_HEAD_SHA }}
           path: |
             artifacts/live-signup-proof-account.json
+            artifacts/live-signup-confirmation.json
+            artifacts/live-signup-mailbox-cleanup.json
             playwright-report-live-onboarding/
             test-results/
           if-no-files-found: warn
