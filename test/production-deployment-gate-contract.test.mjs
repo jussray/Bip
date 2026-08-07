@@ -8,7 +8,7 @@ const productionSmoke = readFileSync('e2e/production-smoke.spec.ts', 'utf8');
 
 test('production verification runs after relevant main pushes', () => {
   assert.match(workflow, /push:\s*\n\s*branches: \[main\]/);
-  assert.match(workflow, /EXPECTED_RELEASE_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(workflow, /EXPECTED_RELEASE_SHA: \$\{\{ inputs\.target_sha \|\| github\.sha \}\}/);
   assert.match(workflow, /verify-cloudflare-native-deploy\.mjs/);
   assert.match(workflow, /test:e2e:production/);
 });
