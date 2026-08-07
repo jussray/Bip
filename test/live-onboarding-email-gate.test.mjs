@@ -67,14 +67,18 @@ test('server-reached ambiguous signup never resubmits signUp', () => {
   assert.doesNotMatch(source, /initialSignupReachedAuth \|\| retryReachedAuth/);
 });
 
-test('readiness mode reaches the Teen signup form without creating an account', () => {
+test('readiness mode reaches final Teen signup submit without creating an account', () => {
   const source = readText(specPath);
   const workflow = readText(workflowPath);
 
   assert.match(source, /phase === 'readiness'/);
-  assert.match(source, /exact preview reaches Teen signup form without an account write/);
-  assert.match(source, /accountWriteAttempted: false/);
+  assert.match(source, /exact preview reaches final Teen signup submit without an account write/);
+  assert.match(source, /let accountWriteAttempted = false/);
+  assert.match(source, /auth\/v1\/signup/);
   assert.match(source, /getByPlaceholder\('Email address'\)/);
+  assert.match(source, /getByPlaceholder\('username'\)/);
+  assert.match(source, /getByRole\('button', \{ name: \/create account\/i \}\)/);
+  assert.match(source, /expect\(accountWriteAttempted\)\.toBe\(false\)/);
 
   const readinessStart = workflow.indexOf('      - name: Prove exact-preview browser readiness without account write');
   const readinessEnd = workflow.indexOf('\n      - name:', readinessStart + 1);
