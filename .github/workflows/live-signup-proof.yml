@@ -72,6 +72,10 @@ jobs:
           node-version: '24'
           cache: npm
 
+      - name: Prepare disposable guest identity and mailbox
+        if: steps.opt_in.outputs.enabled == 'true'
+        run: node scripts/live-signup-mailbox.mjs create
+
       - name: Install dependencies
         if: steps.opt_in.outputs.enabled == 'true'
         run: npm ci
@@ -79,10 +83,6 @@ jobs:
       - name: Install Chromium
         if: steps.opt_in.outputs.enabled == 'true'
         run: npx playwright install --with-deps chromium
-
-      - name: Prepare disposable guest identity and mailbox
-        if: steps.opt_in.outputs.enabled == 'true'
-        run: node scripts/live-signup-mailbox.mjs create
 
       - name: Create disposable account through production UI
         if: steps.opt_in.outputs.enabled == 'true'
