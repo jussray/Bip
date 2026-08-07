@@ -1,7 +1,10 @@
 import fs from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
-const BASE_URL = process.env.PRODUCTION_BASE_URL || 'https://sekretbip.net';
+const BASE_URL =
+  process.env.LIVE_ONBOARDING_BASE_URL ||
+  process.env.PRODUCTION_BASE_URL ||
+  'https://sekretbip.net';
 const sandboxChromium = '/opt/pw-browsers/chromium';
 const executablePath =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ||
