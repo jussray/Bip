@@ -37,10 +37,14 @@ function isInviteResponseBody(value: unknown): value is InviteResponseBody {
 
 async function attachPageState(page: Page, name: string, extra: Record<string, unknown> = {}) {
   const alert = page.getByRole('alert');
+  const visibleAlert = (await alert.count()) > 0
+    ? await alert.first().textContent({ timeout: 500 }).catch(() => null)
+    : null;
+
   await test.info().attach(name, {
     body: JSON.stringify({
       url: page.url(),
-      visibleAlert: await alert.textContent().catch(() => null),
+      visibleAlert,
       title: await page.title().catch(() => null),
       ...extra,
     }, null, 2),
