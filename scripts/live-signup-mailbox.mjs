@@ -97,8 +97,14 @@ async function createMailbox() {
   const runId = required('GITHUB_RUN_ID');
   const headSha = required('EXPECTED_HEAD_SHA');
   const { body: domainsBody } = await api('/domains?page=1');
-  const domainRecord = collectionMembers(domainsBody).find((item) => item?.isActive && item?.domain);
-  if (!domainRecord?.domain) throw new Error('Mail.tm returned no active disposable domain');
+  const domains = collectionMembers(domainsBody);
+  const domainRecord = domains.find((item) => typeof item?.domain === 'string' && item.domain.trim());
+  if (!domainRecord?.domain) {
+    const shape = domainsBody && typeof domainsBody === 'object'
+      ? { keys: Object.keys(domainsBody), memberCount: domains.length }
+      : { bodyType: typeof domainsBody };
+    throw new Error(`Mail.tm returned no disposable domain: ${JSON.stringify(shape)}`);
+  }
 
   const localPart = `sekretbip-pw-${runId}-${crypto.randomBytes(3).toString('hex')}`.toLowerCase();
   const address = `${localPart}@${domainRecord.domain}`;
