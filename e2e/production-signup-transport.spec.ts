@@ -39,6 +39,10 @@ test('public signup stays retryable when no Auth request reaches the server', as
   await page.getByPlaceholder('email').fill('fresh-public-signup@example.invalid');
   await page.getByPlaceholder('password (8+ characters)').fill('PlaywrightOnly-123!');
   await page.getByPlaceholder('confirm password').fill('PlaywrightOnly-123!');
+  await page.getByRole('button', { name: /^next$/i }).click();
+
+  await page.getByPlaceholder('username').fill(`pw_transport_${Date.now()}`);
+  await page.getByRole('button', { name: /^next$/i }).click();
   await page.getByRole('button', { name: 'Create Account' }).click();
 
   await expect(page.getByRole('alert')).toHaveText(
