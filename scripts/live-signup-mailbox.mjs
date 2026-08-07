@@ -59,21 +59,17 @@ function randomSecret() {
   return `${crypto.randomBytes(24).toString('base64url')}Aa9!`;
 }
 
-function normalizeHtmlEntities(value) {
-  return value
-    .replaceAll('&amp;', '&')
-    .replaceAll('&#38;', '&')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#34;', '"');
+function decodeUrlSeparatorsOnce(value) {
+  return value.replace(/&(amp|#38);/g, '&');
 }
 
 function extractConfirmationUrl(message) {
   const html = Array.isArray(message?.html) ? message.html.join('\n') : String(message?.html || '');
-  const source = normalizeHtmlEntities(`${message?.text || ''}\n${html}`);
+  const source = `${message?.text || ''}\n${html}`;
   const candidates = source.match(/https?:\/\/[^\s"'<>]+/g) || [];
 
   for (const raw of candidates) {
-    const candidate = raw.replace(/[),.;]+$/g, '');
+    const candidate = decodeUrlSeparatorsOnce(raw).replace(/[),.;]+$/g, '');
     try {
       const url = new URL(candidate);
       const isSupabaseVerify = url.hostname.endsWith('.supabase.co') && url.pathname.includes('/auth/v1/verify');
