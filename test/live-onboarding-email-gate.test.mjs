@@ -70,6 +70,7 @@ test('live signup proof mailbox is disposable, non-personal, and cleaned up', ()
 
   assert.match(mailbox, /https:\/\/api\.mail\.tm/);
   assert.match(mailbox, /https:\/\/mail\.tm/);
+  assert.match(mailbox, /if \(Array\.isArray\(body\)\) return body;/);
   assert.match(mailbox, /\/domains\?page=1/);
   assert.match(mailbox, /\/accounts/);
   assert.match(mailbox, /\/token/);
