@@ -43,7 +43,7 @@ test('Cloudflare email rules target the canonical production Worker', () => {
   assert.equal(rule.enabled, true);
 });
 
-test('email routing workflow is manual and does not create a catch-all path', () => {
+test('email routing workflow is manual, fail-closed, and uses current Cloudflare endpoints', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-email-routing.yml', import.meta.url),
     'utf8',
@@ -57,6 +57,8 @@ test('email routing workflow is manual and does not create a catch-all path', ()
   assert.doesNotMatch(workflow, /^\s*push:/m);
   assert.doesNotMatch(workflow, /^\s*schedule:/m);
   assert.match(workflow, /secrets\.CLOUDFLARE_API_TOKEN/);
+  assert.match(reconciler, /\/email\/routing\/dns/);
+  assert.doesNotMatch(reconciler, /\/email\/routing`/);
   assert.match(reconciler, /catchAll: false/);
   assert.doesNotMatch(reconciler, /method:\s*['"]DELETE['"]/);
 });
