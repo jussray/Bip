@@ -73,9 +73,15 @@ test('readiness mode reaches the Teen signup form without creating an account', 
   assert.match(source, /exact preview reaches Teen signup form without an account write/);
   assert.match(source, /accountWriteAttempted: false/);
   assert.match(source, /getByPlaceholder\('Email address'\)/);
-  assert.match(workflow, /Prove exact-preview browser readiness without account write/);
-  assert.match(workflow, /LIVE_ONBOARDING_PHASE: readiness/);
-  assert.doesNotMatch(workflow, /Prove exact-preview browser readiness without account write[\s\S]*if: steps\.opt_in/);
+
+  const readinessStart = workflow.indexOf('      - name: Prove exact-preview browser readiness without account write');
+  const readinessEnd = workflow.indexOf('\n      - name:', readinessStart + 1);
+  assert.ok(readinessStart >= 0 && readinessEnd > readinessStart);
+  const readinessStep = workflow.slice(readinessStart, readinessEnd);
+
+  assert.match(readinessStep, /LIVE_ONBOARDING_PHASE: readiness/);
+  assert.match(readinessStep, /npx playwright test --config=playwright\.live-onboarding\.config\.ts/);
+  assert.doesNotMatch(readinessStep, /\n\s+if:/);
 });
 
 test('live signup tolerates bounded Auth latency and distinguishes transport noise from page failures', () => {
