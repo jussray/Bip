@@ -67,29 +67,41 @@ async function signInTeen(page: Page) {
 }
 
 test.describe('live onboarding email smoke', () => {
-  test('exact preview reaches Teen signup form without an account write', async ({ page }) => {
+  test('exact preview reaches final Teen signup submit without an account write', async ({ page }) => {
     test.setTimeout(90_000);
     test.skip(!shouldRunReadiness, 'Set LIVE_ONBOARDING_PHASE=readiness or all to run exact-preview readiness proof.');
 
     const pageErrors: string[] = [];
+    let accountWriteAttempted = false;
     page.on('pageerror', (error) => {
       pageErrors.push(error.message);
+    });
+    await page.route('**/auth/v1/signup**', async (route) => {
+      accountWriteAttempted = true;
+      await route.abort('blockedbyclient');
     });
 
     await page.goto('/signup?side=teen');
     await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i }).click();
     await page.getByRole('button', { name: /Continue with teen setup/i }).click();
-    await expect(page.getByPlaceholder('Email address')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByPlaceholder('Password (8+ characters)')).toBeVisible({ timeout: 30_000 });
+    await page.getByPlaceholder('Email address').fill('readiness-only@example.invalid');
+    await page.getByPlaceholder('Password (8+ characters)').fill('PlaywrightOnly-123!');
+    await page.getByPlaceholder('Confirm password').fill('PlaywrightOnly-123!');
+    await page.getByRole('button', { name: /^next$/i }).click();
+    await page.getByPlaceholder('username').fill('pw_readiness_only');
+    await page.getByRole('button', { name: /^next$/i }).click();
+    await expect(page.getByRole('button', { name: /create account/i })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: /create account/i })).toBeEnabled();
 
     await attachPageState(page, 'live-signup-readiness', {
       phase,
-      checkpoint: 'teen_signup_form_ready',
-      accountWriteAttempted: false,
+      checkpoint: 'teen_signup_final_submit_ready',
+      accountWriteAttempted,
       pageErrors,
     });
 
+    expect(accountWriteAttempted).toBe(false);
     expect(pageErrors).toEqual([]);
   });
 
