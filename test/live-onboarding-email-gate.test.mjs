@@ -6,6 +6,7 @@ import test from 'node:test';
 const root = process.cwd();
 const specPath = path.join(root, 'e2e/live-onboarding-email.spec.ts');
 const packagePath = path.join(root, 'package.json');
+const workflowPath = path.join(root, '.github/workflows/live-signup-proof.yml');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -13,12 +14,27 @@ function readText(filePath) {
 
 test('live onboarding email smoke is explicit opt-in only', () => {
   const source = readText(specPath);
+  const workflow = readText(workflowPath);
 
   assert.match(source, /LIVE_ONBOARDING_PHASE/);
   assert.match(source, /LIVE_ONBOARDING_EMAIL/);
   assert.match(source, /LIVE_PARENT_INVITE_EMAIL/);
   assert.match(source, /test\.skip\(!shouldRunSignup/);
+  assert.match(source, /test\.skip\(!shouldRunSignIn/);
   assert.match(source, /test\.skip\(!shouldRunInvite/);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /contains\(github\.event\.head_commit\.message, '\[live-signup-proof\]'\)/);
+  assert.doesNotMatch(workflow, /wrangler deploy|deploy:web:production|deploy:api:production/);
+});
+
+test('live onboarding email smoke proves returning-user authentication with bounded retries', () => {
+  const source = readText(specPath);
+
+  assert.match(source, /LIVE_SIGNIN_ATTEMPTS/);
+  assert.match(source, /LIVE_SIGNIN_RETRY_MS/);
+  assert.match(source, /authenticated_returning_user/);
+  assert.match(source, /expect\(signedIn,[\s\S]*Returning teen sign-in never completed/);
+  assert.match(source, /not\.toHaveURL\(\/\\\/login/);
 });
 
 test('live onboarding email smoke proves provider acceptance, not just code generation', () => {
