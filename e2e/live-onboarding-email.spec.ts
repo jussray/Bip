@@ -65,6 +65,9 @@ test.describe('live onboarding email smoke', () => {
     });
 
     await page.goto('/signup?side=teen');
+    await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 30_000 });
+    await page.getByRole('button', { name: /13\s*[–-]\s*15 Teen mode starts/i }).click();
+    await page.getByRole('button', { name: /Continue with teen setup/i }).click();
     await page.getByPlaceholder('Email address').fill(liveEmail!);
     await page.getByPlaceholder('Password (8+ characters)').fill(livePassword);
     await page.getByPlaceholder('Confirm password').fill(livePassword);
