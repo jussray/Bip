@@ -43,6 +43,19 @@ test('opaque 504 signup responses enter the existing ambiguous recovery path', (
   assert.match(source, /The account server received your signup request, but confirmation is delayed/);
 });
 
+test('server-reached ambiguous signup never resubmits signUp', () => {
+  const source = readText(signupSourcePath);
+  const recoveryStart = source.indexOf('async function recoverAmbiguousSignup');
+  const serverReachedGuard = source.indexOf('if (initialSignupReachedAuth) {', recoveryStart);
+  const retrySignup = source.indexOf('await sb.auth.signUp({', recoveryStart);
+
+  assert.ok(recoveryStart >= 0);
+  assert.ok(serverReachedGuard > recoveryStart);
+  assert.ok(retrySignup > serverReachedGuard);
+  assert.match(source, /Only a transport failure with no Auth response may retry signup once/);
+  assert.doesNotMatch(source, /initialSignupReachedAuth \|\| retryReachedAuth/);
+});
+
 test('live signup tolerates bounded Auth latency and distinguishes transport noise from page failures', () => {
   const source = readText(specPath);
 
