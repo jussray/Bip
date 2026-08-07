@@ -208,6 +208,7 @@ export default function SignupScreen() {
     }
 
     // Only a transport failure with no Auth response may retry signup once.
+    let retryThrown: unknown = null;
     try {
       const { data: retryData, error: retryError } = await sb.auth.signUp({
         email: signupEmail,
@@ -235,12 +236,14 @@ export default function SignupScreen() {
         return true;
       }
     } catch (retryError) {
-      if (isAmbiguousSignupError(retryError) && hasAuthServerResponse(retryError)) {
-        showConfirmationSuccess(
-          `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
-        );
-        return true;
-      }
+      retryThrown = retryError;
+    }
+
+    if (isAmbiguousSignupError(retryThrown) && hasAuthServerResponse(retryThrown)) {
+      showConfirmationSuccess(
+        `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
+      );
+      return true;
     }
     return false;
   }
