@@ -42,7 +42,7 @@ npm run deploy:worker
 1. Confirm the intended `sekret-backend` release is deployed.
 2. Confirm its `/health` endpoint succeeds.
 3. Run the `Reconcile Cloudflare Email Routing` GitHub Actions workflow with `apply=false` and inspect the plan.
-4. Run it again with `apply=true` after `CLOUDFLARE_API_TOKEN` is configured with the required Cloudflare permissions.
+4. Run it again with `apply=true` after `CLOUDFLARE_API_TOKEN` is configured with the required Cloudflare permissions. This reconciliation must change the Worker action from `bip-mail` to `sekret-backend` for every supported alias that still points at the legacy Worker.
 5. If the workflow reports `DESTINATION_VERIFICATION_REQUIRED`, verify `sekretbip@gmail.com` from Cloudflare's email and rerun `apply=true`.
 6. Send a controlled message to every supported alias.
 7. Confirm every message reaches the verified destination and preserves the expected `X-Bip-*` headers.
