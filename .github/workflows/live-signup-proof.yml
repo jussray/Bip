@@ -1,6 +1,12 @@
 name: Live Signup Proof
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-signup-proof.yml'
+      - 'e2e/live-onboarding-email.spec.ts'
+      - 'test/live-onboarding-email-gate.test.mjs'
   push:
     branches:
       - fix/production-signup-age-continue
@@ -14,18 +20,17 @@ permissions:
   contents: read
 
 concurrency:
-  group: live-signup-proof-${{ github.ref }}
+  group: live-signup-proof-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: false
 
 env:
   CI: true
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   PRODUCTION_BASE_URL: https://sekretbip.net
-  EXPECTED_HEAD_SHA: ${{ github.sha }}
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   live-signup-proof:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[live-signup-proof]')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -43,19 +48,36 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
+      - name: Require explicit live-write opt-in
+        id: opt_in
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = 'workflow_dispatch' ] || git log -1 --pretty=%B | grep -Fq '[live-signup-proof]'; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+            echo 'Live signup proof explicitly enabled for this exact head.'
+          else
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'Live signup proof not enabled; no account write will occur.'
+          fi
+
       - name: Set up Node
+        if: steps.opt_in.outputs.enabled == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
 
       - name: Install dependencies
+        if: steps.opt_in.outputs.enabled == 'true'
         run: npm ci
 
       - name: Install Chromium
+        if: steps.opt_in.outputs.enabled == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Prepare disposable guest identity
+        if: steps.opt_in.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -74,11 +96,13 @@ jobs:
           printf 'Disposable live signup username: %s\n' "$username"
 
       - name: Create disposable account through production UI
+        if: steps.opt_in.outputs.enabled == 'true'
         env:
           LIVE_ONBOARDING_PHASE: signup
         run: npm run test:e2e:live-onboarding-email
 
       - name: Prove returning-user sign in
+        if: steps.opt_in.outputs.enabled == 'true'
         env:
           LIVE_ONBOARDING_PHASE: signin
           LIVE_SIGNIN_ATTEMPTS: '10'
@@ -86,7 +110,7 @@ jobs:
         run: npm run test:e2e:live-onboarding-email
 
       - name: Upload live signup proof
-        if: always()
+        if: always() && steps.opt_in.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: live-signup-proof-${{ env.EXPECTED_HEAD_SHA }}
