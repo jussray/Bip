@@ -134,7 +134,7 @@ test('production recovery browser checks are excluded only from the blank-config
   assert.match(playwrightSource, /production-password-recovery\.spec\.ts/);
   assert.match(playwrightSource, /EXPO_PUBLIC_SUPABASE_URL: ''/);
   assert.match(productionPlaywrightSource, /testDir: '\.\/e2e'/);
-  assert.doesNotMatch(productionPlaywrightSource, /production-password-recovery\.spec\.ts/);
+  assert.match(productionPlaywrightSource, /production-password-recovery\.spec\.ts/);
 });
 
 test('native scheme and hosted redirect requirements remain explicit', () => {
