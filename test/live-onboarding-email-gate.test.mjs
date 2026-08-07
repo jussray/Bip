@@ -62,10 +62,11 @@ test('live onboarding email smoke proves returning-user authentication with boun
   assert.match(source, /not\.toHaveURL\(\/\\\/login/);
 });
 
-test('live signup proof uses a dedicated production Playwright config', () => {
+test('live signup proof uses a dedicated exact-target Playwright config', () => {
   const config = readText(liveConfigPath);
   const workflow = readText(workflowPath);
 
+  assert.match(config, /LIVE_ONBOARDING_BASE_URL/);
   assert.match(config, /PRODUCTION_BASE_URL/);
   assert.match(config, /testMatch: \['live-onboarding-email\.spec\.ts'\]/);
   assert.match(config, /timeout: 120_000/);
@@ -73,6 +74,18 @@ test('live signup proof uses a dedicated production Playwright config', () => {
   assert.match(config, /retries: 0/);
   assert.doesNotMatch(config, /production-smoke\.spec\.ts|production-signup-transport\.spec\.ts/);
   assert.match(workflow, /npx playwright test --config=playwright\.live-onboarding\.config\.ts/);
+});
+
+test('PR live signup proof fails closed until an isolated exact-head Pages preview exists', () => {
+  const workflow = readText(workflowPath);
+
+  assert.match(workflow, /LIVE_ONBOARDING_BASE_URL: https:\/\/fix-production-signup-age-co\.sekret-bip\.pages\.dev/);
+  assert.match(workflow, /Verify isolated preview is exact head/);
+  assert.match(workflow, /hostname\.endsWith\('\.pages\.dev'\)/);
+  assert.match(workflow, /body\?\.commitSha === expected/);
+  assert.match(workflow, /body\?\.environment === 'preview'/);
+  assert.match(workflow, /Exact isolated preview verified/);
+  assert.doesNotMatch(workflow, /LIVE_ONBOARDING_BASE_URL: https:\/\/sekretbip\.net/);
 });
 
 test('live signup proof mailbox is disposable, non-personal, and cleaned up', () => {
@@ -93,10 +106,12 @@ test('live signup proof mailbox is disposable, non-personal, and cleaned up', ()
   assert.doesNotMatch(workflow, /@gmail\.com/i);
   assert.doesNotMatch(mailbox, /@gmail\.com/i);
 
-  const signupStep = workflow.indexOf('Create disposable account through production UI');
+  const previewStep = workflow.indexOf('Verify isolated preview is exact head');
+  const mailboxStep = workflow.indexOf('Prepare disposable guest identity and mailbox');
+  const signupStep = workflow.indexOf('Create disposable account through exact preview UI');
   const confirmStep = workflow.indexOf('Confirm disposable signup email');
   const signInStep = workflow.indexOf('Prove returning-user sign in');
-  assert.ok(signupStep >= 0 && signupStep < confirmStep && confirmStep < signInStep);
+  assert.ok(previewStep >= 0 && previewStep < mailboxStep && mailboxStep < signupStep && signupStep < confirmStep && confirmStep < signInStep);
 });
 
 test('live signup proof workflow is exact-head and non-deploying', () => {
