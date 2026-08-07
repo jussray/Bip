@@ -53,6 +53,9 @@ test('server-reached ambiguous signup never resubmits signUp', () => {
   assert.ok(serverReachedGuard > recoveryStart);
   assert.ok(retrySignup > serverReachedGuard);
   assert.match(source, /Only a transport failure with no Auth response may retry signup once/);
+  assert.match(source, /let retryThrown: unknown = null/);
+  assert.match(source, /catch \(retryError\) \{\s*retryThrown = retryError;\s*\}/);
+  assert.doesNotMatch(source, /catch \(retryError\) \{[\s\S]{0,250}showConfirmationSuccess/);
   assert.doesNotMatch(source, /initialSignupReachedAuth \|\| retryReachedAuth/);
 });
 
