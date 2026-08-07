@@ -8,8 +8,8 @@ const liveUsername = (process.env.LIVE_ONBOARDING_USERNAME?.trim() || `pw_${Date
   .slice(0, 24);
 const inviteEmail = process.env.LIVE_PARENT_INVITE_EMAIL?.trim();
 const phase = process.env.LIVE_ONBOARDING_PHASE?.trim().toLowerCase() || 'signup';
-const signInAttempts = Number.parseInt(process.env.LIVE_SIGNIN_ATTEMPTS?.trim() || '10', 10);
-const signInRetryMs = Number.parseInt(process.env.LIVE_SIGNIN_RETRY_MS?.trim() || '30000', 10);
+const signInAttempts = Number.parseInt(process.env.LIVE_SIGNIN_ATTEMPTS?.trim() || '3', 10);
+const signInRetryMs = Number.parseInt(process.env.LIVE_SIGNIN_RETRY_MS?.trim() || '5000', 10);
 
 const shouldRunSignup = phase === 'signup' || phase === 'all';
 const shouldRunSignIn = phase === 'signin' || phase === 'all';
@@ -21,6 +21,13 @@ type InviteResponseBody = {
     status?: string;
     error_code?: string | null;
   };
+};
+
+type AuthObservation = {
+  kind: 'response' | 'requestfailed';
+  path: string;
+  status?: number;
+  failure?: string | null;
 };
 
 function isInviteResponseBody(value: unknown): value is InviteResponseBody {
@@ -60,12 +67,39 @@ async function signInTeen(page: Page) {
 
 test.describe('live onboarding email smoke', () => {
   test('signup reaches the real email confirmation checkpoint', async ({ page }) => {
+    test.setTimeout(120_000);
     test.skip(!shouldRunSignup, 'Set LIVE_ONBOARDING_PHASE=signup or all to run signup email smoke.');
     test.skip(!liveEmail, 'LIVE_ONBOARDING_EMAIL is required for live onboarding email smoke.');
 
     const consoleErrors: string[] = [];
+    const authObservations: AuthObservation[] = [];
+
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+    page.on('response', (response) => {
+      try {
+        const url = new URL(response.url());
+        if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/auth/v1/')) {
+          authObservations.push({ kind: 'response', path: url.pathname, status: response.status() });
+        }
+      } catch {
+        // Ignore non-URL response values.
+      }
+    });
+    page.on('requestfailed', (request) => {
+      try {
+        const url = new URL(request.url());
+        if (url.hostname.endsWith('.supabase.co') && url.pathname.startsWith('/auth/v1/')) {
+          authObservations.push({
+            kind: 'requestfailed',
+            path: url.pathname,
+            failure: request.failure()?.errorText ?? null,
+          });
+        }
+      } catch {
+        // Ignore non-URL request values.
+      }
     });
 
     await page.goto('/signup?side=teen');
@@ -79,12 +113,30 @@ test.describe('live onboarding email smoke', () => {
 
     await page.getByPlaceholder('username').fill(liveUsername);
     await page.getByRole('button', { name: /^next$/i }).click();
-
     await page.getByRole('button', { name: /create account/i }).click();
 
-    const confirmationCheckpoint = page.getByText('Check your email');
-    const consentCheckpoint = page.getByText(/consent|privacy|continue/i).first();
-    await expect(confirmationCheckpoint.or(consentCheckpoint)).toBeVisible({ timeout: 45_000 });
+    const confirmationCheckpoint = page.getByText('Check your email', { exact: true });
+    const alert = page.getByRole('alert');
+
+    await expect.poll(async () => {
+      if (await confirmationCheckpoint.isVisible().catch(() => false)) return 'confirmation';
+      if (await alert.isVisible().catch(() => false)) return 'alert';
+      try {
+        if (!new URL(page.url()).pathname.includes('/signup')) return 'post_auth';
+      } catch {
+        // Keep waiting on an unparsable transient URL.
+      }
+      return 'pending';
+    }, {
+      message: 'signup should leave its pending state',
+      timeout: 90_000,
+      intervals: [500, 1000, 2000, 3000, 5000],
+    }).not.toBe('pending');
+
+    if (await alert.isVisible().catch(() => false)) {
+      await attachPageState(page, 'live-signup-alert', { authObservations });
+      throw new Error(`Live signup failed: ${await alert.textContent()}`);
+    }
 
     const checkpoint = await confirmationCheckpoint.isVisible().catch(() => false)
       ? 'signup_confirmation_email'
@@ -95,15 +147,17 @@ test.describe('live onboarding email smoke', () => {
       username: liveUsername,
       phase,
       checkpoint,
+      authObservations,
       note: checkpoint === 'signup_confirmation_email'
-        ? 'Confirm this disposable test inbox before returning-user sign-in proof completes.'
-        : 'The account reached post-auth onboarding; email confirmation may be disabled for this project.',
+        ? 'The production account reached the email-confirmation checkpoint.'
+        : 'The account reached authenticated post-signup onboarding.',
     });
 
     expect(consoleErrors).toEqual([]);
   });
 
   test('confirmed teen account can return through sign in', async ({ page }) => {
+    test.setTimeout(90_000);
     test.skip(!shouldRunSignIn, 'Set LIVE_ONBOARDING_PHASE=signin or all to run returning sign-in proof.');
     test.skip(!liveEmail, 'LIVE_ONBOARDING_EMAIL is required for returning sign-in proof.');
 
@@ -133,6 +187,7 @@ test.describe('live onboarding email smoke', () => {
   });
 
   test('confirmed teen account can send parent invite email', async ({ page }) => {
+    test.setTimeout(90_000);
     test.skip(!shouldRunInvite, 'Set LIVE_ONBOARDING_PHASE=invite or all after confirming the signup email.');
     test.skip(!liveEmail, 'LIVE_ONBOARDING_EMAIL is required for live parent invite smoke.');
     test.skip(!inviteEmail, 'LIVE_PARENT_INVITE_EMAIL is required for live parent invite smoke.');
