@@ -30,8 +30,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: live-signup-proof-${{ github.repository }}
-  cancel-in-progress: false
+  group: live-signup-${{ github.event_name == 'workflow_dispatch' && 'write' || github.event.pull_request.number }}-${{ github.repository }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   CI: true
