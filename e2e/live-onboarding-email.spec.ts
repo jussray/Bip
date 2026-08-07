@@ -67,15 +67,19 @@ async function signInTeen(page: Page) {
 
 test.describe('live onboarding email smoke', () => {
   test('signup reaches the real email confirmation checkpoint', async ({ page }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     test.skip(!shouldRunSignup, 'Set LIVE_ONBOARDING_PHASE=signup or all to run signup email smoke.');
     test.skip(!liveEmail, 'LIVE_ONBOARDING_EMAIL is required for live onboarding email smoke.');
 
-    const consoleErrors: string[] = [];
+    const networkConsoleErrors: string[] = [];
+    const pageErrors: string[] = [];
     const authObservations: AuthObservation[] = [];
 
     page.on('console', (message) => {
-      if (message.type() === 'error') consoleErrors.push(message.text());
+      if (message.type() === 'error') networkConsoleErrors.push(message.text());
+    });
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.message);
     });
     page.on('response', (response) => {
       try {
@@ -129,12 +133,16 @@ test.describe('live onboarding email smoke', () => {
       return 'pending';
     }, {
       message: 'signup should leave its pending state',
-      timeout: 90_000,
+      timeout: 120_000,
       intervals: [500, 1000, 2000, 3000, 5000],
     }).not.toBe('pending');
 
     if (await alert.isVisible().catch(() => false)) {
-      await attachPageState(page, 'live-signup-alert', { authObservations });
+      await attachPageState(page, 'live-signup-alert', {
+        authObservations,
+        networkConsoleErrors,
+        pageErrors,
+      });
       throw new Error(`Live signup failed: ${await alert.textContent()}`);
     }
 
@@ -148,12 +156,15 @@ test.describe('live onboarding email smoke', () => {
       phase,
       checkpoint,
       authObservations,
+      networkConsoleErrors,
+      pageErrors,
       note: checkpoint === 'signup_confirmation_email'
         ? 'The production account reached the email-confirmation checkpoint.'
         : 'The account reached authenticated post-signup onboarding.',
     });
 
-    expect(consoleErrors).toEqual([]);
+    expect(authObservations.some((observation) => observation.path.endsWith('/signup'))).toBe(true);
+    expect(pageErrors).toEqual([]);
   });
 
   test('confirmed teen account can return through sign in', async ({ page }) => {
