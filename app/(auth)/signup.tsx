@@ -237,6 +237,7 @@ export default function SignupScreen() {
       }
     } catch (retryError) {
       retryThrown = retryError;
+      console.warn('[signup] retry failed after ambiguous transport response');
     }
 
     if (isAmbiguousSignupError(retryThrown) && hasAuthServerResponse(retryThrown)) {
