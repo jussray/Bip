@@ -14,21 +14,28 @@ function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
 }
 
-test('live onboarding email smoke is explicit opt-in only', () => {
+test('live onboarding email smoke separates always-run readiness from explicit live writes', () => {
   const source = readText(specPath);
   const workflow = readText(workflowPath);
 
   assert.match(source, /LIVE_ONBOARDING_PHASE/);
   assert.match(source, /LIVE_ONBOARDING_EMAIL/);
   assert.match(source, /LIVE_PARENT_INVITE_EMAIL/);
+  assert.match(source, /shouldRunReadiness/);
+  assert.match(source, /test\.skip\(!shouldRunReadiness/);
   assert.match(source, /test\.skip\(!shouldRunSignup/);
   assert.match(source, /test\.skip\(!shouldRunSignIn/);
   assert.match(source, /test\.skip\(!shouldRunInvite/);
   assert.match(workflow, /pull_request:/);
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /target_sha:/);
+  assert.match(workflow, /preview_url:/);
+  assert.match(workflow, /confirm_live_write:/);
   assert.doesNotMatch(workflow, /\n  push:/);
   assert.match(workflow, /group: live-signup-proof-\$\{\{ github\.repository \}\}/);
-  assert.match(workflow, /git log -1 --pretty=%B \| grep -Fq '\[live-signup-proof\]'/);
+  assert.doesNotMatch(workflow, /\[live-signup-proof\]/);
+  assert.match(workflow, /GITHUB_EVENT_NAME.*workflow_dispatch/);
+  assert.match(workflow, /CONFIRM_LIVE_WRITE.*true/);
   assert.match(workflow, /steps\.opt_in\.outputs\.enabled == 'true'/);
   assert.doesNotMatch(workflow, /wrangler deploy|deploy:web:production|deploy:api:production/);
 });
@@ -56,6 +63,19 @@ test('server-reached ambiguous signup never resubmits signUp', () => {
   assert.match(source, /let retryThrown: unknown = null/);
   assert.match(source, /catch \(retryError\) \{\s*retryThrown = retryError;\s*console\.warn\('\[signup\] retry failed after ambiguous transport response'\);\s*\}/);
   assert.doesNotMatch(source, /initialSignupReachedAuth \|\| retryReachedAuth/);
+});
+
+test('readiness mode reaches the Teen signup form without creating an account', () => {
+  const source = readText(specPath);
+  const workflow = readText(workflowPath);
+
+  assert.match(source, /phase === 'readiness'/);
+  assert.match(source, /exact preview reaches Teen signup form without an account write/);
+  assert.match(source, /accountWriteAttempted: false/);
+  assert.match(source, /getByPlaceholder\('Email address'\)/);
+  assert.match(workflow, /Prove exact-preview browser readiness without account write/);
+  assert.match(workflow, /LIVE_ONBOARDING_PHASE: readiness/);
+  assert.doesNotMatch(workflow, /Prove exact-preview browser readiness without account write[\s\S]*if: steps\.opt_in/);
 });
 
 test('live signup tolerates bounded Auth latency and distinguishes transport noise from page failures', () => {
@@ -101,10 +121,10 @@ test('live signup proof uses a dedicated exact-target Playwright config', () => 
   assert.match(workflow, /npx playwright test --config=playwright\.live-onboarding\.config\.ts/);
 });
 
-test('PR live signup proof fails closed until an isolated exact-head Pages preview exists', () => {
+test('PR live signup readiness fails closed until an isolated exact-head Pages preview exists', () => {
   const workflow = readText(workflowPath);
 
-  assert.match(workflow, /LIVE_ONBOARDING_BASE_URL: https:\/\/fix-production-signup-age-co\.sekret-bip\.pages\.dev/);
+  assert.match(workflow, /fix-production-signup-age-co\.sekret-bip\.pages\.dev/);
   assert.match(workflow, /Verify isolated preview is exact head/);
   assert.match(workflow, /hostname\.endsWith\('\.pages\.dev'\)/);
   assert.match(workflow, /body\?\.commitSha === expected/);
@@ -135,18 +155,21 @@ test('live signup proof mailbox is disposable, non-personal, single-pass decoded
   assert.doesNotMatch(mailbox, /@gmail\.com/i);
 
   const previewStep = workflow.indexOf('Verify isolated preview is exact head');
+  const readinessStep = workflow.indexOf('Prove exact-preview browser readiness without account write');
   const mailboxStep = workflow.indexOf('Prepare disposable guest identity and mailbox');
   const signupStep = workflow.indexOf('Create disposable account through exact preview UI');
   const confirmStep = workflow.indexOf('Confirm disposable signup email');
   const signInStep = workflow.indexOf('Prove returning-user sign in');
-  assert.ok(previewStep >= 0 && previewStep < mailboxStep && mailboxStep < signupStep && signupStep < confirmStep && confirmStep < signInStep);
+  assert.ok(previewStep >= 0 && previewStep < readinessStep && readinessStep < mailboxStep && mailboxStep < signupStep && signupStep < confirmStep && confirmStep < signInStep);
 });
 
-test('live signup proof workflow is exact-head and non-deploying', () => {
+test('live signup proof workflow binds manual writes to an explicit exact head and preview', () => {
   const workflow = readText(workflowPath);
 
-  assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+  assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.target_sha \|\| github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(workflow, /LIVE_ONBOARDING_BASE_URL: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.preview_url/);
   assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
+  assert.match(workflow, /LIVE_ONBOARDING_PHASE: readiness/);
   assert.match(workflow, /LIVE_ONBOARDING_PHASE: signup/);
   assert.match(workflow, /LIVE_ONBOARDING_PHASE: signin/);
   assert.doesNotMatch(workflow, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|wrangler deploy/);
