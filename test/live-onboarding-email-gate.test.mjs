@@ -7,6 +7,7 @@ const root = process.cwd();
 const specPath = path.join(root, 'e2e/live-onboarding-email.spec.ts');
 const liveConfigPath = path.join(root, 'playwright.live-onboarding.config.ts');
 const workflowPath = path.join(root, '.github/workflows/live-signup-proof.yml');
+const mailboxPath = path.join(root, 'scripts/live-signup-mailbox.mjs');
 
 function readText(filePath) {
   return fs.readFileSync(filePath, 'utf8');
@@ -29,6 +30,17 @@ test('live onboarding email smoke is explicit opt-in only', () => {
   assert.doesNotMatch(workflow, /wrangler deploy|deploy:web:production|deploy:api:production/);
 });
 
+test('live signup tolerates bounded Auth latency and captures endpoint evidence', () => {
+  const source = readText(specPath);
+
+  assert.match(source, /test\.setTimeout\(120_000\)/);
+  assert.match(source, /authObservations/);
+  assert.match(source, /signup should leave its pending state/);
+  assert.match(source, /timeout: 90_000/);
+  assert.match(source, /getByText\('Check your email', \{ exact: true \}\)/);
+  assert.doesNotMatch(source, /getByText\(\/consent\|privacy\|continue\/i\)/);
+});
+
 test('live onboarding email smoke proves returning-user authentication with bounded retries', () => {
   const source = readText(specPath);
 
@@ -45,19 +57,41 @@ test('live signup proof uses a dedicated production Playwright config', () => {
 
   assert.match(config, /PRODUCTION_BASE_URL/);
   assert.match(config, /testMatch: \['live-onboarding-email\.spec\.ts'\]/);
+  assert.match(config, /timeout: 120_000/);
   assert.match(config, /workers: 1/);
   assert.match(config, /retries: 0/);
   assert.doesNotMatch(config, /production-smoke\.spec\.ts|production-signup-transport\.spec\.ts/);
   assert.match(workflow, /npx playwright test --config=playwright\.live-onboarding\.config\.ts/);
 });
 
-test('live signup proof workflow is exact-head, disposable, and non-deploying', () => {
+test('live signup proof mailbox is disposable, non-personal, and cleaned up', () => {
+  const workflow = readText(workflowPath);
+  const mailbox = readText(mailboxPath);
+
+  assert.match(mailbox, /https:\/\/api\.mail\.tm/);
+  assert.match(mailbox, /https:\/\/mail\.tm/);
+  assert.match(mailbox, /\/domains\?page=1/);
+  assert.match(mailbox, /\/accounts/);
+  assert.match(mailbox, /\/token/);
+  assert.match(mailbox, /\/messages\?page=1/);
+  assert.match(mailbox, /method: 'DELETE'/);
+  assert.match(workflow, /live-signup-mailbox\.mjs create/);
+  assert.match(workflow, /live-signup-mailbox\.mjs confirm/);
+  assert.match(workflow, /live-signup-mailbox\.mjs cleanup/);
+  assert.doesNotMatch(workflow, /@gmail\.com/i);
+  assert.doesNotMatch(mailbox, /@gmail\.com/i);
+
+  const signupStep = workflow.indexOf('Create disposable account through production UI');
+  const confirmStep = workflow.indexOf('Confirm disposable signup email');
+  const signInStep = workflow.indexOf('Prove returning-user sign in');
+  assert.ok(signupStep >= 0 && signupStep < confirmStep && confirmStep < signInStep);
+});
+
+test('live signup proof workflow is exact-head and non-deploying', () => {
   const workflow = readText(workflowPath);
 
   assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
-  assert.match(workflow, /sekretbip\+pw-\$\{GITHUB_RUN_ID\}@gmail\.com/);
-  assert.match(workflow, /randomBytes\(18\)/);
   assert.match(workflow, /LIVE_ONBOARDING_PHASE: signup/);
   assert.match(workflow, /LIVE_ONBOARDING_PHASE: signin/);
   assert.doesNotMatch(workflow, /SUPABASE_SERVICE_ROLE_KEY|CLOUDFLARE_API_TOKEN|wrangler deploy/);
