@@ -11,12 +11,19 @@ function require(condition, message) {
   if (!condition) failures.push(message);
 }
 
+function exactStringSet(value) {
+  return new Set(Array.isArray(value) ? value.filter((item) => typeof item === 'string') : []);
+}
+
+const primaryHosts = exactStringSet(policy.cloudflare?.primaryHosts);
+const productionDefaultOrigins = exactStringSet(policy.controls?.cors?.productionDefaultOrigins);
+
 require(policy.version === '10', 'policy version must be 10');
 require(policy.repository === 'jussray/Sekret-Bip', 'policy must target jussray/Sekret-Bip');
 require(policy.activationStage === 'policy-ci-only', 'production activation must remain CI-only until live evidence is reviewed');
 require(policy.claims?.productionProtectionStatus === 'not-verified', 'production protection must not be claimed before live Cloudflare proof');
-require(policy.cloudflare?.primaryHosts?.includes('sekretbip.net'), 'policy must include sekretbip.net');
-require(policy.cloudflare?.primaryHosts?.includes('api.sekretbip.net'), 'policy must include api.sekretbip.net');
+require(primaryHosts.has('sekretbip.net'), 'policy must include exact host sekretbip.net');
+require(primaryHosts.has('api.sekretbip.net'), 'policy must include exact host api.sekretbip.net');
 require(policy.cloudflare?.activeWorker === 'sekret-backend', 'active Worker must be sekret-backend');
 require(policy.cloudflare?.edgeControls?.managedWaf?.enforcementStatus === 'live-not-verified', 'Managed WAF must remain live-not-verified until platform evidence exists');
 require(policy.cloudflare?.edgeControls?.apiShield?.enforcementStatus === 'live-not-verified', 'API Shield must remain live-not-verified until platform evidence exists');
@@ -32,7 +39,7 @@ require(policy.controls?.rateLimiting?.failureMode === 'fail-closed-retryable', 
 require(policy.controls?.botDefense?.enforcementStatus === 'live-not-verified', 'bot defense must not be claimed enabled without platform proof');
 require(policy.controls?.cors?.implementationStatus === 'repo-verified', 'CORS hardening must be repo-verified');
 require(policy.controls?.cors?.liveEnforcementStatus === 'not-verified', 'live CORS enforcement must remain not-verified until deployment proof');
-require(policy.controls?.cors?.productionDefaultOrigins?.includes('https://sekretbip.net'), 'canonical production origin must be allowed');
+require(productionDefaultOrigins.has('https://sekretbip.net'), 'canonical production origin must be an exact allowed origin');
 require(policy.controls?.cors?.wildcardOnlyInExplicitDevOpen === true, 'wildcard CORS must be limited to explicit dev-open');
 require(policy.controls?.headers?.implementationStatus === 'repo-verified', 'security header manifests must be repo-verified');
 require(policy.controls?.headers?.liveEnforcementStatus === 'not-verified', 'security headers must remain live-not-verified until response proof exists');
@@ -70,14 +77,14 @@ for (const route of routes) {
 require(/name = "sekret-backend"/.test(wrangler), 'wrangler Worker name must match policy');
 require(/main = "worker\/voice-entry\.ts"/.test(wrangler), 'voice-entry.ts must remain the authoritative Worker front door');
 require(/name = "SEKRET_RATE_LIMITER"/.test(wrangler), 'Cloudflare rate-limit binding must exist in repo config');
-require(/pattern = "api\.sekretbip\.net"/.test(wrangler), 'api.sekretbip.net custom domain must remain bound in repo config');
+require(/^pattern = "api\.sekretbip\.net"$/m.test(wrangler), 'api.sekretbip.net custom domain must remain exactly bound in repo config');
 
 require(/SEKRET_AUTH_MODE\?: 'required' \| 'dev-open'/.test(auth), 'auth mode contract is missing');
 require(/const devOpen = env\.SEKRET_AUTH_MODE === 'dev-open'/.test(auth), 'dev-open must be explicit');
 require(!/if \(!enforced\) return \{ ok: true/.test(auth), 'legacy implicit auth fail-open returned');
 require(/status: 503, error: 'authentication unavailable'/.test(auth), 'auth misconfiguration must fail closed');
 
-require(/const DEFAULT_ALLOWED_ORIGINS = \[[\s\S]*https:\/\/sekretbip\.net/.test(entry), 'canonical production CORS origin must be encoded');
+require(/const DEFAULT_ALLOWED_ORIGINS = \[[\s\S]*'https:\/\/sekretbip\.net'[\s\S]*'https:\/\/www\.sekretbip\.net'/.test(entry), 'canonical production CORS origins must be encoded exactly');
 require(/env\.SEKRET_AUTH_MODE === 'dev-open' \? null : DEFAULT_ALLOWED_ORIGINS/.test(entry), 'wildcard CORS must require dev-open');
 require(/const blocked = originRejected\(request, env, cors\);[\s\S]*if \(blocked\) return blocked;[\s\S]*if \(request\.method === 'OPTIONS'\)/.test(entry), 'disallowed preflight origins must be rejected before 204');
 require(/const isProtectedApiPost = request\.method === 'POST' && path\.includes\('\/api\/'\)/.test(entry), 'front door must identify every POST API request');
