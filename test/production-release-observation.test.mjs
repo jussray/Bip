@@ -144,7 +144,7 @@ test('builds an immutable exact-release receipt with Worker identity', () => {
   assert.match(comment, new RegExp(SHA));
   assert.match(comment, /Pages branch: `main`/);
   assert.match(comment, /Worker version ID: `worker-version-123`/);
-  assert.match(comment, new RegExp(`Worker version tag: \\`${SHA}\\``));
+  assert.ok(comment.includes('Worker version tag: `' + SHA + '`'));
   assert.match(comment, /Backend health: `passed`/);
   assert.match(comment, /Production Playwright: `passed`/);
   assert.match(comment, /actions\/runs\/30779990000/);
