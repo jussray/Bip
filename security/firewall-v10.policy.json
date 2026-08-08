@@ -5,7 +5,7 @@
   "activationStage": "policy-ci-only",
   "claims": {
     "productionProtectionStatus": "not-verified",
-    "reason": "Repository CI can verify application controls, but live Cloudflare configuration, Security Events, response headers, and production credentials still require runtime evidence."
+    "reason": "Repository CI can verify application auth, rate limiting, canonical-origin CORS, and response-header manifests, but live Cloudflare configuration, Security Events, deployed header behavior, and production credentials still require runtime evidence."
   },
   "cloudflare": {
     "primaryHosts": ["sekretbip.net", "api.sekretbip.net"],
@@ -62,14 +62,23 @@
       "serverOnlySecrets": ["SUPABASE_SERVICE_ROLE_KEY", "RESEND_API_KEY", "GITHUB_WEBHOOK_SECRET", "CLOUDFLARE_API_TOKEN"],
       "forbiddenClientSecrets": true
     },
+    "cors": {
+      "implementationStatus": "repo-verified",
+      "liveEnforcementStatus": "not-verified",
+      "productionDefaultOrigins": ["https://sekretbip.net", "https://www.sekretbip.net"],
+      "wildcardOnlyInExplicitDevOpen": true,
+      "nativeRequestsWithoutOriginRemainSupported": true
+    },
     "headers": {
-      "enforcementStatus": "live-not-verified",
+      "implementationStatus": "repo-verified",
+      "liveEnforcementStatus": "not-verified",
       "liveVerificationRequired": true,
       "targets": {
-        "csp": "progressive-policy-after-browser-proof",
-        "hsts": "verify-before-long-max-age",
+        "csp": "narrow-frame-base-object-protection",
+        "hsts": "max-age-31536000-no-preload",
         "xFrameOptions": "DENY",
-        "referrerPolicy": "strict-origin-when-cross-origin"
+        "referrerPolicy": "strict-origin-when-cross-origin-pages-no-referrer-api",
+        "xContentTypeOptions": "nosniff"
       }
     },
     "integrations": {
