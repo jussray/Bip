@@ -52,7 +52,7 @@
     "deploy:web:preview": "SEKRET_RELEASE_ENVIRONMENT=preview npm run build:web && wrangler pages deploy dist --project-name sekret-bip",
     "deploy:web:production": "node scripts/assert-production-deploy-branch.mjs && SEKRET_RELEASE_ENVIRONMENT=production SEKRET_CANONICAL_URL=https://sekretbip.net npm run build:web && wrangler pages deploy dist --project-name sekret-bip --branch main",
     "deploy:pages": "npm run deploy:web:preview",
-    "deploy:api:production": "node scripts/assert-production-deploy-branch.mjs && wrangler deploy",
+    "deploy:api:production": "node scripts/assert-production-deploy-branch.mjs && node scripts/deploy-cloudflare-worker.mjs",
     "deploy:worker": "npm run deploy:api:production",
     "deploy:worker:alpha": "wrangler deploy --config wrangler.alpha.toml",
     "deploy:cloudflare": "npm run deploy:api:production",
