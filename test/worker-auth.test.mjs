@@ -98,7 +98,7 @@ test('authoritative voice-entry front door authenticates and rate-limits every P
   const protectedAt = voiceEntry.indexOf("const isProtectedApiPost = request.method === 'POST' && path.includes('/api/');");
   const authAt = voiceEntry.indexOf('const auth = await authenticate(request, env);');
   const limitAt = voiceEntry.indexOf('const limited = await enforceRateLimit(request, env, auth.principal, cors);');
-  const delegateAt = voiceEntry.indexOf('return observedWorker.fetch(request, downstreamEnv as never, ctx);');
+  const delegateAt = voiceEntry.indexOf('const response = await observedWorker.fetch(request, downstreamEnv as never, ctx);');
   assert.ok(protectedAt > 0, 'front door identifies protected API POSTs');
   assert.ok(authAt > protectedAt && authAt < delegateAt, 'auth runs before delegation');
   assert.ok(limitAt > authAt && limitAt < delegateAt, 'rate limit runs before delegation');
@@ -127,4 +127,22 @@ test('disallowed origins are rejected before auth/delegation', () => {
   assert.ok(rejectAt < delegateAt);
   assert.ok(/origin not allowed' \}, 403/.test(index));
   assert.ok(/if \(!origin \|\| allowed\.includes\(origin\)\) return null/.test(index));
+});
+
+test('authoritative CORS defaults production to canonical origins and reserves wildcard for dev-open', () => {
+  assert.ok(/const DEFAULT_ALLOWED_ORIGINS = \[[\s\S]*https:\/\/sekretbip\.net[\s\S]*https:\/\/www\.sekretbip\.net/.test(voiceEntry));
+  assert.ok(/env\.SEKRET_AUTH_MODE === 'dev-open' \? null : DEFAULT_ALLOWED_ORIGINS/.test(voiceEntry));
+  assert.doesNotMatch(voiceEntry, /if \(!configured \|\| configured === '\*'\) return null/);
+  const blockedAt = voiceEntry.indexOf('const blocked = originRejected(request, env, cors);');
+  const optionsAt = voiceEntry.indexOf("if (request.method === 'OPTIONS') return new Response");
+  assert.ok(blockedAt > 0 && blockedAt < optionsAt, 'disallowed preflight origins are rejected before 204');
+});
+
+test('authoritative API responses carry baseline transport and framing protection', () => {
+  assert.ok(/'Strict-Transport-Security': 'max-age=31536000'/.test(voiceEntry));
+  assert.ok(/'X-Content-Type-Options': 'nosniff'/.test(voiceEntry));
+  assert.ok(/'X-Frame-Options': 'DENY'/.test(voiceEntry));
+  assert.ok(/'Referrer-Policy': 'no-referrer'/.test(voiceEntry));
+  assert.ok(/frame-ancestors 'none'/.test(voiceEntry));
+  assert.ok(/withSecurityHeaders\(response, cors\)/.test(voiceEntry), 'delegated responses are wrapped at the authoritative front door');
 });
