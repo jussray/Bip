@@ -1,0 +1,61 @@
+name: Apply Cloudflare Email Routing Once
+
+on:
+  push:
+    branches:
+      - ops/email-routing-apply-20260808
+    paths:
+      - .github/workflows/apply-cloudflare-email-routing-once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-email-routing-production
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BIP_EMAIL_ZONE: sekretbip.net
+  BIP_EMAIL_WORKER: sekret-backend
+  BIP_EMAIL_DESTINATION: sekretbip@gmail.com
+
+jobs:
+  apply:
+    name: Apply Bip email routing
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Require Cloudflare API token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || {
+            echo 'CLOUDFLARE_API_TOKEN is not configured.' >&2
+            exit 1
+          }
+
+      - name: Reconcile live Cloudflare Email Routing
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/reconcile-cloudflare-email-routing.mjs --apply
+
+      - name: Upload Cloudflare routing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-email-routing-evidence-${{ github.run_id }}
+          path: artifacts/cloudflare-email-routing-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
