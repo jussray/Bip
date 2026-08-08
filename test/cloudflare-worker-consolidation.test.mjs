@@ -38,7 +38,9 @@ test('sekret-backend owns voice, ordinary HTTP, and inbound email handlers', () 
   assert.ok(voiceEntry.includes("import emailRouter from './email-router';"));
   assert.match(voiceEntry, /async fetch\(/);
   assert.match(voiceEntry, /async email\(/);
-  assert.ok(voiceEntry.includes('return observedWorker.fetch(request, env as never, ctx)'));
+  assert.ok(voiceEntry.includes('const response = await observedWorker.fetch(request, downstreamEnv as never, ctx);'));
+  assert.ok(voiceEntry.includes('return withSecurityHeaders(response, cors);'));
+  assert.ok(voiceEntry.includes('SEKRET_RATE_LIMITER: undefined'));
   assert.ok(voiceEntry.includes('await emailRouter.email(message)'));
   assert.ok(observedIndex.includes("import worker from './index';"));
 });
