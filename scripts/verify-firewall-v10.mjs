@@ -84,6 +84,9 @@ require(/const isProtectedApiPost = request\.method === 'POST' && path\.includes
 require(/await authenticate\(request, env\)/.test(entry), 'front door must authenticate protected API requests');
 require(/request protection temporarily unavailable/.test(entry), 'limiter outage must expose a recoverable blocked state');
 require(/'Retry-After': '30'/.test(entry), 'limiter outage must provide retry guidance');
+require(!/if \(!env\.SEKRET_RATE_LIMITER\) return null;/.test(entry), 'missing rate-limit binding must not silently bypass production protection');
+require(/if \(!env\.SEKRET_RATE_LIMITER\) \{[\s\S]*SEKRET_AUTH_MODE === 'dev-open'[\s\S]*return protectionUnavailable\(cors\)/.test(entry), 'missing rate-limit binding must fail closed outside explicit dev-open');
+require(/SEKRET_RATE_LIMITER binding unavailable/.test(entry), 'missing rate-limit binding must emit telemetry');
 require(/SEKRET_RATE_LIMITER: undefined/.test(entry), 'delegated request must not be rate-limited twice');
 require(/'Strict-Transport-Security': 'max-age=31536000'/.test(entry), 'API front door must emit HSTS');
 require(/'X-Frame-Options': 'DENY'/.test(entry), 'API front door must deny framing');
