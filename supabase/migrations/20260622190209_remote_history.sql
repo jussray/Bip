@@ -1,5 +1,9 @@
 -- Se'kret Bip — Phase 3 tables
 -- Recorded remotely as migration version 20260622190209.
+--
+-- Fresh repository replay may establish some prerequisite tables/policies in
+-- earlier compatibility migrations. Keep this captured remote body convergent by
+-- replacing same-name policies before recreating their recorded definitions.
 
 CREATE TABLE IF NOT EXISTS public.oracle_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -12,6 +16,10 @@ CREATE TABLE IF NOT EXISTS public.oracle_sessions (
   UNIQUE (user_id, personality_id)
 );
 ALTER TABLE public.oracle_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "oracle_sessions: owner read" ON public.oracle_sessions;
+DROP POLICY IF EXISTS "oracle_sessions: owner insert" ON public.oracle_sessions;
+DROP POLICY IF EXISTS "oracle_sessions: owner update" ON public.oracle_sessions;
+DROP POLICY IF EXISTS "oracle_sessions: owner delete" ON public.oracle_sessions;
 CREATE POLICY "oracle_sessions: owner read" ON public.oracle_sessions FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "oracle_sessions: owner insert" ON public.oracle_sessions FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "oracle_sessions: owner update" ON public.oracle_sessions FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
@@ -28,6 +36,10 @@ CREATE TABLE IF NOT EXISTS public.parent_links (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.parent_links ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "parent_links: teen owner" ON public.parent_links;
+DROP POLICY IF EXISTS "parent_links: parent read" ON public.parent_links;
+DROP POLICY IF EXISTS "parent_links: parent accept" ON public.parent_links;
+DROP POLICY IF EXISTS "parent_links: code lookup" ON public.parent_links;
 CREATE POLICY "parent_links: teen owner" ON public.parent_links FOR ALL USING (auth.uid() = teen_user_id) WITH CHECK (auth.uid() = teen_user_id);
 CREATE POLICY "parent_links: parent read" ON public.parent_links FOR SELECT USING (auth.uid() = parent_user_id);
 CREATE POLICY "parent_links: parent accept" ON public.parent_links FOR UPDATE USING (auth.uid() = parent_user_id) WITH CHECK (status = 'active');
@@ -42,6 +54,7 @@ CREATE TABLE IF NOT EXISTS public.period_days (
   UNIQUE (user_id, day)
 );
 ALTER TABLE public.period_days ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "period_days: owner all" ON public.period_days;
 CREATE POLICY "period_days: owner all" ON public.period_days FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS public.safety_alerts (
@@ -57,6 +70,9 @@ CREATE TABLE IF NOT EXISTS public.safety_alerts (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.safety_alerts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "safety_alerts: teen read" ON public.safety_alerts;
+DROP POLICY IF EXISTS "safety_alerts: linked parent read" ON public.safety_alerts;
+DROP POLICY IF EXISTS "safety_alerts: linked parent update reviewed" ON public.safety_alerts;
 CREATE POLICY "safety_alerts: teen read" ON public.safety_alerts FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "safety_alerts: linked parent read" ON public.safety_alerts FOR SELECT USING (
   EXISTS (
