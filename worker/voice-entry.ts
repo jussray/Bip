@@ -19,22 +19,55 @@ interface Env extends AuthEnv, VoiceProviderEnv {
   SEKRET_RATE_LIMITER?: RateLimit;
 }
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://sekretbip.net',
+  'https://www.sekretbip.net',
+];
+
 function allowedOrigins(env: Env): string[] | null {
   const configured = env.ALLOWED_ORIGINS?.trim();
-  if (!configured || configured === '*') return null;
+  if (!configured || configured === '*') {
+    return env.SEKRET_AUTH_MODE === 'dev-open' ? null : DEFAULT_ALLOWED_ORIGINS;
+  }
   return configured.split(',').map((value) => value.trim()).filter(Boolean);
+}
+
+function securityHeaders(): Record<string, string> {
+  return {
+    'Strict-Transport-Security': 'max-age=31536000',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+  };
 }
 
 function corsHeaders(request: Request, env: Env): Record<string, string> {
   const allowed = allowedOrigins(env);
   const origin = request.headers.get('Origin');
-  const allowOrigin = !allowed ? '*' : origin && allowed.includes(origin) ? origin : (allowed[0] ?? 'null');
+  const allowOrigin = !allowed
+    ? '*'
+    : origin && allowed.includes(origin)
+      ? origin
+      : (allowed[0] ?? 'null');
   return {
+    ...securityHeaders(),
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '600',
     Vary: 'Origin',
   };
+}
+
+function withSecurityHeaders(response: Response, headers: Record<string, string>): Response {
+  const merged = new Headers(response.headers);
+  for (const [name, value] of Object.entries(headers)) merged.set(name, value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: merged,
+  });
 }
 
 function json(data: unknown, status: number, cors: Record<string, string>): Response {
@@ -118,7 +151,8 @@ async function handleVoice(
 
   const mode = env.VOICE_PROVIDER_MODE ?? 'legacy';
   if (mode === 'legacy') {
-    return observedWorker.fetch(request, env as never, { waitUntil() {} });
+    const response = await observedWorker.fetch(request, env as never, { waitUntil() {} });
+    return withSecurityHeaders(response, cors);
   }
 
   const requestedCharacter = typeof body.characterId === 'string'
@@ -170,10 +204,9 @@ async function handleVoice(
 export default {
   async fetch(request: Request, env: Env, ctx: MinimalExecutionContext): Promise<Response> {
     const cors = corsHeaders(request, env);
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-
     const blocked = originRejected(request, env, cors);
     if (blocked) return blocked;
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     const path = new URL(request.url).pathname;
     const isProtectedApiPost = request.method === 'POST' && path.includes('/api/');
@@ -195,7 +228,8 @@ export default {
       return handleVoice(request, downstreamEnv, cors);
     }
 
-    return observedWorker.fetch(request, downstreamEnv as never, ctx);
+    const response = await observedWorker.fetch(request, downstreamEnv as never, ctx);
+    return withSecurityHeaders(response, cors);
   },
 
   async email(message: Parameters<typeof emailRouter.email>[0]): Promise<void> {
