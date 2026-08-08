@@ -30,14 +30,21 @@ import {
 import { getSupabase } from '@/utils/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ─── Error helpers (unchanged) ────────────────────────────────────────────
+// ─── Error helpers ────────────────────────────────────────────────────────
 function authErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   if (typeof error === 'string') return error;
   return '';
 }
 
+function authErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== 'object' || !('status' in error)) return null;
+  const status = Number((error as { status?: unknown }).status);
+  return Number.isFinite(status) ? status : null;
+}
+
 function isAmbiguousSignupError(error: unknown): boolean {
+  if (authErrorStatus(error) === 504) return true;
   const msg = authErrorMessage(error).toLowerCase();
   return (
     msg.includes('failed to fetch') ||
@@ -60,9 +67,8 @@ function isConfirmationPendingError(error: unknown): boolean {
 }
 
 function hasAuthServerResponse(error: unknown): boolean {
-  if (!error || typeof error !== 'object' || !('status' in error)) return false;
-  const status = Number((error as { status?: unknown }).status);
-  return Number.isFinite(status) && status >= 400;
+  const status = authErrorStatus(error);
+  return status !== null && status >= 400;
 }
 
 function readableAuthError(error: unknown): string {
@@ -150,7 +156,7 @@ export default function SignupScreen() {
     ]).start();
   }
 
-  // ─── Auth helpers (logic unchanged) ──────────────────────────────────────
+  // ─── Auth helpers ───────────────────────────────────────────────────────
   const finishAuthenticatedSignup = useCallback(async (_userId: string) => {
     await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
     const bootstrap = await fetchPostAuthBootstrap(preferredSide);
@@ -190,6 +196,19 @@ export default function SignupScreen() {
     } catch (probeError) {
       if (!isAmbiguousSignupError(probeError)) return false;
     }
+
+    // A real HTTP response means Auth received the first signup. Never submit
+    // signUp again here: duplicate submissions can emit duplicate confirmation
+    // emails and consume the project-wide email-send quota.
+    if (initialSignupReachedAuth) {
+      showConfirmationSuccess(
+        `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
+      );
+      return true;
+    }
+
+    // Only a transport failure with no Auth response may retry signup once.
+    let retryThrown: unknown = null;
     try {
       const { data: retryData, error: retryError } = await sb.auth.signUp({
         email: signupEmail,
@@ -210,20 +229,22 @@ export default function SignupScreen() {
         );
         return true;
       }
-      const retryReachedAuth = hasAuthServerResponse(retryError);
-      if (isAmbiguousSignupError(retryError) && (initialSignupReachedAuth || retryReachedAuth)) {
+      if (isAmbiguousSignupError(retryError) && hasAuthServerResponse(retryError)) {
         showConfirmationSuccess(
           `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
         );
         return true;
       }
     } catch (retryError) {
-      if (isAmbiguousSignupError(retryError) && initialSignupReachedAuth) {
-        showConfirmationSuccess(
-          `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
-        );
-        return true;
-      }
+      retryThrown = retryError;
+      console.warn('[signup] retry failed after ambiguous transport response');
+    }
+
+    if (isAmbiguousSignupError(retryThrown) && hasAuthServerResponse(retryThrown)) {
+      showConfirmationSuccess(
+        `The account server received your signup request, but confirmation is delayed for ${signupEmail}.\nCheck your inbox before trying again.`,
+      );
+      return true;
     }
     return false;
   }

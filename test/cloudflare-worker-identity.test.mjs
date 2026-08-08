@@ -39,7 +39,7 @@ test('production verification proves the exact Worker and Pages release', () => 
   assert.ok(workflow.includes(`${PRODUCTION_WORKER_URL}/health`));
   assert.equal(workflow.includes(`${LEGACY_WORKERS_DEV_URL}/health`), false);
   assert.ok(workflow.includes(RELEASE_MARKER_URL));
-  assert.ok(workflow.includes('EXPECTED_RELEASE_SHA: ${{ github.sha }}'));
+  assert.ok(workflow.includes('EXPECTED_RELEASE_SHA: ${{ inputs.target_sha || github.sha }}'));
   assert.ok(workflow.includes("RELEASE_OBSERVATION_ISSUE: '696'"));
   assert.ok(workflow.includes('checks: read'));
   assert.ok(workflow.includes('issues: write'));
