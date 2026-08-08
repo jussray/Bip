@@ -4,6 +4,7 @@ const policy = JSON.parse(readFileSync('security/firewall-v10.policy.json', 'utf
 const wrangler = readFileSync('wrangler.toml', 'utf8');
 const auth = readFileSync('worker/auth.ts', 'utf8');
 const entry = readFileSync('worker/voice-entry.ts', 'utf8');
+const pagesHeaders = readFileSync('public/_headers', 'utf8');
 const failures = [];
 
 function require(condition, message) {
@@ -29,7 +30,12 @@ require(policy.controls?.rateLimiting?.implementationStatus === 'repo-verified',
 require(policy.controls?.rateLimiting?.liveBindingStatus === 'not-verified', 'live rate-limit binding must remain not-verified until runtime proof');
 require(policy.controls?.rateLimiting?.failureMode === 'fail-closed-retryable', 'rate-limit errors must fail closed with a recovery path');
 require(policy.controls?.botDefense?.enforcementStatus === 'live-not-verified', 'bot defense must not be claimed enabled without platform proof');
-require(policy.controls?.headers?.enforcementStatus === 'live-not-verified', 'security headers must remain live-not-verified until response proof exists');
+require(policy.controls?.cors?.implementationStatus === 'repo-verified', 'CORS hardening must be repo-verified');
+require(policy.controls?.cors?.liveEnforcementStatus === 'not-verified', 'live CORS enforcement must remain not-verified until deployment proof');
+require(policy.controls?.cors?.productionDefaultOrigins?.includes('https://sekretbip.net'), 'canonical production origin must be allowed');
+require(policy.controls?.cors?.wildcardOnlyInExplicitDevOpen === true, 'wildcard CORS must be limited to explicit dev-open');
+require(policy.controls?.headers?.implementationStatus === 'repo-verified', 'security header manifests must be repo-verified');
+require(policy.controls?.headers?.liveEnforcementStatus === 'not-verified', 'security headers must remain live-not-verified until response proof exists');
 require(policy.controls?.headers?.liveVerificationRequired === true, 'security headers require live verification');
 require(policy.controls?.productDesign?.legitimateUsersGetRecoveryPath === true, 'blocked users need a recovery path');
 require(policy.controls?.productDesign?.noMisleadingConnectedOrProtectedClaims === true, 'security UI must not overclaim protection');
@@ -71,11 +77,24 @@ require(/const devOpen = env\.SEKRET_AUTH_MODE === 'dev-open'/.test(auth), 'dev-
 require(!/if \(!enforced\) return \{ ok: true/.test(auth), 'legacy implicit auth fail-open returned');
 require(/status: 503, error: 'authentication unavailable'/.test(auth), 'auth misconfiguration must fail closed');
 
+require(/const DEFAULT_ALLOWED_ORIGINS = \[[\s\S]*https:\/\/sekretbip\.net/.test(entry), 'canonical production CORS origin must be encoded');
+require(/env\.SEKRET_AUTH_MODE === 'dev-open' \? null : DEFAULT_ALLOWED_ORIGINS/.test(entry), 'wildcard CORS must require dev-open');
+require(/const blocked = originRejected\(request, env, cors\);[\s\S]*if \(blocked\) return blocked;[\s\S]*if \(request\.method === 'OPTIONS'\)/.test(entry), 'disallowed preflight origins must be rejected before 204');
 require(/const isProtectedApiPost = request\.method === 'POST' && path\.includes\('\/api\/'\)/.test(entry), 'front door must identify every POST API request');
 require(/await authenticate\(request, env\)/.test(entry), 'front door must authenticate protected API requests');
 require(/request protection temporarily unavailable/.test(entry), 'limiter outage must expose a recoverable blocked state');
 require(/'Retry-After': '30'/.test(entry), 'limiter outage must provide retry guidance');
 require(/SEKRET_RATE_LIMITER: undefined/.test(entry), 'delegated request must not be rate-limited twice');
+require(/'Strict-Transport-Security': 'max-age=31536000'/.test(entry), 'API front door must emit HSTS');
+require(/'X-Frame-Options': 'DENY'/.test(entry), 'API front door must deny framing');
+require(/frame-ancestors 'none'/.test(entry), 'API CSP must deny framing');
+require(/withSecurityHeaders\(response, cors\)/.test(entry), 'delegated API responses must receive security headers');
+
+require(/Strict-Transport-Security: max-age=31536000/.test(pagesHeaders), 'Pages header manifest must emit HSTS');
+require(/X-Content-Type-Options: nosniff/.test(pagesHeaders), 'Pages header manifest must prevent MIME sniffing');
+require(/X-Frame-Options: DENY/.test(pagesHeaders), 'Pages header manifest must deny framing');
+require(/Referrer-Policy: strict-origin-when-cross-origin/.test(pagesHeaders), 'Pages header manifest must set referrer policy');
+require(/Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'/.test(pagesHeaders), 'Pages CSP must provide narrow nonbreaking frame/base/object protection');
 
 if (failures.length) {
   console.error('Founder Shield verification failed:');
