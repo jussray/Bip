@@ -8,7 +8,9 @@ on:
       - worker/auth.ts
       - worker/voice-entry.ts
       - test/worker-auth.test.mjs
+      - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
+      - .dev.vars.example
       - .github/workflows/founder-shield.yml
   push:
     branches:
@@ -19,7 +21,9 @@ on:
       - worker/auth.ts
       - worker/voice-entry.ts
       - test/worker-auth.test.mjs
+      - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
+      - .dev.vars.example
       - .github/workflows/founder-shield.yml
 
 permissions:
@@ -36,3 +40,5 @@ jobs:
         run: node scripts/verify-firewall-v10.mjs
       - name: Verify auth and rate-limit contracts
         run: node --test test/worker-auth.test.mjs
+      - name: Verify Worker authority contract
+        run: node --test test/cloudflare-worker-consolidation.test.mjs
