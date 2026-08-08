@@ -9,23 +9,54 @@ export function normalizeCommitSha(value) {
   return SHA_PATTERN.test(sha) ? sha : null;
 }
 
-export function resolveDeployCommitSha({ env = process.env, cwd = process.cwd() } = {}) {
-  const workersBuildSha = normalizeCommitSha(env.WORKERS_CI_COMMIT_SHA);
-  if (workersBuildSha) return workersBuildSha;
-
-  const localSha = normalizeCommitSha(
-    execFileSync('git', ['rev-parse', 'HEAD'], {
+function gitOutput(args, { cwd, execFile = execFileSync } = {}) {
+  return String(
+    execFile('git', args, {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     }),
-  );
+  ).trim();
+}
 
-  if (!localSha) {
-    throw new Error('Unable to resolve an exact 40-character Git commit SHA for Cloudflare deployment.');
+export function inspectDeployGitState({ cwd = process.cwd(), execFile = execFileSync } = {}) {
+  const headSha = normalizeCommitSha(gitOutput(['rev-parse', 'HEAD'], { cwd, execFile }));
+  if (!headSha) {
+    throw new Error('Unable to resolve an exact 40-character checked-out Git HEAD for Cloudflare deployment.');
   }
 
-  return localSha;
+  const dirty = gitOutput(
+    ['status', '--porcelain=v1', '--untracked-files=all'],
+    { cwd, execFile },
+  );
+  if (dirty) {
+    throw new Error(
+      'Refusing Cloudflare production deployment from a dirty worktree. Commit or remove tracked/untracked changes first.',
+    );
+  }
+
+  return { headSha, clean: true };
+}
+
+export function resolveDeployCommitSha({
+  env = process.env,
+  cwd = process.cwd(),
+  execFile = execFileSync,
+} = {}) {
+  const { headSha } = inspectDeployGitState({ cwd, execFile });
+  const workersBuildSha = normalizeCommitSha(env.WORKERS_CI_COMMIT_SHA);
+
+  if (env.WORKERS_CI_COMMIT_SHA && !workersBuildSha) {
+    throw new Error('WORKERS_CI_COMMIT_SHA must be an exact 40-character Git commit SHA.');
+  }
+
+  if (workersBuildSha && workersBuildSha !== headSha) {
+    throw new Error(
+      `Workers Builds commit SHA ${workersBuildSha} does not match checked-out Git HEAD ${headSha}.`,
+    );
+  }
+
+  return workersBuildSha ?? headSha;
 }
 
 export function buildWranglerDeployArgs(commitSha) {
