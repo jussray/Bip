@@ -3,25 +3,37 @@
   "name": "Se'kret Bip Founder Shield",
   "repository": "jussray/Sekret-Bip",
   "activationStage": "policy-ci-only",
+  "claims": {
+    "productionProtectionStatus": "not-verified",
+    "reason": "Repository CI can verify application controls, but live Cloudflare configuration, Security Events, response headers, and production credentials still require runtime evidence."
+  },
   "cloudflare": {
     "primaryHosts": ["sekretbip.net", "api.sekretbip.net"],
     "activeWorker": "sekret-backend",
     "retiredWorkersNoNewAuthority": ["bip-mail", "sekret"],
-    "managedWaf": {
-      "enabled": true,
-      "mode": "log-before-block",
-      "ruleFamilies": ["OWASP Core Rules", "Cloudflare Managed Rules", "Known bad bots"]
-    },
-    "apiShield": {
-      "schemaValidation": "log-then-block",
-      "jwtValidation": "required-on-protected-api",
-      "sessionIdentifier": "Authorization"
-    },
-    "authenticatedOriginPulls": "required-before-direct-origin-exposure"
+    "edgeControls": {
+      "managedWaf": {
+        "target": true,
+        "targetMode": "log-then-block",
+        "desiredRuleFamilies": ["OWASP Core Rules", "Cloudflare Managed Rules", "Known bad bots"],
+        "enforcementStatus": "live-not-verified"
+      },
+      "apiShield": {
+        "targetSchemaValidation": "log-then-block",
+        "targetJwtValidation": "required-on-protected-api",
+        "sessionIdentifier": "Authorization",
+        "enforcementStatus": "live-not-verified"
+      },
+      "authenticatedOriginPulls": {
+        "target": true,
+        "enforcementStatus": "live-not-verified"
+      }
+    }
   },
   "controls": {
     "rateLimiting": {
-      "enabled": true,
+      "implementationStatus": "repo-verified",
+      "liveBindingStatus": "not-verified",
       "strategy": "per-user-then-client-ip",
       "binding": "SEKRET_RATE_LIMITER",
       "failureMode": "fail-closed-retryable",
@@ -33,12 +45,15 @@
       ]
     },
     "botDefense": {
-      "enabled": true,
-      "mode": "challenge-unknown-automation",
+      "target": true,
+      "targetMode": "challenge-unknown-automation",
       "allowVerifiedGoodBots": true,
-      "preserveHumanSignupAndLogin": true
+      "preserveHumanSignupAndLogin": true,
+      "enforcementStatus": "live-not-verified"
     },
     "auth": {
+      "implementationStatus": "repo-verified",
+      "liveConfigurationStatus": "not-verified",
       "failClosed": true,
       "signedInCredential": "supabase-jwt",
       "guestCredential": "explicit-shared-token",
@@ -48,11 +63,14 @@
       "forbiddenClientSecrets": true
     },
     "headers": {
-      "csp": true,
-      "hsts": true,
-      "xFrameOptions": "DENY",
-      "referrerPolicy": "strict-origin-when-cross-origin",
-      "controlRoomCache": "no-store"
+      "enforcementStatus": "live-not-verified",
+      "liveVerificationRequired": true,
+      "targets": {
+        "csp": "progressive-policy-after-browser-proof",
+        "hsts": "verify-before-long-max-age",
+        "xFrameOptions": "DENY",
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
     },
     "integrations": {
       "githubWritesRequireExactHead": true,
@@ -76,10 +94,14 @@
     }
   },
   "activationGates": {
-    "repositoryTruthGreen": true,
-    "firewallPolicyGreen": true,
-    "productDesignPlaywrightGreen": true,
-    "cloudflareSecurityEventsReviewed": true,
-    "productionBlockModeAutomatic": false
+    "required": [
+      "repository-truth-green",
+      "founder-shield-green",
+      "product-design-playwright-green",
+      "cloudflare-live-config-verified",
+      "cloudflare-security-events-reviewed",
+      "guest-and-signed-in-production-smoke-green"
+    ],
+    "automaticBlockMode": false
   }
 }
