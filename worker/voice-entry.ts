@@ -194,7 +194,10 @@ export default {
           ...data,
           version: workerVersionEvidence(env),
         }, response.status, cors);
-      } catch {
+      } catch (error) {
+        console.error('[voice-entry:health]', {
+          error: error instanceof Error ? error.message : 'invalid delegated health response',
+        });
         return json({
           ok: false,
           worker: 'sekret-backend',
