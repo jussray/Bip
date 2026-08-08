@@ -13,10 +13,17 @@ interface RateLimit {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
+interface WorkerVersionMetadata {
+  id: string;
+  tag?: string;
+  timestamp: string;
+}
+
 interface Env extends AuthEnv, VoiceProviderEnv {
   ALLOWED_ORIGINS?: string;
   VOICE_PROVIDER_MODE?: 'legacy' | 'cloudflare-only' | 'hybrid';
   SEKRET_RATE_LIMITER?: RateLimit;
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
 }
 
 function allowedOrigins(env: Env): string[] | null {
@@ -79,6 +86,16 @@ async function enforceRateLimit(
     console.error('[voice-entry:rate-limit]', error);
     return null;
   }
+}
+
+function workerVersionEvidence(env: Env) {
+  const version = env.CF_VERSION_METADATA;
+  if (!version) return null;
+  return {
+    id: version.id,
+    tag: version.tag ?? null,
+    timestamp: version.timestamp,
+  };
 }
 
 async function handleVoice(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
@@ -168,6 +185,29 @@ export default {
     if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
+    if (request.method === 'GET' && path === '/health') {
+      const response = await observedWorker.fetch(request, env as never, ctx);
+      if (!response.ok) return response;
+      try {
+        const data = await response.clone().json() as Record<string, unknown>;
+        return json({
+          ...data,
+          version: workerVersionEvidence(env),
+        }, response.status, cors);
+      } catch (error) {
+        console.error('[voice-entry:health]', {
+          error: error instanceof Error ? error.message : 'invalid delegated health response',
+        });
+        return json({
+          ok: false,
+          worker: 'sekret-backend',
+          router: 'voice-entry',
+          error: 'invalid delegated health response',
+          version: workerVersionEvidence(env),
+        }, 502, cors);
+      }
+    }
+
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
       return handleVoice(request, env, cors);
     }

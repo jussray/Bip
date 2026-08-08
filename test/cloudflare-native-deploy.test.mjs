@@ -6,6 +6,7 @@ import {
   classifyCloudflareReadiness,
   evaluateCloudflareChecks,
   evaluateReleaseMarker,
+  evaluateWorkerRuntime,
 } from '../scripts/verify-cloudflare-native-deploy.mjs';
 
 const workerSuccess = {
@@ -18,11 +19,21 @@ const workerSuccess = {
 
 const expectedSha = 'abcdef0123456789abcdef0123456789abcdef01';
 const matchingRelease = evaluateReleaseMarker({commitSha: expectedSha}, expectedSha);
+const matchingWorker = evaluateWorkerRuntime({
+  ok: true,
+  worker: 'sekret-backend',
+  version: {
+    id: 'version-123',
+    tag: expectedSha,
+    timestamp: '2026-07-14T22:00:30Z',
+  },
+}, expectedSha);
 
-function classify(checkRuns, marker = {commitSha: expectedSha}) {
+function classify(checkRuns, marker = {commitSha: expectedSha}, health = matchingWorker.health) {
   return classifyCloudflareReadiness(
     evaluateCloudflareChecks(checkRuns),
     evaluateReleaseMarker(marker, expectedSha),
+    evaluateWorkerRuntime(health, expectedSha),
   );
 }
 
@@ -86,6 +97,30 @@ test('requires the deployed Pages marker to match the exact commit', () => {
   assert.equal(missing.actualSha, null);
 });
 
+test('requires the live Worker version tag to match the exact commit', () => {
+  assert.equal(matchingWorker.complete, true);
+  assert.equal(matchingWorker.versionTag, expectedSha);
+  assert.equal(matchingWorker.versionId, 'version-123');
+
+  const stale = evaluateWorkerRuntime({
+    ok: true,
+    version: {
+      id: 'version-old',
+      tag: '1111111111111111111111111111111111111111',
+      timestamp: '2026-07-14T21:00:00Z',
+    },
+  }, expectedSha);
+  assert.equal(stale.complete, false);
+  assert.equal(stale.versionTag, '1111111111111111111111111111111111111111');
+
+  const untagged = evaluateWorkerRuntime({
+    ok: true,
+    version: { id: 'version-untagged', tag: null, timestamp: '2026-07-14T22:00:00Z' },
+  }, expectedSha);
+  assert.equal(untagged.complete, false);
+  assert.equal(untagged.versionTag, null);
+});
+
 test('classifies every exact-release blocker without weakening the gate', () => {
   assert.equal(classify([workerSuccess]), 'ready');
   assert.equal(classify([]), 'worker-missing');
@@ -102,6 +137,26 @@ test('classifies every exact-release blocker without weakening the gate', () => 
     classify([workerSuccess], {commitSha: '1111111111111111111111111111111111111111'}),
     'pages-marker-stale',
   );
+  assert.equal(classify([workerSuccess], {commitSha: expectedSha}, null), 'worker-health-missing');
+  assert.equal(
+    classify([workerSuccess], {commitSha: expectedSha}, {ok: false}),
+    'worker-health-unhealthy',
+  );
+  assert.equal(
+    classify([workerSuccess], {commitSha: expectedSha}, {ok: true, version: null}),
+    'worker-version-missing',
+  );
+  assert.equal(
+    classify([workerSuccess], {commitSha: expectedSha}, {ok: true, version: {id: 'version-1', tag: null}}),
+    'worker-version-tag-missing',
+  );
+  assert.equal(
+    classify([workerSuccess], {commitSha: expectedSha}, {
+      ok: true,
+      version: {id: 'version-1', tag: '1111111111111111111111111111111111111111'},
+    }),
+    'worker-version-stale',
+  );
 });
 
 test('failure evidence retains blocker state and exact SHA details', () => {
@@ -110,36 +165,42 @@ test('failure evidence retains blocker state and exact SHA details', () => {
     {commitSha: '1111111111111111111111111111111111111111'},
     expectedSha,
   );
+  const workerEvaluation = evaluateWorkerRuntime(null, expectedSha);
   const evidence = buildCloudflareEvidence({
     repository: 'jussray/Sekret-Bip',
     sha: expectedSha,
     releaseUrl: 'https://sekretbip.net/release.json',
+    backendHealthUrl: 'https://api.sekretbip.net/health',
     checkEvaluation,
     releaseEvaluation,
+    workerEvaluation,
     startedAtMs: Date.parse('2026-07-14T22:00:00Z'),
     observedAtMs: Date.parse('2026-07-14T22:05:00Z'),
     status: 'observing',
   });
 
-  assert.equal(evidence.version, 3);
+  assert.equal(evidence.version, 4);
   assert.equal(evidence.complete, false);
   assert.equal(evidence.readinessState, 'worker-missing');
   assert.equal(evidence.elapsedMs, 300_000);
   assert.equal(evidence.expectedSha, expectedSha);
   assert.equal(evidence.pagesRelease.commitSha, '1111111111111111111111111111111111111111');
+  assert.equal(evidence.workerRuntime.versionTag, null);
   assert.deepEqual(evidence.checkSummary.missing, ['Workers Builds: sekret-backend']);
   assert.equal(evidence.requiredChecks['Workers Builds: sekret-backend'], null);
   assert.equal(evidence.verifiedAt, null);
 });
 
-test('successful evidence preserves the existing production witness fields', () => {
+test('successful evidence joins GitHub, Pages, and Worker runtime identity', () => {
   const checkEvaluation = evaluateCloudflareChecks([workerSuccess]);
   const evidence = buildCloudflareEvidence({
     repository: 'jussray/Sekret-Bip',
     sha: expectedSha,
     releaseUrl: 'https://sekretbip.net/release.json',
+    backendHealthUrl: 'https://api.sekretbip.net/health',
     checkEvaluation,
     releaseEvaluation: matchingRelease,
+    workerEvaluation: matchingWorker,
     allCheckRuns: [workerSuccess],
     startedAtMs: Date.parse('2026-07-14T22:00:00Z'),
     observedAtMs: Date.parse('2026-07-14T22:01:00Z'),
@@ -154,5 +215,8 @@ test('successful evidence preserves the existing production witness fields', () 
   assert.equal(evidence.apiTokenRequiredInGitHub, false);
   assert.equal(evidence.requiredChecks['Workers Builds: sekret-backend'].conclusion, 'success');
   assert.equal(evidence.pagesRelease.commitSha, expectedSha);
+  assert.equal(evidence.workerRuntime.versionTag, expectedSha);
+  assert.equal(evidence.workerRuntime.versionId, 'version-123');
+  assert.equal(evidence.workerRuntime.complete, true);
   assert.equal(evidence.verifiedAt, '2026-07-14T22:01:00.000Z');
 });
