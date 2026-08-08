@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const founderFoundationPath = 'supabase/migrations/20240701000000_founder_audit_foundation.sql';
 const firstControlRoomDependentPath = 'supabase/migrations/20240702_control_room_issues.sql';
-const safetyFoundationPath = 'supabase/migrations/20260619000000_safety_alert_foundation.sql';
+const safetyFoundationPath = 'supabase/migrations/20260617_safety_alert_foundation.sql';
 const safetyScanPath = 'supabase/migrations/20260619_safety_scan.sql';
 const safetyRemoteHistoryPath = 'supabase/migrations/20260622190209_remote_history.sql';
 
