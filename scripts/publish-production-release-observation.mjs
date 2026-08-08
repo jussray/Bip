@@ -23,6 +23,10 @@ export function validateReleaseEvidence(evidence, expectedSha) {
   }
 
   const payload = assertObject(evidence, 'Release evidence');
+  if (payload.version !== 4) {
+    throw new Error(`Release evidence version 4 is required; observed ${payload.version ?? 'missing'}.`);
+  }
+
   const observedSha = normalizeSha(payload.commitSha || payload.expectedSha);
   if (observedSha !== normalizedExpected) {
     throw new Error(
@@ -42,6 +46,22 @@ export function validateReleaseEvidence(evidence, expectedSha) {
     );
   }
 
+  const workerRuntime = assertObject(payload.workerRuntime, 'Worker runtime evidence');
+  const workerExpectedSha = normalizeSha(workerRuntime.expectedSha);
+  const workerVersionTag = normalizeSha(workerRuntime.versionTag);
+  const workerVersionId = String(workerRuntime.versionId ?? '').trim();
+  if (
+    workerRuntime.complete !== true
+    || workerRuntime.healthOk !== true
+    || !workerVersionId
+    || workerExpectedSha !== normalizedExpected
+    || workerVersionTag !== normalizedExpected
+  ) {
+    throw new Error(
+      `Worker runtime identity is not exact: expected ${normalizedExpected}, observed ${workerVersionTag || 'missing'}.`,
+    );
+  }
+
   const requiredChecks = assertObject(payload.requiredChecks, 'Required Cloudflare checks');
   const failedChecks = Object.entries(requiredChecks)
     .filter(([, check]) => check?.status !== 'completed' || check?.conclusion !== 'success')
@@ -54,6 +74,7 @@ export function validateReleaseEvidence(evidence, expectedSha) {
     evidence: payload,
     expectedSha: normalizedExpected,
     pagesRelease,
+    workerRuntime,
     requiredChecks,
   };
 }
@@ -100,6 +121,8 @@ export function buildReleaseObservationComment({
 - Pages branch: \`${safeValue(marker.branch)}\`
 - Deployment provider: \`${safeValue(marker.deploymentProvider)}\`
 - Deployment ID: \`${safeValue(marker.deploymentId)}\`
+- Worker version ID: \`${safeValue(validated.workerRuntime.versionId)}\`
+- Worker version tag: \`${safeValue(validated.workerRuntime.versionTag)}\`
 - Backend health: \`passed\`
 - Supabase runtime contracts: \`passed\`
 - Production Playwright: \`passed\`
@@ -108,7 +131,7 @@ export function buildReleaseObservationComment({
 ### Required Cloudflare checks
 ${workerChecks}
 
-This receipt is generated only after the exact-SHA Cloudflare observer, release marker, backend health, runtime-contract health, and production Playwright steps all pass. It updates the existing marked receipt instead of creating duplicate release claims.
+This receipt is generated only after the exact-SHA Cloudflare observer, Pages release marker, exact live Worker runtime identity, backend health, runtime-contract health, and production Playwright steps all pass. It updates the existing marked receipt instead of creating duplicate release claims.
 `;
 }
 
@@ -125,10 +148,12 @@ export function buildReleaseBlockerComment({
 
   const payload = objectOrEmpty(evidence);
   const pagesRelease = objectOrEmpty(payload.pagesRelease);
+  const workerRuntime = objectOrEmpty(payload.workerRuntime);
   const checkSummary = objectOrEmpty(payload.checkSummary);
   const requiredChecks = objectOrEmpty(payload.requiredChecks);
   const observedSha = normalizeSha(payload.commitSha || payload.expectedSha);
   const pagesSha = normalizeSha(pagesRelease.commitSha || pagesRelease.expectedSha);
+  const workerVersionTag = normalizeSha(workerRuntime.versionTag);
   const runUrl = `${serverUrl}/${repository}/actions/runs/${runId}`;
   const stepLines = Object.entries(objectOrEmpty(stepOutcomes))
     .map(([name, outcome]) => `- ${name}: \`${safeValue(outcome)}\``)
@@ -142,10 +167,14 @@ export function buildReleaseBlockerComment({
 
 - Intended main SHA: \`${normalizedExpected}\`
 - Evidence SHA: \`${observedSha || 'missing'}\`
+- Evidence version: \`${safeValue(payload.version, 'missing')}\`
 - Evidence status: \`${safeValue(payload.status, 'evidence missing')}\`
 - Readiness state: \`${safeValue(payload.readinessState, 'unknown')}\`
 - Pages marker SHA: \`${pagesSha || 'missing'}\`
 - Pages marker exact: \`${pagesRelease.complete === true && pagesSha === normalizedExpected ? 'yes' : 'no'}\`
+- Worker version ID: \`${safeValue(workerRuntime.versionId, 'missing')}\`
+- Worker version tag: \`${workerVersionTag || 'missing'}\`
+- Worker version exact: \`${workerRuntime.complete === true && workerVersionTag === normalizedExpected ? 'yes' : 'no'}\`
 - Workflow run: ${runUrl}
 
 ### Verification step outcomes
@@ -161,7 +190,7 @@ ${workerLines}
 - Unsuccessful checks: \`${safeList(checkSummary.unsuccessful)}\`
 - Observer error: \`${safeValue(payload.observerError, 'none reported')}\`
 
-This is a blocked-attempt receipt, not a production pass. It must never be used as exact-release, backend-health, Supabase-health, Playwright, or launch evidence. A separate VERIFIED receipt is written only after every required production witness succeeds.
+This is a blocked-attempt receipt, not a production pass. It must never be used as exact-release, Worker-runtime, backend-health, Supabase-health, Playwright, or launch evidence. A separate VERIFIED receipt is written only after every required production witness succeeds.
 `;
 }
 
@@ -238,7 +267,7 @@ function readEvidence(evidencePath, expectedSha, fallbackStatus) {
     return JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
   }
   return {
-    version: 3,
+    version: 4,
     commitSha: normalizeSha(expectedSha),
     expectedSha: normalizeSha(expectedSha),
     status: fallbackStatus,
@@ -248,6 +277,13 @@ function readEvidence(evidencePath, expectedSha, fallbackStatus) {
     checkSummary: {missing: [], pending: [], failed: [], unsuccessful: []},
     requiredChecks: {},
     pagesRelease: {commitSha: null, expectedSha: normalizeSha(expectedSha), complete: false},
+    workerRuntime: {
+      expectedSha: normalizeSha(expectedSha),
+      versionId: null,
+      versionTag: null,
+      healthOk: false,
+      complete: false,
+    },
   };
 }
 
