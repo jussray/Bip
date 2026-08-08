@@ -1,0 +1,93 @@
+name: Configure production Auth email provider
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: Exact main SHA whose signup contract is being configured
+        required: true
+        type: string
+      apply:
+        description: Apply Resend SMTP to canonical Supabase Auth
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sekret-auth-email-provider-production
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  SUPABASE_PROJECT_REF: tbsevonvegdnlyjgplmm
+  AUTH_SMTP_HOST: smtp.resend.com
+  AUTH_SMTP_PORT: '465'
+  AUTH_SMTP_USER: resend
+  AUTH_SMTP_ADMIN_EMAIL: invite@mail.sekretbip.com
+  AUTH_SMTP_SENDER_NAME: Se'kret Bip
+
+jobs:
+  reconcile-auth-email:
+    name: Plan or apply production Auth email
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Require main for production apply
+        if: inputs.apply == true
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF_NAME" = main
+
+      - name: Check out exact target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_sha }}
+
+      - name: Verify exact target
+        shell: bash
+        env:
+          EXPECTED_HEAD_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Show redacted non-destructive plan
+        run: node scripts/configure-supabase-auth-email.mjs
+
+      - name: Require provider credentials before apply
+        if: inputs.apply == true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo 'SUPABASE_ACCESS_TOKEN is not configured.' >&2; exit 1; }
+          test -n "$RESEND_API_KEY" || { echo 'RESEND_API_KEY is not configured.' >&2; exit 1; }
+
+      - name: Apply Resend SMTP to canonical Supabase Auth
+        if: inputs.apply == true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: node scripts/configure-supabase-auth-email.mjs --apply
+
+      - name: Upload redacted provider receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-email-provider-${{ inputs.target_sha }}
+          path: artifacts/auth-email-provider-receipt.json
+          if-no-files-found: warn
+          retention-days: 14
