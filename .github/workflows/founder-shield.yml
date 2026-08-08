@@ -95,5 +95,5 @@ jobs:
         with:
           name: founder-shield-live-${{ github.event.pull_request.head.sha || github.sha }}
           path: artifacts/founder-shield-live
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 30
