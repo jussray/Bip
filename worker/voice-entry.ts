@@ -13,10 +13,17 @@ interface RateLimit {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
+interface WorkerVersionMetadata {
+  id: string;
+  tag?: string;
+  timestamp: string;
+}
+
 interface Env extends AuthEnv, VoiceProviderEnv {
   ALLOWED_ORIGINS?: string;
   VOICE_PROVIDER_MODE?: 'legacy' | 'cloudflare-only' | 'hybrid';
   SEKRET_RATE_LIMITER?: RateLimit;
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
 }
 
 function allowedOrigins(env: Env): string[] | null {
@@ -57,28 +64,14 @@ function hasJsonContentType(request: Request): boolean {
   return contentType === 'application/json' || contentType.endsWith('+json');
 }
 
-function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
-  return body.requiresPreciseLipSync === true
-    || body.includeTiming === true
-    || body.lipSync === 'precise';
-}
-
-async function enforceRateLimit(
-  request: Request,
-  env: Env,
-  principal: { kind: string; userId?: string },
-  cors: Record<string, string>,
-): Promise<Response | null> {
-  if (!env.SEKRET_RATE_LIMITER) return null;
-  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
-  try {
-    const { success } = await env.SEKRET_RATE_LIMITER.limit({ key });
-    return success ? null : json({ error: 'rate limit exceeded' }, 429, cors);
-  } catch (error) {
-    console.error('[voice-entry:rate-limit]', error);
-    return null;
-  }
+function workerVersionEvidence(env: Env) {
+  const version = env.CF_VERSION_METADATA;
+  if (!version) return null;
+  return {
+    id: version.id,
+    tag: version.tag ?? null,
+    timestamp: version.timestamp,
+  };
 }
 
 async function handleVoice(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
@@ -159,6 +152,30 @@ async function handleVoice(request: Request, env: Env, cors: Record<string, stri
   }
 }
 
+function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
+  return body.requiresPreciseLipSync === true
+    || body.includeTiming === true
+    || body.lipSync === 'precise';
+}
+
+async function enforceRateLimit(
+  request: Request,
+  env: Env,
+  principal: { kind: string; userId?: string },
+  cors: Record<string, string>,
+): Promise<Response | null> {
+  if (!env.SEKRET_RATE_LIMITER) return null;
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
+  try {
+    const { success } = await env.SEKRET_RATE_LIMITER.limit({ key });
+    return success ? null : json({ error: 'rate limit exceeded' }, 429, cors);
+  } catch (error) {
+    console.error('[voice-entry:rate-limit]', error);
+    return null;
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: MinimalExecutionContext): Promise<Response> {
     const cors = corsHeaders(request, env);
@@ -168,6 +185,26 @@ export default {
     if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
+    if (request.method === 'GET' && path === '/health') {
+      const response = await observedWorker.fetch(request, env as never, ctx);
+      if (!response.ok) return response;
+      try {
+        const data = await response.clone().json() as Record<string, unknown>;
+        return json({
+          ...data,
+          version: workerVersionEvidence(env),
+        }, response.status, cors);
+      } catch {
+        return json({
+          ok: false,
+          worker: 'sekret-backend',
+          router: 'voice-entry',
+          error: 'invalid delegated health response',
+          version: workerVersionEvidence(env),
+        }, 502, cors);
+      }
+    }
+
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
       return handleVoice(request, env, cors);
     }
