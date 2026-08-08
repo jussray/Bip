@@ -64,6 +64,30 @@ function hasJsonContentType(request: Request): boolean {
   return contentType === 'application/json' || contentType.endsWith('+json');
 }
 
+function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
+  return body.requiresPreciseLipSync === true
+    || body.includeTiming === true
+    || body.lipSync === 'precise';
+}
+
+async function enforceRateLimit(
+  request: Request,
+  env: Env,
+  principal: { kind: string; userId?: string },
+  cors: Record<string, string>,
+): Promise<Response | null> {
+  if (!env.SEKRET_RATE_LIMITER) return null;
+  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+  const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
+  try {
+    const { success } = await env.SEKRET_RATE_LIMITER.limit({ key });
+    return success ? null : json({ error: 'rate limit exceeded' }, 429, cors);
+  } catch (error) {
+    console.error('[voice-entry:rate-limit]', error);
+    return null;
+  }
+}
+
 function workerVersionEvidence(env: Env) {
   const version = env.CF_VERSION_METADATA;
   if (!version) return null;
@@ -149,30 +173,6 @@ async function handleVoice(request: Request, env: Env, cors: Record<string, stri
       fallbackProvider: route.fallbackProvider,
       usedFallback: Boolean(route.fallbackProvider),
     }, 502, cors);
-  }
-}
-
-function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
-  return body.requiresPreciseLipSync === true
-    || body.includeTiming === true
-    || body.lipSync === 'precise';
-}
-
-async function enforceRateLimit(
-  request: Request,
-  env: Env,
-  principal: { kind: string; userId?: string },
-  cors: Record<string, string>,
-): Promise<Response | null> {
-  if (!env.SEKRET_RATE_LIMITER) return null;
-  const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
-  try {
-    const { success } = await env.SEKRET_RATE_LIMITER.limit({ key });
-    return success ? null : json({ error: 'rate limit exceeded' }, 429, cors);
-  } catch (error) {
-    console.error('[voice-entry:rate-limit]', error);
-    return null;
   }
 }
 
