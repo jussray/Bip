@@ -110,6 +110,12 @@ test('front-door limiter fails closed and avoids downstream double counting', ()
   assert.ok(/'Retry-After': '30'/.test(voiceEntry), 'limiter outage exposes retry guidance');
   assert.ok(/SEKRET_RATE_LIMITER: undefined/.test(voiceEntry), 'downstream copy cannot double-count the request');
   assert.ok(/rate limit exceeded', retryable: true \}, 429/.test(voiceEntry), 'over-limit requests return 429');
+  assert.doesNotMatch(voiceEntry, /if \(!env\.SEKRET_RATE_LIMITER\) return null;/, 'missing production binding must never silently bypass protection');
+  assert.ok(/if \(!env\.SEKRET_RATE_LIMITER\) \{[\s\S]*SEKRET_AUTH_MODE === 'dev-open'[\s\S]*return protectionUnavailable\(cors\)/.test(voiceEntry),
+    'missing binding must fail closed outside explicit dev-open');
+  assert.ok(/SEKRET_RATE_LIMITER binding unavailable/.test(voiceEntry), 'missing binding must emit telemetry');
+  assert.ok(/function protectionUnavailable\([\s\S]*request protection temporarily unavailable[\s\S]*'Retry-After': '30'/.test(voiceEntry),
+    'missing and throwing limiter failures must share the retryable 503 response');
 });
 
 test('CORS allows Authorization and remains origin-configurable', () => {
