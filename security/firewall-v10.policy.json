@@ -1,20 +1,20 @@
 {
   "version": "10",
-  "name": "Se'kret Bip Firewall v10",
+  "name": "Se'kret Bip Founder Shield",
   "repository": "jussray/Sekret-Bip",
   "activationStage": "policy-ci-only",
   "cloudflare": {
-    "primaryHosts": ["sekretbip.net"],
+    "primaryHosts": ["sekretbip.net", "api.sekretbip.net"],
     "activeWorker": "sekret-backend",
     "retiredWorkersNoNewAuthority": ["bip-mail", "sekret"],
     "managedWaf": {
       "enabled": true,
-      "mode": "prevention-ready",
+      "mode": "log-before-block",
       "ruleFamilies": ["OWASP Core Rules", "Cloudflare Managed Rules", "Known bad bots"]
     },
     "apiShield": {
       "schemaValidation": "log-then-block",
-      "jwtValidation": "required-on-private-api",
+      "jwtValidation": "required-on-protected-api",
       "sessionIdentifier": "Authorization"
     },
     "authenticatedOriginPulls": "required-before-direct-origin-exposure"
@@ -22,22 +22,27 @@
   "controls": {
     "rateLimiting": {
       "enabled": true,
-      "strategy": "per-ip-plus-session-key",
+      "strategy": "per-user-then-client-ip",
+      "binding": "SEKRET_RATE_LIMITER",
+      "failureMode": "fail-closed-retryable",
       "routes": [
-        { "match": "/api/*", "limit": 60, "periodSeconds": 10, "action": "challenge-then-block" },
-        { "match": "/auth/signup", "limit": 30, "periodSeconds": 60, "action": "challenge-then-block" },
-        { "match": "/auth/login", "limit": 20, "periodSeconds": 60, "action": "challenge-then-block" },
-        { "match": "/auth/recover", "limit": 10, "periodSeconds": 60, "action": "block" }
+        { "match": "/api/sekret/reply", "limit": 60, "periodSeconds": 10 },
+        { "match": "/api/sekret/voice", "limit": 60, "periodSeconds": 10 },
+        { "match": "/api/sekret/transcribe", "limit": 60, "periodSeconds": 10 },
+        { "match": "/api/bridge/summary/generate", "limit": 60, "periodSeconds": 10 }
       ]
     },
     "botDefense": {
       "enabled": true,
-      "mode": "challenge_unknown_automation",
+      "mode": "challenge-unknown-automation",
       "allowVerifiedGoodBots": true,
       "preserveHumanSignupAndLogin": true
     },
     "auth": {
       "failClosed": true,
+      "signedInCredential": "supabase-jwt",
+      "guestCredential": "explicit-shared-token",
+      "tokenlessProductionAccess": "forbidden",
       "privateRoutesRequireServerVerifiedSession": true,
       "serverOnlySecrets": ["SUPABASE_SERVICE_ROLE_KEY", "RESEND_API_KEY", "GITHUB_WEBHOOK_SECRET", "CLOUDFLARE_API_TOKEN"],
       "forbiddenClientSecrets": true
@@ -59,7 +64,8 @@
     "observability": {
       "securityEventsRequiredBeforeBlockMode": true,
       "logBlockedReason": true,
-      "noSilentNulls": true
+      "noSilentNulls": true,
+      "retainRollbackEvidence": true
     },
     "productDesign": {
       "blockedStateMustBeHumanReadable": true,
@@ -68,5 +74,12 @@
       "teenParentSignupMustStayUsable": true,
       "noMisleadingConnectedOrProtectedClaims": true
     }
+  },
+  "activationGates": {
+    "repositoryTruthGreen": true,
+    "firewallPolicyGreen": true,
+    "productDesignPlaywrightGreen": true,
+    "cloudflareSecurityEventsReviewed": true,
+    "productionBlockModeAutomatic": false
   }
 }
