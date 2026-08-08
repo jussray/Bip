@@ -13,18 +13,39 @@ function require(condition, message) {
 require(policy.version === '10', 'policy version must be 10');
 require(policy.repository === 'jussray/Sekret-Bip', 'policy must target jussray/Sekret-Bip');
 require(policy.activationStage === 'policy-ci-only', 'production activation must remain CI-only until live evidence is reviewed');
+require(policy.claims?.productionProtectionStatus === 'not-verified', 'production protection must not be claimed before live Cloudflare proof');
 require(policy.cloudflare?.primaryHosts?.includes('sekretbip.net'), 'policy must include sekretbip.net');
 require(policy.cloudflare?.primaryHosts?.includes('api.sekretbip.net'), 'policy must include api.sekretbip.net');
 require(policy.cloudflare?.activeWorker === 'sekret-backend', 'active Worker must be sekret-backend');
+require(policy.cloudflare?.edgeControls?.managedWaf?.enforcementStatus === 'live-not-verified', 'Managed WAF must remain live-not-verified until platform evidence exists');
+require(policy.cloudflare?.edgeControls?.apiShield?.enforcementStatus === 'live-not-verified', 'API Shield must remain live-not-verified until platform evidence exists');
+require(policy.cloudflare?.edgeControls?.authenticatedOriginPulls?.enforcementStatus === 'live-not-verified', 'Authenticated Origin Pulls must remain live-not-verified until platform evidence exists');
+
+require(policy.controls?.auth?.implementationStatus === 'repo-verified', 'auth implementation must be repo-verified');
+require(policy.controls?.auth?.liveConfigurationStatus === 'not-verified', 'live auth configuration must remain not-verified until runtime proof');
 require(policy.controls?.auth?.failClosed === true, 'auth must fail closed');
 require(policy.controls?.auth?.tokenlessProductionAccess === 'forbidden', 'token-less production access must be forbidden');
+require(policy.controls?.rateLimiting?.implementationStatus === 'repo-verified', 'rate-limit implementation must be repo-verified');
+require(policy.controls?.rateLimiting?.liveBindingStatus === 'not-verified', 'live rate-limit binding must remain not-verified until runtime proof');
 require(policy.controls?.rateLimiting?.failureMode === 'fail-closed-retryable', 'rate-limit errors must fail closed with a recovery path');
+require(policy.controls?.botDefense?.enforcementStatus === 'live-not-verified', 'bot defense must not be claimed enabled without platform proof');
+require(policy.controls?.headers?.enforcementStatus === 'live-not-verified', 'security headers must remain live-not-verified until response proof exists');
+require(policy.controls?.headers?.liveVerificationRequired === true, 'security headers require live verification');
 require(policy.controls?.productDesign?.legitimateUsersGetRecoveryPath === true, 'blocked users need a recovery path');
 require(policy.controls?.productDesign?.noMisleadingConnectedOrProtectedClaims === true, 'security UI must not overclaim protection');
-require(policy.activationGates?.repositoryTruthGreen === true, 'repository truth must gate activation');
-require(policy.activationGates?.productDesignPlaywrightGreen === true, 'Playwright must gate activation');
-require(policy.activationGates?.cloudflareSecurityEventsReviewed === true, 'Cloudflare Security Events review must gate block mode');
-require(policy.activationGates?.productionBlockModeAutomatic === false, 'production block mode must not auto-enable');
+
+const requiredGates = new Set(policy.activationGates?.required ?? []);
+for (const gate of [
+  'repository-truth-green',
+  'founder-shield-green',
+  'product-design-playwright-green',
+  'cloudflare-live-config-verified',
+  'cloudflare-security-events-reviewed',
+  'guest-and-signed-in-production-smoke-green',
+]) {
+  require(requiredGates.has(gate), `activation gate missing: ${gate}`);
+}
+require(policy.activationGates?.automaticBlockMode === false, 'production block mode must not auto-enable');
 
 const expectedRoutes = new Set([
   '/api/sekret/reply',
@@ -42,8 +63,8 @@ for (const route of routes) {
 
 require(/name = "sekret-backend"/.test(wrangler), 'wrangler Worker name must match policy');
 require(/main = "worker\/voice-entry\.ts"/.test(wrangler), 'voice-entry.ts must remain the authoritative Worker front door');
-require(/name = "SEKRET_RATE_LIMITER"/.test(wrangler), 'Cloudflare rate-limit binding must exist');
-require(/pattern = "api\.sekretbip\.net"/.test(wrangler), 'api.sekretbip.net custom domain must remain bound');
+require(/name = "SEKRET_RATE_LIMITER"/.test(wrangler), 'Cloudflare rate-limit binding must exist in repo config');
+require(/pattern = "api\.sekretbip\.net"/.test(wrangler), 'api.sekretbip.net custom domain must remain bound in repo config');
 
 require(/SEKRET_AUTH_MODE\?: 'required' \| 'dev-open'/.test(auth), 'auth mode contract is missing');
 require(/const devOpen = env\.SEKRET_AUTH_MODE === 'dev-open'/.test(auth), 'dev-open must be explicit');
@@ -62,4 +83,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Founder Shield verified against Se\'kret Bip runtime authority.');
+console.log('Founder Shield verified: repo controls are enforced and live Cloudflare claims remain explicitly unverified.');
