@@ -4,12 +4,14 @@ import test from 'node:test';
 
 const founderFoundationPath = 'supabase/migrations/20240701000000_founder_audit_foundation.sql';
 const firstControlRoomDependentPath = 'supabase/migrations/20240702_control_room_issues.sql';
+const circleV1Path = 'supabase/migrations/20260616224106_0002_circle_v1.sql';
 const safetyFoundationPath = 'supabase/migrations/20260617_safety_alert_foundation.sql';
 const safetyScanPath = 'supabase/migrations/20260619_safety_scan.sql';
 const safetyRemoteHistoryPath = 'supabase/migrations/20260622190209_remote_history.sql';
 
 const founderFoundation = fs.readFileSync(new URL(`../${founderFoundationPath}`, import.meta.url), 'utf8');
 const firstControlRoomDependent = fs.readFileSync(new URL(`../${firstControlRoomDependentPath}`, import.meta.url), 'utf8');
+const circleV1 = fs.readFileSync(new URL(`../${circleV1Path}`, import.meta.url), 'utf8');
 const safetyFoundation = fs.readFileSync(new URL(`../${safetyFoundationPath}`, import.meta.url), 'utf8');
 const safetyScan = fs.readFileSync(new URL(`../${safetyScanPath}`, import.meta.url), 'utf8');
 const safetyRemoteHistory = fs.readFileSync(new URL(`../${safetyRemoteHistoryPath}`, import.meta.url), 'utf8');
@@ -66,6 +68,31 @@ test('audit_events foundation is metadata-only and RLS-gated', () => {
     /grant select, insert, update, delete on table public\.audit_events to authenticated/i,
   );
   assert.doesNotMatch(founderFoundation, /journal|transcript|audio|raw_content|private_content/i);
+});
+
+test('Circle V1 remote-history migration contains the recovered schema body', () => {
+  assert.doesNotMatch(circleV1, /^-- Migration already applied remotely\.[\s\S]*Compatibility placeholder/m);
+  assert.match(circleV1, /Recovered from repository history \(commit a1f87d2c672fb6de6c602564d8e069a2a955d73e/);
+
+  for (const table of [
+    'circle_profiles',
+    'circle_friend_requests',
+    'circle_friendships',
+    'crew_memberships',
+    'public_circle_posts',
+    'friends_circle_posts',
+    'crew_circle_posts',
+    'circle_comments',
+    'circle_reactions',
+    'blocked_users',
+    'reported_posts',
+  ]) {
+    assert.match(circleV1, new RegExp(`create table if not exists public\\.${table}\\b`, 'i'));
+  }
+
+  assert.match(circleV1, /alter table public\.public_circle_posts enable row level security/i);
+  assert.match(circleV1, /create policy "pcp_insert" on public\.public_circle_posts/i);
+  assert.match(circleV1, /create policy "pcp_delete" on public\.public_circle_posts/i);
 });
 
 test('safety alert foundation sorts before the hardening migration and matches recorded remote history', () => {
