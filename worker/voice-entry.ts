@@ -1,6 +1,6 @@
 import observedWorker from './observed-index';
 import emailRouter from './email-router';
-import { authenticate, type AuthEnv } from './auth';
+import { authenticate, type AuthEnv, type Principal } from './auth';
 import { normalizeReplyActor, resolveRuntimeStyle } from './runtime-style';
 import { selectVoiceRoute, type CharacterId } from './voice-routing';
 import { synthesizeRoutedVoice, type VoiceProviderEnv } from './voice-providers';
@@ -66,28 +66,36 @@ function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
 async function enforceRateLimit(
   request: Request,
   env: Env,
-  principal: { kind: string; userId?: string },
+  principal: Principal,
   cors: Record<string, string>,
 ): Promise<Response | null> {
   if (!env.SEKRET_RATE_LIMITER) return null;
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
+  const key = principal.kind === 'user' ? `user:${principal.userId}` : `ip:${ip}`;
   try {
     const { success } = await env.SEKRET_RATE_LIMITER.limit({ key });
-    return success ? null : json({ error: 'rate limit exceeded' }, 429, cors);
+    return success ? null : json({ error: 'rate limit exceeded', retryable: true }, 429, cors);
   } catch (error) {
     console.error('[voice-entry:rate-limit]', error);
-    return null;
+    return json(
+      { error: 'request protection temporarily unavailable', retryable: true },
+      503,
+      { ...cors, 'Retry-After': '30' },
+    );
   }
 }
 
-async function handleVoice(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
-  if (!hasJsonContentType(request)) return json({ error: 'content-type must be application/json' }, 415, cors);
+function withoutRateLimiter(env: Env): Env {
+  if (!env.SEKRET_RATE_LIMITER) return env;
+  return { ...env, SEKRET_RATE_LIMITER: undefined };
+}
 
-  const auth = await authenticate(request, env);
-  if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
-  const limited = await enforceRateLimit(request, env, auth.principal, cors);
-  if (limited) return limited;
+async function handleVoice(
+  request: Request,
+  env: Env,
+  cors: Record<string, string>,
+): Promise<Response> {
+  if (!hasJsonContentType(request)) return json({ error: 'content-type must be application/json' }, 415, cors);
 
   let body: Record<string, unknown>;
   try {
@@ -168,11 +176,26 @@ export default {
     if (blocked) return blocked;
 
     const path = new URL(request.url).pathname;
-    if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
-      return handleVoice(request, env, cors);
+    const isProtectedApiPost = request.method === 'POST' && path.includes('/api/');
+    let downstreamEnv = env;
+
+    if (isProtectedApiPost) {
+      const auth = await authenticate(request, env);
+      if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
+
+      const limited = await enforceRateLimit(request, env, auth.principal, cors);
+      if (limited) return limited;
+
+      // The front door has already rate-limited this request. Remove the
+      // binding before delegation so downstream routers cannot double-count it.
+      downstreamEnv = withoutRateLimiter(env);
     }
 
-    return observedWorker.fetch(request, env as never, ctx);
+    if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
+      return handleVoice(request, downstreamEnv, cors);
+    }
+
+    return observedWorker.fetch(request, downstreamEnv as never, ctx);
   },
 
   async email(message: Parameters<typeof emailRouter.email>[0]): Promise<void> {
