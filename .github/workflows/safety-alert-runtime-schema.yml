@@ -5,15 +5,19 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/20260808222500_reconcile_safety_alert_runtime_schema.sql'
+      - 'supabase/migrations/20260808223500_lock_safety_alert_table_grants.sql'
       - 'supabase/probes/authorization_safety_alert_runtime_schema_phase1.sql'
       - 'test/safety-alert-runtime-schema.test.mjs'
+      - 'test/safety-alert-table-grants.test.mjs'
       - '.github/workflows/safety-alert-runtime-schema.yml'
   push:
     branches: [main]
     paths:
       - 'supabase/migrations/20260808222500_reconcile_safety_alert_runtime_schema.sql'
+      - 'supabase/migrations/20260808223500_lock_safety_alert_table_grants.sql'
       - 'supabase/probes/authorization_safety_alert_runtime_schema_phase1.sql'
       - 'test/safety-alert-runtime-schema.test.mjs'
+      - 'test/safety-alert-table-grants.test.mjs'
       - '.github/workflows/safety-alert-runtime-schema.yml'
   workflow_dispatch:
 
@@ -47,5 +51,5 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify safety runtime schema contract
-        run: node --test test/safety-alert-runtime-schema.test.mjs
+      - name: Verify safety runtime schema contracts
+        run: node --test test/safety-alert-runtime-schema.test.mjs test/safety-alert-table-grants.test.mjs
