@@ -1,0 +1,133 @@
+name: Supabase Fresh Replay
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**'
+      - 'test/supabase-foundation-replay-contract.test.mjs'
+      - '.github/workflows/supabase-fresh-replay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  fresh-replay:
+    name: Replay migrations from empty local database
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Verify reconstructed foundation contract
+        run: node --test test/supabase-foundation-replay-contract.test.mjs
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Initialize ephemeral local Supabase config
+        shell: bash
+        run: supabase init --force
+
+      - name: Start empty local database and replay ordered migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+      - name: Verify final foundation convergence
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+
+          DB_URL="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"' | head -n 1)"
+          test -n "$DB_URL"
+
+          psql "$DB_URL" --set=ON_ERROR_STOP=1 <<'SQL'
+          do $proof$
+          declare
+            v_missing text[];
+          begin
+            select array_agg(required.column_name order by required.column_name)
+            into v_missing
+            from (
+              values
+                ('app_profiles', 'user_id'),
+                ('app_profiles', 'email'),
+                ('app_profiles', 'role'),
+                ('app_profiles', 'can_view_audits'),
+                ('app_profiles', 'can_manage_app'),
+                ('app_profiles', 'exclude_from_analytics'),
+                ('app_profiles', 'account_side'),
+                ('app_profiles', 'private_display_name'),
+                ('app_profiles', 'onboarding_complete'),
+                ('audit_events', 'id'),
+                ('audit_events', 'user_id'),
+                ('audit_events', 'event_type'),
+                ('audit_events', 'severity'),
+                ('audit_events', 'metadata'),
+                ('audit_events', 'resolved'),
+                ('audit_events', 'resolved_at')
+            ) as required(table_name, column_name)
+            where not exists (
+              select 1
+              from information_schema.columns c
+              where c.table_schema = 'public'
+                and c.table_name = required.table_name
+                and c.column_name = required.column_name
+            );
+
+            if v_missing is not null then
+              raise exception 'fresh replay missing required columns: %', v_missing;
+            end if;
+
+            if not exists (
+              select 1
+              from pg_class c
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'public'
+                and c.relname = 'app_profiles'
+                and c.relrowsecurity is true
+            ) then
+              raise exception 'app_profiles RLS is not enabled after replay';
+            end if;
+
+            if not exists (
+              select 1
+              from pg_class c
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'public'
+                and c.relname = 'audit_events'
+                and c.relrowsecurity is true
+            ) then
+              raise exception 'audit_events RLS is not enabled after replay';
+            end if;
+          end
+          $proof$;
+          SQL
+
+      - name: Stop ephemeral Supabase
+        if: always()
+        shell: bash
+        run: supabase stop --no-backup || true
