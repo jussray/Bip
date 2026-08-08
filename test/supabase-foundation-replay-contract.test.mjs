@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import {fileURLToPath} from 'node:url';
 
 const founderFoundationPath = 'supabase/migrations/20240701000000_founder_audit_foundation.sql';
 const firstControlRoomDependentPath = 'supabase/migrations/20240702_control_room_issues.sql';
@@ -15,6 +17,35 @@ const circleV1 = fs.readFileSync(new URL(`../${circleV1Path}`, import.meta.url),
 const safetyFoundation = fs.readFileSync(new URL(`../${safetyFoundationPath}`, import.meta.url), 'utf8');
 const safetyScan = fs.readFileSync(new URL(`../${safetyScanPath}`, import.meta.url), 'utf8');
 const safetyRemoteHistory = fs.readFileSync(new URL(`../${safetyRemoteHistoryPath}`, import.meta.url), 'utf8');
+
+function migrationInventory() {
+  const testDir = path.dirname(fileURLToPath(import.meta.url));
+  const migrationsDir = path.resolve(testDir, '../supabase/migrations');
+  return fs.readdirSync(migrationsDir)
+    .filter((name) => name.endsWith('.sql'))
+    .sort();
+}
+
+test('every active migration has a unique Supabase version prefix', () => {
+  const byVersion = new Map();
+  for (const name of migrationInventory()) {
+    const [version] = name.split('_', 1);
+    if (!/^\d+$/.test(version)) continue;
+    const names = byVersion.get(version) ?? [];
+    names.push(name);
+    byVersion.set(version, names);
+  }
+
+  const duplicates = [...byVersion.entries()]
+    .filter(([, names]) => names.length > 1)
+    .map(([version, names]) => `${version}: ${names.join(', ')}`);
+
+  assert.deepEqual(
+    duplicates,
+    [],
+    `duplicate Supabase migration versions:\n${duplicates.join('\n')}`,
+  );
+});
 
 test('restored founder foundation sorts before the first tracked Control Room dependency', () => {
   assert.ok(
