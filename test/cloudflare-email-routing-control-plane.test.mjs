@@ -6,6 +6,7 @@ import {
   EMAIL_ALIASES,
   buildWorkerRule,
   configFromEnv,
+  findDuplicateSupportedRules,
 } from '../scripts/reconcile-cloudflare-email-routing.mjs';
 
 const REQUIRED_ALIASES = [
@@ -43,7 +44,20 @@ test('Cloudflare email rules target the canonical production Worker', () => {
   assert.equal(rule.enabled, true);
 });
 
-test('email routing workflow is manual, fail-closed, and uses current Cloudflare endpoints', () => {
+test('duplicate supported aliases are detected before reconciliation', () => {
+  const config = configFromEnv({});
+  const rules = [
+    { id: 'one', matchers: [{ type: 'literal', field: 'to', value: 'founder@sekretbip.net' }] },
+    { id: 'two', matchers: [{ type: 'literal', field: 'to', value: 'founder@sekretbip.net' }] },
+    { id: 'other', matchers: [{ type: 'literal', field: 'to', value: 'random@sekretbip.net' }] },
+  ];
+
+  assert.deepEqual(findDuplicateSupportedRules(rules, config), [
+    { address: 'founder@sekretbip.net', ids: ['one', 'two'] },
+  ]);
+});
+
+test('email routing workflow is manual, fail-closed, and retains apply evidence', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-email-routing.yml', import.meta.url),
     'utf8',
@@ -57,8 +71,14 @@ test('email routing workflow is manual, fail-closed, and uses current Cloudflare
   assert.doesNotMatch(workflow, /^\s*push:/m);
   assert.doesNotMatch(workflow, /^\s*schedule:/m);
   assert.match(workflow, /secrets\.CLOUDFLARE_API_TOKEN/);
+  assert.match(workflow, /actions\/upload-artifact@v4/);
+  assert.match(workflow, /retention-days:\s*30/);
+
   assert.match(reconciler, /\/email\/routing\/dns/);
-  assert.doesNotMatch(reconciler, /\/email\/routing`/);
-  assert.match(reconciler, /catchAll: false/);
+  assert.match(reconciler, /\/email\/routing\/rules\/catch_all/);
+  assert.match(reconciler, /DUPLICATE_SUPPORTED_ROUTES/);
+  assert.match(reconciler, /CATCH_ALL_ENABLED/);
+  assert.match(reconciler, /cloudflare-email-routing-evidence\.json/);
+  assert.match(reconciler, /catchAllDesired:\s*'disabled'/);
   assert.doesNotMatch(reconciler, /method:\s*['"]DELETE['"]/);
 });
