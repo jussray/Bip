@@ -11,6 +11,8 @@ const workflow = read('.github/workflows/deploy-cloudflare.yml');
 const productionEnv = read('.env.production');
 const verifier = read('scripts/verify-cloudflare-native-deploy.mjs');
 const releaseObserver = read('scripts/publish-production-release-observation.mjs');
+const deployWrapper = read('scripts/deploy-cloudflare-worker.mjs');
+const workerEntry = read('worker/voice-entry.ts');
 const packageJson = JSON.parse(read('package.json'));
 const eas = JSON.parse(read('eas.json'));
 
@@ -26,8 +28,10 @@ const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.jso
 // Worker instead of the canonical one.
 const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
-test('Wrangler targets the canonical Worker name and production custom domain', () => {
+test('Wrangler targets the canonical Worker name, runtime version metadata, and production custom domain', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
+  assert.match(wrangler, /^\[version_metadata\]$/m);
+  assert.match(wrangler, /^binding = "CF_VERSION_METADATA"$/m);
   assert.match(wrangler, /^pattern = "api\.sekretbip\.net"$/m);
   assert.match(wrangler, /^custom_domain = true$/m);
 });
@@ -45,9 +49,21 @@ test('production verification proves the exact Worker and Pages release', () => 
   assert.ok(workflow.includes('issues: write'));
   assert.ok(verifier.includes(`Workers Builds: ${WORKER_NAME}`));
   assert.ok(verifier.includes('Pages release marker'));
+  assert.ok(verifier.includes('worker-version-tag-missing'));
+  assert.ok(verifier.includes('worker-version-stale'));
+  assert.ok(verifier.includes('workerRuntime'));
   assert.ok(releaseObserver.includes('sekret-production-release-observation'));
   assert.ok(releaseObserver.includes('validateReleaseEvidence'));
   assert.ok(packageJson.scripts['build:web'].includes('write-release-metadata.mjs'));
+});
+
+test('production Worker exposes immutable runtime identity and exact-SHA deploy path', () => {
+  assert.ok(workerEntry.includes('CF_VERSION_METADATA'));
+  assert.ok(workerEntry.includes('version: workerVersionEvidence(env)'));
+  assert.ok(deployWrapper.includes('WORKERS_CI_COMMIT_SHA'));
+  assert.ok(deployWrapper.includes("'--tag'"));
+  assert.ok(deployWrapper.includes("'--message'"));
+  assert.ok(deployWrapper.includes('git:${sha}'));
 });
 
 test('production web and native clients use the canonical backend custom domain', () => {

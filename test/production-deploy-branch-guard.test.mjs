@@ -132,9 +132,9 @@ test('permits an explicit detached-head override only outside CI', () => {
 
 test('production package scripts invoke the branch guard before deployment', async () => {
   const packageJson = (await import('../package.json', { with: { type: 'json' } })).default;
-  assert.match(
+  assert.equal(
     packageJson.scripts['deploy:api:production'],
-    /^node scripts\/assert-production-deploy-branch\.mjs && wrangler deploy$/,
+    'node scripts/assert-production-deploy-branch.mjs && node scripts/deploy-cloudflare-worker.mjs',
   );
   assert.match(
     packageJson.scripts['deploy:web:production'],
