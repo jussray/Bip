@@ -99,6 +99,21 @@ function sanitizeAlert(alert) {
   };
 }
 
+function latestCheck(checks, predicate) {
+  return checks
+    .filter(predicate)
+    .sort((a, b) => Number(b.id) - Number(a.id))[0] ?? null;
+}
+
+function isMissingConfigurationNeutral(check) {
+  if (check?.conclusion !== 'neutral') return false;
+  const text = [check.output?.title, check.output?.summary, check.output?.text]
+    .filter((value) => typeof value === 'string')
+    .join('\n')
+    .toLowerCase();
+  return text.includes('configuration not found') || text.includes('configurations not found');
+}
+
 async function listOpenPrAlerts(owner, repo, pr) {
   const alerts = [];
   for (let page = 1; page <= 10; page += 1) {
@@ -120,47 +135,81 @@ async function main() {
 
   const deadline = Date.now() + observationMs;
   let codeqlCheck = null;
+  let javascriptAnalysisCheck = null;
   let observedCheckCount = 0;
 
   while (Date.now() < deadline) {
     const payload = await github(`/repos/${owner}/${repo}/commits/${expectedHead}/check-runs?per_page=100`);
     const checks = payload.check_runs ?? [];
     observedCheckCount = checks.length;
-    const matches = checks
-      .filter((check) => check.name === 'CodeQL' && check.app?.slug === 'github-advanced-security')
-      .sort((a, b) => Number(b.id) - Number(a.id));
-    codeqlCheck = matches[0] ?? null;
-    if (codeqlCheck?.status === 'completed') break;
+
+    codeqlCheck = latestCheck(
+      checks,
+      (check) => check.name === 'CodeQL' && check.app?.slug === 'github-advanced-security',
+    );
+    javascriptAnalysisCheck = latestCheck(
+      checks,
+      (check) => check.name === 'Analyze (javascript-typescript)' && check.app?.slug === 'github-actions',
+    );
+
+    const javascriptTerminal = javascriptAnalysisCheck?.status === 'completed';
+    const aggregateTerminal = codeqlCheck?.status === 'completed';
+    const aggregateSettled = aggregateTerminal && !isMissingConfigurationNeutral(codeqlCheck);
+
+    if (javascriptTerminal && aggregateSettled) break;
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
 
-  const sanitizedCheck = sanitizeCheck(codeqlCheck);
-  save('codeql-check.json', sanitizedCheck ?? { state: 'not-observed' });
+  const sanitizedCodeqlCheck = sanitizeCheck(codeqlCheck);
+  const sanitizedJavascriptCheck = sanitizeCheck(javascriptAnalysisCheck);
+  save('codeql-check.json', sanitizedCodeqlCheck ?? { state: 'not-observed' });
+  save('javascript-analysis-check.json', sanitizedJavascriptCheck ?? { state: 'not-observed' });
 
-  if (!codeqlCheck || codeqlCheck.status !== 'completed') {
+  const javascriptPassed = javascriptAnalysisCheck?.status === 'completed'
+    && javascriptAnalysisCheck.conclusion === 'success';
+  const aggregateSettled = codeqlCheck?.status === 'completed'
+    && !isMissingConfigurationNeutral(codeqlCheck);
+
+  if (!javascriptPassed || !aggregateSettled) {
     save('summary.txt', [
       `head=${expectedHead}`,
       `pr=${prNumber}`,
       `observed_check_count=${observedCheckCount}`,
-      'codeql_state=not-terminal-before-timeout',
+      `javascript_analysis_status=${javascriptAnalysisCheck?.status ?? 'not-observed'}`,
+      `javascript_analysis_conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`,
+      `codeql_status=${codeqlCheck?.status ?? 'not-observed'}`,
+      `codeql_conclusion=${codeqlCheck?.conclusion ?? 'unknown'}`,
+      `codeql_missing_configuration=${isMissingConfigurationNeutral(codeqlCheck)}`,
     ].join('\n'));
-    throw new Error('CodeQL aggregate check did not become terminal within the observation window');
+    throw new Error('CodeQL evidence did not reach a settled current-head JavaScript analysis state');
   }
 
   const alerts = await listOpenPrAlerts(owner, repo, prNumber);
   const sanitizedAlerts = alerts.map(sanitizeAlert);
+  const currentHeadAlerts = sanitizedAlerts.filter(
+    (alert) => alert.most_recent_instance.commit_sha === expectedHead,
+  );
+  const staleAlerts = sanitizedAlerts.filter(
+    (alert) => alert.most_recent_instance.commit_sha !== expectedHead,
+  );
+
   save('open-pr-alerts.json', sanitizedAlerts);
+  save('current-head-open-alerts.json', currentHeadAlerts);
+  save('stale-open-alerts.json', staleAlerts);
 
   const lines = [
     `head=${expectedHead}`,
     `pr=${prNumber}`,
+    `javascript_analysis_conclusion=${javascriptAnalysisCheck.conclusion ?? 'unknown'}`,
     `codeql_conclusion=${codeqlCheck.conclusion ?? 'unknown'}`,
-    `open_pr_alert_count=${sanitizedAlerts.length}`,
+    `current_head_open_alert_count=${currentHeadAlerts.length}`,
+    `stale_open_alert_count=${staleAlerts.length}`,
+    `total_open_pr_alert_count=${sanitizedAlerts.length}`,
   ];
 
-  for (const alert of sanitizedAlerts) {
+  for (const alert of currentHeadAlerts) {
     lines.push([
-      `alert=${alert.number}`,
+      `current_head_alert=${alert.number}`,
       `rule=${alert.rule?.id ?? 'unknown'}`,
       `security_severity=${alert.rule?.security_severity_level ?? 'unknown'}`,
       `severity=${alert.rule?.severity ?? 'unknown'}`,
@@ -168,13 +217,27 @@ async function main() {
       `line=${alert.most_recent_instance.location.start_line ?? 'unknown'}`,
     ].join(' '));
   }
+
+  for (const alert of staleAlerts) {
+    lines.push([
+      `stale_alert=${alert.number}`,
+      `instance_head=${alert.most_recent_instance.commit_sha ?? 'unknown'}`,
+      `rule=${alert.rule?.id ?? 'unknown'}`,
+      `path=${alert.most_recent_instance.location.path ?? 'unknown'}`,
+    ].join(' '));
+  }
+
   save('summary.txt', lines.join('\n'));
 
   if (process.env.GITHUB_STEP_SUMMARY) {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## CodeQL PR Alert Proof\n\n${lines.map((line) => `- ${line}`).join('\n')}\n`);
   }
 
-  console.log(`CodeQL PR alert proof: conclusion=${codeqlCheck.conclusion ?? 'unknown'} openAlerts=${sanitizedAlerts.length}`);
+  console.log(`CodeQL PR alert proof: js=${javascriptAnalysisCheck.conclusion ?? 'unknown'} codeql=${codeqlCheck.conclusion ?? 'unknown'} currentHeadAlerts=${currentHeadAlerts.length} staleAlerts=${staleAlerts.length}`);
+
+  if (codeqlCheck.conclusion === 'failure' || currentHeadAlerts.length > 0) {
+    throw new Error(`CodeQL current-head gate failed: conclusion=${codeqlCheck.conclusion ?? 'unknown'} currentHeadAlerts=${currentHeadAlerts.length}`);
+  }
 }
 
 main().catch((error) => {
