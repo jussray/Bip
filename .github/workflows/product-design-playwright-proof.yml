@@ -16,9 +16,11 @@ on:
       - 'test/companion-runtime-contracts.test.mjs'
       - 'test/dual-front-door-contract.test.mjs'
       - 'test/worker-auth.test.mjs'
+      - 'test/cloudflare-worker-consolidation.test.mjs'
       - 'playwright.config.ts'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/founder-shield.yml'
       - '.github/workflows/product-design-playwright-proof.yml'
   push:
     branches: [main]
@@ -35,9 +37,11 @@ on:
       - 'test/companion-runtime-contracts.test.mjs'
       - 'test/dual-front-door-contract.test.mjs'
       - 'test/worker-auth.test.mjs'
+      - 'test/cloudflare-worker-consolidation.test.mjs'
       - 'playwright.config.ts'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/founder-shield.yml'
       - '.github/workflows/product-design-playwright-proof.yml'
   workflow_dispatch:
 
