@@ -1,0 +1,51 @@
+name: Safety Alert Guardian Boundary
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260808220000_require_verified_guardian_for_safety_alerts.sql'
+      - 'supabase/probes/authorization_safety_alert_guardian_phase1.sql'
+      - 'test/safety-alert-guardian-boundary.test.mjs'
+      - '.github/workflows/safety-alert-guardian-boundary.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/20260808220000_require_verified_guardian_for_safety_alerts.sql'
+      - 'supabase/probes/authorization_safety_alert_guardian_phase1.sql'
+      - 'test/safety-alert-guardian-boundary.test.mjs'
+      - '.github/workflows/safety-alert-guardian-boundary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  contract:
+    name: Verify exact-head guardian boundary contract
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify safety-alert guardian boundary
+        run: node --test test/safety-alert-guardian-boundary.test.mjs
