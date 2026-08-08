@@ -49,3 +49,91 @@ jobs:
 
       - name: Verify safety-alert guardian boundary
         run: node --test test/safety-alert-guardian-boundary.test.mjs
+
+  database-proof:
+    name: Prove guardian boundary in local Supabase
+    needs: contract
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Initialize ephemeral local Supabase config
+        shell: bash
+        run: supabase init --force
+
+      - name: Start local database and apply migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase start -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+      - name: Prepare assertive rollback-contained proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          source_file='supabase/probes/authorization_safety_alert_guardian_phase1.sql'
+          proof_file="$RUNNER_TEMP/authorization_safety_alert_guardian_phase1.assert.sql"
+
+          head -n -1 "$source_file" > "$proof_file"
+          cat >> "$proof_file" <<'SQL'
+          do $assert$
+          declare
+            v_failed integer;
+            v_total integer;
+          begin
+            select count(*) into v_failed
+            from safety_alert_results
+            where passed is not true;
+
+            select count(*) into v_total
+            from safety_alert_results;
+
+            if v_total <> 5 then
+              raise exception 'expected 5 safety-alert guardian checks, got %', v_total;
+            end if;
+
+            if v_failed <> 0 then
+              raise exception 'safety-alert guardian boundary proof failed: % check(s) failed', v_failed;
+            end if;
+          end
+          $assert$;
+
+          rollback;
+          SQL
+
+      - name: Execute dynamic authorization proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+
+          DB_URL="$(supabase status -o env | sed -n 's/^DB_URL=//p' | tr -d '"' | head -n 1)"
+          test -n "$DB_URL"
+          psql "$DB_URL" \
+            --set=ON_ERROR_STOP=1 \
+            --file "$RUNNER_TEMP/authorization_safety_alert_guardian_phase1.assert.sql"
+
+      - name: Stop local Supabase
+        if: always()
+        shell: bash
+        run: supabase stop --no-backup || true
