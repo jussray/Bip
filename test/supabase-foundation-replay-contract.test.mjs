@@ -124,6 +124,33 @@ test('safety alert foundation sorts before the hardening migration and matches r
   assert.doesNotMatch(safetyFoundation, /create policy/i);
 });
 
+test('captured remote history replaces same-name policies before recreating them', () => {
+  for (const policy of [
+    'oracle_sessions: owner read',
+    'oracle_sessions: owner insert',
+    'oracle_sessions: owner update',
+    'oracle_sessions: owner delete',
+    'parent_links: teen owner',
+    'parent_links: parent read',
+    'parent_links: parent accept',
+    'parent_links: code lookup',
+    'period_days: owner all',
+    'safety_alerts: teen read',
+    'safety_alerts: linked parent read',
+    'safety_alerts: linked parent update reviewed',
+  ]) {
+    const escaped = policy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const drop = new RegExp(`drop policy if exists "${escaped}"`, 'i');
+    const create = new RegExp(`create policy "${escaped}"`, 'i');
+    assert.match(safetyRemoteHistory, drop, `remote history must drop ${policy} before recreate`);
+    assert.match(safetyRemoteHistory, create, `remote history must recreate ${policy}`);
+    assert.ok(
+      safetyRemoteHistory.search(drop) < safetyRemoteHistory.search(create),
+      `remote history must drop ${policy} before create`,
+    );
+  }
+});
+
 test('reconstructed foundations contain no runtime mutation or remote-repair command', () => {
   const combined = `${founderFoundation}\n${safetyFoundation}`;
   assert.doesNotMatch(combined, /migration\s+repair\s+--status/i);
