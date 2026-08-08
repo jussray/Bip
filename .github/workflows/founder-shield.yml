@@ -7,6 +7,7 @@ on:
       - scripts/verify-firewall-v10.mjs
       - worker/auth.ts
       - worker/voice-entry.ts
+      - public/_headers
       - test/worker-auth.test.mjs
       - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
@@ -21,6 +22,7 @@ on:
       - scripts/verify-firewall-v10.mjs
       - worker/auth.ts
       - worker/voice-entry.ts
+      - public/_headers
       - test/worker-auth.test.mjs
       - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
@@ -42,7 +44,7 @@ jobs:
       - name: Verify policy against runtime authority
         run: node scripts/verify-firewall-v10.mjs
 
-      - name: Verify auth and rate-limit contracts
+      - name: Verify auth, CORS, headers, and rate-limit contracts
         run: node --test test/worker-auth.test.mjs
 
       - name: Verify Worker authority contract
