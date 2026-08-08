@@ -6,6 +6,7 @@ import {
   EMAIL_ALIASES,
   buildWorkerRule,
   configFromEnv,
+  findDuplicateSupportedRules,
 } from '../scripts/reconcile-cloudflare-email-routing.mjs';
 
 const REQUIRED_ALIASES = [
@@ -43,7 +44,16 @@ test('Cloudflare email rules target the canonical production Worker', () => {
   assert.equal(rule.enabled, true);
 });
 
-test('email routing workflow is manual, fail-closed, and uses current Cloudflare endpoints', () => {
+test('duplicate supported routing rules are detected before mutation', () => {
+  const config = configFromEnv({});
+  const first = { id: 'a', ...buildWorkerRule('founder', config) };
+  const second = { id: 'b', ...buildWorkerRule('founder', config) };
+  assert.deepEqual(findDuplicateSupportedRules([first, second], config), [
+    { address: 'founder@sekretbip.net', ids: ['a', 'b'] },
+  ]);
+});
+
+test('email routing workflow is manual, fail-closed, and retains proof evidence', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-email-routing.yml', import.meta.url),
     'utf8',
@@ -57,8 +67,14 @@ test('email routing workflow is manual, fail-closed, and uses current Cloudflare
   assert.doesNotMatch(workflow, /^\s*push:/m);
   assert.doesNotMatch(workflow, /^\s*schedule:/m);
   assert.match(workflow, /secrets\.CLOUDFLARE_API_TOKEN/);
+  assert.match(workflow, /actions\/upload-artifact@v4/);
+  assert.match(workflow, /cloudflare-email-routing-evidence\.json/);
+
   assert.match(reconciler, /\/email\/routing\/dns/);
-  assert.doesNotMatch(reconciler, /\/email\/routing`/);
-  assert.match(reconciler, /catchAll: false/);
+  assert.match(reconciler, /\/email\/routing\/rules\/catch_all/);
+  assert.match(reconciler, /DUPLICATE_SUPPORTED_ROUTES/);
+  assert.match(reconciler, /CATCH_ALL_ENABLED/);
+  assert.match(reconciler, /phase: 'pre-apply'/);
+  assert.match(reconciler, /phase: 'post-apply'/);
   assert.doesNotMatch(reconciler, /method:\s*['"]DELETE['"]/);
 });
