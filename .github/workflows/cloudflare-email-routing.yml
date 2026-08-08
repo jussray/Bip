@@ -57,3 +57,12 @@ jobs:
           CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/reconcile-cloudflare-email-routing.mjs --apply
+
+      - name: Upload Cloudflare routing evidence
+        if: inputs.apply == true && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-email-routing-evidence-${{ github.run_id }}
+          path: artifacts/cloudflare-email-routing-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
