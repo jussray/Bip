@@ -1,6 +1,8 @@
+import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
+const EVIDENCE_PATH = 'artifacts/cloudflare-email-routing-evidence.json';
 
 export const EMAIL_ALIASES = Object.freeze([
   'hello',
@@ -36,7 +38,10 @@ export function buildWorkerRule(alias, config = configFromEnv({})) {
 }
 
 function errorText(payload, fallback) {
-  const messages = payload?.errors?.map((error) => error?.message).filter(Boolean);
+  const messages = payload?.errors?.map((error) => {
+    const code = error?.code === undefined ? '' : `code=${error.code} `;
+    return `${code}${error?.message || ''}`.trim();
+  }).filter(Boolean);
   return messages?.length ? messages.join('; ') : fallback;
 }
 
@@ -79,12 +84,16 @@ async function discoverZone(config) {
   return { ...config, zoneId: config.zoneId || zone.id, accountId };
 }
 
+async function routingDns(config) {
+  const payload = await cfRequest(config, `/zones/${config.zoneId}/email/routing/dns`);
+  return payload?.result || null;
+}
+
 async function ensureRoutingDns(config) {
-  const settings = await cfRequest(config, `/zones/${config.zoneId}/email/routing/dns`);
-  const current = settings?.result;
+  const current = await routingDns(config);
   if (current?.enabled === true && current?.status === 'ready') {
     console.log(`EMAIL_ROUTING_DNS_OK zone=${config.zoneName}`);
-    return;
+    return current;
   }
 
   const enabled = await cfRequest(config, `/zones/${config.zoneId}/email/routing/dns`, {
@@ -96,14 +105,20 @@ async function ensureRoutingDns(config) {
     throw new Error(`EMAIL_ROUTING_DNS_NOT_READY: ${config.zoneName}`);
   }
   console.log(`EMAIL_ROUTING_DNS_ENABLED zone=${config.zoneName}`);
+  return enabled?.result || null;
 }
 
-async function ensureVerifiedDestination(config) {
+async function listDestinations(config) {
   const payload = await cfRequest(
     config,
     `/accounts/${config.accountId}/email/routing/addresses?per_page=100`,
   );
-  let destination = payload?.result?.find(
+  return payload?.result || [];
+}
+
+async function ensureVerifiedDestination(config) {
+  const destinations = await listDestinations(config);
+  let destination = destinations.find(
     (candidate) => candidate?.email?.toLowerCase() === config.destinationEmail.toLowerCase(),
   );
 
@@ -123,6 +138,7 @@ async function ensureVerifiedDestination(config) {
   }
 
   console.log(`DESTINATION_VERIFIED email=${config.destinationEmail}`);
+  return destination;
 }
 
 function recipientForRule(rule) {
@@ -151,8 +167,77 @@ async function listRules(config) {
   return payload?.result || [];
 }
 
+async function getCatchAll(config) {
+  const payload = await cfRequest(
+    config,
+    `/zones/${config.zoneId}/email/routing/rules/catch_all`,
+  );
+  return payload?.result || null;
+}
+
+function supportedAddressSet(config) {
+  return new Set(EMAIL_ALIASES.map((alias) => `${alias}@${config.zoneName}`.toLowerCase()));
+}
+
+export function findDuplicateSupportedRules(rules, config = configFromEnv({})) {
+  const supported = supportedAddressSet(config);
+  const grouped = new Map();
+  for (const rule of rules) {
+    const address = recipientForRule(rule)?.toLowerCase();
+    if (!address || !supported.has(address)) continue;
+    grouped.set(address, [...(grouped.get(address) || []), rule]);
+  }
+  return [...grouped.entries()]
+    .filter(([, matches]) => matches.length > 1)
+    .map(([address, matches]) => ({ address, ids: matches.map((rule) => rule?.id).filter(Boolean) }));
+}
+
+function assertNoDuplicateSupportedRules(rules, config) {
+  const duplicates = findDuplicateSupportedRules(rules, config);
+  if (duplicates.length) {
+    throw new Error(`DUPLICATE_SUPPORTED_ROUTES: ${JSON.stringify(duplicates)}`);
+  }
+}
+
+function assertCatchAllSafe(catchAll) {
+  if (catchAll?.enabled === true) {
+    throw new Error('CATCH_ALL_ENABLED: disable the Email Routing catch-all so unknown Se\'kret Bip aliases are rejected.');
+  }
+  console.log('CATCH_ALL_SAFE enabled=false');
+}
+
+async function writeEvidence({ config, phase, dns, destination, rules, catchAll }) {
+  await mkdir('artifacts', { recursive: true });
+  const evidence = {
+    schemaVersion: 1,
+    phase,
+    generatedAt: new Date().toISOString(),
+    zone: config.zoneName,
+    worker: config.workerName,
+    destination: destination
+      ? { email: destination.email, verified: destination.verified || null }
+      : null,
+    routingDns: dns
+      ? { enabled: dns.enabled ?? null, status: dns.status ?? null, name: dns.name || config.zoneName }
+      : null,
+    catchAll: catchAll
+      ? { enabled: catchAll.enabled ?? null, actions: catchAll.actions || [], matchers: catchAll.matchers || [] }
+      : null,
+    rules: rules.map((rule) => ({
+      id: rule?.id || null,
+      name: rule?.name || null,
+      enabled: rule?.enabled ?? null,
+      matchers: rule?.matchers || [],
+      actions: rule?.actions || [],
+    })),
+  };
+  await writeFile(EVIDENCE_PATH, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
+  console.log(`EVIDENCE_WRITTEN phase=${phase} path=${EVIDENCE_PATH}`);
+}
+
 async function ensureWorkerRules(config) {
   let rules = await listRules(config);
+  assertNoDuplicateSupportedRules(rules, config);
 
   for (const alias of EMAIL_ALIASES) {
     const desired = buildWorkerRule(alias, config);
@@ -190,6 +275,7 @@ async function ensureWorkerRules(config) {
   }
 
   const finalRules = await listRules(config);
+  assertNoDuplicateSupportedRules(finalRules, config);
   for (const alias of EMAIL_ALIASES) {
     const desired = buildWorkerRule(alias, config);
     const address = recipientForRule(desired);
@@ -200,6 +286,7 @@ async function ensureWorkerRules(config) {
       throw new Error(`ROUTE_VERIFICATION_FAILED: ${address}`);
     }
   }
+  return finalRules;
 }
 
 export async function reconcileCloudflareEmailRouting(config = configFromEnv()) {
@@ -210,9 +297,44 @@ export async function reconcileCloudflareEmailRouting(config = configFromEnv()) 
   }
 
   const resolved = await discoverZone(config);
+  const preDns = await routingDns(resolved);
+  const preDestinations = await listDestinations(resolved);
+  const preDestination = preDestinations.find(
+    (candidate) => candidate?.email?.toLowerCase() === resolved.destinationEmail.toLowerCase(),
+  ) || null;
+  const preRules = await listRules(resolved);
+  const preCatchAll = await getCatchAll(resolved);
+  await writeEvidence({
+    config: resolved,
+    phase: 'pre-apply',
+    dns: preDns,
+    destination: preDestination,
+    rules: preRules,
+    catchAll: preCatchAll,
+  });
+
+  assertNoDuplicateSupportedRules(preRules, resolved);
+  assertCatchAllSafe(preCatchAll);
+
   await ensureRoutingDns(resolved);
   await ensureVerifiedDestination(resolved);
-  await ensureWorkerRules(resolved);
+  const finalRules = await ensureWorkerRules(resolved);
+  const finalDns = await routingDns(resolved);
+  const finalDestinations = await listDestinations(resolved);
+  const finalDestination = finalDestinations.find(
+    (candidate) => candidate?.email?.toLowerCase() === resolved.destinationEmail.toLowerCase(),
+  ) || null;
+  const finalCatchAll = await getCatchAll(resolved);
+  assertCatchAllSafe(finalCatchAll);
+
+  await writeEvidence({
+    config: resolved,
+    phase: 'post-apply',
+    dns: finalDns,
+    destination: finalDestination,
+    rules: finalRules,
+    catchAll: finalCatchAll,
+  });
 
   console.log(
     `EMAIL_ROUTING_RECONCILED zone=${resolved.zoneName} worker=${resolved.workerName} aliases=${EMAIL_ALIASES.length}`,
@@ -232,7 +354,8 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
         destination: config.destinationEmail,
         aliases: EMAIL_ALIASES.map((alias) => `${alias}@${config.zoneName}`),
         deletes: false,
-        catchAll: false,
+        catchAllDesired: 'disabled',
+        evidenceArtifact: EVIDENCE_PATH,
       },
       null,
       2,
