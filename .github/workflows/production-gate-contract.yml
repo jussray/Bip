@@ -12,8 +12,10 @@ on:
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'scripts/publish-production-release-observation.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/production-deployment-gate-contract.test.mjs'
+      - 'test/production-release-observation.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
 
@@ -60,6 +62,7 @@ jobs:
         run: >-
           node --test
           test/production-deployment-gate-contract.test.mjs
+          test/production-release-observation.test.mjs
           test/release-metadata.test.mjs
           test/release-metadata-bootstrap.test.mjs
           test/cloudflare-pages-build-environment.test.mjs
