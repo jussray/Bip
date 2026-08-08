@@ -1,0 +1,38 @@
+name: Founder Shield
+
+on:
+  pull_request:
+    paths:
+      - security/firewall-v10.policy.json
+      - scripts/verify-firewall-v10.mjs
+      - worker/auth.ts
+      - worker/voice-entry.ts
+      - test/worker-auth.test.mjs
+      - wrangler.toml
+      - .github/workflows/founder-shield.yml
+  push:
+    branches:
+      - main
+    paths:
+      - security/firewall-v10.policy.json
+      - scripts/verify-firewall-v10.mjs
+      - worker/auth.ts
+      - worker/voice-entry.ts
+      - test/worker-auth.test.mjs
+      - wrangler.toml
+      - .github/workflows/founder-shield.yml
+
+permissions:
+  contents: read
+
+jobs:
+  verify-founder-shield:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+      - name: Verify policy against runtime authority
+        run: node scripts/verify-firewall-v10.mjs
+      - name: Verify auth and rate-limit contracts
+        run: node --test test/worker-auth.test.mjs
