@@ -5,6 +5,7 @@ on:
     paths:
       - security/firewall-v10.policy.json
       - scripts/verify-firewall-v10.mjs
+      - scripts/codeql-pr-alert-proof.mjs
       - worker/auth.ts
       - worker/voice-entry.ts
       - public/_headers
@@ -12,6 +13,7 @@ on:
       - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
       - .dev.vars.example
+      - .github/workflows/codeql-pr-alert-proof.yml
       - .github/workflows/product-design-playwright-proof.yml
       - .github/workflows/founder-shield.yml
   push:
@@ -20,6 +22,7 @@ on:
     paths:
       - security/firewall-v10.policy.json
       - scripts/verify-firewall-v10.mjs
+      - scripts/codeql-pr-alert-proof.mjs
       - worker/auth.ts
       - worker/voice-entry.ts
       - public/_headers
@@ -27,6 +30,7 @@ on:
       - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
       - .dev.vars.example
+      - .github/workflows/codeql-pr-alert-proof.yml
       - .github/workflows/product-design-playwright-proof.yml
       - .github/workflows/founder-shield.yml
 
