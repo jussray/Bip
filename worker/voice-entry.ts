@@ -96,13 +96,25 @@ function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
     || body.lipSync === 'precise';
 }
 
+function protectionUnavailable(cors: Record<string, string>): Response {
+  return json(
+    { error: 'request protection temporarily unavailable', retryable: true },
+    503,
+    { ...cors, 'Retry-After': '30' },
+  );
+}
+
 async function enforceRateLimit(
   request: Request,
   env: Env,
   principal: Principal,
   cors: Record<string, string>,
 ): Promise<Response | null> {
-  if (!env.SEKRET_RATE_LIMITER) return null;
+  if (!env.SEKRET_RATE_LIMITER) {
+    if (env.SEKRET_AUTH_MODE === 'dev-open') return null;
+    console.error('[voice-entry:rate-limit] SEKRET_RATE_LIMITER binding unavailable');
+    return protectionUnavailable(cors);
+  }
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
   const key = principal.kind === 'user' ? `user:${principal.userId}` : `ip:${ip}`;
   try {
@@ -110,11 +122,7 @@ async function enforceRateLimit(
     return success ? null : json({ error: 'rate limit exceeded', retryable: true }, 429, cors);
   } catch (error) {
     console.error('[voice-entry:rate-limit]', error);
-    return json(
-      { error: 'request protection temporarily unavailable', retryable: true },
-      503,
-      { ...cors, 'Retry-After': '30' },
-    );
+    return protectionUnavailable(cors);
   }
 }
 
