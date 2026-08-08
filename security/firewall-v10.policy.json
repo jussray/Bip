@@ -1,0 +1,72 @@
+{
+  "version": "10",
+  "name": "Se'kret Bip Firewall v10",
+  "repository": "jussray/Sekret-Bip",
+  "activationStage": "policy-ci-only",
+  "cloudflare": {
+    "primaryHosts": ["sekretbip.net"],
+    "activeWorker": "sekret-backend",
+    "retiredWorkersNoNewAuthority": ["bip-mail", "sekret"],
+    "managedWaf": {
+      "enabled": true,
+      "mode": "prevention-ready",
+      "ruleFamilies": ["OWASP Core Rules", "Cloudflare Managed Rules", "Known bad bots"]
+    },
+    "apiShield": {
+      "schemaValidation": "log-then-block",
+      "jwtValidation": "required-on-private-api",
+      "sessionIdentifier": "Authorization"
+    },
+    "authenticatedOriginPulls": "required-before-direct-origin-exposure"
+  },
+  "controls": {
+    "rateLimiting": {
+      "enabled": true,
+      "strategy": "per-ip-plus-session-key",
+      "routes": [
+        { "match": "/api/*", "limit": 60, "periodSeconds": 10, "action": "challenge-then-block" },
+        { "match": "/auth/signup", "limit": 30, "periodSeconds": 60, "action": "challenge-then-block" },
+        { "match": "/auth/login", "limit": 20, "periodSeconds": 60, "action": "challenge-then-block" },
+        { "match": "/auth/recover", "limit": 10, "periodSeconds": 60, "action": "block" }
+      ]
+    },
+    "botDefense": {
+      "enabled": true,
+      "mode": "challenge_unknown_automation",
+      "allowVerifiedGoodBots": true,
+      "preserveHumanSignupAndLogin": true
+    },
+    "auth": {
+      "failClosed": true,
+      "privateRoutesRequireServerVerifiedSession": true,
+      "serverOnlySecrets": ["SUPABASE_SERVICE_ROLE_KEY", "RESEND_API_KEY", "GITHUB_WEBHOOK_SECRET", "CLOUDFLARE_API_TOKEN"],
+      "forbiddenClientSecrets": true
+    },
+    "headers": {
+      "csp": true,
+      "hsts": true,
+      "xFrameOptions": "DENY",
+      "referrerPolicy": "strict-origin-when-cross-origin",
+      "controlRoomCache": "no-store"
+    },
+    "integrations": {
+      "githubWritesRequireExactHead": true,
+      "hubspotWritesRequireExplicitApproval": true,
+      "emailProviderRequiresDomainVerification": true,
+      "automationPublishAllowed": false,
+      "draftOnlyByDefault": true
+    },
+    "observability": {
+      "securityEventsRequiredBeforeBlockMode": true,
+      "logBlockedReason": true,
+      "noSilentNulls": true
+    },
+    "productDesign": {
+      "blockedStateMustBeHumanReadable": true,
+      "doNotUseCAPTCHAOnFirstPassWhenChallengeWorks": true,
+      "legitimateUsersGetRecoveryPath": true,
+      "teenParentSignupMustStayUsable": true,
+      "noMisleadingConnectedOrProtectedClaims": true
+    }
+  }
+}
