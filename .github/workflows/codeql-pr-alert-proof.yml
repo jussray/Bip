@@ -12,6 +12,7 @@ on:
       - 'scripts/verify-firewall-v10.mjs'
       - 'scripts/codeql-pr-alert-proof.mjs'
       - 'test/worker-auth.test.mjs'
+      - 'test/codeql-pr-alert-proof.test.mjs'
       - 'test/cloudflare-worker-consolidation.test.mjs'
       - '.github/workflows/founder-shield.yml'
       - '.github/workflows/product-design-playwright-proof.yml'
@@ -46,6 +47,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Verify CodeQL proof contract
+        run: node --test test/codeql-pr-alert-proof.test.mjs
 
       - name: Capture PR-scoped CodeQL evidence
         env:
