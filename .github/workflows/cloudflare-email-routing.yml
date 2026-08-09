@@ -39,14 +39,24 @@ jobs:
       - name: Show non-destructive plan
         run: node scripts/reconcile-cloudflare-email-routing.mjs
 
-      - name: Require Cloudflare API token before apply
+      - name: Require Cloudflare credentials before apply
         if: inputs.apply == true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || {
             echo 'CLOUDFLARE_API_TOKEN is not configured.' >&2
+            exit 1
+          }
+          test -n "$CLOUDFLARE_ZONE_ID" || {
+            echo 'CLOUDFLARE_ZONE_ID is not configured.' >&2
+            exit 1
+          }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || {
+            echo 'CLOUDFLARE_ACCOUNT_ID is not configured.' >&2
             exit 1
           }
 
@@ -70,8 +80,8 @@ jobs:
         if: inputs.apply == true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/reconcile-cloudflare-email-routing.mjs --apply
 
       - name: Upload Cloudflare routing evidence
