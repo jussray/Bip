@@ -140,12 +140,16 @@ test('live signup proof uses a dedicated exact-target Playwright config', () => 
 test('PR live signup readiness fails closed until an isolated exact-head Pages preview exists', () => {
   const workflow = readText(workflowPath);
 
-  assert.match(workflow, /fix-production-signup-age-co\.sekret-bip\.pages\.dev/);
+  assert.match(workflow, /Resolve isolated preview URL/);
+  assert.match(workflow, /cloudflare-workers-and-pages\[bot\]/);
+  assert.match(workflow, /Branch Preview URL:/);
+  assert.match(workflow, /LIVE_ONBOARDING_BASE_URL=\$\{parsed\.origin\}/);
   assert.match(workflow, /Verify isolated preview is exact head/);
   assert.match(workflow, /hostname\.endsWith\('\.pages\.dev'\)/);
   assert.match(workflow, /body\?\.commitSha === expected/);
   assert.match(workflow, /body\?\.environment === 'preview'/);
   assert.match(workflow, /Exact isolated preview verified/);
+  assert.doesNotMatch(workflow, /fix-production-signup-age-co\.sekret-bip\.pages\.dev/);
   assert.doesNotMatch(workflow, /LIVE_ONBOARDING_BASE_URL: https:\/\/sekretbip\.net/);
 });
 
@@ -183,7 +187,9 @@ test('live signup proof workflow binds manual writes to an explicit exact head a
   const workflow = readText(workflowPath);
 
   assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.target_sha \|\| github\.event\.pull_request\.head\.sha \}\}/);
-  assert.match(workflow, /LIVE_ONBOARDING_BASE_URL: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.preview_url/);
+  assert.match(workflow, /DISPATCH_PREVIEW_URL:.*inputs\.preview_url/);
+  assert.match(workflow, /process\.env\.GITHUB_EVENT_NAME === 'workflow_dispatch'/);
+  assert.match(workflow, /persistPreview\(dispatchPreview\)/);
   assert.match(workflow, /test \"\$actual\" = \"\$EXPECTED_HEAD_SHA\"/);
   assert.match(workflow, /LIVE_ONBOARDING_PHASE: readiness/);
   assert.match(workflow, /LIVE_ONBOARDING_PHASE: signup/);
