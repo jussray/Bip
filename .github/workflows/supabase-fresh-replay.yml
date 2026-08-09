@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/**'
+      - 'supabase/reference/legacy_migrations/**'
       - '.github/workflows/supabase-fresh-replay.yml'
   workflow_dispatch:
 
@@ -34,7 +35,7 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Verify canonical core migration versions
+      - name: Verify canonical migration authority
         shell: bash
         run: |
           set -euo pipefail
@@ -43,6 +44,10 @@ jobs:
           test -s supabase/migrations/0003_oracle_parentlinks_period_safety.sql
           test ! -e supabase/migrations/20260616224106_0002_circle_v1.sql
           test ! -e supabase/migrations/20260622190209_remote_history.sql
+          test ! -e supabase/migrations/20240701_founder_ideas.sql
+          test ! -e supabase/migrations/20240702_control_room_issues.sql
+          test -s supabase/reference/legacy_migrations/20240701_founder_ideas.sql
+          test -s supabase/reference/legacy_migrations/20240702_control_room_issues.sql
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
