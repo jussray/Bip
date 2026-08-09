@@ -133,6 +133,11 @@ async function enforceRateLimit(
   }
 }
 
+function withoutRateLimiter(env: Env): Env {
+  if (!env.SEKRET_RATE_LIMITER) return env;
+  return { ...env, SEKRET_RATE_LIMITER: undefined };
+}
+
 function workerVersionEvidence(env: Env) {
   const version = env.CF_VERSION_METADATA;
   if (!version) return null;
@@ -142,9 +147,6 @@ function workerVersionEvidence(env: Env) {
     timestamp: version.timestamp,
   };
 }
-
-async function handleVoice(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
-  if (!hasJsonContentType(request)) return json({ error: 'content-type must be application/json' }, 415, cors);
 
 async function handleVoice(
   request: Request,
@@ -253,6 +255,19 @@ export default {
           version: workerVersionEvidence(env),
         }, 502, cors);
       }
+    }
+
+    const isProtectedApiPost = request.method === 'POST' && path.includes('/api/');
+    let downstreamEnv = env;
+
+    if (isProtectedApiPost) {
+      const auth = await authenticate(request, env);
+      if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
+
+      const limited = await enforceRateLimit(request, env, auth.principal, cors);
+      if (limited) return limited;
+
+      downstreamEnv = withoutRateLimiter(env);
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
