@@ -8,6 +8,7 @@ on:
       - ".github/workflows/cloudflare-email-routing-contract.yml"
       - "scripts/reconcile-cloudflare-email-routing.mjs"
       - "test/cloudflare-email-routing-control-plane.test.mjs"
+      - "docs/CLOUDFLARE_EMAIL_ROUTING.md"
   push:
     branches: [main]
     paths:
@@ -15,6 +16,7 @@ on:
       - ".github/workflows/cloudflare-email-routing-contract.yml"
       - "scripts/reconcile-cloudflare-email-routing.mjs"
       - "test/cloudflare-email-routing-control-plane.test.mjs"
+      - "docs/CLOUDFLARE_EMAIL_ROUTING.md"
   workflow_dispatch:
 
 permissions:
