@@ -83,8 +83,8 @@ test('email routing workflow is manual, secrets-backed, token-type-aware, and re
 
   assert.match(reconciler, /\/user\/tokens\/verify/);
   assert.match(reconciler, /\/accounts\/\$\{config\.accountId\}\/tokens\/verify/);
-  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE verifier=user/);
-  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE verifier=account/);
+  assert.match(reconciler, /const verifier = path\.startsWith\('\/accounts\/'\) \? 'account' : 'user';/);
+  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE verifier=\$\{verifier\}/);
   assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE verifier=zone-access/);
   assert.match(reconciler, /CLOUDFLARE_API_TOKEN_INVALID_OR_UNSCOPED/);
   assert.match(reconciler, /\/zones\/\$\{config\.zoneId\}/);
