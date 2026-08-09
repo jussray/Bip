@@ -47,7 +47,7 @@ export function parseEmailConfirmationUrl(
   try {
     params = collectParams(url);
   } catch {
-    return { kind: 'error', message: 'This confirmation link is malformed.' };
+    throw new Error('This confirmation link is malformed.');
   }
 
   const errorMessage =
