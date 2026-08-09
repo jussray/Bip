@@ -26,7 +26,7 @@ Cloudflare branch-control issue [#646](https://github.com/jussray/Sekret-Bip/iss
 | Repository failure-truth and branch-hygiene auditors | Added and hardened through PR #703 and PR #704; a parser typo that blocked shared TypeScript/test lanes was repaired by PR #706 | merged repository evidence |
 | Public release marker | #696 remains the active P0 release-truth blocker until the intended `main` SHA is independently witnessed at the canonical marker | **P0 blocker** |
 | Cloudflare branch controls | #646 is closed/completed; founder/provider proof accepted and PR #712 added repository defense in depth | **gate completed; keep deployment truth separate** |
-| Cloudflare dashboard | Historical 2026-07-31 evidence recorded: **Wrangler is not authenticated**. That observation is not current provider truth; current dashboard state must be re-checked when release/deployment evidence is material. | historical only; re-check when needed |
+| Cloudflare dashboard | Historical 2026-07-31 evidence recorded: **Wrangler is not authenticated**. The prior unauthenticated Wrangler observations are not current provider truth; current dashboard state must be re-checked when release/deployment evidence is material. | historical only; re-check when needed |
 | Restored-session sign-in | PR #688 merged a fail-closed repository behavior | repository proof only |
 | Password recovery | PR #698 is merged with a direct-entry fallback after current-base exact-head checks; PR #690 is closed as preserved history | repository/CI only; live auth and device proof still required |
 
