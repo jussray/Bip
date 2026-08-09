@@ -46,8 +46,12 @@ jobs:
           test ! -e supabase/migrations/20260622190209_remote_history.sql
           test ! -e supabase/migrations/20240701_founder_ideas.sql
           test ! -e supabase/migrations/20240702_control_room_issues.sql
+          test ! -e supabase/migrations/20260627_bip_events.sql
+          test ! -e supabase/migrations/20260627_point_ledger.sql
           test -s supabase/reference/legacy_migrations/20240701_founder_ideas.sql
           test -s supabase/reference/legacy_migrations/20240702_control_room_issues.sql
+          test -s supabase/reference/legacy_migrations/20260627_bip_events.sql
+          test -s supabase/reference/legacy_migrations/20260627_point_ledger.sql
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
