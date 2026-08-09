@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const migrationPath = new URL(
-  '../supabase/migrations/20260705010000_bridge_summary_contract.sql',
+  '../supabase/migrations/20260705050121_bridge_summary_contract.sql',
   import.meta.url,
 );
 
