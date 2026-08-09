@@ -1,0 +1,68 @@
+name: CodeQL PR Alert Proof
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'worker/**'
+      - 'security/**'
+      - 'public/_headers'
+      - 'wrangler.toml'
+      - '.dev.vars.example'
+      - 'scripts/verify-firewall-v10.mjs'
+      - 'scripts/codeql-pr-alert-proof.mjs'
+      - 'test/worker-auth.test.mjs'
+      - 'test/codeql-pr-alert-proof.test.mjs'
+      - 'test/cloudflare-worker-consolidation.test.mjs'
+      - '.github/workflows/founder-shield.yml'
+      - '.github/workflows/product-design-playwright-proof.yml'
+      - '.github/workflows/codeql-pr-alert-proof.yml'
+
+permissions:
+  contents: read
+  checks: read
+  security-events: read
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  codeql-pr-alert-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact pull-request head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify CodeQL proof contract
+        run: node --test test/codeql-pr-alert-proof.test.mjs
+
+      - name: Capture PR-scoped CodeQL evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVIDENCE_DIR: artifacts/codeql-pr-alert-proof
+        run: node scripts/codeql-pr-alert-proof.mjs
+
+      - name: Upload CodeQL evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-pr-alert-proof-${{ env.EXPECTED_HEAD_SHA }}
+          path: artifacts/codeql-pr-alert-proof
+          if-no-files-found: error
+          retention-days: 30

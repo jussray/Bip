@@ -1,6 +1,8 @@
 import observedWorker from './observed-index';
 import emailRouter from './email-router';
-import { authenticate, type AuthEnv } from './auth';
+import { authenticate, type AuthEnv, type Principal } from './auth';
+import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
+import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
 import { normalizeReplyActor, resolveRuntimeStyle } from './runtime-style';
 import { selectVoiceRoute, type CharacterId } from './voice-routing';
 import { synthesizeRoutedVoice, type VoiceProviderEnv } from './voice-providers';
@@ -26,22 +28,55 @@ interface Env extends AuthEnv, VoiceProviderEnv {
   CF_VERSION_METADATA?: WorkerVersionMetadata;
 }
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://sekretbip.net',
+  'https://www.sekretbip.net',
+];
+
 function allowedOrigins(env: Env): string[] | null {
   const configured = env.ALLOWED_ORIGINS?.trim();
-  if (!configured || configured === '*') return null;
+  if (!configured || configured === '*') {
+    return env.SEKRET_AUTH_MODE === 'dev-open' ? null : DEFAULT_ALLOWED_ORIGINS;
+  }
   return configured.split(',').map((value) => value.trim()).filter(Boolean);
+}
+
+function securityHeaders(): Record<string, string> {
+  return {
+    'Strict-Transport-Security': 'max-age=31536000',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+  };
 }
 
 function corsHeaders(request: Request, env: Env): Record<string, string> {
   const allowed = allowedOrigins(env);
   const origin = request.headers.get('Origin');
-  const allowOrigin = !allowed ? '*' : origin && allowed.includes(origin) ? origin : (allowed[0] ?? 'null');
+  const allowOrigin = !allowed
+    ? '*'
+    : origin && allowed.includes(origin)
+      ? origin
+      : (allowed[0] ?? 'null');
   return {
+    ...securityHeaders(),
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '600',
     Vary: 'Origin',
   };
+}
+
+function withSecurityHeaders(response: Response, headers: Record<string, string>): Response {
+  const merged = new Headers(response.headers);
+  for (const [name, value] of Object.entries(headers)) merged.set(name, value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: merged,
+  });
 }
 
 function json(data: unknown, status: number, cors: Record<string, string>): Response {
@@ -70,22 +105,67 @@ function requiresPreciseLipSync(body: Record<string, unknown>): boolean {
     || body.lipSync === 'precise';
 }
 
+function protectionUnavailable(cors: Record<string, string>): Response {
+  return json(
+    { error: 'request protection temporarily unavailable', retryable: true },
+    503,
+    { ...cors, 'Retry-After': '30' },
+  );
+}
+
 async function enforceRateLimit(
   request: Request,
   env: Env,
-  principal: { kind: string; userId?: string },
+  principal: Principal,
   cors: Record<string, string>,
 ): Promise<Response | null> {
-  if (!env.SEKRET_RATE_LIMITER) return null;
+  if (!env.SEKRET_RATE_LIMITER) {
+    if (env.SEKRET_AUTH_MODE === 'dev-open') return null;
+    console.error('[voice-entry:rate-limit] SEKRET_RATE_LIMITER binding unavailable');
+    return protectionUnavailable(cors);
+  }
   const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
-  const key = principal.kind === 'user' && principal.userId ? `user:${principal.userId}` : `ip:${ip}`;
+  const key = principal.kind === 'user' ? `user:${principal.userId}` : `ip:${ip}`;
   try {
     const { success } = await env.SEKRET_RATE_LIMITER.limit({ key });
-    return success ? null : json({ error: 'rate limit exceeded' }, 429, cors);
+    return success ? null : json({ error: 'rate limit exceeded', retryable: true }, 429, cors);
   } catch (error) {
     console.error('[voice-entry:rate-limit]', error);
-    return null;
+    return protectionUnavailable(cors);
   }
+}
+
+function withoutRateLimiter(env: Env): Env {
+  if (!env.SEKRET_RATE_LIMITER) return env;
+  return { ...env, SEKRET_RATE_LIMITER: undefined };
+}
+
+function observeFrontDoorDenial(
+  request: Request,
+  response: Response,
+  env: Env,
+  ctx: MinimalExecutionContext,
+  started: number,
+  fingerprint: 'worker_auth_failure' | 'worker_rate_limit',
+): Response {
+  const url = new URL(request.url);
+  const requestId = request.headers.get('CF-Ray') || undefined;
+  const event: WorkerTelemetryEvent = {
+    fingerprint,
+    route: url.pathname,
+    method: request.method,
+    status: response.status,
+    duration_ms: Date.now() - started,
+    provider: 'cloudflare',
+    operation: 'security',
+    request_id: requestId,
+    fallback_used: false,
+    retry_count: 0,
+    trace_id: requestId || crypto.randomUUID(),
+  };
+  emitWorkerTelemetry(event);
+  ctx.waitUntil(persistAuditEvent(event, env as AuditPersistEnv));
+  return response;
 }
 
 function workerVersionEvidence(env: Env) {
@@ -98,13 +178,12 @@ function workerVersionEvidence(env: Env) {
   };
 }
 
-async function handleVoice(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+async function handleVoice(
+  request: Request,
+  env: Env,
+  cors: Record<string, string>,
+): Promise<Response> {
   if (!hasJsonContentType(request)) return json({ error: 'content-type must be application/json' }, 415, cors);
-
-  const auth = await authenticate(request, env);
-  if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
-  const limited = await enforceRateLimit(request, env, auth.principal, cors);
-  if (limited) return limited;
 
   let body: Record<string, unknown>;
   try {
@@ -127,7 +206,8 @@ async function handleVoice(request: Request, env: Env, cors: Record<string, stri
 
   const mode = env.VOICE_PROVIDER_MODE ?? 'legacy';
   if (mode === 'legacy') {
-    return observedWorker.fetch(request, env as never, { waitUntil() {} });
+    const response = await observedWorker.fetch(request, env as never, { waitUntil() {} });
+    return withSecurityHeaders(response, cors);
   }
 
   const requestedCharacter = typeof body.characterId === 'string'
@@ -178,11 +258,11 @@ async function handleVoice(request: Request, env: Env, cors: Record<string, stri
 
 export default {
   async fetch(request: Request, env: Env, ctx: MinimalExecutionContext): Promise<Response> {
+    const started = Date.now();
     const cors = corsHeaders(request, env);
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-
     const blocked = originRejected(request, env, cors);
     if (blocked) return blocked;
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     const path = new URL(request.url).pathname;
     if (request.method === 'GET' && path === '/health') {
@@ -208,11 +288,30 @@ export default {
       }
     }
 
-    if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
-      return handleVoice(request, env, cors);
+    const isProtectedApiPost = request.method === 'POST' && path.includes('/api/');
+    let downstreamEnv = env;
+
+    if (isProtectedApiPost) {
+      const auth = await authenticate(request, env);
+      if (!auth.ok) {
+        const denied = json({ error: auth.error }, auth.status, cors);
+        return observeFrontDoorDenial(request, denied, env, ctx, started, 'worker_auth_failure');
+      }
+
+      const limited = await enforceRateLimit(request, env, auth.principal, cors);
+      if (limited) {
+        return observeFrontDoorDenial(request, limited, env, ctx, started, 'worker_rate_limit');
+      }
+
+      downstreamEnv = withoutRateLimiter(env);
     }
 
-    return observedWorker.fetch(request, env as never, ctx);
+    if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {
+      return handleVoice(request, downstreamEnv, cors);
+    }
+
+    const response = await observedWorker.fetch(request, downstreamEnv as never, ctx);
+    return withSecurityHeaders(response, cors);
   },
 
   async email(message: Parameters<typeof emailRouter.email>[0]): Promise<void> {

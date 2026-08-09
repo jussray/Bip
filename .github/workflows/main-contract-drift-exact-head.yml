@@ -56,6 +56,9 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
+      - name: Validate production Worker config with Wrangler
+        run: npx wrangler deploy --dry-run --config wrangler.toml
+
       - name: Run repaired contract tests
         run: >-
           node --test

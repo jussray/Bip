@@ -1,0 +1,118 @@
+name: Founder Shield
+
+on:
+  pull_request:
+    paths:
+      - security/firewall-v10.policy.json
+      - scripts/verify-firewall-v10.mjs
+      - scripts/codeql-pr-alert-proof.mjs
+      - worker/auth.ts
+      - worker/voice-entry.ts
+      - public/_headers
+      - test/worker-auth.test.mjs
+      - test/front-door-security-telemetry.test.mjs
+      - test/cloudflare-worker-consolidation.test.mjs
+      - wrangler.toml
+      - .dev.vars.example
+      - .github/workflows/codeql-pr-alert-proof.yml
+      - .github/workflows/product-design-playwright-proof.yml
+      - .github/workflows/founder-shield.yml
+  push:
+    branches:
+      - main
+    paths:
+      - security/firewall-v10.policy.json
+      - scripts/verify-firewall-v10.mjs
+      - scripts/codeql-pr-alert-proof.mjs
+      - worker/auth.ts
+      - worker/voice-entry.ts
+      - public/_headers
+      - test/worker-auth.test.mjs
+      - test/front-door-security-telemetry.test.mjs
+      - test/cloudflare-worker-consolidation.test.mjs
+      - wrangler.toml
+      - .dev.vars.example
+      - .github/workflows/codeql-pr-alert-proof.yml
+      - .github/workflows/product-design-playwright-proof.yml
+      - .github/workflows/founder-shield.yml
+
+permissions:
+  contents: read
+
+env:
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+jobs:
+  verify-founder-shield:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'event=%s\nexpected=%s\nactual=%s\n' "$GITHUB_EVENT_NAME" "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Verify policy against runtime authority
+        run: node scripts/verify-firewall-v10.mjs
+
+      - name: Verify auth, CORS, headers, rate-limit, and denial telemetry contracts
+        run: node --test test/worker-auth.test.mjs test/front-door-security-telemetry.test.mjs
+
+      - name: Verify Worker authority contract
+        run: node --test test/cloudflare-worker-consolidation.test.mjs
+
+      - name: Capture live public edge evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/founder-shield-live
+
+          pages_status="$(curl --silent --show-error --location --max-time 20 \
+            --dump-header artifacts/founder-shield-live/sekretbip.headers \
+            --output artifacts/founder-shield-live/sekretbip.body \
+            --write-out '%{http_code}' \
+            https://sekretbip.net/)"
+
+          api_status="$(curl --silent --show-error --max-time 20 \
+            --dump-header artifacts/founder-shield-live/api-root.headers \
+            --output artifacts/founder-shield-live/api-root.body \
+            --write-out '%{http_code}' \
+            https://api.sekretbip.net/)"
+
+          options_status="$(curl --silent --show-error --max-time 20 \
+            --request OPTIONS \
+            --header 'Origin: https://sekretbip.net' \
+            --header 'Access-Control-Request-Method: POST' \
+            --header 'Access-Control-Request-Headers: authorization,content-type' \
+            --dump-header artifacts/founder-shield-live/api-options.headers \
+            --output artifacts/founder-shield-live/api-options.body \
+            --write-out '%{http_code}' \
+            https://api.sekretbip.net/api/sekret/reply)"
+
+          printf 'pages_status=%s\napi_root_status=%s\napi_options_status=%s\n' \
+            "$pages_status" "$api_status" "$options_status" \
+            | tee artifacts/founder-shield-live/status.txt
+
+          test "$pages_status" -ge 200
+          test "$pages_status" -lt 400
+          test "$api_status" -ne 000
+          test "$api_status" -lt 500
+          test "$options_status" -ne 000
+          test "$options_status" -lt 500
+
+      - name: Upload live edge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: founder-shield-live-${{ env.EXPECTED_HEAD_SHA }}
+          path: artifacts/founder-shield-live
+          if-no-files-found: ignore
+          retention-days: 30
