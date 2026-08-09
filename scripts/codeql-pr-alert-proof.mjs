@@ -164,6 +164,7 @@ async function main() {
     const aggregateTerminal = codeqlCheck?.status === 'completed';
     const aggregateSettled = aggregateTerminal && !isMissingConfigurationNeutral(codeqlCheck);
 
+    if (javascriptTerminal && javascriptAnalysisCheck.conclusion !== 'success') break;
     if (javascriptTerminal && aggregateSettled) break;
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
@@ -192,14 +193,14 @@ async function main() {
     `codeql_missing_configuration=${isMissingConfigurationNeutral(codeqlCheck)}`,
   ];
 
+  if (javascriptTerminal && !javascriptPassed) {
+    save('summary.txt', [...baseSummary, 'proof_state=failed'].join('\n'));
+    throw new Error(`JavaScript CodeQL analysis failed: conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`);
+  }
+
   if (!javascriptTerminal || !aggregateSettled) {
     save('summary.txt', [...baseSummary, 'proof_state=unsettled'].join('\n'));
     throw new Error(`CodeQL evidence remained unsettled for current head after ${elapsedMs}ms`);
-  }
-
-  if (!javascriptPassed) {
-    save('summary.txt', [...baseSummary, 'proof_state=failed'].join('\n'));
-    throw new Error(`JavaScript CodeQL analysis failed: conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`);
   }
 
   if (codeqlCheck.conclusion !== 'success') {
