@@ -7,8 +7,8 @@ const prNumber = process.env.PR_NUMBER?.trim();
 const expectedHead = process.env.EXPECTED_HEAD_SHA?.trim();
 const evidenceDir = process.env.EVIDENCE_DIR?.trim() || 'artifacts/codeql-pr-alert-proof';
 const apiVersion = '2026-03-10';
-const pollMs = 10_000;
-const observationMs = 10 * 60_000;
+const pollMs = Number(process.env.CODEQL_POLL_MS ?? 10_000);
+const observationMs = Number(process.env.CODEQL_SETTLE_TIMEOUT_MS ?? 18 * 60_000);
 
 mkdirSync(evidenceDir, { recursive: true });
 
@@ -18,6 +18,11 @@ function save(name, value) {
 
 function requireEnv(value, name) {
   if (!value) throw new Error(`${name} is required`);
+  return value;
+}
+
+function requirePositiveNumber(value, name) {
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`${name} must be a positive number`);
   return value;
 }
 
@@ -129,11 +134,14 @@ async function main() {
   requireEnv(repository, 'GITHUB_REPOSITORY');
   requireEnv(prNumber, 'PR_NUMBER');
   requireEnv(expectedHead, 'EXPECTED_HEAD_SHA');
+  requirePositiveNumber(pollMs, 'CODEQL_POLL_MS');
+  requirePositiveNumber(observationMs, 'CODEQL_SETTLE_TIMEOUT_MS');
 
   const [owner, repo] = repository.split('/');
   if (!owner || !repo) throw new Error('GITHUB_REPOSITORY must be owner/repo');
 
-  const deadline = Date.now() + observationMs;
+  const startedAt = Date.now();
+  const deadline = startedAt + observationMs;
   let codeqlCheck = null;
   let javascriptAnalysisCheck = null;
   let observedCheckCount = 0;
@@ -165,23 +173,38 @@ async function main() {
   save('codeql-check.json', sanitizedCodeqlCheck ?? { state: 'not-observed' });
   save('javascript-analysis-check.json', sanitizedJavascriptCheck ?? { state: 'not-observed' });
 
-  const javascriptPassed = javascriptAnalysisCheck?.status === 'completed'
-    && javascriptAnalysisCheck.conclusion === 'success';
-  const aggregateSettled = codeqlCheck?.status === 'completed'
-    && !isMissingConfigurationNeutral(codeqlCheck);
+  const javascriptTerminal = javascriptAnalysisCheck?.status === 'completed';
+  const aggregateTerminal = codeqlCheck?.status === 'completed';
+  const aggregateSettled = aggregateTerminal && !isMissingConfigurationNeutral(codeqlCheck);
+  const javascriptPassed = javascriptTerminal && javascriptAnalysisCheck.conclusion === 'success';
+  const elapsedMs = Date.now() - startedAt;
 
-  if (!javascriptPassed || !aggregateSettled) {
-    save('summary.txt', [
-      `head=${expectedHead}`,
-      `pr=${prNumber}`,
-      `observed_check_count=${observedCheckCount}`,
-      `javascript_analysis_status=${javascriptAnalysisCheck?.status ?? 'not-observed'}`,
-      `javascript_analysis_conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`,
-      `codeql_status=${codeqlCheck?.status ?? 'not-observed'}`,
-      `codeql_conclusion=${codeqlCheck?.conclusion ?? 'unknown'}`,
-      `codeql_missing_configuration=${isMissingConfigurationNeutral(codeqlCheck)}`,
-    ].join('\n'));
-    throw new Error('CodeQL evidence did not reach a settled current-head JavaScript analysis state');
+  const baseSummary = [
+    `head=${expectedHead}`,
+    `pr=${prNumber}`,
+    `observed_check_count=${observedCheckCount}`,
+    `elapsed_ms=${elapsedMs}`,
+    `settle_timeout_ms=${observationMs}`,
+    `javascript_analysis_status=${javascriptAnalysisCheck?.status ?? 'not-observed'}`,
+    `javascript_analysis_conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`,
+    `codeql_status=${codeqlCheck?.status ?? 'not-observed'}`,
+    `codeql_conclusion=${codeqlCheck?.conclusion ?? 'unknown'}`,
+    `codeql_missing_configuration=${isMissingConfigurationNeutral(codeqlCheck)}`,
+  ];
+
+  if (!javascriptTerminal || !aggregateSettled) {
+    save('summary.txt', [...baseSummary, 'proof_state=unsettled'].join('\n'));
+    throw new Error(`CodeQL evidence remained unsettled for current head after ${elapsedMs}ms`);
+  }
+
+  if (!javascriptPassed) {
+    save('summary.txt', [...baseSummary, 'proof_state=failed'].join('\n'));
+    throw new Error(`JavaScript CodeQL analysis failed: conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`);
+  }
+
+  if (codeqlCheck.conclusion !== 'success') {
+    save('summary.txt', [...baseSummary, 'proof_state=failed'].join('\n'));
+    throw new Error(`CodeQL aggregate failed: conclusion=${codeqlCheck.conclusion ?? 'unknown'}`);
   }
 
   const alerts = await listOpenPrAlerts(owner, repo, prNumber);
@@ -198,10 +221,8 @@ async function main() {
   save('stale-open-alerts.json', staleAlerts);
 
   const lines = [
-    `head=${expectedHead}`,
-    `pr=${prNumber}`,
-    `javascript_analysis_conclusion=${javascriptAnalysisCheck.conclusion ?? 'unknown'}`,
-    `codeql_conclusion=${codeqlCheck.conclusion ?? 'unknown'}`,
+    ...baseSummary,
+    'proof_state=settled',
     `current_head_open_alert_count=${currentHeadAlerts.length}`,
     `stale_open_alert_count=${staleAlerts.length}`,
     `total_open_pr_alert_count=${sanitizedAlerts.length}`,
@@ -235,7 +256,7 @@ async function main() {
 
   console.log(`CodeQL PR alert proof: js=${javascriptAnalysisCheck.conclusion ?? 'unknown'} codeql=${codeqlCheck.conclusion ?? 'unknown'} currentHeadAlerts=${currentHeadAlerts.length} staleAlerts=${staleAlerts.length}`);
 
-  if (codeqlCheck.conclusion !== 'success' || currentHeadAlerts.length > 0) {
+  if (currentHeadAlerts.length > 0) {
     throw new Error(`CodeQL current-head gate failed: conclusion=${codeqlCheck.conclusion ?? 'unknown'} currentHeadAlerts=${currentHeadAlerts.length}`);
   }
 }
