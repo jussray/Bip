@@ -1,6 +1,12 @@
 -- 0003_oracle_parentlinks_period_safety.sql
 -- Se'kret Bip — Phase 3 tables
 -- All tables use auth.uid() RLS so anon sessions are fully scoped.
+--
+-- parent_links includes the verified historical preconditions that existed in
+-- production before the recorded 20260628235058 migration ran. Production's
+-- migration ledger never records creation of is_active/updated_at/quiet-hours,
+-- removal of linked_at, or relaxation of invite/expiry nullability, while the
+-- live table and later canonical RPCs depend on that shape.
 
 CREATE TABLE IF NOT EXISTS public.oracle_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -20,13 +26,16 @@ CREATE POLICY "oracle_sessions: owner delete" ON public.oracle_sessions FOR DELE
 
 CREATE TABLE IF NOT EXISTS public.parent_links (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  parent_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   teen_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  invite_code text NOT NULL UNIQUE,
+  parent_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  is_active boolean NOT NULL DEFAULT true,
+  quiet_hours_start time,
+  quiet_hours_end time,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
   status text NOT NULL DEFAULT 'pending',
-  linked_at timestamptz,
-  expires_at timestamptz NOT NULL DEFAULT (now() + interval '48 hours'),
-  created_at timestamptz NOT NULL DEFAULT now()
+  invite_code text UNIQUE,
+  expires_at timestamptz
 );
 ALTER TABLE public.parent_links ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "parent_links: teen owner" ON public.parent_links FOR ALL USING (auth.uid() = teen_user_id) WITH CHECK (auth.uid() = teen_user_id);
