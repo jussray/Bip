@@ -26,6 +26,22 @@ test('CodeQL proof distinguishes unsettled analysis from settled failure', () =>
   assert.match(proof, /currentHeadAlerts\.length > 0/);
 });
 
+test('terminal JavaScript failure wins over aggregate settling', () => {
+  assert.match(
+    proof,
+    /if \(javascriptTerminal && javascriptAnalysisCheck\.conclusion !== 'success'\) break;/,
+    'polling must stop as soon as JavaScript analysis reaches a terminal non-success conclusion',
+  );
+  const failureBranch = proof.indexOf("if (javascriptTerminal && !javascriptPassed) {");
+  const unsettledBranch = proof.indexOf("if (!javascriptTerminal || !aggregateSettled) {");
+  assert.notEqual(failureBranch, -1);
+  assert.notEqual(unsettledBranch, -1);
+  assert.ok(
+    failureBranch < unsettledBranch,
+    'a concrete executed JavaScript failure must be classified before aggregate settling ambiguity',
+  );
+});
+
 test('workflow gives the proof more runtime than its settle window', () => {
   assert.match(workflow, /CODEQL_SETTLE_TIMEOUT_MS: '1080000'/);
   assert.match(workflow, /timeout-minutes: 25/);
