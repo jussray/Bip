@@ -23,6 +23,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVerificationContext } from '@/context/VerificationContext';
 import type { AccountSide } from '@/features/identity/accountProfile';
+import { buildEmailConfirmationRedirectUrl } from '@/features/auth/emailConfirmation';
 import {
   fetchPostAuthBootstrap,
   ONBOARDING_SIDE_KEY,
@@ -176,6 +177,7 @@ export default function SignupScreen() {
     signupEmail: string,
     signupPassword: string,
     metadata: SignupMetadata,
+    redirectTo: string,
     initialError: unknown,
   ): Promise<boolean> {
     await delay(SIGNUP_RECOVERY_DELAY_MS);
@@ -213,7 +215,7 @@ export default function SignupScreen() {
       const { data: retryData, error: retryError } = await sb.auth.signUp({
         email: signupEmail,
         password: signupPassword,
-        options: { data: metadata },
+        options: { emailRedirectTo: redirectTo, data: metadata },
       });
       if (!retryError) {
         if (retryData.session?.user) {
@@ -291,6 +293,8 @@ export default function SignupScreen() {
       return;
     }
 
+    const redirectTo = buildEmailConfirmationRedirectUrl(preferredSide);
+
     try {
       await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, preferredSide);
       const { data: sessionData, error: sessionError } = await sb.auth.getSession();
@@ -304,14 +308,17 @@ export default function SignupScreen() {
         if (refreshErr0 || !refreshed0.user?.is_anonymous) {
           await sb.auth.signOut();
         } else {
-          const { error: upgradeError } = await sb.auth.updateUser({
-            email: e,
-            password: p,
-            data: metadata,
-          });
+          const { error: upgradeError } = await sb.auth.updateUser(
+            {
+              email: e,
+              password: p,
+              data: metadata,
+            },
+            { emailRedirectTo: redirectTo },
+          );
           if (upgradeError) {
             if (isAmbiguousSignupError(upgradeError)) {
-              const recovered = await recoverAmbiguousSignup(sb, e, p, metadata, upgradeError);
+              const recovered = await recoverAmbiguousSignup(sb, e, p, metadata, redirectTo, upgradeError);
               if (recovered) return;
             }
             const msg = upgradeError.message.toLowerCase();
@@ -326,7 +333,12 @@ export default function SignupScreen() {
             return;
           }
           const { data: refreshed, error: refreshError } = await sb.auth.getSession();
-          if (!refreshError && refreshed.session?.user && !refreshed.session.user.is_anonymous) {
+          if (
+            !refreshError
+            && refreshed.session?.user
+            && !refreshed.session.user.is_anonymous
+            && Boolean(refreshed.session.user.email_confirmed_at)
+          ) {
             await finishAuthenticatedSignup(refreshed.session.user.id);
           } else {
             showConfirmationSuccess();
@@ -338,11 +350,11 @@ export default function SignupScreen() {
       const { data: signUpData, error: authErr } = await sb.auth.signUp({
         email: e,
         password: p,
-        options: { data: metadata },
+        options: { emailRedirectTo: redirectTo, data: metadata },
       });
       if (authErr) {
         if (isAmbiguousSignupError(authErr)) {
-          const recovered = await recoverAmbiguousSignup(sb, e, p, metadata, authErr);
+          const recovered = await recoverAmbiguousSignup(sb, e, p, metadata, redirectTo, authErr);
           if (recovered) return;
         }
         setError(readableAuthError(authErr));
@@ -359,7 +371,7 @@ export default function SignupScreen() {
       if (isAmbiguousSignupError(caught)) {
         const sb2 = getSupabase();
         if (sb2) {
-          const recovered = await recoverAmbiguousSignup(sb2, e, p, metadata, caught);
+          const recovered = await recoverAmbiguousSignup(sb2, e, p, metadata, redirectTo, caught);
           if (recovered) return;
         }
       }
