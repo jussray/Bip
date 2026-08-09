@@ -26,20 +26,42 @@ test('CodeQL proof distinguishes unsettled analysis from settled failure', () =>
   assert.match(proof, /currentHeadAlerts\.length > 0/);
 });
 
-test('terminal JavaScript failure wins over aggregate settling', () => {
+test('only a concrete executed JavaScript failure wins over aggregate settling', () => {
   assert.match(
     proof,
-    /if \(javascriptTerminal && javascriptAnalysisCheck\.conclusion !== 'success'\) break;/,
-    'polling must stop as soon as JavaScript analysis reaches a terminal non-success conclusion',
+    /function isExecutedJavascriptFailure\(check\) \{\s*return check\?\.status === 'completed' && check\.conclusion === 'failure';\s*\}/,
+    'early failure must be limited to the concrete failure conclusion',
   );
-  const failureBranch = proof.indexOf("if (javascriptTerminal && !javascriptPassed) {");
-  const unsettledBranch = proof.indexOf("if (!javascriptTerminal || !aggregateSettled) {");
+  assert.match(
+    proof,
+    /if \(isExecutedJavascriptFailure\(javascriptAnalysisCheck\)\) break;/,
+    'polling may stop early only for a concrete executed JavaScript failure',
+  );
+  assert.doesNotMatch(
+    proof,
+    /javascriptAnalysisCheck\.conclusion !== 'success'\) break/,
+    'startup_failure, cancelled, skipped, neutral, and other non-success infrastructure states must not be promoted to an executed analysis failure',
+  );
+
+  const failureBranch = proof.indexOf('if (javascriptExecutedFailure) {');
+  const unsettledBranch = proof.indexOf('if (!javascriptTerminal || !javascriptPassed || !aggregateSettled) {');
   assert.notEqual(failureBranch, -1);
   assert.notEqual(unsettledBranch, -1);
   assert.ok(
     failureBranch < unsettledBranch,
     'a concrete executed JavaScript failure must be classified before aggregate settling ambiguity',
   );
+});
+
+test('non-executed terminal JavaScript conclusions remain unsettled', () => {
+  assert.match(
+    proof,
+    /if \(!javascriptTerminal \|\| !javascriptPassed \|\| !aggregateSettled\) \{/,
+    'terminal non-success states that are not concrete failures must remain unsettled instead of being diagnosed as code failure',
+  );
+  for (const conclusion of ['startup_failure', 'cancelled', 'skipped', 'neutral']) {
+    assert.notEqual(conclusion, 'failure');
+  }
 });
 
 test('workflow gives the proof more runtime than its settle window', () => {
