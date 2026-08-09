@@ -15,6 +15,21 @@ test('production Auth email provider stays manual, exact-head, and main-only for
   assert.match(workflow, /EXPECTED_HEAD_SHA:\s*\$\{\{ inputs\.target_sha \}\}/);
 });
 
+test('dispatch contract rejects malformed or stale production target SHAs before checkout', () => {
+  assert.match(workflow, /Validate dispatch contract/);
+  assert.match(workflow, /\^\[0-9a-fA-F\]\{40\}\$/);
+  assert.match(workflow, /Pass apply as its own boolean input/);
+  assert.match(workflow, /repos\/\$\{GITHUB_REPOSITORY\}\/commits\/main/);
+  assert.match(workflow, /Production apply requires current main HEAD/);
+  assert.match(workflow, /if \[ \"\$TARGET_SHA\" != \"\$current_main\" \]; then/);
+
+  const validation = workflow.indexOf('- name: Validate dispatch contract');
+  const checkout = workflow.indexOf('- name: Check out exact target');
+  assert.notEqual(validation, -1);
+  assert.notEqual(checkout, -1);
+  assert.ok(validation < checkout, 'dispatch validation must run before checkout consumes target_sha');
+});
+
 test('production Auth email provider keeps confirmation enabled and secrets out of source', () => {
   assert.match(script, /mailer_autoconfirm:\s*false/);
   assert.match(script, /smtp\.resend\.com/);
