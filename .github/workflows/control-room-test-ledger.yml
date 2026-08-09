@@ -76,7 +76,7 @@ jobs:
         run: node scripts/control-room-test-ledger.mjs
 
       - name: Upload repository-local Control Room ledger
-        if: always()
+        if: ${{ always() && hashFiles('artifacts/control-room-test-ledger.json') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: control-room-test-ledger-${{ env.EXPECTED_HEAD_SHA }}
