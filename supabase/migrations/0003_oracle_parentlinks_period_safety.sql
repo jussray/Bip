@@ -1,6 +1,12 @@
 -- 0003_oracle_parentlinks_period_safety.sql
 -- Se'kret Bip — Phase 3 tables
 -- All tables use auth.uid() RLS so anon sessions are fully scoped.
+--
+-- Production records this version as applied, but retained bootstrap history and
+-- the live table both prove parent_links had is_active / quiet_hours_* /
+-- updated_at before later timestamped migrations started depending on them.
+-- Keep those pre-ledger base columns here so fresh replay converges without
+-- inventing a new historical migration version that production never recorded.
 
 CREATE TABLE IF NOT EXISTS public.oracle_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -22,11 +28,15 @@ CREATE TABLE IF NOT EXISTS public.parent_links (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   teen_user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  is_active boolean NOT NULL DEFAULT true,
+  quiet_hours_start time,
+  quiet_hours_end time,
   invite_code text NOT NULL UNIQUE,
   status text NOT NULL DEFAULT 'pending',
   linked_at timestamptz,
   expires_at timestamptz NOT NULL DEFAULT (now() + interval '48 hours'),
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.parent_links ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "parent_links: teen owner" ON public.parent_links FOR ALL USING (auth.uid() = teen_user_id) WITH CHECK (auth.uid() = teen_user_id);
