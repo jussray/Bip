@@ -1,29 +1,6 @@
 -- Circle V2 Phase 0 (2/2) — guardian verification + parent_community circle
---
--- Decisions this migration implements (docs/circle-v2-migration-plan.md):
---   §1.1 — standalone VERIFIED_GUARDIAN state, independent of parent_links
---   §1.2 option (a) — new circle_kind value 'parent_community' (added in
---     the prior migration file) for the guardian community feed; the
---     existing kind='parent' (private, parent_links-scoped) is untouched
---   §4   — DB-level anonymity guard for kind in ('public','parent_community')
---   §5   — safety-scan extended to `posts`
---
--- NOT included, on purpose:
---   §6 reaction vocabulary — still unresolved (alter reaction_kind vs. an
---     app-layer mapping), not part of this decision, no reaction_kind
---     change here.
---   Anything to do with kind='parent' (private Bridge-linked circles) —
---     explicitly out of scope, left exactly as it was.
---
--- Verified against the live schema of tbsevonvegdnlyjgplmm before writing
--- this (see plan doc §3): uuid ids throughout, circle_kind/reaction_kind
--- are real Postgres enums, circles_kind_shape and the policy names below
--- are all confirmed via direct query, not assumed from repo migrations
--- (which do not match this project's actual schema).
-
 begin;
 
--- ── 1. Guardian verification states ─────────────────────────────────────────
 alter table public.account_verification
   drop constraint account_verification_verification_state_check;
 alter table public.account_verification
@@ -33,13 +10,7 @@ alter table public.account_verification
     'VERIFIED_TEEN','EXPIRED','MANUAL_REVIEW','SUSPENDED',
     'VERIFIED_GUARDIAN','PENDING_GUARDIAN_REVIEW','GUARDIAN_REJECTED','GUARDIAN_SUSPENDED'
   ));
--- Does not add a redemption/attestation flow that actually sets
--- VERIFIED_GUARDIAN — that's a real, separate product flow (guardian
--- signup/attestation, id verification or equivalent), intentionally out of
--- scope for this schema-only migration.
 
--- ── 2. circles_kind_shape gains 'parent_community' ───────────────────────────
--- Same shape bucket as 'public'/'friends': no crew_id, no parent_link_id.
 alter table public.circles
   drop constraint circles_kind_shape;
 alter table public.circles
@@ -51,7 +22,6 @@ alter table public.circles
         and crew_id is null and parent_link_id is null)
   );
 
--- ── 3. is_verified_guardian() helper ─────────────────────────────────────────
 create or replace function public.is_verified_guardian()
 returns boolean
 language sql
@@ -69,7 +39,6 @@ as $$
   );
 $$;
 
--- ── 4. circles RLS — open read for parent_community, gated on guardian status ─
 drop policy "circles select owner or member" on public.circles;
 create policy "circles select owner or member" on public.circles
   for select using (
@@ -79,9 +48,6 @@ create policy "circles select owner or member" on public.circles
     or (kind = 'parent_community'::circle_kind and public.is_verified_guardian())
   );
 
--- Only verified guardians may create a parent_community circle for
--- themselves. Other kinds keep their existing (unrestricted-by-kind)
--- insert behavior — not touched here, out of scope.
 drop policy "circles insert own" on public.circles;
 create policy "circles insert own" on public.circles
   for insert with check (
@@ -89,7 +55,6 @@ create policy "circles insert own" on public.circles
     and (kind <> 'parent_community'::circle_kind or public.is_verified_guardian())
   );
 
--- ── 5. posts RLS — same open-read carve-out for parent_community ─────────────
 drop policy "posts select by circle visibility" on public.posts;
 create policy "posts select by circle visibility" on public.posts
   for select using (
@@ -126,10 +91,6 @@ create policy "posts insert by author" on public.posts
     )
   );
 
--- ── 6. DB-level anonymity guard ───────────────────────────────────────────────
--- Never trust the client's is_identity_revealed flag for public or
--- parent_community posts. (kind='parent', friends, crew are unaffected —
--- those may legitimately reveal identity per the target model.)
 create or replace function public.enforce_circle_anonymity()
 returns trigger
 language plpgsql
@@ -152,10 +113,6 @@ create trigger enforce_circle_anonymity
   before insert or update on public.posts
   for each row execute function public.enforce_circle_anonymity();
 
--- ── 7. Safety scan extended to posts ─────────────────────────────────────────
--- trigger_safety_scan() already generalizes over content column
--- ('text'/'body') — confirmed via live function body, no function change
--- needed.
 alter table public.posts
   add column if not exists safety_flagged boolean not null default false;
 
@@ -163,9 +120,5 @@ drop trigger if exists safety_scan_posts on public.posts;
 create trigger safety_scan_posts
   after insert on public.posts
   for each row execute function public.trigger_safety_scan('body');
--- Companion app-code change (not SQL, already made in this PR): 'posts'
--- added to the Edge Function's SourceTable allowlist in
--- supabase/functions/safety-scan/index.ts, with author_user_id used
--- instead of user_id when flagging a posts row specifically.
 
 commit;

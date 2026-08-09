@@ -126,7 +126,13 @@ $$;
 
 revoke all on function public.award_points_for_bip_event() from public, anon, authenticated;
 
-drop trigger if exists activity_events_award_points on public.activity_events;
+do '
+begin
+  if to_regclass(''public.activity_events'') is not null then
+    execute ''drop trigger if exists activity_events_award_points on public.activity_events'';
+  end if;
+end
+';
 drop trigger if exists bip_events_award_points on public.bip_events;
 create trigger bip_events_award_points
 after insert on public.bip_events
@@ -335,10 +341,14 @@ for select to authenticated using (exists (
     and pl.status = 'active'
 ));
 
--- Reward redemption adapted to the live rewards/reward_redemptions schema.
+-- Reward redemption reconciled to the active reward_catalog/reward_redemptions schema.
 alter table public.reward_redemptions
   add column if not exists reviewed_by uuid references auth.users(id) on delete set null,
   add column if not exists review_note text;
+
+-- The earlier rewards migration used RETURNS uuid. Drop that signature so this
+-- reconciliation can intentionally replace it with the richer result table.
+drop function if exists public.request_reward_redemption(uuid);
 
 create or replace function public.request_reward_redemption(p_reward_id uuid)
 returns table(
@@ -354,7 +364,7 @@ set search_path = public
 as $$
 declare
   v_user_id uuid := auth.uid();
-  v_reward public.rewards%rowtype;
+  v_reward public.reward_catalog%rowtype;
   v_balance integer := 0;
   v_status text;
   v_redemption_id uuid;
@@ -362,12 +372,12 @@ begin
   if v_user_id is null then raise exception 'unauthorized'; end if;
 
   select * into v_reward
-  from public.rewards
+  from public.reward_catalog
   where id = p_reward_id and active = true
   for update;
 
   if not found then raise exception 'reward_not_found'; end if;
-  if v_reward.inventory is not null and v_reward.inventory <= 0 then
+  if v_reward.inventory_count is not null and v_reward.inventory_count <= 0 then
     raise exception 'out_of_stock';
   end if;
 
@@ -381,7 +391,7 @@ begin
 
   v_status := case when v_reward.requires_parent_approval then 'pending_parent' else 'approved' end;
 
-  insert into public.reward_redemptions(user_id, reward_id, point_cost, status)
+  insert into public.reward_redemptions(teen_id, reward_id, point_cost, status)
   values (v_user_id, v_reward.id, v_reward.point_cost, v_status)
   returning id into v_redemption_id;
 
@@ -398,9 +408,9 @@ begin
     jsonb_build_object('reward_id', v_reward.id, 'status', v_status)
   );
 
-  if v_reward.inventory is not null then
-    update public.rewards
-    set inventory = inventory - 1,
+  if v_reward.inventory_count is not null then
+    update public.reward_catalog
+    set inventory_count = inventory_count - 1,
         updated_at = now()
     where id = v_reward.id;
   end if;
@@ -436,7 +446,7 @@ begin
 
   if not exists (
     select 1 from public.parent_links pl
-    where pl.teen_user_id = v_redemption.user_id
+    where pl.teen_user_id = v_redemption.teen_id
       and pl.parent_user_id = v_parent
       and pl.status = 'active'
   ) then
@@ -455,7 +465,7 @@ begin
       user_id, amount, reason, transaction_type, source_type, source_id, metadata
     )
     values (
-      v_redemption.user_id,
+      v_redemption.teen_id,
       v_redemption.point_cost,
       'Reward reservation released',
       'release',
@@ -464,8 +474,8 @@ begin
       jsonb_build_object('redemption_id', p_redemption_id, 'reviewed_by', v_parent)
     );
 
-    update public.rewards r
-    set inventory = case when r.inventory is null then null else r.inventory + 1 end,
+    update public.reward_catalog r
+    set inventory_count = case when r.inventory_count is null then null else r.inventory_count + 1 end,
         updated_at = now()
     where r.id = v_redemption.reward_id;
   end if;
