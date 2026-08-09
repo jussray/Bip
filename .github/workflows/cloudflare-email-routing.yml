@@ -50,6 +50,7 @@ jobs:
             exit 1
           }
 
+      # Token type and scoped access are validated by the reconciler itself.
       - name: Reconcile live Cloudflare Email Routing
         if: inputs.apply == true
         env:
