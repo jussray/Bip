@@ -98,6 +98,7 @@ jobs:
         env:
           CI: 'true'
           PLAYWRIGHT_ARTIFACT_DIR: artifacts/product-design-playwright
+          EXPO_PUBLIC_ENABLE_FOUNDER_PREVIEW: 'true'
         run: npx playwright test e2e/product-design-review.spec.ts --project=chromium
 
       - name: Upload Product Design evidence
