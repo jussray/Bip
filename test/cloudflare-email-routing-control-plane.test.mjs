@@ -7,6 +7,7 @@ import {
   buildWorkerRule,
   configFromEnv,
   findDuplicateSupportedRules,
+  tokenVerificationPaths,
 } from '../scripts/reconcile-cloudflare-email-routing.mjs';
 
 const REQUIRED_ALIASES = [
@@ -57,6 +58,28 @@ test('duplicate supported aliases are detected before reconciliation', () => {
   ]);
 });
 
+test('Cloudflare token verification selects the correct ownership endpoint without exposing token values', () => {
+  assert.deepEqual(
+    tokenVerificationPaths({ token: 'cfat_example', accountId: 'acct-123' }),
+    [{ path: '/accounts/acct-123/tokens/verify', tokenClass: 'account' }],
+  );
+  assert.deepEqual(
+    tokenVerificationPaths({ token: 'cfut_example', accountId: 'acct-123' }),
+    [{ path: '/user/tokens/verify', tokenClass: 'user' }],
+  );
+  assert.deepEqual(
+    tokenVerificationPaths({ token: 'legacy-token', accountId: 'acct-123' }),
+    [
+      { path: '/user/tokens/verify', tokenClass: 'user-or-legacy' },
+      { path: '/accounts/acct-123/tokens/verify', tokenClass: 'account-or-legacy' },
+    ],
+  );
+  assert.throws(
+    () => tokenVerificationPaths({ token: 'cfat_example', accountId: '' }),
+    /CLOUDFLARE_ACCOUNT_ID_MISSING_FOR_ACCOUNT_TOKEN/,
+  );
+});
+
 test('email routing workflow is manual, secrets-backed, and retains apply evidence', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-email-routing.yml', import.meta.url),
@@ -75,10 +98,17 @@ test('email routing workflow is manual, secrets-backed, and retains apply eviden
   assert.match(workflow, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
   assert.doesNotMatch(workflow, /vars\.CLOUDFLARE_ZONE_ID/);
   assert.doesNotMatch(workflow, /vars\.CLOUDFLARE_ACCOUNT_ID/);
+  assert.match(workflow, /user\/tokens\/verify/);
+  assert.match(workflow, /accounts\/\$\{CLOUDFLARE_ACCOUNT_ID\}\/tokens\/verify/);
+  assert.match(workflow, /cfat_\*/);
+  assert.match(workflow, /cfut_\*/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
   assert.match(workflow, /retention-days:\s*30/);
 
   assert.match(reconciler, /\/user\/tokens\/verify/);
+  assert.match(reconciler, /\/accounts\/\$\{config\.accountId\}\/tokens\/verify/);
+  assert.match(reconciler, /startsWith\('cfat_'\)/);
+  assert.match(reconciler, /startsWith\('cfut_'\)/);
   assert.match(reconciler, /CLOUDFLARE_API_TOKEN_INVALID/);
   assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE/);
   const verifyIndex = reconciler.indexOf('await verifyToken(config);');
