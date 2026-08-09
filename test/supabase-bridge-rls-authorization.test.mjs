@@ -7,17 +7,24 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../', import.meta.url));
 const migrationsDir = path.join(root, 'supabase', 'migrations');
 const summaryContractPath = path.join(migrationsDir, '20260705050121_bridge_summary_contract.sql');
-const legacyGuardPath = path.join(
+const permanentAccountGuardPath = path.join(
   migrationsDir,
-  '20260629032000_complete_parent_bridge_safety_storage_rls.sql',
+  '20260629024952_block_anonymous_sessions_from_private_data.sql',
 );
 
 const summaryContract = fs.readFileSync(summaryContractPath, 'utf8');
-const legacyGuard = fs.readFileSync(legacyGuardPath, 'utf8');
+const permanentAccountGuard = fs.readFileSync(permanentAccountGuardPath, 'utf8');
 
-test('bridge authorization migration files exist at their expected versioned paths', () => {
+test('bridge authorization migration files exist at their canonical versioned paths', () => {
   assert.equal(fs.existsSync(summaryContractPath), true);
-  assert.equal(fs.existsSync(legacyGuardPath), true);
+  assert.equal(fs.existsSync(permanentAccountGuardPath), true);
+});
+
+test('permanent-account helper is fail-closed for anonymous Supabase sessions', () => {
+  assert.match(permanentAccountGuard, /create or replace function public\.is_non_anonymous_user\(\)/i);
+  assert.match(permanentAccountGuard, /auth\.jwt\(\).*is_anonymous/i);
+  assert.match(permanentAccountGuard, /= false/i);
+  assert.match(permanentAccountGuard, /revoke all on function public\.is_non_anonymous_user\(\) from public, anon/i);
 });
 
 test('bridge summary contract removes legacy raw-content parent read paths', () => {
@@ -94,10 +101,7 @@ test('bridge_share_sources has no parent read policy', () => {
 });
 
 test('bridge_share_sources table comment affirms parent exclusion', () => {
-  assert.match(
-    summaryContract,
-    /Parent policies intentionally expose none of these rows/i,
-  );
+  assert.match(summaryContract, /Parent policies intentionally expose none of these rows/i);
 });
 
 test('bridge_share_sources teen policies use self-ownership via bridge_share_requests join', () => {
@@ -124,26 +128,4 @@ test('bridge_delivery_preferences has only a teen owner policy, no parent policy
   assert.match(summaryContract, /bridge_delivery_preferences_owner_all/i);
   assert.match(summaryContract, /teen_user_id = auth\.uid\(\)/i);
   assert.doesNotMatch(summaryContract, /bridge_delivery_preferences_parent/i);
-});
-
-test('legacy guard applies is_non_anonymous_user to bridge_shares policies', () => {
-  assert.match(legacyGuard, /is_non_anonymous_user/i);
-  assert.match(legacyGuard, /bridge_shares_owner_update/i);
-  assert.match(legacyGuard, /bridge_shares_owner_delete/i);
-  assert.match(legacyGuard, /public\.is_non_anonymous_user\(\) and auth\.uid\(\) = user_id/i);
-});
-
-test('legacy guard applies is_non_anonymous_user to bridge_signals teen and parent policies', () => {
-  assert.match(legacyGuard, /bridge_signals.*teen read/i);
-  assert.match(legacyGuard, /bridge_signals.*teen insert/i);
-  assert.match(legacyGuard, /bridge_signals.*linked parent read/i);
-  assert.match(legacyGuard, /public\.is_non_anonymous_user\(\) and auth\.uid\(\) = teen_user_id/i);
-});
-
-test('legacy guard does not alter bridge_share_requests or bridge_summaries (those are Phase 1)', () => {
-  assert.doesNotMatch(legacyGuard, /bridge_share_requests/i);
-  assert.doesNotMatch(legacyGuard, /bridge_summaries/i);
-  assert.doesNotMatch(legacyGuard, /bridge_summary_views/i);
-  assert.doesNotMatch(legacyGuard, /bridge_share_sources/i);
-  assert.doesNotMatch(legacyGuard, /bridge_delivery_preferences/i);
 });
