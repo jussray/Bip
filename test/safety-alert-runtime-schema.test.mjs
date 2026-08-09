@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260808222500_reconcile_safety_alert_runtime_schema.sql',
+  '20260808221720_reconcile_safety_alert_runtime_schema.sql',
 );
 const probePath = path.join(
   root,
@@ -21,7 +21,7 @@ const runtimeMigrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260622190209_remote_history.sql',
+  '0003_oracle_parentlinks_period_safety.sql',
 );
 const coordinatorPath = path.join(root, 'src', 'features', 'safety', 'safetyCoordinator.ts');
 const edgePath = path.join(root, 'supabase', 'functions', 'safety-scan', 'index.ts');
