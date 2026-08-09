@@ -5,7 +5,7 @@
 // ─ Clean thin-border inputs, solid CTA, OR divider, Sign up switch
 // ─ All Supabase auth logic, shake animation, and error handling preserved.
 
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,9 +18,14 @@ import {
   Animated,
   Pressable,
 } from 'react-native';
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useVerificationContext } from '@/context/VerificationContext';
 import type { AccountSide } from '@/features/identity/accountProfile';
+import {
+  clearEmailConfirmationUrl,
+  parseEmailConfirmationUrl,
+} from '@/features/auth/emailConfirmation';
 import { fetchPostAuthBootstrap } from '@/services/auth/postAuthBootstrap';
 import { getSupabase } from '@/utils/supabase';
 
@@ -65,8 +70,9 @@ function authRoute(path: '/(auth)/signup' | '/(auth)/login', side?: AccountSide)
 }
 
 export default function LoginScreen() {
-  const params = useLocalSearchParams<{ passwordReset?: string; side?: string }>();
+  const params = useLocalSearchParams<{ passwordReset?: string; emailConfirmed?: string; side?: string }>();
   const passwordReset = params.passwordReset === '1';
+  const emailConfirmed = params.emailConfirmed === '1';
   const preferredSide = normalizeSide(params.side);
   const { refreshVerification } = useVerificationContext();
 
@@ -77,6 +83,7 @@ export default function LoginScreen() {
   const [pwVisible, setPwVisible] = useState(false);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const confirmationHandled = useRef(false);
 
   function shakeCard() {
     Animated.sequence([
@@ -87,6 +94,73 @@ export default function LoginScreen() {
       Animated.timing(shakeAnim, { toValue:   0, duration: 30,  useNativeDriver: true }),
     ]).start();
   }
+
+  useEffect(() => {
+    if (!emailConfirmed || confirmationHandled.current) return;
+    confirmationHandled.current = true;
+
+    const sb = getSupabase();
+    if (!sb) return;
+    const supabase = sb;
+
+    let active = true;
+    let routed = false;
+
+    async function restoreConfirmedSession(url: string | null) {
+      if (!active || routed) return;
+
+      try {
+        if (Platform.OS !== 'web') {
+          const parsed = parseEmailConfirmationUrl(url);
+          if (parsed.kind === 'error') {
+            setError(parsed.message);
+            return;
+          }
+
+          if (parsed.kind === 'tokens') {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: parsed.accessToken,
+              refresh_token: parsed.refreshToken,
+            });
+            if (sessionError) return;
+          }
+        }
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!active || !session?.user || session.user.is_anonymous) return;
+
+        const bootstrap = await fetchPostAuthBootstrap(preferredSide);
+        await refreshVerification();
+        if (!active || routed) return;
+
+        routed = true;
+        clearEmailConfirmationUrl();
+        router.replace(bootstrap.nextRoute as never);
+      } catch {
+        if (active) {
+          setError('We could not finish confirming your email. You can sign in manually or request a new confirmation link.');
+        }
+      }
+    }
+
+    const linkSubscription = Linking.addEventListener('url', ({ url }) => {
+      void restoreConfirmedSession(url);
+    });
+
+    void (async () => {
+      const initialUrl = Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.href
+        : await Linking.getInitialURL();
+      await restoreConfirmedSession(initialUrl);
+    })();
+
+    return () => {
+      active = false;
+      linkSubscription.remove();
+    };
+  }, [emailConfirmed, preferredSide, refreshVerification]);
 
   async function handleSignIn() {
     setError('');
