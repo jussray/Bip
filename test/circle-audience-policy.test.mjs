@@ -50,3 +50,12 @@ test('trusted audience labels keep the approved product language', () => {
     assert.equal(policy.includes(label), true, `missing ${label}`);
   }
 });
+
+test('public Circle composer consumes the Open Bip policy instead of duplicating its own audience rules', () => {
+  const feed = read('app/(teen)/circle/feed-v2.tsx');
+
+  assert.equal(feed.includes("CIRCLE_AUDIENCES.open_bip"), true);
+  assert.equal(feed.includes("audienceLabel('open_bip')"), true);
+  assert.equal(feed.includes('inside Circle · faces stay hidden here'), true);
+  assert.equal(feed.includes('OPEN_BIP_AUDIENCE.description'), true);
+});
