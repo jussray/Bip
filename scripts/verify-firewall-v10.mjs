@@ -76,7 +76,8 @@ for (const route of routes) {
 
 require(/name = "sekret-backend"/.test(wrangler), 'wrangler Worker name must match policy');
 require(/main = "worker\/voice-entry\.ts"/.test(wrangler), 'voice-entry.ts must remain the authoritative Worker front door');
-require(/name = "SEKRET_RATE_LIMITER"/.test(wrangler), 'Cloudflare rate-limit binding must exist in repo config');
+require(/\[\[ratelimits\]\][\s\S]*name = "SEKRET_RATE_LIMITER"[\s\S]*namespace_id = "1001"[\s\S]*simple = \{ limit = 60, period = 10 \}/.test(wrangler), 'Cloudflare rate-limit binding must use first-class Wrangler ratelimits syntax');
+require(!/\[\[unsafe\.bindings\]\][\s\S]*type = "ratelimit"/.test(wrangler), 'legacy unsafe ratelimit binding syntax must not return');
 require(/^pattern = "api\.sekretbip\.net"$/m.test(wrangler), 'api.sekretbip.net custom domain must remain exactly bound in repo config');
 
 require(/SEKRET_AUTH_MODE\?: 'required' \| 'dev-open'/.test(auth), 'auth mode contract is missing');
