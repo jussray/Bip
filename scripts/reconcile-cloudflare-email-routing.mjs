@@ -64,22 +64,56 @@ async function cfRequest(config, path, options = {}) {
   return payload;
 }
 
+export function tokenVerificationPaths(config) {
+  const token = config?.token || '';
+  const accountPath = config?.accountId
+    ? `/accounts/${config.accountId}/tokens/verify`
+    : null;
+
+  if (token.startsWith('cfat_')) {
+    if (!accountPath) {
+      throw new Error(
+        'CLOUDFLARE_ACCOUNT_ID_MISSING_FOR_ACCOUNT_TOKEN: account-owned tokens require CLOUDFLARE_ACCOUNT_ID.',
+      );
+    }
+    return [{ path: accountPath, tokenClass: 'account' }];
+  }
+
+  if (token.startsWith('cfut_')) {
+    return [{ path: '/user/tokens/verify', tokenClass: 'user' }];
+  }
+
+  return [
+    { path: '/user/tokens/verify', tokenClass: 'user-or-legacy' },
+    ...(accountPath
+      ? [{ path: accountPath, tokenClass: 'account-or-legacy' }]
+      : []),
+  ];
+}
+
 async function verifyToken(config) {
-  let payload;
-  try {
-    payload = await cfRequest(config, '/user/tokens/verify');
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`CLOUDFLARE_API_TOKEN_INVALID: ${detail}`);
+  const candidates = tokenVerificationPaths(config);
+
+  for (const candidate of candidates) {
+    try {
+      const payload = await cfRequest(config, candidate.path);
+      const status = payload?.result?.status;
+      if (status !== 'active') {
+        throw new Error(`CLOUDFLARE_API_TOKEN_INACTIVE: status=${status || 'unknown'}`);
+      }
+
+      console.log(`CLOUDFLARE_API_TOKEN_ACTIVE class=${candidate.tokenClass}`);
+      return payload.result;
+    } catch (error) {
+      if (String(error?.message || error).startsWith('CLOUDFLARE_API_TOKEN_INACTIVE:')) {
+        throw error;
+      }
+    }
   }
 
-  const status = payload?.result?.status;
-  if (status !== 'active') {
-    throw new Error(`CLOUDFLARE_API_TOKEN_INACTIVE: status=${status || 'unknown'}`);
-  }
-
-  console.log('CLOUDFLARE_API_TOKEN_ACTIVE');
-  return payload.result;
+  throw new Error(
+    `CLOUDFLARE_API_TOKEN_INVALID: verification failed for supported token ownership modes (${candidates.map((candidate) => candidate.path).join(', ')}).`,
+  );
 }
 
 async function discoverZone(config) {
