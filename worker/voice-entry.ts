@@ -1,6 +1,8 @@
 import observedWorker from './observed-index';
 import emailRouter from './email-router';
 import { authenticate, type AuthEnv, type Principal } from './auth';
+import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
+import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
 import { normalizeReplyActor, resolveRuntimeStyle } from './runtime-style';
 import { selectVoiceRoute, type CharacterId } from './voice-routing';
 import { synthesizeRoutedVoice, type VoiceProviderEnv } from './voice-providers';
@@ -138,6 +140,34 @@ function withoutRateLimiter(env: Env): Env {
   return { ...env, SEKRET_RATE_LIMITER: undefined };
 }
 
+function observeFrontDoorDenial(
+  request: Request,
+  response: Response,
+  env: Env,
+  ctx: MinimalExecutionContext,
+  started: number,
+  fingerprint: 'worker_auth_failure' | 'worker_rate_limit',
+): Response {
+  const url = new URL(request.url);
+  const requestId = request.headers.get('CF-Ray') || undefined;
+  const event: WorkerTelemetryEvent = {
+    fingerprint,
+    route: url.pathname,
+    method: request.method,
+    status: response.status,
+    duration_ms: Date.now() - started,
+    provider: 'cloudflare',
+    operation: 'security',
+    request_id: requestId,
+    fallback_used: false,
+    retry_count: 0,
+    trace_id: requestId || crypto.randomUUID(),
+  };
+  emitWorkerTelemetry(event);
+  ctx.waitUntil(persistAuditEvent(event, env as AuditPersistEnv));
+  return response;
+}
+
 function workerVersionEvidence(env: Env) {
   const version = env.CF_VERSION_METADATA;
   if (!version) return null;
@@ -228,6 +258,7 @@ async function handleVoice(
 
 export default {
   async fetch(request: Request, env: Env, ctx: MinimalExecutionContext): Promise<Response> {
+    const started = Date.now();
     const cors = corsHeaders(request, env);
     const blocked = originRejected(request, env, cors);
     if (blocked) return blocked;
@@ -262,10 +293,15 @@ export default {
 
     if (isProtectedApiPost) {
       const auth = await authenticate(request, env);
-      if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
+      if (!auth.ok) {
+        const denied = json({ error: auth.error }, auth.status, cors);
+        return observeFrontDoorDenial(request, denied, env, ctx, started, 'worker_auth_failure');
+      }
 
       const limited = await enforceRateLimit(request, env, auth.principal, cors);
-      if (limited) return limited;
+      if (limited) {
+        return observeFrontDoorDenial(request, limited, env, ctx, started, 'worker_rate_limit');
+      }
 
       downstreamEnv = withoutRateLimiter(env);
     }
