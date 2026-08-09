@@ -12,7 +12,7 @@ Before material planning, implementation, review, automation, publishing, deploy
 - Reviewed application baseline: `824b4dcffb9e0ffc7468a002f0390cbba98d79ae` (later documentation-only merges may advance `main` without changing application evidence).
 - Read `docs/LAUNCH_GATE_STATUS_2026-07-31.md` before making any current launch, deployment, or production claim.
 - P0: [#696](https://github.com/jussray/Sekret-Bip/issues/696) — the live Pages release marker does not currently return JSON.
-- Cloudflare branch-control gate: [#646](https://github.com/jussray/Sekret-Bip/issues/646) — ordinary PR branches have repeatedly triggered automatic production Worker deployments. Do not create or merge implementation (product-code) branches while this gate is open; documentation-only changes carry the same deploy side effect but are lower risk.
+- Cloudflare branch-control gate: [#646](https://github.com/jussray/Sekret-Bip/issues/646) — **closed/completed as of 2026-08-03**. The provider-side branch-control proof was accepted and PR #712 added repository defense in depth. Do not treat #646 as an open branch blocker; production deployment and current Cloudflare/release truth remain separate evidence gates.
 - Canonical frontend: Cloudflare Pages `sekret-bip`.
 - Canonical backend: `sekret-backend` via `worker/voice-entry.ts`.
 - Canonical marker: `/.well-known/sekret-release.json`.

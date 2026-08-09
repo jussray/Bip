@@ -34,7 +34,7 @@ Move Se'kret Bip toward controlled-alpha readiness by binding every launch claim
 
 ### Cloudflare branch-control gate
 
-[Issue #646](https://github.com/jussray/Sekret-Bip/issues/646) is open: ordinary PR branches, including documentation-only and single-surface UI branches, have repeatedly triggered automatic production-named Worker deployments for `sekret-backend`, `sekret`, and `bip-mail` before merge or review. Do not create new implementation (product-code) branches or merge existing ones until a Cloudflare administrator records branch-control settings proving non-main branches cannot deploy the production Workers.
+[Issue #646](https://github.com/jussray/Sekret-Bip/issues/646) is closed/completed as of 2026-08-03. The founder/provider-side branch-control proof was accepted, `sekret-backend` remains the canonical production Worker, and PR #712 added repository-side defense in depth. Historical automatic production-named Worker deployments from PR branches remain evidence for why the gate existed; they are not a current open implementation-branch blocker. Production deployment, Cloudflare build state, and release truth remain separate evidence gates.
 
 ### Review and proof lanes
 
@@ -55,7 +55,7 @@ Do not mark trigger assurance verified from repository structure or catalog obse
 ## Immediate execution order
 
 1. Cloudflare administrator resolves #696 and records the exact Pages build, marker response, Worker health, and production Playwright evidence.
-2. Cloudflare administrator resolves #646 by disabling non-main Worker builds for `sekret-backend`, `sekret`, and `bip-mail` and recording branch-control settings evidence; do not create or merge further implementation branches until then.
+2. Preserve #646's completed provider-side branch-control evidence and PR #712 repository defense; re-check current Cloudflare/release truth when deployment evidence is material, but do not treat #646 as an open implementation-branch gate.
 3. Retain PR #698, #700, and #701's merged exact-head evidence, then complete their separate real-account, browser, and physical-device proof; do not infer those witnesses from the merge.
 4. Keep the canonical Markdown and documentation contracts aligned with the live gate and current `main`.
 5. Continue the independent launch gates: authorization, deletion, parent/Bridge lifecycle, accessibility, device QA, legal, safeguarding, moderation, support, backup, restore, incident response, and rollback.
