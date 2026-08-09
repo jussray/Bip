@@ -9,7 +9,7 @@ const migrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260808223500_lock_safety_alert_table_grants.sql',
+  '20260808222306_lock_safety_alert_table_grants.sql',
 );
 const migration = fs.readFileSync(migrationPath, 'utf8');
 
