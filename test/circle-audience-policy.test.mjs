@@ -69,3 +69,17 @@ test('public Circle composer consumes the Open Bip policy instead of duplicating
   assert.equal(feed.includes('inside Circle · faces stay hidden here'), true);
   assert.equal(feed.includes('OPEN_BIP_AUDIENCE.description'), true);
 });
+
+test('Founder Preview bypasses verification routing only after the normal auth boundary', () => {
+  const layout = read('app/_layout.tsx');
+  const authBoundary = layout.indexOf('if (isSupabaseConfigured && !isAuthenticated)');
+  const previewBoundary = layout.indexOf('if (isFounderPreviewEnabled()) return;');
+  const routeDecision = layout.indexOf('const decision = decideRouteAccess({');
+
+  assert.notEqual(authBoundary, -1);
+  assert.notEqual(previewBoundary, -1);
+  assert.notEqual(routeDecision, -1);
+  assert.equal(authBoundary < previewBoundary, true);
+  assert.equal(previewBoundary < routeDecision, true);
+  assert.equal(layout.includes('it never grants a Supabase session, relationship, RLS permission'), true);
+});
