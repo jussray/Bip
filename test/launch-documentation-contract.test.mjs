@@ -14,7 +14,7 @@ test('launch-gate status distinguishes repository, deployment, browser, and devi
   assert.match(gate, /Do not declare public launch ready/);
   assert.match(gate, /P0 blocker/);
   assert.match(gate, /\.well-known\/sekret-release\.json/);
-  assert.match(gate, /Wrangler is not authenticated/);
+  assert.match(gate, /prior unauthenticated Wrangler observations are not current provider truth/);
   assert.match(gate, /PR #698 is merged/);
   assert.match(gate, /PR #690 is closed/);
   assert.match(gate, /PR #692.*closed/);
