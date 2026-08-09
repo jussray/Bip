@@ -56,9 +56,10 @@ test('every active migration has a unique Supabase version prefix', () => {
   assert.deepEqual(duplicates, [], `duplicate Supabase migration versions:\n${duplicates.join('\n')}`);
 });
 
-test('stale synthetic and compressed migration history is not active', () => {
+test('stale synthetic, local-only, and compressed migration history is not active', () => {
   const active = new Set(migrationInventory());
   for (const stale of [
+    '0004_supplemental_tables.sql',
     '20240701000000_founder_audit_foundation.sql',
     '20240701_founder_ideas.sql',
     '20240702_control_room_issues.sql',
@@ -82,7 +83,7 @@ test('stale synthetic and compressed migration history is not active', () => {
   }
 });
 
-test('canonical Circle V1 migration contains the recovered schema body', () => {
+test('canonical 0002 carries V1 feeds plus the verified pre-ledger Circle V2 foundation', () => {
   for (const table of [
     'circle_profiles', 'circle_friend_requests', 'circle_friendships', 'crew_memberships',
     'public_circle_posts', 'friends_circle_posts', 'crew_circle_posts', 'circle_comments',
@@ -90,7 +91,41 @@ test('canonical Circle V1 migration contains the recovered schema body', () => {
   ]) {
     assert.match(circleV1, new RegExp(`create table if not exists public\\.${table}\\b`, 'i'));
   }
-  assert.match(circleV1, /alter table public\.public_circle_posts enable row level security/i);
+
+  assert.match(circleV1, /create type public\.circle_kind as enum \('public','friends','crew','parent'\)/i);
+  assert.match(circleV1, /create type public\.reaction_kind as enum \('hug','heart','listen','support','spark'\)/i);
+  assert.match(circleV1, /create type public\.mood_level as enum \('very_low','low','okay','good','great'\)/i);
+
+  for (const table of ['crews', 'parent_links', 'circles', 'circle_members', 'posts', 'post_comments', 'post_reactions', 'moods', 'parent_mood_summaries']) {
+    assert.match(circleV1, new RegExp(`create table if not exists public\\.${table}\\b`, 'i'));
+  }
+
+  for (const shape of [
+    /create table if not exists public\.circles \([\s\S]*?id uuid primary key/i,
+    /kind public\.circle_kind not null/i,
+    /create table if not exists public\.circle_members \([\s\S]*?id uuid primary key/i,
+    /circle_id uuid not null references public\.circles\(id\)/i,
+    /create table if not exists public\.posts \([\s\S]*?id uuid primary key/i,
+    /circle_id uuid not null references public\.circles\(id\)/i,
+    /create table if not exists public\.post_reactions \([\s\S]*?id uuid primary key/i,
+    /reaction public\.reaction_kind not null/i,
+    /create table if not exists public\.moods \([\s\S]*?id uuid primary key/i,
+    /mood public\.mood_level not null/i,
+    /create table if not exists public\.parent_mood_summaries \([\s\S]*?id uuid primary key/i,
+  ]) {
+    assert.match(circleV1, shape);
+  }
+
+  assert.match(circleV1, /constraint parent_links_one_parent_per_teen unique \(teen_user_id\)/i);
+  assert.match(circleV1, /constraint circles_kind_shape check/i);
+  assert.match(circleV1, /create policy "circles select owner or member"/i);
+  assert.match(circleV1, /create policy "circles insert own"/i);
+  assert.match(circleV1, /create policy "posts select by circle visibility"/i);
+  assert.match(circleV1, /create policy "posts insert by author"/i);
+
+  assert.doesNotMatch(circleV1, /create table if not exists public\.circles \([\s\S]*?id\s+bigserial/i);
+  assert.doesNotMatch(circleV1, /create table if not exists public\.posts \([\s\S]*?id\s+bigserial/i);
+  assert.doesNotMatch(circleV1, /create table if not exists public\.moods \([\s\S]*?\bslug\s+text/i);
 });
 
 test('canonical Phase 3 replay carries the verified pre-ledger parent-link shape', () => {
