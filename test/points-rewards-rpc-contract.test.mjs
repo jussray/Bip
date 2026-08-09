@@ -14,8 +14,8 @@ import test from 'node:test';
 // energy-fade function's canonical definition is the later
 // 20260714051500 migration, not its original 20260704 predecessor.
 const energyPath = 'supabase/migrations/20260714051500_align_bip_energy_with_bip_events.sql';
-const rewardsPath = 'supabase/migrations/20260704_sync_points_chores_rewards.sql';
-const tasksPath = 'supabase/migrations/20260704_fix_task_rpc_event_column.sql';
+const rewardsPath = 'supabase/migrations/20260704050000_sync_points_chores_rewards.sql';
+const tasksPath = 'supabase/migrations/20260704040000_fix_task_rpc_event_column.sql';
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('apply_inactivity_point_adjustment is self-scoped via auth.uid() with no caller-suppliable target', async () => {
@@ -120,7 +120,7 @@ test('request_reward_redemption locks the reward and balance rows and rejects in
   assert.match(body, /set search_path = public/);
   assert.match(body, /where id = p_reward_id and active = true\s*\n\s*for update/);
   assert.match(body, /if not found then raise exception 'reward_not_found'; end if;/);
-  assert.match(body, /if v_reward\.inventory is not null and v_reward\.inventory <= 0 then/);
+  assert.match(body, /if v_reward\.inventory_count is not null and v_reward\.inventory_count <= 0 then/);
   assert.match(body, /raise exception 'out_of_stock'/);
 
   assert.match(body, /where user_id = v_user_id\s*\n\s*for update/);
@@ -149,7 +149,7 @@ test('review_reward_redemption requires an active parent_links relationship and 
   assert.match(body, /and rr\.status = 'pending_parent'\s*\n\s*for update/);
   assert.match(body, /if not found then raise exception 'redemption_not_pending'; end if;/);
 
-  assert.match(body, /where pl\.teen_user_id = v_redemption\.user_id\s*\n\s*and pl\.parent_user_id = v_parent\s*\n\s*and pl\.status = 'active'/);
+  assert.match(body, /where pl\.teen_user_id = v_redemption\.teen_id\s*\n\s*and pl\.parent_user_id = v_parent\s*\n\s*and pl\.status = 'active'/);
   assert.match(body, /raise exception 'not_authorized'/);
 
   assert.match(sql, /revoke all on function public\.review_reward_redemption\(uuid,boolean,text\) from public, anon/);
@@ -163,5 +163,5 @@ test('review_reward_redemption releases the point reservation and restores inven
   assert.match(body, /if not p_approve then/);
   const rejectionBranch = body.slice(body.indexOf('if not p_approve then'), body.indexOf('return jsonb_build_object'));
   assert.match(rejectionBranch, /'Reward reservation released',\s*\n\s*'release',/);
-  assert.match(rejectionBranch, /r\.inventory \+ 1/);
+  assert.match(rejectionBranch, /r\.inventory_count \+ 1/);
 });
