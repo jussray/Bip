@@ -39,40 +39,14 @@ jobs:
       - name: Show non-destructive plan
         run: node scripts/reconcile-cloudflare-email-routing.mjs
 
-      - name: Require Cloudflare credentials before apply
+      - name: Require Cloudflare API token before apply
         if: inputs.apply == true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN" || {
             echo 'CLOUDFLARE_API_TOKEN is not configured.' >&2
-            exit 1
-          }
-          test -n "$CLOUDFLARE_ZONE_ID" || {
-            echo 'CLOUDFLARE_ZONE_ID is not configured.' >&2
-            exit 1
-          }
-          test -n "$CLOUDFLARE_ACCOUNT_ID" || {
-            echo 'CLOUDFLARE_ACCOUNT_ID is not configured.' >&2
-            exit 1
-          }
-
-      - name: Verify Cloudflare API token before apply
-        if: inputs.apply == true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          payload="$(curl --fail-with-body --silent --show-error \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            https://api.cloudflare.com/client/v4/user/tokens/verify)"
-          test "$(jq -r '.success // false' <<<"$payload")" = true || {
-            echo 'CLOUDFLARE_API_TOKEN is invalid or revoked. Rotate the repository secret before applying Email Routing.' >&2
             exit 1
           }
 
