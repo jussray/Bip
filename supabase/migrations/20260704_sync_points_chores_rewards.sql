@@ -346,6 +346,10 @@ alter table public.reward_redemptions
   add column if not exists reviewed_by uuid references auth.users(id) on delete set null,
   add column if not exists review_note text;
 
+-- The earlier rewards migration used RETURNS uuid. Drop that signature so this
+-- reconciliation can intentionally replace it with the richer result table.
+drop function if exists public.request_reward_redemption(uuid);
+
 create or replace function public.request_reward_redemption(p_reward_id uuid)
 returns table(
   redemption_id uuid,
