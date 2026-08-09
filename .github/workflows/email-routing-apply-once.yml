@@ -1,4 +1,4 @@
-name: Apply Cloudflare Email Routing Once
+name: Probe Cloudflare Email Routing Permissions Once
 
 on:
   push:
@@ -14,81 +14,78 @@ concurrency:
   group: cloudflare-email-routing-production
   cancel-in-progress: false
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  BIP_EMAIL_ZONE: sekretbip.net
-  BIP_EMAIL_WORKER: sekret-backend
-  BIP_EMAIL_DESTINATION: sekretbip@gmail.com
-
 jobs:
-  apply:
-    name: Apply Email Routing and report sanitized outcome
+  probe:
+    name: Probe Cloudflare Email Routing read permissions
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Reconcile and classify live routing
-        id: reconcile
+      - name: Probe read-only Cloudflare endpoints
+        id: probe
         shell: bash
         run: |
-          set -uo pipefail
-          set +e
-          node scripts/reconcile-cloudflare-email-routing.mjs --apply > /tmp/reconcile.log 2>&1
-          rc=$?
-          set -e
+          set -euo pipefail
 
-          outcome="reconcile_failed"
-          if [[ $rc -eq 0 ]]; then
-            outcome="applied"
-          elif grep -q 'DESTINATION_VERIFICATION_REQUIRED' /tmp/reconcile.log; then
-            outcome="destination_verification_required"
-          elif grep -q 'CLOUDFLARE_API_TOKEN_INVALID_OR_UNSCOPED' /tmp/reconcile.log; then
-            outcome="token_invalid_or_unscoped"
-          elif grep -q 'ACCOUNT_ID_NOT_FOUND' /tmp/reconcile.log; then
-            outcome="account_id_not_found"
-          elif grep -Eq 'ZONE_NOT_FOUND|ZONE_ID_MISMATCH' /tmp/reconcile.log; then
-            outcome="zone_resolution_failed"
-          elif grep -Eqi 'code=10000|code=9109|permission|not authorized|Unauthorized|Authentication error' /tmp/reconcile.log; then
-            outcome="token_under_scoped"
-          elif grep -q 'CATCH_ALL_ENABLED' /tmp/reconcile.log; then
-            outcome="catch_all_enabled"
-          elif grep -q 'DUPLICATE_SUPPORTED_ROUTES' /tmp/reconcile.log; then
-            outcome="duplicate_supported_routes"
+          probe() {
+            local label="$1"
+            local url="$2"
+            local tmp http success state
+            tmp="$(mktemp)"
+            http="$(curl --silent --show-error \
+              -o "$tmp" \
+              -w '%{http_code}' \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H 'Content-Type: application/json' \
+              "$url" || true)"
+            success="$(jq -r 'if .success == true then "true" else "false" end' "$tmp" 2>/dev/null || echo false)"
+            rm -f "$tmp"
+
+            if [[ "$http" =~ ^2[0-9][0-9]$ && "$success" == "true" ]]; then
+              state="ok"
+            elif [[ "$http" =~ ^2[0-9][0-9]$ ]]; then
+              state="api_denied_http_${http}"
+            else
+              state="http_${http:-000}"
+            fi
+            printf '%s=%s' "$label" "$state"
+          }
+
+          parts=()
+          parts+=("$(probe user_token 'https://api.cloudflare.com/client/v4/user/tokens/verify')")
+
+          if [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]]; then
+            parts+=("$(probe account_token "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/tokens/verify")")
+            parts+=("$(probe addresses_read "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/email/routing/addresses?per_page=1")")
+          else
+            parts+=("account_token=id_missing")
+            parts+=("addresses_read=id_missing")
           fi
 
-          echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
-          echo "LIVE_EMAIL_ROUTING_OUTCOME=$outcome"
+          if [[ -n "${CLOUDFLARE_ZONE_ID:-}" ]]; then
+            parts+=("$(probe zone_read "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}")")
+            parts+=("$(probe routing_dns_read "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/email/routing/dns")")
+            parts+=("$(probe rules_read "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/email/routing/rules?per_page=1")")
+            parts+=("$(probe catch_all_read "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE_ID}/email/routing/rules/catch_all")")
+          else
+            parts+=("zone_read=id_missing")
+            parts+=("routing_dns_read=id_missing")
+            parts+=("rules_read=id_missing")
+            parts+=("catch_all_read=id_missing")
+          fi
 
-      - name: Write sanitized operator receipt
-        if: always()
+          summary="$(IFS='; '; echo "${parts[*]}")"
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
+          echo "CLOUDFLARE_PERMISSION_PROBE_COMPLETE"
+
+      - name: Write sanitized permission receipt
         env:
-          OUTCOME: ${{ steps.reconcile.outputs.outcome }}
+          SUMMARY: ${{ steps.probe.outputs.summary }}
         run: |
           gh issue comment 762 \
             --repo "$GITHUB_REPOSITORY" \
-            --body "Post-merge live Email Routing outcome: \`${OUTCOME:-workflow_failed_before_classification}\`. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
-      - name: Upload routing evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: live-email-routing-${{ github.run_id }}
-          path: artifacts/cloudflare-email-routing-evidence.json
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Fail closed unless fully applied
-        if: steps.reconcile.outputs.outcome != 'applied'
-        run: exit 1
+            --body "Cloudflare read-only permission probe: \`${SUMMARY}\`. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
