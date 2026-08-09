@@ -7,6 +7,8 @@ import {fileURLToPath} from 'node:url';
 const circleV1Path = 'supabase/migrations/0002_circle_v1.sql';
 const phase3Path = 'supabase/migrations/0003_oracle_parentlinks_period_safety.sql';
 const safetyScanPath = 'supabase/migrations/20260619_safety_scan.sql';
+const nonAnonymousGuardPath = 'supabase/migrations/20260629024952_block_anonymous_sessions_from_private_data.sql';
+const privateDataHardeningPath = 'supabase/migrations/20260629032000_complete_parent_bridge_safety_storage_rls.sql';
 const founderAuditPath = 'supabase/migrations/20260701174023_add_founder_audit_system.sql';
 const founderHardenPath = 'supabase/migrations/20260701174034_harden_founder_profile_permissions.sql';
 const founderIdeasPath = 'supabase/migrations/20260701224958_sync_founder_ideas_table.sql';
@@ -17,6 +19,7 @@ const read = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), 'utf8')
 const circleV1 = read(circleV1Path);
 const phase3 = read(phase3Path);
 const safetyScan = read(safetyScanPath);
+const nonAnonymousGuard = read(nonAnonymousGuardPath);
 const founderAudit = read(founderAuditPath);
 const founderHarden = read(founderHardenPath);
 const founderIdeas = read(founderIdeasPath);
@@ -86,6 +89,21 @@ test('canonical Phase 3 migration creates safety prerequisites before hardening'
   assert.match(safetyScan, /alter table public\.safety_alerts/i);
 });
 
+test('canonical non-anonymous session guard exists before private-data hardening', () => {
+  assert.ok(
+    nonAnonymousGuardPath.localeCompare(privateDataHardeningPath) < 0,
+    `${nonAnonymousGuardPath} must sort before ${privateDataHardeningPath}`,
+  );
+  assert.match(nonAnonymousGuard, /create or replace function public\.is_non_anonymous_user\(\)/i);
+  assert.match(nonAnonymousGuard, /returns boolean/i);
+  assert.match(nonAnonymousGuard, /language sql/i);
+  assert.match(nonAnonymousGuard, /\bstable\b/i);
+  assert.match(nonAnonymousGuard, /set search_path = public, pg_temp/i);
+  assert.match(nonAnonymousGuard, /auth\.jwt\(\)\s*->>\s*'is_anonymous'/i);
+  assert.match(nonAnonymousGuard, /revoke all on function public\.is_non_anonymous_user\(\) from public, anon/i);
+  assert.match(nonAnonymousGuard, /grant execute on function public\.is_non_anonymous_user\(\) to authenticated, service_role/i);
+});
+
 test('canonical July 1 founder and Control Room history is ordered and fail-closed', () => {
   assert.ok(founderAuditPath.localeCompare(founderHardenPath) < 0);
   assert.ok(founderHardenPath.localeCompare(founderIdeasPath) < 0);
@@ -107,7 +125,16 @@ test('canonical July 1 founder and Control Room history is ordered and fail-clos
 });
 
 test('replay migration sources contain no remote mutation or history-repair command', () => {
-  const combined = [circleV1, phase3, founderAudit, founderHarden, founderIdeas, controlRoom, runtimeLogger].join('\n');
+  const combined = [
+    circleV1,
+    phase3,
+    nonAnonymousGuard,
+    founderAudit,
+    founderHarden,
+    founderIdeas,
+    controlRoom,
+    runtimeLogger,
+  ].join('\n');
   assert.doesNotMatch(combined, /migration\s+repair\s+--status/i);
   assert.doesNotMatch(combined, /supabase\s+db\s+push/i);
 });
