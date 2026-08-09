@@ -33,9 +33,15 @@ test('canonical rewards migration owns rewards and user-scoped redemptions', () 
 });
 
 test('parent approvals read the production rewards contract, not the retired reward_catalog fork', () => {
-  assert.match(approvals, /\.from\('reward_redemptions'\)/);
-  assert.match(approvals, /reward:rewards\(id, name, description, point_cost, requires_parent_approval\)/);
-  assert.match(approvals, /\.eq\('user_id', teenId\)/);
-  assert.doesNotMatch(approvals, /reward_catalog/);
-  assert.doesNotMatch(approvals, /\.eq\('teen_id', teenId\)[\s\S]*pending_parent/);
+  const start = approvals.indexOf('export async function fetchPendingRewardRedemptions');
+  const end = approvals.indexOf('export async function createBipTask', start);
+  assert.ok(start >= 0 && end > start, 'reward fetch function must exist');
+  const rewardFetch = approvals.slice(start, end);
+
+  assert.match(rewardFetch, /\.from\('reward_redemptions'\)/);
+  assert.match(rewardFetch, /reward:rewards\(id, name, description, point_cost, requires_parent_approval\)/);
+  assert.match(rewardFetch, /\.eq\('user_id', teenId\)/);
+  assert.match(rewardFetch, /\.eq\('status', 'pending_parent'\)/);
+  assert.doesNotMatch(rewardFetch, /reward_catalog/);
+  assert.doesNotMatch(rewardFetch, /\.eq\('teen_id', teenId\)/);
 });
