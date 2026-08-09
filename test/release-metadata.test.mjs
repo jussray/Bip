@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {execFileSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -44,6 +45,25 @@ test('non-main builds resolve as previews unless explicitly overridden', () => {
   assert.equal(metadata.environment, 'preview');
   assert.equal(metadata.canonicalUrl, null);
   assert.equal(metadata.surface, 'web-front-door');
+});
+
+test('GitHub exact-head builds stamp the checked-out commit instead of the synthetic pull-request merge SHA', () => {
+  const checkedOutHead = execFileSync('git', ['rev-parse', 'HEAD'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim().toLowerCase();
+
+  const metadata = resolveReleaseMetadata({
+    GITHUB_SHA: '9999999999999999999999999999999999999999',
+    GITHUB_HEAD_REF: 'fix/exact-head-release-metadata',
+    GITHUB_REF_NAME: '776/merge',
+    GITHUB_RUN_ID: 'run-456',
+  }, process.cwd(), new Date('2026-08-09T18:45:00.000Z'));
+
+  assert.equal(metadata.commitSha, checkedOutHead);
+  assert.equal(metadata.branch, 'fix/exact-head-release-metadata');
+  assert.equal(metadata.deploymentProvider, 'local-or-ci-build');
+  assert.equal(metadata.environment, 'preview');
 });
 
 test('writes identical public release manifests into both supported paths', () => {
