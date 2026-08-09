@@ -3,10 +3,12 @@
 -- All tables use auth.uid() RLS so anon sessions are fully scoped.
 --
 -- Production records this version as applied, but retained bootstrap history and
--- the live table both prove parent_links had is_active / quiet_hours_* /
--- updated_at before later timestamped migrations started depending on them.
--- Keep those pre-ledger base columns here so fresh replay converges without
--- inventing a new historical migration version that production never recorded.
+-- the live table prove parent_links already existed when this recorded CREATE
+-- TABLE IF NOT EXISTS ran. Fresh replay therefore models the verified pre-ledger
+-- union shape here: is_active / quiet_hours_* / updated_at were already present,
+-- while invite_code and expires_at were nullable so redemption could consume and
+-- clear them. This avoids inventing a new historical migration version that
+-- production never recorded.
 
 CREATE TABLE IF NOT EXISTS public.oracle_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -31,10 +33,10 @@ CREATE TABLE IF NOT EXISTS public.parent_links (
   is_active boolean NOT NULL DEFAULT true,
   quiet_hours_start time,
   quiet_hours_end time,
-  invite_code text NOT NULL UNIQUE,
+  invite_code text UNIQUE,
   status text NOT NULL DEFAULT 'pending',
   linked_at timestamptz,
-  expires_at timestamptz NOT NULL DEFAULT (now() + interval '48 hours'),
+  expires_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
