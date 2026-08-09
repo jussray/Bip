@@ -21,17 +21,21 @@ function clean(value) {
 }
 
 export function resolveReleaseMetadata(env = process.env, cwd = process.cwd(), now = new Date()) {
+  const checkedOutCommit = gitValue(['rev-parse', 'HEAD'], cwd);
+  const checkedOutBranch = gitValue(['symbolic-ref', '--short', '-q', 'HEAD'], cwd);
+
   const commitSha = (
     clean(env.CF_PAGES_COMMIT_SHA)
+    || checkedOutCommit
     || clean(env.GITHUB_SHA)
-    || gitValue(['rev-parse', 'HEAD'], cwd)
     || 'unknown'
   ).toLowerCase();
 
   const branch = (
     clean(env.CF_PAGES_BRANCH)
+    || clean(env.GITHUB_HEAD_REF)
+    || checkedOutBranch
     || clean(env.GITHUB_REF_NAME)
-    || gitValue(['rev-parse', '--abbrev-ref', 'HEAD'], cwd)
     || 'unknown'
   );
 
