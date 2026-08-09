@@ -101,6 +101,7 @@ export default function LoginScreen() {
 
     const sb = getSupabase();
     if (!sb) return;
+    const supabase = sb;
 
     let active = true;
     let routed = false;
@@ -114,7 +115,7 @@ export default function LoginScreen() {
           if (parsed.kind === 'error') return;
 
           if (parsed.kind === 'tokens') {
-            const { error: sessionError } = await sb.auth.setSession({
+            const { error: sessionError } = await supabase.auth.setSession({
               access_token: parsed.accessToken,
               refresh_token: parsed.refreshToken,
             });
@@ -124,7 +125,7 @@ export default function LoginScreen() {
 
         const {
           data: { session },
-        } = await sb.auth.getSession();
+        } = await supabase.auth.getSession();
         if (!active || !session?.user || session.user.is_anonymous) return;
 
         const bootstrap = await fetchPostAuthBootstrap(preferredSide);
