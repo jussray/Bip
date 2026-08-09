@@ -25,11 +25,13 @@ permissions:
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  CODEQL_SETTLE_TIMEOUT_MS: '1080000'
+  CODEQL_POLL_MS: '10000'
 
 jobs:
   codeql-pr-alert-proof:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 25
     steps:
       - name: Checkout exact pull-request head
         uses: actions/checkout@v4
