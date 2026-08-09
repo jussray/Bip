@@ -1,9 +1,10 @@
 // src/utils/parentApprovals.ts
 //
-// Parent-side data layer for the chore/task and reward-redemption approval
-// flow. The Supabase schema and RPCs already exist and are RLS-scoped to the
-// active parent_links row (see supabase/migrations/20260627193000_phase_2_tasks_approvals_rewards.sql);
-// this file is the first client to call them.
+// Parent-side data layer for chore/task and reward-redemption approvals.
+// Tasks use the canonical July 4 Bip task migrations. Rewards use the live
+// `rewards` / `reward_redemptions.user_id` contract created by
+// 20260629023925_add_rewards_and_redemption_transaction.sql and reconciled by
+// 20260704013330_reconcile_live_reward_redemption.sql.
 
 import { getSupabase } from './supabase';
 
@@ -42,23 +43,21 @@ export interface PendingTaskSubmission {
   task: BipTask | null;
 }
 
-export interface RewardCatalogItem {
+export interface RewardItem {
   id: string;
-  slug: string;
   name: string;
   description: string | null;
-  category: 'digital' | 'merch' | 'experience' | 'custom';
   point_cost: number;
-  fulfillment_type: 'manual' | 'digital' | 'shopify';
+  requires_parent_approval: boolean;
 }
 
 export interface PendingRewardRedemption {
   id: string;
-  teen_id: string;
+  user_id: string;
   reward_id: string;
   point_cost: number;
   requested_at: string;
-  reward: RewardCatalogItem | null;
+  reward: RewardItem | null;
 }
 
 export async function fetchParentTasks(teenId: string): Promise<BipTask[]> {
@@ -93,8 +92,8 @@ export async function fetchPendingRewardRedemptions(teenId: string): Promise<Pen
   if (!sb || !teenId) return [];
   const { data } = await sb
     .from('reward_redemptions')
-    .select('id, teen_id, reward_id, point_cost, requested_at, reward:reward_catalog(id, slug, name, description, category, point_cost, fulfillment_type)')
-    .eq('teen_id', teenId)
+    .select('id, user_id, reward_id, point_cost, requested_at, reward:rewards(id, name, description, point_cost, requires_parent_approval)')
+    .eq('user_id', teenId)
     .eq('status', 'pending_parent')
     .order('requested_at', { ascending: false });
   return (data ?? []).map((row: any) => ({
