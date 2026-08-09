@@ -235,7 +235,7 @@ async function main() {
 
   console.log(`CodeQL PR alert proof: js=${javascriptAnalysisCheck.conclusion ?? 'unknown'} codeql=${codeqlCheck.conclusion ?? 'unknown'} currentHeadAlerts=${currentHeadAlerts.length} staleAlerts=${staleAlerts.length}`);
 
-  if (codeqlCheck.conclusion === 'failure' || currentHeadAlerts.length > 0) {
+  if (codeqlCheck.conclusion !== 'success' || currentHeadAlerts.length > 0) {
     throw new Error(`CodeQL current-head gate failed: conclusion=${codeqlCheck.conclusion ?? 'unknown'} currentHeadAlerts=${currentHeadAlerts.length}`);
   }
 }
