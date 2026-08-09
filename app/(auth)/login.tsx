@@ -112,7 +112,10 @@ export default function LoginScreen() {
       try {
         if (Platform.OS !== 'web') {
           const parsed = parseEmailConfirmationUrl(url);
-          if (parsed.kind === 'error') return;
+          if (parsed.kind === 'error') {
+            setError(parsed.message);
+            return;
+          }
 
           if (parsed.kind === 'tokens') {
             const { error: sessionError } = await supabase.auth.setSession({
