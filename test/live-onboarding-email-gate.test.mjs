@@ -48,7 +48,7 @@ test('opaque 504 signup responses enter the existing ambiguous recovery path', (
   assert.match(source, /function authErrorStatus\(error: unknown\): number \| null/);
   assert.match(source, /if \(authErrorStatus\(error\) === 504\) return true;/);
   assert.match(source, /const status = authErrorStatus\(error\);\s*return status !== null && status >= 400;/);
-  assert.match(source, /if \(isAmbiguousSignupError\(authErr\)\) \{[\s\S]*recoverAmbiguousSignup\(sb, e, p, metadata, authErr\)/);
+  assert.match(source, /if \(isAmbiguousSignupError\(authErr\)\) \{[\s\S]*recoverAmbiguousSignup\(sb, e, p, metadata, redirectTo, authErr\)/);
   assert.match(source, /The account server received your signup request, but confirmation is delayed/);
 });
 
