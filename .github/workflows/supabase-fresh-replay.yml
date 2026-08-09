@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - 'supabase/migrations/**'
+      - 'src/utils/parentApprovals.ts'
       - 'test/supabase-foundation-replay-contract.test.mjs'
+      - 'test/rewards-history-replay-contract.test.mjs'
       - '.github/workflows/supabase-fresh-replay.yml'
   workflow_dispatch:
 
@@ -34,8 +36,11 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Verify reconstructed foundation contract
-        run: node --test test/supabase-foundation-replay-contract.test.mjs
+      - name: Verify reconstructed foundation contracts
+        run: >-
+          node --test
+          test/supabase-foundation-replay-contract.test.mjs
+          test/rewards-history-replay-contract.test.mjs
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
