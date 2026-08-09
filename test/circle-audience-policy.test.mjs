@@ -20,11 +20,14 @@ test('Circle remains the social world and audience layers stay canonical', () =>
 test('Bridge remains outside Circle and preserves its private teen-to-parent boundary', () => {
   const policy = read('src/features/circle/audiencePolicy.ts');
   const purposes = read('src/constants/screenPurpose.ts');
+  const audienceType = policy.match(/export type CircleAudienceKey =([\s\S]*?);/)?.[1] ?? '';
 
+  assert.notEqual(audienceType, '');
+  assert.equal(audienceType.includes('bridge'), false);
   assert.equal(policy.includes("label: 'Family / Bridge'"), false);
-  assert.equal(policy.includes('Bridge remains a separate private teen-to-parent product boundary'), true);
-  assert.equal(policy.includes('must not be modeled as a Circle audience'), true);
+  assert.equal(purposes.includes("{ id: 'circle', side: 'teen'"), true);
   assert.equal(purposes.includes("mustNotBecome: ['parent communication', 'private journaling', 'family messaging']"), true);
+  assert.equal(purposes.includes("{ id: 'bridge', side: 'teen'"), true);
   assert.equal(purposes.includes("mustNotBecome: ['Circle', 'public community', 'parent surveillance']"), true);
 });
 

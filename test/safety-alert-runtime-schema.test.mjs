@@ -21,7 +21,7 @@ const runtimeMigrationPath = path.join(
   root,
   'supabase',
   'migrations',
-  '20260622190209_remote_history.sql',
+  '0003_oracle_parentlinks_period_safety.sql',
 );
 const coordinatorPath = path.join(root, 'src', 'features', 'safety', 'safetyCoordinator.ts');
 const edgePath = path.join(root, 'supabase', 'functions', 'safety-scan', 'index.ts');

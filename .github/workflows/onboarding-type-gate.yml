@@ -34,6 +34,16 @@ on:
       - test/onboarding-stage-contract.test.mjs
       - test/bridge-learning-teaching-contract.test.mjs
       - test/journal-avatar-presentation.test.mjs
+      - test/account-profile-source-of-truth.test.mjs
+      - test/circle-audience-policy.test.mjs
+      - test/control-room-event-logging-contract.test.mjs
+      - test/limited-mode-flow.test.mjs
+      - test/parent-linking.test.mjs
+      - test/parent-verification-transition.test.mjs
+      - test/points-rewards-rpc-contract.test.mjs
+      - test/safety-alert-runtime-schema.test.mjs
+      - test/supabase-bridge-rls-authorization.test.mjs
+      - test/trigger-function-hardening.test.mjs
       - e2e/smoke.spec.ts
       - package.json
       - package-lock.json
