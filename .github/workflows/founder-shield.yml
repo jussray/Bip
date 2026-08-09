@@ -10,6 +10,7 @@ on:
       - worker/voice-entry.ts
       - public/_headers
       - test/worker-auth.test.mjs
+      - test/front-door-security-telemetry.test.mjs
       - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
       - .dev.vars.example
@@ -27,6 +28,7 @@ on:
       - worker/voice-entry.ts
       - public/_headers
       - test/worker-auth.test.mjs
+      - test/front-door-security-telemetry.test.mjs
       - test/cloudflare-worker-consolidation.test.mjs
       - wrangler.toml
       - .dev.vars.example
@@ -61,8 +63,8 @@ jobs:
       - name: Verify policy against runtime authority
         run: node scripts/verify-firewall-v10.mjs
 
-      - name: Verify auth, CORS, headers, and rate-limit contracts
-        run: node --test test/worker-auth.test.mjs
+      - name: Verify auth, CORS, headers, rate-limit, and denial telemetry contracts
+        run: node --test test/worker-auth.test.mjs test/front-door-security-telemetry.test.mjs
 
       - name: Verify Worker authority contract
         run: node --test test/cloudflare-worker-consolidation.test.mjs
