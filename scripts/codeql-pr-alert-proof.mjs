@@ -119,6 +119,10 @@ function isMissingConfigurationNeutral(check) {
   return text.includes('configuration not found') || text.includes('configurations not found');
 }
 
+function isExecutedJavascriptFailure(check) {
+  return check?.status === 'completed' && check.conclusion === 'failure';
+}
+
 async function listOpenPrAlerts(owner, repo, pr) {
   const alerts = [];
   for (let page = 1; page <= 10; page += 1) {
@@ -164,7 +168,7 @@ async function main() {
     const aggregateTerminal = codeqlCheck?.status === 'completed';
     const aggregateSettled = aggregateTerminal && !isMissingConfigurationNeutral(codeqlCheck);
 
-    if (javascriptTerminal && javascriptAnalysisCheck.conclusion !== 'success') break;
+    if (isExecutedJavascriptFailure(javascriptAnalysisCheck)) break;
     if (javascriptTerminal && aggregateSettled) break;
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }
@@ -178,6 +182,7 @@ async function main() {
   const aggregateTerminal = codeqlCheck?.status === 'completed';
   const aggregateSettled = aggregateTerminal && !isMissingConfigurationNeutral(codeqlCheck);
   const javascriptPassed = javascriptTerminal && javascriptAnalysisCheck.conclusion === 'success';
+  const javascriptExecutedFailure = isExecutedJavascriptFailure(javascriptAnalysisCheck);
   const elapsedMs = Date.now() - startedAt;
 
   const baseSummary = [
@@ -193,12 +198,12 @@ async function main() {
     `codeql_missing_configuration=${isMissingConfigurationNeutral(codeqlCheck)}`,
   ];
 
-  if (javascriptTerminal && !javascriptPassed) {
+  if (javascriptExecutedFailure) {
     save('summary.txt', [...baseSummary, 'proof_state=failed'].join('\n'));
     throw new Error(`JavaScript CodeQL analysis failed: conclusion=${javascriptAnalysisCheck?.conclusion ?? 'unknown'}`);
   }
 
-  if (!javascriptTerminal || !aggregateSettled) {
+  if (!javascriptTerminal || !javascriptPassed || !aggregateSettled) {
     save('summary.txt', [...baseSummary, 'proof_state=unsettled'].join('\n'));
     throw new Error(`CodeQL evidence remained unsettled for current head after ${elapsedMs}ms`);
   }
