@@ -23,7 +23,7 @@ test('every permanent signup path carries durable approved identity metadata', (
 
   assert.match(
     signup,
-    /auth\.updateUser\(\s*\{\s*email:\s*e,[\s\S]*?password:\s*p,[\s\S]*?data:\s*metadata,[\s\S]*?\},\s*\{\s*emailRedirectTo:\s*redirectTo\s*\}\s*\)/,
+    /auth\.updateUser\(\s*\{\s*email:\s*e,[\s\S]*?password:\s*p,[\s\S]*?data:\s*metadata,[\s\S]*?\},\s*\{\s*emailRedirectTo:\s*redirectTo\s*\},\s*\)/,
   );
   assert.match(
     signup,
