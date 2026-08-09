@@ -8,15 +8,9 @@ on:
         required: true
         default: false
         type: boolean
-  push:
-    branches:
-      - main
-    paths:
-      - ops/email-routing-repair.trigger
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: cloudflare-email-routing-production
@@ -30,7 +24,6 @@ env:
 
 jobs:
   reconcile:
-    if: github.event_name == 'workflow_dispatch'
     name: Plan or apply Bip email routing
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -57,6 +50,22 @@ jobs:
             exit 1
           }
 
+      - name: Verify Cloudflare API token before apply
+        if: inputs.apply == true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            https://api.cloudflare.com/client/v4/user/tokens/verify)"
+          test "$(jq -r '.success // false' <<<"$payload")" = true || {
+            echo 'CLOUDFLARE_API_TOKEN is invalid or revoked. Rotate the repository secret before applying Email Routing.' >&2
+            exit 1
+          }
+
       - name: Reconcile live Cloudflare Email Routing
         if: inputs.apply == true
         env:
@@ -73,81 +82,3 @@ jobs:
           path: artifacts/cloudflare-email-routing-evidence.json
           if-no-files-found: warn
           retention-days: 30
-
-  repair_once:
-    if: github.event_name == 'push'
-    name: Repair Bip email routing once
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Apply and classify routing repair
-        id: repair
-        shell: bash
-        run: |
-          set -uo pipefail
-          outcome="reconcile_failed"
-
-          if [[ -z "${CLOUDFLARE_API_TOKEN:-}" ]]; then
-            outcome="token_missing"
-          else
-            verify_payload="$(curl --silent --show-error \
-              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              https://api.cloudflare.com/client/v4/user/tokens/verify || true)"
-
-            if [[ "$(jq -r '.success // false' <<<"$verify_payload" 2>/dev/null)" != "true" ]]; then
-              outcome="token_invalid"
-            else
-              set +e
-              node scripts/reconcile-cloudflare-email-routing.mjs --apply > /tmp/reconcile.log 2>&1
-              rc=$?
-              set -e
-
-              if [[ $rc -eq 0 ]]; then
-                outcome="applied"
-              elif grep -q 'DESTINATION_VERIFICATION_REQUIRED' /tmp/reconcile.log; then
-                outcome="destination_verification_required"
-              elif grep -Eq '403|permission|not authorized|Authentication error|Unauthorized' /tmp/reconcile.log; then
-                outcome="token_under_scoped"
-              elif grep -q 'ZONE_NOT_FOUND' /tmp/reconcile.log; then
-                outcome="zone_unavailable"
-              fi
-            fi
-          fi
-
-          echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
-
-      - name: Write sanitized operator receipt
-        if: always()
-        env:
-          OUTCOME: ${{ steps.repair.outputs.outcome }}
-        run: |
-          gh issue comment 762 \
-            --repo "$GITHUB_REPOSITORY" \
-            --body "Email routing repair outcome: \`${OUTCOME:-workflow_failed_before_classification}\`. Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-
-      - name: Upload routing evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: email-routing-repair-${{ github.run_id }}
-          path: artifacts/cloudflare-email-routing-evidence.json
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Fail closed unless routing applied
-        if: steps.repair.outputs.outcome != 'applied'
-        run: exit 1
