@@ -127,3 +127,18 @@ test('Bip Jr entry preserves the parent onboarding path', async ({ page }) => {
   await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
   await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
 });
+
+test('Circle renders Open Bip as the public audience layer with the face rule', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/circle', { waitUntil: 'networkidle' });
+
+  await expect(page.getByText('🌐 Circle', { exact: true })).toBeVisible();
+  await expect(page.getByText('🌎 Open Bip', { exact: true })).toBeVisible();
+  await expect(page.getByText('inside Circle · faces stay hidden here', { exact: true })).toBeVisible();
+  await expect(page.getByText('Public Circle and public niches. Visible faces are not allowed.', { exact: true })).toBeVisible();
+
+  await testInfo.attach('circle-open-bip-audience.png', {
+    body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
+    contentType: 'image/png',
+  });
+});
