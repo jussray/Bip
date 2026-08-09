@@ -98,3 +98,5 @@ jobs:
       - name: Fail closed unless fully applied
         if: steps.repair.outputs.outcome != 'applied'
         run: exit 1
+
+# trigger: rotated token verification 2026-08-08T22:35-04:00
