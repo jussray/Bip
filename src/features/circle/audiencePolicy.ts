@@ -4,7 +4,6 @@ export type CircleAudienceKey =
   | 'friends'
   | 'friend_group'
   | 'crew'
-  | 'family_bridge'
   | 'private';
 
 export type CircleFacePolicy =
@@ -27,9 +26,9 @@ export interface CircleAudiencePolicy {
  * Se'kret Bip -> Circle -> audience layer -> post.
  *
  * Circle is the larger social world. Open Bip, Community, Friends, private
- * friend groups, Crew, Family / Bridge, and Just Me are audience layers in
- * that world. The Family / Bridge audience is explicitly shared family space;
- * it does not make private Bridge data automatically visible in Circle.
+ * friend groups, Crew, and Just Me are audience layers in that world.
+ * Bridge remains a separate private teen-to-parent product boundary and must
+ * not be modeled as a Circle audience.
  */
 export const CIRCLE_AUDIENCES: Record<CircleAudienceKey, CircleAudiencePolicy> = {
   open_bip: {
@@ -72,14 +71,6 @@ export const CIRCLE_AUDIENCES: Record<CircleAudienceKey, CircleAudiencePolicy> =
     requiresActiveTrust: true,
     description: 'Visible faces are allowed for explicitly selected accepted Crew members.',
   },
-  family_bridge: {
-    key: 'family_bridge',
-    label: 'Family / Bridge',
-    emoji: '🌿',
-    facePolicy: 'allow_with_active_trust',
-    requiresActiveTrust: true,
-    description: 'Visible faces are allowed inside the defined active family or Bridge audience.',
-  },
   private: {
     key: 'private',
     label: 'Just Me / Scrapbook',
@@ -94,7 +85,6 @@ export interface CircleTrustContext {
   mutualFriendAccepted?: boolean;
   activeGroupMembership?: boolean;
   acceptedCrewSelected?: boolean;
-  activeFamilyBridge?: boolean;
   isOwnerOnly?: boolean;
 }
 
@@ -116,8 +106,6 @@ export function canShowVisibleFace(
       return trust.activeGroupMembership === true;
     case 'crew':
       return trust.acceptedCrewSelected === true;
-    case 'family_bridge':
-      return trust.activeFamilyBridge === true;
     case 'private':
       return trust.isOwnerOnly === true;
   }
