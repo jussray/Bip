@@ -126,7 +126,13 @@ $$;
 
 revoke all on function public.award_points_for_bip_event() from public, anon, authenticated;
 
-drop trigger if exists activity_events_award_points on public.activity_events;
+do $
+begin
+  if to_regclass('public.activity_events') is not null then
+    execute 'drop trigger if exists activity_events_award_points on public.activity_events';
+  end if;
+end
+$;
 drop trigger if exists bip_events_award_points on public.bip_events;
 create trigger bip_events_award_points
 after insert on public.bip_events
