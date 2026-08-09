@@ -13,10 +13,17 @@ interface RateLimit {
   limit(options: { key: string }): Promise<{ success: boolean }>;
 }
 
+interface WorkerVersionMetadata {
+  id: string;
+  tag?: string;
+  timestamp: string;
+}
+
 interface Env extends AuthEnv, VoiceProviderEnv {
   ALLOWED_ORIGINS?: string;
   VOICE_PROVIDER_MODE?: 'legacy' | 'cloudflare-only' | 'hybrid';
   SEKRET_RATE_LIMITER?: RateLimit;
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
 }
 
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -126,10 +133,18 @@ async function enforceRateLimit(
   }
 }
 
-function withoutRateLimiter(env: Env): Env {
-  if (!env.SEKRET_RATE_LIMITER) return env;
-  return { ...env, SEKRET_RATE_LIMITER: undefined };
+function workerVersionEvidence(env: Env) {
+  const version = env.CF_VERSION_METADATA;
+  if (!version) return null;
+  return {
+    id: version.id,
+    tag: version.tag ?? null,
+    timestamp: version.timestamp,
+  };
 }
+
+async function handleVoice(request: Request, env: Env, cors: Record<string, string>): Promise<Response> {
+  if (!hasJsonContentType(request)) return json({ error: 'content-type must be application/json' }, 415, cors);
 
 async function handleVoice(
   request: Request,
@@ -217,19 +232,27 @@ export default {
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     const path = new URL(request.url).pathname;
-    const isProtectedApiPost = request.method === 'POST' && path.includes('/api/');
-    let downstreamEnv = env;
-
-    if (isProtectedApiPost) {
-      const auth = await authenticate(request, env);
-      if (!auth.ok) return json({ error: auth.error }, auth.status, cors);
-
-      const limited = await enforceRateLimit(request, env, auth.principal, cors);
-      if (limited) return limited;
-
-      // The front door has already rate-limited this request. Remove the
-      // binding before delegation so downstream routers cannot double-count it.
-      downstreamEnv = withoutRateLimiter(env);
+    if (request.method === 'GET' && path === '/health') {
+      const response = await observedWorker.fetch(request, env as never, ctx);
+      if (!response.ok) return response;
+      try {
+        const data = await response.clone().json() as Record<string, unknown>;
+        return json({
+          ...data,
+          version: workerVersionEvidence(env),
+        }, response.status, cors);
+      } catch (error) {
+        console.error('[voice-entry:health]', {
+          error: error instanceof Error ? error.message : 'invalid delegated health response',
+        });
+        return json({
+          ok: false,
+          worker: 'sekret-backend',
+          router: 'voice-entry',
+          error: 'invalid delegated health response',
+          version: workerVersionEvidence(env),
+        }, 502, cors);
+      }
     }
 
     if (request.method === 'POST' && path.endsWith('/api/sekret/voice')) {

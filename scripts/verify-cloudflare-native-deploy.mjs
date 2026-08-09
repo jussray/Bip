@@ -70,13 +70,38 @@ export function evaluateReleaseMarker(marker, expectedSha) {
   };
 }
 
-export function classifyCloudflareReadiness(checkEvaluation, releaseEvaluation) {
+export function evaluateWorkerRuntime(health, expectedSha) {
+  const normalizedExpected = String(expectedSha ?? '').trim().toLowerCase();
+  const version = health?.version && typeof health.version === 'object' ? health.version : null;
+  const versionId = typeof version?.id === 'string' ? version.id.trim() : '';
+  const versionTag = typeof version?.tag === 'string' ? version.tag.trim().toLowerCase() : '';
+  const versionTimestamp = typeof version?.timestamp === 'string' ? version.timestamp : null;
+  const healthOk = health?.ok === true;
+
+  return {
+    complete: Boolean(normalizedExpected) && healthOk && Boolean(versionId) && versionTag === normalizedExpected,
+    healthAvailable: Boolean(health && typeof health === 'object'),
+    healthOk,
+    expectedSha: normalizedExpected,
+    versionId: versionId || null,
+    versionTag: versionTag || null,
+    versionTimestamp,
+    health: health && typeof health === 'object' ? health : null,
+  };
+}
+
+export function classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, workerEvaluation) {
   if (checkEvaluation.failed.length > 0) return 'worker-failed';
   if (checkEvaluation.unsuccessful.length > 0) return 'worker-unsuccessful';
   if (checkEvaluation.missing.length > 0) return 'worker-missing';
   if (checkEvaluation.pending.length > 0) return 'worker-pending';
   if (!releaseEvaluation.actualSha) return 'pages-marker-missing';
   if (!releaseEvaluation.complete) return 'pages-marker-stale';
+  if (!workerEvaluation?.healthAvailable) return 'worker-health-missing';
+  if (!workerEvaluation.healthOk) return 'worker-health-unhealthy';
+  if (!workerEvaluation.versionId) return 'worker-version-missing';
+  if (!workerEvaluation.versionTag) return 'worker-version-tag-missing';
+  if (!workerEvaluation.complete) return 'worker-version-stale';
   return 'ready';
 }
 
@@ -109,8 +134,8 @@ async function fetchCheckRuns({repository, sha, token}) {
   return Array.isArray(payload.check_runs) ? payload.check_runs : [];
 }
 
-async function fetchReleaseMarker(releaseUrl) {
-  const url = new URL(releaseUrl);
+async function fetchJsonWithNoCache(rawUrl) {
+  const url = new URL(rawUrl);
   url.searchParams.set('verify', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const response = await fetch(url, {
     headers: {
@@ -120,6 +145,14 @@ async function fetchReleaseMarker(releaseUrl) {
   });
   if (!response.ok) return null;
   return response.json().catch(() => null);
+}
+
+async function fetchReleaseMarker(releaseUrl) {
+  return fetchJsonWithNoCache(releaseUrl);
+}
+
+async function fetchWorkerHealth(backendHealthUrl) {
+  return fetchJsonWithNoCache(backendHealthUrl);
 }
 
 function publicCheckEvidence(run) {
@@ -140,22 +173,24 @@ export function buildCloudflareEvidence({
   repository,
   sha,
   releaseUrl,
+  backendHealthUrl,
   checkEvaluation,
   releaseEvaluation,
+  workerEvaluation,
   allCheckRuns = [],
   startedAtMs,
   observedAtMs,
   status,
   observerError = null,
 }) {
-  const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation);
-  const complete = checkEvaluation.complete && releaseEvaluation.complete;
+  const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, workerEvaluation);
+  const complete = checkEvaluation.complete && releaseEvaluation.complete && workerEvaluation.complete;
   const optionalChecks = Object.fromEntries(
     OPTIONAL_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(selectNewestCheck(allCheckRuns, name))]),
   );
 
   return {
-    version: 3,
+    version: 4,
     repository,
     commitSha: sha,
     expectedSha: String(sha ?? '').trim().toLowerCase(),
@@ -186,6 +221,15 @@ export function buildCloudflareEvidence({
       complete: releaseEvaluation.complete,
       marker: releaseEvaluation.marker,
     },
+    workerRuntime: {
+      url: backendHealthUrl,
+      expectedSha: workerEvaluation.expectedSha,
+      versionId: workerEvaluation.versionId,
+      versionTag: workerEvaluation.versionTag,
+      versionTimestamp: workerEvaluation.versionTimestamp,
+      healthOk: workerEvaluation.healthOk,
+      complete: workerEvaluation.complete,
+    },
   };
 }
 
@@ -194,12 +238,13 @@ function writeEvidence(evidencePath, evidence) {
   fs.writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
 }
 
-function waitingFor(checkEvaluation, releaseEvaluation) {
+function waitingFor(checkEvaluation, releaseEvaluation, workerEvaluation) {
   return [
     ...checkEvaluation.missing,
     ...checkEvaluation.pending,
     ...checkEvaluation.unsuccessful,
     ...(releaseEvaluation.complete ? [] : [`Pages release marker ${releaseEvaluation.actualSha ?? 'missing'} -> ${releaseEvaluation.expectedSha}`]),
+    ...(workerEvaluation.complete ? [] : [`Worker version tag ${workerEvaluation.versionTag ?? 'missing'} -> ${workerEvaluation.expectedSha}`]),
   ];
 }
 
@@ -208,6 +253,7 @@ async function verifyCloudflareNativeDeploy() {
   const sha = process.env.GITHUB_SHA;
   const token = process.env.GITHUB_TOKEN;
   const releaseUrl = process.env.FRONTEND_RELEASE_URL ?? 'https://sekretbip.net/release.json';
+  const backendHealthUrl = process.env.BACKEND_HEALTH_URL ?? 'https://api.sekretbip.net/health';
   const timeoutMs = Number(process.env.CLOUDFLARE_CHECK_TIMEOUT_MS ?? 25 * 60 * 1000);
   const pollMs = Number(process.env.CLOUDFLARE_CHECK_POLL_MS ?? 10_000);
   const evidencePath = process.env.CLOUDFLARE_EVIDENCE_PATH ?? 'artifacts/cloudflare-native-deploy.json';
@@ -220,13 +266,16 @@ async function verifyCloudflareNativeDeploy() {
   const deadline = startedAtMs + timeoutMs;
   let checkEvaluation = evaluateCloudflareChecks([]);
   let releaseEvaluation = evaluateReleaseMarker(null, sha);
+  let workerEvaluation = evaluateWorkerRuntime(null, sha);
   let allCheckRuns = [];
   let latestEvidence = buildCloudflareEvidence({
     repository,
     sha,
     releaseUrl,
+    backendHealthUrl,
     checkEvaluation,
     releaseEvaluation,
+    workerEvaluation,
     allCheckRuns,
     startedAtMs,
     observedAtMs: startedAtMs,
@@ -243,8 +292,10 @@ async function verifyCloudflareNativeDeploy() {
         repository,
         sha,
         releaseUrl,
+        backendHealthUrl,
         checkEvaluation,
         releaseEvaluation,
+        workerEvaluation,
         allCheckRuns,
         startedAtMs,
         observedAtMs,
@@ -256,17 +307,23 @@ async function verifyCloudflareNativeDeploy() {
     }
 
     checkEvaluation = evaluateCloudflareChecks(allCheckRuns);
-    const marker = await fetchReleaseMarker(releaseUrl).catch(() => null);
+    const [marker, workerHealth] = await Promise.all([
+      fetchReleaseMarker(releaseUrl).catch(() => null),
+      fetchWorkerHealth(backendHealthUrl).catch(() => null),
+    ]);
     releaseEvaluation = evaluateReleaseMarker(marker, sha);
-    const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation);
-    const complete = checkEvaluation.complete && releaseEvaluation.complete;
+    workerEvaluation = evaluateWorkerRuntime(workerHealth, sha);
+    const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, workerEvaluation);
+    const complete = checkEvaluation.complete && releaseEvaluation.complete && workerEvaluation.complete;
 
     latestEvidence = buildCloudflareEvidence({
       repository,
       sha,
       releaseUrl,
+      backendHealthUrl,
       checkEvaluation,
       releaseEvaluation,
+      workerEvaluation,
       allCheckRuns,
       startedAtMs,
       observedAtMs,
@@ -285,7 +342,7 @@ async function verifyCloudflareNativeDeploy() {
       return;
     }
 
-    const blockers = [...new Set(waitingFor(checkEvaluation, releaseEvaluation))];
+    const blockers = [...new Set(waitingFor(checkEvaluation, releaseEvaluation, workerEvaluation))];
     console.log(
       `Waiting for exact production release [${readinessState}] after ${latestEvidence.elapsedMs}ms: ${blockers.join(', ')}`,
     );
@@ -297,8 +354,10 @@ async function verifyCloudflareNativeDeploy() {
     repository,
     sha,
     releaseUrl,
+    backendHealthUrl,
     checkEvaluation,
     releaseEvaluation,
+    workerEvaluation,
     allCheckRuns,
     startedAtMs,
     observedAtMs,
@@ -307,7 +366,7 @@ async function verifyCloudflareNativeDeploy() {
   writeEvidence(evidencePath, latestEvidence);
 
   throw new Error(
-    `Timed out waiting for the exact production release [${latestEvidence.readinessState}]. Worker missing: ${checkEvaluation.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; expected: ${sha}; evidence: ${evidencePath}`,
+    `Timed out waiting for the exact production release [${latestEvidence.readinessState}]. Worker missing: ${checkEvaluation.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; Worker tag: ${workerEvaluation.versionTag ?? 'missing'}; expected: ${sha}; evidence: ${evidencePath}`,
   );
 }
 

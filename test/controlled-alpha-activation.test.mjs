@@ -74,7 +74,7 @@ test('controlled-alpha commands are explicit and cannot silently deploy producti
   );
   assert.equal(
     pkg.scripts['deploy:api:production'],
-    'node scripts/assert-production-deploy-branch.mjs && wrangler deploy',
+    'node scripts/assert-production-deploy-branch.mjs && node scripts/deploy-cloudflare-worker.mjs',
   );
   assert.equal(pkg.scripts['deploy:worker'], 'npm run deploy:api:production');
 });

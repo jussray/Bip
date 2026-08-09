@@ -20,7 +20,7 @@ test('current repository authority stays internally consistent', () => {
   assert.equal(pkg.scripts['deploy:worker'], 'npm run deploy:api:production');
   assert.equal(
     pkg.scripts['deploy:api:production'],
-    'node scripts/assert-production-deploy-branch.mjs && wrangler deploy',
+    'node scripts/assert-production-deploy-branch.mjs && node scripts/deploy-cloudflare-worker.mjs',
   );
   assert.ok(ownership.includes('`worker/voice-entry.ts`'));
   assert.ok(emailRouting.includes('`worker/voice-entry.ts`'));

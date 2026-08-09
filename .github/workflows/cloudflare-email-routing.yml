@@ -50,6 +50,22 @@ jobs:
             exit 1
           }
 
+      - name: Verify Cloudflare API token before apply
+        if: inputs.apply == true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          payload="$(curl --fail-with-body --silent --show-error \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            https://api.cloudflare.com/client/v4/user/tokens/verify)"
+          test "$(jq -r '.success // false' <<<"$payload")" = true || {
+            echo 'CLOUDFLARE_API_TOKEN is invalid or revoked. Rotate the repository secret before applying Email Routing.' >&2
+            exit 1
+          }
+
       - name: Reconcile live Cloudflare Email Routing
         if: inputs.apply == true
         env:

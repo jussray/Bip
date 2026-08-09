@@ -15,7 +15,7 @@ const workflow = fs.readFileSync(new URL('../.github/workflows/deploy-cloudflare
 
 function releaseEvidence(overrides = {}) {
   return {
-    version: 3,
+    version: 4,
     repository: 'jussray/Sekret-Bip',
     commitSha: SHA,
     expectedSha: SHA,
@@ -43,6 +43,15 @@ function releaseEvidence(overrides = {}) {
         deploymentId: 'deployment-123',
       },
     },
+    workerRuntime: {
+      url: 'https://api.sekretbip.net/health',
+      expectedSha: SHA,
+      versionId: 'worker-version-123',
+      versionTag: SHA,
+      versionTimestamp: '2026-08-04T19:59:00.000Z',
+      healthOk: true,
+      complete: true,
+    },
     ...overrides,
   };
 }
@@ -54,10 +63,19 @@ function jsonResponse(value, status = 200) {
   });
 }
 
-test('accepts only complete exact-SHA production evidence', () => {
+test('accepts only complete exact-SHA v4 production evidence', () => {
   const result = validateReleaseEvidence(releaseEvidence(), SHA.toUpperCase());
   assert.equal(result.expectedSha, SHA);
   assert.equal(result.pagesRelease.complete, true);
+  assert.equal(result.workerRuntime.complete, true);
+  assert.equal(result.workerRuntime.versionTag, SHA);
+});
+
+test('rejects legacy v3 release evidence even when it otherwise looks complete', () => {
+  assert.throws(
+    () => validateReleaseEvidence(releaseEvidence({version: 3}), SHA),
+    /Release evidence version 4 is required/,
+  );
 });
 
 test('rejects stale Pages release evidence', () => {
@@ -72,6 +90,28 @@ test('rejects stale Pages release evidence', () => {
       SHA,
     ),
     /Pages release marker is not exact/,
+  );
+});
+
+test('rejects missing Worker runtime evidence', () => {
+  assert.throws(
+    () => validateReleaseEvidence(releaseEvidence({workerRuntime: null}), SHA),
+    /Worker runtime evidence must be an object/,
+  );
+});
+
+test('rejects stale Worker runtime identity even when checks and Pages are green', () => {
+  assert.throws(
+    () => validateReleaseEvidence(
+      releaseEvidence({
+        workerRuntime: {
+          ...releaseEvidence().workerRuntime,
+          versionTag: '1dba83386eb0a0865d051f2c74ae9046dafb5eeb',
+        },
+      }),
+      SHA,
+    ),
+    /Worker runtime identity is not exact/,
   );
 });
 
@@ -92,7 +132,7 @@ test('rejects incomplete Worker evidence', () => {
   );
 });
 
-test('builds an immutable exact-release receipt', () => {
+test('builds an immutable exact-release receipt with Worker identity', () => {
   const comment = buildReleaseObservationComment({
     evidence: releaseEvidence(),
     expectedSha: SHA,
@@ -103,6 +143,8 @@ test('builds an immutable exact-release receipt', () => {
   assert.match(comment, new RegExp(RELEASE_OBSERVATION_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(comment, new RegExp(SHA));
   assert.match(comment, /Pages branch: `main`/);
+  assert.match(comment, /Worker version ID: `worker-version-123`/);
+  assert.ok(comment.includes('Worker version tag: `' + SHA + '`'));
   assert.match(comment, /Backend health: `passed`/);
   assert.match(comment, /Production Playwright: `passed`/);
   assert.match(comment, /actions\/runs\/30779990000/);
@@ -114,12 +156,17 @@ test('builds a separate blocked receipt without claiming verification', () => {
     evidence: releaseEvidence({
       status: 'timed-out',
       complete: false,
-      readinessState: 'pages-marker-stale',
+      readinessState: 'worker-version-stale',
       verifiedAt: null,
       checkSummary: {missing: [], pending: [], failed: [], unsuccessful: []},
       pagesRelease: {
         ...releaseEvidence().pagesRelease,
         commitSha: staleSha,
+        complete: false,
+      },
+      workerRuntime: {
+        ...releaseEvidence().workerRuntime,
+        versionTag: staleSha,
         complete: false,
       },
     }),
@@ -131,8 +178,10 @@ test('builds a separate blocked receipt without claiming verification', () => {
 
   assert.match(comment, new RegExp(RELEASE_BLOCKER_MARKER.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(comment, /## BLOCKED:/);
-  assert.match(comment, /pages-marker-stale/);
+  assert.match(comment, /worker-version-stale/);
+  assert.match(comment, /Evidence version: `4`/);
   assert.match(comment, new RegExp(staleSha));
+  assert.match(comment, /Worker version exact: `no`/);
   assert.match(comment, /cloudflare_release: `failure`/);
   assert.match(comment, /not a production pass/);
   assert.doesNotMatch(comment, /## VERIFIED:/);
