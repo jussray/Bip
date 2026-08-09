@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const migrationsDir = path.join(root, 'supabase', 'migrations');
-const summaryContractPath = path.join(migrationsDir, '20260705010000_bridge_summary_contract.sql');
+const summaryContractPath = path.join(migrationsDir, '20260705050121_bridge_summary_contract.sql');
 const legacyGuardPath = path.join(
   migrationsDir,
   '20260629032000_complete_parent_bridge_safety_storage_rls.sql',
