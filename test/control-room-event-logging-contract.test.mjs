@@ -13,7 +13,7 @@ import test from 'node:test';
 //
 // Static source-assertion test (no live Supabase calls), matching the
 // pattern used by test/crew-invite-redemption-contract.test.mjs.
-const loggerPath = 'supabase/migrations/20260701_runtime_logger_rpc.sql';
+const loggerPath = 'supabase/migrations/20260701050000_runtime_logger_rpc.sql';
 const issuePath = 'supabase/migrations/20260710235500_report_own_audit_event_issue.sql';
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
