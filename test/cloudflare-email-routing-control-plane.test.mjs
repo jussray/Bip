@@ -57,7 +57,7 @@ test('duplicate supported aliases are detected before reconciliation', () => {
   ]);
 });
 
-test('email routing workflow is manual, secrets-backed, and retains apply evidence', () => {
+test('email routing workflow is manual, secrets-backed, token-type-aware, and retains apply evidence', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-email-routing.yml', import.meta.url),
     'utf8',
@@ -75,12 +75,19 @@ test('email routing workflow is manual, secrets-backed, and retains apply eviden
   assert.match(workflow, /secrets\.CLOUDFLARE_ACCOUNT_ID/);
   assert.doesNotMatch(workflow, /vars\.CLOUDFLARE_ZONE_ID/);
   assert.doesNotMatch(workflow, /vars\.CLOUDFLARE_ACCOUNT_ID/);
+  assert.doesNotMatch(workflow, /test -n "\$CLOUDFLARE_ZONE_ID"/);
+  assert.doesNotMatch(workflow, /test -n "\$CLOUDFLARE_ACCOUNT_ID"/);
+  assert.doesNotMatch(workflow, /\/user\/tokens\/verify/);
   assert.match(workflow, /actions\/upload-artifact@v4/);
   assert.match(workflow, /retention-days:\s*30/);
 
   assert.match(reconciler, /\/user\/tokens\/verify/);
-  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_INVALID/);
-  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE/);
+  assert.match(reconciler, /\/accounts\/\$\{config\.accountId\}\/tokens\/verify/);
+  assert.match(reconciler, /const verifier = path\.startsWith\('\/accounts\/'\) \? 'account' : 'user';/);
+  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE verifier=\$\{verifier\}/);
+  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_ACTIVE verifier=zone-access/);
+  assert.match(reconciler, /CLOUDFLARE_API_TOKEN_INVALID_OR_UNSCOPED/);
+  assert.match(reconciler, /\/zones\/\$\{config\.zoneId\}/);
   const verifyIndex = reconciler.indexOf('await verifyToken(config);');
   const discoverIndex = reconciler.indexOf('await discoverZone(config);');
   assert.ok(verifyIndex >= 0 && discoverIndex >= 0 && verifyIndex < discoverIndex);
