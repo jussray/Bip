@@ -135,8 +135,10 @@ export default function LoginScreen() {
         routed = true;
         clearEmailConfirmationUrl();
         router.replace(bootstrap.nextRoute as never);
-      } catch (caught) {
-        console.warn('[login] confirmation session restore failed', caught);
+      } catch {
+        if (active) {
+          setError('We could not finish confirming your email. You can sign in manually or request a new confirmation link.');
+        }
       }
     }
 
