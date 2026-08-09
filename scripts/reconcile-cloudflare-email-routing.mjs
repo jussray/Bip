@@ -65,25 +65,60 @@ async function cfRequest(config, path, options = {}) {
 }
 
 async function verifyToken(config) {
-  let payload;
+  const attempts = [];
+  const verificationPaths = ['/user/tokens/verify'];
+  if (config.accountId) {
+    verificationPaths.push(`/accounts/${config.accountId}/tokens/verify`);
+  }
+
+  for (const path of verificationPaths) {
+    try {
+      const payload = await cfRequest(config, path);
+      const status = payload?.result?.status;
+      if (status === 'active') {
+        const verifier = path.startsWith('/accounts/') ? 'account' : 'user';
+        console.log(`CLOUDFLARE_API_TOKEN_ACTIVE verifier=${verifier}`);
+        return payload.result;
+      }
+      attempts.push(`${path}: status=${status || 'unknown'}`);
+    } catch (error) {
+      attempts.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   try {
-    payload = await cfRequest(config, '/user/tokens/verify');
+    const payload = await cfRequest(
+      config,
+      `/zones?name=${encodeURIComponent(config.zoneName)}&status=active&per_page=50`,
+    );
+    const zone = payload?.result?.find((candidate) => candidate?.name === config.zoneName);
+    if (zone?.id) {
+      console.log('CLOUDFLARE_API_TOKEN_ACTIVE verifier=zone-access');
+      return { id: null, status: 'active' };
+    }
+    attempts.push(`zone-access: ${config.zoneName} was not returned`);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`CLOUDFLARE_API_TOKEN_INVALID: ${detail}`);
+    attempts.push(error instanceof Error ? error.message : String(error));
   }
 
-  const status = payload?.result?.status;
-  if (status !== 'active') {
-    throw new Error(`CLOUDFLARE_API_TOKEN_INACTIVE: status=${status || 'unknown'}`);
-  }
-
-  console.log('CLOUDFLARE_API_TOKEN_ACTIVE');
-  return payload.result;
+  throw new Error(`CLOUDFLARE_API_TOKEN_INVALID_OR_UNSCOPED: ${attempts.join(' | ')}`);
 }
 
 async function discoverZone(config) {
   if (config.zoneId && config.accountId) return config;
+
+  if (config.zoneId) {
+    const payload = await cfRequest(config, `/zones/${config.zoneId}`);
+    const zone = payload?.result;
+    if (!zone?.id || zone?.name !== config.zoneName) {
+      throw new Error(`ZONE_ID_MISMATCH: ${config.zoneId} does not resolve to ${config.zoneName}.`);
+    }
+    const accountId = config.accountId || zone.account?.id;
+    if (!accountId) {
+      throw new Error('ACCOUNT_ID_NOT_FOUND: grant Zone Read access or set CLOUDFLARE_ACCOUNT_ID.');
+    }
+    return { ...config, accountId };
+  }
 
   const payload = await cfRequest(
     config,
@@ -99,7 +134,7 @@ async function discoverZone(config) {
     throw new Error('ACCOUNT_ID_NOT_FOUND: set CLOUDFLARE_ACCOUNT_ID or grant Zone Read access.');
   }
 
-  return { ...config, zoneId: config.zoneId || zone.id, accountId };
+  return { ...config, zoneId: zone.id, accountId };
 }
 
 async function routingDns(config) {
