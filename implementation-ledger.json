@@ -41,7 +41,7 @@
         "The deployed Worker path is verified with two controlled accounts and cleanup evidence."
       ],
       "contractPaths": [
-        "supabase/migrations/20260705010000_bridge_summary_contract.sql",
+        "supabase/migrations/20260705050121_bridge_summary_contract.sql",
         "src/services/bridgeSummaryService.ts"
       ],
       "runtimePaths": [
