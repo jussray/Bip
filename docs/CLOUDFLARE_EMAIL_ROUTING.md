@@ -1,6 +1,6 @@
 # Cloudflare Email Routing for Se'kret Bip
 
-Last reviewed: 2026-08-07
+Last reviewed: 2026-08-08
 
 ## Canonical handler
 
@@ -42,7 +42,7 @@ npm run deploy:worker
 1. Confirm the intended `sekret-backend` release is deployed.
 2. Confirm its `/health` endpoint succeeds.
 3. Run the `Reconcile Cloudflare Email Routing` GitHub Actions workflow with `apply=false` and inspect the plan.
-4. Run it again with `apply=true` after `CLOUDFLARE_API_TOKEN` is configured with the required Cloudflare permissions. This reconciliation must change the Worker action from `bip-mail` to `sekret-backend` for every supported alias that still points at the legacy Worker.
+4. Configure the required repository secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, and `CLOUDFLARE_ACCOUNT_ID`, then run the workflow again with `apply=true`. The token must have the required Cloudflare permissions. This reconciliation must change the Worker action from `bip-mail` to `sekret-backend` for every supported alias that still points at the legacy Worker.
 5. If the workflow reports `DESTINATION_VERIFICATION_REQUIRED`, verify `sekretbip@gmail.com` from Cloudflare's email and rerun `apply=true`.
 6. Send a controlled message to every supported alias.
 7. Confirm every message reaches the verified destination and preserves the expected `X-Bip-*` headers.
@@ -60,13 +60,14 @@ The repository owns the desired Email Routing rule set through:
 
 The workflow is manual and plan-only by default. It does not create a catch-all rule and it does not delete Email Routing rules or legacy Workers. `apply=true` performs an idempotent reconciliation that:
 
-1. discovers the active `sekretbip.net` zone unless zone/account IDs are supplied as repository variables;
-2. enables the Cloudflare Email Routing DNS contract when needed;
-3. ensures `sekretbip@gmail.com` exists as the destination address and stops until it is verified;
-4. creates or repairs only the supported literal-address rules so they target `sekret-backend`;
-5. rereads the rule set and fails if any supported alias does not resolve to the canonical Worker.
+1. targets the exact Cloudflare zone and account supplied through the required repository secrets `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_ACCOUNT_ID`;
+2. verifies `CLOUDFLARE_API_TOKEN` before any live routing mutation;
+3. enables the Cloudflare Email Routing DNS contract when needed;
+4. ensures `sekretbip@gmail.com` exists as the destination address and stops until it is verified;
+5. creates or repairs only the supported literal-address rules so they target `sekret-backend`;
+6. rereads the rule set and fails if any supported alias does not resolve to the canonical Worker.
 
-The required GitHub Actions secret is `CLOUDFLARE_API_TOKEN`. The token needs Cloudflare permissions sufficient for Zone Read, Zone Settings Write, Email Routing Rules Write, and Email Routing Addresses Write. Optional GitHub repository variables `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_ACCOUNT_ID` skip zone/account discovery.
+The required GitHub Actions repository secrets are `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ZONE_ID`, and `CLOUDFLARE_ACCOUNT_ID`. `apply=true` fails closed before reconciliation if any is missing. The token needs Cloudflare permissions sufficient for Zone Read, Zone Settings Write, Email Routing Rules Write, and Email Routing Addresses Write. Do not configure the Zone or Account IDs as repository variables for this workflow; the workflow reads all three values from repository secrets.
 
 ## Privacy behavior
 
