@@ -17,6 +17,8 @@ const founderHardenPath = 'supabase/migrations/20260701174034_harden_founder_pro
 const founderIdeasPath = 'supabase/migrations/20260701224958_sync_founder_ideas_table.sql';
 const controlRoomPath = 'supabase/migrations/20260701225042_sync_control_room_issues_table.sql';
 const runtimeLoggerPath = 'supabase/migrations/20260701225212_sync_runtime_logger_rpc.sql';
+const safetyReconcilePath = 'supabase/migrations/20260808221720_reconcile_safety_alert_runtime_schema.sql';
+const safetyGrantPath = 'supabase/migrations/20260808222306_lock_safety_alert_table_grants.sql';
 const legacyPointsRetirementPath = 'supabase/migrations/20260809002000_retire_legacy_activity_event_points.sql';
 
 const read = (p) => fs.readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -33,6 +35,8 @@ const founderHarden = read(founderHardenPath);
 const founderIdeas = read(founderIdeasPath);
 const controlRoom = read(controlRoomPath);
 const runtimeLogger = read(runtimeLoggerPath);
+const safetyReconcile = read(safetyReconcilePath);
+const safetyGrant = read(safetyGrantPath);
 const legacyPointsRetirement = read(legacyPointsRetirementPath);
 
 function migrationInventory() {
@@ -78,6 +82,8 @@ test('stale synthetic, local-only, and compressed migration history is not activ
     '20260704_sync_points_chores_rewards.sql',
     '20260705010000_bridge_summary_contract.sql',
     '20260705010000_crew_accountability.sql',
+    '20260808222500_reconcile_safety_alert_runtime_schema.sql',
+    '20260808223500_lock_safety_alert_table_grants.sql',
   ]) {
     assert.equal(active.has(stale), false, `${stale} must stay out of active migration history`);
   }
@@ -106,7 +112,6 @@ test('canonical 0002 carries V1 feeds plus the verified pre-ledger Circle V2 fou
     /create table if not exists public\.circle_members \([\s\S]*?id uuid primary key/i,
     /circle_id uuid not null references public\.circles\(id\)/i,
     /create table if not exists public\.posts \([\s\S]*?id uuid primary key/i,
-    /circle_id uuid not null references public\.circles\(id\)/i,
     /create table if not exists public\.post_reactions \([\s\S]*?id uuid primary key/i,
     /reaction public\.reaction_kind not null/i,
     /create table if not exists public\.moods \([\s\S]*?id uuid primary key/i,
@@ -128,11 +133,12 @@ test('canonical 0002 carries V1 feeds plus the verified pre-ledger Circle V2 fou
   assert.doesNotMatch(circleV1, /create table if not exists public\.moods \([\s\S]*?\bslug\s+text/i);
 });
 
-test('canonical Phase 3 replay carries the verified pre-ledger parent-link shape', () => {
+test('canonical Phase 3 replay carries verified parent-link and safety compatibility unions', () => {
   assert.ok(phase3Path.localeCompare(safetyScanPath) < 0, `${phase3Path} must sort before ${safetyScanPath}`);
   for (const table of ['oracle_sessions', 'parent_links', 'safety_alerts']) {
     assert.match(phase3, new RegExp(`create table if not exists public\\.${table}\\b`, 'i'));
   }
+
   for (const column of [
     'is_active boolean NOT NULL DEFAULT true',
     'quiet_hours_start time',
@@ -145,6 +151,19 @@ test('canonical Phase 3 replay carries the verified pre-ledger parent-link shape
   }
   assert.doesNotMatch(phase3, /invite_code text NOT NULL/i);
   assert.doesNotMatch(phase3, /expires_at timestamptz NOT NULL/i);
+
+  assert.match(phase3, /create table if not exists public\.safety_alerts \([\s\S]*?id uuid primary key/i);
+  for (const column of [
+    'teen_user_id uuid', 'parent_user_id uuid', 'source_mood_id uuid', 'source_post_id uuid',
+    'user_id uuid', 'source_table text', 'source_id text', 'reviewed_by_parent boolean',
+    'parent_notified_at timestamptz', 'title text', 'summary text', 'is_read boolean',
+  ]) {
+    assert.match(phase3, new RegExp(column.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
+  }
+  assert.match(phase3, /constraint safety_alerts_alert_type_check/i);
+  assert.match(phase3, /constraint safety_alerts_severity_check/i);
+  assert.match(phase3, /check \(alert_type in \('critical_mood','self_harm_keyword','panic_pattern','manual_sos'\)\)/i);
+  assert.match(phase3, /check \(severity in \('medium','high','critical'\)\)/i);
   assert.match(phase3, /alter table public\.safety_alerts enable row level security/i);
   assert.match(safetyScan, /alter table public\.safety_alerts/i);
 });
@@ -197,6 +216,19 @@ test('canonical July 1 founder and Control Room history is ordered and fail-clos
   assert.match(runtimeLogger, /create or replace function public\.log_control_room_runtime_event/i);
 });
 
+test('canonical Aug safety reconciliation preserves legacy fields and locks clients to read-only', () => {
+  assert.ok(safetyReconcilePath.localeCompare(safetyGrantPath) < 0);
+  for (const column of ['user_id', 'source_table', 'source_id', 'reviewed_by_parent', 'parent_notified_at']) {
+    assert.match(safetyReconcile, new RegExp(`add column if not exists ${column}\\b`, 'i'));
+  }
+  assert.match(safetyReconcile, /set user_id = teen_user_id/i);
+  assert.match(safetyReconcile, /alter column user_id set not null/i);
+  assert.match(safetyReconcile, /alter column teen_user_id drop not null/i);
+  assert.doesNotMatch(safetyReconcile, /drop column/i);
+  assert.match(safetyGrant, /revoke all on table public\.safety_alerts from authenticated/i);
+  assert.match(safetyGrant, /grant select on table public\.safety_alerts to authenticated/i);
+});
+
 test('fresh canonical replay retires the legacy activity-events point trigger without dropping ledger data', () => {
   assert.match(legacyPointsRetirement, /drop trigger if exists activity_events_award_points on public\.activity_events/i);
   assert.match(legacyPointsRetirement, /drop function if exists public\.award_points_for_app_activity\(\)/i);
@@ -206,18 +238,9 @@ test('fresh canonical replay retires the legacy activity-events point trigger wi
 
 test('replay migration sources contain no remote mutation or history-repair command', () => {
   const combined = [
-    circleV1,
-    phase3,
-    parentInvite,
-    nonAnonymousGuard,
-    verificationCreate,
-    verificationHarden,
-    parentTransition,
-    founderAudit,
-    founderHarden,
-    founderIdeas,
-    controlRoom,
-    runtimeLogger,
+    circleV1, phase3, parentInvite, nonAnonymousGuard, verificationCreate,
+    verificationHarden, parentTransition, founderAudit, founderHarden,
+    founderIdeas, controlRoom, runtimeLogger, safetyReconcile, safetyGrant,
     legacyPointsRetirement,
   ].join('\n');
   assert.doesNotMatch(combined, /migration\s+repair\s+--status/i);
