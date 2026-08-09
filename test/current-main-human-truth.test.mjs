@@ -23,18 +23,18 @@ test('every permanent signup path carries durable approved identity metadata', (
 
   assert.match(
     signup,
-    /auth\.updateUser\(\{[\s\S]*?email:\s*e,[\s\S]*?password:\s*p,[\s\S]*?data:\s*metadata,[\s\S]*?\}\)/,
+    /auth\.updateUser\(\s*\{\s*email:\s*e,[\s\S]*?password:\s*p,[\s\S]*?data:\s*metadata,[\s\S]*?\},\s*\{\s*emailRedirectTo:\s*redirectTo\s*\}\s*\)/,
   );
   assert.match(
     signup,
-    /auth\.signUp\(\{[\s\S]*?email:\s*e,[\s\S]*?password:\s*p,[\s\S]*?options:\s*\{\s*data:\s*metadata\s*\}/,
+    /auth\.signUp\(\{\s*email:\s*e,\s*password:\s*p,\s*options:\s*\{\s*emailRedirectTo:\s*redirectTo,\s*data:\s*metadata\s*\}/,
   );
   assert.match(
     signup,
-    /auth\.signUp\(\{[\s\S]*?email:\s*signupEmail,[\s\S]*?password:\s*signupPassword,[\s\S]*?options:\s*\{\s*data:\s*metadata\s*\}/,
+    /auth\.signUp\(\{\s*email:\s*signupEmail,\s*password:\s*signupPassword,\s*options:\s*\{\s*emailRedirectTo:\s*redirectTo,\s*data:\s*metadata\s*\}/,
   );
-  assert.match(signup, /recoverAmbiguousSignup\(sb, e, p, metadata, authErr\)/);
-  assert.match(signup, /recoverAmbiguousSignup\(sb, e, p, metadata, upgradeError\)/);
+  assert.match(signup, /recoverAmbiguousSignup\(sb, e, p, metadata, redirectTo, authErr\)/);
+  assert.match(signup, /recoverAmbiguousSignup\(sb, e, p, metadata, redirectTo, upgradeError\)/);
 });
 
 test('profile initialization covers new users and anonymous account upgrades without privilege copying', () => {
