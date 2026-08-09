@@ -13,8 +13,18 @@ test('Circle remains the social world and audience layers stay canonical', () =>
   assert.equal(policy.includes("| 'friends'"), true);
   assert.equal(policy.includes("| 'friend_group'"), true);
   assert.equal(policy.includes("| 'crew'"), true);
-  assert.equal(policy.includes("| 'family_bridge'"), true);
   assert.equal(policy.includes("| 'private'"), true);
+  assert.equal(policy.includes("| 'family_bridge'"), false);
+});
+
+test('Circle and Bridge preserve separate product boundaries', () => {
+  const policy = read('src/features/circle/audiencePolicy.ts');
+  const purposes = read('src/constants/screenPurpose.ts');
+
+  assert.equal(policy.includes('Bridge remains a'), true);
+  assert.equal(policy.includes('separate private teen-to-parent product boundary'), true);
+  assert.equal(purposes.includes("mustNotBecome: ['parent communication', 'private journaling', 'family messaging']"), true);
+  assert.equal(purposes.includes("mustNotBecome: ['Circle', 'public community', 'parent surveillance']"), true);
 });
 
 test('public and broad community audiences fail closed for visible faces', () => {
@@ -25,17 +35,17 @@ test('public and broad community audiences fail closed for visible faces', () =>
   assert.equal(policy.includes("case 'open_bip':\n    case 'community':\n      return false;"), true);
 });
 
-test('identity exposure requires active trust for Friends, Groups, Crew, and Family Bridge', () => {
+test('identity exposure requires active trust for Friends, Groups, and Crew', () => {
   const policy = read('src/features/circle/audiencePolicy.ts');
 
   assert.equal(policy.includes("return trust.mutualFriendAccepted === true"), true);
   assert.equal(policy.includes("return trust.activeGroupMembership === true"), true);
   assert.equal(policy.includes("return trust.acceptedCrewSelected === true"), true);
-  assert.equal(policy.includes("return trust.activeFamilyBridge === true"), true);
+  assert.equal(policy.includes('activeFamilyBridge'), false);
   assert.equal(policy.includes("return trust.isOwnerOnly === true"), true);
 });
 
-test('trusted audience labels keep the approved product language', () => {
+test('trusted audience labels keep the approved Circle product language', () => {
   const policy = read('src/features/circle/audiencePolicy.ts');
 
   for (const label of [
@@ -44,11 +54,11 @@ test('trusted audience labels keep the approved product language', () => {
     "label: 'Friends'",
     "label: 'Private Friend Group'",
     "label: 'Crew'",
-    "label: 'Family / Bridge'",
     "label: 'Just Me / Scrapbook'",
   ]) {
     assert.equal(policy.includes(label), true, `missing ${label}`);
   }
+  assert.equal(policy.includes("label: 'Family / Bridge'"), false);
 });
 
 test('public Circle composer consumes the Open Bip policy instead of duplicating its own audience rules', () => {
