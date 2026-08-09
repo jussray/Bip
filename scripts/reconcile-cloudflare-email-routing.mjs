@@ -64,6 +64,24 @@ async function cfRequest(config, path, options = {}) {
   return payload;
 }
 
+async function verifyToken(config) {
+  let payload;
+  try {
+    payload = await cfRequest(config, '/user/tokens/verify');
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(`CLOUDFLARE_API_TOKEN_INVALID: ${detail}`);
+  }
+
+  const status = payload?.result?.status;
+  if (status !== 'active') {
+    throw new Error(`CLOUDFLARE_API_TOKEN_INACTIVE: status=${status || 'unknown'}`);
+  }
+
+  console.log('CLOUDFLARE_API_TOKEN_ACTIVE');
+  return payload.result;
+}
+
 async function discoverZone(config) {
   if (config.zoneId && config.accountId) return config;
 
@@ -296,6 +314,7 @@ export async function reconcileCloudflareEmailRouting(config = configFromEnv()) 
     );
   }
 
+  await verifyToken(config);
   const resolved = await discoverZone(config);
   const preDns = await routingDns(resolved);
   const preDestinations = await listDestinations(resolved);
