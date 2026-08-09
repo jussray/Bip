@@ -64,17 +64,44 @@ jobs:
         if: inputs.apply == true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         shell: bash
         run: |
           set -euo pipefail
-          payload="$(curl --fail-with-body --silent --show-error \
-            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            https://api.cloudflare.com/client/v4/user/tokens/verify)"
-          test "$(jq -r '.success // false' <<<"$payload")" = true || {
-            echo 'CLOUDFLARE_API_TOKEN is invalid or revoked. Rotate the repository secret before applying Email Routing.' >&2
-            exit 1
+
+          verify() {
+            local url="$1"
+            local payload
+            payload="$(curl --silent --show-error \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              "$url" || true)"
+            test "$(jq -r '.success // false' <<<"$payload" 2>/dev/null)" = true
           }
+
+          user_verify="https://api.cloudflare.com/client/v4/user/tokens/verify"
+          account_verify="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/tokens/verify"
+
+          if [[ "$CLOUDFLARE_API_TOKEN" == cfat_* ]]; then
+            verify "$account_verify" || {
+              echo 'CLOUDFLARE_API_TOKEN account-token verification failed.' >&2
+              exit 1
+            }
+            echo 'CLOUDFLARE_API_TOKEN_ACTIVE class=account'
+          elif [[ "$CLOUDFLARE_API_TOKEN" == cfut_* ]]; then
+            verify "$user_verify" || {
+              echo 'CLOUDFLARE_API_TOKEN user-token verification failed.' >&2
+              exit 1
+            }
+            echo 'CLOUDFLARE_API_TOKEN_ACTIVE class=user'
+          elif verify "$user_verify"; then
+            echo 'CLOUDFLARE_API_TOKEN_ACTIVE class=user-or-legacy'
+          elif verify "$account_verify"; then
+            echo 'CLOUDFLARE_API_TOKEN_ACTIVE class=account-or-legacy'
+          else
+            echo 'CLOUDFLARE_API_TOKEN is invalid, revoked, or incompatible with both supported verification modes.' >&2
+            exit 1
+          fi
 
       - name: Reconcile live Cloudflare Email Routing
         if: inputs.apply == true
