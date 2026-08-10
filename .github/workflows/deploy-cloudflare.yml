@@ -13,12 +13,13 @@ on:
       - 'worker/**'
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
-      - 'scripts/verify-cloudflare-native-deploy.mjs'
-      - 'scripts/publish-production-release-observation.mjs'
+      - 'scripts/write-worker-release-identity.mjs'
+      - 'scripts/verify-production-release-witness.mjs'
+      - 'scripts/publish-production-release-witness.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
-      - 'test/resumable-production-verification.test.mjs'
+      - 'test/production-worker-release-witness.test.mjs'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
       - 'package.json'
@@ -89,11 +90,11 @@ jobs:
         id: install
         run: npm ci
 
-      - name: Wait for exact frontend and backend Worker checks plus release marker
+      - name: Wait for exact Pages and baked Worker runtime SHA
         id: cloudflare_release
         env:
           GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
-        run: node scripts/verify-cloudflare-native-deploy.mjs
+        run: node scripts/verify-production-release-witness.mjs
 
       - name: Verify backend health
         id: backend_health
@@ -128,7 +129,7 @@ jobs:
 
       - name: Publish exact production release observation
         if: success()
-        run: node scripts/publish-production-release-observation.mjs
+        run: node scripts/publish-production-release-witness.mjs
 
       - name: Publish blocked exact production observation
         if: failure()
@@ -137,4 +138,4 @@ jobs:
           VERIFICATION_JOB_STATUS: failure
           RELEASE_STEP_OUTCOMES: >-
             {"checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
-        run: node scripts/publish-production-release-observation.mjs
+        run: node scripts/publish-production-release-witness.mjs
