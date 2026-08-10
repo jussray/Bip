@@ -1,5 +1,6 @@
 import observedWorker from './observed-index';
 import emailRouter from './email-router';
+import { WORKER_RELEASE_SHA } from './release-identity.generated';
 import { authenticate, type AuthEnv, type Principal } from './auth';
 import { emitWorkerTelemetry, type WorkerTelemetryEvent } from './telemetry';
 import { persistAuditEvent, type AuditPersistEnv } from './audit/persist-event';
@@ -173,7 +174,7 @@ function workerVersionEvidence(env: Env) {
   if (!version) return null;
   return {
     id: version.id,
-    tag: version.tag ?? null,
+    tag: version.tag ?? WORKER_RELEASE_SHA,
     timestamp: version.timestamp,
   };
 }
