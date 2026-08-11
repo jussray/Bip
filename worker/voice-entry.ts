@@ -185,6 +185,7 @@ async function handleVoice(
   cors: Record<string, string>,
 ): Promise<Response> {
   if (!hasJsonContentType(request)) return json({ error: 'content-type must be application/json' }, 415, cors);
+
   let body: Record<string, unknown>;
   try {
     body = await request.json() as Record<string, unknown>;
