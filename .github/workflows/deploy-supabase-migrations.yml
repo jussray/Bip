@@ -85,26 +85,23 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
-      - name: Verify exact target and apply authority
+      - name: Verify exact target is current main
         shell: bash
         env:
           TARGET_SHA: ${{ inputs.target_sha }}
-          MODE: ${{ inputs.mode }}
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
           printf 'requested=%s\nactual=%s\n' "$TARGET_SHA" "$actual"
           test "$actual" = "$TARGET_SHA"
 
-          if [ "$MODE" = 'apply' ]; then
-            git fetch --no-tags --depth=1 origin main
-            current_main="$(git rev-parse FETCH_HEAD)"
-            printf 'current_main=%s\n' "$current_main"
-            test "$TARGET_SHA" = "$current_main" || {
-              echo 'Refusing to apply migrations from a SHA that is no longer current main.' >&2
-              exit 1
-            }
-          fi
+          git fetch --no-tags --depth=1 origin main
+          current_main="$(git rev-parse FETCH_HEAD)"
+          printf 'current_main=%s\n' "$current_main"
+          test "$TARGET_SHA" = "$current_main" || {
+            echo 'Refusing to evaluate production migrations from a SHA that is no longer current main.' >&2
+            exit 1
+          }
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
