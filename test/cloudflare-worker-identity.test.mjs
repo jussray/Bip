@@ -21,6 +21,11 @@ const PRODUCTION_WORKER_URL = 'https://api.sekretbip.net';
 const LEGACY_WORKERS_DEV_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
 const ALPHA_WORKER_URL = 'https://sekret-backend-alpha.mcgill-raylene.workers.dev';
 const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.json';
+// Founder-approved controlled-alpha isolation (wrangler.alpha.toml,
+// docs/CLOUDFLARE_OWNERSHIP.md, reports/control-room/founder-operator/
+// 20260718-controlled-alpha-activation/system-map.md): preview builds
+// deliberately route to the distinct, non-production sekret-backend-alpha
+// Worker instead of the canonical one.
 const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
 test('Wrangler targets the canonical Worker and retains version metadata as provenance', () => {
