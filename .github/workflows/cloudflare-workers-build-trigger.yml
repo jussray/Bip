@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: Apply the planned Workers Builds trigger repair
+        description: Apply trigger repair and request the exact native Worker build
         required: true
         default: false
         type: boolean
@@ -32,6 +32,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BIP_WORKER_NAME: sekret-backend
   BIP_WORKER_DEPLOY_COMMAND: npm run deploy:api:production
+  BIP_WORKER_BUILD_COMMIT: ${{ github.sha }}
   CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
 
 jobs:
@@ -97,7 +98,7 @@ jobs:
       - name: Show non-destructive trigger plan
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
 
-      - name: Apply and verify trigger repair
+      - name: Apply, verify, and request exact native build
         if: github.event_name == 'push' || inputs.apply == true
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
 
