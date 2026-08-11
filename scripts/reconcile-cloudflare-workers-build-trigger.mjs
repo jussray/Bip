@@ -37,6 +37,10 @@ function errorText(payload, fallback) {
   return messages?.length ? messages.join('; ') : fallback;
 }
 
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 async function cfRequest(config, requestPath, options = {}, fetchImpl = fetch) {
   const response = await fetchImpl(`${API_BASE}${requestPath}`, {
     method: options.method || 'GET',
@@ -167,6 +171,40 @@ async function writeEvidence(evidencePath, evidence) {
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
 }
 
+function initialEvidence(config, apply, now) {
+  return {
+    schemaVersion: 4,
+    generatedAt: now().toISOString(),
+    accountId: config.accountId || null,
+    worker: {
+      name: config.workerName || null,
+      tag: null,
+    },
+    productionTrigger: null,
+    before: { deployCommand: null },
+    desired: { deployCommand: config.desiredDeployCommand || null },
+    targetBuild: {
+      branch: 'main',
+      commitSha: config.targetCommitSha,
+      requested: false,
+      buildUuid: null,
+    },
+    applyRequested: apply,
+    applied: false,
+    triggerVerified: false,
+    verified: false,
+    status: 'initializing',
+    rollback: { attempted: false, succeeded: null, deployCommand: null },
+  };
+}
+
+async function failWithEvidence(config, evidence, status, error) {
+  evidence.status = status;
+  evidence.error = errorMessage(error);
+  await writeEvidence(config.evidencePath, evidence);
+  throw error;
+}
+
 async function verifyDesiredDeployCommand(config, workerTag, plan, fetchImpl) {
   const afterTriggers = await listTriggers(config, workerTag, fetchImpl);
   const afterTrigger = selectProductionTrigger(afterTriggers);
@@ -186,46 +224,56 @@ export async function reconcileWorkersBuildTrigger({
   now = () => new Date(),
 } = {}) {
   const config = configFromEnv(env);
+  const evidence = initialEvidence(config, apply, now);
+
   if (!config.token) {
-    throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN or CLOUDFLARE_API_TOKEN is required.');
+    await failWithEvidence(
+      config,
+      evidence,
+      'configuration-invalid',
+      new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN or CLOUDFLARE_API_TOKEN is required.'),
+    );
   }
-  if (!config.accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required.');
+  if (!config.accountId) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'configuration-invalid',
+      new Error('CLOUDFLARE_ACCOUNT_ID is required.'),
+    );
+  }
   if (apply && !config.targetCommitSha) {
-    throw new Error('BIP_WORKER_BUILD_COMMIT or GITHUB_SHA must be an exact 40-character Git commit SHA when applying.');
+    await failWithEvidence(
+      config,
+      evidence,
+      'configuration-invalid',
+      new Error('BIP_WORKER_BUILD_COMMIT or GITHUB_SHA must be an exact 40-character Git commit SHA when applying.'),
+    );
   }
 
-  await verifyUserScopedToken(config, fetchImpl);
-  const worker = await discoverWorker(config, fetchImpl);
-  const triggers = await listTriggers(config, worker.tag, fetchImpl);
-  const productionTrigger = selectProductionTrigger(triggers);
-  const plan = buildTriggerPlan(productionTrigger, config.desiredDeployCommand);
+  let worker;
+  let plan;
+  try {
+    await verifyUserScopedToken(config, fetchImpl);
+    worker = await discoverWorker(config, fetchImpl);
+    const triggers = await listTriggers(config, worker.tag, fetchImpl);
+    const productionTrigger = selectProductionTrigger(triggers);
+    plan = buildTriggerPlan(productionTrigger, config.desiredDeployCommand);
 
-  const evidence = {
-    schemaVersion: 3,
-    generatedAt: now().toISOString(),
-    accountId: config.accountId,
-    worker,
-    productionTrigger: {
+    evidence.worker = worker;
+    evidence.productionTrigger = {
       triggerUuid: plan.triggerUuid,
       triggerName: plan.triggerName,
       branchIncludes: plan.branchIncludes,
       branchExcludes: plan.branchExcludes,
-    },
-    before: { deployCommand: plan.previousDeployCommand },
-    desired: { deployCommand: plan.desiredDeployCommand },
-    targetBuild: {
-      branch: 'main',
-      commitSha: config.targetCommitSha,
-      requested: false,
-      buildUuid: null,
-    },
-    applyRequested: apply,
-    applied: false,
-    triggerVerified: false,
-    verified: false,
-    status: plan.changeRequired ? 'change-required' : 'already-correct',
-    rollback: { attempted: false, succeeded: null, deployCommand: plan.previousDeployCommand },
-  };
+    };
+    evidence.before = { deployCommand: plan.previousDeployCommand };
+    evidence.desired = { deployCommand: plan.desiredDeployCommand };
+    evidence.rollback.deployCommand = plan.previousDeployCommand;
+    evidence.status = plan.changeRequired ? 'change-required' : 'already-correct';
+  } catch (error) {
+    await failWithEvidence(config, evidence, 'provider-discovery-failed', error);
+  }
 
   if (!apply) {
     evidence.triggerVerified = !plan.changeRequired;
@@ -248,7 +296,7 @@ export async function reconcileWorkersBuildTrigger({
     evidence.after = { deployCommand: observedDeployCommand };
   } catch (error) {
     evidence.status = 'trigger-verification-failed';
-    evidence.error = error instanceof Error ? error.message : String(error);
+    evidence.error = errorMessage(error);
 
     if (mutationStarted && plan.previousDeployCommand) {
       evidence.rollback.attempted = true;
@@ -259,7 +307,7 @@ export async function reconcileWorkersBuildTrigger({
         evidence.rollback.succeeded = clean(rollbackTrigger?.deploy_command) === plan.previousDeployCommand;
       } catch (rollbackError) {
         evidence.rollback.succeeded = false;
-        evidence.rollback.error = rollbackError instanceof Error ? rollbackError.message : String(rollbackError);
+        evidence.rollback.error = errorMessage(rollbackError);
       }
     }
 
@@ -282,7 +330,7 @@ export async function reconcileWorkersBuildTrigger({
     return evidence;
   } catch (error) {
     evidence.status = 'trigger-verified-build-request-failed';
-    evidence.error = error instanceof Error ? error.message : String(error);
+    evidence.error = errorMessage(error);
     evidence.verified = false;
     await writeEvidence(config.evidencePath, evidence);
     throw error;
