@@ -22,9 +22,10 @@ const matchingRelease = evaluateReleaseMarker({commitSha: expectedSha}, expected
 const matchingWorker = evaluateWorkerRuntime({
   ok: true,
   worker: 'sekret-backend',
+  releaseSha: expectedSha,
   version: {
     id: 'version-123',
-    tag: expectedSha,
+    tag: 'provider-tag-is-metadata',
     timestamp: '2026-07-14T22:00:30Z',
   },
 }, expectedSha);
@@ -97,28 +98,32 @@ test('requires the deployed Pages marker to match the exact commit', () => {
   assert.equal(missing.actualSha, null);
 });
 
-test('requires the live Worker version tag to match the exact commit', () => {
+test('requires the live Worker release SHA to match the exact commit', () => {
   assert.equal(matchingWorker.complete, true);
-  assert.equal(matchingWorker.versionTag, expectedSha);
+  assert.equal(matchingWorker.releaseSha, expectedSha);
   assert.equal(matchingWorker.versionId, 'version-123');
+  assert.equal(matchingWorker.versionTag, 'provider-tag-is-metadata');
 
   const stale = evaluateWorkerRuntime({
     ok: true,
+    releaseSha: '1111111111111111111111111111111111111111',
     version: {
       id: 'version-old',
-      tag: '1111111111111111111111111111111111111111',
+      tag: expectedSha,
       timestamp: '2026-07-14T21:00:00Z',
     },
   }, expectedSha);
   assert.equal(stale.complete, false);
-  assert.equal(stale.versionTag, '1111111111111111111111111111111111111111');
+  assert.equal(stale.releaseSha, '1111111111111111111111111111111111111111');
 
-  const untagged = evaluateWorkerRuntime({
+  const noProviderMetadata = evaluateWorkerRuntime({
     ok: true,
-    version: { id: 'version-untagged', tag: null, timestamp: '2026-07-14T22:00:00Z' },
+    releaseSha: expectedSha,
+    version: null,
   }, expectedSha);
-  assert.equal(untagged.complete, false);
-  assert.equal(untagged.versionTag, null);
+  assert.equal(noProviderMetadata.complete, true);
+  assert.equal(noProviderMetadata.versionId, null);
+  assert.equal(noProviderMetadata.versionTag, null);
 });
 
 test('classifies every exact-release blocker without weakening the gate', () => {
@@ -143,19 +148,12 @@ test('classifies every exact-release blocker without weakening the gate', () => 
     'worker-health-unhealthy',
   );
   assert.equal(
-    classify([workerSuccess], {commitSha: expectedSha}, {ok: true, version: null}),
-    'worker-version-missing',
+    classify([workerSuccess], {commitSha: expectedSha}, {ok: true, releaseSha: null}),
+    'worker-release-sha-missing',
   );
   assert.equal(
-    classify([workerSuccess], {commitSha: expectedSha}, {ok: true, version: {id: 'version-1', tag: null}}),
-    'worker-version-tag-missing',
-  );
-  assert.equal(
-    classify([workerSuccess], {commitSha: expectedSha}, {
-      ok: true,
-      version: {id: 'version-1', tag: '1111111111111111111111111111111111111111'},
-    }),
-    'worker-version-stale',
+    classify([workerSuccess], {commitSha: expectedSha}, {ok: true, releaseSha: '1111111111111111111111111111111111111111'}),
+    'worker-release-sha-stale',
   );
 });
 
@@ -179,13 +177,13 @@ test('failure evidence retains blocker state and exact SHA details', () => {
     status: 'observing',
   });
 
-  assert.equal(evidence.version, 4);
+  assert.equal(evidence.version, 5);
   assert.equal(evidence.complete, false);
   assert.equal(evidence.readinessState, 'worker-missing');
   assert.equal(evidence.elapsedMs, 300_000);
   assert.equal(evidence.expectedSha, expectedSha);
   assert.equal(evidence.pagesRelease.commitSha, '1111111111111111111111111111111111111111');
-  assert.equal(evidence.workerRuntime.versionTag, null);
+  assert.equal(evidence.workerRuntime.releaseSha, null);
   assert.deepEqual(evidence.checkSummary.missing, ['Workers Builds: sekret-backend']);
   assert.equal(evidence.requiredChecks['Workers Builds: sekret-backend'], null);
   assert.equal(evidence.verifiedAt, null);
@@ -215,7 +213,8 @@ test('successful evidence joins GitHub, Pages, and Worker runtime identity', () 
   assert.equal(evidence.apiTokenRequiredInGitHub, false);
   assert.equal(evidence.requiredChecks['Workers Builds: sekret-backend'].conclusion, 'success');
   assert.equal(evidence.pagesRelease.commitSha, expectedSha);
-  assert.equal(evidence.workerRuntime.versionTag, expectedSha);
+  assert.equal(evidence.workerRuntime.releaseSha, expectedSha);
+  assert.equal(evidence.workerRuntime.versionTag, 'provider-tag-is-metadata');
   assert.equal(evidence.workerRuntime.versionId, 'version-123');
   assert.equal(evidence.workerRuntime.complete, true);
   assert.equal(evidence.verifiedAt, '2026-07-14T22:01:00.000Z');
