@@ -17,8 +17,8 @@ function jsonResponse(value, status = 200) {
   });
 }
 
-test('missing Supabase token fails closed and retains redacted schema evidence', async () => {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-schema-config-block-'));
+function migrationFixture(prefix) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   const migrationsDir = path.join(tmp, 'migrations');
   const evidencePath = path.join(tmp, 'supabase-production-schema.json');
   fs.mkdirSync(migrationsDir);
@@ -27,6 +27,11 @@ test('missing Supabase token fails closed and retains redacted schema evidence',
     '-- fixture\n',
     'utf8',
   );
+  return { tmp, migrationsDir, evidencePath };
+}
+
+test('missing Supabase token fails closed and retains redacted schema evidence', async () => {
+  const { migrationsDir, evidencePath } = migrationFixture('sekret-schema-config-block-');
 
   let providerRequests = 0;
   await assert.rejects(
@@ -56,6 +61,40 @@ test('missing Supabase token fails closed and retains redacted schema evidence',
   assert.equal(evidence.expectedVersion, SCHEMA_HEAD);
   assert.equal(evidence.liveMaxVersion, null);
   assert.doesNotMatch(evidenceText, /Bearer|secret-token/i);
+});
+
+test('response-body transport failure retains provider-query evidence', async () => {
+  const { migrationsDir, evidencePath } = migrationFixture('sekret-schema-response-block-');
+  const token = 'secret-token-must-not-be-retained';
+
+  await assert.rejects(
+    verifySupabaseProductionSchema({
+      config: {
+        token,
+        projectRef: 'tbsevonvegdnlyjgplmm',
+        migrationsDir,
+        evidencePath,
+      },
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        async text() {
+          throw new Error('stream reset while reading response');
+        },
+      }),
+    }),
+    /stream reset while reading response/,
+  );
+
+  assert.equal(fs.existsSync(evidencePath), true);
+  const evidenceText = fs.readFileSync(evidencePath, 'utf8');
+  const evidence = JSON.parse(evidenceText);
+  assert.equal(evidence.verified, false);
+  assert.equal(evidence.status, 'provider-query-failed');
+  assert.equal(evidence.error, 'management_api_response_read_failed');
+  assert.equal(evidence.expectedVersion, SCHEMA_HEAD);
+  assert.equal(evidence.liveMaxVersion, null);
+  assert.doesNotMatch(evidenceText, new RegExp(token));
 });
 
 test('blocked release receipt names Supabase preflight failure instead of missing Cloudflare evidence', async () => {
