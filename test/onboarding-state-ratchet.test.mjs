@@ -5,13 +5,29 @@ import { readFile } from 'node:fs/promises';
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migration = 'supabase/migrations/20260811132600_reconcile_onboarding_and_moods_contract.sql';
 
+const policyBlock = (sql, policyName) =>
+  sql.match(new RegExp(
+    `create policy ${policyName}[\\s\\S]*?(?=create policy|create or replace function|$)`,
+    'i',
+  ))?.[0] ?? '';
+
 test('onboarding state is permanent-account owner scoped', async () => {
   const sql = await read(migration);
 
   assert.match(sql, /revoke all on table public\.user_onboarding_state from public, anon, authenticated/);
   assert.match(sql, /grant select, insert, update on table public\.user_onboarding_state to authenticated/);
-  assert.equal((sql.match(/public\.is_non_anonymous_user\(\)/g) ?? []).length, 4);
-  assert.equal((sql.match(/\(select auth\.uid\(\)\) = user_id/g) ?? []).length, 4);
+
+  for (const policyName of [
+    'onboarding_state_permanent_owner_select',
+    'onboarding_state_permanent_owner_insert',
+    'onboarding_state_permanent_owner_update',
+  ]) {
+    const policy = policyBlock(sql, policyName);
+    assert.ok(policy, `missing ${policyName}`);
+    assert.match(policy, /public\.is_non_anonymous_user\(\)/);
+    assert.match(policy, /\(select auth\.uid\(\)\) = user_id/);
+  }
+
   assert.doesNotMatch(sql, /grant[^;]*delete[^;]*user_onboarding_state/i);
 });
 
