@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import {
   buildWranglerDeployArgs,
+  deployCloudflareWorker,
   inspectDeployGitState,
   normalizeCommitSha,
   resolveDeployCommitSha,
@@ -91,4 +95,68 @@ test('refuses malformed deployment identity', () => {
     () => buildWranglerDeployArgs('deadbeef'),
     /valid 40-character Git commit SHA/,
   );
+});
+
+test('stamps the exact deploy SHA before Wrangler and restores the tracked placeholder', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-worker-deploy-'));
+  const workerDir = path.join(cwd, 'worker');
+  const identityPath = path.join(workerDir, 'release-identity.generated.ts');
+  const placeholder = "export const WORKER_RELEASE_SHA = 'development' as const;\n";
+  fs.mkdirSync(workerDir, { recursive: true });
+  fs.writeFileSync(identityPath, placeholder, 'utf8');
+
+  const events = [];
+  const deployedSha = deployCloudflareWorker({
+    cwd,
+    env: { WORKERS_CI_COMMIT_SHA: SHA },
+    execFile: fakeGit(),
+    writeIdentity: ({ env, outputPath }) => {
+      assert.equal(env.WORKERS_CI_COMMIT_SHA, SHA);
+      assert.equal(outputPath, identityPath);
+      fs.writeFileSync(outputPath, `export const WORKER_RELEASE_SHA = '${SHA}' as const;\n`, 'utf8');
+      events.push('stamp');
+      return SHA;
+    },
+    spawn: (_command, args, options) => {
+      events.push('deploy');
+      assert.deepEqual(args, buildWranglerDeployArgs(SHA));
+      assert.equal(options.cwd, cwd);
+      assert.match(fs.readFileSync(identityPath, 'utf8'), new RegExp(SHA));
+      return { status: 0 };
+    },
+  });
+
+  assert.equal(deployedSha, SHA);
+  assert.deepEqual(events, ['stamp', 'deploy']);
+  assert.equal(fs.readFileSync(identityPath, 'utf8'), placeholder);
+});
+
+test('rejects a mismatched identity stamp before Wrangler and still restores the placeholder', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-worker-deploy-mismatch-'));
+  const workerDir = path.join(cwd, 'worker');
+  const identityPath = path.join(workerDir, 'release-identity.generated.ts');
+  const placeholder = "export const WORKER_RELEASE_SHA = 'development' as const;\n";
+  fs.mkdirSync(workerDir, { recursive: true });
+  fs.writeFileSync(identityPath, placeholder, 'utf8');
+
+  let deployCalled = false;
+  assert.throws(
+    () => deployCloudflareWorker({
+      cwd,
+      env: { WORKERS_CI_COMMIT_SHA: SHA },
+      execFile: fakeGit(),
+      writeIdentity: ({ outputPath }) => {
+        fs.writeFileSync(outputPath, `export const WORKER_RELEASE_SHA = '${OTHER_SHA}' as const;\n`, 'utf8');
+        return OTHER_SHA;
+      },
+      spawn: () => {
+        deployCalled = true;
+        return { status: 0 };
+      },
+    }),
+    /does not match deployment SHA/,
+  );
+
+  assert.equal(deployCalled, false);
+  assert.equal(fs.readFileSync(identityPath, 'utf8'), placeholder);
 });
