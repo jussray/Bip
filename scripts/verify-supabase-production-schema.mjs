@@ -175,7 +175,19 @@ export async function verifySupabaseProductionSchema(options = {}) {
     );
   }
 
-  const payload = await readJson(response);
+  let payload;
+  try {
+    payload = await readJson(response);
+  } catch (error) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'provider-query-failed',
+      'management_api_response_read_failed',
+      error,
+    );
+  }
+
   if (!response.ok) {
     await failWithEvidence(
       config,
