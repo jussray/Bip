@@ -97,7 +97,7 @@ test('response-body transport failure retains provider-query evidence', async ()
   assert.doesNotMatch(evidenceText, new RegExp(token));
 });
 
-test('blocked release receipt names Supabase preflight failure instead of missing Cloudflare evidence', async () => {
+test('blocked release receipt names Supabase preflight failure without inventing Cloudflare identity', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-schema-receipt-'));
   const schemaEvidencePath = path.join(tmp, 'supabase-production-schema.json');
   const missingCloudflarePath = path.join(tmp, 'cloudflare-native-deploy.json');
@@ -147,6 +147,9 @@ test('blocked release receipt names Supabase preflight failure instead of missin
   assert.equal(calls.length, 2);
   const published = JSON.parse(calls[1].options.body).body;
   assert.match(published, /Readiness state: `supabase-configuration-invalid`/);
+  assert.match(published, /Evidence SHA: `not observed`/);
+  assert.match(published, /Pages marker SHA: `not observed`/);
+  assert.match(published, /Pages marker exact: `no`/);
   assert.match(published, /supabase_schema: `failure`/);
   assert.match(published, /cloudflare_release: `skipped`/);
   assert.match(published, /Evidence retained: `yes`/);
