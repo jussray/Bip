@@ -35,18 +35,22 @@ test('production migration workflow pins project, CLI, and credentials', () => {
 
 test('apply is exact-current-main locked and requires explicit confirmation', () => {
   assert.match(workflow, /test "\$APPLY_CONFIRMATION" = 'APPLY PRODUCTION MIGRATIONS'/);
-  assert.match(workflow, /git fetch --no-tags --depth=1 origin main/);
+  const mainFetches = workflow.match(/git fetch --no-tags --depth=1 origin main/g) ?? [];
+  assert.equal(mainFetches.length, 2, 'Apply authority must be checked both before dry-run and immediately before apply.');
   assert.match(workflow, /current_main="\$\(git rev-parse FETCH_HEAD\)"/);
   assert.match(workflow, /test "\$TARGET_SHA" = "\$current_main"/);
+  assert.match(workflow, /Main advanced after dry-run; refusing production migration apply\./);
   assert.match(workflow, /if: \$\{\{ inputs\.mode == 'apply' \}\}/);
 });
 
-test('dry-run always precedes apply and post-apply exact schema witness', () => {
+test('dry-run and immediate main recheck always precede apply and post-apply exact schema witness', () => {
   const dryRun = indexOfRequired('supabase db push --linked --dry-run');
+  const recheck = indexOfRequired('Re-verify current main immediately before apply');
   const apply = indexOfRequired('supabase db push --linked 2>&1 | tee artifacts/supabase-db-push-apply.txt');
   const witness = indexOfRequired('node scripts/verify-supabase-production-schema.mjs');
 
-  assert.ok(dryRun < apply, 'Dry-run must execute before production apply.');
+  assert.ok(dryRun < recheck, 'Dry-run must execute before the final current-main authority check.');
+  assert.ok(recheck < apply, 'Current main must be re-verified immediately before production apply.');
   assert.ok(apply < witness, 'Exact production schema witness must execute after apply.');
   assert.doesNotMatch(workflow, /--include-all/);
   assert.doesNotMatch(workflow, /--include-seed/);
