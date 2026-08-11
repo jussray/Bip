@@ -1,0 +1,115 @@
+name: Reconcile Cloudflare Workers Build Trigger
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
+      - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
+      - '.github/workflows/cloudflare-workers-build-trigger.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
+      - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
+      - '.github/workflows/cloudflare-workers-build-trigger.yml'
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply trigger repair and request the exact native Worker build
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-workers-build-trigger-production
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BIP_WORKER_NAME: sekret-backend
+  BIP_WORKER_DEPLOY_COMMAND: npm run deploy:api:production
+  BIP_WORKER_BUILD_COMMIT: ${{ github.sha }}
+  CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
+
+jobs:
+  contract:
+    name: Verify Workers Builds trigger contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+
+      - name: Record and verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run focused trigger reconciliation tests
+        run: node --test test/cloudflare-workers-build-trigger-control-plane.test.mjs
+
+  reconcile:
+    name: Reconcile native Workers Builds trigger
+    needs: contract
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Cloudflare's Builds API requires a user-scoped API token. Prefer the
+      # dedicated secret; fall back to the existing token only if it already
+      # satisfies that provider contract.
+      CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Require Cloudflare control-plane credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_WORKERS_BUILDS_API_TOKEN" || {
+            echo 'A user-scoped Cloudflare Workers Builds API token is not configured.' >&2
+            exit 1
+          }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || {
+            echo 'CLOUDFLARE_ACCOUNT_ID is not configured.' >&2
+            exit 1
+          }
+
+      - name: Show non-destructive trigger plan
+        run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
+
+      - name: Apply, verify, and request exact native build
+        if: github.event_name == 'push' || inputs.apply == true
+        run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
+
+      - name: Upload trigger evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-workers-build-trigger-${{ github.run_id }}
+          path: artifacts/cloudflare-workers-build-trigger.json
+          if-no-files-found: warn
+          retention-days: 30

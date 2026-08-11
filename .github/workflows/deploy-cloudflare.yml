@@ -14,6 +14,7 @@ on:
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/write-worker-release-identity.mjs'
+      - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/publish-production-release-observation.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
@@ -25,6 +26,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'wrangler.toml'
+      - '.github/workflows/cloudflare-workers-build-trigger.yml'
       - '.github/workflows/deploy-cloudflare.yml'
       - '.github/workflows/production-gate-contract.yml'
   workflow_dispatch:
