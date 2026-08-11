@@ -97,17 +97,17 @@ jobs:
         id: install
         run: npm ci
 
-      - name: Wait for exact frontend and backend Worker checks plus release marker
-        id: cloudflare_release
-        env:
-          GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
-        run: node scripts/verify-cloudflare-native-deploy.mjs
-
       - name: Verify exact Supabase production schema contract
         id: supabase_schema
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: node scripts/verify-supabase-production-schema.mjs
+
+      - name: Wait for exact frontend and backend Worker checks plus release marker
+        id: cloudflare_release
+        env:
+          GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
+        run: node scripts/verify-cloudflare-native-deploy.mjs
 
       - name: Verify backend health
         id: backend_health
