@@ -34,7 +34,7 @@ test('portable commands cannot weaken Se’kret Bip authority and safety boundar
 
 test('portable adapter preserves the mandatory Se’kret engineering and merge proof spine', () => {
   assert.match(agents, /AGENTS_FOUNDER_INTELLIGENCE\.md/);
-  assert.match(agents, /founder-dev-flow\/SKILL\.md/);
+  assert.match(entrypoint, /founder-dev-flow\/SKILL\.md/);
   assert.match(agents, /Playwright passed for changed user-facing web\/runtime paths or is explicitly inapplicable/);
   assert.match(founderDevFlow, /Merge only with an exact-head guard/);
   assert.match(founderDevFlow, /smallest reversible change/);
