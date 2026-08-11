@@ -127,5 +127,16 @@ jobs:
           }
           NODE
 
-      - name: List production Playwright proof
-        run: npx playwright test --config=playwright.production.config.ts --list
+      - name: Upload exact release-marker build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-release-bootstrap-${{ env.EXPECTED_HEAD_SHA }}
+          path: |
+            dist/release.json
+            dist/.well-known/sekret-release.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Compile and list production Playwright tests
+        run: npx playwright test --config=playwright.production.config.ts e2e/production-smoke.spec.ts --list
