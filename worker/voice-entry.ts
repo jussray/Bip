@@ -174,7 +174,7 @@ function workerVersionEvidence(env: Env) {
   if (!version) return null;
   return {
     id: version.id,
-    tag: version.tag ?? WORKER_RELEASE_SHA,
+    tag: version.tag ?? null,
     timestamp: version.timestamp,
   };
 }
@@ -273,6 +273,7 @@ export default {
         const data = await response.clone().json() as Record<string, unknown>;
         return json({
           ...data,
+          releaseSha: WORKER_RELEASE_SHA,
           version: workerVersionEvidence(env),
         }, response.status, cors);
       } catch (error) {
@@ -284,6 +285,7 @@ export default {
           worker: 'sekret-backend',
           router: 'voice-entry',
           error: 'invalid delegated health response',
+          releaseSha: WORKER_RELEASE_SHA,
           version: workerVersionEvidence(env),
         }, 502, cors);
       }

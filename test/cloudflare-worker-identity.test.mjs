@@ -28,12 +28,14 @@ const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.jso
 // Worker instead of the canonical one.
 const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
-test('Wrangler targets the canonical Worker name, runtime version metadata, and production custom domain', () => {
+test('Wrangler targets the canonical Worker and retains version metadata as provenance', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
   assert.match(wrangler, /^\[version_metadata\]$/m);
   assert.match(wrangler, /^binding = "CF_VERSION_METADATA"$/m);
   assert.match(wrangler, /^pattern = "api\.sekretbip\.net"$/m);
   assert.match(wrangler, /^custom_domain = true$/m);
+  assert.match(wrangler, /^\[build\]$/m);
+  assert.match(wrangler, /^command = "node scripts\/write-worker-release-identity\.mjs"$/m);
 });
 
 test('production verification proves the exact Worker and Pages release', () => {
@@ -49,17 +51,22 @@ test('production verification proves the exact Worker and Pages release', () => 
   assert.ok(workflow.includes('issues: write'));
   assert.ok(verifier.includes(`Workers Builds: ${WORKER_NAME}`));
   assert.ok(verifier.includes('Pages release marker'));
-  assert.ok(verifier.includes('worker-version-tag-missing'));
-  assert.ok(verifier.includes('worker-version-stale'));
+  assert.ok(verifier.includes('worker-release-sha-missing'));
+  assert.ok(verifier.includes('worker-release-sha-stale'));
+  assert.ok(verifier.includes('health?.releaseSha'));
   assert.ok(verifier.includes('workerRuntime'));
   assert.ok(releaseObserver.includes('sekret-production-release-observation'));
   assert.ok(releaseObserver.includes('validateReleaseEvidence'));
+  assert.ok(releaseObserver.includes('Worker release SHA'));
+  assert.ok(releaseObserver.includes('provenance only'));
   assert.ok(packageJson.scripts['build:web'].includes('write-release-metadata.mjs'));
 });
 
-test('production Worker exposes immutable runtime identity and exact-SHA deploy path', () => {
-  assert.ok(workerEntry.includes('CF_VERSION_METADATA'));
+test('production Worker exposes baked runtime SHA independently of provider version metadata', () => {
+  assert.ok(workerEntry.includes("import { WORKER_RELEASE_SHA } from './release-identity.generated';"));
+  assert.ok(workerEntry.includes('releaseSha: WORKER_RELEASE_SHA'));
   assert.ok(workerEntry.includes('version: workerVersionEvidence(env)'));
+  assert.equal(workerEntry.includes('tag: version.tag ?? WORKER_RELEASE_SHA'), false);
   assert.ok(deployWrapper.includes('WORKERS_CI_COMMIT_SHA'));
   assert.ok(deployWrapper.includes("'--tag'"));
   assert.ok(deployWrapper.includes("'--message'"));
