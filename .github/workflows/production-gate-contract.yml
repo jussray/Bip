@@ -9,13 +9,16 @@ on:
       - '.github/workflows/production-gate-contract.yml'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
+      - 'supabase/migrations/**'
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/production-deployment-gate-contract.test.mjs'
       - 'test/production-release-observation.test.mjs'
+      - 'test/supabase-production-schema-witness.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
 
@@ -63,6 +66,7 @@ jobs:
           node --test
           test/production-deployment-gate-contract.test.mjs
           test/production-release-observation.test.mjs
+          test/supabase-production-schema-witness.test.mjs
           test/release-metadata.test.mjs
           test/release-metadata-bootstrap.test.mjs
           test/cloudflare-pages-build-environment.test.mjs
