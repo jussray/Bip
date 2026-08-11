@@ -67,7 +67,6 @@ jobs:
       BACKEND_HEALTH_URL: https://api.sekretbip.net/health
       SUPABASE_RUNTIME_HEALTH_URL: https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/runtime-contract-health
       SUPABASE_PROJECT_REF: tbsevonvegdnlyjgplmm
-      EXPECTED_SUPABASE_SCHEMA_VERSION: '20260811132900'
       SUPABASE_SCHEMA_EVIDENCE_PATH: artifacts/supabase-production-schema.json
       EXPECTED_RELEASE_SHA: ${{ inputs.target_sha || github.sha }}
       RELEASE_OBSERVATION_ISSUE: '696'
