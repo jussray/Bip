@@ -15,6 +15,8 @@ import {
 const ACCOUNT_ID = '0123456789abcdef0123456789abcdef';
 const WORKER_TAG = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const TRIGGER_UUID = '11111111-2222-3333-4444-555555555555';
+const COMMIT_SHA = 'abcdef0123456789abcdef0123456789abcdef01';
+const BUILD_UUID = '99999999-8888-7777-6666-555555555555';
 
 function response(result, { ok = true, statusText = 'OK' } = {}) {
   return {
@@ -82,7 +84,7 @@ test('plans only the deploy-command mutation and is idempotent when already corr
   assert.equal(noop.patch, null);
 });
 
-test('applies only the repo-owned deploy command, verifies readback, and retains non-secret evidence', async () => {
+test('applies only the repo-owned deploy command, verifies readback, then requests the exact main SHA build', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-workers-build-trigger-'));
   const evidencePath = path.join(dir, 'evidence.json');
   const calls = [];
@@ -102,6 +104,10 @@ test('applies only the repo-owned deploy command, verifies readback, and retains
       patched = true;
       return response({ ...productionTrigger(DESIRED_DEPLOY_COMMAND) });
     }
+    if (url.endsWith(`/builds/triggers/${TRIGGER_UUID}/builds`) && options.method === 'POST') {
+      assert.deepEqual(JSON.parse(options.body), { branch: 'main', commit_hash: COMMIT_SHA });
+      return response({ build_uuid: BUILD_UUID });
+    }
     throw new Error(`Unexpected request: ${options.method || 'GET'} ${url}`);
   };
 
@@ -110,6 +116,7 @@ test('applies only the repo-owned deploy command, verifies readback, and retains
       CLOUDFLARE_API_TOKEN: 'secret-token-must-not-leak',
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
       BIP_WORKER_NAME: 'sekret-backend',
+      BIP_WORKER_BUILD_COMMIT: COMMIT_SHA,
       CLOUDFLARE_BUILD_EVIDENCE_PATH: evidencePath,
     },
     apply: true,
@@ -117,27 +124,37 @@ test('applies only the repo-owned deploy command, verifies readback, and retains
     now: () => new Date('2026-08-11T16:00:00.000Z'),
   });
 
-  assert.equal(evidence.status, 'applied');
+  assert.equal(evidence.status, 'applied-and-build-requested');
   assert.equal(evidence.applied, true);
   assert.equal(evidence.verified, true);
   assert.equal(evidence.before.deployCommand, 'npx wrangler deploy');
   assert.equal(evidence.after.deployCommand, DESIRED_DEPLOY_COMMAND);
+  assert.equal(evidence.targetBuild.commitSha, COMMIT_SHA);
+  assert.equal(evidence.targetBuild.buildUuid, BUILD_UUID);
   assert.equal(calls.filter((call) => call.method === 'PATCH').length, 1);
+  assert.equal(calls.filter((call) => call.method === 'POST').length, 1);
 
   const retained = fs.readFileSync(evidencePath, 'utf8');
   assert.match(retained, new RegExp(DESIRED_DEPLOY_COMMAND.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.match(retained, new RegExp(COMMIT_SHA));
   assert.doesNotMatch(retained, /secret-token-must-not-leak/);
 });
 
-test('does not mutate Cloudflare when the production trigger is already correct', async () => {
+test('an already-correct trigger skips PATCH but still launches one exact native build', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-workers-build-trigger-noop-'));
   let patchCalls = 0;
+  let buildCalls = 0;
 
   const fetchImpl = async (url, options = {}) => {
     if (url.endsWith('/user/tokens/verify')) return response({ status: 'active' });
     if (url.includes('/workers/scripts?')) return response([{ id: 'sekret-backend', tag: WORKER_TAG }]);
     if (url.endsWith(`/builds/workers/${WORKER_TAG}/triggers`)) {
       return response([productionTrigger(DESIRED_DEPLOY_COMMAND)]);
+    }
+    if (url.endsWith(`/builds/triggers/${TRIGGER_UUID}/builds`) && options.method === 'POST') {
+      buildCalls += 1;
+      assert.deepEqual(JSON.parse(options.body), { branch: 'main', commit_hash: COMMIT_SHA });
+      return response({ build_uuid: BUILD_UUID });
     }
     if (options.method === 'PATCH') {
       patchCalls += 1;
@@ -150,13 +167,37 @@ test('does not mutate Cloudflare when the production trigger is already correct'
     env: {
       CLOUDFLARE_API_TOKEN: 'token',
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+      BIP_WORKER_BUILD_COMMIT: COMMIT_SHA,
       CLOUDFLARE_BUILD_EVIDENCE_PATH: path.join(dir, 'evidence.json'),
     },
     apply: true,
     fetchImpl,
   });
 
-  assert.equal(evidence.status, 'already-correct');
+  assert.equal(evidence.status, 'verified-and-build-requested');
+  assert.equal(evidence.applied, false);
   assert.equal(evidence.verified, true);
+  assert.equal(evidence.targetBuild.buildUuid, BUILD_UUID);
   assert.equal(patchCalls, 0);
+  assert.equal(buildCalls, 1);
+});
+
+test('apply fails closed before Cloudflare mutation when exact build SHA is unavailable', async () => {
+  let calls = 0;
+  await assert.rejects(
+    () => reconcileWorkersBuildTrigger({
+      env: {
+        CLOUDFLARE_API_TOKEN: 'token',
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        GITHUB_SHA: 'deadbeef',
+      },
+      apply: true,
+      fetchImpl: async () => {
+        calls += 1;
+        return response({});
+      },
+    }),
+    /exact 40-character Git commit SHA/,
+  );
+  assert.equal(calls, 0);
 });
