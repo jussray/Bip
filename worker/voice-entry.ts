@@ -189,30 +189,71 @@ async function handleVoice(
   try {
     body = await request.json() as Record<string, unknown>;
   } catch {
-    return json({ error: 'invalid json' }, 400, cors);
+    return json({ error: 'Invalid JSON' }, 400, cors);
   }
 
-  const text = typeof body.text === 'string' ? body.text.trim() : '';
-  if (!text) return json({ error: 'text is required' }, 400, cors);
+  const text = (
+    typeof body.reply === 'string' ? body.reply
+      : typeof body.text === 'string' ? body.text
+        : ''
+  ).trim();
+  if (!text) return json({ error: 'reply is required' }, 400, cors);
 
-  const actor = normalizeReplyActor(body.actor);
-  if (!actor) return json({ error: 'actor is required' }, 400, cors);
+  const actorId = normalizeReplyActor(body.characterId ?? body.personality);
+  if (!actorId) {
+    return json({ error: 'characterId must be suhana, sy, cloud, night, sekret, or parentCoach' }, 400, cors);
+  }
 
-  const style = resolveRuntimeStyle(actor);
+  const mode = env.VOICE_PROVIDER_MODE ?? 'legacy';
+  if (mode === 'legacy') {
+    const response = await observedWorker.fetch(request, env as never, { waitUntil() {} });
+    return withSecurityHeaders(response, cors);
+  }
+
+  const requestedCharacter = typeof body.characterId === 'string'
+    ? body.characterId.trim().toLowerCase() as CharacterId
+    : actorId as CharacterId;
   const route = selectVoiceRoute({
-    actor,
-    providerMode: env.VOICE_PROVIDER_MODE ?? 'hybrid',
-    requiresPreciseLipSync: requiresPreciseLipSync(body),
+    characterId: requestedCharacter,
+    requiresPreciseLipSync: mode === 'hybrid' && requiresPreciseLipSync(body),
   });
 
-  const result = await synthesizeRoutedVoice({
-    route,
-    text,
-    env,
-    style,
-  });
-
-  return json(result, 200, cors);
+  try {
+    const result = await synthesizeRoutedVoice(route, text, env);
+    const style = resolveRuntimeStyle(actorId);
+    return json({
+      audioBase64: result.audioBase64,
+      contentType: result.contentType,
+      characterId: route.canonicalCharacterId,
+      actorRole: style.role,
+      voiceProvider: result.provider,
+      primaryVoiceProvider: result.primaryProvider,
+      voiceSource: result.provider,
+      voiceId: result.voiceId,
+      model: result.model,
+      usedFallback: result.usedFallback,
+      timing: result.timing,
+      aiGenerated: true,
+      textStyleVersion: style.textStyleVersion,
+      speechStyleVersion: style.speechStyleVersion,
+      questionBudget: style.maxQuestions,
+      styleDecision: 'allow',
+    }, 200, cors);
+  } catch (error) {
+    console.error('[voice-entry:synthesis]', {
+      actorId,
+      provider: route.provider,
+      fallbackProvider: route.fallbackProvider,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+    return json({
+      error: 'voice synthesis unavailable',
+      characterId: route.canonicalCharacterId,
+      voiceProvider: route.provider,
+      fallbackProvider: route.fallbackProvider,
+      usedFallback: Boolean(route.fallbackProvider),
+    }, 502, cors);
+  }
 }
 
 export default {
@@ -260,7 +301,10 @@ export default {
       }
 
       const limited = await enforceRateLimit(request, env, auth.principal, cors);
-      if (limited) return observeFrontDoorDenial(request, limited, env, ctx, started, 'worker_rate_limit');
+      if (limited) {
+        return observeFrontDoorDenial(request, limited, env, ctx, started, 'worker_rate_limit');
+      }
+
       downstreamEnv = withoutRateLimiter(env);
     }
 
