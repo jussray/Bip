@@ -72,6 +72,7 @@ export function evaluateReleaseMarker(marker, expectedSha) {
 
 export function evaluateWorkerRuntime(health, expectedSha) {
   const normalizedExpected = String(expectedSha ?? '').trim().toLowerCase();
+  const releaseSha = typeof health?.releaseSha === 'string' ? health.releaseSha.trim().toLowerCase() : '';
   const version = health?.version && typeof health.version === 'object' ? health.version : null;
   const versionId = typeof version?.id === 'string' ? version.id.trim() : '';
   const versionTag = typeof version?.tag === 'string' ? version.tag.trim().toLowerCase() : '';
@@ -79,10 +80,11 @@ export function evaluateWorkerRuntime(health, expectedSha) {
   const healthOk = health?.ok === true;
 
   return {
-    complete: Boolean(normalizedExpected) && healthOk && Boolean(versionId) && versionTag === normalizedExpected,
+    complete: Boolean(normalizedExpected) && healthOk && releaseSha === normalizedExpected,
     healthAvailable: Boolean(health && typeof health === 'object'),
     healthOk,
     expectedSha: normalizedExpected,
+    releaseSha: releaseSha || null,
     versionId: versionId || null,
     versionTag: versionTag || null,
     versionTimestamp,
@@ -99,9 +101,8 @@ export function classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, 
   if (!releaseEvaluation.complete) return 'pages-marker-stale';
   if (!workerEvaluation?.healthAvailable) return 'worker-health-missing';
   if (!workerEvaluation.healthOk) return 'worker-health-unhealthy';
-  if (!workerEvaluation.versionId) return 'worker-version-missing';
-  if (!workerEvaluation.versionTag) return 'worker-version-tag-missing';
-  if (!workerEvaluation.complete) return 'worker-version-stale';
+  if (!workerEvaluation.releaseSha) return 'worker-release-sha-missing';
+  if (!workerEvaluation.complete) return 'worker-release-sha-stale';
   return 'ready';
 }
 
@@ -190,7 +191,7 @@ export function buildCloudflareEvidence({
   );
 
   return {
-    version: 4,
+    version: 5,
     repository,
     commitSha: sha,
     expectedSha: String(sha ?? '').trim().toLowerCase(),
@@ -224,6 +225,7 @@ export function buildCloudflareEvidence({
     workerRuntime: {
       url: backendHealthUrl,
       expectedSha: workerEvaluation.expectedSha,
+      releaseSha: workerEvaluation.releaseSha,
       versionId: workerEvaluation.versionId,
       versionTag: workerEvaluation.versionTag,
       versionTimestamp: workerEvaluation.versionTimestamp,
@@ -244,7 +246,7 @@ function waitingFor(checkEvaluation, releaseEvaluation, workerEvaluation) {
     ...checkEvaluation.pending,
     ...checkEvaluation.unsuccessful,
     ...(releaseEvaluation.complete ? [] : [`Pages release marker ${releaseEvaluation.actualSha ?? 'missing'} -> ${releaseEvaluation.expectedSha}`]),
-    ...(workerEvaluation.complete ? [] : [`Worker version tag ${workerEvaluation.versionTag ?? 'missing'} -> ${workerEvaluation.expectedSha}`]),
+    ...(workerEvaluation.complete ? [] : [`Worker release SHA ${workerEvaluation.releaseSha ?? 'missing'} -> ${workerEvaluation.expectedSha}`]),
   ];
 }
 
@@ -366,7 +368,7 @@ async function verifyCloudflareNativeDeploy() {
   writeEvidence(evidencePath, latestEvidence);
 
   throw new Error(
-    `Timed out waiting for the exact production release [${latestEvidence.readinessState}]. Worker missing: ${checkEvaluation.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; Worker tag: ${workerEvaluation.versionTag ?? 'missing'}; expected: ${sha}; evidence: ${evidencePath}`,
+    `Timed out waiting for the exact production release [${latestEvidence.readinessState}]. Worker missing: ${checkEvaluation.missing.join(', ') || 'none'}; Worker pending: ${checkEvaluation.pending.join(', ') || 'none'}; Worker unsuccessful: ${checkEvaluation.unsuccessful.join(', ') || 'none'}; Pages marker: ${releaseEvaluation.actualSha ?? 'missing'}; Worker release SHA: ${workerEvaluation.releaseSha ?? 'missing'}; expected: ${sha}; evidence: ${evidencePath}`,
   );
 }
 
