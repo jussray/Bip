@@ -71,7 +71,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      # Cloudflare's Builds API requires a user-scoped API token. Prefer the
+      # dedicated secret; fall back to the existing token only if it already
+      # satisfies that provider contract.
+      CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Check out repository
@@ -86,8 +89,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN" || {
-            echo 'CLOUDFLARE_API_TOKEN is not configured.' >&2
+          test -n "$CLOUDFLARE_WORKERS_BUILDS_API_TOKEN" || {
+            echo 'A user-scoped Cloudflare Workers Builds API token is not configured.' >&2
             exit 1
           }
           test -n "$CLOUDFLARE_ACCOUNT_ID" || {
