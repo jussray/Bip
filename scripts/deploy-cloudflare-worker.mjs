@@ -81,17 +81,17 @@ export function deployCloudflareWorker(options = {}) {
   const identityExisted = fs.existsSync(identityPath);
   const originalIdentity = identityExisted ? fs.readFileSync(identityPath, 'utf8') : null;
 
-  const stampedSha = normalizeCommitSha(writeIdentity({
-    env: { ...env, WORKERS_CI_COMMIT_SHA: sha },
-    outputPath: identityPath,
-  }));
-  if (stampedSha !== sha) {
-    throw new Error(
-      `Worker release identity stamp ${stampedSha ?? 'invalid'} does not match deployment SHA ${sha}.`,
-    );
-  }
-
   try {
+    const stampedSha = normalizeCommitSha(writeIdentity({
+      env: { ...env, WORKERS_CI_COMMIT_SHA: sha },
+      outputPath: identityPath,
+    }));
+    if (stampedSha !== sha) {
+      throw new Error(
+        `Worker release identity stamp ${stampedSha ?? 'invalid'} does not match deployment SHA ${sha}.`,
+      );
+    }
+
     const result = spawn(command, args, {
       cwd,
       env,
