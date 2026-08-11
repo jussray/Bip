@@ -165,4 +165,13 @@ test('Cloudflare release workflow treats every migration change as production tr
   assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
   assert.match(workflow, /artifacts\/supabase-production-schema\.json/);
   assert.doesNotMatch(workflow, /EXPECTED_SUPABASE_SCHEMA_VERSION/);
+
+  const schemaWitnessIndex = workflow.indexOf('id: supabase_schema');
+  const cloudflareReleaseIndex = workflow.indexOf('id: cloudflare_release');
+  assert.notEqual(schemaWitnessIndex, -1, 'Supabase schema witness must exist');
+  assert.notEqual(cloudflareReleaseIndex, -1, 'Cloudflare exact-release witness must exist');
+  assert.ok(
+    schemaWitnessIndex < cloudflareReleaseIndex,
+    'Supabase schema drift must fail before the long Cloudflare exact-release wait',
+  );
 });
