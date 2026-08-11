@@ -3,16 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const migration = 'supabase/migrations/20260718000002_harden_onboarding_state.sql';
+const migration = 'supabase/migrations/20260811132600_reconcile_onboarding_and_moods_contract.sql';
 
 test('onboarding state is permanent-account owner scoped', async () => {
   const sql = await read(migration);
 
   assert.match(sql, /revoke all on table public\.user_onboarding_state from public, anon, authenticated/);
   assert.match(sql, /grant select, insert, update on table public\.user_onboarding_state to authenticated/);
-  // 4, not 3: select + insert + update's USING clause + update's WITH CHECK
-  // clause each carry both checks — the UPDATE policy intentionally guards
-  // both which rows can be touched (USING) and what they can become (CHECK).
   assert.equal((sql.match(/public\.is_non_anonymous_user\(\)/g) ?? []).length, 4);
   assert.equal((sql.match(/\(select auth\.uid\(\)\) = user_id/g) ?? []).length, 4);
   assert.doesNotMatch(sql, /grant[^;]*delete[^;]*user_onboarding_state/i);
@@ -51,7 +48,7 @@ test('activation and completion metadata remain internally consistent', async ()
   assert.match(sql, /completed_at cannot be cleared/);
 });
 
-test('trigger helpers are pinned and not client executable', async () => {
+test('onboarding trigger helpers are pinned and not client executable', async () => {
   const sql = await read(migration);
 
   assert.match(sql, /security definer\s+set search_path = pg_catalog, public/);
@@ -59,7 +56,6 @@ test('trigger helpers are pinned and not client executable', async () => {
   for (const fn of [
     'public.onboarding_stage_rank(public.onboarding_stage)',
     'public.enforce_onboarding_state_transition()',
-    'public.update_onboarding_updated_at()',
     'public.handle_first_mood_log()',
   ]) {
     assert.ok(sql.includes(`revoke all on function ${fn}`), `missing EXECUTE revoke for ${fn}`);
@@ -75,4 +71,22 @@ test('bounded client-reported metadata rejects unapproved shapes', async () => {
   assert.match(sql, /char_length\(new\.activation_action\) > 64/);
   assert.match(sql, /new\.activation_action !~ '\^\[a-z0-9_\]\+\$'/);
   assert.match(sql, /Not consent, verification, relationship, or authorization authority/);
+});
+
+test('legacy terminal state fails closed instead of receiving an invented mapping', async () => {
+  const sql = await read(migration);
+
+  assert.match(sql, /stage::text = 'offboarded'/);
+  assert.match(sql, /requires manual review for offboarded rows/);
+  assert.doesNotMatch(sql, /when 'offboarded' then 'steady_state'/i);
+});
+
+test('moods baseline and first-mood activation are restored together', async () => {
+  const sql = await read(migration);
+
+  assert.match(sql, /create table if not exists public\.moods/);
+  assert.match(sql, /create policy "moods insert own"/);
+  assert.match(sql, /create or replace function public\.handle_first_mood_log\(\)/);
+  assert.match(sql, /create trigger trg_first_mood_activation/);
+  assert.match(sql, /activation_action = 'first_mood_log'/);
 });
