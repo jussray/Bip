@@ -223,7 +223,7 @@ async function githubRequest(fetchImpl, url, options) {
   const body = await readResponseBody(response);
   if (!response.ok) {
     const detail = typeof body === 'string' ? body : JSON.stringify(body);
-    throw new Error(`GitHub API request failed (${response.status}): ${detail.slice(0, 500)}.`);
+    throw new Error(`GitHub API request failed (${response.status}): ${detail.slice(0, 500)}`);
   }
   return body;
 }
