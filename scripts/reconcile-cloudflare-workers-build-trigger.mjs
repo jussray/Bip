@@ -18,7 +18,7 @@ function normalizeSha(value) {
 
 export function configFromEnv(env = process.env) {
   return {
-    token: clean(env.CLOUDFLARE_API_TOKEN),
+    token: clean(env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || env.CLOUDFLARE_API_TOKEN),
     accountId: clean(env.CLOUDFLARE_ACCOUNT_ID),
     workerName: clean(env.BIP_WORKER_NAME) || 'sekret-backend',
     desiredDeployCommand: clean(env.BIP_WORKER_DEPLOY_COMMAND) || DESIRED_DEPLOY_COMMAND,
@@ -59,7 +59,7 @@ async function cfRequest(config, requestPath, options = {}, fetchImpl = fetch) {
 async function verifyUserScopedToken(config, fetchImpl) {
   const payload = await cfRequest(config, '/user/tokens/verify', {}, fetchImpl);
   if (payload?.result?.status !== 'active') {
-    throw new Error(`CLOUDFLARE_API_TOKEN_NOT_ACTIVE: observed ${payload?.result?.status || 'unknown'}.`);
+    throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN_NOT_ACTIVE_OR_NOT_USER_SCOPED.');
   }
   return payload.result;
 }
@@ -167,6 +167,18 @@ async function writeEvidence(evidencePath, evidence) {
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
 }
 
+async function verifyDesiredDeployCommand(config, workerTag, plan, fetchImpl) {
+  const afterTriggers = await listTriggers(config, workerTag, fetchImpl);
+  const afterTrigger = selectProductionTrigger(afterTriggers);
+  const observedDeployCommand = clean(afterTrigger?.deploy_command);
+  if (observedDeployCommand !== plan.desiredDeployCommand) {
+    throw new Error(
+      `DEPLOY_COMMAND_READBACK_MISMATCH: expected ${plan.desiredDeployCommand}, observed ${observedDeployCommand || 'missing'}.`,
+    );
+  }
+  return observedDeployCommand;
+}
+
 export async function reconcileWorkersBuildTrigger({
   env = process.env,
   apply = false,
@@ -174,7 +186,9 @@ export async function reconcileWorkersBuildTrigger({
   now = () => new Date(),
 } = {}) {
   const config = configFromEnv(env);
-  if (!config.token) throw new Error('CLOUDFLARE_API_TOKEN is required.');
+  if (!config.token) {
+    throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN or CLOUDFLARE_API_TOKEN is required.');
+  }
   if (!config.accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required.');
   if (apply && !config.targetCommitSha) {
     throw new Error('BIP_WORKER_BUILD_COMMIT or GITHUB_SHA must be an exact 40-character Git commit SHA when applying.');
@@ -187,7 +201,7 @@ export async function reconcileWorkersBuildTrigger({
   const plan = buildTriggerPlan(productionTrigger, config.desiredDeployCommand);
 
   const evidence = {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt: now().toISOString(),
     accountId: config.accountId,
     worker,
@@ -207,15 +221,17 @@ export async function reconcileWorkersBuildTrigger({
     },
     applyRequested: apply,
     applied: false,
+    triggerVerified: false,
     verified: false,
     status: plan.changeRequired ? 'change-required' : 'already-correct',
     rollback: { attempted: false, succeeded: null, deployCommand: plan.previousDeployCommand },
   };
 
   if (!apply) {
+    evidence.triggerVerified = !plan.changeRequired;
     evidence.verified = !plan.changeRequired;
     await writeEvidence(config.evidencePath, evidence);
-    console.log(JSON.stringify(evidence, null, 2));
+    console.log('CLOUDFLARE_WORKERS_BUILD_TRIGGER_PLAN_WRITTEN');
     return evidence;
   }
 
@@ -226,31 +242,12 @@ export async function reconcileWorkersBuildTrigger({
       await patchTrigger(config, plan.triggerUuid, plan.desiredDeployCommand, fetchImpl);
     }
 
-    const afterTriggers = await listTriggers(config, worker.tag, fetchImpl);
-    const afterTrigger = selectProductionTrigger(afterTriggers);
-    const observedDeployCommand = clean(afterTrigger?.deploy_command);
-    if (observedDeployCommand !== plan.desiredDeployCommand) {
-      throw new Error(
-        `DEPLOY_COMMAND_READBACK_MISMATCH: expected ${plan.desiredDeployCommand}, observed ${observedDeployCommand || 'missing'}.`,
-      );
-    }
-
+    const observedDeployCommand = await verifyDesiredDeployCommand(config, worker.tag, plan, fetchImpl);
     evidence.applied = plan.changeRequired;
+    evidence.triggerVerified = true;
     evidence.after = { deployCommand: observedDeployCommand };
-    evidence.targetBuild.requested = true;
-    evidence.targetBuild.buildUuid = await triggerExactBuild(
-      config,
-      plan.triggerUuid,
-      config.targetCommitSha,
-      fetchImpl,
-    );
-    evidence.verified = true;
-    evidence.status = plan.changeRequired ? 'applied-and-build-requested' : 'verified-and-build-requested';
-    await writeEvidence(config.evidencePath, evidence);
-    console.log(JSON.stringify(evidence, null, 2));
-    return evidence;
   } catch (error) {
-    evidence.status = 'failed';
+    evidence.status = 'trigger-verification-failed';
     evidence.error = error instanceof Error ? error.message : String(error);
 
     if (mutationStarted && plan.previousDeployCommand) {
@@ -269,14 +266,35 @@ export async function reconcileWorkersBuildTrigger({
     await writeEvidence(config.evidencePath, evidence);
     throw error;
   }
+
+  try {
+    evidence.targetBuild.requested = true;
+    evidence.targetBuild.buildUuid = await triggerExactBuild(
+      config,
+      plan.triggerUuid,
+      config.targetCommitSha,
+      fetchImpl,
+    );
+    evidence.verified = true;
+    evidence.status = plan.changeRequired ? 'applied-and-build-requested' : 'verified-and-build-requested';
+    await writeEvidence(config.evidencePath, evidence);
+    console.log('CLOUDFLARE_WORKERS_BUILD_TRIGGER_RECONCILED');
+    return evidence;
+  } catch (error) {
+    evidence.status = 'trigger-verified-build-request-failed';
+    evidence.error = error instanceof Error ? error.message : String(error);
+    evidence.verified = false;
+    await writeEvidence(config.evidencePath, evidence);
+    throw error;
+  }
 }
 
 const isDirectExecution = process.argv[1]
   && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 
 if (isDirectExecution) {
-  reconcileWorkersBuildTrigger({ apply: process.argv.includes('--apply') }).catch((error) => {
-    console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  reconcileWorkersBuildTrigger({ apply: process.argv.includes('--apply') }).catch(() => {
+    console.error('Cloudflare Workers Builds trigger reconciliation failed. Inspect the retained evidence artifact.');
     process.exit(1);
   });
 }
