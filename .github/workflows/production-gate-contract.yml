@@ -9,13 +9,16 @@ on:
       - '.github/workflows/production-gate-contract.yml'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
+      - 'supabase/migrations/**'
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
+      - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/production-deployment-gate-contract.test.mjs'
       - 'test/production-release-observation.test.mjs'
+      - 'test/supabase-production-schema-witness.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
 
@@ -63,6 +66,7 @@ jobs:
           node --test
           test/production-deployment-gate-contract.test.mjs
           test/production-release-observation.test.mjs
+          test/supabase-production-schema-witness.test.mjs
           test/release-metadata.test.mjs
           test/release-metadata-bootstrap.test.mjs
           test/cloudflare-pages-build-environment.test.mjs
@@ -123,16 +127,5 @@ jobs:
           }
           NODE
 
-      - name: Upload exact release-marker build evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: production-release-bootstrap-${{ env.EXPECTED_HEAD_SHA }}
-          path: |
-            dist/release.json
-            dist/.well-known/sekret-release.json
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Compile and list production Playwright tests
-        run: npx playwright test --config=playwright.production.config.ts e2e/production-smoke.spec.ts --list
+      - name: List production Playwright proof
+        run: npx playwright test --config=playwright.production.config.ts --list
