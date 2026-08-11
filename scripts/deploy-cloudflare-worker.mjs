@@ -1,8 +1,12 @@
+import fs from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
+import { writeWorkerReleaseIdentity } from './write-worker-release-identity.mjs';
+
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
+const RELEASE_IDENTITY_PATH = path.join('worker', 'release-identity.generated.ts');
 
 export function normalizeCommitSha(value) {
   const sha = String(value ?? '').trim().toLowerCase();
@@ -66,18 +70,44 @@ export function buildWranglerDeployArgs(commitSha) {
 }
 
 export function deployCloudflareWorker(options = {}) {
-  const sha = resolveDeployCommitSha(options);
+  const cwd = options.cwd ?? process.cwd();
+  const env = options.env ?? process.env;
+  const sha = resolveDeployCommitSha({ ...options, cwd, env });
   const command = process.platform === 'win32' ? 'npx.cmd' : 'npx';
   const args = buildWranglerDeployArgs(sha);
-  const result = spawnSync(command, args, {
-    cwd: options.cwd ?? process.cwd(),
-    env: options.env ?? process.env,
-    stdio: 'inherit',
-  });
+  const spawn = options.spawn ?? spawnSync;
+  const writeIdentity = options.writeIdentity ?? writeWorkerReleaseIdentity;
+  const identityPath = path.join(cwd, RELEASE_IDENTITY_PATH);
+  const identityExisted = fs.existsSync(identityPath);
+  const originalIdentity = identityExisted ? fs.readFileSync(identityPath, 'utf8') : null;
 
-  if (result.error) throw result.error;
-  if (result.status !== 0) {
-    throw new Error(`Cloudflare Worker deployment failed with exit code ${result.status ?? 'unknown'}.`);
+  try {
+    const stampedSha = normalizeCommitSha(writeIdentity({
+      env: { ...env, WORKERS_CI_COMMIT_SHA: sha },
+      outputPath: identityPath,
+    }));
+    if (stampedSha !== sha) {
+      throw new Error(
+        `Worker release identity stamp ${stampedSha ?? 'invalid'} does not match deployment SHA ${sha}.`,
+      );
+    }
+
+    const result = spawn(command, args, {
+      cwd,
+      env,
+      stdio: 'inherit',
+    });
+
+    if (result.error) throw result.error;
+    if (result.status !== 0) {
+      throw new Error(`Cloudflare Worker deployment failed with exit code ${result.status ?? 'unknown'}.`);
+    }
+  } finally {
+    if (identityExisted) {
+      fs.writeFileSync(identityPath, originalIdentity, 'utf8');
+    } else if (fs.existsSync(identityPath)) {
+      fs.rmSync(identityPath);
+    }
   }
 
   return sha;
