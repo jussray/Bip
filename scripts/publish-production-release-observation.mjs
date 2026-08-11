@@ -152,8 +152,8 @@ export function buildReleaseBlockerComment({
   const workerRuntime = objectOrEmpty(payload.workerRuntime);
   const checkSummary = objectOrEmpty(payload.checkSummary);
   const requiredChecks = objectOrEmpty(payload.requiredChecks);
-  const observedSha = normalizeSha(payload.commitSha || payload.expectedSha);
-  const pagesSha = normalizeSha(pagesRelease.commitSha || pagesRelease.expectedSha);
+  const observedSha = normalizeSha(payload.commitSha);
+  const pagesSha = normalizeSha(pagesRelease.commitSha);
   const workerReleaseSha = normalizeSha(workerRuntime.releaseSha);
   const workerVersionTag = normalizeSha(workerRuntime.versionTag);
   const runUrl = `${serverUrl}/${repository}/actions/runs/${runId}`;
@@ -171,11 +171,11 @@ export function buildReleaseBlockerComment({
 ## BLOCKED: exact production release not verified
 
 - Intended main SHA: \`${normalizedExpected}\`
-- Evidence SHA: \`${observedSha || 'missing'}\`
+- Evidence SHA: \`${observedSha || 'not observed'}\`
 - Evidence version: \`${safeValue(payload.version, 'missing')}\`
 - Evidence status: \`${safeValue(payload.status, 'evidence missing')}\`
 - Readiness state: \`${safeValue(payload.readinessState, 'unknown')}\`
-- Pages marker SHA: \`${pagesSha || 'missing'}\`
+- Pages marker SHA: \`${pagesSha || 'not observed'}\`
 - Pages marker exact: \`${pagesRelease.complete === true && pagesSha === normalizedExpected ? 'yes' : 'no'}\`
 - Worker release SHA: \`${workerReleaseSha || 'missing'}\`
 - Worker release exact: \`${workerRuntime.complete === true && workerReleaseSha === normalizedExpected ? 'yes' : 'no'}\`
@@ -223,7 +223,7 @@ async function githubRequest(fetchImpl, url, options) {
   const body = await readResponseBody(response);
   if (!response.ok) {
     const detail = typeof body === 'string' ? body : JSON.stringify(body);
-    throw new Error(`GitHub API request failed (${response.status}): ${detail.slice(0, 500)}`);
+    throw new Error(`GitHub API request failed (${response.status}): ${detail.slice(0, 500)}.`);
   }
   return body;
 }
@@ -282,7 +282,7 @@ function readEvidence(evidencePath, expectedSha, fallbackStatus) {
   }
   return {
     version: 5,
-    commitSha: normalizeSha(expectedSha),
+    commitSha: null,
     expectedSha: normalizeSha(expectedSha),
     status: fallbackStatus,
     complete: false,
