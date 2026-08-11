@@ -23,8 +23,8 @@ export function validateReleaseEvidence(evidence, expectedSha) {
   }
 
   const payload = assertObject(evidence, 'Release evidence');
-  if (payload.version !== 4) {
-    throw new Error(`Release evidence version 4 is required; observed ${payload.version ?? 'missing'}.`);
+  if (payload.version !== 5) {
+    throw new Error(`Release evidence version 5 is required; observed ${payload.version ?? 'missing'}.`);
   }
 
   const observedSha = normalizeSha(payload.commitSha || payload.expectedSha);
@@ -48,17 +48,15 @@ export function validateReleaseEvidence(evidence, expectedSha) {
 
   const workerRuntime = assertObject(payload.workerRuntime, 'Worker runtime evidence');
   const workerExpectedSha = normalizeSha(workerRuntime.expectedSha);
-  const workerVersionTag = normalizeSha(workerRuntime.versionTag);
-  const workerVersionId = String(workerRuntime.versionId ?? '').trim();
+  const workerReleaseSha = normalizeSha(workerRuntime.releaseSha);
   if (
     workerRuntime.complete !== true
     || workerRuntime.healthOk !== true
-    || !workerVersionId
     || workerExpectedSha !== normalizedExpected
-    || workerVersionTag !== normalizedExpected
+    || workerReleaseSha !== normalizedExpected
   ) {
     throw new Error(
-      `Worker runtime identity is not exact: expected ${normalizedExpected}, observed ${workerVersionTag || 'missing'}.`,
+      `Worker runtime identity is not exact: expected ${normalizedExpected}, observed ${workerReleaseSha || 'missing'}.`,
     );
   }
 
@@ -121,6 +119,7 @@ export function buildReleaseObservationComment({
 - Pages branch: \`${safeValue(marker.branch)}\`
 - Deployment provider: \`${safeValue(marker.deploymentProvider)}\`
 - Deployment ID: \`${safeValue(marker.deploymentId)}\`
+- Worker release SHA: \`${safeValue(validated.workerRuntime.releaseSha)}\`
 - Worker version ID: \`${safeValue(validated.workerRuntime.versionId)}\`
 - Worker version tag: \`${safeValue(validated.workerRuntime.versionTag)}\`
 - Backend health: \`passed\`
@@ -131,7 +130,7 @@ export function buildReleaseObservationComment({
 ### Required Cloudflare checks
 ${workerChecks}
 
-This receipt is generated only after the exact-SHA Cloudflare observer, Pages release marker, exact live Worker runtime identity, backend health, runtime-contract health, and production Playwright steps all pass. It updates the existing marked receipt instead of creating duplicate release claims.
+This receipt is generated only after the exact-SHA Cloudflare observer, Pages release marker, exact live Worker release SHA, backend health, runtime-contract health, and production Playwright steps all pass. Cloudflare version metadata is retained as provenance only. It updates the existing marked receipt instead of creating duplicate release claims.
 `;
 }
 
@@ -153,6 +152,7 @@ export function buildReleaseBlockerComment({
   const requiredChecks = objectOrEmpty(payload.requiredChecks);
   const observedSha = normalizeSha(payload.commitSha || payload.expectedSha);
   const pagesSha = normalizeSha(pagesRelease.commitSha || pagesRelease.expectedSha);
+  const workerReleaseSha = normalizeSha(workerRuntime.releaseSha);
   const workerVersionTag = normalizeSha(workerRuntime.versionTag);
   const runUrl = `${serverUrl}/${repository}/actions/runs/${runId}`;
   const stepLines = Object.entries(objectOrEmpty(stepOutcomes))
@@ -172,9 +172,10 @@ export function buildReleaseBlockerComment({
 - Readiness state: \`${safeValue(payload.readinessState, 'unknown')}\`
 - Pages marker SHA: \`${pagesSha || 'missing'}\`
 - Pages marker exact: \`${pagesRelease.complete === true && pagesSha === normalizedExpected ? 'yes' : 'no'}\`
+- Worker release SHA: \`${workerReleaseSha || 'missing'}\`
+- Worker release exact: \`${workerRuntime.complete === true && workerReleaseSha === normalizedExpected ? 'yes' : 'no'}\`
 - Worker version ID: \`${safeValue(workerRuntime.versionId, 'missing')}\`
 - Worker version tag: \`${workerVersionTag || 'missing'}\`
-- Worker version exact: \`${workerRuntime.complete === true && workerVersionTag === normalizedExpected ? 'yes' : 'no'}\`
 - Workflow run: ${runUrl}
 
 ### Verification step outcomes
@@ -267,7 +268,7 @@ function readEvidence(evidencePath, expectedSha, fallbackStatus) {
     return JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
   }
   return {
-    version: 4,
+    version: 5,
     commitSha: normalizeSha(expectedSha),
     expectedSha: normalizeSha(expectedSha),
     status: fallbackStatus,
@@ -279,6 +280,7 @@ function readEvidence(evidencePath, expectedSha, fallbackStatus) {
     pagesRelease: {commitSha: null, expectedSha: normalizeSha(expectedSha), complete: false},
     workerRuntime: {
       expectedSha: normalizeSha(expectedSha),
+      releaseSha: null,
       versionId: null,
       versionTag: null,
       healthOk: false,
