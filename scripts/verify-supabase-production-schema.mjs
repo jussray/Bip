@@ -3,9 +3,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 export const DEFAULT_PROJECT_REF = 'tbsevonvegdnlyjgplmm';
-export const DEFAULT_SCHEMA_VERSION = '20260811132900';
+export const DEFAULT_MIGRATIONS_DIR = 'supabase/migrations';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/supabase-production-schema.json';
 const VERSION_PATTERN = /^\d{14}$/;
+const MIGRATION_FILE_PATTERN = /^(\d{14})_.+\.sql$/;
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -16,21 +17,32 @@ export function normalizeSchemaVersion(value) {
   return VERSION_PATTERN.test(version) ? version : null;
 }
 
+export async function deriveRepositorySchemaVersion(migrationsDir = DEFAULT_MIGRATIONS_DIR) {
+  const entries = await fs.readdir(migrationsDir, { withFileTypes: true });
+  const versions = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => entry.name.match(MIGRATION_FILE_PATTERN)?.[1] ?? null)
+    .filter(Boolean)
+    .sort();
+
+  const version = versions.at(-1) ?? null;
+  if (!version) {
+    throw new Error(`No canonical 14-digit Supabase migration found in ${migrationsDir}.`);
+  }
+  return version;
+}
+
 export function configFromEnv(env = process.env) {
   return {
     token: clean(env.SUPABASE_ACCESS_TOKEN),
     projectRef: clean(env.SUPABASE_PROJECT_REF) || DEFAULT_PROJECT_REF,
-    expectedVersion: normalizeSchemaVersion(env.EXPECTED_SUPABASE_SCHEMA_VERSION)
-      || DEFAULT_SCHEMA_VERSION,
+    migrationsDir: clean(env.SUPABASE_MIGRATIONS_DIR) || DEFAULT_MIGRATIONS_DIR,
     evidencePath: clean(env.SUPABASE_SCHEMA_EVIDENCE_PATH) || DEFAULT_EVIDENCE_PATH,
   };
 }
 
-export function buildReadOnlyQuery(expectedVersion) {
-  const version = normalizeSchemaVersion(expectedVersion);
-  if (!version) throw new Error('Expected Supabase schema version must be exactly 14 digits.');
-
-  return `select\n  exists (\n    select 1\n    from supabase_migrations.schema_migrations\n    where version = '${version}'\n  ) as migration_applied,\n  coalesce((\n    select version\n    from public.runtime_contract_versions\n    where contract_key = 'production_schema'\n    limit 1\n  ), '') as contract_version;`;
+export function buildReadOnlyQuery() {
+  return `select coalesce(max(version), '') as live_max_version\nfrom supabase_migrations.schema_migrations;`;
 }
 
 export function extractRows(payload) {
@@ -41,21 +53,18 @@ export function extractRows(payload) {
   return [];
 }
 
-function truthy(value) {
-  return value === true || value === 1 || value === '1' || value === 'true' || value === 't';
-}
-
 export function evaluateSchemaRow(row, expectedVersion) {
   const expected = normalizeSchemaVersion(expectedVersion);
   if (!expected) throw new Error('Expected Supabase schema version must be exactly 14 digits.');
 
-  const observed = clean(row?.contract_version ?? row?.contractVersion);
-  const migrationApplied = truthy(row?.migration_applied ?? row?.migrationApplied);
+  const liveMaxVersion = normalizeSchemaVersion(
+    row?.live_max_version ?? row?.liveMaxVersion,
+  );
+
   return {
     expectedVersion: expected,
-    contractVersion: observed || null,
-    migrationApplied,
-    verified: migrationApplied && observed === expected,
+    liveMaxVersion,
+    verified: liveMaxVersion === expected,
   };
 }
 
@@ -77,10 +86,13 @@ async function writeEvidence(evidencePath, evidence) {
 export async function verifySupabaseProductionSchema(options = {}) {
   const config = options.config ?? configFromEnv(options.env);
   const fetchImpl = options.fetchImpl ?? fetch;
+  const expectedVersion = options.expectedVersion
+    ?? await deriveRepositorySchemaVersion(config.migrationsDir);
+
   if (!config.token) throw new Error('SUPABASE_ACCESS_TOKEN is required for production schema verification.');
   if (!config.projectRef) throw new Error('SUPABASE_PROJECT_REF is required.');
 
-  const query = buildReadOnlyQuery(config.expectedVersion);
+  const query = buildReadOnlyQuery();
   const response = await fetchImpl(
     `https://api.supabase.com/v1/projects/${encodeURIComponent(config.projectRef)}/database/query/read-only`,
     {
@@ -98,7 +110,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
     const evidence = {
       verified: false,
       projectRef: config.projectRef,
-      expectedVersion: config.expectedVersion,
+      expectedVersion,
       error: `management_api_http_${response.status}`,
     };
     await writeEvidence(config.evidencePath, evidence);
@@ -106,7 +118,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
   }
 
   const rows = extractRows(payload);
-  const evaluated = evaluateSchemaRow(rows[0], config.expectedVersion);
+  const evaluated = evaluateSchemaRow(rows[0], expectedVersion);
   const evidence = {
     ...evaluated,
     projectRef: config.projectRef,
@@ -116,9 +128,8 @@ export async function verifySupabaseProductionSchema(options = {}) {
 
   if (!evaluated.verified) {
     throw new Error(
-      `SUPABASE_PRODUCTION_SCHEMA_DRIFT: expected ${evaluated.expectedVersion}, `
-      + `migration_applied=${evaluated.migrationApplied}, `
-      + `contract_version=${evaluated.contractVersion ?? 'missing'}.`,
+      `SUPABASE_PRODUCTION_SCHEMA_DRIFT: repo_head=${evaluated.expectedVersion}, `
+      + `live_head=${evaluated.liveMaxVersion ?? 'missing'}.`,
     );
   }
 
