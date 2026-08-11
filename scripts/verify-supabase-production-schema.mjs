@@ -12,6 +12,10 @@ function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function normalizeSchemaVersion(value) {
   const version = clean(value);
   return VERSION_PATTERN.test(version) ? version : null;
@@ -83,47 +87,124 @@ async function writeEvidence(evidencePath, evidence) {
   await fs.writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
 }
 
+function initialEvidence(config) {
+  return {
+    schemaVersion: 1,
+    verified: false,
+    status: 'initializing',
+    projectRef: config.projectRef || null,
+    expectedVersion: null,
+    liveMaxVersion: null,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+async function failWithEvidence(config, evidence, status, errorCode, error) {
+  evidence.status = status;
+  evidence.error = errorCode;
+  evidence.detail = errorMessage(error);
+  evidence.checkedAt = new Date().toISOString();
+  await writeEvidence(config.evidencePath, evidence);
+  throw error;
+}
+
 export async function verifySupabaseProductionSchema(options = {}) {
   const config = options.config ?? configFromEnv(options.env);
   const fetchImpl = options.fetchImpl ?? fetch;
-  const expectedVersion = options.expectedVersion
-    ?? await deriveRepositorySchemaVersion(config.migrationsDir);
+  const evidence = initialEvidence(config);
 
-  if (!config.token) throw new Error('SUPABASE_ACCESS_TOKEN is required for production schema verification.');
-  if (!config.projectRef) throw new Error('SUPABASE_PROJECT_REF is required.');
+  let expectedVersion;
+  try {
+    expectedVersion = options.expectedVersion
+      ?? await deriveRepositorySchemaVersion(config.migrationsDir);
+    expectedVersion = normalizeSchemaVersion(expectedVersion);
+    if (!expectedVersion) {
+      throw new Error('Expected Supabase schema version must be exactly 14 digits.');
+    }
+    evidence.expectedVersion = expectedVersion;
+  } catch (error) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'repository-schema-invalid',
+      'repository_schema_version_unavailable',
+      error,
+    );
+  }
+
+  if (!config.token) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'configuration-invalid',
+      'missing_supabase_access_token',
+      new Error('SUPABASE_ACCESS_TOKEN is required for production schema verification.'),
+    );
+  }
+  if (!config.projectRef) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'configuration-invalid',
+      'missing_supabase_project_ref',
+      new Error('SUPABASE_PROJECT_REF is required.'),
+    );
+  }
 
   const query = buildReadOnlyQuery();
-  const response = await fetchImpl(
-    `https://api.supabase.com/v1/projects/${encodeURIComponent(config.projectRef)}/database/query/read-only`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        'Content-Type': 'application/json',
+  let response;
+  try {
+    response = await fetchImpl(
+      `https://api.supabase.com/v1/projects/${encodeURIComponent(config.projectRef)}/database/query/read-only`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query }),
       },
-      body: JSON.stringify({ query }),
-    },
-  );
+    );
+  } catch (error) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'provider-query-failed',
+      'management_api_request_failed',
+      error,
+    );
+  }
 
-  const payload = await readJson(response);
+  let payload;
+  try {
+    payload = await readJson(response);
+  } catch (error) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'provider-query-failed',
+      'management_api_response_read_failed',
+      error,
+    );
+  }
+
   if (!response.ok) {
-    const evidence = {
-      verified: false,
-      projectRef: config.projectRef,
-      expectedVersion,
-      error: `management_api_http_${response.status}`,
-    };
-    await writeEvidence(config.evidencePath, evidence);
-    throw new Error(`Supabase read-only production schema verification failed with HTTP ${response.status}.`);
+    await failWithEvidence(
+      config,
+      evidence,
+      'provider-query-failed',
+      `management_api_http_${response.status}`,
+      new Error(`Supabase read-only production schema verification failed with HTTP ${response.status}.`),
+    );
   }
 
   const rows = extractRows(payload);
   const evaluated = evaluateSchemaRow(rows[0], expectedVersion);
-  const evidence = {
-    ...evaluated,
-    projectRef: config.projectRef,
-    checkedAt: new Date().toISOString(),
-  };
+  evidence.expectedVersion = evaluated.expectedVersion;
+  evidence.liveMaxVersion = evaluated.liveMaxVersion;
+  evidence.verified = evaluated.verified;
+  evidence.status = evaluated.verified ? 'verified' : 'schema-drift';
+  evidence.checkedAt = new Date().toISOString();
   await writeEvidence(config.evidencePath, evidence);
 
   if (!evaluated.verified) {

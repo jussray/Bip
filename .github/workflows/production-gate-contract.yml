@@ -19,6 +19,7 @@ on:
       - 'test/production-deployment-gate-contract.test.mjs'
       - 'test/production-release-observation.test.mjs'
       - 'test/supabase-production-schema-witness.test.mjs'
+      - 'test/supabase-production-blocker-evidence.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
 
@@ -67,6 +68,7 @@ jobs:
           test/production-deployment-gate-contract.test.mjs
           test/production-release-observation.test.mjs
           test/supabase-production-schema-witness.test.mjs
+          test/supabase-production-blocker-evidence.test.mjs
           test/release-metadata.test.mjs
           test/release-metadata-bootstrap.test.mjs
           test/cloudflare-pages-build-environment.test.mjs

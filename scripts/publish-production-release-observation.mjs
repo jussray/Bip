@@ -136,6 +136,7 @@ This receipt is generated only after the exact-SHA Cloudflare observer, Pages re
 
 export function buildReleaseBlockerComment({
   evidence,
+  schemaEvidence,
   expectedSha,
   repository,
   runId,
@@ -146,6 +147,7 @@ export function buildReleaseBlockerComment({
   if (!normalizedExpected) throw new Error('Expected release SHA is required.');
 
   const payload = objectOrEmpty(evidence);
+  const schema = objectOrEmpty(schemaEvidence);
   const pagesRelease = objectOrEmpty(payload.pagesRelease);
   const workerRuntime = objectOrEmpty(payload.workerRuntime);
   const checkSummary = objectOrEmpty(payload.checkSummary);
@@ -161,6 +163,9 @@ export function buildReleaseBlockerComment({
   const workerLines = Object.entries(requiredChecks)
     .map(([name, check]) => `- ${name}: status \`${safeValue(check?.status)}\`, conclusion \`${safeValue(check?.conclusion)}\``)
     .join('\n') || '- no required check result was retained';
+  const schemaRetained = Object.keys(schema).length > 0;
+  const schemaStatus = schemaRetained ? safeValue(schema.status, 'unknown') : 'not retained';
+  const schemaVerified = schemaRetained && schema.verified === true ? 'yes' : 'no';
 
   return `${RELEASE_BLOCKER_MARKER}
 ## BLOCKED: exact production release not verified
@@ -180,6 +185,14 @@ export function buildReleaseBlockerComment({
 
 ### Verification step outcomes
 ${stepLines}
+
+### Supabase production schema witness
+- Evidence retained: \`${schemaRetained ? 'yes' : 'no'}\`
+- Witness status: \`${schemaStatus}\`
+- Repository migration head: \`${safeValue(schema.expectedVersion, 'not observed')}\`
+- Live migration head: \`${safeValue(schema.liveMaxVersion, 'not observed')}\`
+- Witness verified: \`${schemaVerified}\`
+- Witness error: \`${safeValue(schema.error, 'none reported')}\`
 
 ### Required Cloudflare checks
 ${workerLines}
@@ -289,6 +302,15 @@ function readEvidence(evidencePath, expectedSha, fallbackStatus) {
   };
 }
 
+function readOptionalEvidence(evidencePath) {
+  if (!evidencePath || !fs.existsSync(evidencePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+  } catch {
+    return {status: 'evidence-invalid', verified: false, error: 'invalid_evidence_json'};
+  }
+}
+
 function parseStepOutcomes(value) {
   if (!value) return {};
   try {
@@ -323,15 +345,29 @@ export async function publishProductionReleaseObservation(env = process.env) {
 
 export async function publishProductionReleaseBlocker(env = process.env) {
   const evidencePath = env.CLOUDFLARE_EVIDENCE_PATH || 'artifacts/cloudflare-native-deploy.json';
+  const schemaEvidencePath = env.SUPABASE_SCHEMA_EVIDENCE_PATH || 'artifacts/supabase-production-schema.json';
   const expectedSha = env.EXPECTED_RELEASE_SHA || env.GITHUB_SHA;
+  const stepOutcomes = parseStepOutcomes(env.RELEASE_STEP_OUTCOMES);
+  const schemaEvidence = readOptionalEvidence(schemaEvidencePath);
   const evidence = readEvidence(evidencePath, expectedSha, env.VERIFICATION_JOB_STATUS || 'failed');
+
+  if (
+    stepOutcomes.supabase_schema === 'failure'
+    && schemaEvidence
+    && !fs.existsSync(evidencePath)
+  ) {
+    evidence.readinessState = `supabase-${safeValue(schemaEvidence.status, 'blocked')}`;
+    evidence.observerError = null;
+  }
+
   const issueNumber = Number(env.RELEASE_OBSERVATION_ISSUE || '696');
   const comment = buildReleaseBlockerComment({
     evidence,
+    schemaEvidence,
     expectedSha,
     repository: env.GITHUB_REPOSITORY,
     runId: env.GITHUB_RUN_ID,
-    stepOutcomes: parseStepOutcomes(env.RELEASE_STEP_OUTCOMES),
+    stepOutcomes,
     serverUrl: env.GITHUB_SERVER_URL || 'https://github.com',
   });
 
