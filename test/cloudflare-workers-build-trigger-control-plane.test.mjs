@@ -113,7 +113,7 @@ test('applies only the repo-owned deploy command, verifies readback, then reques
 
   const evidence = await reconcileWorkersBuildTrigger({
     env: {
-      CLOUDFLARE_API_TOKEN: 'secret-token-must-not-leak',
+      CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: 'secret-token-must-not-leak',
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
       BIP_WORKER_NAME: 'sekret-backend',
       BIP_WORKER_BUILD_COMMIT: COMMIT_SHA,
@@ -126,6 +126,7 @@ test('applies only the repo-owned deploy command, verifies readback, then reques
 
   assert.equal(evidence.status, 'applied-and-build-requested');
   assert.equal(evidence.applied, true);
+  assert.equal(evidence.triggerVerified, true);
   assert.equal(evidence.verified, true);
   assert.equal(evidence.before.deployCommand, 'npx wrangler deploy');
   assert.equal(evidence.after.deployCommand, DESIRED_DEPLOY_COMMAND);
@@ -165,7 +166,7 @@ test('an already-correct trigger skips PATCH but still launches one exact native
 
   const evidence = await reconcileWorkersBuildTrigger({
     env: {
-      CLOUDFLARE_API_TOKEN: 'token',
+      CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: 'token',
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
       BIP_WORKER_BUILD_COMMIT: COMMIT_SHA,
       CLOUDFLARE_BUILD_EVIDENCE_PATH: path.join(dir, 'evidence.json'),
@@ -176,10 +177,58 @@ test('an already-correct trigger skips PATCH but still launches one exact native
 
   assert.equal(evidence.status, 'verified-and-build-requested');
   assert.equal(evidence.applied, false);
+  assert.equal(evidence.triggerVerified, true);
   assert.equal(evidence.verified, true);
   assert.equal(evidence.targetBuild.buildUuid, BUILD_UUID);
   assert.equal(patchCalls, 0);
   assert.equal(buildCalls, 1);
+});
+
+test('preserves a verified deploy-command repair when the separate build request fails', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-workers-build-trigger-build-fail-'));
+  const evidencePath = path.join(dir, 'evidence.json');
+  let patched = false;
+  let patchCalls = 0;
+
+  const fetchImpl = async (url, options = {}) => {
+    if (url.endsWith('/user/tokens/verify')) return response({ status: 'active' });
+    if (url.includes('/workers/scripts?')) return response([{ id: 'sekret-backend', tag: WORKER_TAG }]);
+    if (url.endsWith(`/builds/workers/${WORKER_TAG}/triggers`)) {
+      return response([productionTrigger(patched ? DESIRED_DEPLOY_COMMAND : 'npx wrangler deploy')]);
+    }
+    if (url.endsWith(`/builds/triggers/${TRIGGER_UUID}`) && options.method === 'PATCH') {
+      patchCalls += 1;
+      patched = true;
+      return response({ ...productionTrigger(DESIRED_DEPLOY_COMMAND) });
+    }
+    if (url.endsWith(`/builds/triggers/${TRIGGER_UUID}/builds`) && options.method === 'POST') {
+      return response(null, { ok: false, statusText: 'temporary build service error' });
+    }
+    throw new Error(`Unexpected request: ${options.method || 'GET'} ${url}`);
+  };
+
+  await assert.rejects(
+    () => reconcileWorkersBuildTrigger({
+      env: {
+        CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: 'token',
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        BIP_WORKER_BUILD_COMMIT: COMMIT_SHA,
+        CLOUDFLARE_BUILD_EVIDENCE_PATH: evidencePath,
+      },
+      apply: true,
+      fetchImpl,
+    }),
+    /temporary build service error/,
+  );
+
+  const evidence = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+  assert.equal(evidence.status, 'trigger-verified-build-request-failed');
+  assert.equal(evidence.applied, true);
+  assert.equal(evidence.triggerVerified, true);
+  assert.equal(evidence.verified, false);
+  assert.equal(evidence.after.deployCommand, DESIRED_DEPLOY_COMMAND);
+  assert.equal(evidence.rollback.attempted, false);
+  assert.equal(patchCalls, 1);
 });
 
 test('apply fails closed before Cloudflare mutation when exact build SHA is unavailable', async () => {
@@ -187,7 +236,7 @@ test('apply fails closed before Cloudflare mutation when exact build SHA is unav
   await assert.rejects(
     () => reconcileWorkersBuildTrigger({
       env: {
-        CLOUDFLARE_API_TOKEN: 'token',
+        CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: 'token',
         CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
         GITHUB_SHA: 'deadbeef',
       },
