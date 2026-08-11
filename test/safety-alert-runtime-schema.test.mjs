@@ -44,16 +44,19 @@ test('reconciliation follows the recorded canonical safety runtime contract', ()
   assert.match(edge, /parent_notified_at/);
 });
 
-test('legacy columns remain present but stop blocking canonical service inserts', () => {
-  for (const column of ['teen_user_id', 'parent_user_id', 'title', 'summary']) {
-    assert.match(migration, new RegExp(`alter column ${column} drop not null`, 'i'));
-  }
+test('legacy columns remain compatible when present but are not required by fresh replay', () => {
+  assert.match(migration, /information_schema\.columns[\s\S]*column_name = 'teen_user_id'/i);
+  assert.match(migration, /set user_id = teen_user_id/i);
+  assert.match(
+    migration,
+    /array\['teen_user_id', 'parent_user_id', 'title', 'summary'\]/i,
+  );
+  assert.match(migration, /alter table public\.safety_alerts alter column %I drop not null/i);
   assert.doesNotMatch(migration, /drop column/i);
   assert.doesNotMatch(migration, /drop table/i);
 });
 
-test('canonical owner column is backfilled and protected by an auth foreign key', () => {
-  assert.match(migration, /set user_id = teen_user_id/i);
+test('canonical owner column is required and protected by an auth foreign key', () => {
   assert.match(migration, /alter column user_id set not null/i);
   assert.match(migration, /safety_alerts_user_id_fkey/i);
   assert.match(migration, /foreign key \(user_id\) references auth\.users\(id\) on delete cascade/i);

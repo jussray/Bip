@@ -11,19 +11,54 @@ alter table public.safety_alerts
   add column if not exists reviewed_by_parent boolean not null default false,
   add column if not exists parent_notified_at timestamptz;
 
--- Preserve any legacy rows if this migration is replayed against an environment
--- that already contains them.
-update public.safety_alerts
-set user_id = teen_user_id
-where user_id is null
-  and teen_user_id is not null;
+-- Preserve legacy teen-owned rows only on schemas that actually carry the old
+-- teen_user_id column. Fresh replay already starts from the canonical user_id
+-- shape and must not fail on a historical column that was never present there.
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'safety_alerts'
+      and column_name = 'teen_user_id'
+  ) then
+    execute $sql$
+      update public.safety_alerts
+      set user_id = teen_user_id
+      where user_id is null
+        and teen_user_id is not null
+    $sql$;
+  end if;
+end
+$$;
 
 alter table public.safety_alerts
-  alter column user_id set not null,
-  alter column teen_user_id drop not null,
-  alter column parent_user_id drop not null,
-  alter column title drop not null,
-  alter column summary drop not null;
+  alter column user_id set not null;
+
+-- Legacy-only columns stay available for rollback/compatibility when present,
+-- but clean canonical replay does not need to fabricate them.
+do $$
+declare
+  legacy_column text;
+begin
+  foreach legacy_column in array array['teen_user_id', 'parent_user_id', 'title', 'summary']
+  loop
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'safety_alerts'
+        and column_name = legacy_column
+    ) then
+      execute format(
+        'alter table public.safety_alerts alter column %I drop not null',
+        legacy_column
+      );
+    end if;
+  end loop;
+end
+$$;
 
 do $$
 begin
@@ -89,6 +124,6 @@ create index if not exists idx_safety_alerts_user_created
   on public.safety_alerts (user_id, created_at desc);
 
 comment on table public.safety_alerts is
-  'Canonical safety runtime rows. Service-side scanners write; teen owner and currently linked parent can read through RLS. Legacy columns remain nullable for compatibility and rollback.';
+  'Canonical safety runtime rows. Service-side scanners write; teen owner and currently linked parent can read through RLS. Legacy columns remain nullable for compatibility and rollback when present.';
 
 commit;
