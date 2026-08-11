@@ -9,6 +9,10 @@ on:
       - "scripts/verify-control-room-tests.mjs"
       - "test/control-room-tests-catalog.test.mjs"
       - "test/ai-skill-gap-blueprint-workflow.test.mjs"
+      - "test/juss-os-command-contract.test.mjs"
+      - "AGENTS.md"
+      - "AGENTS_FOUNDER_INTELLIGENCE.md"
+      - ".agents/skills/founder-dev-flow/SKILL.md"
       - ".ai-skills/**"
       - ".cursor/rules"
       - "CLAUDE.md"
@@ -24,6 +28,10 @@ on:
       - "scripts/verify-control-room-tests.mjs"
       - "test/control-room-tests-catalog.test.mjs"
       - "test/ai-skill-gap-blueprint-workflow.test.mjs"
+      - "test/juss-os-command-contract.test.mjs"
+      - "AGENTS.md"
+      - "AGENTS_FOUNDER_INTELLIGENCE.md"
+      - ".agents/skills/founder-dev-flow/SKILL.md"
       - ".ai-skills/**"
       - ".cursor/rules"
       - "CLAUDE.md"
@@ -76,6 +84,9 @@ jobs:
 
       - name: Run governed gap-to-merge workflow contract
         run: node --test test/ai-skill-gap-blueprint-workflow.test.mjs
+
+      - name: Verify portable Juss OS command contract
+        run: node --test test/juss-os-command-contract.test.mjs
 
       - name: Verify dynamic package-script and workflow inventory
         run: node scripts/verify-control-room-tests.mjs
