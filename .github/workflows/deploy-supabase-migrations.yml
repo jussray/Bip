@@ -137,6 +137,21 @@ jobs:
           mkdir -p artifacts
           supabase db push --linked --dry-run 2>&1 | tee artifacts/supabase-db-push-dry-run.txt
 
+      - name: Re-verify current main immediately before apply
+        if: ${{ inputs.mode == 'apply' }}
+        shell: bash
+        env:
+          TARGET_SHA: ${{ inputs.target_sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          current_main="$(git rev-parse FETCH_HEAD)"
+          printf 'apply_target=%s\ncurrent_main=%s\n' "$TARGET_SHA" "$current_main"
+          test "$TARGET_SHA" = "$current_main" || {
+            echo 'Main advanced after dry-run; refusing production migration apply.' >&2
+            exit 1
+          }
+
       - name: Apply production migrations
         if: ${{ inputs.mode == 'apply' }}
         shell: bash
