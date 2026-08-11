@@ -6,6 +6,7 @@ on:
     paths:
       - 'app.config.ts'
       - '.github/workflows/deploy-cloudflare.yml'
+      - '.github/workflows/deploy-supabase-migrations.yml'
       - '.github/workflows/production-gate-contract.yml'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
@@ -20,6 +21,7 @@ on:
       - 'test/production-release-observation.test.mjs'
       - 'test/supabase-production-schema-witness.test.mjs'
       - 'test/supabase-production-blocker-evidence.test.mjs'
+      - 'test/supabase-production-migration-workflow.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
 
@@ -69,6 +71,7 @@ jobs:
           test/production-release-observation.test.mjs
           test/supabase-production-schema-witness.test.mjs
           test/supabase-production-blocker-evidence.test.mjs
+          test/supabase-production-migration-workflow.test.mjs
           test/release-metadata.test.mjs
           test/release-metadata-bootstrap.test.mjs
           test/cloudflare-pages-build-environment.test.mjs
