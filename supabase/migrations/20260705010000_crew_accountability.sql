@@ -3,6 +3,23 @@
 -- Creates the current Crew Accountability contract without replacing the
 -- legacy crew_members relationship table. The authenticated user UUID for a
 -- crew member is stored in crew_members.member_user_id.
+--
+-- Fresh-replay reconstruction: production already carries the nullable
+-- relationship identity columns below, but the versioned migration chain did
+-- not create them before this migration's RLS policies referenced them.
+-- Recreate that live precondition here so an empty Supabase database can replay
+-- deterministically without inserting a retroactive migration version.
+alter table public.crew_members
+  add column if not exists member_user_id uuid;
+alter table public.crew_members
+  add column if not exists accepted_at timestamptz;
+
+do $$ begin
+  alter table public.crew_members
+    add constraint crew_members_member_user_id_fkey
+    foreign key (member_user_id) references auth.users(id) on delete set null;
+exception when duplicate_object then null;
+end $$;
 
 -- Legacy 0001 created crew_check_ins with an incompatible bigint/member layout.
 -- Preserve it only when it still exists and has not already been archived.
