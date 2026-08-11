@@ -29,6 +29,34 @@ Required engineering loop:
 
 `STEAL` means Scan reality, Trace the whole path, Establish evidence and gates, Act surgically, and Lock the result through exact-head review, rollback, merge truth, and post-merge verification.
 
+## Portable Juss OS command adapter
+
+The shared Juss OS command surface is available here as reasoning and planning modes only:
+
+```text
+/goalfix
+/ultrathink
+/truthmode
+/confess
+/redteam
+/lindymode
+/ooda
+/visualize
+```
+
+Se’kret Bip’s teen privacy, consent, dignity, anti-surveillance, parent/teen boundaries, auth, RLS, approval, evidence, rollback, release-truth, and non-deletion rules remain stricter and always win.
+
+- `/goalfix`: isolate one bounded Se’kret Bip failure and choose the smallest reversible evidence-backed fix. Do not turn the mode into permission to change auth, RLS, parent visibility, identity, data retention, provider state, deployment, migration, or publication.
+- `/ultrathink`: expand the option space, reconcile teen safety, privacy, consent, compatibility, runtime, release, and rollback constraints, then return to the smallest proof-backed action. Never upgrade UNKNOWN state into certainty.
+- `/truthmode`: separate repository, CI, Cloudflare, Supabase, browser, device, account, and design evidence. A green layer does not silently prove another layer.
+- `/confess`: expose missing inspection, stale evidence, unsupported assumptions, unavailable execution, and blocked proof instead of manufacturing certainty.
+- `/redteam`: attack both the premise and selected implementation for privacy, consent, identity, parent/teen leakage, auth/RLS bypass, compatibility, provider, release, rollback, and human-impact failures.
+- `/lindymode`: prefer durable, reversible, low-dependency primitives and existing Expo, React Native, Supabase, Cloudflare, and repository capabilities over novelty or duplicate sources of truth.
+- `/ooda`: Observe current evidence, Orient to Se’kret’s safety and architecture constraints, Decide one bounded slice, Act only within existing authority, Verify the real path, and define the next loop.
+- `/visualize`: translate verified state into an editable visual plan without mutating provider, account, data, publication, migration, or deployment state. For Figma, design-system, design-to-code, prototype, or visual QA work, also load [`.agents/skills/figma-build-implement/SKILL.md`](.agents/skills/figma-build-implement/SKILL.md). A generated visual is not proof of auth, consent, RLS, parent visibility, private data handling, runtime behavior, device behavior, deployment, or release state.
+
+These commands never create tool access, provider capability, founder approval, production authority, publication authority, deployment authority, migration authority, or data-access rights that the repository, session, and explicit gates do not already provide.
+
 For Se’kret Bip, `/human` includes heightened teen privacy, consent, safety, dignity, and anti-surveillance duties.
 
 This entrypoint supplements `AGENTS.md`, `GLOBAL_AI.md`, Founder Control Room, repository-local skills, and release-truth rules. It never weakens privacy, safety, approval, rollback, evidence, or non-deletion requirements.
