@@ -3,6 +3,8 @@ import test from 'node:test';
 import {
   aggregateTestLedger,
   buildTestLedger,
+  githubJson,
+  isRetryableGithubStatus,
   mapCheckState,
   selectLatestChecks,
 } from '../scripts/control-room-test-ledger.mjs';
@@ -21,6 +23,16 @@ function check(overrides = {}) {
     details_url: 'https://github.com/jussray/Sekret-Bip/actions/runs/1',
     app: {slug: 'github-actions', name: 'GitHub Actions'},
     ...overrides,
+  };
+}
+
+function response(status, body = '{}', payload = {}) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    headers: {get: () => null},
+    text: async () => body,
+    json: async () => payload,
   };
 }
 
@@ -77,4 +89,68 @@ test('builds a sanitized exact-SHA repository-local ledger', () => {
   assert.equal(ledger.source.includesAllDiscoveredChecks, true);
   assert.equal(ledger.source.excludesObserverCheck, true);
   assert.equal(JSON.stringify(ledger).includes('token'), false);
+});
+
+test('retries transient GitHub provider errors and returns the recovered payload', async () => {
+  assert.equal(isRetryableGithubStatus(502), true);
+  assert.equal(isRetryableGithubStatus(401), false);
+
+  let calls = 0;
+  const delays = [];
+  const payload = await githubJson('https://api.github.test/check-runs', 'redacted-token', {
+    maxAttempts: 4,
+    baseDelayMs: 10,
+    sleepImpl: async (delay) => delays.push(delay),
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls < 3) return response(502, '{"message":"Server Error"}');
+      return response(200, '{}', {check_runs: [{id: 1}]});
+    },
+  });
+
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [10, 20]);
+  assert.deepEqual(payload, {check_runs: [{id: 1}]});
+});
+
+test('does not retry non-transient authentication failures', async () => {
+  let calls = 0;
+  const delays = [];
+
+  await assert.rejects(
+    githubJson('https://api.github.test/check-runs', 'redacted-token', {
+      maxAttempts: 4,
+      baseDelayMs: 10,
+      sleepImpl: async (delay) => delays.push(delay),
+      fetchImpl: async () => {
+        calls += 1;
+        return response(401, '{"message":"Bad credentials"}');
+      },
+    }),
+    /GitHub check lookup failed \(401\) after 1 attempt\(s\)/,
+  );
+
+  assert.equal(calls, 1);
+  assert.deepEqual(delays, []);
+});
+
+test('bounded retries still fail closed when transient provider errors persist', async () => {
+  let calls = 0;
+  const delays = [];
+
+  await assert.rejects(
+    githubJson('https://api.github.test/check-runs', 'redacted-token', {
+      maxAttempts: 3,
+      baseDelayMs: 5,
+      sleepImpl: async (delay) => delays.push(delay),
+      fetchImpl: async () => {
+        calls += 1;
+        return response(502, '{"message":"Server Error"}');
+      },
+    }),
+    /GitHub check lookup failed \(502\) after 3 attempt\(s\)/,
+  );
+
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [5, 10]);
 });
