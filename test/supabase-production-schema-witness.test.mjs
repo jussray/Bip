@@ -160,6 +160,7 @@ test('production verifier fails closed when live Supabase is behind and retains 
 test('Cloudflare release workflow treats every migration change as production truth', () => {
   const workflow = fs.readFileSync(workflowPath, 'utf8');
   assert.match(workflow, /supabase\/migrations\/\*\*/);
+  assert.match(workflow, /verify-native-deployment:\n(?:.|\n)*?environment: Production/);
   assert.match(workflow, /id: supabase_schema/);
   assert.match(workflow, /verify-supabase-production-schema\.mjs/);
   assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
