@@ -232,3 +232,37 @@ test('blocked release receipts use trusted current-main publisher code even when
     'The blocked-attempt step must execute the trusted runner-temp publisher',
   );
 });
+
+test('production verifier serializes release checks and revalidates current main immediately before secret-backed schema proof', () => {
+  const workflow = fs.readFileSync(workflowPath, 'utf8');
+
+  assert.match(workflow, /concurrency:\n\s+group: cloudflare-native-production\n\s+cancel-in-progress: true/);
+  assert.doesNotMatch(workflow, /group: cloudflare-native-production-\$\{\{/);
+  assert.match(workflow, /name: Revalidate current main before Production secret use/);
+  assert.match(workflow, /id: trusted_current_main/);
+  assert.match(workflow, /Production verification target is no longer current main; refusing secret-backed verification/);
+  assert.match(workflow, /"trusted_current_main":"\$\{\{ steps\.trusted_current_main\.outcome \}\}"/);
+
+  const installIndex = workflow.indexOf('name: Install repository dependencies');
+  const revalidateIndex = workflow.indexOf('name: Revalidate current main before Production secret use');
+  const schemaWitnessIndex = workflow.indexOf('name: Verify exact Supabase production schema contract');
+  const secretIndex = workflow.indexOf('SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}');
+
+  for (const [label, index] of [
+    ['dependency install', installIndex],
+    ['current-main revalidation', revalidateIndex],
+    ['schema witness', schemaWitnessIndex],
+    ['Supabase token injection', secretIndex],
+  ]) {
+    assert.notEqual(index, -1, `${label} must exist`);
+  }
+
+  assert.ok(
+    installIndex < revalidateIndex && revalidateIndex < schemaWitnessIndex,
+    'Current main must be revalidated after target-controlled setup and immediately before the secret-backed witness',
+  );
+  assert.ok(
+    schemaWitnessIndex < secretIndex,
+    'The Production token must remain scoped to the schema-witness step only',
+  );
+});
