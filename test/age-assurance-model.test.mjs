@@ -32,7 +32,16 @@ test('age onboarding screen stores assurance metadata instead of raw evidence', 
   assert.match(screen, /guardian_required/);
   assert.match(screen, /raw_evidence_stored:\s*false/);
 
-  assert.doesNotMatch(screen, /upload.*id|selfie|video.*proof|date of birth/i);
+  // Privacy copy may plainly say what Bip does *not* collect. Guard concrete
+  // collection/storage mechanisms instead of rejecting that explanatory text.
+  for (const forbiddenImplementation of [
+    /expo-(image-picker|camera|document-picker)/i,
+    /launch(ImageLibrary|Camera)|requestCameraPermissions/i,
+    /raw[_A-Z]?id|id[_A-Z]?image|selfie[_A-Z]?video|face[_A-Z]?scan/i,
+    /date[_A-Z]?of[_A-Z]?birth|full[_A-Z]?dob/i,
+  ]) {
+    assert.doesNotMatch(screen, forbiddenImplementation);
+  }
 });
 
 test('welcome is a one-page onboarding entry without bypassing age assurance', async () => {
@@ -49,7 +58,14 @@ test('welcome is a one-page onboarding entry without bypassing age assurance', a
   assert.match(welcome, /handleParent/);
 
   assert.doesNotMatch(welcome, /router\.push\('\/\(onboarding\)\/age'/);
-  assert.doesNotMatch(welcome, /upload.*id|selfie|video.*proof|date of birth/i);
+  for (const forbiddenImplementation of [
+    /expo-(image-picker|camera|document-picker)/i,
+    /launch(ImageLibrary|Camera)|requestCameraPermissions/i,
+    /raw[_A-Z]?id|id[_A-Z]?image|selfie[_A-Z]?video|face[_A-Z]?scan/i,
+    /date[_A-Z]?of[_A-Z]?birth|full[_A-Z]?dob/i,
+  ]) {
+    assert.doesNotMatch(welcome, forbiddenImplementation);
+  }
 });
 
 test('onboarding documentation and ledger describe the one-page shell without claiming production proof', async () => {

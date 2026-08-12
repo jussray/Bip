@@ -3,10 +3,15 @@ import { defineConfig, devices } from '@playwright/test';
 
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const sandboxChromium = '/opt/pw-browsers/chromium';
+const installedChromium = [
+  '/opt/pw-browsers/chromium',
+  '/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable',
+  '/usr/bin/chromium',
+].find(candidate => fs.existsSync(candidate));
 const executablePath =
   process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ||
-  (fs.existsSync(sandboxChromium) ? sandboxChromium : undefined);
+  installedChromium;
 
 export default defineConfig({
   testDir: './e2e',

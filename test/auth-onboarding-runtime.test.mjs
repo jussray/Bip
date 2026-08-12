@@ -8,7 +8,8 @@ const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 
 const rootLayout = read('app/_layout.tsx');
 const index = read('app/index.tsx');
-const age = read('app/(onboarding)/age.tsx');
+const welcome = read('app/(onboarding)/welcome.tsx');
+const ageAssurance = read('src/features/onboarding/ageAssurance.ts');
 const login = read('app/(auth)/login.tsx');
 const signup = read('app/(auth)/signup.tsx');
 const consent = read('app/(onboarding)/consent.tsx');
@@ -27,10 +28,11 @@ test('splash and safe pre-auth onboarding routes are reachable before login', ()
 });
 
 test('age and account side survive into permanent account creation', () => {
-  assert.match(age, /\['bip_onboarding_age', selected\]/);
-  assert.match(age, /\[ONBOARDING_SIDE_KEY, 'teen'\]/);
-  assert.match(age, /\/\(auth\)\/signup\?side=teen/);
-  assert.match(age, /ONBOARDING_SIDE_KEY, 'parent'/);
+  assert.match(welcome, /AGE_ASSURANCE_STORAGE_KEYS\.bucket, ageDecision\.ageBucket/);
+  assert.match(welcome, /\[ONBOARDING_SIDE_KEY, ageDecision\.nextSide\]/);
+  assert.match(welcome, /setUserSide\(decision\.nextSide\)/);
+  assert.match(welcome, /AsyncStorage\.setItem\(ONBOARDING_SIDE_KEY, 'parent'\)/);
+  assert.match(ageAssurance, /nextSide:\s*'teen'[\s\S]*nextRoute:\s*'\/\(auth\)\/signup\?side=teen'/);
   assert.match(signup, /useLocalSearchParams<\{ side\?: string \}>/);
   assert.match(signup, /AsyncStorage\.setItem\(ONBOARDING_SIDE_KEY, preferredSide\)/);
 });

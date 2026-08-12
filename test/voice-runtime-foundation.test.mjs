@@ -98,8 +98,6 @@ test('voice event payloads use a strict primitive metadata allowlist', async () 
     'sequence',
     'sample_rate_hz',
     'channel_count',
-    'is_reconnect',
-    'was_cancelled',
     'network_state',
     'provider',
     'transport',
@@ -110,6 +108,7 @@ test('voice event payloads use a strict primitive metadata allowlist', async () 
   ]) {
     assert.match(migration, new RegExp(`when '${allowedKey}'`));
   }
+  assert.match(migration, /when 'is_reconnect', 'was_cancelled' then/);
 
   assert.match(errorCodeMigration, /voice_events_error_code_vocabulary/);
   assert.match(errorCodeMigration, /not \(payload \? 'error_code'\)/);

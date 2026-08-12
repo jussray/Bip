@@ -6,10 +6,7 @@ export type RelationshipFeatureFlagMap = Record<RelationshipFeature, Relationshi
 export const RELATIONSHIP_FEATURE_FLAGS: Readonly<RelationshipFeatureFlagMap> = Object.freeze({
   // Public behavior remains fail-closed. Founder Preview may open only the
   // implemented features below inside Expo Go/development.
-  bridgeSummaries: 'internal',
   bridgeLearning: 'internal',
-  crewAccountability: 'disabled',
-  emotionalScrapbook: 'disabled',
   // Controlled-alpha surfaces are available only to founder, internal, and beta
   // audiences. Public production builds remain closed until a separate founder
   // decision promotes them after authorization, deletion, and journey evidence.
