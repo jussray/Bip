@@ -13,6 +13,8 @@ const FAILURE_CONCLUSIONS = new Set([
   'timed_out',
 ]);
 
+const RETRYABLE_GITHUB_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -131,20 +133,62 @@ export function buildTestLedger({
   };
 }
 
-async function githubJson(url, token) {
-  const response = await fetch(url, {
-    headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${token}`,
-      'User-Agent': 'control-room-test-ledger',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
-  if (!response.ok) {
+function sleep(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+export function isRetryableGithubStatus(status) {
+  return RETRYABLE_GITHUB_STATUSES.has(Number(status));
+}
+
+export async function githubJson(url, token, options = {}) {
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const sleepImpl = options.sleepImpl ?? sleep;
+  const maxAttempts = Number.isInteger(options.maxAttempts) && options.maxAttempts > 0
+    ? options.maxAttempts
+    : 4;
+  const baseDelayMs = Number.isFinite(options.baseDelayMs) && options.baseDelayMs >= 0
+    ? options.baseDelayMs
+    : 250;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    let response;
+    try {
+      response = await fetchImpl(url, {
+        headers: {
+          Accept: 'application/vnd.github+json',
+          Authorization: `Bearer ${token}`,
+          'User-Agent': 'control-room-test-ledger',
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      });
+    } catch (error) {
+      if (attempt >= maxAttempts) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`GitHub check lookup transport failed after ${attempt} attempts: ${message}`);
+      }
+      await sleepImpl(baseDelayMs * (2 ** (attempt - 1)));
+      continue;
+    }
+
+    if (response.ok) return response.json();
+
     const body = await response.text();
-    throw new Error(`GitHub check lookup failed (${response.status}): ${body.slice(0, 500)}`);
+    if (!isRetryableGithubStatus(response.status) || attempt >= maxAttempts) {
+      throw new Error(
+        `GitHub check lookup failed (${response.status}) after ${attempt} attempt(s): ${body.slice(0, 500)}`,
+      );
+    }
+
+    const retryAfterSeconds = Number(response.headers?.get?.('retry-after'));
+    const exponentialDelay = baseDelayMs * (2 ** (attempt - 1));
+    const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+      ? Math.max(exponentialDelay, retryAfterSeconds * 1000)
+      : exponentialDelay;
+    await sleepImpl(retryDelay);
   }
-  return response.json();
+
+  throw new Error('GitHub check lookup exhausted retries without a response.');
 }
 
 async function fetchAllCheckRuns({repository, sha, token}) {
@@ -163,10 +207,6 @@ async function fetchAllCheckRuns({repository, sha, token}) {
     if (pageRuns.length < 100) break;
   }
   return runs;
-}
-
-function sleep(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 function writeLedger(outputPath, ledger) {
