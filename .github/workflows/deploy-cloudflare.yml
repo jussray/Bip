@@ -35,7 +35,7 @@ on:
   workflow_dispatch:
     inputs:
       target_sha:
-        description: Exact release commit to reconcile after a partial or interrupted deployment
+        description: Exact current-main release commit to reconcile after a partial or interrupted deployment
         required: false
         type: string
 
@@ -72,6 +72,34 @@ jobs:
       EXPECTED_RELEASE_SHA: ${{ inputs.target_sha || github.sha }}
       RELEASE_OBSERVATION_ISSUE: '696'
     steps:
+      - name: Validate trusted release target before checkout
+        id: trusted_target
+        shell: bash
+        env:
+          TARGET_SHA: ${{ env.DEPLOYMENT_SHA }}
+          REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          [[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || {
+            echo 'Deployment target must be a full 40-character commit SHA.' >&2
+            exit 1
+          }
+
+          current_main="$({
+            curl --fail-with-body --silent --show-error \
+              -H 'Accept: application/vnd.github+json' \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'X-GitHub-Api-Version: 2022-11-28' \
+              "https://api.github.com/repos/$REPOSITORY/commits/main"
+          } | node -e "let body='';process.stdin.on('data',c=>body+=c);process.stdin.on('end',()=>{const parsed=JSON.parse(body);if(!parsed.sha)process.exit(2);process.stdout.write(parsed.sha);});")"
+
+          printf 'requested=%s\ncurrent_main=%s\n' "$TARGET_SHA" "$current_main"
+          test "$TARGET_SHA" = "$current_main" || {
+            echo 'Refusing to expose Production-scoped secrets to a target that is not current main.' >&2
+            exit 1
+          }
+
       - name: Check out release commit under verification
         id: checkout
         uses: actions/checkout@v4
@@ -152,5 +180,5 @@ jobs:
           RELEASE_OBSERVATION_MODE: blocked
           VERIFICATION_JOB_STATUS: failure
           RELEASE_STEP_OUTCOMES: >-
-            {"checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
+            {"trusted_target":"${{ steps.trusted_target.outcome }}","checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
         run: node scripts/publish-production-release-observation.mjs
