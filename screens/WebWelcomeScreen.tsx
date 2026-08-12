@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { AccountSide } from '@/features/identity/accountProfile';
 import { FRONT_DOOR_THEME } from '@/constants/frontDoorTheme';
+import { FRONT_DOOR_MOTION } from '@/motion/frontDoorMotion';
 
 const TEEN_HERO = require('../assets/brand/sekret-bip-teen-family-v1.jpg');
 const BIP_JR_HERO = require('../assets/images/parent-space-splash.png');
@@ -107,7 +108,7 @@ export function WebWelcomeScreen({
     if (!motionEnabled) {
       worldPulse.stopAnimation();
       heroDrift.stopAnimation();
-      worldPulse.setValue(0.35);
+      worldPulse.setValue(FRONT_DOOR_MOTION.reducedPulseRestValue);
       heroDrift.setValue(0);
       return;
     }
@@ -116,13 +117,13 @@ export function WebWelcomeScreen({
       Animated.sequence([
         Animated.timing(worldPulse, {
           toValue: 1,
-          duration: 3200,
+          duration: FRONT_DOOR_MOTION.pulseDurationMs,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(worldPulse, {
           toValue: 0,
-          duration: 3200,
+          duration: FRONT_DOOR_MOTION.pulseDurationMs,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
@@ -132,13 +133,13 @@ export function WebWelcomeScreen({
       Animated.sequence([
         Animated.timing(heroDrift, {
           toValue: 1,
-          duration: 4200,
+          duration: FRONT_DOOR_MOTION.driftDurationMs,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(heroDrift, {
           toValue: 0,
-          duration: 4200,
+          duration: FRONT_DOOR_MOTION.driftDurationMs,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
@@ -158,13 +159,13 @@ export function WebWelcomeScreen({
     ? {
         opacity: worldPulse.interpolate({
           inputRange: [0, 1],
-          outputRange: [0.72, 1],
+          outputRange: FRONT_DOOR_MOTION.ambientOpacity,
         }),
         transform: [
           {
             scale: worldPulse.interpolate({
               inputRange: [0, 1],
-              outputRange: [1, 1.08],
+              outputRange: FRONT_DOOR_MOTION.ambientScale,
             }),
           },
         ],
@@ -179,13 +180,13 @@ export function WebWelcomeScreen({
           {
             translateY: heroDrift.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -8],
+              outputRange: FRONT_DOOR_MOTION.heroTranslateY,
             }),
           },
           {
             scale: worldPulse.interpolate({
               inputRange: [0, 1],
-              outputRange: [1, 1.018],
+              outputRange: FRONT_DOOR_MOTION.heroScale,
             }),
           },
         ],
@@ -197,19 +198,19 @@ export function WebWelcomeScreen({
     ? {
         opacity: worldPulse.interpolate({
           inputRange: [0, 1],
-          outputRange: [0.62, 1],
+          outputRange: FRONT_DOOR_MOTION.sparkOpacity,
         }),
         transform: [
           {
             translateY: heroDrift.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -5],
+              outputRange: FRONT_DOOR_MOTION.sparkTranslateY,
             }),
           },
           {
             rotate: worldPulse.interpolate({
               inputRange: [0, 1],
-              outputRange: ['0deg', '9deg'],
+              outputRange: FRONT_DOOR_MOTION.sparkRotate,
             }),
           },
         ],
