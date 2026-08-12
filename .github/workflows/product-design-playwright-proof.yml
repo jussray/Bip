@@ -19,6 +19,7 @@ on:
       - 'test/night-room-runtime-registry.test.mjs'
       - 'test/companion-runtime-contracts.test.mjs'
       - 'test/dual-front-door-contract.test.mjs'
+      - 'test/front-door-motion-contract.test.mjs'
       - 'test/worker-auth.test.mjs'
       - 'test/cloudflare-worker-consolidation.test.mjs'
       - 'playwright.config.ts'
@@ -45,6 +46,7 @@ on:
       - 'test/night-room-runtime-registry.test.mjs'
       - 'test/companion-runtime-contracts.test.mjs'
       - 'test/dual-front-door-contract.test.mjs'
+      - 'test/front-door-motion-contract.test.mjs'
       - 'test/worker-auth.test.mjs'
       - 'test/cloudflare-worker-consolidation.test.mjs'
       - 'playwright.config.ts'
@@ -90,7 +92,7 @@ jobs:
         run: npm run type-check
 
       - name: Verify Product Design contracts
-        run: node --test test/night-room-runtime-registry.test.mjs test/companion-runtime-contracts.test.mjs test/dual-front-door-contract.test.mjs
+        run: node --test test/night-room-runtime-registry.test.mjs test/companion-runtime-contracts.test.mjs test/dual-front-door-contract.test.mjs test/front-door-motion-contract.test.mjs
 
       - run: npx playwright install --with-deps chromium
 
