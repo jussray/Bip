@@ -191,3 +191,44 @@ test('Cloudflare release workflow validates a trusted current-main target before
     'Supabase schema drift must fail before the long Cloudflare exact-release wait',
   );
 });
+
+test('blocked release receipts use trusted current-main publisher code even when target validation fails before checkout', () => {
+  const workflow = fs.readFileSync(workflowPath, 'utf8');
+
+  assert.match(workflow, /trusted_publisher="\$RUNNER_TEMP\/sekret-publish-production-release-observation\.mjs"/);
+  assert.match(workflow, /Accept: application\/vnd\.github\.raw\+json/);
+  assert.match(workflow, /contents\/scripts\/publish-production-release-observation\.mjs\?ref=\$current_main/);
+  assert.match(workflow, /test -s "\$trusted_publisher"/);
+  assert.match(workflow, /Publish blocked exact production observation[\s\S]*node "\$RUNNER_TEMP\/sekret-publish-production-release-observation\.mjs"/);
+
+  const currentMainIndex = workflow.indexOf('current_main="$({');
+  const trustedPublisherIndex = workflow.indexOf('trusted_publisher="$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"');
+  const targetFormatIndex = workflow.indexOf('[[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]]');
+  const checkoutIndex = workflow.indexOf('name: Check out release commit under verification');
+  const blockerIndex = workflow.indexOf('name: Publish blocked exact production observation');
+  const trustedBlockerRunIndex = workflow.indexOf('node "$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"');
+
+  for (const [label, index] of [
+    ['current main lookup', currentMainIndex],
+    ['trusted publisher fetch', trustedPublisherIndex],
+    ['target format validation', targetFormatIndex],
+    ['release checkout', checkoutIndex],
+    ['blocked observation step', blockerIndex],
+    ['trusted blocker publisher run', trustedBlockerRunIndex],
+  ]) {
+    assert.notEqual(index, -1, `${label} must exist`);
+  }
+
+  assert.ok(
+    currentMainIndex < trustedPublisherIndex && trustedPublisherIndex < targetFormatIndex,
+    'Trusted current-main publisher code must be retained before malformed or stale targets can fail',
+  );
+  assert.ok(
+    targetFormatIndex < checkoutIndex,
+    'Untrusted target-controlled code must never be checked out before validation',
+  );
+  assert.ok(
+    blockerIndex < trustedBlockerRunIndex,
+    'The blocked-attempt step must execute the trusted runner-temp publisher',
+  );
+});
