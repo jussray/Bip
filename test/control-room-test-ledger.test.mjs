@@ -4,6 +4,7 @@ import {
   aggregateTestLedger,
   buildTestLedger,
   githubJson,
+  isRetryableGithubResponse,
   isRetryableGithubStatus,
   mapCheckState,
   selectLatestChecks,
@@ -26,11 +27,14 @@ function check(overrides = {}) {
   };
 }
 
-function response(status, body = '{}', payload = {}) {
+function response(status, body = '{}', payload = {}, headers = {}) {
+  const normalizedHeaders = new Map(
+    Object.entries(headers).map(([key, value]) => [key.toLowerCase(), String(value)]),
+  );
   return {
     ok: status >= 200 && status < 300,
     status,
-    headers: {get: () => null},
+    headers: {get: (name) => normalizedHeaders.get(String(name).toLowerCase()) ?? null},
     text: async () => body,
     json: async () => payload,
   };
@@ -91,10 +95,15 @@ test('builds a sanitized exact-SHA repository-local ledger', () => {
   assert.equal(JSON.stringify(ledger).includes('token'), false);
 });
 
-test('retries transient GitHub provider errors and returns the recovered payload', async () => {
+test('classifies only evidenced 403 rate limits as retryable', () => {
   assert.equal(isRetryableGithubStatus(502), true);
   assert.equal(isRetryableGithubStatus(401), false);
+  assert.equal(isRetryableGithubResponse(response(403, '{}', {}, {'retry-after': '2'})), true);
+  assert.equal(isRetryableGithubResponse(response(403, '{}', {}, {'x-ratelimit-remaining': '0'})), true);
+  assert.equal(isRetryableGithubResponse(response(403, '{}')), false);
+});
 
+test('retries transient GitHub provider errors and returns the recovered payload', async () => {
   let calls = 0;
   const delays = [];
   const payload = await githubJson('https://api.github.test/check-runs', 'redacted-token', {
@@ -111,6 +120,91 @@ test('retries transient GitHub provider errors and returns the recovered payload
   assert.equal(calls, 3);
   assert.deepEqual(delays, [10, 20]);
   assert.deepEqual(payload, {check_runs: [{id: 1}]});
+});
+
+test('retries a rate-limited 403 without retrying ordinary authorization 403s', async () => {
+  let rateLimitedCalls = 0;
+  const rateLimitedDelays = [];
+  const payload = await githubJson('https://api.github.test/check-runs', 'redacted-token', {
+    maxAttempts: 3,
+    baseDelayMs: 10,
+    maxDelayMs: 5_000,
+    sleepImpl: async (delay) => rateLimitedDelays.push(delay),
+    fetchImpl: async () => {
+      rateLimitedCalls += 1;
+      if (rateLimitedCalls === 1) {
+        return response(403, '{"message":"secondary rate limit"}', {}, {'retry-after': '2'});
+      }
+      return response(200, '{}', {check_runs: []});
+    },
+  });
+
+  assert.equal(rateLimitedCalls, 2);
+  assert.deepEqual(rateLimitedDelays, [2_000]);
+  assert.deepEqual(payload, {check_runs: []});
+
+  let authCalls = 0;
+  await assert.rejects(
+    githubJson('https://api.github.test/check-runs', 'redacted-token', {
+      maxAttempts: 3,
+      baseDelayMs: 10,
+      sleepImpl: async () => assert.fail('ordinary 403 must not sleep/retry'),
+      fetchImpl: async () => {
+        authCalls += 1;
+        return response(403, '{"message":"Resource not accessible by integration"}');
+      },
+    }),
+    /GitHub check lookup failed \(403\) after 1 attempt\(s\)/,
+  );
+  assert.equal(authCalls, 1);
+});
+
+test('retries when a successful response body fails during JSON consumption', async () => {
+  let calls = 0;
+  const delays = [];
+  const payload = await githubJson('https://api.github.test/check-runs', 'redacted-token', {
+    maxAttempts: 3,
+    baseDelayMs: 10,
+    sleepImpl: async (delay) => delays.push(delay),
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          ...response(200),
+          json: async () => { throw new Error('socket closed while reading body'); },
+        };
+      }
+      return response(200, '{}', {check_runs: [{id: 2}]});
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.deepEqual(delays, [10]);
+  assert.deepEqual(payload, {check_runs: [{id: 2}]});
+});
+
+test('retries when an error response body fails during text consumption', async () => {
+  let calls = 0;
+  const delays = [];
+  const payload = await githubJson('https://api.github.test/check-runs', 'redacted-token', {
+    maxAttempts: 3,
+    baseDelayMs: 10,
+    sleepImpl: async (delay) => delays.push(delay),
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          ...response(502),
+          text: async () => { throw new Error('socket closed while reading error body'); },
+        };
+      }
+      return response(200, '{}', {check_runs: [{id: 3}]});
+    },
+  });
+
+  assert.equal(calls, 2);
+  assert.deepEqual(delays, [10]);
+  assert.deepEqual(payload, {check_runs: [{id: 3}]});
 });
 
 test('does not retry non-transient authentication failures', async () => {
