@@ -81,10 +81,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          [[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || {
-            echo 'Deployment target must be a full 40-character commit SHA.' >&2
-            exit 1
-          }
 
           current_main="$({
             curl --fail-with-body --silent --show-error \
@@ -93,6 +89,20 @@ jobs:
               -H 'X-GitHub-Api-Version: 2022-11-28' \
               "https://api.github.com/repos/$REPOSITORY/commits/main"
           } | node -e "let body='';process.stdin.on('data',c=>body+=c);process.stdin.on('end',()=>{const parsed=JSON.parse(body);if(!parsed.sha)process.exit(2);process.stdout.write(parsed.sha);});")"
+
+          trusted_publisher="$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"
+          curl --fail-with-body --silent --show-error \
+            -H 'Accept: application/vnd.github.raw+json' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$REPOSITORY/contents/scripts/publish-production-release-observation.mjs?ref=$current_main" \
+            --output "$trusted_publisher"
+          test -s "$trusted_publisher"
+
+          [[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || {
+            echo 'Deployment target must be a full 40-character commit SHA.' >&2
+            exit 1
+          }
 
           printf 'requested=%s\ncurrent_main=%s\n' "$TARGET_SHA" "$current_main"
           test "$TARGET_SHA" = "$current_main" || {
@@ -181,4 +191,4 @@ jobs:
           VERIFICATION_JOB_STATUS: failure
           RELEASE_STEP_OUTCOMES: >-
             {"trusted_target":"${{ steps.trusted_target.outcome }}","checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
-        run: node scripts/publish-production-release-observation.mjs
+        run: node "$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"
