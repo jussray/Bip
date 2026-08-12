@@ -10,6 +10,7 @@ import { MOOD_GLOW } from '../constants/moodGlow';
 import { MiniReactionSticker, type MiniStickerCharacter } from '../components/MiniReactionSticker';
 import { SyncBadge, type SyncStatus } from '../components/SyncBadge';
 import { getVisibleSekretName, normalizeSekretCharacter } from '../utils/api';
+import { COMFORT_MOTION } from '../src/motion/comfortMotion';
 import {
   AccessibilityInfo,
   Animated,
@@ -145,13 +146,13 @@ export function ComfortScreen({
         Animated.sequence([
           Animated.timing(cloudFloat, {
             toValue: 1,
-            duration: 3800,
+            duration: COMFORT_MOTION.cloudFloatDurationMs,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(cloudFloat, {
             toValue: 0,
-            duration: 3800,
+            duration: COMFORT_MOTION.cloudFloatDurationMs,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -161,13 +162,13 @@ export function ComfortScreen({
         Animated.sequence([
           Animated.timing(cloudBreath, {
             toValue: 1,
-            duration: 2400,
+            duration: COMFORT_MOTION.cloudBreathDurationMs,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(cloudBreath, {
             toValue: 0,
-            duration: 2400,
+            duration: COMFORT_MOTION.cloudBreathDurationMs,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -177,13 +178,13 @@ export function ComfortScreen({
         Animated.sequence([
           Animated.timing(pillBreath, {
             toValue: 1,
-            duration: 1800,
+            duration: COMFORT_MOTION.presenceBreathDurationMs,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
           Animated.timing(pillBreath, {
             toValue: 0,
-            duration: 1800,
+            duration: COMFORT_MOTION.presenceBreathDurationMs,
             easing: Easing.inOut(Easing.sin),
             useNativeDriver: true,
           }),
@@ -253,18 +254,18 @@ export function ComfortScreen({
     const interval = setInterval(() => {
       Animated.timing(cloudFadeAnim, {
         toValue: 0,
-        duration: 400,
+        duration: COMFORT_MOTION.cloudCrossfadeOutMs,
         useNativeDriver: true,
       }).start(({ finished }) => {
         if (!finished) return;
         setCloudIdx(index => (index + 1) % CLOUD_ROTATION.length);
         Animated.timing(cloudFadeAnim, {
           toValue: 1,
-          duration: 500,
+          duration: COMFORT_MOTION.cloudCrossfadeInMs,
           useNativeDriver: true,
         }).start();
       });
-    }, 3500);
+    }, COMFORT_MOTION.cloudRotationIntervalMs);
 
     return () => {
       clearInterval(interval);
@@ -276,17 +277,17 @@ export function ComfortScreen({
     ? { transform: [{ translateY: 0 }, { scale: 1 }], opacity: 1 }
     : {
         transform: [
-          { translateY: cloudFloat.interpolate({ inputRange: [0, 1], outputRange: [-6, 6] }) },
-          { scale: cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] }) },
+          { translateY: cloudFloat.interpolate({ inputRange: [0, 1], outputRange: COMFORT_MOTION.cloudTranslateY }) },
+          { scale: cloudBreath.interpolate({ inputRange: [0, 1], outputRange: COMFORT_MOTION.cloudScale }) },
         ],
-        opacity: cloudBreath.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }),
+        opacity: cloudBreath.interpolate({ inputRange: [0, 1], outputRange: COMFORT_MOTION.cloudOpacity }),
       };
 
   const pillStyle = reduceMotion
     ? { opacity: 1, transform: [{ scale: 1 }] }
     : {
-        opacity: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] }),
-        transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] }) }],
+        opacity: pillBreath.interpolate({ inputRange: [0, 1], outputRange: COMFORT_MOTION.presenceOpacity }),
+        transform: [{ scale: pillBreath.interpolate({ inputRange: [0, 1], outputRange: COMFORT_MOTION.presenceScale }) }],
       };
 
   const finishComfort = (target: string) => {

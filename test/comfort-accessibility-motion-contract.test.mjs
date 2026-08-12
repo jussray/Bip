@@ -5,6 +5,7 @@ import test from 'node:test';
 const read = path => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const comfort = await read('screens/ComfortScreen.tsx');
+const comfortMotion = await read('src/motion/comfortMotion.ts');
 const route = await read('app/(teen)/comfort.tsx');
 const api = await read('src/utils/api.ts');
 
@@ -48,6 +49,18 @@ test('Grounding controls expose checked state, labels, and bounded touch targets
   assert.match(comfort, /accessibilityLabel="Show another grounding thought"/);
   assert.match(comfort, /accessibilityLabel="Open Calm Space and finish this Comfort visit"/);
   assert.match(comfort, /accessibilityLabel="Finish this Comfort visit and return home"/);
+});
+
+test('Comfort uses one shared semantic motion contract', () => {
+  assert.match(comfort, /COMFORT_MOTION/);
+  assert.match(comfort, /cloudFloatDurationMs/);
+  assert.match(comfort, /cloudBreathDurationMs/);
+  assert.match(comfort, /presenceBreathDurationMs/);
+  assert.match(comfort, /cloudRotationIntervalMs/);
+  assert.match(comfortMotion, /cloudTranslateY: \[-6, 6\]/);
+  assert.match(comfortMotion, /cloudScale: \[1, 1\.04\]/);
+  assert.match(comfortMotion, /presenceScale: \[1, 1\.03\]/);
+  assert.doesNotMatch(comfort, /duration: 3800|duration: 2400|duration: 1800/);
 });
 
 test('Comfort honors reduced motion and cleans every local animation resource', () => {
