@@ -14,6 +14,9 @@ const FAILURE_CONCLUSIONS = new Set([
 ]);
 
 const RETRYABLE_GITHUB_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
+const DEFAULT_GITHUB_RETRY_ATTEMPTS = 4;
+const DEFAULT_GITHUB_RETRY_DELAY_MS = 250;
+const DEFAULT_GITHUB_RETRY_MAX_DELAY_MS = 60_000;
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -137,8 +140,42 @@ function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function header(response, name) {
+  return clean(response?.headers?.get?.(name));
+}
+
 export function isRetryableGithubStatus(status) {
   return RETRYABLE_GITHUB_STATUSES.has(Number(status));
+}
+
+export function isRetryableGithubResponse(response) {
+  const status = Number(response?.status);
+  if (isRetryableGithubStatus(status)) return true;
+  if (status !== 403) return false;
+
+  // GitHub may use 403 for primary or secondary rate limits. Do not retry a
+  // generic authorization 403; require provider rate-limit evidence.
+  return header(response, 'retry-after') !== ''
+    || header(response, 'x-ratelimit-remaining') === '0';
+}
+
+function githubRetryDelayMs(response, attempt, baseDelayMs, maxDelayMs) {
+  const exponentialDelay = baseDelayMs * (2 ** (attempt - 1));
+  const retryAfterSeconds = Number(header(response, 'retry-after'));
+  const rateLimitResetSeconds = Number(header(response, 'x-ratelimit-reset'));
+  const nowSeconds = Date.now() / 1000;
+
+  const retryAfterDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
+    ? retryAfterSeconds * 1000
+    : 0;
+  const resetDelay = Number.isFinite(rateLimitResetSeconds) && rateLimitResetSeconds > nowSeconds
+    ? Math.ceil((rateLimitResetSeconds - nowSeconds) * 1000)
+    : 0;
+
+  return Math.min(
+    maxDelayMs,
+    Math.max(exponentialDelay, retryAfterDelay, resetDelay),
+  );
 }
 
 export async function githubJson(url, token, options = {}) {
@@ -146,13 +183,18 @@ export async function githubJson(url, token, options = {}) {
   const sleepImpl = options.sleepImpl ?? sleep;
   const maxAttempts = Number.isInteger(options.maxAttempts) && options.maxAttempts > 0
     ? options.maxAttempts
-    : 4;
+    : DEFAULT_GITHUB_RETRY_ATTEMPTS;
   const baseDelayMs = Number.isFinite(options.baseDelayMs) && options.baseDelayMs >= 0
     ? options.baseDelayMs
-    : 250;
+    : DEFAULT_GITHUB_RETRY_DELAY_MS;
+  const maxDelayMs = Number.isFinite(options.maxDelayMs) && options.maxDelayMs >= 0
+    ? options.maxDelayMs
+    : DEFAULT_GITHUB_RETRY_MAX_DELAY_MS;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response;
+    let errorBody = '';
+
     try {
       response = await fetchImpl(url, {
         headers: {
@@ -162,30 +204,31 @@ export async function githubJson(url, token, options = {}) {
           'X-GitHub-Api-Version': '2022-11-28',
         },
       });
+
+      if (response.ok) {
+        // Reading/parsing the body is part of the provider operation. A socket
+        // reset or truncated body here should receive the same bounded retry as
+        // a transport failure during fetch().
+        return await response.json();
+      }
+
+      errorBody = await response.text();
     } catch (error) {
       if (attempt >= maxAttempts) {
         const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`GitHub check lookup transport failed after ${attempt} attempts: ${message}`);
+        throw new Error(`GitHub check lookup transport/body failed after ${attempt} attempts: ${message}`);
       }
       await sleepImpl(baseDelayMs * (2 ** (attempt - 1)));
       continue;
     }
 
-    if (response.ok) return response.json();
-
-    const body = await response.text();
-    if (!isRetryableGithubStatus(response.status) || attempt >= maxAttempts) {
+    if (!isRetryableGithubResponse(response) || attempt >= maxAttempts) {
       throw new Error(
-        `GitHub check lookup failed (${response.status}) after ${attempt} attempt(s): ${body.slice(0, 500)}`,
+        `GitHub check lookup failed (${response.status}) after ${attempt} attempt(s): ${errorBody.slice(0, 500)}`,
       );
     }
 
-    const retryAfterSeconds = Number(response.headers?.get?.('retry-after'));
-    const exponentialDelay = baseDelayMs * (2 ** (attempt - 1));
-    const retryDelay = Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0
-      ? Math.max(exponentialDelay, retryAfterSeconds * 1000)
-      : exponentialDelay;
-    await sleepImpl(retryDelay);
+    await sleepImpl(githubRetryDelayMs(response, attempt, baseDelayMs, maxDelayMs));
   }
 
   throw new Error('GitHub check lookup exhausted retries without a response.');
