@@ -157,20 +157,35 @@ test('production verifier fails closed when live Supabase is behind and retains 
   assert.match(retained, /"verified": false/);
 });
 
-test('Cloudflare release workflow treats every migration change as production truth', () => {
+test('Cloudflare release workflow validates a trusted current-main target before checkout or Production secret use', () => {
   const workflow = fs.readFileSync(workflowPath, 'utf8');
   assert.match(workflow, /supabase\/migrations\/\*\*/);
   assert.match(workflow, /verify-native-deployment:\n(?:.|\n)*?environment: Production/);
+  assert.match(workflow, /name: Validate trusted release target before checkout/);
+  assert.match(workflow, /commits\/main/);
+  assert.match(workflow, /Refusing to expose Production-scoped secrets to a target that is not current main/);
   assert.match(workflow, /id: supabase_schema/);
   assert.match(workflow, /verify-supabase-production-schema\.mjs/);
   assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
   assert.match(workflow, /artifacts\/supabase-production-schema\.json/);
   assert.doesNotMatch(workflow, /EXPECTED_SUPABASE_SCHEMA_VERSION/);
 
+  const trustedTargetIndex = workflow.indexOf('name: Validate trusted release target before checkout');
+  const checkoutIndex = workflow.indexOf('name: Check out release commit under verification');
   const schemaWitnessIndex = workflow.indexOf('id: supabase_schema');
   const cloudflareReleaseIndex = workflow.indexOf('id: cloudflare_release');
+  assert.notEqual(trustedTargetIndex, -1, 'Trusted-target validation must exist');
+  assert.notEqual(checkoutIndex, -1, 'Release checkout must exist');
   assert.notEqual(schemaWitnessIndex, -1, 'Supabase schema witness must exist');
   assert.notEqual(cloudflareReleaseIndex, -1, 'Cloudflare exact-release witness must exist');
+  assert.ok(
+    trustedTargetIndex < checkoutIndex,
+    'Current-main trust must be established before target-controlled code is checked out',
+  );
+  assert.ok(
+    checkoutIndex < schemaWitnessIndex,
+    'The Supabase token must only reach code after trusted-target validation and checkout',
+  );
   assert.ok(
     schemaWitnessIndex < cloudflareReleaseIndex,
     'Supabase schema drift must fail before the long Cloudflare exact-release wait',
