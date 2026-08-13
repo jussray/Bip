@@ -5,8 +5,10 @@ import { pathToFileURL } from 'node:url';
 export const DEFAULT_PROJECT_REF = 'tbsevonvegdnlyjgplmm';
 export const DEFAULT_MIGRATIONS_DIR = 'supabase/migrations';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/supabase-production-schema.json';
+export const PRODUCTION_HISTORY_AUTHORITY_FLOOR = '20260805170500';
 const VERSION_PATTERN = /^\d{14}$/;
-const MIGRATION_FILE_PATTERN = /^(\d{14})_.+\.sql$/;
+const MIGRATION_FILE_PATTERN = /^(\d{14})_(.+)\.sql$/;
+const MIGRATION_NAME_TIMESTAMP_PREFIX = /^\d{14}_/;
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -19,6 +21,12 @@ function errorMessage(error) {
 export function normalizeSchemaVersion(value) {
   const version = clean(value);
   return VERSION_PATTERN.test(version) ? version : null;
+}
+
+export function normalizeMigrationName(value) {
+  return clean(value)
+    .replace(/\.sql$/i, '')
+    .replace(MIGRATION_NAME_TIMESTAMP_PREFIX, '');
 }
 
 export async function deriveRepositorySchemaVersion(migrationsDir = DEFAULT_MIGRATIONS_DIR) {
@@ -36,6 +44,38 @@ export async function deriveRepositorySchemaVersion(migrationsDir = DEFAULT_MIGR
   return version;
 }
 
+export async function deriveRepositoryMigrationIdentities(
+  migrationsDir = DEFAULT_MIGRATIONS_DIR,
+  authorityFloorVersion = PRODUCTION_HISTORY_AUTHORITY_FLOOR,
+) {
+  const floor = normalizeSchemaVersion(authorityFloorVersion);
+  if (!floor) {
+    throw new Error('Supabase production history authority floor must be exactly 14 digits.');
+  }
+
+  const entries = await fs.readdir(migrationsDir, { withFileTypes: true });
+  const migrations = entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const match = entry.name.match(MIGRATION_FILE_PATTERN);
+      if (!match) return null;
+      return {
+        version: match[1],
+        name: normalizeMigrationName(match[2]),
+      };
+    })
+    .filter((migration) => migration && migration.version >= floor)
+    .sort((left, right) => left.version.localeCompare(right.version));
+
+  if (!migrations.length) {
+    throw new Error(
+      `No canonical Supabase migrations found at or after authority floor ${floor} in ${migrationsDir}.`,
+    );
+  }
+
+  return migrations;
+}
+
 export function configFromEnv(env = process.env) {
   return {
     token: clean(env.SUPABASE_ACCESS_TOKEN),
@@ -46,7 +86,16 @@ export function configFromEnv(env = process.env) {
 }
 
 export function buildReadOnlyQuery() {
-  return `select coalesce(max(version), '') as live_max_version\nfrom supabase_migrations.schema_migrations;`;
+  return `select
+  coalesce(max(version), '') as live_max_version,
+  coalesce(
+    jsonb_agg(
+      jsonb_build_object('version', version, 'name', name)
+      order by version
+    ),
+    '[]'::jsonb
+  ) as migration_history
+from supabase_migrations.schema_migrations;`;
 }
 
 export function extractRows(payload) {
@@ -72,6 +121,123 @@ export function evaluateSchemaRow(row, expectedVersion) {
   };
 }
 
+function parseMigrationHistory(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeRepositoryMigrations(repositoryMigrations) {
+  if (!Array.isArray(repositoryMigrations) || !repositoryMigrations.length) {
+    throw new Error('Repository migration identities are required for production history verification.');
+  }
+
+  return repositoryMigrations.map((migration) => {
+    const version = normalizeSchemaVersion(migration?.version);
+    const name = normalizeMigrationName(migration?.name);
+    if (!version || !name) {
+      throw new Error('Repository migration identities require a 14-digit version and non-empty name.');
+    }
+    return { version, name };
+  });
+}
+
+export function evaluateMigrationHistory(
+  row,
+  repositoryMigrations,
+  authorityFloorVersion = PRODUCTION_HISTORY_AUTHORITY_FLOOR,
+) {
+  const floor = normalizeSchemaVersion(authorityFloorVersion);
+  if (!floor) {
+    throw new Error('Supabase production history authority floor must be exactly 14 digits.');
+  }
+
+  const requiredMigrations = normalizeRepositoryMigrations(repositoryMigrations)
+    .filter((migration) => migration.version >= floor)
+    .sort((left, right) => left.version.localeCompare(right.version));
+  if (!requiredMigrations.length) {
+    throw new Error('No required repository migrations remain inside the production history authority window.');
+  }
+
+  const rawHistory = parseMigrationHistory(
+    row?.migration_history ?? row?.migrationHistory,
+  );
+  if (!rawHistory) {
+    throw new Error('Supabase production migration history is missing or malformed.');
+  }
+
+  const liveHistory = rawHistory.map((migration) => ({
+    version: clean(migration?.version),
+    name: normalizeMigrationName(migration?.name),
+  }));
+
+  const requiredByVersion = new Map(requiredMigrations.map((migration) => [migration.version, migration]));
+  const requiredByName = new Map(requiredMigrations.map((migration) => [migration.name, migration]));
+  const representedCanonicalVersions = [];
+  const acceptedAliasVersions = [];
+  const missingCanonicalVersions = [];
+
+  for (const required of requiredMigrations) {
+    const matches = liveHistory.filter((live) => (
+      live.version === required.version
+      || (live.name && live.name === required.name)
+    ));
+    const canonical = matches.find((live) => live.version === required.version);
+    const representative = canonical ?? matches[0] ?? null;
+
+    if (!representative) {
+      missingCanonicalVersions.push(required.version);
+      continue;
+    }
+
+    representedCanonicalVersions.push(required.version);
+    if (representative.version !== required.version) {
+      acceptedAliasVersions.push({
+        canonicalVersion: required.version,
+        liveVersion: representative.version || null,
+        name: required.name,
+      });
+    }
+  }
+
+  const unexpectedRecentVersions = liveHistory
+    .filter((live) => {
+      const version = normalizeSchemaVersion(live.version);
+      if (!version || version < floor) return false;
+      return !requiredByVersion.has(version) && !requiredByName.has(live.name);
+    })
+    .map((live) => ({
+      liveVersion: live.version,
+      name: live.name || null,
+    }));
+
+  const expectedVersion = requiredMigrations.at(-1).version;
+  const liveMaxVersion = normalizeSchemaVersion(
+    row?.live_max_version ?? row?.liveMaxVersion,
+  ) ?? liveHistory
+    .map((migration) => normalizeSchemaVersion(migration.version))
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? null;
+
+  return {
+    authorityFloorVersion: floor,
+    expectedVersion,
+    liveMaxVersion,
+    requiredCanonicalVersions: requiredMigrations.map((migration) => migration.version),
+    representedCanonicalVersions,
+    acceptedAliasVersions,
+    missingCanonicalVersions,
+    unexpectedRecentVersions,
+    verified: missingCanonicalVersions.length === 0 && unexpectedRecentVersions.length === 0,
+  };
+}
+
 async function readJson(response) {
   const text = await response.text();
   if (!text) return null;
@@ -89,12 +255,18 @@ async function writeEvidence(evidencePath, evidence) {
 
 function initialEvidence(config) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     verified: false,
     status: 'initializing',
     projectRef: config.projectRef || null,
+    authorityFloorVersion: PRODUCTION_HISTORY_AUTHORITY_FLOOR,
     expectedVersion: null,
     liveMaxVersion: null,
+    requiredCanonicalVersions: [],
+    representedCanonicalVersions: [],
+    acceptedAliasVersions: [],
+    missingCanonicalVersions: [],
+    unexpectedRecentVersions: [],
     checkedAt: new Date().toISOString(),
   };
 }
@@ -114,6 +286,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
   const evidence = initialEvidence(config);
 
   let expectedVersion;
+  let repositoryMigrations;
   try {
     expectedVersion = options.expectedVersion
       ?? await deriveRepositorySchemaVersion(config.migrationsDir);
@@ -122,6 +295,9 @@ export async function verifySupabaseProductionSchema(options = {}) {
       throw new Error('Expected Supabase schema version must be exactly 14 digits.');
     }
     evidence.expectedVersion = expectedVersion;
+
+    repositoryMigrations = options.repositoryMigrations
+      ?? await deriveRepositoryMigrationIdentities(config.migrationsDir);
   } catch (error) {
     await failWithEvidence(
       config,
@@ -199,18 +375,53 @@ export async function verifySupabaseProductionSchema(options = {}) {
   }
 
   const rows = extractRows(payload);
-  const evaluated = evaluateSchemaRow(rows[0], expectedVersion);
+  const row = rows[0];
+  const hasMigrationHistory = parseMigrationHistory(
+    row?.migration_history ?? row?.migrationHistory,
+  ) !== null;
+
+  if (!hasMigrationHistory) {
+    const legacy = evaluateSchemaRow(row, expectedVersion);
+    evidence.expectedVersion = legacy.expectedVersion;
+    evidence.liveMaxVersion = legacy.liveMaxVersion;
+    evidence.verified = legacy.verified;
+    evidence.status = legacy.verified ? 'verified' : 'schema-drift';
+    evidence.checkedAt = new Date().toISOString();
+    await writeEvidence(config.evidencePath, evidence);
+
+    if (!legacy.verified) {
+      throw new Error(
+        `SUPABASE_PRODUCTION_SCHEMA_DRIFT: repo_head=${legacy.expectedVersion}, `
+        + `live_head=${legacy.liveMaxVersion ?? 'missing'}.`,
+      );
+    }
+
+    return evidence;
+  }
+
+  const evaluated = evaluateMigrationHistory(row, repositoryMigrations);
+  evidence.authorityFloorVersion = evaluated.authorityFloorVersion;
   evidence.expectedVersion = evaluated.expectedVersion;
   evidence.liveMaxVersion = evaluated.liveMaxVersion;
+  evidence.requiredCanonicalVersions = evaluated.requiredCanonicalVersions;
+  evidence.representedCanonicalVersions = evaluated.representedCanonicalVersions;
+  evidence.acceptedAliasVersions = evaluated.acceptedAliasVersions;
+  evidence.missingCanonicalVersions = evaluated.missingCanonicalVersions;
+  evidence.unexpectedRecentVersions = evaluated.unexpectedRecentVersions;
   evidence.verified = evaluated.verified;
   evidence.status = evaluated.verified ? 'verified' : 'schema-drift';
   evidence.checkedAt = new Date().toISOString();
   await writeEvidence(config.evidencePath, evidence);
 
   if (!evaluated.verified) {
+    const missing = evaluated.missingCanonicalVersions.join(',') || 'none';
+    const unexpected = evaluated.unexpectedRecentVersions
+      .map((migration) => migration.liveVersion)
+      .join(',') || 'none';
     throw new Error(
       `SUPABASE_PRODUCTION_SCHEMA_DRIFT: repo_head=${evaluated.expectedVersion}, `
-      + `live_head=${evaluated.liveMaxVersion ?? 'missing'}.`,
+      + `live_head=${evaluated.liveMaxVersion ?? 'missing'}, missing=${missing}, `
+      + `unexpected=${unexpected}.`,
     );
   }
 
