@@ -270,7 +270,7 @@ export function evaluateMigrationHistory(
       return !isKnownLiveReceipt(live, requiredMigrations, acceptedAliases);
     })
     .map((live) => ({
-      liveVersion: live.version ?? live.rawVersion || null,
+      liveVersion: live.version ?? (live.rawVersion || null),
       name: live.rawName || live.name || null,
     }));
 
