@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 import { resolvePlaywrightExecutablePath } from './scripts/playwright-executable.mjs';
 
+// Se'kret Bip — read-only and intercepted transport checks against the live
+// deployed frontend. Local harness, seeded-session, founder, and fixture-only
+// specs must never be promoted into production launch evidence.
 const BASE_URL = process.env.PRODUCTION_BASE_URL || 'https://sekretbip.net';
 const executablePath = resolvePlaywrightExecutablePath();
 
