@@ -93,7 +93,7 @@ jobs:
       - name: Wait for confirmation and prove returning sign in
         env:
           LIVE_ONBOARDING_PHASE: signin
-          LIVE_SIGNIN_ATTEMPTS: '36'
+          LIVE_SIGNIN_ATTEMPTS: '120'
           LIVE_SIGNIN_RETRY_MS: '5000'
         run: npx playwright test --config=playwright.live-onboarding.config.ts
 

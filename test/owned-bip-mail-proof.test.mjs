@@ -28,7 +28,7 @@ test('owned Bip proof remains exact-head, isolated-preview, and explicit-write o
 });
 
 test('owned mailbox confirmation is proved by bounded returning sign-in, not inbox credentials', () => {
-  assert.match(workflow, /LIVE_SIGNIN_ATTEMPTS: '36'/);
+  assert.match(workflow, /LIVE_SIGNIN_ATTEMPTS: '120'/);
   assert.match(workflow, /LIVE_SIGNIN_RETRY_MS: '5000'/);
   assert.match(workflow, /record-owned-confirmation/);
   assert.match(mailbox, /confirmationStatus: 'proved_by_returning_signin'/);
