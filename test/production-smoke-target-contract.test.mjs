@@ -18,3 +18,11 @@ test('production smoke proves the staged app hostname without changing automatic
   assert.match(workflow, /https:\/\/sekretbip\.net/);
   assert.match(workflow, /playwright\.production\.config\.ts/);
 });
+
+test('production smoke fails fast when a Worker intercepts the staged frontend hostname', () => {
+  assert.match(workflow, /Preflight selected frontend origin/);
+  assert.match(workflow, /Method not allowed/);
+  assert.match(workflow, /intercepted by a Worker route/);
+  assert.match(workflow, /returned JSON instead of the Pages frontend/);
+  assert.match(workflow, /content-type/);
+});
