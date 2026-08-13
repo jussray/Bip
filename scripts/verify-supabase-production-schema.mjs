@@ -376,30 +376,24 @@ export async function verifySupabaseProductionSchema(options = {}) {
 
   const rows = extractRows(payload);
   const row = rows[0];
-  const hasMigrationHistory = parseMigrationHistory(
+  const migrationHistory = parseMigrationHistory(
     row?.migration_history ?? row?.migrationHistory,
-  ) !== null;
+  );
 
-  if (!hasMigrationHistory) {
-    const legacy = evaluateSchemaRow(row, expectedVersion);
-    evidence.expectedVersion = legacy.expectedVersion;
-    evidence.liveMaxVersion = legacy.liveMaxVersion;
-    evidence.verified = legacy.verified;
-    evidence.status = legacy.verified ? 'verified' : 'schema-drift';
-    evidence.checkedAt = new Date().toISOString();
-    await writeEvidence(config.evidencePath, evidence);
-
-    if (!legacy.verified) {
-      throw new Error(
-        `SUPABASE_PRODUCTION_SCHEMA_DRIFT: repo_head=${legacy.expectedVersion}, `
-        + `live_head=${legacy.liveMaxVersion ?? 'missing'}.`,
-      );
-    }
-
-    return evidence;
+  if (!migrationHistory) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'provider-query-failed',
+      'production_migration_history_unavailable',
+      new Error('Supabase production migration history is missing or malformed.'),
+    );
   }
 
-  const evaluated = evaluateMigrationHistory(row, repositoryMigrations);
+  const evaluated = evaluateMigrationHistory({
+    ...row,
+    migration_history: migrationHistory,
+  }, repositoryMigrations);
   evidence.authorityFloorVersion = evaluated.authorityFloorVersion;
   evidence.expectedVersion = evaluated.expectedVersion;
   evidence.liveMaxVersion = evaluated.liveMaxVersion;
