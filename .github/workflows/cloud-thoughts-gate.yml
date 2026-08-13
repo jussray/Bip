@@ -9,6 +9,7 @@ on:
       - app/(teen)/cloud.tsx
       - src/utils/api.ts
       - utils/api.ts
+      - scripts/playwright-executable.mjs
       - test/cloud-thoughts-recovery-contract.test.mjs
       - test/canonical-comfort-cloud-routes.test.mjs
       - test/settings-companion-canon.test.mjs
