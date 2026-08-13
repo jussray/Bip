@@ -38,8 +38,36 @@ jobs:
       github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
+    env:
+      PRODUCTION_BASE_URL: ${{ github.event_name == 'pull_request' && 'https://app.sekretbip.net' || inputs.base_url || 'https://sekretbip.net' }}
 
     steps:
+      - name: Preflight selected frontend origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers="$(mktemp)"
+          body="$(mktemp)"
+          status="$(curl --silent --show-error --location \
+            --connect-timeout 10 --max-time 20 \
+            --dump-header "$headers" --output "$body" \
+            --write-out '%{http_code}' \
+            "$PRODUCTION_BASE_URL/")"
+          printf 'status=%s\n' "$status"
+          test "$status" -ge 200 && test "$status" -lt 400
+          content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub(/\r/, ""); print $2; exit}' "$headers")"
+          printf 'content-type=%s\n' "${content_type:-unknown}"
+          if grep -Fq '"error":"Method not allowed"' "$body"; then
+            echo 'Selected frontend hostname is being intercepted by a Worker route.' >&2
+            exit 1
+          fi
+          case "${content_type:-}" in
+            application/json*)
+              echo 'Selected frontend hostname returned JSON instead of the Pages frontend.' >&2
+              exit 1
+              ;;
+          esac
+
       - name: Check out repository
         uses: actions/checkout@v4
 
@@ -59,8 +87,6 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run read-only smoke checks against the selected live domain
-        env:
-          PRODUCTION_BASE_URL: ${{ github.event_name == 'pull_request' && 'https://app.sekretbip.net' || inputs.base_url || 'https://sekretbip.net' }}
         run: npx playwright test --config=playwright.production.config.ts
 
       - name: Upload Playwright report
