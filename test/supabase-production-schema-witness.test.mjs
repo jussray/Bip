@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  PRODUCTION_HISTORY_ACCEPTED_ALIASES,
   PRODUCTION_HISTORY_AUTHORITY_FLOOR,
   buildReadOnlyQuery,
   deriveRepositoryMigrationIdentities,
@@ -95,6 +96,16 @@ test('production history authority starts at the accepted issue 502 identity-syn
   assert.equal(PRODUCTION_HISTORY_AUTHORITY_FLOOR, '20260805170500');
 });
 
+test('accepted production aliases are explicit evidence-backed receipt pairs', () => {
+  assert.deepEqual(PRODUCTION_HISTORY_ACCEPTED_ALIASES, {
+    '20260805170500': '20260806020640',
+    '20260806024500': '20260808073044',
+    '20260808222500': '20260808221720',
+    '20260808223500': '20260808222306',
+    '20260813222000': '20260813222648',
+  });
+});
+
 test('repository history identities are bounded at the production authority floor', async () => {
   const dir = migrationDir([
     '20260804000000_before_authority_floor.sql',
@@ -153,7 +164,7 @@ test('legacy row helper still reports exact max-version equality for non-product
   }, CURRENT_MAIN_SCHEMA_HEAD).verified, false);
 });
 
-test('execution-time aliases represent canonical migrations by name without rewriting receipts', () => {
+test('execution-time aliases represent canonical migrations only when explicitly accepted', () => {
   const completeHistory = [
     ...ACCEPTED_LIVE_RECEIPTS,
     ...REQUIRED_HISTORY_FIXTURES
@@ -181,6 +192,22 @@ test('execution-time aliases represent canonical migrations by name without rewr
   );
   assert.equal(evaluated.expectedVersion, '20260813222000');
   assert.equal(evaluated.liveMaxVersion, '20260813222648');
+});
+
+test('an unproved alias fails closed even when it reuses the canonical migration name', () => {
+  const required = [{ version: '20260813222000', name: 'founder_owned_auth_identity' }];
+  const evaluated = evaluateMigrationHistory(
+    historyRow([{ version: '20260813223000', name: 'founder_owned_auth_identity' }]),
+    required,
+  );
+
+  assert.equal(evaluated.verified, false);
+  assert.deepEqual(evaluated.acceptedAliasVersions, []);
+  assert.deepEqual(evaluated.missingCanonicalVersions, ['20260813222000']);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, [{
+    liveVersion: '20260813223000',
+    name: 'founder_owned_auth_identity',
+  }]);
 });
 
 test('production-shaped recent history stays red while the five August 11 migrations are missing', () => {
