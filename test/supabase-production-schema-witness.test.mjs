@@ -194,6 +194,26 @@ test('execution-time aliases represent canonical migrations only when explicitly
   assert.equal(evaluated.liveMaxVersion, '20260813222648');
 });
 
+test('canonical history can coexist with its preserved accepted execution receipt', () => {
+  const required = [{ version: '20260813222000', name: 'founder_owned_auth_identity' }];
+  const evaluated = evaluateMigrationHistory(
+    historyRow([
+      { version: '20260813222000', name: 'founder_owned_auth_identity' },
+      { version: '20260813222648', name: 'founder_owned_auth_identity' },
+    ]),
+    required,
+  );
+
+  assert.equal(evaluated.verified, true);
+  assert.deepEqual(evaluated.representedCanonicalVersions, ['20260813222000']);
+  assert.deepEqual(evaluated.acceptedAliasVersions, [{
+    canonicalVersion: '20260813222000',
+    liveVersion: '20260813222648',
+    name: 'founder_owned_auth_identity',
+  }]);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, []);
+});
+
 test('an unproved alias fails closed even when it reuses the canonical migration name', () => {
   const required = [{ version: '20260813222000', name: 'founder_owned_auth_identity' }];
   const evaluated = evaluateMigrationHistory(
