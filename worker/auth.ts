@@ -4,6 +4,7 @@
  * Strategy chain, tried in order against the `Authorization: Bearer <token>`
  * value:
  *   1. Supabase JWT → per-user auth verified against the project issuer.
+ *      Anonymous Supabase sessions are rejected at this boundary.
  *   2. Shared token → explicit guest/client credential matching
  *      SEKRET_CLIENT_TOKEN with a constant-time comparison.
  *
@@ -86,7 +87,8 @@ async function verifySupabaseJwt(token: string, env: AuthEnv): Promise<JWTPayloa
 
 /**
  * Authenticate an API request. Secure behavior is the default:
- * - valid Supabase JWT → user principal
+ * - valid permanent-account Supabase JWT → user principal
+ * - valid anonymous Supabase JWT → 403
  * - exact shared token → guest/client principal
  * - missing credential → 401
  * - invalid credential → 403
@@ -103,6 +105,9 @@ export async function authenticate(request: Request, env: AuthEnv): Promise<Auth
 
   if (token && hasJwtVerifier && looksLikeJwt(token)) {
     const payload = await verifySupabaseJwt(token, env);
+    if (payload?.is_anonymous === true) {
+      return { ok: false, status: 403, error: 'anonymous user token not permitted' };
+    }
     if (payload?.sub) return { ok: true, principal: { kind: 'user', userId: payload.sub } };
     return { ok: false, status: 403, error: 'invalid token' };
   }

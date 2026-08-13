@@ -10,15 +10,15 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
-test('robots.txt exposes only the explicit public discovery surface', () => {
+test('robots.txt exposes only exact public discovery paths', () => {
   const robots = read('public/robots.txt');
 
   assert.match(robots, /^User-agent: \*$/m);
   assert.match(robots, /^Disallow: \/$/m);
   assert.match(robots, /^Allow: \/\$$/m);
-  assert.match(robots, /^Allow: \/auth\.md$/m);
-  assert.match(robots, /^Allow: \/robots\.txt$/m);
-  assert.match(robots, /^Allow: \/sitemap\.xml$/m);
+  assert.match(robots, /^Allow: \/auth\.md\$$/m);
+  assert.match(robots, /^Allow: \/robots\.txt\$$/m);
+  assert.match(robots, /^Allow: \/sitemap\.xml\$$/m);
   assert.match(robots, /^Sitemap: https:\/\/sekretbip\.net\/sitemap\.xml$/m);
 });
 
@@ -31,25 +31,25 @@ test('sitemap.xml contains only the canonical public landing page', () => {
   assert.deepEqual(locations, ['https://sekretbip.net/']);
 });
 
-test('auth.md truthfully documents current agent authentication discovery', () => {
+test('auth.md does not advertise external-agent user delegation', () => {
   const auth = read('public/auth.md');
 
   assert.match(auth, /^# .*auth\.md$/m);
   assert.match(auth, /Agent audience/);
   assert.match(auth, /https:\/\/sekretbip\.net\/signup/);
-  assert.match(auth, /human_email_password/);
-  assert.match(auth, /Authorization: Bearer <access-token>/);
-  assert.match(auth, /https:\/\/api\.sekretbip\.net/);
-  assert.match(auth, /Supabase session access token/);
-  assert.match(auth, /does not currently issue autonomous agent identities/);
+  assert.match(auth, /Agent registration endpoint: none/);
+  assert.match(auth, /Agent provisioning method: none/);
+  assert.match(auth, /No public agent credential is currently issued/);
+  assert.match(auth, /must not be shared with or delegated to external agents/);
   assert.match(auth, /does not currently publish OAuth Protected Resource Metadata or OAuth Authorization Server Metadata/);
+  assert.doesNotMatch(auth, /supports agents acting on behalf of an existing/);
 });
 
-test('Cloudflare headers deny AI training while preserving search and agent use', () => {
+test('Cloudflare headers deny training and agent input by default', () => {
   const headers = read('public/_headers');
 
   assert.match(headers, /^\/\*$/m);
-  assert.match(headers, /^  Content-Signal: ai-train=no, search=yes, ai-input=yes$/m);
+  assert.match(headers, /^  Content-Signal: ai-train=no, search=yes, ai-input=no$/m);
   assert.match(headers, /^\/auth\.md$/m);
   assert.match(headers, /^  Content-Type: text\/markdown; charset=utf-8$/m);
   assert.match(headers, /^\/robots\.txt$/m);
@@ -57,7 +57,6 @@ test('Cloudflare headers deny AI training while preserving search and agent use'
   assert.match(headers, /^\/sitemap\.xml$/m);
   assert.match(headers, /^  Content-Type: application\/xml; charset=utf-8$/m);
 
-  // Preserve the pre-existing browser hardening contract while extending it.
   assert.match(headers, /^  X-Frame-Options: DENY$/m);
   assert.match(headers, /^  Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'$/m);
 });
