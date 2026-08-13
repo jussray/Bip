@@ -183,6 +183,16 @@
       "behaviorVerified": false
     },
     {
+      "signature": "public.sync_owned_founder_profile()",
+      "searchPath": "pg_catalog, public, auth",
+      "risk": "critical",
+      "rationale": "Promotes only the owned confirmed non-anonymous founder mailbox and revokes founder authorization when that auth identity boundary stops matching.",
+      "clientExecuteRevokedLive": false,
+      "deployedLive": false,
+      "deploymentStatus": "Reviewed and migration-complete on main in supabase/migrations/20260813222000_founder_owned_auth_identity.sql. This audit verified the repository search_path pin, client EXECUTE revoke, confirmation/non-anonymous checks, and privilege-revocation path, but did not verify production pg_catalog deployment. Keep clientExecuteRevokedLive false until read-only live catalog parity confirms this exact function and both auth.users trigger attachments are deployed.",
+      "behaviorVerified": false
+    },
+    {
       "signature": "public.trigger_safety_scan()",
       "searchPath": "public",
       "risk": "critical",
@@ -283,6 +293,22 @@
       "function": "public.sync_app_profile_email_from_auth()",
       "timing": "AFTER",
       "events": ["UPDATE"]
+    },
+    {
+      "trigger": "sync_owned_founder_profile_insert",
+      "table": "auth.users",
+      "function": "public.sync_owned_founder_profile()",
+      "timing": "AFTER",
+      "events": ["INSERT"],
+      "deployedLive": false
+    },
+    {
+      "trigger": "sync_owned_founder_profile_update",
+      "table": "auth.users",
+      "function": "public.sync_owned_founder_profile()",
+      "timing": "AFTER",
+      "events": ["UPDATE"],
+      "deployedLive": false
     },
     {
       "trigger": "safety_scan_circle",
