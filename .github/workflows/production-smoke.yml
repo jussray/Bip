@@ -53,10 +53,23 @@ jobs:
             --dump-header "$headers" --output "$body" \
             --write-out '%{http_code}' \
             "$PRODUCTION_BASE_URL/")"
-          printf 'status=%s\n' "$status"
-          test "$status" -ge 200 && test "$status" -lt 400
           content_type="$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {gsub(/\r/, ""); print $2; exit}' "$headers")"
+          body_fingerprint="$(tr -d '\r\n' < "$body" | head -c 240)"
+          printf 'status=%s\n' "$status"
           printf 'content-type=%s\n' "${content_type:-unknown}"
+          printf 'body-fingerprint=%s\n' "$body_fingerprint"
+
+          health_body="$(mktemp)"
+          health_status="$(curl --silent --show-error --location \
+            --connect-timeout 10 --max-time 20 \
+            --output "$health_body" \
+            --write-out '%{http_code}' \
+            "$PRODUCTION_BASE_URL/health")"
+          health_fingerprint="$(tr -d '\r\n' < "$health_body" | head -c 240)"
+          printf 'health-status=%s\n' "$health_status"
+          printf 'health-fingerprint=%s\n' "$health_fingerprint"
+
+          test "$status" -ge 200 && test "$status" -lt 400
           if grep -Fq '"error":"Method not allowed"' "$body"; then
             echo 'Selected frontend hostname is being intercepted by a Worker route.' >&2
             exit 1
