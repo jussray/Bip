@@ -13,9 +13,10 @@ export const PRODUCTION_HISTORY_ACCEPTED_ALIASES = Object.freeze({
   '20260808223500': '20260808222306',
   '20260813222000': '20260813222648',
 });
+
 const VERSION_PATTERN = /^\d{14}$/;
 const MIGRATION_FILE_PATTERN = /^(\d{14})_(.+)\.sql$/;
-const MIGRATION_NAME_TIMESTAMP_PREFIX = /^\d{14}_/;
+const MIGRATION_NAME_WITH_TIMESTAMP_PATTERN = /^(\d{14})_(.+)$/;
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -30,10 +31,26 @@ export function normalizeSchemaVersion(value) {
   return VERSION_PATTERN.test(version) ? version : null;
 }
 
+function parseMigrationName(value) {
+  const rawName = clean(value).replace(/\.sql$/i, '');
+  const timestampMatch = rawName.match(MIGRATION_NAME_WITH_TIMESTAMP_PATTERN);
+  if (!timestampMatch) {
+    return {
+      rawName,
+      embeddedVersion: null,
+      name: rawName,
+    };
+  }
+
+  return {
+    rawName,
+    embeddedVersion: timestampMatch[1],
+    name: timestampMatch[2],
+  };
+}
+
 export function normalizeMigrationName(value) {
-  return clean(value)
-    .replace(/\.sql$/i, '')
-    .replace(MIGRATION_NAME_TIMESTAMP_PREFIX, '');
+  return parseMigrationName(value).name;
 }
 
 export async function deriveRepositorySchemaVersion(migrationsDir = DEFAULT_MIGRATIONS_DIR) {
@@ -156,7 +173,48 @@ function normalizeRepositoryMigrations(repositoryMigrations) {
 
 function acceptedAliasFor(required, acceptedAliases) {
   const liveVersion = normalizeSchemaVersion(acceptedAliases?.[required.version]);
-  return liveVersion ? { canonicalVersion: required.version, liveVersion, name: required.name } : null;
+  return liveVersion
+    ? { canonicalVersion: required.version, liveVersion, name: required.name }
+    : null;
+}
+
+function normalizeLiveMigration(migration) {
+  const rawVersion = clean(migration?.version);
+  const parsedName = parseMigrationName(migration?.name);
+  return {
+    rawVersion,
+    version: normalizeSchemaVersion(rawVersion),
+    rawName: parsedName.rawName,
+    embeddedVersion: parsedName.embeddedVersion,
+    name: parsedName.name,
+  };
+}
+
+function embeddedIdentityMatches(live, required) {
+  return live.embeddedVersion === null || live.embeddedVersion === required.version;
+}
+
+function matchesCanonicalReceipt(live, required) {
+  return live.version === required.version
+    && live.name === required.name
+    && embeddedIdentityMatches(live, required);
+}
+
+function matchesAcceptedAlias(live, required, alias) {
+  return Boolean(alias)
+    && live.version === alias.liveVersion
+    && live.name === required.name
+    && embeddedIdentityMatches(live, required);
+}
+
+function isKnownLiveReceipt(live, requiredMigrations, acceptedAliases) {
+  if (!live.version || !live.name) return false;
+
+  return requiredMigrations.some((required) => {
+    if (matchesCanonicalReceipt(live, required)) return true;
+    const alias = acceptedAliasFor(required, acceptedAliases);
+    return matchesAcceptedAlias(live, required, alias);
+  });
 }
 
 export function evaluateMigrationHistory(
@@ -184,49 +242,36 @@ export function evaluateMigrationHistory(
     throw new Error('Supabase production migration history is missing or malformed.');
   }
 
-  const liveHistory = rawHistory.map((migration) => ({
-    version: normalizeSchemaVersion(migration?.version),
-    name: normalizeMigrationName(migration?.name),
-  }));
+  const liveHistory = rawHistory.map(normalizeLiveMigration);
   const representedCanonicalVersions = [];
   const acceptedAliasVersions = [];
   const missingCanonicalVersions = [];
-  const validLiveKeys = new Set();
 
   for (const required of requiredMigrations) {
-    const canonicalKey = `${required.version}:${required.name}`;
-    validLiveKeys.add(canonicalKey);
-
     const alias = acceptedAliasFor(required, acceptedAliases);
-    if (alias) validLiveKeys.add(`${alias.liveVersion}:${alias.name}`);
-
-    const canonical = liveHistory.find((live) => (
-      live.version === required.version && live.name === required.name
-    ));
+    const canonical = liveHistory.find((live) => matchesCanonicalReceipt(live, required));
     const liveAlias = alias
-      ? liveHistory.find((live) => (
-        live.version === alias.liveVersion && live.name === alias.name
-      ))
+      ? liveHistory.find((live) => matchesAcceptedAlias(live, required, alias))
       : null;
 
     if (liveAlias) acceptedAliasVersions.push(alias);
 
     if (canonical || liveAlias) {
       representedCanonicalVersions.push(required.version);
-      continue;
+    } else {
+      missingCanonicalVersions.push(required.version);
     }
-
-    missingCanonicalVersions.push(required.version);
   }
 
   const unexpectedRecentVersions = liveHistory
     .filter((live) => {
-      if (!live.version || live.version < floor) return false;
-      return !validLiveKeys.has(`${live.version}:${live.name}`);
+      if (!live.version) return true;
+      if (live.version < floor) return false;
+      return !isKnownLiveReceipt(live, requiredMigrations, acceptedAliases);
     })
     .map((live) => ({
-      liveVersion: live.version,
-      name: live.name || null,
+      liveVersion: live.version ?? live.rawVersion || null,
+      name: live.rawName || live.name || null,
     }));
 
   const expectedVersion = requiredMigrations.at(-1).version;
