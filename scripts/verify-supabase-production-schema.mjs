@@ -191,28 +191,28 @@ export function evaluateMigrationHistory(
   const representedCanonicalVersions = [];
   const acceptedAliasVersions = [];
   const missingCanonicalVersions = [];
-  const acceptedLiveKeys = new Set();
+  const validLiveKeys = new Set();
 
   for (const required of requiredMigrations) {
+    const canonicalKey = `${required.version}:${required.name}`;
+    validLiveKeys.add(canonicalKey);
+
+    const alias = acceptedAliasFor(required, acceptedAliases);
+    if (alias) validLiveKeys.add(`${alias.liveVersion}:${alias.name}`);
+
     const canonical = liveHistory.find((live) => (
       live.version === required.version && live.name === required.name
     ));
-    if (canonical) {
-      representedCanonicalVersions.push(required.version);
-      acceptedLiveKeys.add(`${canonical.version}:${canonical.name}`);
-      continue;
-    }
-
-    const alias = acceptedAliasFor(required, acceptedAliases);
     const liveAlias = alias
       ? liveHistory.find((live) => (
         live.version === alias.liveVersion && live.name === alias.name
       ))
       : null;
-    if (liveAlias) {
+
+    if (liveAlias) acceptedAliasVersions.push(alias);
+
+    if (canonical || liveAlias) {
       representedCanonicalVersions.push(required.version);
-      acceptedAliasVersions.push(alias);
-      acceptedLiveKeys.add(`${liveAlias.version}:${liveAlias.name}`);
       continue;
     }
 
@@ -222,7 +222,7 @@ export function evaluateMigrationHistory(
   const unexpectedRecentVersions = liveHistory
     .filter((live) => {
       if (!live.version || live.version < floor) return false;
-      return !acceptedLiveKeys.has(`${live.version}:${live.name}`);
+      return !validLiveKeys.has(`${live.version}:${live.name}`);
     })
     .map((live) => ({
       liveVersion: live.version,
