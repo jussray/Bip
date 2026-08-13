@@ -16,11 +16,38 @@ const configs = [
   'playwright.controlled-account.config.ts',
 ];
 
+const consumingWorkflows = [
+  '.github/workflows/product-design-playwright-proof.yml',
+  '.github/workflows/comfort-mode-gate.yml',
+  '.github/workflows/cloud-thoughts-gate.yml',
+  '.github/workflows/front-door-gate.yml',
+  '.github/workflows/production-smoke.yml',
+  '.github/workflows/production-gate-contract.yml',
+  '.github/workflows/deploy-cloudflare.yml',
+  '.github/workflows/playwright.yml',
+  '.github/workflows/controlled-account-cloud-comfort.yml',
+  '.github/workflows/founder-operator-exact-head.yml',
+  '.github/workflows/live-signup-proof.yml',
+];
+
+const resolverPath = 'scripts/playwright-executable.mjs';
+
 test('all Playwright configs use the shared browser resolver', async () => {
   for (const configPath of configs) {
     const source = await readFile(new URL(`../${configPath}`, import.meta.url), 'utf8');
     assert.match(source, /resolvePlaywrightExecutablePath/);
     assert.doesNotMatch(source, /sandboxChromium/);
+  }
+});
+
+test('every workflow that consumes a shared Playwright config watches the resolver', async () => {
+  for (const workflowPath of consumingWorkflows) {
+    const source = await readFile(new URL(`../${workflowPath}`, import.meta.url), 'utf8');
+    assert.match(
+      source,
+      /scripts\/playwright-executable\.mjs/,
+      `${workflowPath} must run when ${resolverPath} changes`,
+    );
   }
 });
 
@@ -33,13 +60,13 @@ test('explicit browser override remains highest authority', () => {
   assert.equal(resolved, '/custom/chromium');
 });
 
-test('version-matched Playwright browser wins over host fallbacks', () => {
+test('installed version-matched Playwright browser wins over host fallbacks', () => {
   const existing = new Set(['/managed/chromium', ...PLAYWRIGHT_CHROMIUM_FALLBACKS]);
   const resolved = choosePlaywrightExecutablePath({
     managedPath: '/managed/chromium',
     exists: (candidate) => existing.has(candidate),
   });
-  assert.equal(resolved, undefined);
+  assert.equal(resolved, '/managed/chromium');
 });
 
 test('host fallback is used only when Playwright-managed browser is unavailable', () => {
@@ -51,7 +78,7 @@ test('host fallback is used only when Playwright-managed browser is unavailable'
   assert.equal(resolved, '/usr/bin/chromium');
 });
 
-test('no override leaves browser selection to Playwright when no fallback exists', () => {
+test('no override leaves browser selection to Playwright when no managed browser or fallback exists', () => {
   const resolved = choosePlaywrightExecutablePath({
     managedPath: '/managed/missing',
     exists: () => false,
