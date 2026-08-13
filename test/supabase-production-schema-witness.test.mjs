@@ -157,22 +157,112 @@ test('production verifier fails closed when live Supabase is behind and retains 
   assert.match(retained, /"verified": false/);
 });
 
-test('Cloudflare release workflow treats every migration change as production truth', () => {
+test('Cloudflare release workflow validates a trusted current-main target before checkout or Production secret use', () => {
   const workflow = fs.readFileSync(workflowPath, 'utf8');
   assert.match(workflow, /supabase\/migrations\/\*\*/);
   assert.match(workflow, /verify-native-deployment:\n(?:.|\n)*?environment: Production/);
+  assert.match(workflow, /name: Validate trusted release target before checkout/);
+  assert.match(workflow, /commits\/main/);
+  assert.match(workflow, /Refusing to expose Production-scoped secrets to a target that is not current main/);
   assert.match(workflow, /id: supabase_schema/);
   assert.match(workflow, /verify-supabase-production-schema\.mjs/);
   assert.match(workflow, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
   assert.match(workflow, /artifacts\/supabase-production-schema\.json/);
   assert.doesNotMatch(workflow, /EXPECTED_SUPABASE_SCHEMA_VERSION/);
 
+  const trustedTargetIndex = workflow.indexOf('name: Validate trusted release target before checkout');
+  const checkoutIndex = workflow.indexOf('name: Check out release commit under verification');
   const schemaWitnessIndex = workflow.indexOf('id: supabase_schema');
   const cloudflareReleaseIndex = workflow.indexOf('id: cloudflare_release');
+  assert.notEqual(trustedTargetIndex, -1, 'Trusted-target validation must exist');
+  assert.notEqual(checkoutIndex, -1, 'Release checkout must exist');
   assert.notEqual(schemaWitnessIndex, -1, 'Supabase schema witness must exist');
   assert.notEqual(cloudflareReleaseIndex, -1, 'Cloudflare exact-release witness must exist');
   assert.ok(
+    trustedTargetIndex < checkoutIndex,
+    'Current-main trust must be established before target-controlled code is checked out',
+  );
+  assert.ok(
+    checkoutIndex < schemaWitnessIndex,
+    'The Supabase token must only reach code after trusted-target validation and checkout',
+  );
+  assert.ok(
     schemaWitnessIndex < cloudflareReleaseIndex,
     'Supabase schema drift must fail before the long Cloudflare exact-release wait',
+  );
+});
+
+test('blocked release receipts use trusted current-main publisher code even when target validation fails before checkout', () => {
+  const workflow = fs.readFileSync(workflowPath, 'utf8');
+
+  assert.match(workflow, /trusted_publisher="\$RUNNER_TEMP\/sekret-publish-production-release-observation\.mjs"/);
+  assert.match(workflow, /Accept: application\/vnd\.github\.raw\+json/);
+  assert.match(workflow, /contents\/scripts\/publish-production-release-observation\.mjs\?ref=\$current_main/);
+  assert.match(workflow, /test -s "\$trusted_publisher"/);
+  assert.match(workflow, /Publish blocked exact production observation[\s\S]*node "\$RUNNER_TEMP\/sekret-publish-production-release-observation\.mjs"/);
+
+  const currentMainIndex = workflow.indexOf('current_main="$({');
+  const trustedPublisherIndex = workflow.indexOf('trusted_publisher="$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"');
+  const targetFormatIndex = workflow.indexOf('[[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]]');
+  const checkoutIndex = workflow.indexOf('name: Check out release commit under verification');
+  const blockerIndex = workflow.indexOf('name: Publish blocked exact production observation');
+  const trustedBlockerRunIndex = workflow.indexOf('node "$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"');
+
+  for (const [label, index] of [
+    ['current main lookup', currentMainIndex],
+    ['trusted publisher fetch', trustedPublisherIndex],
+    ['target format validation', targetFormatIndex],
+    ['release checkout', checkoutIndex],
+    ['blocked observation step', blockerIndex],
+    ['trusted blocker publisher run', trustedBlockerRunIndex],
+  ]) {
+    assert.notEqual(index, -1, `${label} must exist`);
+  }
+
+  assert.ok(
+    currentMainIndex < trustedPublisherIndex && trustedPublisherIndex < targetFormatIndex,
+    'Trusted current-main publisher code must be retained before malformed or stale targets can fail',
+  );
+  assert.ok(
+    targetFormatIndex < checkoutIndex,
+    'Untrusted target-controlled code must never be checked out before validation',
+  );
+  assert.ok(
+    blockerIndex < trustedBlockerRunIndex,
+    'The blocked-attempt step must execute the trusted runner-temp publisher',
+  );
+});
+
+test('production verifier serializes release checks and revalidates current main immediately before secret-backed schema proof', () => {
+  const workflow = fs.readFileSync(workflowPath, 'utf8');
+
+  assert.match(workflow, /concurrency:\n\s+group: cloudflare-native-production\n\s+cancel-in-progress: true/);
+  assert.doesNotMatch(workflow, /group: cloudflare-native-production-\$\{\{/);
+  assert.match(workflow, /name: Revalidate current main before Production secret use/);
+  assert.match(workflow, /id: trusted_current_main/);
+  assert.match(workflow, /Production verification target is no longer current main; refusing secret-backed verification/);
+  assert.match(workflow, /"trusted_current_main":"\$\{\{ steps\.trusted_current_main\.outcome \}\}"/);
+
+  const installIndex = workflow.indexOf('name: Install repository dependencies');
+  const revalidateIndex = workflow.indexOf('name: Revalidate current main before Production secret use');
+  const schemaWitnessIndex = workflow.indexOf('name: Verify exact Supabase production schema contract');
+  const secretIndex = workflow.indexOf('SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}');
+
+  for (const [label, index] of [
+    ['dependency install', installIndex],
+    ['current-main revalidation', revalidateIndex],
+    ['schema witness', schemaWitnessIndex],
+    ['Supabase token injection', secretIndex],
+  ]) {
+    assert.notEqual(index, -1, `${label} must exist`);
+  }
+
+  assert.ok(
+    installIndex < revalidateIndex && revalidateIndex < schemaWitnessIndex,
+    'Current main must be revalidated after target-controlled setup and immediately before the secret-backed witness',
+  );
+  assert.ok(
+    schemaWitnessIndex < secretIndex,
+    'The Production token must remain scoped to the schema-witness step only',
   );
 });
