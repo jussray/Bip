@@ -6,6 +6,10 @@
   Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'
   Content-Signal: ai-train=no, search=yes, ai-input=yes
 
+/auth.md
+  Content-Type: text/markdown; charset=utf-8
+  Cache-Control: public, max-age=3600
+
 /robots.txt
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=3600
