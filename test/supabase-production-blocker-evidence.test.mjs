@@ -4,7 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { verifySupabaseProductionSchema } from '../scripts/verify-supabase-production-schema.mjs';
+import {
+  PRODUCTION_HISTORY_AUTHORITY_FLOOR,
+  verifySupabaseProductionSchema,
+} from '../scripts/verify-supabase-production-schema.mjs';
 import { publishProductionReleaseBlocker } from '../scripts/publish-production-release-observation.mjs';
 
 const SHA = '101abcf129df0a8e9bb2ad3e3b5f1a81e0c16399';
@@ -54,12 +57,18 @@ test('missing Supabase token fails closed and retains redacted schema evidence',
   assert.equal(fs.existsSync(evidencePath), true);
   const evidenceText = fs.readFileSync(evidencePath, 'utf8');
   const evidence = JSON.parse(evidenceText);
-  assert.equal(evidence.schemaVersion, 1);
+  assert.equal(evidence.schemaVersion, 2);
   assert.equal(evidence.verified, false);
   assert.equal(evidence.status, 'configuration-invalid');
   assert.equal(evidence.error, 'missing_supabase_access_token');
+  assert.equal(evidence.authorityFloorVersion, PRODUCTION_HISTORY_AUTHORITY_FLOOR);
   assert.equal(evidence.expectedVersion, SCHEMA_HEAD);
   assert.equal(evidence.liveMaxVersion, null);
+  assert.deepEqual(evidence.requiredCanonicalVersions, []);
+  assert.deepEqual(evidence.representedCanonicalVersions, []);
+  assert.deepEqual(evidence.acceptedAliasVersions, []);
+  assert.deepEqual(evidence.missingCanonicalVersions, []);
+  assert.deepEqual(evidence.unexpectedRecentVersions, []);
   assert.doesNotMatch(evidenceText, /Bearer|secret-token/i);
 });
 
@@ -89,9 +98,11 @@ test('response-body transport failure retains provider-query evidence', async ()
   assert.equal(fs.existsSync(evidencePath), true);
   const evidenceText = fs.readFileSync(evidencePath, 'utf8');
   const evidence = JSON.parse(evidenceText);
+  assert.equal(evidence.schemaVersion, 2);
   assert.equal(evidence.verified, false);
   assert.equal(evidence.status, 'provider-query-failed');
   assert.equal(evidence.error, 'management_api_response_read_failed');
+  assert.equal(evidence.authorityFloorVersion, PRODUCTION_HISTORY_AUTHORITY_FLOOR);
   assert.equal(evidence.expectedVersion, SCHEMA_HEAD);
   assert.equal(evidence.liveMaxVersion, null);
   assert.doesNotMatch(evidenceText, new RegExp(token));
@@ -102,12 +113,18 @@ test('blocked release receipt names Supabase preflight failure without inventing
   const schemaEvidencePath = path.join(tmp, 'supabase-production-schema.json');
   const missingCloudflarePath = path.join(tmp, 'cloudflare-native-deploy.json');
   fs.writeFileSync(schemaEvidencePath, JSON.stringify({
-    schemaVersion: 1,
+    schemaVersion: 2,
     verified: false,
     status: 'configuration-invalid',
     projectRef: 'tbsevonvegdnlyjgplmm',
+    authorityFloorVersion: PRODUCTION_HISTORY_AUTHORITY_FLOOR,
     expectedVersion: SCHEMA_HEAD,
     liveMaxVersion: null,
+    requiredCanonicalVersions: [],
+    representedCanonicalVersions: [],
+    acceptedAliasVersions: [],
+    missingCanonicalVersions: [],
+    unexpectedRecentVersions: [],
     error: 'missing_supabase_access_token',
   }), 'utf8');
 
