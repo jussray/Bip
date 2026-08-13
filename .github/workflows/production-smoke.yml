@@ -1,7 +1,13 @@
 name: Production Smoke
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Frontend URL to verify before a production domain cutover"
+        required: false
+        default: "https://sekretbip.net"
+        type: string
   workflow_run:
     workflows: ["Deploy to Cloudflare"]
     types: [completed]
@@ -18,7 +24,7 @@ concurrency:
 
 jobs:
   smoke:
-    name: Verify sekretbip.net
+    name: Verify production frontend
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: >
@@ -44,7 +50,9 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run read-only smoke checks against the live domain
+      - name: Run read-only smoke checks against the selected live domain
+        env:
+          PRODUCTION_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || 'https://sekretbip.net' }}
         run: npx playwright test --config=playwright.production.config.ts
 
       - name: Upload Playwright report
