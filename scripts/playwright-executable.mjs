@@ -17,7 +17,11 @@ export function choosePlaywrightExecutablePath({
   const explicit = explicitPath?.trim();
   if (explicit) return explicit;
 
-  if (managedPath && exists(managedPath)) return undefined;
+  // Playwright can install the full version-matched Chromium without the
+  // separate headless shell (`playwright install chromium --no-shell`).
+  // When that managed browser exists, launch it directly instead of leaving
+  // Playwright to resolve a headless-shell executable that may not be present.
+  if (managedPath && exists(managedPath)) return managedPath;
 
   return fallbacks.find((candidate) => exists(candidate));
 }
