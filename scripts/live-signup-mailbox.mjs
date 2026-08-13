@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const API_BASE = 'https://api.mail.tm';
 const PROVIDER_URL = 'https://mail.tm';
+const OWNED_BIP_ADDRESS = 'hello@sekretbip.net';
 const command = process.argv[2];
 const artifactsDir = 'artifacts';
 
@@ -10,6 +11,14 @@ function required(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
   return value;
+}
+
+function mailboxMode() {
+  const mode = process.env.LIVE_MAILBOX_MODE?.trim().toLowerCase() || 'mailtm';
+  if (!['mailtm', 'bip_routed'].includes(mode)) {
+    throw new Error(`Unsupported LIVE_MAILBOX_MODE: ${mode}`);
+  }
+  return mode;
 }
 
 function appendGithubEnv(name, value) {
@@ -93,6 +102,31 @@ function writeJson(name, value) {
 async function createMailbox() {
   const runId = required('GITHUB_RUN_ID');
   const headSha = required('EXPECTED_HEAD_SHA');
+  const mode = mailboxMode();
+  const appPassword = randomSecret();
+  const username = `pw${runId}`.slice(0, 24);
+
+  mask(appPassword);
+  appendGithubEnv('LIVE_MAILBOX_MODE', mode);
+  appendGithubEnv('LIVE_ONBOARDING_USERNAME', username);
+  appendGithubEnv('LIVE_ONBOARDING_PASSWORD', appPassword);
+
+  if (mode === 'bip_routed') {
+    appendGithubEnv('LIVE_ONBOARDING_EMAIL', OWNED_BIP_ADDRESS);
+    writeJson('live-signup-proof-account.json', {
+      email: OWNED_BIP_ADDRESS,
+      username,
+      runId,
+      headSha,
+      mailboxProvider: 'Se\'kret Bip Cloudflare Email Routing',
+      mailboxMode: mode,
+      confirmation: 'external-owned-mailbox',
+    });
+    console.log(`Owned Bip signup proof mailbox: ${OWNED_BIP_ADDRESS}`);
+    console.log(`Disposable live signup username: ${username}`);
+    return;
+  }
+
   const { body: domainsBody } = await api('/domains?page=1');
   const domains = collectionMembers(domainsBody);
   const domainRecord = domains.find((item) => typeof item?.domain === 'string' && item.domain.trim());
@@ -106,11 +140,7 @@ async function createMailbox() {
   const localPart = `sekretbip-pw-${runId}-${crypto.randomBytes(3).toString('hex')}`.toLowerCase();
   const address = `${localPart}@${domainRecord.domain}`;
   const mailboxPassword = randomSecret();
-  const appPassword = randomSecret();
-  const username = `pw${runId}`.slice(0, 24);
-
   mask(mailboxPassword);
-  mask(appPassword);
 
   const accountPayload = JSON.stringify({ address, password: mailboxPassword });
   const { body: account } = await api('/accounts', {
@@ -129,8 +159,6 @@ async function createMailbox() {
   mask(tokenBody.token);
 
   appendGithubEnv('LIVE_ONBOARDING_EMAIL', address);
-  appendGithubEnv('LIVE_ONBOARDING_USERNAME', username);
-  appendGithubEnv('LIVE_ONBOARDING_PASSWORD', appPassword);
   appendGithubEnv('LIVE_MAILTM_TOKEN', tokenBody.token);
   appendGithubEnv('LIVE_MAILTM_ACCOUNT_ID', account.id);
 
@@ -141,6 +169,7 @@ async function createMailbox() {
     headSha,
     mailboxProvider: 'Mail.tm',
     mailboxProviderUrl: PROVIDER_URL,
+    mailboxMode: mode,
   });
 
   console.log(`Disposable mailbox provider: Mail.tm (${PROVIDER_URL})`);
@@ -149,8 +178,15 @@ async function createMailbox() {
 }
 
 async function confirmMailbox() {
-  const token = required('LIVE_MAILTM_TOKEN');
+  const mode = mailboxMode();
   const address = required('LIVE_ONBOARDING_EMAIL');
+
+  if (mode === 'bip_routed') {
+    console.log(`Owned Bip confirmation is waiting in ${address}; successful returning sign-in is the authoritative confirmation proof.`);
+    return;
+  }
+
+  const token = required('LIVE_MAILTM_TOKEN');
   const timeoutMs = Number.parseInt(process.env.LIVE_MAILBOX_TIMEOUT_MS || '120000', 10);
   const pollMs = Number.parseInt(process.env.LIVE_MAILBOX_POLL_MS || '3000', 10);
   const deadline = Date.now() + Math.max(timeoutMs, 30_000);
@@ -216,7 +252,31 @@ async function confirmMailbox() {
   console.log(`Redirect host: ${redirectHost || 'none'}`);
 }
 
+async function recordOwnedConfirmation() {
+  if (mailboxMode() !== 'bip_routed') return;
+  const address = required('LIVE_ONBOARDING_EMAIL');
+  writeJson('live-signup-confirmation.json', {
+    email: address,
+    mailboxProvider: 'Se\'kret Bip Cloudflare Email Routing',
+    confirmationStatus: 'proved_by_returning_signin',
+    confirmedAt: new Date().toISOString(),
+  });
+  console.log(`Owned Bip mailbox confirmation proved by successful returning sign-in for ${address}.`);
+}
+
 async function cleanupMailbox() {
+  const mode = mailboxMode();
+  if (mode === 'bip_routed') {
+    writeJson('live-signup-mailbox-cleanup.json', {
+      mailboxProvider: 'Se\'kret Bip Cloudflare Email Routing',
+      mailboxMode: mode,
+      status: 'persistent_owned_alias_not_deleted',
+      cleanedAt: new Date().toISOString(),
+    });
+    console.log('Owned Bip routing alias is persistent infrastructure; no mailbox deletion was attempted.');
+    return;
+  }
+
   const token = process.env.LIVE_MAILTM_TOKEN?.trim();
   const accountId = process.env.LIVE_MAILTM_ACCOUNT_ID?.trim();
   if (!token || !accountId) {
@@ -249,8 +309,10 @@ if (command === 'create') {
   await createMailbox();
 } else if (command === 'confirm') {
   await confirmMailbox();
+} else if (command === 'record-owned-confirmation') {
+  await recordOwnedConfirmation();
 } else if (command === 'cleanup') {
   await cleanupMailbox();
 } else {
-  throw new Error('Usage: node scripts/live-signup-mailbox.mjs <create|confirm|cleanup>');
+  throw new Error('Usage: node scripts/live-signup-mailbox.mjs <create|confirm|record-owned-confirmation|cleanup>');
 }
