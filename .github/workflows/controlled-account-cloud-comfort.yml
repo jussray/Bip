@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/controlled-account-cloud-comfort.yml'
       - 'playwright.controlled-account.config.ts'
+      - 'scripts/playwright-executable.mjs'
       - 'e2e/controlled-account-cloud-comfort.spec.ts'
       - 'test/controlled-account-cloud-comfort-gate.test.mjs'
   workflow_dispatch:

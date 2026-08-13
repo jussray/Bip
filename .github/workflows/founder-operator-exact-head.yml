@@ -9,6 +9,7 @@ on:
       - 'implementation-ledger.extensions/founder-operator.json'
       - 'package.json'
       - 'scripts/control-room-server.mjs'
+      - 'scripts/playwright-executable.mjs'
       - 'src/features/control-room/FounderOperatorPanel.tsx'
       - 'src/screens/DevControlRoomScreen.tsx'
       - 'src/services/controlRoomFounderOperator.ts'

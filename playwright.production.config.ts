@@ -1,14 +1,11 @@
-import fs from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+import { resolvePlaywrightExecutablePath } from './scripts/playwright-executable.mjs';
 
 // Se'kret Bip — read-only and intercepted transport checks against the live
 // deployed frontend. Local harness, seeded-session, founder, and fixture-only
 // specs must never be promoted into production launch evidence.
 const BASE_URL = process.env.PRODUCTION_BASE_URL || 'https://sekretbip.net';
-const sandboxChromium = '/opt/pw-browsers/chromium';
-const executablePath =
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ||
-  (fs.existsSync(sandboxChromium) ? sandboxChromium : undefined);
+const executablePath = resolvePlaywrightExecutablePath();
 
 export default defineConfig({
   testDir: './e2e',

@@ -10,6 +10,7 @@ on:
       - '.github/workflows/production-gate-contract.yml'
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
+      - 'scripts/playwright-executable.mjs'
       - 'supabase/migrations/**'
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'

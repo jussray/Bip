@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/live-signup-proof.yml'
       - 'playwright.live-onboarding.config.ts'
+      - 'scripts/playwright-executable.mjs'
       - 'e2e/live-onboarding-email.spec.ts'
       - 'app/(auth)/signup.tsx'
       - 'scripts/live-signup-mailbox.mjs'

@@ -10,6 +10,7 @@ on:
       - src/motion/comfortMotion.ts
       - src/utils/api.ts
       - utils/api.ts
+      - scripts/playwright-executable.mjs
       - test/comfort-accessibility-motion-contract.test.mjs
       - test/canonical-comfort-cloud-routes.test.mjs
       - test/settings-companion-canon.test.mjs

@@ -12,6 +12,7 @@ on:
       - test/dual-front-door-contract.test.mjs
       - src/middleware/auth.ts
       - src/utils/supabase.ts
+      - scripts/playwright-executable.mjs
       - assets/brand/sekret-bip-teen-family-v1.jpg
       - assets/images/parent-space-splash.png
       - e2e/smoke.spec.ts
