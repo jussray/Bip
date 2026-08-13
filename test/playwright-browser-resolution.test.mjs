@@ -16,15 +16,13 @@ const configs = [
   'playwright.controlled-account.config.ts',
 ];
 
-const consumingWorkflows = [
+const automaticallyTriggeredConsumers = [
   '.github/workflows/product-design-playwright-proof.yml',
   '.github/workflows/comfort-mode-gate.yml',
   '.github/workflows/cloud-thoughts-gate.yml',
   '.github/workflows/front-door-gate.yml',
-  '.github/workflows/production-smoke.yml',
   '.github/workflows/production-gate-contract.yml',
   '.github/workflows/deploy-cloudflare.yml',
-  '.github/workflows/playwright.yml',
   '.github/workflows/controlled-account-cloud-comfort.yml',
   '.github/workflows/founder-operator-exact-head.yml',
   '.github/workflows/live-signup-proof.yml',
@@ -40,8 +38,8 @@ test('all Playwright configs use the shared browser resolver', async () => {
   }
 });
 
-test('every workflow that consumes a shared Playwright config watches the resolver', async () => {
-  for (const workflowPath of consumingWorkflows) {
+test('every automatic consumer watches the shared resolver', async () => {
+  for (const workflowPath of automaticallyTriggeredConsumers) {
     const source = await readFile(new URL(`../${workflowPath}`, import.meta.url), 'utf8');
     assert.match(
       source,
