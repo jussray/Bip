@@ -143,33 +143,54 @@ test('Circle renders Open Bip as the public audience layer with the face rule', 
   });
 });
 
-test('Voice Bip presence holds still when reduced motion is requested', async ({ page }, testInfo) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/voicebip?bipDevSide=teen', { waitUntil: 'networkidle' });
+for (const viewport of VIEWPORTS) {
+  test(`Voice Bip complete presence room holds still with reduced motion on ${viewport.name}`, async ({ page }, testInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.goto('/voicebip?bipDevSide=teen', { waitUntil: 'networkidle' });
 
-  const avatar = page.getByTestId('voice-presence-avatar');
-  const liveAvatar = page.getByTestId('voice-presence-avatar-live');
-  await expect(avatar).toBeVisible({ timeout: 15_000 });
-  await expect(liveAvatar).toBeVisible({ timeout: 15_000 });
+    const liveAvatar = page.getByTestId('voice-presence-avatar-live');
+    const cloud = page.getByTestId('voice-presence-cloud');
+    const pill = page.getByTestId('voice-presence-pill');
+    await expect(liveAvatar).toBeVisible({ timeout: 15_000 });
+    await expect(cloud).toBeVisible({ timeout: 15_000 });
+    await expect(pill).toBeVisible({ timeout: 15_000 });
 
-  const readMotion = () => liveAvatar.evaluate(node => {
-    const style = getComputedStyle(node);
-    return {
-      transform: style.transform,
-      opacity: Number.parseFloat(style.opacity),
-    };
+    const readMotion = async () => Promise.all([liveAvatar, cloud, pill].map(locator => locator.evaluate(node => {
+      const style = getComputedStyle(node);
+      const rect = node.getBoundingClientRect();
+      return {
+        transform: style.transform,
+        opacity: Number.parseFloat(style.opacity),
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+      };
+    })));
+
+    const first = await readMotion();
+    await page.waitForTimeout(500);
+    const second = await readMotion();
+
+    first.forEach((sample, index) => {
+      const next = second[index];
+      expect(next.transform).toBe(sample.transform);
+      expect(Math.abs(next.opacity - sample.opacity)).toBeLessThanOrEqual(0.001);
+      for (const key of ['top', 'left', 'width', 'height'] as const) {
+        expect(Math.abs(next[key] - sample[key])).toBeLessThanOrEqual(0.5);
+      }
+    });
+
+    const metrics = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }));
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+
+    await testInfo.attach(`voice-bip-${viewport.name}-reduced-motion.png`, {
+      body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
+      contentType: 'image/png',
+    });
   });
-
-  const first = await readMotion();
-  await page.waitForTimeout(500);
-  const second = await readMotion();
-
-  expect(second.transform).toBe(first.transform);
-  expect(Math.abs(second.opacity - first.opacity)).toBeLessThanOrEqual(0.001);
-
-  await testInfo.attach('voice-bip-reduced-motion.png', {
-    body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
-    contentType: 'image/png',
-  });
-});
+}
