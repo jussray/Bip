@@ -1,6 +1,13 @@
 name: Production Smoke
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-smoke.yml'
+      - 'playwright.production.config.ts'
+      - 'e2e/production-*.spec.ts'
+      - 'test/production-smoke-target-contract.test.mjs'
   workflow_dispatch:
     inputs:
       base_url:
@@ -28,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     if: >
+      github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
 
@@ -52,7 +60,7 @@ jobs:
 
       - name: Run read-only smoke checks against the selected live domain
         env:
-          PRODUCTION_BASE_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.base_url || 'https://sekretbip.net' }}
+          PRODUCTION_BASE_URL: ${{ github.event_name == 'pull_request' && 'https://app.sekretbip.net' || inputs.base_url || 'https://sekretbip.net' }}
         run: npx playwright test --config=playwright.production.config.ts
 
       - name: Upload Playwright report
