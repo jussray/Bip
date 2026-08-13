@@ -6,6 +6,13 @@ export const DEFAULT_PROJECT_REF = 'tbsevonvegdnlyjgplmm';
 export const DEFAULT_MIGRATIONS_DIR = 'supabase/migrations';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/supabase-production-schema.json';
 export const PRODUCTION_HISTORY_AUTHORITY_FLOOR = '20260805170500';
+export const PRODUCTION_HISTORY_ACCEPTED_ALIASES = Object.freeze({
+  '20260805170500': '20260806020640',
+  '20260806024500': '20260808073044',
+  '20260808222500': '20260808221720',
+  '20260808223500': '20260808222306',
+  '20260813222000': '20260813222648',
+});
 const VERSION_PATTERN = /^\d{14}$/;
 const MIGRATION_FILE_PATTERN = /^(\d{14})_(.+)\.sql$/;
 const MIGRATION_NAME_TIMESTAMP_PREFIX = /^\d{14}_/;
@@ -147,10 +154,16 @@ function normalizeRepositoryMigrations(repositoryMigrations) {
   });
 }
 
+function acceptedAliasFor(required, acceptedAliases) {
+  const liveVersion = normalizeSchemaVersion(acceptedAliases?.[required.version]);
+  return liveVersion ? { canonicalVersion: required.version, liveVersion, name: required.name } : null;
+}
+
 export function evaluateMigrationHistory(
   row,
   repositoryMigrations,
   authorityFloorVersion = PRODUCTION_HISTORY_AUTHORITY_FLOOR,
+  acceptedAliases = PRODUCTION_HISTORY_ACCEPTED_ALIASES,
 ) {
   const floor = normalizeSchemaVersion(authorityFloorVersion);
   if (!floor) {
@@ -172,44 +185,44 @@ export function evaluateMigrationHistory(
   }
 
   const liveHistory = rawHistory.map((migration) => ({
-    version: clean(migration?.version),
+    version: normalizeSchemaVersion(migration?.version),
     name: normalizeMigrationName(migration?.name),
   }));
-
-  const requiredByVersion = new Map(requiredMigrations.map((migration) => [migration.version, migration]));
-  const requiredByName = new Map(requiredMigrations.map((migration) => [migration.name, migration]));
   const representedCanonicalVersions = [];
   const acceptedAliasVersions = [];
   const missingCanonicalVersions = [];
+  const acceptedLiveKeys = new Set();
 
   for (const required of requiredMigrations) {
-    const matches = liveHistory.filter((live) => (
-      live.version === required.version
-      || (live.name && live.name === required.name)
+    const canonical = liveHistory.find((live) => (
+      live.version === required.version && live.name === required.name
     ));
-    const canonical = matches.find((live) => live.version === required.version);
-    const representative = canonical ?? matches[0] ?? null;
-
-    if (!representative) {
-      missingCanonicalVersions.push(required.version);
+    if (canonical) {
+      representedCanonicalVersions.push(required.version);
+      acceptedLiveKeys.add(`${canonical.version}:${canonical.name}`);
       continue;
     }
 
-    representedCanonicalVersions.push(required.version);
-    if (representative.version !== required.version) {
-      acceptedAliasVersions.push({
-        canonicalVersion: required.version,
-        liveVersion: representative.version || null,
-        name: required.name,
-      });
+    const alias = acceptedAliasFor(required, acceptedAliases);
+    const liveAlias = alias
+      ? liveHistory.find((live) => (
+        live.version === alias.liveVersion && live.name === alias.name
+      ))
+      : null;
+    if (liveAlias) {
+      representedCanonicalVersions.push(required.version);
+      acceptedAliasVersions.push(alias);
+      acceptedLiveKeys.add(`${liveAlias.version}:${liveAlias.name}`);
+      continue;
     }
+
+    missingCanonicalVersions.push(required.version);
   }
 
   const unexpectedRecentVersions = liveHistory
     .filter((live) => {
-      const version = normalizeSchemaVersion(live.version);
-      if (!version || version < floor) return false;
-      return !requiredByVersion.has(version) && !requiredByName.has(live.name);
+      if (!live.version || live.version < floor) return false;
+      return !acceptedLiveKeys.has(`${live.version}:${live.name}`);
     })
     .map((live) => ({
       liveVersion: live.version,
@@ -220,7 +233,7 @@ export function evaluateMigrationHistory(
   const liveMaxVersion = normalizeSchemaVersion(
     row?.live_max_version ?? row?.liveMaxVersion,
   ) ?? liveHistory
-    .map((migration) => normalizeSchemaVersion(migration.version))
+    .map((migration) => migration.version)
     .filter(Boolean)
     .sort()
     .at(-1) ?? null;
