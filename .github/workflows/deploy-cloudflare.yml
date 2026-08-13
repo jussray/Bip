@@ -19,6 +19,7 @@ on:
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
+      - 'scripts/playwright-executable.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
