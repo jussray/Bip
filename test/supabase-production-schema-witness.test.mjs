@@ -5,15 +5,40 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  PRODUCTION_HISTORY_AUTHORITY_FLOOR,
   buildReadOnlyQuery,
+  deriveRepositoryMigrationIdentities,
   deriveRepositorySchemaVersion,
+  evaluateMigrationHistory,
   evaluateSchemaRow,
   extractRows,
+  normalizeMigrationName,
   verifySupabaseProductionSchema,
 } from '../scripts/verify-supabase-production-schema.mjs';
 
 const CURRENT_MAIN_SCHEMA_HEAD = '20260811132800';
 const workflowPath = '.github/workflows/deploy-cloudflare.yml';
+
+const REQUIRED_HISTORY_FIXTURES = [
+  { version: '20260805170500', name: 'extend_auth_profile_sync_identity' },
+  { version: '20260806024500', name: 'harden_uos_set_updated_at_search_path' },
+  { version: '20260808222500', name: 'reconcile_safety_alert_runtime_schema' },
+  { version: '20260808223500', name: 'lock_safety_alert_table_grants' },
+  { version: '20260811132500', name: 'extend_onboarding_stage_enum' },
+  { version: '20260811132600', name: 'reconcile_onboarding_and_moods_contract' },
+  { version: '20260811132700', name: 'revoke_uos_trigger_execute' },
+  { version: '20260811132800', name: 'align_first_mood_trigger_search_path' },
+  { version: '20260811134000', name: 'harden_circle_friendships_write_path' },
+  { version: '20260813222000', name: 'founder_owned_auth_identity' },
+];
+
+const ACCEPTED_LIVE_RECEIPTS = [
+  { version: '20260806020640', name: 'extend_auth_profile_sync_identity' },
+  { version: '20260808073044', name: '20260806024500_harden_uos_set_updated_at_search_path' },
+  { version: '20260808221720', name: 'reconcile_safety_alert_runtime_schema' },
+  { version: '20260808222306', name: 'lock_safety_alert_table_grants' },
+  { version: '20260813222648', name: 'founder_owned_auth_identity' },
+];
 
 function fakeResponse({ ok = true, status = 201, body = [] } = {}) {
   return {
@@ -29,6 +54,13 @@ function migrationDir(names) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-migrations-'));
   for (const name of names) fs.writeFileSync(path.join(root, name), '-- fixture\n', 'utf8');
   return root;
+}
+
+function historyRow(history) {
+  return {
+    live_max_version: history.map((migration) => migration.version).sort().at(-1) ?? '',
+    migration_history: history,
+  };
 }
 
 test('repository schema head derives from the newest canonical 14-digit migration', async () => {
@@ -59,9 +91,42 @@ test('repository schema derivation fails closed without a canonical migration', 
   );
 });
 
-test('read-only witness queries only live migration history', () => {
+test('production history authority starts at the accepted issue 502 identity-sync boundary', () => {
+  assert.equal(PRODUCTION_HISTORY_AUTHORITY_FLOOR, '20260805170500');
+});
+
+test('repository history identities are bounded at the production authority floor', async () => {
+  const dir = migrationDir([
+    '20260804000000_before_authority_floor.sql',
+    '20260805170500_extend_auth_profile_sync_identity.sql',
+    '20260811132500_extend_onboarding_stage_enum.sql',
+    '20260813222000_founder_owned_auth_identity.sql',
+  ]);
+
+  assert.deepEqual(await deriveRepositoryMigrationIdentities(dir), [
+    { version: '20260805170500', name: 'extend_auth_profile_sync_identity' },
+    { version: '20260811132500', name: 'extend_onboarding_stage_enum' },
+    { version: '20260813222000', name: 'founder_owned_auth_identity' },
+  ]);
+});
+
+test('canonical migration names normalize repository and execution-time receipt forms', () => {
+  assert.equal(
+    normalizeMigrationName('20260806024500_harden_uos_set_updated_at_search_path'),
+    'harden_uos_set_updated_at_search_path',
+  );
+  assert.equal(
+    normalizeMigrationName('20260813222000_founder_owned_auth_identity.sql'),
+    'founder_owned_auth_identity',
+  );
+  assert.equal(normalizeMigrationName('founder_owned_auth_identity'), 'founder_owned_auth_identity');
+});
+
+test('read-only witness queries full live migration identity history', () => {
   const query = buildReadOnlyQuery();
   assert.match(query, /max\(version\)/i);
+  assert.match(query, /jsonb_agg/i);
+  assert.match(query, /jsonb_build_object\('version', version, 'name', name\)/i);
   assert.match(query, /from supabase_migrations\.schema_migrations/i);
   assert.doesNotMatch(query, /\b(insert|update|delete|alter|drop|create|grant|revoke)\b/i);
 });
@@ -74,7 +139,7 @@ test('row normalization accepts Management API response wrappers', () => {
   assert.deepEqual(extractRows({ rows: [row] }), [row]);
 });
 
-test('schema witness requires exact equality between repo and live migration heads', () => {
+test('legacy row helper still reports exact max-version equality for non-production callers', () => {
   assert.equal(evaluateSchemaRow({
     live_max_version: CURRENT_MAIN_SCHEMA_HEAD,
   }, CURRENT_MAIN_SCHEMA_HEAD).verified, true);
@@ -86,6 +151,89 @@ test('schema witness requires exact equality between repo and live migration hea
   assert.equal(evaluateSchemaRow({
     live_max_version: '20260811134000',
   }, CURRENT_MAIN_SCHEMA_HEAD).verified, false);
+});
+
+test('execution-time aliases represent canonical migrations by name without rewriting receipts', () => {
+  const completeHistory = [
+    ...ACCEPTED_LIVE_RECEIPTS,
+    ...REQUIRED_HISTORY_FIXTURES
+      .filter((migration) => migration.version.startsWith('20260811'))
+      .map((migration) => ({ ...migration })),
+  ];
+
+  const evaluated = evaluateMigrationHistory(
+    historyRow(completeHistory),
+    REQUIRED_HISTORY_FIXTURES,
+  );
+
+  assert.equal(evaluated.verified, true);
+  assert.deepEqual(evaluated.missingCanonicalVersions, []);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, []);
+  assert.deepEqual(
+    evaluated.acceptedAliasVersions.map((alias) => alias.canonicalVersion),
+    [
+      '20260805170500',
+      '20260806024500',
+      '20260808222500',
+      '20260808223500',
+      '20260813222000',
+    ],
+  );
+  assert.equal(evaluated.expectedVersion, '20260813222000');
+  assert.equal(evaluated.liveMaxVersion, '20260813222648');
+});
+
+test('production-shaped recent history stays red while the five August 11 migrations are missing', () => {
+  const evaluated = evaluateMigrationHistory(
+    historyRow(ACCEPTED_LIVE_RECEIPTS),
+    REQUIRED_HISTORY_FIXTURES,
+  );
+
+  assert.equal(evaluated.verified, false);
+  assert.deepEqual(evaluated.missingCanonicalVersions, [
+    '20260811132500',
+    '20260811132600',
+    '20260811132700',
+    '20260811132800',
+    '20260811134000',
+  ]);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, []);
+});
+
+test('latest execution-time receipt cannot fake green over earlier missing migrations', () => {
+  const evaluated = evaluateMigrationHistory(
+    historyRow([{ version: '20260813222648', name: 'founder_owned_auth_identity' }]),
+    REQUIRED_HISTORY_FIXTURES,
+  );
+
+  assert.equal(evaluated.verified, false);
+  assert.ok(evaluated.missingCanonicalVersions.includes('20260811132500'));
+  assert.ok(evaluated.missingCanonicalVersions.includes('20260808223500'));
+  assert.deepEqual(evaluated.acceptedAliasVersions, [{
+    canonicalVersion: '20260813222000',
+    liveVersion: '20260813222648',
+    name: 'founder_owned_auth_identity',
+  }]);
+});
+
+test('unknown recent production migration fails closed', () => {
+  const completeHistory = REQUIRED_HISTORY_FIXTURES.map((migration) => ({ ...migration }));
+  completeHistory.push({
+    version: '20260813223000',
+    name: 'unexpected_direct_production_change',
+  });
+
+  const evaluated = evaluateMigrationHistory(
+    historyRow(completeHistory),
+    REQUIRED_HISTORY_FIXTURES,
+  );
+
+  assert.equal(evaluated.verified, false);
+  assert.deepEqual(evaluated.missingCanonicalVersions, []);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, [{
+    liveVersion: '20260813223000',
+    name: 'unexpected_direct_production_change',
+  }]);
 });
 
 test('production verifier derives repo head, uses read-only Management API, and writes redacted evidence', async () => {
@@ -111,7 +259,12 @@ test('production verifier derives repo head, uses read-only Management API, and 
     fetchImpl: async (url, options) => {
       observedUrl = url;
       observedOptions = options;
-      return fakeResponse({ body: [{ live_max_version: CURRENT_MAIN_SCHEMA_HEAD }] });
+      return fakeResponse({
+        body: [{
+          live_max_version: CURRENT_MAIN_SCHEMA_HEAD,
+          migration_history: [{ version: CURRENT_MAIN_SCHEMA_HEAD, name: 'latest' }],
+        }],
+      });
     },
   });
 
@@ -122,13 +275,46 @@ test('production verifier derives repo head, uses read-only Management API, and 
   assert.equal(observedOptions.method, 'POST');
   assert.match(observedOptions.headers.Authorization, /^Bearer /);
   assert.match(observedOptions.body, /supabase_migrations\.schema_migrations/);
+  assert.match(observedOptions.body, /jsonb_agg/);
 
   const retained = fs.readFileSync(evidencePath, 'utf8');
   assert.doesNotMatch(retained, /secret-token-for-test/);
   assert.match(retained, /"verified": true/);
 });
 
-test('production verifier fails closed when live Supabase is behind and retains non-secret evidence', async () => {
+test('production verifier fails closed when full migration history is absent even if max head matches', async () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-supabase-schema-history-missing-'));
+  const migrationsDir = path.join(tmp, 'migrations');
+  const evidencePath = path.join(tmp, 'evidence.json');
+  fs.mkdirSync(migrationsDir);
+  fs.writeFileSync(
+    path.join(migrationsDir, `${CURRENT_MAIN_SCHEMA_HEAD}_latest.sql`),
+    '-- fixture\n',
+    'utf8',
+  );
+
+  await assert.rejects(
+    verifySupabaseProductionSchema({
+      config: {
+        token: 'secret-token-for-test',
+        projectRef: 'tbsevonvegdnlyjgplmm',
+        migrationsDir,
+        evidencePath,
+      },
+      fetchImpl: async () => fakeResponse({
+        body: [{ live_max_version: CURRENT_MAIN_SCHEMA_HEAD }],
+      }),
+    }),
+    /Supabase production migration history is missing or malformed/,
+  );
+
+  const retained = fs.readFileSync(evidencePath, 'utf8');
+  assert.match(retained, /"error": "production_migration_history_unavailable"/);
+  assert.match(retained, /"verified": false/);
+  assert.doesNotMatch(retained, /secret-token-for-test/);
+});
+
+test('production verifier fails closed when required migration identity is missing and retains non-secret evidence', async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-supabase-schema-drift-'));
   const migrationsDir = path.join(tmp, 'migrations');
   const evidencePath = path.join(tmp, 'evidence.json');
@@ -147,7 +333,12 @@ test('production verifier fails closed when live Supabase is behind and retains 
         migrationsDir,
         evidencePath,
       },
-      fetchImpl: async () => fakeResponse({ body: [{ live_max_version: '20260808222306' }] }),
+      fetchImpl: async () => fakeResponse({
+        body: [{
+          live_max_version: '20260808222306',
+          migration_history: [{ version: '20260808222306', name: 'legacy_receipt' }],
+        }],
+      }),
     }),
     /SUPABASE_PRODUCTION_SCHEMA_DRIFT: repo_head=20260811132800, live_head=20260808222306/,
   );
@@ -155,6 +346,7 @@ test('production verifier fails closed when live Supabase is behind and retains 
   const retained = fs.readFileSync(evidencePath, 'utf8');
   assert.doesNotMatch(retained, /secret-token-for-test/);
   assert.match(retained, /"verified": false/);
+  assert.match(retained, /"missingCanonicalVersions"/);
 });
 
 test('Cloudflare release workflow validates a trusted current-main target before checkout or Production secret use', () => {
