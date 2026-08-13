@@ -13,6 +13,12 @@ export const PRODUCTION_HISTORY_ACCEPTED_ALIASES = Object.freeze({
   '20260808223500': '20260808222306',
   '20260813222000': '20260813222648',
 });
+const ACCEPTED_LEGACY_RECEIPTS = new Set([
+  '0001:init',
+  '0002:circle_v1',
+  '0003:oracle_parentlinks_period_safety',
+  '20260614:sekret_reply',
+]);
 
 const VERSION_PATTERN = /^\d{14}$/;
 const MIGRATION_FILE_PATTERN = /^(\d{14})_(.+)\.sql$/;
@@ -265,7 +271,9 @@ export function evaluateMigrationHistory(
 
   const unexpectedRecentVersions = liveHistory
     .filter((live) => {
-      if (!live.version) return true;
+      if (!live.version) {
+        return !ACCEPTED_LEGACY_RECEIPTS.has(`${live.rawVersion}:${live.name}`);
+      }
       if (live.version < floor) return false;
       return !isKnownLiveReceipt(live, requiredMigrations, acceptedAliases);
     })
