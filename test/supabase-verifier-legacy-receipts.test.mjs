@@ -55,3 +55,20 @@ test('unknown short receipt still fails closed', () => {
     name: 'unknown_legacy_receipt',
   }]);
 });
+
+test('known legacy version with the wrong name still fails closed', () => {
+  const evaluated = evaluateMigrationHistory(
+    historyRow([
+      { version: '0001', name: 'not_init' },
+      ACCEPTED_CURRENT_RECEIPT,
+    ]),
+    REQUIRED,
+  );
+
+  assert.equal(evaluated.verified, false);
+  assert.deepEqual(evaluated.missingCanonicalVersions, []);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, [{
+    liveVersion: '0001',
+    name: 'not_init',
+  }]);
+});
