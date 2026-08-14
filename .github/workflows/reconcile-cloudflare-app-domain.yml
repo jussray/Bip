@@ -1,6 +1,12 @@
 name: Reconcile app.sekretbip.net Frontend Ownership
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/reconcile-cloudflare-app-domain.yml'
+      - 'scripts/reconcile-cloudflare-app-domain.mjs'
+      - 'test/cloudflare-app-domain-reconciler.test.mjs'
   push:
     branches: [main]
     paths:
