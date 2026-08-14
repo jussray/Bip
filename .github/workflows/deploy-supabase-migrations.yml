@@ -8,19 +8,35 @@ on:
         required: true
         type: string
       mode:
-        description: 'Dry-run previews only; apply may mutate the production database'
+        description: 'Dry-run previews; apply executes SQL; normalize-alias reconciles one reviewed applied receipt'
         required: true
         default: dry-run
         type: choice
         options:
           - dry-run
           - apply
+          - normalize-alias
       confirm_project:
         description: 'Type the production Supabase project ref to confirm the target'
         required: true
         type: string
       apply_confirmation:
         description: 'For apply only, type APPLY PRODUCTION MIGRATIONS'
+        required: false
+        default: ''
+        type: string
+      canonical_version:
+        description: 'For normalize-alias only, enter the exact canonical 14-digit repository migration version'
+        required: false
+        default: ''
+        type: string
+      execution_version:
+        description: 'For normalize-alias only, enter the exact 14-digit applied execution receipt version'
+        required: false
+        default: ''
+        type: string
+      normalize_confirmation:
+        description: 'For normalize-alias only, type NORMALIZE APPLIED MIGRATION ALIAS'
         required: false
         default: ''
         type: string
@@ -39,7 +55,7 @@ concurrency:
 
 jobs:
   migrate-production:
-    name: ${{ inputs.mode == 'apply' && 'Apply production migrations' || 'Dry-run production migrations' }}
+    name: ${{ inputs.mode == 'apply' && 'Apply production migrations' || inputs.mode == 'normalize-alias' && 'Normalize applied migration alias' || 'Dry-run production migrations' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -52,6 +68,9 @@ jobs:
           MODE: ${{ inputs.mode }}
           CONFIRM_PROJECT: ${{ inputs.confirm_project }}
           APPLY_CONFIRMATION: ${{ inputs.apply_confirmation }}
+          CANONICAL_VERSION: ${{ inputs.canonical_version }}
+          EXECUTION_VERSION: ${{ inputs.execution_version }}
+          NORMALIZE_CONFIRMATION: ${{ inputs.normalize_confirmation }}
         run: |
           set -euo pipefail
           [[ "$TARGET_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || {
@@ -67,6 +86,24 @@ jobs:
             apply)
               test "$APPLY_CONFIRMATION" = 'APPLY PRODUCTION MIGRATIONS' || {
                 echo 'Apply confirmation is missing or incorrect.' >&2
+                exit 1
+              }
+              ;;
+            normalize-alias)
+              [[ "$CANONICAL_VERSION" =~ ^[0-9]{14}$ ]] || {
+                echo 'canonical_version must be an exact 14-digit migration version.' >&2
+                exit 1
+              }
+              [[ "$EXECUTION_VERSION" =~ ^[0-9]{14}$ ]] || {
+                echo 'execution_version must be an exact 14-digit migration version.' >&2
+                exit 1
+              }
+              test "$CANONICAL_VERSION" != "$EXECUTION_VERSION" || {
+                echo 'Canonical and execution versions must differ for alias normalization.' >&2
+                exit 1
+              }
+              test "$NORMALIZE_CONFIRMATION" = 'NORMALIZE APPLIED MIGRATION ALIAS' || {
+                echo 'Alias-normalization confirmation is missing or incorrect.' >&2
                 exit 1
               }
               ;;
@@ -101,6 +138,37 @@ jobs:
             exit 1
           }
 
+      - name: Validate reviewed applied alias belongs to exact target
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          CANONICAL_VERSION: ${{ inputs.canonical_version }}
+          EXECUTION_VERSION: ${{ inputs.execution_version }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          canonical_matches=(supabase/migrations/"${CANONICAL_VERSION}"_*.sql)
+          execution_matches=(supabase/migrations/"${EXECUTION_VERSION}"_*.sql)
+          test "${#canonical_matches[@]}" -eq 1 || {
+            echo "Canonical version must resolve to exactly one repository migration; found ${#canonical_matches[@]}." >&2
+            exit 1
+          }
+          test "${#execution_matches[@]}" -eq 0 || {
+            echo 'Execution receipt already exists as a local migration; refusing alias normalization.' >&2
+            exit 1
+          }
+          node --input-type=module <<'NODE'
+          import { PRODUCTION_HISTORY_APPLIED_ALIASES } from './scripts/verify-supabase-production-schema.mjs';
+
+          const canonical = process.env.CANONICAL_VERSION;
+          const execution = process.env.EXECUTION_VERSION;
+          if (PRODUCTION_HISTORY_APPLIED_ALIASES[canonical] !== execution) {
+            console.error('Requested canonical/execution pair is not an explicitly reviewed applied-production alias.');
+            process.exit(1);
+          }
+          console.log(`reviewed_alias=${canonical}->${execution}`);
+          NODE
+
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
@@ -132,6 +200,7 @@ jobs:
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Preview production migration plan
+        if: ${{ inputs.mode != 'normalize-alias' }}
         shell: bash
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -141,8 +210,29 @@ jobs:
           mkdir -p artifacts
           supabase db push --linked --dry-run 2>&1 | tee artifacts/supabase-db-push-dry-run.txt
 
-      - name: Re-verify current main immediately before apply
-        if: ${{ inputs.mode == 'apply' }}
+      - name: Verify production schema before alias normalization
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node scripts/verify-supabase-production-schema.mjs
+
+      - name: Capture migration history before alias normalization
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-before-normalize.txt
+
+      - name: Re-verify current main immediately before mutation
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'normalize-alias' }}
         shell: bash
         env:
           TARGET_SHA: ${{ inputs.target_sha }}
@@ -150,9 +240,9 @@ jobs:
           set -euo pipefail
           git fetch --no-tags --depth=1 origin main
           current_main="$(git rev-parse FETCH_HEAD)"
-          printf 'apply_target=%s\ncurrent_main=%s\n' "$TARGET_SHA" "$current_main"
+          printf 'mutation_target=%s\ncurrent_main=%s\n' "$TARGET_SHA" "$current_main"
           test "$TARGET_SHA" = "$current_main" || {
-            echo 'Main advanced after dry-run; refusing production migration apply.' >&2
+            echo 'Main advanced after pre-mutation proof; refusing production migration mutation.' >&2
             exit 1
           }
 
@@ -167,8 +257,53 @@ jobs:
           mkdir -p artifacts
           supabase db push --linked 2>&1 | tee artifacts/supabase-db-push-apply.txt
 
-      - name: Verify exact production schema after apply
-        if: ${{ inputs.mode == 'apply' }}
+      - name: Normalize canonical applied migration receipt
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          CANONICAL_VERSION: ${{ inputs.canonical_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          supabase migration repair "$CANONICAL_VERSION" --status applied --linked 2>&1 | tee artifacts/supabase-migration-normalize-canonical.txt
+
+      - name: Remove superseded execution receipt
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          EXECUTION_VERSION: ${{ inputs.execution_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          supabase migration repair "$EXECUTION_VERSION" --status reverted --linked 2>&1 | tee artifacts/supabase-migration-normalize-execution.txt
+
+      - name: Capture migration history after alias normalization
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-after-normalize.txt
+
+      - name: Verify normalized history matches repository migration plan
+        if: ${{ inputs.mode == 'normalize-alias' }}
+        shell: bash
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          supabase db push --linked --dry-run 2>&1 | tee artifacts/supabase-db-push-dry-run.txt
+
+      - name: Verify exact production schema after mutation
+        if: ${{ inputs.mode == 'apply' || inputs.mode == 'normalize-alias' }}
         shell: bash
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -184,6 +319,10 @@ jobs:
           path: |
             artifacts/supabase-db-push-dry-run.txt
             artifacts/supabase-db-push-apply.txt
+            artifacts/supabase-migration-list-before-normalize.txt
+            artifacts/supabase-migration-normalize-canonical.txt
+            artifacts/supabase-migration-normalize-execution.txt
+            artifacts/supabase-migration-list-after-normalize.txt
             artifacts/supabase-production-schema.json
           if-no-files-found: warn
           retention-days: 30
