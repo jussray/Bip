@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: Apply the exact-host Worker routing repair to app.sekretbip.net
+        description: Apply the approved exact-host Worker routing repair to app.sekretbip.net
         required: true
         default: false
         type: boolean
@@ -51,8 +51,8 @@ jobs:
       - name: Show non-destructive plan
         run: node scripts/reconcile-cloudflare-app-domain.mjs
 
-      - name: Require exact current main before provider mutation
-        if: github.event_name == 'push' || inputs.apply == true
+      - name: Require exact current main before approved provider mutation
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,8 +72,8 @@ jobs:
             exit 1
           }
 
-      - name: Require Cloudflare credentials before apply
-        if: github.event_name == 'push' || inputs.apply == true
+      - name: Require Cloudflare credentials before approved apply
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -89,7 +89,7 @@ jobs:
           }
 
       - name: Reconcile live app hostname ownership
-        if: github.event_name == 'push' || inputs.apply == true
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -97,7 +97,7 @@ jobs:
         run: node scripts/reconcile-cloudflare-app-domain.mjs --apply
 
       - name: Upload Cloudflare route evidence
-        if: (github.event_name == 'push' || inputs.apply == true) && always()
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true && always()
         uses: actions/upload-artifact@v4
         with:
           name: cloudflare-app-domain-routing-evidence-${{ github.run_id }}
