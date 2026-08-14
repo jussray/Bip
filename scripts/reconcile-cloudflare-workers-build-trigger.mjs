@@ -16,9 +16,29 @@ function normalizeSha(value) {
   return SHA_PATTERN.test(sha) ? sha : null;
 }
 
+function tokenCandidatesFromEnv(env) {
+  const candidates = [
+    {
+      source: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+      token: clean(env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN),
+    },
+    {
+      source: 'CLOUDFLARE_API_TOKEN',
+      token: clean(env.CLOUDFLARE_API_TOKEN),
+    },
+  ].filter((candidate) => candidate.token);
+
+  return candidates.filter(
+    (candidate, index) => candidates.findIndex((other) => other.token === candidate.token) === index,
+  );
+}
+
 export function configFromEnv(env = process.env) {
+  const tokenCandidates = tokenCandidatesFromEnv(env);
   return {
-    token: clean(env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || env.CLOUDFLARE_API_TOKEN),
+    token: tokenCandidates[0]?.token ?? '',
+    tokenCandidates,
+    tokenSource: null,
     accountId: clean(env.CLOUDFLARE_ACCOUNT_ID),
     workerName: clean(env.BIP_WORKER_NAME) || 'sekret-backend',
     desiredDeployCommand: clean(env.BIP_WORKER_DEPLOY_COMMAND) || DESIRED_DEPLOY_COMMAND,
@@ -66,6 +86,33 @@ async function verifyUserScopedToken(config, fetchImpl) {
     throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN_NOT_ACTIVE_OR_NOT_USER_SCOPED.');
   }
   return payload.result;
+}
+
+async function selectActiveUserScopedToken(config, fetchImpl) {
+  const candidates = config.tokenCandidates?.length
+    ? config.tokenCandidates
+    : config.token
+      ? [{ source: 'configured-token', token: config.token }]
+      : [];
+  const failures = [];
+
+  for (const candidate of candidates) {
+    const candidateConfig = {
+      ...config,
+      token: candidate.token,
+      tokenSource: candidate.source,
+    };
+    try {
+      await verifyUserScopedToken(candidateConfig, fetchImpl);
+      return candidateConfig;
+    } catch (error) {
+      failures.push(`${candidate.source}: ${errorMessage(error)}`);
+    }
+  }
+
+  throw new Error(
+    `CLOUDFLARE_WORKERS_BUILDS_TOKEN_SELECTION_FAILED: ${failures.join('; ') || 'no token candidates configured'}`,
+  );
 }
 
 export function selectWorkerScript(scripts, workerName) {
@@ -173,9 +220,13 @@ async function writeEvidence(evidencePath, evidence) {
 
 function initialEvidence(config, apply, now) {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     generatedAt: now().toISOString(),
     accountId: config.accountId || null,
+    credential: {
+      candidateSources: (config.tokenCandidates ?? []).map((candidate) => candidate.source),
+      selectedSource: null,
+    },
     worker: {
       name: config.workerName || null,
       tag: null,
@@ -226,7 +277,7 @@ export async function reconcileWorkersBuildTrigger({
   const config = configFromEnv(env);
   const evidence = initialEvidence(config, apply, now);
 
-  if (!config.token) {
+  if (!config.tokenCandidates.length) {
     await failWithEvidence(
       config,
       evidence,
@@ -251,14 +302,16 @@ export async function reconcileWorkersBuildTrigger({
     );
   }
 
+  let providerConfig;
   let worker;
   let plan;
   try {
-    await verifyUserScopedToken(config, fetchImpl);
-    worker = await discoverWorker(config, fetchImpl);
-    const triggers = await listTriggers(config, worker.tag, fetchImpl);
+    providerConfig = await selectActiveUserScopedToken(config, fetchImpl);
+    evidence.credential.selectedSource = providerConfig.tokenSource;
+    worker = await discoverWorker(providerConfig, fetchImpl);
+    const triggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
     const productionTrigger = selectProductionTrigger(triggers);
-    plan = buildTriggerPlan(productionTrigger, config.desiredDeployCommand);
+    plan = buildTriggerPlan(productionTrigger, providerConfig.desiredDeployCommand);
 
     evidence.worker = worker;
     evidence.productionTrigger = {
@@ -287,10 +340,15 @@ export async function reconcileWorkersBuildTrigger({
   try {
     if (plan.changeRequired) {
       mutationStarted = true;
-      await patchTrigger(config, plan.triggerUuid, plan.desiredDeployCommand, fetchImpl);
+      await patchTrigger(providerConfig, plan.triggerUuid, plan.desiredDeployCommand, fetchImpl);
     }
 
-    const observedDeployCommand = await verifyDesiredDeployCommand(config, worker.tag, plan, fetchImpl);
+    const observedDeployCommand = await verifyDesiredDeployCommand(
+      providerConfig,
+      worker.tag,
+      plan,
+      fetchImpl,
+    );
     evidence.applied = plan.changeRequired;
     evidence.triggerVerified = true;
     evidence.after = { deployCommand: observedDeployCommand };
@@ -301,8 +359,8 @@ export async function reconcileWorkersBuildTrigger({
     if (mutationStarted && plan.previousDeployCommand) {
       evidence.rollback.attempted = true;
       try {
-        await patchTrigger(config, plan.triggerUuid, plan.previousDeployCommand, fetchImpl);
-        const rollbackTriggers = await listTriggers(config, worker.tag, fetchImpl);
+        await patchTrigger(providerConfig, plan.triggerUuid, plan.previousDeployCommand, fetchImpl);
+        const rollbackTriggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
         const rollbackTrigger = selectProductionTrigger(rollbackTriggers);
         evidence.rollback.succeeded = clean(rollbackTrigger?.deploy_command) === plan.previousDeployCommand;
       } catch (rollbackError) {
@@ -318,9 +376,9 @@ export async function reconcileWorkersBuildTrigger({
   try {
     evidence.targetBuild.requested = true;
     evidence.targetBuild.buildUuid = await triggerExactBuild(
-      config,
+      providerConfig,
       plan.triggerUuid,
-      config.targetCommitSha,
+      providerConfig.targetCommitSha,
       fetchImpl,
     );
     evidence.verified = true;
