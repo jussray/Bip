@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
-export const DESIRED_BUILD_COMMAND = 'node scripts/write-worker-release-identity.mjs';
+export const DESIRED_BUILD_COMMAND = '';
 export const DESIRED_DEPLOY_COMMAND = 'npm run deploy:api:production';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/cloudflare-workers-build-trigger.json';
 
@@ -36,13 +36,15 @@ function tokenCandidatesFromEnv(env) {
 
 export function configFromEnv(env = process.env) {
   const tokenCandidates = tokenCandidatesFromEnv(env);
+  const reconcileBuildCommand = Object.prototype.hasOwnProperty.call(env, 'BIP_WORKER_BUILD_COMMAND');
   return {
     token: tokenCandidates[0]?.token ?? '',
     tokenCandidates,
     tokenSource: null,
     accountId: clean(env.CLOUDFLARE_ACCOUNT_ID),
     workerName: clean(env.BIP_WORKER_NAME) || 'sekret-backend',
-    desiredBuildCommand: clean(env.BIP_WORKER_BUILD_COMMAND) || null,
+    reconcileBuildCommand,
+    desiredBuildCommand: reconcileBuildCommand ? clean(env.BIP_WORKER_BUILD_COMMAND) : null,
     desiredDeployCommand: clean(env.BIP_WORKER_DEPLOY_COMMAND) || DESIRED_DEPLOY_COMMAND,
     targetCommitSha: normalizeSha(env.BIP_WORKER_BUILD_COMMIT || env.GITHUB_SHA),
     evidencePath: clean(env.CLOUDFLARE_BUILD_EVIDENCE_PATH) || DEFAULT_EVIDENCE_PATH,
@@ -158,15 +160,16 @@ export function buildTriggerPlan(
   trigger,
   desiredDeployCommand = DESIRED_DEPLOY_COMMAND,
   desiredBuildCommand = null,
+  reconcileBuildCommand = desiredBuildCommand !== null,
 ) {
   const previousBuildCommand = clean(trigger?.build_command);
   const previousDeployCommand = clean(trigger?.deploy_command);
-  const desiredBuild = clean(desiredBuildCommand);
+  const desiredBuild = reconcileBuildCommand ? clean(desiredBuildCommand) : null;
   const desiredDeploy = clean(desiredDeployCommand);
   if (!desiredDeploy) throw new Error('DESIRED_DEPLOY_COMMAND_MISSING.');
 
   const patch = {};
-  if (desiredBuild && previousBuildCommand !== desiredBuild) patch.build_command = desiredBuild;
+  if (reconcileBuildCommand && previousBuildCommand !== desiredBuild) patch.build_command = desiredBuild;
   if (previousDeployCommand !== desiredDeploy) patch.deploy_command = desiredDeploy;
 
   return {
@@ -176,6 +179,7 @@ export function buildTriggerPlan(
     branchExcludes: Array.isArray(trigger?.branch_excludes) ? trigger.branch_excludes : [],
     previousBuildCommand: previousBuildCommand || null,
     previousDeployCommand: previousDeployCommand || null,
+    reconcileBuildCommand,
     desiredBuildCommand: desiredBuild,
     desiredDeployCommand: desiredDeploy,
     changeRequired: Object.keys(patch).length > 0,
@@ -248,7 +252,7 @@ function initialEvidence(config, apply, now) {
     productionTrigger: null,
     before: { buildCommand: null, deployCommand: null },
     desired: {
-      buildCommand: config.desiredBuildCommand || null,
+      buildCommand: config.reconcileBuildCommand ? config.desiredBuildCommand : null,
       deployCommand: config.desiredDeployCommand || null,
     },
     targetBuild: {
@@ -283,9 +287,9 @@ async function verifyDesiredCommands(config, workerTag, plan, fetchImpl) {
   const afterTrigger = selectProductionTrigger(afterTriggers);
   const observedBuildCommand = clean(afterTrigger?.build_command);
   const observedDeployCommand = clean(afterTrigger?.deploy_command);
-  if (plan.desiredBuildCommand && observedBuildCommand !== plan.desiredBuildCommand) {
+  if (plan.reconcileBuildCommand && observedBuildCommand !== plan.desiredBuildCommand) {
     throw new Error(
-      `BUILD_COMMAND_READBACK_MISMATCH: expected ${plan.desiredBuildCommand}, observed ${observedBuildCommand || 'missing'}.`,
+      `BUILD_COMMAND_READBACK_MISMATCH: expected ${plan.desiredBuildCommand || '<empty>'}, observed ${observedBuildCommand || '<empty>'}.`,
     );
   }
   if (observedDeployCommand !== plan.desiredDeployCommand) {
@@ -355,6 +359,7 @@ export async function reconcileWorkersBuildTrigger({
       productionTrigger,
       providerConfig.desiredDeployCommand,
       providerConfig.desiredBuildCommand,
+      providerConfig.reconcileBuildCommand,
     );
 
     evidence.worker = worker;
@@ -369,7 +374,7 @@ export async function reconcileWorkersBuildTrigger({
       deployCommand: plan.previousDeployCommand,
     };
     evidence.desired = {
-      buildCommand: plan.desiredBuildCommand,
+      buildCommand: plan.reconcileBuildCommand ? plan.desiredBuildCommand : null,
       deployCommand: plan.desiredDeployCommand,
     };
     evidence.rollback.buildCommand = plan.previousBuildCommand;
