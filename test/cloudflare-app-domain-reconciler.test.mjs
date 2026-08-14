@@ -133,7 +133,10 @@ test('production reconciler workflow runs safety checks on PRs and keeps provide
   assert.match(workflow, /current_main/);
   assert.match(workflow, /test "\$GITHUB_SHA" = "\$current_main"/);
   assert.match(workflow, /CLOUDFLARE_API_TOKEN/);
-  assert.match(workflow, /reconcile-cloudflare-app-domain\.mjs --apply/);
+  assert.match(
+    workflow,
+    /run-cloudflare-app-domain-reconcile-with-receipt\.mjs --apply/,
+  );
   assert.match(workflow, /cloudflare-app-domain-routing-evidence/);
 });
 
