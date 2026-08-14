@@ -13,6 +13,13 @@ export const PRODUCTION_HISTORY_ACCEPTED_ALIASES = Object.freeze({
   '20260808223500': '20260808222306',
   '20260813222000': '20260813222648',
 });
+export const PRODUCTION_HISTORY_APPLIED_ALIASES = Object.freeze({
+  '20260814033200': '20260814040352',
+});
+export const PRODUCTION_HISTORY_ALL_ACCEPTED_ALIASES = Object.freeze({
+  ...PRODUCTION_HISTORY_ACCEPTED_ALIASES,
+  ...PRODUCTION_HISTORY_APPLIED_ALIASES,
+});
 const ACCEPTED_LEGACY_RECEIPTS = new Set([
   '0001:init',
   '0002:circle_v1',
@@ -227,7 +234,7 @@ export function evaluateMigrationHistory(
   row,
   repositoryMigrations,
   authorityFloorVersion = PRODUCTION_HISTORY_AUTHORITY_FLOOR,
-  acceptedAliases = PRODUCTION_HISTORY_ACCEPTED_ALIASES,
+  acceptedAliases = PRODUCTION_HISTORY_ALL_ACCEPTED_ALIASES,
 ) {
   const floor = normalizeSchemaVersion(authorityFloorVersion);
   if (!floor) {
