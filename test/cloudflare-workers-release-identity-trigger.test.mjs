@@ -29,7 +29,7 @@ function response(result, { ok = true, statusText = 'OK' } = {}) {
 }
 
 function productionTrigger({
-  buildCommand = '',
+  buildCommand = 'node scripts/write-worker-release-identity.mjs',
   deployCommand = 'npx wrangler deploy',
 } = {}) {
   return {
@@ -43,7 +43,16 @@ function productionTrigger({
   };
 }
 
-test('reconciles the Workers Builds lifecycle so exact release identity is stamped before deploy', async () => {
+test('keeps Workers build phase non-mutating and delegates exact SHA stamping to the deploy wrapper', async () => {
+  const deployWrapper = fs.readFileSync(
+    new URL('../scripts/deploy-cloudflare-worker.mjs', import.meta.url),
+    'utf8',
+  );
+  const cleanCheck = deployWrapper.indexOf('const sha = resolveDeployCommitSha');
+  const identityStamp = deployWrapper.indexOf('const stampedSha = normalizeCommitSha(writeIdentity');
+  assert.ok(cleanCheck >= 0 && identityStamp > cleanCheck);
+  assert.match(deployWrapper, /WORKERS_CI_COMMIT_SHA: sha/);
+
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-workers-release-identity-'));
   const evidencePath = path.join(dir, 'evidence.json');
   const token = 'secret-token-must-not-leak';
@@ -103,8 +112,9 @@ test('reconciles the Workers Builds lifecycle so exact release identity is stamp
   assert.equal(evidence.applied, true);
   assert.equal(evidence.triggerVerified, true);
   assert.equal(evidence.verified, true);
-  assert.equal(evidence.before.buildCommand, null);
+  assert.equal(evidence.before.buildCommand, 'node scripts/write-worker-release-identity.mjs');
   assert.equal(evidence.before.deployCommand, 'npx wrangler deploy');
+  assert.equal(evidence.desired.buildCommand, DESIRED_BUILD_COMMAND);
   assert.equal(evidence.after.buildCommand, DESIRED_BUILD_COMMAND);
   assert.equal(evidence.after.deployCommand, DESIRED_DEPLOY_COMMAND);
   assert.equal(evidence.targetBuild.commitSha, COMMIT_SHA);
@@ -113,7 +123,6 @@ test('reconciles the Workers Builds lifecycle so exact release identity is stamp
   assert.equal(buildCalls, 1);
 
   const retained = fs.readFileSync(evidencePath, 'utf8');
-  assert.match(retained, new RegExp(DESIRED_BUILD_COMMAND.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(retained, new RegExp(COMMIT_SHA));
   assert.doesNotMatch(retained, new RegExp(token));
 });
