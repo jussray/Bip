@@ -35,7 +35,9 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BIP_WORKER_NAME: sekret-backend
-  BIP_WORKER_BUILD_COMMAND: node scripts/write-worker-release-identity.mjs
+  # Keep the provider build phase non-mutating. The reviewed deploy wrapper
+  # stamps WORKER_RELEASE_SHA itself immediately before wrangler deploy.
+  BIP_WORKER_BUILD_COMMAND: ''
   BIP_WORKER_DEPLOY_COMMAND: npm run deploy:api:production
   BIP_WORKER_BUILD_COMMIT: ${{ github.sha }}
   CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
