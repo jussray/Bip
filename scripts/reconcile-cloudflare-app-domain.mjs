@@ -48,20 +48,35 @@ async function cfRequest(config, path, options = {}) {
   return payload;
 }
 
-async function discoverZone(config) {
-  if (config.zoneId && config.accountId) return config;
+export function validateResolvedZone(config, zone) {
+  if (!zone?.id || zone.name !== config.zoneName) {
+    throw new Error('ZONE_IDENTITY_MISMATCH');
+  }
 
+  const resolvedAccountId = zone.account?.id;
+  if (!resolvedAccountId) {
+    throw new Error('ZONE_ACCOUNT_ID_NOT_FOUND');
+  }
+
+  if (config.zoneId && config.zoneId !== zone.id) {
+    throw new Error('ZONE_ID_MISMATCH');
+  }
+
+  if (config.accountId && config.accountId !== resolvedAccountId) {
+    throw new Error('ACCOUNT_ID_MISMATCH');
+  }
+
+  return {
+    ...config,
+    zoneId: zone.id,
+    accountId: resolvedAccountId,
+  };
+}
+
+async function discoverZone(config) {
   if (config.zoneId) {
     const payload = await cfRequest(config, `/zones/${config.zoneId}`);
-    const zone = payload?.result;
-    if (!zone?.id || zone?.name !== config.zoneName) {
-      throw new Error(`ZONE_ID_MISMATCH: ${config.zoneId} does not resolve to ${config.zoneName}.`);
-    }
-    const accountId = config.accountId || zone.account?.id;
-    if (!accountId) {
-      throw new Error('ACCOUNT_ID_NOT_FOUND: set CLOUDFLARE_ACCOUNT_ID or grant Zone Read.');
-    }
-    return { ...config, accountId };
+    return validateResolvedZone(config, payload?.result);
   }
 
   const payload = await cfRequest(
@@ -73,12 +88,7 @@ async function discoverZone(config) {
     throw new Error(`ZONE_NOT_FOUND: active Cloudflare zone ${config.zoneName} was not found.`);
   }
 
-  const accountId = config.accountId || zone.account?.id;
-  if (!accountId) {
-    throw new Error('ACCOUNT_ID_NOT_FOUND: set CLOUDFLARE_ACCOUNT_ID or grant Zone Read.');
-  }
-
-  return { ...config, zoneId: zone.id, accountId };
+  return validateResolvedZone(config, zone);
 }
 
 function normalizePattern(pattern) {
@@ -132,9 +142,8 @@ export function classifyWorkerBindings(
   const foreignExactRoutes = exactRoutes.filter(
     (route) => route?.script && route.script !== workerName,
   );
-  const broadOwnedRoutes = routes.filter(
+  const broadRoutes = routes.filter(
     (route) =>
-      route?.script === workerName &&
       !routePatternTargetsExactHost(route?.pattern, hostname) &&
       routePatternMayMatchHost(route?.pattern, hostname),
   );
@@ -144,7 +153,7 @@ export function classifyWorkerBindings(
     foreignDomains,
     ownedExactRoutes,
     foreignExactRoutes,
-    broadOwnedRoutes,
+    broadRoutes,
   };
 }
 
@@ -180,6 +189,37 @@ async function runtimeProbe(url) {
   };
 }
 
+export function backendHealthIdentityMatches(payload, expectedWorker = 'sekret-backend') {
+  return payload?.ok === true && payload?.worker === expectedWorker;
+}
+
+async function verifyBackend(config) {
+  const response = await fetch(config.apiHealthUrl, { redirect: 'follow' });
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    payload = null;
+  }
+
+  if (
+    response.status < 200 ||
+    response.status >= 300 ||
+    !backendHealthIdentityMatches(payload, config.workerName)
+  ) {
+    throw new Error('BACKEND_HEALTH_CONTRACT_FAILED');
+  }
+
+  return {
+    url: config.apiHealthUrl,
+    status: response.status,
+    contentType: response.headers.get('content-type') || '',
+    ok: true,
+    worker: config.workerName,
+  };
+}
+
 function assertPagesOwnership(pagesDomains, config) {
   const pagesDomain = pagesDomains.find(
     (domain) => String(domain?.name || '').toLowerCase() === config.hostname.toLowerCase(),
@@ -207,8 +247,8 @@ function assertSafeBindings(classification, config) {
     );
   }
 
-  if (classification.broadOwnedRoutes.length) {
-    const patterns = classification.broadOwnedRoutes
+  if (classification.broadRoutes.length) {
+    const patterns = classification.broadRoutes
       .map((route) => route?.pattern)
       .filter(Boolean);
     throw new Error(
@@ -236,17 +276,7 @@ async function waitForFrontend(config, attempts = 24, delayMs = 5000) {
     }
   }
 
-  throw new Error(
-    `APP_DOMAIN_FRONTEND_NOT_READY: ${JSON.stringify(lastProbe)}`,
-  );
-}
-
-async function verifyBackend(config) {
-  const probe = await runtimeProbe(config.apiHealthUrl);
-  if (probe.status < 200 || probe.status >= 300) {
-    throw new Error(`BACKEND_HEALTH_FAILED: ${JSON.stringify(probe)}`);
-  }
-  return probe;
+  throw new Error('APP_DOMAIN_FRONTEND_NOT_READY');
 }
 
 async function writeEvidence(payload) {
@@ -285,8 +315,35 @@ function summarizeBindings(classification) {
     foreignDomains: classification.foreignDomains.map(summarizeDomain),
     ownedExactRoutes: classification.ownedExactRoutes.map(summarizeRoute),
     foreignExactRoutes: classification.foreignExactRoutes.map(summarizeRoute),
-    broadOwnedRoutes: classification.broadOwnedRoutes.map(summarizeRoute),
+    broadRoutes: classification.broadRoutes.map(summarizeRoute),
   };
+}
+
+function evidenceContext({ resolved, pagesDomain, preClassification, runtimeBefore, backendBefore }) {
+  return {
+    zone: resolved.zoneName,
+    zoneId: resolved.zoneId,
+    accountId: resolved.accountId,
+    hostname: resolved.hostname,
+    pagesProject: resolved.pagesProject,
+    backendWorker: resolved.workerName,
+    pagesDomain: {
+      name: pagesDomain.name || resolved.hostname,
+      status: pagesDomain.status || null,
+      id: pagesDomain.id || pagesDomain.domain_id || null,
+    },
+    bindingsBefore: summarizeBindings(preClassification),
+    runtimeBefore,
+    backendBefore,
+  };
+}
+
+async function persistMutationProgress(context, actions, phase = 'apply-in-progress') {
+  await writeEvidence({
+    phase,
+    ...context,
+    actions: [...actions],
+  });
 }
 
 export async function reconcileCloudflareAppDomain(config = configFromEnv()) {
@@ -312,100 +369,98 @@ export async function reconcileCloudflareAppDomain(config = configFromEnv()) {
 
   const runtimeBefore = await runtimeProbe(resolved.appUrl);
   const backendBefore = await verifyBackend(resolved);
+  const context = evidenceContext({
+    resolved,
+    pagesDomain,
+    preClassification,
+    runtimeBefore,
+    backendBefore,
+  });
 
   await writeEvidence({
     phase: 'pre-apply',
-    zone: resolved.zoneName,
-    hostname: resolved.hostname,
-    pagesProject: resolved.pagesProject,
-    backendWorker: resolved.workerName,
-    pagesDomain: {
-      name: pagesDomain.name || resolved.hostname,
-      status: pagesDomain.status || null,
-      id: pagesDomain.id || pagesDomain.domain_id || null,
-    },
-    bindings: summarizeBindings(preClassification),
-    runtimeBefore,
-    backendBefore,
+    ...context,
     actions: [],
   });
 
   const actions = [];
 
-  for (const domain of preClassification.ownedDomains) {
-    if (!domain?.id) {
-      throw new Error(`WORKER_DOMAIN_ID_MISSING: ${resolved.hostname}`);
+  try {
+    for (const domain of preClassification.ownedDomains) {
+      if (!domain?.id) {
+        throw new Error(`WORKER_DOMAIN_ID_MISSING: ${resolved.hostname}`);
+      }
+      await cfRequest(
+        resolved,
+        `/accounts/${resolved.accountId}/workers/domains/${domain.id}`,
+        { method: 'DELETE' },
+      );
+      actions.push({ type: 'detach-worker-domain', id: domain.id });
+      await persistMutationProgress(context, actions);
+      console.log(`WORKER_DOMAIN_DETACHED hostname=${resolved.hostname} id=${domain.id}`);
     }
-    await cfRequest(
-      resolved,
-      `/accounts/${resolved.accountId}/workers/domains/${domain.id}`,
-      { method: 'DELETE' },
-    );
-    actions.push({ type: 'detach-worker-domain', id: domain.id });
-    console.log(`WORKER_DOMAIN_DETACHED hostname=${resolved.hostname} id=${domain.id}`);
-  }
 
-  for (const route of preClassification.ownedExactRoutes) {
-    if (!route?.id) {
-      throw new Error(`WORKER_ROUTE_ID_MISSING: ${route?.pattern || resolved.hostname}`);
+    for (const route of preClassification.ownedExactRoutes) {
+      if (!route?.id) {
+        throw new Error(`WORKER_ROUTE_ID_MISSING: ${route?.pattern || resolved.hostname}`);
+      }
+      await cfRequest(
+        resolved,
+        `/zones/${resolved.zoneId}/workers/routes/${route.id}`,
+        { method: 'DELETE' },
+      );
+      actions.push({ type: 'delete-worker-route', id: route.id, pattern: route.pattern || null });
+      await persistMutationProgress(context, actions);
+      console.log(`WORKER_ROUTE_DELETED pattern=${route.pattern || 'unknown'} id=${route.id}`);
     }
-    await cfRequest(
+
+    if (actions.length === 0 && !appProbeIsFrontend(runtimeBefore)) {
+      throw new Error(
+        `APP_DOMAIN_INTERCEPT_UNEXPLAINED: ${resolved.hostname} is still not serving frontend content, but no exact ${resolved.workerName} Worker binding was found.`,
+      );
+    }
+
+    const [postWorkerDomains, postWorkerRoutes] = await Promise.all([
+      listWorkerDomains(resolved),
+      listWorkerRoutes(resolved),
+    ]);
+    const postClassification = classifyWorkerBindings(
+      { routes: postWorkerRoutes, domains: postWorkerDomains },
       resolved,
-      `/zones/${resolved.zoneId}/workers/routes/${route.id}`,
-      { method: 'DELETE' },
     );
-    actions.push({ type: 'delete-worker-route', id: route.id, pattern: route.pattern || null });
-    console.log(`WORKER_ROUTE_DELETED pattern=${route.pattern || 'unknown'} id=${route.id}`);
-  }
+    assertSafeBindings(postClassification, resolved);
 
-  if (actions.length === 0 && !appProbeIsFrontend(runtimeBefore)) {
-    throw new Error(
-      `APP_DOMAIN_INTERCEPT_UNEXPLAINED: ${resolved.hostname} is still not serving frontend content, but no exact ${resolved.workerName} Worker binding was found.`,
+    if (postClassification.ownedDomains.length || postClassification.ownedExactRoutes.length) {
+      throw new Error(`APP_DOMAIN_WORKER_BINDING_REMAINS: ${resolved.hostname}`);
+    }
+
+    const runtimeAfter = await waitForFrontend(resolved);
+    const backendAfter = await verifyBackend(resolved);
+
+    await writeEvidence({
+      phase: 'post-apply',
+      ...context,
+      bindingsAfter: summarizeBindings(postClassification),
+      runtimeAfter,
+      backendAfter,
+      actions: [...actions],
+    });
+
+    console.log(
+      `APP_DOMAIN_ROUTING_RECONCILED hostname=${resolved.hostname} pages=${resolved.pagesProject} worker=${resolved.workerName} actions=${actions.length}`,
     );
+
+    return { actions, runtimeAfter, backendAfter };
+  } catch (error) {
+    if (actions.length > 0) {
+      try {
+        await persistMutationProgress(context, actions, 'apply-failed');
+      } catch {
+        // The always-upload workflow step will retain the latest successfully persisted receipt.
+      }
+    }
+    throw error;
   }
-
-  const [postWorkerDomains, postWorkerRoutes] = await Promise.all([
-    listWorkerDomains(resolved),
-    listWorkerRoutes(resolved),
-  ]);
-  const postClassification = classifyWorkerBindings(
-    { routes: postWorkerRoutes, domains: postWorkerDomains },
-    resolved,
-  );
-  assertSafeBindings(postClassification, resolved);
-
-  if (postClassification.ownedDomains.length || postClassification.ownedExactRoutes.length) {
-    throw new Error(`APP_DOMAIN_WORKER_BINDING_REMAINS: ${resolved.hostname}`);
-  }
-
-  const runtimeAfter = await waitForFrontend(resolved);
-  const backendAfter = await verifyBackend(resolved);
-
-  await writeEvidence({
-    phase: 'post-apply',
-    zone: resolved.zoneName,
-    hostname: resolved.hostname,
-    pagesProject: resolved.pagesProject,
-    backendWorker: resolved.workerName,
-    pagesDomain: {
-      name: pagesDomain.name || resolved.hostname,
-      status: pagesDomain.status || null,
-      id: pagesDomain.id || pagesDomain.domain_id || null,
-    },
-    bindingsBefore: summarizeBindings(preClassification),
-    bindingsAfter: summarizeBindings(postClassification),
-    runtimeBefore,
-    runtimeAfter,
-    backendBefore,
-    backendAfter,
-    actions,
-  });
-
-  console.log(
-    `APP_DOMAIN_ROUTING_RECONCILED hostname=${resolved.hostname} pages=${resolved.pagesProject} worker=${resolved.workerName} actions=${actions.length}`,
-  );
-
-  return { actions, runtimeAfter, backendAfter };
 }
 
 export async function main(argv = process.argv.slice(2), env = process.env) {
@@ -423,8 +478,9 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
         appUrl: config.appUrl,
         apiHealthUrl: config.apiHealthUrl,
         deleteScope: 'exact-host Worker domain/route only',
-        wildcardPolicy: 'fail-closed',
+        wildcardPolicy: 'fail-closed for every broad route regardless of owner',
         pagesPrecondition: 'target domain must already be active on canonical Pages project',
+        applyAuthority: 'workflow_dispatch with apply=true only',
         evidenceArtifact: EVIDENCE_PATH,
       },
       null,
