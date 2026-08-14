@@ -7,6 +7,7 @@ on:
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
+      - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
   push:
     branches: [main]
@@ -14,6 +15,7 @@ on:
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
+      - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
   workflow_dispatch:
     inputs:
@@ -33,6 +35,7 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BIP_WORKER_NAME: sekret-backend
+  BIP_WORKER_BUILD_COMMAND: node scripts/write-worker-release-identity.mjs
   BIP_WORKER_DEPLOY_COMMAND: npm run deploy:api:production
   BIP_WORKER_BUILD_COMMIT: ${{ github.sha }}
   CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
@@ -68,6 +71,7 @@ jobs:
           node --test
           test/cloudflare-workers-build-trigger-control-plane.test.mjs
           test/cloudflare-workers-token-fallback.test.mjs
+          test/cloudflare-workers-release-identity-trigger.test.mjs
 
   reconcile:
     name: Reconcile native Workers Builds trigger
