@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
+      - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
       - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
+      - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
       - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
@@ -72,6 +74,7 @@ jobs:
         run: >-
           node --test
           test/cloudflare-workers-build-trigger-control-plane.test.mjs
+          test/cloudflare-workers-build-trigger-approval.test.mjs
           test/cloudflare-workers-token-fallback.test.mjs
           test/cloudflare-workers-release-identity-trigger.test.mjs
 
@@ -112,8 +115,22 @@ jobs:
       - name: Show non-destructive trigger plan
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
 
+      - name: Require provider trigger to already be safe on main push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const evidence = JSON.parse(fs.readFileSync(process.env.CLOUDFLARE_BUILD_EVIDENCE_PATH, 'utf8'));
+          if (evidence.status !== 'already-correct' || evidence.verified !== true) {
+            console.error('Cloudflare production trigger is not already safe. Repair it through an explicitly approved workflow_dispatch before another main push.');
+            process.exit(1);
+          }
+          NODE
+
       - name: Apply, verify, and request exact native build
-        if: github.event_name == 'push' || inputs.apply == true
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
 
       - name: Upload trigger evidence
