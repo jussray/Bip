@@ -4,6 +4,8 @@ Every AI agent working in this repository must read and apply [`docs/FOUNDER_INT
 
 For every nontrivial implementation, audit, review, repair, merge, deployment, migration, or cross-system integration, agents must also load and apply [`.agents/skills/founder-dev-flow/SKILL.md`](.agents/skills/founder-dev-flow/SKILL.md). That skill is the executable engineering loop for the founder stack and is required even when the task-specific skill is narrower.
 
+When a task invokes ChatGPT Plugin Management or an external plugin, also read [`.control-room/plugin-management.json`](.control-room/plugin-management.json). That file declares intended repository capability only. Live installation, connection, permission, and execution state must be discovered from the ChatGPT runtime before making a claim or taking a plugin-backed action; Se’kret Bip safety and privacy rules remain stronger authority.
+
 Required founder-intelligence loop:
 
 ```text

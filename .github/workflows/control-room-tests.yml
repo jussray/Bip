@@ -6,7 +6,9 @@ on:
     paths:
       - "control-room.manifest.json"
       - ".control-room/repository.manifest.json"
+      - ".control-room/plugin-management.json"
       - "scripts/verify-control-room-tests.mjs"
+      - "scripts/verify-plugin-management-contract.mjs"
       - "test/control-room-tests-catalog.test.mjs"
       - "test/ai-skill-gap-blueprint-workflow.test.mjs"
       - "test/juss-os-command-contract.test.mjs"
@@ -25,7 +27,9 @@ on:
     paths:
       - "control-room.manifest.json"
       - ".control-room/repository.manifest.json"
+      - ".control-room/plugin-management.json"
       - "scripts/verify-control-room-tests.mjs"
+      - "scripts/verify-plugin-management-contract.mjs"
       - "test/control-room-tests-catalog.test.mjs"
       - "test/ai-skill-gap-blueprint-workflow.test.mjs"
       - "test/juss-os-command-contract.test.mjs"
@@ -87,6 +91,9 @@ jobs:
 
       - name: Verify portable Juss OS command contract
         run: node --test test/juss-os-command-contract.test.mjs
+
+      - name: Verify ChatGPT plugin management contract
+        run: node scripts/verify-plugin-management-contract.mjs
 
       - name: Verify dynamic package-script and workflow inventory
         run: node scripts/verify-control-room-tests.mjs
