@@ -126,7 +126,7 @@ test('apply still requires preview, immediate authority recheck, and exact post-
   const dryRun = indexOfRequired('supabase db push --linked --dry-run 2>&1 | tee artifacts/supabase-db-push-dry-run.txt');
   const recheck = indexOfRequired('Re-verify current main immediately before mutation');
   const apply = indexOfRequired('supabase db push --linked 2>&1 | tee artifacts/supabase-db-push-apply.txt');
-  const witness = indexOfRequired('node scripts/verify-supabase-production-schema.mjs');
+  const witness = indexOfRequired('Verify exact production schema after mutation');
 
   assert.ok(dryRun < recheck, 'Dry-run must execute before the final current-main authority check.');
   assert.ok(recheck < apply, 'Current main must be re-verified immediately before production apply.');
