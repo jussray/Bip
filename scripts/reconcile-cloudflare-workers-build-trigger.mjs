@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
 const SHA_PATTERN = /^[0-9a-f]{40}$/i;
+export const DESIRED_BUILD_COMMAND = '';
 export const DESIRED_DEPLOY_COMMAND = 'npm run deploy:api:production';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/cloudflare-workers-build-trigger.json';
 
@@ -35,12 +36,15 @@ function tokenCandidatesFromEnv(env) {
 
 export function configFromEnv(env = process.env) {
   const tokenCandidates = tokenCandidatesFromEnv(env);
+  const reconcileBuildCommand = Object.prototype.hasOwnProperty.call(env, 'BIP_WORKER_BUILD_COMMAND');
   return {
     token: tokenCandidates[0]?.token ?? '',
     tokenCandidates,
     tokenSource: null,
     accountId: clean(env.CLOUDFLARE_ACCOUNT_ID),
     workerName: clean(env.BIP_WORKER_NAME) || 'sekret-backend',
+    reconcileBuildCommand,
+    desiredBuildCommand: reconcileBuildCommand ? clean(env.BIP_WORKER_BUILD_COMMAND) : null,
     desiredDeployCommand: clean(env.BIP_WORKER_DEPLOY_COMMAND) || DESIRED_DEPLOY_COMMAND,
     targetCommitSha: normalizeSha(env.BIP_WORKER_BUILD_COMMIT || env.GITHUB_SHA),
     evidencePath: clean(env.CLOUDFLARE_BUILD_EVIDENCE_PATH) || DEFAULT_EVIDENCE_PATH,
@@ -152,20 +156,34 @@ export function selectProductionTrigger(triggers) {
   return trigger;
 }
 
-export function buildTriggerPlan(trigger, desiredDeployCommand = DESIRED_DEPLOY_COMMAND) {
+export function buildTriggerPlan(
+  trigger,
+  desiredDeployCommand = DESIRED_DEPLOY_COMMAND,
+  desiredBuildCommand = null,
+  reconcileBuildCommand = desiredBuildCommand !== null,
+) {
+  const previousBuildCommand = clean(trigger?.build_command);
   const previousDeployCommand = clean(trigger?.deploy_command);
-  const desired = clean(desiredDeployCommand);
-  if (!desired) throw new Error('DESIRED_DEPLOY_COMMAND_MISSING.');
+  const desiredBuild = reconcileBuildCommand ? clean(desiredBuildCommand) : null;
+  const desiredDeploy = clean(desiredDeployCommand);
+  if (!desiredDeploy) throw new Error('DESIRED_DEPLOY_COMMAND_MISSING.');
+
+  const patch = {};
+  if (reconcileBuildCommand && previousBuildCommand !== desiredBuild) patch.build_command = desiredBuild;
+  if (previousDeployCommand !== desiredDeploy) patch.deploy_command = desiredDeploy;
 
   return {
     triggerUuid: clean(trigger?.trigger_uuid),
     triggerName: clean(trigger?.trigger_name) || null,
     branchIncludes: Array.isArray(trigger?.branch_includes) ? trigger.branch_includes : [],
     branchExcludes: Array.isArray(trigger?.branch_excludes) ? trigger.branch_excludes : [],
+    previousBuildCommand: previousBuildCommand || null,
     previousDeployCommand: previousDeployCommand || null,
-    desiredDeployCommand: desired,
-    changeRequired: previousDeployCommand !== desired,
-    patch: previousDeployCommand === desired ? null : { deploy_command: desired },
+    reconcileBuildCommand,
+    desiredBuildCommand: desiredBuild,
+    desiredDeployCommand: desiredDeploy,
+    changeRequired: Object.keys(patch).length > 0,
+    patch: Object.keys(patch).length > 0 ? patch : null,
   };
 }
 
@@ -189,11 +207,11 @@ async function listTriggers(config, workerTag, fetchImpl) {
   return Array.isArray(payload?.result) ? payload.result : [];
 }
 
-async function patchTrigger(config, triggerUuid, deployCommand, fetchImpl) {
+async function patchTrigger(config, triggerUuid, patch, fetchImpl) {
   return cfRequest(
     config,
     `/accounts/${config.accountId}/builds/triggers/${triggerUuid}`,
-    { method: 'PATCH', body: { deploy_command: deployCommand } },
+    { method: 'PATCH', body: patch },
     fetchImpl,
   );
 }
@@ -220,7 +238,7 @@ async function writeEvidence(evidencePath, evidence) {
 
 function initialEvidence(config, apply, now) {
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     generatedAt: now().toISOString(),
     accountId: config.accountId || null,
     credential: {
@@ -232,8 +250,11 @@ function initialEvidence(config, apply, now) {
       tag: null,
     },
     productionTrigger: null,
-    before: { deployCommand: null },
-    desired: { deployCommand: config.desiredDeployCommand || null },
+    before: { buildCommand: null, deployCommand: null },
+    desired: {
+      buildCommand: config.reconcileBuildCommand ? config.desiredBuildCommand : null,
+      deployCommand: config.desiredDeployCommand || null,
+    },
     targetBuild: {
       branch: 'main',
       commitSha: config.targetCommitSha,
@@ -245,7 +266,12 @@ function initialEvidence(config, apply, now) {
     triggerVerified: false,
     verified: false,
     status: 'initializing',
-    rollback: { attempted: false, succeeded: null, deployCommand: null },
+    rollback: {
+      attempted: false,
+      succeeded: null,
+      buildCommand: null,
+      deployCommand: null,
+    },
   };
 }
 
@@ -256,16 +282,34 @@ async function failWithEvidence(config, evidence, status, error) {
   throw error;
 }
 
-async function verifyDesiredDeployCommand(config, workerTag, plan, fetchImpl) {
+async function verifyDesiredCommands(config, workerTag, plan, fetchImpl) {
   const afterTriggers = await listTriggers(config, workerTag, fetchImpl);
   const afterTrigger = selectProductionTrigger(afterTriggers);
+  const observedBuildCommand = clean(afterTrigger?.build_command);
   const observedDeployCommand = clean(afterTrigger?.deploy_command);
+  if (plan.reconcileBuildCommand && observedBuildCommand !== plan.desiredBuildCommand) {
+    throw new Error(
+      `BUILD_COMMAND_READBACK_MISMATCH: expected ${plan.desiredBuildCommand || '<empty>'}, observed ${observedBuildCommand || '<empty>'}.`,
+    );
+  }
   if (observedDeployCommand !== plan.desiredDeployCommand) {
     throw new Error(
       `DEPLOY_COMMAND_READBACK_MISMATCH: expected ${plan.desiredDeployCommand}, observed ${observedDeployCommand || 'missing'}.`,
     );
   }
-  return observedDeployCommand;
+  return {
+    buildCommand: observedBuildCommand,
+    deployCommand: observedDeployCommand,
+  };
+}
+
+function rollbackPatch(plan) {
+  const patch = {};
+  if (plan.patch?.build_command !== undefined) patch.build_command = plan.previousBuildCommand ?? '';
+  if (plan.patch?.deploy_command !== undefined && plan.previousDeployCommand) {
+    patch.deploy_command = plan.previousDeployCommand;
+  }
+  return patch;
 }
 
 export async function reconcileWorkersBuildTrigger({
@@ -311,7 +355,12 @@ export async function reconcileWorkersBuildTrigger({
     worker = await discoverWorker(providerConfig, fetchImpl);
     const triggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
     const productionTrigger = selectProductionTrigger(triggers);
-    plan = buildTriggerPlan(productionTrigger, providerConfig.desiredDeployCommand);
+    plan = buildTriggerPlan(
+      productionTrigger,
+      providerConfig.desiredDeployCommand,
+      providerConfig.desiredBuildCommand,
+      providerConfig.reconcileBuildCommand,
+    );
 
     evidence.worker = worker;
     evidence.productionTrigger = {
@@ -320,8 +369,15 @@ export async function reconcileWorkersBuildTrigger({
       branchIncludes: plan.branchIncludes,
       branchExcludes: plan.branchExcludes,
     };
-    evidence.before = { deployCommand: plan.previousDeployCommand };
-    evidence.desired = { deployCommand: plan.desiredDeployCommand };
+    evidence.before = {
+      buildCommand: plan.previousBuildCommand,
+      deployCommand: plan.previousDeployCommand,
+    };
+    evidence.desired = {
+      buildCommand: plan.reconcileBuildCommand ? plan.desiredBuildCommand : null,
+      deployCommand: plan.desiredDeployCommand,
+    };
+    evidence.rollback.buildCommand = plan.previousBuildCommand;
     evidence.rollback.deployCommand = plan.previousDeployCommand;
     evidence.status = plan.changeRequired ? 'change-required' : 'already-correct';
   } catch (error) {
@@ -340,10 +396,10 @@ export async function reconcileWorkersBuildTrigger({
   try {
     if (plan.changeRequired) {
       mutationStarted = true;
-      await patchTrigger(providerConfig, plan.triggerUuid, plan.desiredDeployCommand, fetchImpl);
+      await patchTrigger(providerConfig, plan.triggerUuid, plan.patch, fetchImpl);
     }
 
-    const observedDeployCommand = await verifyDesiredDeployCommand(
+    const observedCommands = await verifyDesiredCommands(
       providerConfig,
       worker.tag,
       plan,
@@ -351,21 +407,30 @@ export async function reconcileWorkersBuildTrigger({
     );
     evidence.applied = plan.changeRequired;
     evidence.triggerVerified = true;
-    evidence.after = { deployCommand: observedDeployCommand };
+    evidence.after = observedCommands;
   } catch (error) {
     evidence.status = 'trigger-verification-failed';
     evidence.error = errorMessage(error);
 
-    if (mutationStarted && plan.previousDeployCommand) {
-      evidence.rollback.attempted = true;
-      try {
-        await patchTrigger(providerConfig, plan.triggerUuid, plan.previousDeployCommand, fetchImpl);
-        const rollbackTriggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
-        const rollbackTrigger = selectProductionTrigger(rollbackTriggers);
-        evidence.rollback.succeeded = clean(rollbackTrigger?.deploy_command) === plan.previousDeployCommand;
-      } catch (rollbackError) {
-        evidence.rollback.succeeded = false;
-        evidence.rollback.error = errorMessage(rollbackError);
+    if (mutationStarted) {
+      const patch = rollbackPatch(plan);
+      if (Object.keys(patch).length > 0) {
+        evidence.rollback.attempted = true;
+        try {
+          await patchTrigger(providerConfig, plan.triggerUuid, patch, fetchImpl);
+          const rollbackTriggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
+          const rollbackTrigger = selectProductionTrigger(rollbackTriggers);
+          const rollbackBuildCommand = clean(rollbackTrigger?.build_command);
+          const rollbackDeployCommand = clean(rollbackTrigger?.deploy_command);
+          const buildRestored = plan.patch?.build_command === undefined
+            || rollbackBuildCommand === (plan.previousBuildCommand ?? '');
+          const deployRestored = plan.patch?.deploy_command === undefined
+            || rollbackDeployCommand === (plan.previousDeployCommand ?? '');
+          evidence.rollback.succeeded = buildRestored && deployRestored;
+        } catch (rollbackError) {
+          evidence.rollback.succeeded = false;
+          evidence.rollback.error = errorMessage(rollbackError);
+        }
       }
     }
 
