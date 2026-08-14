@@ -115,17 +115,21 @@ test('backend health proof requires the canonical Worker identity', () => {
   assert.equal(backendHealthIdentityMatches(null, 'sekret-backend'), false);
 });
 
-test('production reconciler workflow keeps push runs non-mutating and requires explicit apply dispatch', () => {
+test('production reconciler workflow runs safety checks on PRs and keeps provider mutation dispatch-only', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/reconcile-cloudflare-app-domain.yml', import.meta.url),
     'utf8',
   );
 
+  assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\[main\]/);
   assert.match(workflow, /push:\s*\n\s+branches:\s*\[main\]/);
   assert.match(workflow, /workflow_dispatch:\s*\n\s+inputs:/);
+  assert.match(workflow, /Verify focused route reconciler contract/);
+  assert.match(workflow, /node --test test\/cloudflare-app-domain-reconciler\.test\.mjs/);
   assert.match(workflow, /apply:/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.apply == true/);
   assert.doesNotMatch(workflow, /github\.event_name == 'push' \|\| inputs\.apply == true/);
+  assert.doesNotMatch(workflow, /github\.event_name == 'pull_request' \|\| inputs\.apply == true/);
   assert.match(workflow, /current_main/);
   assert.match(workflow, /test "\$GITHUB_SHA" = "\$current_main"/);
   assert.match(workflow, /CLOUDFLARE_API_TOKEN/);
