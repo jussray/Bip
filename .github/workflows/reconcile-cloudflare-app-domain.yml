@@ -6,13 +6,17 @@ on:
     paths:
       - '.github/workflows/reconcile-cloudflare-app-domain.yml'
       - 'scripts/reconcile-cloudflare-app-domain.mjs'
+      - 'scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs'
       - 'test/cloudflare-app-domain-reconciler.test.mjs'
+      - 'test/cloudflare-app-domain-failure-receipt.test.mjs'
   push:
     branches: [main]
     paths:
       - '.github/workflows/reconcile-cloudflare-app-domain.yml'
       - 'scripts/reconcile-cloudflare-app-domain.mjs'
+      - 'scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs'
       - 'test/cloudflare-app-domain-reconciler.test.mjs'
+      - 'test/cloudflare-app-domain-failure-receipt.test.mjs'
   workflow_dispatch:
     inputs:
       apply:
@@ -52,7 +56,10 @@ jobs:
           node-version: '24'
 
       - name: Verify focused route reconciler contract
-        run: node --test test/cloudflare-app-domain-reconciler.test.mjs
+        run: >-
+          node --test
+          test/cloudflare-app-domain-reconciler.test.mjs
+          test/cloudflare-app-domain-failure-receipt.test.mjs
 
       - name: Show non-destructive plan
         run: node scripts/reconcile-cloudflare-app-domain.mjs
@@ -100,7 +107,7 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        run: node scripts/reconcile-cloudflare-app-domain.mjs --apply
+        run: node scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs --apply
 
       - name: Upload Cloudflare route evidence
         if: github.event_name == 'workflow_dispatch' && inputs.apply == true && always()
@@ -108,5 +115,5 @@ jobs:
         with:
           name: cloudflare-app-domain-routing-evidence-${{ github.run_id }}
           path: artifacts/cloudflare-app-domain-routing-evidence.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
