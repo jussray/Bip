@@ -145,7 +145,7 @@ test('confirmed provider mutations are persisted before post-apply verification 
 
   assert.match(reconciler, /persistMutationProgress\(context, actions\)/);
   assert.match(reconciler, /persistMutationProgress\(context, actions, 'apply-failed'\)/);
-  assert.match(reconciler, /phase:\s*'apply-in-progress'/);
+  assert.match(reconciler, /phase = 'apply-in-progress'/);
   assert.match(reconciler, /actions:\s*\[\.\.\.actions\]/);
 });
 
