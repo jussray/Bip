@@ -16,10 +16,12 @@ Se'kret Bip is the product. [Founder Control Room](https://github.com/jussray/fo
 ## Current repository truth
 
 **Last refreshed:** 2026-08-15  
-**Current `main` at this audit:** `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`  
+**Implementation baseline audited for this documentation:** `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`  
 **Current status:** [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md)  
 **Launch-status overlay:** [`docs/LAUNCH_GATE_STATUS_2026-07-31.md`](docs/LAUNCH_GATE_STATUS_2026-07-31.md)  
 **Current execution:** [`SPRINT.md`](SPRINT.md)
+
+The documentation repair itself may advance `main` beyond the audited implementation baseline without changing application behavior. Always resolve fresh current `main` before making a new exact-head claim.
 
 The older reviewed application baseline `824b4dcffb9e0ffc7468a002f0390cbba98d79ae` remains historical evidence for the scope reviewed at that time. It is **not current `main`** and must not be used as a substitute for a fresh repository lookup.
 
@@ -70,6 +72,12 @@ For a material claim, name:
 
 Keep repository, CI, Cloudflare, Supabase, browser, device, and account witnesses separate.
 
+## Founder Control Room README sync
+
+Founder Control Room owns the README sync decision for nontrivial incidents, fixes, merges, deployment changes, migration changes, validation changes, and authority changes. Record the README impact as `required`, `not_required`, or `deferred_with_reason`.
+
+A zero-step, `steps:null`, or no-log GitHub Actions failure remains `runner_startup_failure` infrastructure evidence, not a code regression and not a pass. Follow [`.control-room/README_SYNC_POLICY.md`](.control-room/README_SYNC_POLICY.md) before claiming the documentation impact is complete.
+
 ## Product promise
 
 - Private reflections stay private.
@@ -101,7 +109,7 @@ Do not regress the product into a static splash-art-led experience.
 - Room, Pages, journaling, and voice reflection
 - Suhana, Sy, Cloud, and Night companion experiences
 - Se'kret continuity presence and rules-based safety boundaries
-- privacy-safe Daily Intentions with Basic, opt-in Personalized, and Off modes
+- Privacy-safe Daily Intentions with Basic, opt-in Personalized, and Off modes
 - Calm, Comfort, Mind + Body Reset, and Cloud Thoughts
 - Bippin 2, Growth, Insights, History, and Memories
 - Period Calendar, points, and rewards infrastructure
@@ -132,7 +140,7 @@ Documentation and demos must not imply broader parent visibility than server and
 - canonical Cloudflare Pages project `sekret-bip`
 - shared typed frontend-to-Worker contracts and stable failure mapping
 - Se'kret identity boundary and versioned companion-style runtime wrapper
-- privacy-safe Daily Intentions
+- Privacy-safe Daily Intentions
 - Mind + Body Reset regulation and workout flows
 - Founder Control Room operational data sources and repository capability contracts
 - Bridge data model, consent contracts, and controlled rollout paths
