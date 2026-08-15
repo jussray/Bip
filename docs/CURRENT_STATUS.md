@@ -1,10 +1,12 @@
 # Se'kret Bip — Current Status
 
 **Last reviewed:** 2026-08-15  
-**Current `main` at this audit:** `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`  
+**Implementation baseline audited for this documentation:** `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`  
 **Historical fully reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
 **Launch-status overlay:** `docs/LAUNCH_GATE_STATUS_2026-07-31.md`  
 **Current execution:** `SPRINT.md`
+
+The documentation repair itself may advance `main` beyond the audited implementation baseline without changing application behavior. Always resolve fresh current `main` before making a new exact-head claim.
 
 The historical application baseline remains useful evidence for the scope that was reviewed at that time, but it is **not current `main`**. Current repository claims must begin from a fresh `main` lookup and then bind to the exact implementation, workflow, provider, database, browser, device, and account evidence that actually exists for that head.
 
@@ -14,7 +16,7 @@ This block supersedes the July 31 current-status overlay while preserving the hi
 
 ### Repository truth
 
-- Current `main` is `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`.
+- The implementation baseline audited for this status is `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`; resolve fresh `main` before relying on that SHA as current.
 - PR #825 merged the fail-closed `app.sekretbip.net` ownership reconciler. It may remove only an exact `sekret-backend` binding after proving Pages project `sekret-bip` is ready to own the hostname; broad, wildcard, foreign, or ambiguous bindings fail closed.
 - PR #827 retained sanitized Cloudflare preflight-failure evidence.
 - PR #828 added the ChatGPT plugin-management contract for GitHub, Supabase, and Figma while preserving Se'kret Bip privacy and release-truth boundaries.
@@ -53,7 +55,7 @@ Therefore:
 - no Supabase mutation occurred;
 - production browser/release proof remains blocked behind provider read authority.
 
-Do **not** weaken the Pages precondition merely to get past this failure. The next provider action is to reconcile the Cloudflare API token/account permission needed to read Pages domains, then rerun the same bounded exact-main reconciler.
+Do **not** weaken the Pages precondition merely to get past this failure. The next provider action is to reconcile the Cloudflare API token/account permission needed to read Pages domains, then rerun the same bounded exact-main reconciler against the then-current `main` SHA.
 
 ### Release truth
 
@@ -110,7 +112,7 @@ L4 and L5 remain future product lanes and are not automatic launch dependencies 
 - companion reply, transcription, speech, and metadata-only telemetry flows
 - Suhana and Sy canonical display/canon naming with compatibility normalization for legacy identifiers
 - Teen Room, Pages, voice reflection, Calm/Comfort/Mind + Body Reset, Circle, rewards, and trusted-relationship surfaces
-- privacy-safe Daily Intentions
+- Privacy-safe Daily Intentions
 - Bridge linking/consent/summary/revocation contracts
 - exact-release verification machinery and retained evidence boundaries
 - fail-closed app-domain ownership reconciliation on the repository side
