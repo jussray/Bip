@@ -81,20 +81,32 @@ jobs:
   reconcile:
     name: Reconcile native Workers Builds trigger
     needs: contract
-    # Provider control-plane access is an explicit operator action. Automatic
-    # push/PR paths validate the contract without depending on a separate API token.
-    if: github.event_name == 'workflow_dispatch'
+    # Trusted main pushes may inspect provider state and fail closed when it is
+    # unsafe. Provider mutation remains an explicit workflow_dispatch apply=true action.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      EXPECTED_HEAD_SHA: ${{ github.sha }}
       # Keep both candidates distinct. The reconciliation script verifies each
       # without exposing values and uses the first active user-scoped token.
       CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Check out repository
+      - name: Check out exact trusted head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
+
+      - name: Record and verify exact trusted head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -117,8 +129,26 @@ jobs:
       - name: Show non-destructive trigger plan
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
 
+      - name: Require provider trigger to already be safe on main push
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const evidencePath = process.env.CLOUDFLARE_BUILD_EVIDENCE_PATH;
+          const receipt = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+          if (receipt.verified !== true || receipt.status !== 'already-correct') {
+            console.error(
+              `WORKERS_TRIGGER_MAIN_READBACK_UNSAFE: status=${receipt.status || 'unknown'} verified=${String(receipt.verified)}`,
+            );
+            process.exit(1);
+          }
+          console.log('WORKERS_TRIGGER_MAIN_READBACK_SAFE');
+          NODE
+
       - name: Apply, verify, and request exact native build
-        if: inputs.apply == true
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
 
       - name: Upload trigger evidence
