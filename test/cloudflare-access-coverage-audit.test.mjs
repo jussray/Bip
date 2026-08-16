@@ -51,6 +51,18 @@ test('falls back across token candidates and retains only redacted matching Acce
           destinations: [{ type: 'all_workers' }],
         },
         {
+          id: 'backend-worker-app',
+          name: 'Se’kret Backend Worker',
+          type: 'self_hosted',
+          destinations: [{ type: 'worker', worker_id: 'sekret-backend' }],
+        },
+        {
+          id: 'other-worker-app',
+          name: 'Other Product Worker',
+          type: 'self_hosted',
+          destinations: [{ type: 'worker', worker_id: 'unrelated-worker' }],
+        },
+        {
           id: 'app-host',
           name: 'Se’kret App',
           type: 'self_hosted',
@@ -70,10 +82,24 @@ test('falls back across token candidates and retains only redacted matching Acce
       return response([
         {
           id: 'policy-all',
-          name: 'Require login',
+          name: 'Require login containing private@example.com',
           decision: 'allow',
           precedence: 1,
           include: [{ email: { email: secretEmail } }],
+          require: [],
+          exclude: [],
+        },
+      ]);
+    }
+
+    if (url.includes('/access/apps/backend-worker-app/policies')) {
+      return response([
+        {
+          id: 'policy-worker',
+          name: 'Private Worker Team',
+          decision: 'allow',
+          precedence: 2,
+          include: [{ group: { id: 'private-group-value' } }],
           require: [],
           exclude: [],
         },
@@ -110,6 +136,7 @@ test('falls back across token candidates and retains only redacted matching Acce
 
   assert.equal(receipt.status, 'audited');
   assert.equal(receipt.mutationPerformed, false);
+  assert.equal(receipt.backendWorkerId, 'sekret-backend');
   assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_API_TOKEN');
   assert.equal(receipt.credential.failures[0].status, 403);
   assert.deepEqual(receipt.credential.failures[0].providerCodes, [10000]);
@@ -118,15 +145,21 @@ test('falls back across token candidates and retains only redacted matching Acce
   const apiCoverage = receipt.coverage.find((item) => item.hostname === 'api.sekretbip.net');
   assert.deepEqual(
     appCoverage.matchingApplications.map((app) => app.name).sort(),
-    ['All Workers', 'Se’kret App'].sort(),
+    ['All Workers', 'Se’kret App', 'Se’kret Backend Worker'].sort(),
   );
-  assert.deepEqual(apiCoverage.matchingApplications.map((app) => app.name), ['All Workers']);
+  assert.deepEqual(
+    apiCoverage.matchingApplications.map((app) => app.name).sort(),
+    ['All Workers', 'Se’kret Backend Worker'].sort(),
+  );
   assert.deepEqual(appCoverage.matchingApplications[0].policies[0].includeSelectors, ['email']);
 
   const retained = fs.readFileSync(evidencePath, 'utf8');
   assert.doesNotMatch(retained, new RegExp(staleToken));
   assert.doesNotMatch(retained, new RegExp(activeToken));
   assert.doesNotMatch(retained, new RegExp(secretEmail));
+  assert.doesNotMatch(retained, /private-group-value/);
+  assert.doesNotMatch(retained, /Require login containing private@example.com/);
+  assert.doesNotMatch(retained, /Other Product Worker/);
   assert.doesNotMatch(retained, /Unrelated Private App/);
   assert.ok(authorizationSeen.includes(staleToken));
   assert.ok(authorizationSeen.includes(activeToken));
