@@ -8,6 +8,7 @@ export const DEFAULT_TARGET_HOSTS = Object.freeze([
   'app.sekretbip.net',
   'api.sekretbip.net',
 ]);
+export const DEFAULT_BACKEND_WORKER_ID = 'sekret-backend';
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -94,7 +95,7 @@ function destinationHost(destination) {
   return hostnameFromValue(destination?.hostname || destination?.uri || '');
 }
 
-function applicationReasons(app, target) {
+function applicationReasons(app, target, backendWorkerId) {
   const reasons = [];
   if (hostnameMatches(app?.domain, target)) reasons.push('domain');
   for (const domain of Array.isArray(app?.self_hosted_domains) ? app.self_hosted_domains : []) {
@@ -104,7 +105,13 @@ function applicationReasons(app, target) {
   for (const destination of Array.isArray(app?.destinations) ? app.destinations : []) {
     const type = clean(destination?.type).toLowerCase();
     if (type === 'all_workers') reasons.push('all-workers');
-    if (type === 'worker') reasons.push('worker-routing-dependent');
+    if (
+      type === 'worker'
+      && backendWorkerId
+      && clean(destination?.worker_id).toLowerCase() === backendWorkerId.toLowerCase()
+    ) {
+      reasons.push('backend-worker-routing-dependent');
+    }
     if (type === 'public' && hostnameMatches(destinationHost(destination), target)) {
       reasons.push('public-destination');
     }
@@ -122,7 +129,6 @@ function selectorKinds(rules) {
 function publicPolicy(policy) {
   return {
     id: clean(policy?.id) || null,
-    name: clean(policy?.name) || null,
     decision: clean(policy?.decision) || null,
     precedence: Number.isInteger(policy?.precedence) ? policy.precedence : null,
     includeSelectors: selectorKinds(policy?.include),
@@ -187,6 +193,7 @@ export async function auditCloudflareAccessCoverage({
   targetHosts = clean(env.CLOUDFLARE_ACCESS_TARGET_HOSTS)
     ? clean(env.CLOUDFLARE_ACCESS_TARGET_HOSTS).split(',').map((item) => clean(item).toLowerCase()).filter(Boolean)
     : [...DEFAULT_TARGET_HOSTS],
+  backendWorkerId = clean(env.CLOUDFLARE_ACCESS_BACKEND_WORKER_ID) || DEFAULT_BACKEND_WORKER_ID,
 } = {}) {
   const accountId = clean(env.CLOUDFLARE_ACCOUNT_ID);
   const candidates = tokenCandidatesFromEnv(env);
@@ -196,6 +203,7 @@ export async function auditCloudflareAccessCoverage({
     mutationPerformed: false,
     accountIdConfigured: Boolean(accountId),
     targets: targetHosts,
+    backendWorkerId,
     credential: {
       candidateSources: candidates.map((candidate) => candidate.source),
       selectedSource: null,
@@ -244,7 +252,7 @@ export async function auditCloudflareAccessCoverage({
   for (const target of targetHosts) {
     const matchingApplications = [];
     for (const app of applications) {
-      const reasons = applicationReasons(app, target);
+      const reasons = applicationReasons(app, target, backendWorkerId);
       if (reasons.length === 0) continue;
 
       let policies = [];
