@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { test, expect } from '@playwright/test';
 
 type Surface = {
@@ -18,7 +19,7 @@ type DomainContract = {
 };
 
 const contract = JSON.parse(
-  readFileSync(new URL('../config/domain-authority.json', import.meta.url), 'utf8'),
+  readFileSync(resolve(process.cwd(), 'config/domain-authority.json'), 'utf8'),
 ) as DomainContract;
 
 const selectedSurfaces = contract.surfaces.filter(
