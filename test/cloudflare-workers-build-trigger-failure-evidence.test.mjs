@@ -48,13 +48,17 @@ test('retains redacted evidence when Cloudflare token verification fails before 
   const evidenceText = fs.readFileSync(evidencePath, 'utf8');
   const evidence = JSON.parse(evidenceText);
 
-  assert.equal(evidence.schemaVersion, 6);
+  assert.equal(evidence.schemaVersion, 7);
   assert.equal(evidence.status, 'provider-discovery-failed');
   assert.equal(evidence.verified, false);
   assert.equal(evidence.applyRequested, false);
   assert.equal(evidence.worker.name, 'sekret-backend');
   assert.equal(evidence.worker.tag, null);
   assert.equal(evidence.productionTrigger, null);
+  assert.equal(evidence.nonProductionTrigger, null);
+  assert.deepEqual(evidence.desired.branchIncludes, ['main']);
+  assert.deepEqual(evidence.desired.branchExcludes, []);
+  assert.equal(evidence.desired.nonProductionBuildsEnabled, false);
   assert.match(evidence.error, /Cloudflare GET \/user\/tokens\/verify failed/);
   assert.doesNotMatch(evidenceText, new RegExp(token));
 });
@@ -88,5 +92,7 @@ test('retains configuration evidence before any provider request when apply SHA 
   assert.equal(evidence.applyRequested, true);
   assert.equal(evidence.verified, false);
   assert.equal(evidence.targetBuild.commitSha, null);
+  assert.deepEqual(evidence.desired.branchIncludes, ['main']);
+  assert.equal(evidence.desired.nonProductionBuildsEnabled, false);
   assert.doesNotMatch(evidenceText, /secret-token/);
 });

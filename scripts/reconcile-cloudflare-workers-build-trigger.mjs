@@ -17,6 +17,15 @@ function normalizeSha(value) {
   return SHA_PATTERN.test(sha) ? sha : null;
 }
 
+function normalizeBranches(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(clean).filter(Boolean))];
+}
+
+function sameStrings(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 function tokenCandidatesFromEnv(env) {
   const candidates = [
     {
@@ -135,9 +144,14 @@ export function selectWorkerScript(scripts, workerName) {
 }
 
 function explicitlyIncludesMain(trigger) {
-  const includes = Array.isArray(trigger?.branch_includes) ? trigger.branch_includes : [];
-  const excludes = Array.isArray(trigger?.branch_excludes) ? trigger.branch_excludes : [];
+  const includes = normalizeBranches(trigger?.branch_includes);
+  const excludes = normalizeBranches(trigger?.branch_excludes);
   return includes.includes('main') && !excludes.includes('main') && !excludes.includes('*');
+}
+
+export function isMainOnlyProductionTrigger(trigger) {
+  return sameStrings(normalizeBranches(trigger?.branch_includes), ['main'])
+    && normalizeBranches(trigger?.branch_excludes).length === 0;
 }
 
 export function selectProductionTrigger(triggers) {
@@ -156,33 +170,75 @@ export function selectProductionTrigger(triggers) {
   return trigger;
 }
 
+export function selectPreviewTrigger(triggers, productionTrigger) {
+  const productionUuid = clean(productionTrigger?.trigger_uuid);
+  const candidates = (Array.isArray(triggers) ? triggers : [])
+    .filter((trigger) => !trigger?.deleted_on && clean(trigger?.trigger_uuid) !== productionUuid);
+
+  if (candidates.length > 1) {
+    throw new Error(
+      `NON_PRODUCTION_TRIGGER_SELECTION_FAILED: expected at most one active preview trigger, found ${candidates.length}.`,
+    );
+  }
+  const preview = candidates[0] ?? null;
+  if (preview && !clean(preview?.trigger_uuid)) {
+    throw new Error('NON_PRODUCTION_TRIGGER_UUID_MISSING.');
+  }
+  return preview;
+}
+
 export function buildTriggerPlan(
   trigger,
+  previewTrigger = null,
   desiredDeployCommand = DESIRED_DEPLOY_COMMAND,
   desiredBuildCommand = null,
   reconcileBuildCommand = desiredBuildCommand !== null,
 ) {
   const previousBuildCommand = clean(trigger?.build_command);
   const previousDeployCommand = clean(trigger?.deploy_command);
+  const previousBranchIncludes = normalizeBranches(trigger?.branch_includes);
+  const previousBranchExcludes = normalizeBranches(trigger?.branch_excludes);
+  const desiredBranchIncludes = ['main'];
+  const desiredBranchExcludes = [];
   const desiredBuild = reconcileBuildCommand ? clean(desiredBuildCommand) : null;
   const desiredDeploy = clean(desiredDeployCommand);
   if (!desiredDeploy) throw new Error('DESIRED_DEPLOY_COMMAND_MISSING.');
 
   const patch = {};
+  if (!sameStrings(previousBranchIncludes, desiredBranchIncludes)) {
+    patch.branch_includes = desiredBranchIncludes;
+  }
+  if (!sameStrings(previousBranchExcludes, desiredBranchExcludes)) {
+    patch.branch_excludes = desiredBranchExcludes;
+  }
   if (reconcileBuildCommand && previousBuildCommand !== desiredBuild) patch.build_command = desiredBuild;
   if (previousDeployCommand !== desiredDeploy) patch.deploy_command = desiredDeploy;
+
+  const nonProductionTrigger = previewTrigger
+    ? {
+        triggerUuid: clean(previewTrigger?.trigger_uuid),
+        triggerName: clean(previewTrigger?.trigger_name) || null,
+        branchIncludes: normalizeBranches(previewTrigger?.branch_includes),
+        branchExcludes: normalizeBranches(previewTrigger?.branch_excludes),
+      }
+    : null;
 
   return {
     triggerUuid: clean(trigger?.trigger_uuid),
     triggerName: clean(trigger?.trigger_name) || null,
-    branchIncludes: Array.isArray(trigger?.branch_includes) ? trigger.branch_includes : [],
-    branchExcludes: Array.isArray(trigger?.branch_excludes) ? trigger.branch_excludes : [],
+    branchIncludes: previousBranchIncludes,
+    branchExcludes: previousBranchExcludes,
+    desiredBranchIncludes,
+    desiredBranchExcludes,
     previousBuildCommand: previousBuildCommand || null,
     previousDeployCommand: previousDeployCommand || null,
     reconcileBuildCommand,
     desiredBuildCommand: desiredBuild,
     desiredDeployCommand: desiredDeploy,
-    changeRequired: Object.keys(patch).length > 0,
+    nonProductionTrigger,
+    nonProductionBuildsEnabled: Boolean(nonProductionTrigger),
+    changeRequired: Object.keys(patch).length > 0 || Boolean(nonProductionTrigger),
+    productionPatchRequired: Object.keys(patch).length > 0,
     patch: Object.keys(patch).length > 0 ? patch : null,
   };
 }
@@ -238,7 +294,7 @@ async function writeEvidence(evidencePath, evidence) {
 
 function initialEvidence(config, apply, now) {
   return {
-    schemaVersion: 6,
+    schemaVersion: 7,
     generatedAt: now().toISOString(),
     accountId: config.accountId || null,
     credential: {
@@ -250,10 +306,19 @@ function initialEvidence(config, apply, now) {
       tag: null,
     },
     productionTrigger: null,
-    before: { buildCommand: null, deployCommand: null },
+    nonProductionTrigger: null,
+    before: {
+      branchIncludes: null,
+      branchExcludes: null,
+      buildCommand: null,
+      deployCommand: null,
+    },
     desired: {
+      branchIncludes: ['main'],
+      branchExcludes: [],
       buildCommand: config.reconcileBuildCommand ? config.desiredBuildCommand : null,
       deployCommand: config.desiredDeployCommand || null,
+      nonProductionBuildsEnabled: false,
     },
     targetBuild: {
       branch: 'main',
@@ -269,6 +334,8 @@ function initialEvidence(config, apply, now) {
     rollback: {
       attempted: false,
       succeeded: null,
+      branchIncludes: null,
+      branchExcludes: null,
       buildCommand: null,
       deployCommand: null,
     },
@@ -282,11 +349,27 @@ async function failWithEvidence(config, evidence, status, error) {
   throw error;
 }
 
-async function verifyDesiredCommands(config, workerTag, plan, fetchImpl) {
+async function verifyDesiredTrigger(config, workerTag, plan, fetchImpl) {
   const afterTriggers = await listTriggers(config, workerTag, fetchImpl);
   const afterTrigger = selectProductionTrigger(afterTriggers);
+  const previewTrigger = selectPreviewTrigger(afterTriggers, afterTrigger);
+  if (previewTrigger) {
+    throw new Error(
+      'NON_PRODUCTION_BRANCH_BUILDS_ENABLED: disable the active preview trigger before exact production reconciliation.',
+    );
+  }
+
+  const observedBranchIncludes = normalizeBranches(afterTrigger?.branch_includes);
+  const observedBranchExcludes = normalizeBranches(afterTrigger?.branch_excludes);
   const observedBuildCommand = clean(afterTrigger?.build_command);
   const observedDeployCommand = clean(afterTrigger?.deploy_command);
+
+  if (!sameStrings(observedBranchIncludes, plan.desiredBranchIncludes)
+      || !sameStrings(observedBranchExcludes, plan.desiredBranchExcludes)) {
+    throw new Error(
+      `BRANCH_CONTROL_READBACK_MISMATCH: expected main-only production trigger; observed includes=${JSON.stringify(observedBranchIncludes)} excludes=${JSON.stringify(observedBranchExcludes)}.`,
+    );
+  }
   if (plan.reconcileBuildCommand && observedBuildCommand !== plan.desiredBuildCommand) {
     throw new Error(
       `BUILD_COMMAND_READBACK_MISMATCH: expected ${plan.desiredBuildCommand || '<empty>'}, observed ${observedBuildCommand || '<empty>'}.`,
@@ -298,13 +381,18 @@ async function verifyDesiredCommands(config, workerTag, plan, fetchImpl) {
     );
   }
   return {
+    branchIncludes: observedBranchIncludes,
+    branchExcludes: observedBranchExcludes,
     buildCommand: observedBuildCommand,
     deployCommand: observedDeployCommand,
+    nonProductionBuildsEnabled: false,
   };
 }
 
 function rollbackPatch(plan) {
   const patch = {};
+  if (plan.patch?.branch_includes !== undefined) patch.branch_includes = plan.branchIncludes;
+  if (plan.patch?.branch_excludes !== undefined) patch.branch_excludes = plan.branchExcludes;
   if (plan.patch?.build_command !== undefined) patch.build_command = plan.previousBuildCommand ?? '';
   if (plan.patch?.deploy_command !== undefined) patch.deploy_command = plan.previousDeployCommand ?? '';
   return patch;
@@ -353,8 +441,10 @@ export async function reconcileWorkersBuildTrigger({
     worker = await discoverWorker(providerConfig, fetchImpl);
     const triggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
     const productionTrigger = selectProductionTrigger(triggers);
+    const previewTrigger = selectPreviewTrigger(triggers, productionTrigger);
     plan = buildTriggerPlan(
       productionTrigger,
+      previewTrigger,
       providerConfig.desiredDeployCommand,
       providerConfig.desiredBuildCommand,
       providerConfig.reconcileBuildCommand,
@@ -367,17 +457,29 @@ export async function reconcileWorkersBuildTrigger({
       branchIncludes: plan.branchIncludes,
       branchExcludes: plan.branchExcludes,
     };
+    evidence.nonProductionTrigger = plan.nonProductionTrigger;
     evidence.before = {
+      branchIncludes: plan.branchIncludes,
+      branchExcludes: plan.branchExcludes,
       buildCommand: plan.previousBuildCommand,
       deployCommand: plan.previousDeployCommand,
     };
     evidence.desired = {
+      branchIncludes: plan.desiredBranchIncludes,
+      branchExcludes: plan.desiredBranchExcludes,
       buildCommand: plan.reconcileBuildCommand ? plan.desiredBuildCommand : null,
       deployCommand: plan.desiredDeployCommand,
+      nonProductionBuildsEnabled: false,
     };
+    evidence.rollback.branchIncludes = plan.branchIncludes;
+    evidence.rollback.branchExcludes = plan.branchExcludes;
     evidence.rollback.buildCommand = plan.previousBuildCommand;
     evidence.rollback.deployCommand = plan.previousDeployCommand;
-    evidence.status = plan.changeRequired ? 'change-required' : 'already-correct';
+    evidence.status = plan.nonProductionBuildsEnabled
+      ? 'non-production-builds-enabled'
+      : plan.productionPatchRequired
+        ? 'change-required'
+        : 'already-correct';
   } catch (error) {
     await failWithEvidence(config, evidence, 'provider-discovery-failed', error);
   }
@@ -390,22 +492,33 @@ export async function reconcileWorkersBuildTrigger({
     return evidence;
   }
 
+  if (plan.nonProductionBuildsEnabled) {
+    await failWithEvidence(
+      config,
+      evidence,
+      'non-production-builds-enabled',
+      new Error(
+        'NON_PRODUCTION_BRANCH_BUILDS_ENABLED: disable Builds for non-production branches before applying the production trigger repair.',
+      ),
+    );
+  }
+
   let mutationStarted = false;
   try {
-    if (plan.changeRequired) {
+    if (plan.productionPatchRequired) {
       mutationStarted = true;
       await patchTrigger(providerConfig, plan.triggerUuid, plan.patch, fetchImpl);
     }
 
-    const observedCommands = await verifyDesiredCommands(
+    const observedTrigger = await verifyDesiredTrigger(
       providerConfig,
       worker.tag,
       plan,
       fetchImpl,
     );
-    evidence.applied = plan.changeRequired;
+    evidence.applied = plan.productionPatchRequired;
     evidence.triggerVerified = true;
-    evidence.after = observedCommands;
+    evidence.after = observedTrigger;
   } catch (error) {
     evidence.status = 'trigger-verification-failed';
     evidence.error = errorMessage(error);
@@ -418,13 +531,19 @@ export async function reconcileWorkersBuildTrigger({
           await patchTrigger(providerConfig, plan.triggerUuid, patch, fetchImpl);
           const rollbackTriggers = await listTriggers(providerConfig, worker.tag, fetchImpl);
           const rollbackTrigger = selectProductionTrigger(rollbackTriggers);
+          const rollbackBranchIncludes = normalizeBranches(rollbackTrigger?.branch_includes);
+          const rollbackBranchExcludes = normalizeBranches(rollbackTrigger?.branch_excludes);
           const rollbackBuildCommand = clean(rollbackTrigger?.build_command);
           const rollbackDeployCommand = clean(rollbackTrigger?.deploy_command);
+          const branchesRestored = (
+            (plan.patch?.branch_includes === undefined || sameStrings(rollbackBranchIncludes, plan.branchIncludes))
+            && (plan.patch?.branch_excludes === undefined || sameStrings(rollbackBranchExcludes, plan.branchExcludes))
+          );
           const buildRestored = plan.patch?.build_command === undefined
             || rollbackBuildCommand === (plan.previousBuildCommand ?? '');
           const deployRestored = plan.patch?.deploy_command === undefined
             || rollbackDeployCommand === (plan.previousDeployCommand ?? '');
-          evidence.rollback.succeeded = buildRestored && deployRestored;
+          evidence.rollback.succeeded = branchesRestored && buildRestored && deployRestored;
         } catch (rollbackError) {
           evidence.rollback.succeeded = false;
           evidence.rollback.error = errorMessage(rollbackError);
@@ -445,7 +564,7 @@ export async function reconcileWorkersBuildTrigger({
       fetchImpl,
     );
     evidence.verified = true;
-    evidence.status = plan.changeRequired ? 'applied-and-build-requested' : 'verified-and-build-requested';
+    evidence.status = plan.productionPatchRequired ? 'applied-and-build-requested' : 'verified-and-build-requested';
     await writeEvidence(config.evidencePath, evidence);
     console.log('CLOUDFLARE_WORKERS_BUILD_TRIGGER_RECONCILED');
     return evidence;
