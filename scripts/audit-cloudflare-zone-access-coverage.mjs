@@ -33,13 +33,12 @@ function tokenCandidatesFromEnv(env) {
   );
 }
 
-function providerError(payload, fallback = 'Cloudflare request failed') {
+function providerError(payload) {
   const errors = Array.isArray(payload?.errors) ? payload.errors : [];
   return {
     codes: errors
       .map((item) => item?.code)
       .filter((code) => Number.isInteger(code)),
-    fallback: clean(fallback) || 'Cloudflare request failed',
   };
 }
 
@@ -52,7 +51,7 @@ async function requestJson(token, requestPath, fetchImpl) {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
-    const detail = providerError(payload, response.statusText);
+    const detail = providerError(payload);
     const error = new Error(`Cloudflare GET ${requestPath} failed (${response.status}).`);
     error.providerStatus = response.status;
     error.providerCodes = detail.codes;
@@ -61,9 +60,10 @@ async function requestJson(token, requestPath, fetchImpl) {
   return payload;
 }
 
-function minimalErrorReceipt(error, source) {
+function minimalErrorReceipt(error, source, stage) {
   return {
     source,
+    stage,
     status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
     providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
   };
@@ -87,9 +87,7 @@ async function resolveZone({ token, accountId, targetZone }, fetchImpl) {
   const resolvedAccountId = clean(zone?.account?.id);
   if (!zoneId) throw new Error('ZONE_ID_MISSING.');
   if (!resolvedAccountId) throw new Error('ZONE_ACCOUNT_ID_MISSING.');
-  if (resolvedAccountId !== accountId) {
-    throw new Error('ZONE_ACCOUNT_ID_MISMATCH.');
-  }
+  if (resolvedAccountId !== accountId) throw new Error('ZONE_ACCOUNT_ID_MISMATCH.');
   return zoneId;
 }
 
@@ -214,12 +212,16 @@ export async function auditCloudflareZoneAccessCoverage({
   backendWorkerId = clean(env.CLOUDFLARE_ACCESS_BACKEND_WORKER_ID) || DEFAULT_BACKEND_WORKER_ID,
 } = {}) {
   const accountId = clean(env.CLOUDFLARE_ACCOUNT_ID);
+  const configuredZoneId = clean(env.CLOUDFLARE_ZONE_ID);
   const candidates = tokenCandidatesFromEnv(env);
   const receipt = {
-    version: 1,
+    version: 2,
     generatedAt: now().toISOString(),
     mutationPerformed: false,
     accountIdConfigured: Boolean(accountId),
+    zoneIdConfigured: Boolean(configuredZoneId),
+    zoneIdSource: null,
+    zoneIdentityVerified: null,
     targetZone,
     targets: targetHosts,
     backendWorkerId,
@@ -228,7 +230,6 @@ export async function auditCloudflareZoneAccessCoverage({
       selectedSource: null,
       failures: [],
     },
-    zoneResolved: false,
     applicationCountObserved: null,
     coverage: [],
   };
@@ -245,35 +246,53 @@ export async function auditCloudflareZoneAccessCoverage({
   let providerConfig = null;
   let zoneId = null;
   let applications = null;
+
   for (const candidate of candidates) {
+    let candidateZoneId = configuredZoneId;
+    let zoneIdSource = configuredZoneId ? 'configured-secret' : null;
+    let zoneIdentityVerified = null;
+
+    if (!candidateZoneId) {
+      try {
+        candidateZoneId = await resolveZone(
+          { token: candidate.token, accountId, targetZone },
+          fetchImpl,
+        );
+        zoneIdSource = 'provider-discovery';
+        zoneIdentityVerified = true;
+      } catch (error) {
+        receipt.credential.failures.push(minimalErrorReceipt(error, candidate.source, 'zone-discovery'));
+        continue;
+      }
+    }
+
     try {
-      const resolvedZoneId = await resolveZone(
-        { token: candidate.token, accountId, targetZone },
-        fetchImpl,
-      );
       const observedApplications = await listZoneApplications(
         candidate.token,
-        resolvedZoneId,
+        candidateZoneId,
         fetchImpl,
       );
       providerConfig = candidate;
-      zoneId = resolvedZoneId;
+      zoneId = candidateZoneId;
       applications = observedApplications;
+      receipt.zoneIdSource = zoneIdSource;
+      receipt.zoneIdentityVerified = zoneIdentityVerified;
       break;
     } catch (error) {
-      receipt.credential.failures.push(minimalErrorReceipt(error, candidate.source));
+      receipt.credential.failures.push(minimalErrorReceipt(error, candidate.source, 'zone-access-apps'));
     }
   }
 
   if (!providerConfig || !zoneId || !applications) {
     receipt.status = 'zone-access-read-failed';
-    receipt.error = 'No configured Cloudflare token could resolve the target zone and list its Access applications.';
+    receipt.error = configuredZoneId
+      ? 'No configured Cloudflare token could list Access applications for the configured Se’kret zone ID.'
+      : 'No configured Cloudflare token could resolve the target zone and list its Access applications.';
     await writeEvidence(evidencePath, receipt);
     throw new Error(receipt.error);
   }
 
   receipt.credential.selectedSource = providerConfig.source;
-  receipt.zoneResolved = true;
   receipt.applicationCountObserved = applications.length;
 
   for (const target of targetHosts) {
@@ -295,7 +314,7 @@ export async function auditCloudflareZoneAccessCoverage({
           );
           policies = observedPolicies.map(publicPolicy);
         } catch (error) {
-          policyReadError = minimalErrorReceipt(error, providerConfig.source);
+          policyReadError = minimalErrorReceipt(error, providerConfig.source, 'zone-access-policies');
         }
       }
       matchingApplications.push(publicApplication(app, reasons, policies, policyReadError));
@@ -306,7 +325,7 @@ export async function auditCloudflareZoneAccessCoverage({
   receipt.status = 'audited';
   await writeEvidence(evidencePath, receipt);
   console.log(
-    `CLOUDFLARE_ZONE_ACCESS_AUDIT_COMPLETE zone=${targetZone} apps=${applications.length} matched=${receipt.coverage.reduce((sum, item) => sum + item.matchingApplications.length, 0)} credential=${providerConfig.source}`,
+    `CLOUDFLARE_ZONE_ACCESS_AUDIT_COMPLETE zone=${targetZone} zoneIdSource=${receipt.zoneIdSource} apps=${applications.length} matched=${receipt.coverage.reduce((sum, item) => sum + item.matchingApplications.length, 0)} credential=${providerConfig.source}`,
   );
   return receipt;
 }
