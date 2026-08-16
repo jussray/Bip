@@ -22,17 +22,23 @@ function response(result, { ok = true, status = 200, statusText = 'OK', errors =
   };
 }
 
-test('falls back across token candidates and retains only matching zone-scoped Access coverage', async () => {
+test('uses the configured Se’kret zone ID without rediscovery and retains only matching Access coverage', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-zone-access-audit-'));
   const evidencePath = path.join(dir, 'evidence.json');
   const staleToken = 'stale-token-must-not-appear';
   const activeToken = 'active-token-must-not-appear';
   const privateEmail = 'private@example.com';
+  let zoneDiscoveryCalls = 0;
 
   const fetchImpl = async (url, options = {}) => {
     const token = String(options.headers?.Authorization || '').replace(/^Bearer /, '');
 
-    if (url.includes('/zones?name=sekretbip.net')) {
+    if (url.includes('/zones?')) {
+      zoneDiscoveryCalls += 1;
+      throw new Error('Configured zone ID must bypass zone discovery.');
+    }
+
+    if (url.endsWith(`/zones/${ZONE_ID}/access/apps?per_page=1000`)) {
       if (token === staleToken) {
         return response(null, {
           ok: false,
@@ -41,13 +47,6 @@ test('falls back across token candidates and retains only matching zone-scoped A
           errors: [{ code: 10000, message: 'Authentication error' }],
         });
       }
-      assert.equal(token, activeToken);
-      return response([
-        { id: ZONE_ID, name: 'sekretbip.net', account: { id: ACCOUNT_ID } },
-      ]);
-    }
-
-    if (url.endsWith(`/zones/${ZONE_ID}/access/apps?per_page=1000`)) {
       assert.equal(token, activeToken);
       return response([
         {
@@ -105,6 +104,7 @@ test('falls back across token candidates and retains only matching zone-scoped A
   const receipt = await auditCloudflareZoneAccessCoverage({
     env: {
       CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+      CLOUDFLARE_ZONE_ID: ZONE_ID,
       CLOUDFLARE_ACCESS_API_TOKEN: staleToken,
       CLOUDFLARE_API_TOKEN: activeToken,
       CLOUDFLARE_ZONE_ACCESS_EVIDENCE_PATH: evidencePath,
@@ -113,13 +113,21 @@ test('falls back across token candidates and retains only matching zone-scoped A
     now: () => new Date('2026-08-16T08:45:00.000Z'),
   });
 
+  assert.equal(zoneDiscoveryCalls, 0);
+  assert.equal(receipt.version, 2);
   assert.equal(receipt.status, 'audited');
   assert.equal(receipt.mutationPerformed, false);
-  assert.equal(receipt.zoneResolved, true);
+  assert.equal(receipt.zoneIdConfigured, true);
+  assert.equal(receipt.zoneIdSource, 'configured-secret');
+  assert.equal(receipt.zoneIdentityVerified, null);
   assert.equal(receipt.applicationCountObserved, 3);
   assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_API_TOKEN');
-  assert.equal(receipt.credential.failures[0].status, 403);
-  assert.deepEqual(receipt.credential.failures[0].providerCodes, [10000]);
+  assert.deepEqual(receipt.credential.failures[0], {
+    source: 'CLOUDFLARE_ACCESS_API_TOKEN',
+    stage: 'zone-access-apps',
+    status: 403,
+    providerCodes: [10000],
+  });
 
   const appCoverage = receipt.coverage.find((item) => item.hostname === 'app.sekretbip.net');
   const apiCoverage = receipt.coverage.find((item) => item.hostname === 'api.sekretbip.net');
@@ -127,10 +135,7 @@ test('falls back across token candidates and retains only matching zone-scoped A
     appCoverage.matchingApplications.map((app) => app.name).sort(),
     ['Legacy Se’kret Access', 'Se’kret App Exact'].sort(),
   );
-  assert.deepEqual(
-    apiCoverage.matchingApplications.map((app) => app.name),
-    ['Legacy Se’kret Access'],
-  );
+  assert.deepEqual(apiCoverage.matchingApplications.map((app) => app.name), ['Legacy Se’kret Access']);
   assert.deepEqual(
     appCoverage.matchingApplications.find((app) => app.id === 'wildcard-app').policies[0].includeSelectors,
     ['email'],
@@ -146,7 +151,73 @@ test('falls back across token candidates and retains only matching zone-scoped A
   assert.doesNotMatch(retained, /Login for private@example\.com/);
 });
 
-test('fails closed when the resolved zone belongs to another account', async () => {
+test('falls back to provider discovery when no configured zone ID exists and validates account identity', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-zone-access-discovery-'));
+  const evidencePath = path.join(dir, 'evidence.json');
+
+  const receipt = await auditCloudflareZoneAccessCoverage({
+    env: {
+      CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+      CLOUDFLARE_API_TOKEN: 'configured-token',
+      CLOUDFLARE_ZONE_ACCESS_EVIDENCE_PATH: evidencePath,
+    },
+    fetchImpl: async (url) => {
+      if (url.includes('/zones?name=sekretbip.net')) {
+        return response([{ id: ZONE_ID, name: 'sekretbip.net', account: { id: ACCOUNT_ID } }]);
+      }
+      if (url.endsWith(`/zones/${ZONE_ID}/access/apps?per_page=1000`)) return response([]);
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  assert.equal(receipt.status, 'audited');
+  assert.equal(receipt.zoneIdConfigured, false);
+  assert.equal(receipt.zoneIdSource, 'provider-discovery');
+  assert.equal(receipt.zoneIdentityVerified, true);
+  assert.equal(receipt.applicationCountObserved, 0);
+});
+
+test('labels a configured-zone failure at the zone Access application read boundary', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-zone-access-stage-'));
+  const evidencePath = path.join(dir, 'evidence.json');
+
+  await assert.rejects(
+    () => auditCloudflareZoneAccessCoverage({
+      env: {
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_ZONE_ID: ZONE_ID,
+        CLOUDFLARE_API_TOKEN: 'configured-token',
+        CLOUDFLARE_ZONE_ACCESS_EVIDENCE_PATH: evidencePath,
+      },
+      fetchImpl: async (url) => {
+        assert.ok(url.endsWith(`/zones/${ZONE_ID}/access/apps?per_page=1000`));
+        return response(null, {
+          ok: false,
+          status: 403,
+          statusText: 'Forbidden',
+          errors: [{ code: 10000, message: 'Authentication error' }],
+        });
+      },
+    }),
+    /configured Se’kret zone ID/,
+  );
+
+  const receiptText = fs.readFileSync(evidencePath, 'utf8');
+  const receipt = JSON.parse(receiptText);
+  assert.equal(receipt.status, 'zone-access-read-failed');
+  assert.equal(receipt.zoneIdConfigured, true);
+  assert.deepEqual(receipt.credential.failures, [
+    {
+      source: 'CLOUDFLARE_API_TOKEN',
+      stage: 'zone-access-apps',
+      status: 403,
+      providerCodes: [10000],
+    },
+  ]);
+  assert.doesNotMatch(receiptText, new RegExp(ZONE_ID));
+});
+
+test('fails closed when a discovered zone belongs to another account', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-zone-access-account-mismatch-'));
   const evidencePath = path.join(dir, 'evidence.json');
   let accessAppCalls = 0;
@@ -160,23 +231,20 @@ test('fails closed when the resolved zone belongs to another account', async () 
       },
       fetchImpl: async (url) => {
         if (url.includes('/zones?name=sekretbip.net')) {
-          return response([
-            { id: ZONE_ID, name: 'sekretbip.net', account: { id: 'different-account' } },
-          ]);
+          return response([{ id: ZONE_ID, name: 'sekretbip.net', account: { id: 'different-account' } }]);
         }
         accessAppCalls += 1;
         throw new Error(`Unexpected request: ${url}`);
       },
     }),
-    /No configured Cloudflare token could resolve the target zone and list its Access applications/,
+    /resolve the target zone and list its Access applications/,
   );
 
   assert.equal(accessAppCalls, 0);
   const receipt = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
   assert.equal(receipt.status, 'zone-access-read-failed');
-  assert.equal(receipt.zoneResolved, false);
-  assert.equal(receipt.applicationCountObserved, null);
-  assert.equal(receipt.credential.failures.length, 1);
+  assert.equal(receipt.zoneIdConfigured, false);
+  assert.deepEqual(receipt.credential.failures[0].stage, 'zone-discovery');
 });
 
 test('writes a fail-closed receipt when Cloudflare credentials are missing', async () => {
