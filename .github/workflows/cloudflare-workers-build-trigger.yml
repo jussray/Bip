@@ -81,7 +81,9 @@ jobs:
   reconcile:
     name: Reconcile native Workers Builds trigger
     needs: contract
-    if: github.event_name != 'pull_request'
+    # Provider control-plane access is an explicit operator action. Automatic
+    # push/PR paths validate the contract without depending on a separate API token.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -115,22 +117,8 @@ jobs:
       - name: Show non-destructive trigger plan
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
 
-      - name: Require provider trigger to already be safe on main push
-        if: github.event_name == 'push'
-        shell: bash
-        run: |
-          set -euo pipefail
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const evidence = JSON.parse(fs.readFileSync(process.env.CLOUDFLARE_BUILD_EVIDENCE_PATH, 'utf8'));
-          if (evidence.status !== 'already-correct' || evidence.verified !== true) {
-            console.error('Cloudflare production trigger is not already safe. Repair it through an explicitly approved workflow_dispatch before another main push.');
-            process.exit(1);
-          }
-          NODE
-
       - name: Apply, verify, and request exact native build
-        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+        if: inputs.apply == true
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
 
       - name: Upload trigger evidence
