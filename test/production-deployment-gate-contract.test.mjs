@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-import {probeJsonEndpoint} from '../scripts/probe-production-release-endpoints.mjs';
+import {
+  classifyEndpointProbe,
+  collectProductionReleaseEndpointEvidence,
+  probeJsonEndpoint,
+} from '../scripts/probe-production-release-endpoints.mjs';
 
 const workflow = readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
 const productionConfig = readFileSync('playwright.production.config.ts', 'utf8');
@@ -33,6 +37,7 @@ test('production release transport evidence is retained without response bodies'
   assert.match(releaseProbe, /redirected: response\.redirected/);
   assert.match(releaseProbe, /jsonState/);
   assert.match(releaseProbe, /releaseSha/);
+  assert.match(releaseProbe, /CLOUDFLARE_ACCESS_INTERCEPTED/);
   assert.doesNotMatch(releaseProbe, /responseBody|bodyText|response\.text\(/);
   assert.doesNotMatch(releaseProbe, /set-cookie|authorization/i);
 });
@@ -58,6 +63,7 @@ test('release transport probe classifies non-OK responses without reading their 
   assert.equal(evidence.contentType, 'text/html');
   assert.equal(evidence.jsonState, 'skipped-non-ok');
   assert.equal(evidence.releaseSha, null);
+  assert.equal(evidence.classification, 'http-error');
 });
 
 test('release transport probe retains only public identity fields from JSON', async () => {
@@ -80,7 +86,49 @@ test('release transport probe retains only public identity fields from JSON', as
   assert.equal(evidence.jsonState, 'ok');
   assert.equal(evidence.healthOk, true);
   assert.equal(evidence.releaseSha, '45800cacabc531968d7dcaaa5ec505a66ef68ad1');
+  assert.equal(evidence.classification, 'ok');
   assert.equal('privateValue' in evidence, false);
+});
+
+test('Cloudflare Access redirects are classified as release blockers', async () => {
+  const evidence = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      url: 'https://mcgill-raylene.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net',
+      redirected: true,
+      headers: {get: () => 'text/html'},
+      json: async () => {
+        throw new SyntaxError('not json');
+      },
+    }),
+  });
+
+  assert.equal(evidence.classification, 'cloudflare-access-intercepted');
+  assert.equal(classifyEndpointProbe(evidence), 'cloudflare-access-intercepted');
+  assert.equal(evidence.finalUrl, 'https://mcgill-raylene.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
+});
+
+test('production evidence identifies every surface intercepted by Cloudflare Access', async () => {
+  const fetchImpl = async (url) => ({
+    ok: true,
+    status: 200,
+    url: `https://mcgill-raylene.cloudflareaccess.com/cdn-cgi/access/login/${new URL(url).hostname}`,
+    redirected: true,
+    headers: {get: () => 'text/html'},
+    json: async () => {
+      throw new SyntaxError('not json');
+    },
+  });
+
+  const evidence = await collectProductionReleaseEndpointEvidence({
+    expectedSha: '8c7ae915bc5a85739c23022316b8e5c19da640d0',
+    fetchImpl,
+  });
+
+  assert.equal(evidence.version, 2);
+  assert.equal(evidence.status, 'cloudflare-access-intercepted');
+  assert.deepEqual(evidence.blockedByAccess, ['frontend', 'backend']);
 });
 
 test('production Playwright verifies both public variants and their Enter paths', () => {

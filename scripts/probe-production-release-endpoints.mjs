@@ -10,6 +10,26 @@ function safeString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function isCloudflareAccessUrl(rawUrl) {
+  if (!rawUrl) return false;
+  try {
+    const hostname = new URL(rawUrl).hostname.toLowerCase();
+    return hostname === 'cloudflareaccess.com' || hostname.endsWith('.cloudflareaccess.com');
+  } catch {
+    return false;
+  }
+}
+
+export function classifyEndpointProbe(evidence) {
+  if (evidence?.redirected && isCloudflareAccessUrl(evidence?.finalUrl)) {
+    return 'cloudflare-access-intercepted';
+  }
+  if (evidence?.jsonState === 'fetch-error') return 'fetch-error';
+  if (evidence?.ok !== true) return 'http-error';
+  if (evidence?.jsonState !== 'ok') return 'invalid-json';
+  return 'ok';
+}
+
 export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
   const requestedUrl = new URL(rawUrl);
   requestedUrl.searchParams.set('probe', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -36,7 +56,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       }
     }
 
-    return {
+    const evidence = {
       requestedUrl: rawUrl,
       finalUrl: safeString(response.url),
       status: response.status,
@@ -47,6 +67,11 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       commitSha: safeString(json?.commitSha),
       releaseSha: safeString(json?.releaseSha),
       healthOk: json?.ok === true,
+    };
+
+    return {
+      ...evidence,
+      classification: classifyEndpointProbe(evidence),
     };
   } catch (error) {
     return {
@@ -60,6 +85,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       commitSha: null,
       releaseSha: null,
       healthOk: false,
+      classification: 'fetch-error',
       errorName: error instanceof Error ? error.name : 'UnknownError',
     };
   }
@@ -76,10 +102,17 @@ export async function collectProductionReleaseEndpointEvidence({
     probeJsonEndpoint(backendHealthUrl, {fetchImpl}),
   ]);
 
+  const blockedByAccess = [
+    frontend.classification === 'cloudflare-access-intercepted' ? 'frontend' : null,
+    backend.classification === 'cloudflare-access-intercepted' ? 'backend' : null,
+  ].filter(Boolean);
+
   return {
-    version: 1,
+    version: 2,
     observedAt: new Date().toISOString(),
     expectedSha: safeString(expectedSha)?.toLowerCase() ?? null,
+    status: blockedByAccess.length > 0 ? 'cloudflare-access-intercepted' : 'observed',
+    blockedByAccess,
     frontend,
     backend,
   };
@@ -96,6 +129,10 @@ async function main() {
   const evidencePath = process.env.RELEASE_ENDPOINT_PROBE_PATH ?? DEFAULT_EVIDENCE_PATH;
   writeProductionReleaseEndpointEvidence(evidence, evidencePath);
   console.log(JSON.stringify(evidence, null, 2));
+
+  if (evidence.status === 'cloudflare-access-intercepted') {
+    throw new Error(`CLOUDFLARE_ACCESS_INTERCEPTED surfaces=${evidence.blockedByAccess.join(',')}`);
+  }
 }
 
 const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
