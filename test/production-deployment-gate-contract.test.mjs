@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
+import {probeJsonEndpoint} from '../scripts/probe-production-release-endpoints.mjs';
+
 const workflow = readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
 const productionConfig = readFileSync('playwright.production.config.ts', 'utf8');
 const productionSmoke = readFileSync('e2e/production-smoke.spec.ts', 'utf8');
@@ -33,6 +35,52 @@ test('production release transport evidence is retained without response bodies'
   assert.match(releaseProbe, /releaseSha/);
   assert.doesNotMatch(releaseProbe, /responseBody|bodyText|response\.text\(/);
   assert.doesNotMatch(releaseProbe, /set-cookie|authorization/i);
+});
+
+test('release transport probe classifies non-OK responses without reading their bodies', async () => {
+  let jsonCalled = false;
+  const evidence = await probeJsonEndpoint('https://api.sekretbip.net/health', {
+    fetchImpl: async () => ({
+      ok: false,
+      status: 403,
+      url: 'https://api.sekretbip.net/health',
+      redirected: false,
+      headers: {get: (name) => name === 'content-type' ? 'text/html' : null},
+      json: async () => {
+        jsonCalled = true;
+        return {};
+      },
+    }),
+  });
+
+  assert.equal(jsonCalled, false);
+  assert.equal(evidence.status, 403);
+  assert.equal(evidence.contentType, 'text/html');
+  assert.equal(evidence.jsonState, 'skipped-non-ok');
+  assert.equal(evidence.releaseSha, null);
+});
+
+test('release transport probe retains only public identity fields from JSON', async () => {
+  const evidence = await probeJsonEndpoint('https://api.sekretbip.net/health', {
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      url: 'https://api.sekretbip.net/health',
+      redirected: false,
+      headers: {get: () => 'application/json'},
+      json: async () => ({
+        ok: true,
+        releaseSha: '45800cacabc531968d7dcaaa5ec505a66ef68ad1',
+        privateValue: 'must-not-be-retained',
+      }),
+    }),
+  });
+
+  assert.equal(evidence.status, 200);
+  assert.equal(evidence.jsonState, 'ok');
+  assert.equal(evidence.healthOk, true);
+  assert.equal(evidence.releaseSha, '45800cacabc531968d7dcaaa5ec505a66ef68ad1');
+  assert.equal('privateValue' in evidence, false);
 });
 
 test('production Playwright verifies both public variants and their Enter paths', () => {
