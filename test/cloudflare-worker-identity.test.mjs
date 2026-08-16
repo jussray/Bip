@@ -20,7 +20,7 @@ const WORKER_NAME = 'sekret-backend';
 const PRODUCTION_WORKER_URL = 'https://api.sekretbip.net';
 const LEGACY_WORKERS_DEV_URL = 'https://sekret-backend.mcgill-raylene.workers.dev';
 const ALPHA_WORKER_URL = 'https://sekret-backend-alpha.mcgill-raylene.workers.dev';
-const RELEASE_MARKER_URL = 'https://sekretbip.net/.well-known/sekret-release.json';
+const RELEASE_MARKER_URL = 'https://app.sekretbip.net/.well-known/sekret-release.json';
 // Founder-approved controlled-alpha isolation (wrangler.alpha.toml,
 // docs/CLOUDFLARE_OWNERSHIP.md, reports/control-room/founder-operator/
 // 20260718-controlled-alpha-activation/system-map.md): preview builds

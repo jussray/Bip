@@ -16,6 +16,7 @@ on:
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/write-worker-release-identity.mjs'
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
+      - 'scripts/probe-production-release-endpoints.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
@@ -64,8 +65,9 @@ jobs:
       CLOUDFLARE_CHECK_TIMEOUT_MS: '1800000'
       CLOUDFLARE_CHECK_POLL_MS: '10000'
       CLOUDFLARE_EVIDENCE_PATH: artifacts/cloudflare-native-deploy.json
-      PRODUCTION_BASE_URL: https://sekretbip.net
-      FRONTEND_RELEASE_URL: https://sekretbip.net/.well-known/sekret-release.json
+      RELEASE_ENDPOINT_PROBE_PATH: artifacts/production-release-endpoint-probe.json
+      PRODUCTION_BASE_URL: https://app.sekretbip.net
+      FRONTEND_RELEASE_URL: https://app.sekretbip.net/.well-known/sekret-release.json
       BACKEND_HEALTH_URL: https://api.sekretbip.net/health
       SUPABASE_RUNTIME_HEALTH_URL: https://tbsevonvegdnlyjgplmm.supabase.co/functions/v1/runtime-contract-health
       SUPABASE_PROJECT_REF: tbsevonvegdnlyjgplmm
@@ -165,6 +167,10 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: node scripts/verify-supabase-production-schema.mjs
 
+      - name: Record safe frontend and backend transport evidence
+        id: release_transport
+        run: node scripts/probe-production-release-endpoints.mjs
+
       - name: Wait for exact frontend and backend Worker checks plus release marker
         id: cloudflare_release
         env:
@@ -197,6 +203,7 @@ jobs:
           name: cloudflare-native-deployment-evidence-${{ env.DEPLOYMENT_SHA }}
           path: |
             artifacts/cloudflare-native-deploy.json
+            artifacts/production-release-endpoint-probe.json
             artifacts/supabase-production-schema.json
             playwright-report-production/
             test-results-production/
@@ -213,5 +220,5 @@ jobs:
           RELEASE_OBSERVATION_MODE: blocked
           VERIFICATION_JOB_STATUS: failure
           RELEASE_STEP_OUTCOMES: >-
-            {"trusted_target":"${{ steps.trusted_target.outcome }}","checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","trusted_current_main":"${{ steps.trusted_current_main.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
+            {"trusted_target":"${{ steps.trusted_target.outcome }}","checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","trusted_current_main":"${{ steps.trusted_current_main.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","release_transport":"${{ steps.release_transport.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
         run: node "$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"

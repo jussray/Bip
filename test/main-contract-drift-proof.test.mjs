@@ -16,7 +16,7 @@ test('current repository authority stays internally consistent', () => {
 
   assert.equal(targets.production.worker.entrypoint, 'worker/voice-entry.ts');
   assert.match(wrangler, /^main = "worker\/voice-entry\.ts"$/m);
-  assert.ok(workflow.includes('https://sekretbip.net/.well-known/sekret-release.json'));
+  assert.ok(workflow.includes('https://app.sekretbip.net/.well-known/sekret-release.json'));
   assert.equal(pkg.scripts['deploy:worker'], 'npm run deploy:api:production');
   assert.equal(
     pkg.scripts['deploy:api:production'],
