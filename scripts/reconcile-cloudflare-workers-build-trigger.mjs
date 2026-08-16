@@ -306,9 +306,7 @@ async function verifyDesiredCommands(config, workerTag, plan, fetchImpl) {
 function rollbackPatch(plan) {
   const patch = {};
   if (plan.patch?.build_command !== undefined) patch.build_command = plan.previousBuildCommand ?? '';
-  if (plan.patch?.deploy_command !== undefined && plan.previousDeployCommand) {
-    patch.deploy_command = plan.previousDeployCommand;
-  }
+  if (plan.patch?.deploy_command !== undefined) patch.deploy_command = plan.previousDeployCommand ?? '';
   return patch;
 }
 

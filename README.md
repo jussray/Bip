@@ -9,108 +9,74 @@
 
 ## The real story
 
-I'm a single mom of 8 in Pittsburgh building a mental wellness app for teens at $0, with no team, VC, or co-founder. Just me, my kids, real teen users waiting on the app, and an operating system I built because I could not afford to outsource the work.
+Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built by a solo founder with React Native, Expo Router, TypeScript, Supabase, and Cloudflare.
 
-Se'kret Bip is the product. The [Founder Control Room](https://github.com/jussray/founder-control-room) is the operating system that governs approvals, changes, deployments, evidence, and rollback.
-
-This is not a side project. This is the whole thing.
-
----
-
-Se'kret Bip is a privacy-first emotional growth and self-expression app for teens, built with React Native, Expo Router, TypeScript, Supabase, and Cloudflare Workers.
+Se'kret Bip is the product. [Founder Control Room](https://github.com/jussray/founder-control-room) is the operating and evidence layer that governs approvals, changes, deployments, verification, and rollback.
 
 ## Current repository truth
 
-**Last refreshed:** 2026-07-31  
-**Reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
+**Last refreshed:** 2026-08-15  
+**Implementation baseline audited for this documentation:** `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`  
+**Current status:** [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md)  
+**Launch-status overlay:** [`docs/LAUNCH_GATE_STATUS_2026-07-31.md`](docs/LAUNCH_GATE_STATUS_2026-07-31.md)  
+**Current execution:** [`SPRINT.md`](SPRINT.md)
 
-This is the last reviewed application-code baseline; later documentation-only merges may advance `main` without changing application evidence.
-**Active launch gate:** [`docs/LAUNCH_GATE_STATUS_2026-07-31.md`](docs/LAUNCH_GATE_STATUS_2026-07-31.md)
+The documentation repair itself may advance `main` beyond the audited implementation baseline without changing application behavior. Always resolve fresh current `main` before making a new exact-head claim.
 
-The current repository has merged the onboarding repair (PR #595), Crew invite contract (PR #596), restored-session fail-closed boundary (PR #688), main-contract repair (PR #691), Cloudflare operator-document reconciliation (PR #695), password-recovery route continuity (PR #698), the reconstructed Calm mood/plan controls repair (PR #700), canonical companion naming in Settings (PR #701), and the repository failure-truth, branch-hygiene, and post-merge gate-verification auditors (PR #703, #704, #706).
+The older reviewed application baseline `824b4dcffb9e0ffc7468a002f0390cbba98d79ae` remains historical evidence for the scope reviewed at that time. It is **not current `main`** and must not be used as a substitute for a fresh repository lookup.
 
-**Public launch is blocked** on two open founder gates:
+Recent merged repository work includes:
 
-- [P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) — neither public release-marker URL returns JSON, so an exact deployed frontend commit cannot be claimed.
-- [Issue #646](https://github.com/jussray/Sekret-Bip/issues/646) — Cloudflare branch controls for the production-named Workers are not yet proven main-only; ordinary PR branches have repeatedly triggered automatic production deployments before merge.
+- fail-closed Cloudflare reconciliation for restoring Pages ownership of `app.sekretbip.net` while preserving `api.sekretbip.net` / `sekret-backend` authority;
+- retained sanitized Cloudflare preflight-failure receipts;
+- ChatGPT plugin-management contracts with privacy and live-state boundaries;
+- recursive hardening against nested live-state claims; and
+- an exact-current-main founder command that can dispatch only the existing bounded app-domain reconciler.
 
-Current drafts remain evidence-gated:
+### Immediate production gate
 
-- PR #698: password-recovery route continuity is merged; PR #690 is closed as the preserved historical candidate.
-- PR #692: Calm controls; closed and preserved as historical source after its implementation was reconstructed as a focused branch and merged via PR #700.
+The latest exact-main app-domain reconcile evidence on `802dbcecfa58a9b00e3f2f5605d7161771fd0d81` is GitHub Actions run `31857828587`, attempt 3.
 
-Read the launch-gate status before making current-state, deployment, or launch claims. Historical milestones below are preserved context; they do not override the reviewed ref or live evidence above.
+Repository-side and exact-main gates passed through credential-presence validation. The provider operation then failed at Cloudflare **`pages-domains-read`** with HTTP **403** / provider code **10000**.
+
+Its retained receipt records:
+
+```text
+phase: preflight-failed-before-mutation
+mutationState: not-reachable
+actions: []
+```
+
+So no Cloudflare route/domain deletion, Pages binding change, Worker binding change, or Supabase mutation occurred.
+
+Do not bypass the Pages ownership precondition. The next provider gate is reconciling the Cloudflare API token/account permission needed to read Pages domains, then rerunning the same bounded exact-main reconciliation path.
+
+### Release truth
+
+[P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) remains open for exact-production release proof. Its older intended-release SHA and historical receipts do not override current `main`.
+
+Issue #646 is **closed/completed**. Its Cloudflare branch-control evidence remains useful historical/provider proof, but it is not a current open implementation-branch blocker.
+
+Do not infer public launch, deployed exact SHA, or browser readiness from a merge, a build badge, a Worker upload, or an HTTP success alone. Production claims still require the applicable release-marker, Worker, health, browser, device, account, privacy, database, and operational witnesses.
+
+## State → Evidence → Claim
+
+Completion is evidence-bearing, not optimistic UI or documentation copy.
+
+For a material claim, name:
+
+1. the state that changed;
+2. the evidence proving it;
+3. the authority that produced that evidence; and
+4. the boundaries the evidence actually covers.
+
+Keep repository, CI, Cloudflare, Supabase, browser, device, and account witnesses separate.
 
 ## Founder Control Room README sync
 
-Founder Control Room owns the README sync decision for nontrivial incidents, fixes, merges, deployment changes, migration changes, validation changes, and authority changes. Record the README impact as `required`, `not_required`, or `deferred_with_reason`. When the value is `required`, update this README in the same pull request whenever practical and keep repository, hosted-check, deployment, database, browser, and device witnesses distinct.
+Founder Control Room owns the README sync decision for nontrivial incidents, fixes, merges, deployment changes, migration changes, validation changes, and authority changes. Record the README impact as `required`, `not_required`, or `deferred_with_reason`.
 
-A zero-step or no-log GitHub Actions failure remains `runner_startup_failure` infrastructure evidence, not a code regression. Follow [`.control-room/README_SYNC_POLICY.md`](.control-room/README_SYNC_POLICY.md) before claiming the documentation impact is complete.
-
-## Historical merged progress (preserved context)
-
-### Canonical onboarding-state and verification repair
-
-PR #595 merged at `f0669991807106f01bd8bcedc3fbc00986f5ae3b`.
-
-It repaired the active onboarding path so it targets `user_onboarding_state`, checks Supabase failures, prevents conflicting or regressive state writes, waits for confirmed writes before navigation, preserves historical import paths as compatibility re-exports, clears the known TypeScript and prototype-lint blockers, and adds an exact-head onboarding verification workflow.
-
-This proves the repository repair was merged. It does not by itself prove the live database, a production deployment, founder access on a physical device, or a complete real-account onboarding journey.
-
-### Authenticated RPC behavior contracts
-
-PR #596 merged at `1239841a5e3474cdc1108c255bf1eb138f8a9a97`.
-
-It added positive and negative source-contract coverage for `redeem_crew_invite(text, text)`, including authentication, invite-state, self-linking, blocked-relationship, profile-completion, and server-owned display-name boundaries.
-
-That is static repository contract evidence, not live Supabase execution proof. The remaining untested high-blast-radius authenticated RPCs stay in the verification queue.
-
-### Bridge Learning Oracle grounding boundary
-
-PR #600 merged at `da87cc9e679f67d5d60105f33d8d372da990108c`.
-
-It documents search-grounded Oracle teaching as a planned future slice, not an implemented feature. No endpoint, provider call, schema, secret, deployment, or teen-facing runtime was added.
-
-### Trigger behavior proof phase 1
-
-PR #601 merged at `0ada7d9e7f91c36fee38452f036b663536ecaae5`.
-
-A rollback-contained live Supabase probe verified the documented behavior of four bounded `SECURITY DEFINER` trigger functions. Seven checks passed and a follow-up read confirmed that no synthetic rows remained.
-
-The repository intentionally keeps global live-behavior verification false because other reviewed triggers remain untested, undeployed, live-only drift, or too high-risk for the same probe method.
-
-### Polished web welcome front door
-
-PR #594 merged the responsive polished welcome screen into the Expo web root.
-
-Its exact head `e3f8f38bced1e3a5b27ef9fd35a3d5b06019ba9c` passed:
-
-- Cookie Contract Mirror;
-- Front Door Exact-Head Gate;
-- no-new-TypeScript-diagnostics comparison against its base;
-- focused Playwright for render, click and keyboard entry, age-bucket continuation, and narrow-phone overflow.
-
-That proves the scoped PR head. It does not by itself prove the later merge SHA, `sekretbip.net`, Supabase Auth, RLS, native devices, or a complete founder-access journey.
-
-### Test and trigger-history repair
-
-PR #577 merged into `main` at `9cd5d6d4641160b9425320e31482a4bd05eb25c2`.
-
-It repaired 18 failing or stale unit-test assertions, aligned the `expo-splash-screen` lockfile range, repaired the forgot-password JSX string, and improved migration-history parity for reviewed trigger functions.
-
-The PR reported 877 passing unit tests locally. The complete repository gate did not execute against the merge commit on `main`.
-
-### Canonical companion names
-
-Suhana and Sy are the canonical display/canon names.
-
-Legacy identifiers `raylene` and `rylane` remain only where database, storage, route, fixture, analytics, or saved-state compatibility requires them. User-facing and AI-facing paths must normalize legacy values instead of leaking retired display names.
-
-## Why Se'kret Bip exists
-
-Teens need room to process emotions, build habits, and ask for support without feeling watched. Parents need a healthier way to stay connected without unrestricted access to private reflections.
-
-Se'kret Bip is designed around that tension: private by default, intentional sharing by choice, and relationship-based support instead of surveillance.
+A zero-step, `steps:null`, or no-log GitHub Actions failure remains `runner_startup_failure` infrastructure evidence, not a code regression and not a pass. Follow [`.control-room/README_SYNC_POLICY.md`](.control-room/README_SYNC_POLICY.md) before claiming the documentation impact is complete.
 
 ## Product promise
 
@@ -119,6 +85,22 @@ Se'kret Bip is designed around that tension: private by default, intentional sha
 - Parent access is relationship-based, not surveillance-based.
 - Identity and permission rules are enforced by runtime checks, Supabase policies, and server boundaries rather than UI hiding.
 - Operational evidence remains metadata-safe and never becomes a back door into private teen content.
+
+## Product and UX direction
+
+Se'kret Bip is a real premium, living app experience. Cosmic and character art is visual DNA and atmosphere, not the product architecture.
+
+Prioritize:
+
+- interactive product states;
+- companions embedded into real flows;
+- responsive emotional feedback;
+- personalized home behavior;
+- clear Teen / Parent / Bip Jr journeys;
+- accessible motion and interaction; and
+- a coherent mobile design system.
+
+Do not regress the product into a static splash-art-led experience.
 
 ## Product areas
 
@@ -138,60 +120,56 @@ Se'kret Bip is designed around that tension: private by default, intentional sha
 - **Bip Crew** — trusted accountability relationships
 - **Bridge** — intentional teen-parent sharing and relationship support
 - **Parent Circle** — separate parent-to-parent community space
-- No open stranger direct messages
+- no open stranger direct messages
 
 ### Parent
 
-Parent routes, account linking, Bridge data contracts, and guarded parent surfaces exist. The parent product remains in progress until lifecycle states, Bridge production proof, Parent Circle boundaries, Parent Coach boundaries, notifications, device QA, and end-to-end privacy evidence are complete.
+Parent routes, account linking, Bridge data contracts, and guarded parent surfaces exist. Parent launch-readiness remains evidence-gated across lifecycle, privacy, production, notification, device, and end-to-end relationship journeys.
 
-Documentation and demos must not imply broader parent visibility than the server and RLS layers enforce.
+Documentation and demos must not imply broader parent visibility than server and RLS layers enforce.
 
 ## Current implementation state
 
-> **Release evidence warning:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) is open. Repository machinery and local build output exist, but the live Pages marker currently does not return JSON. Do not read this implementation inventory as a production-release claim.
+> **Release evidence warning:** repository capability does not equal production release. Read [`docs/CURRENT_STATUS.md`](docs/CURRENT_STATUS.md) before making current-state, routing, deployment, or launch claims.
 
 ### Integrated
 
-- Expo Router auth, onboarding, teen, parent, and founder/internal route groups
-- Supabase Auth, synchronization, migrations, RLS, Storage, and Edge Functions
-- Cloudflare Worker API, AI reply, transcription, TTS, and metadata-only telemetry
-- Shared typed frontend-to-Worker contracts and stable failure mapping
+- Expo Router auth, onboarding, Teen, Parent, and founder/internal route groups
+- Supabase Auth, synchronization, ordered migrations, RLS, Storage, and Edge Functions
+- canonical Cloudflare Worker API `sekret-backend`
+- canonical Cloudflare Pages project `sekret-bip`
+- shared typed frontend-to-Worker contracts and stable failure mapping
 - Se'kret identity boundary and versioned companion-style runtime wrapper
-- Privacy-safe Daily Intentions with local deterministic generation and owner-only durable records
+- Privacy-safe Daily Intentions
 - Mind + Body Reset regulation and workout flows
 - Founder Control Room operational data sources and repository capability contracts
 - Bridge data model, consent contracts, and controlled rollout paths
-- Exact production release verification machinery using Worker checks, `/.well-known/sekret-release.json`, health verification, production Playwright, and retained evidence
-- Runtime-truth gates that compare repository claims with live Supabase and deployment witnesses
+- exact production release-verification machinery
+- runtime-truth gates that separate repository claims from provider and production witnesses
+- fail-closed app-domain reconciliation machinery
+- governed plugin-management contracts that do not treat repository configuration as live provider truth
 
 ### Verified authorization and security slices
 
-- owner access and anonymous/cross-user denial proof for sampled private tables;
-- server-only configuration tables with zero client grants and preserved rows;
-- JWT-protected HTTP 410 retirement of obsolete release/probe Edge Functions;
-- `notification_deliveries` verified as service-role-only;
-- permanent-account restrictions for sampled private self-data;
-- fail-closed negative-auth source contracts for `account-delete` and `safety-scan`;
-- safety-scan durable output restricted to reduced metadata;
-- structural trigger inventory and migration-history parity improvements;
-- rollback-contained live behavior proof for four bounded `SECURITY DEFINER` trigger functions.
+Repository history contains bounded proof for sampled owner/anonymous/cross-user denial, server-only configuration boundaries, service-role-only delivery state, permanent-account restrictions, selected negative-auth contracts, reduced-metadata safety outputs, and selected trigger behavior. Those slices do not imply global authorization or production completeness.
 
 ### Planned, not implemented
+
+Unless newer exact implementation proves otherwise:
 
 - durable L4 continuity memory;
 - persistent companion goals;
 - scheduled reflection jobs;
 - relationship phases derived from durable evidence;
 - inter-companion coordination;
-- L5 cross-companion synthesis and consented autonomous goal proposals;
-- Bridge Learning Oracle search grounding and teaching endpoint.
+- L5 cross-companion synthesis and consented autonomous goal proposals.
 
-L5 is blocked until L4 reaches `verified`.
+L5 remains blocked until L4 reaches `verified` under a separately approved consent and authority contract.
 
 ## Architecture
 
 - **Frontend:** React Native, Expo Router, TypeScript
-- **Routes:** auth, onboarding, teen, parent, and founder/internal groups
+- **Routes:** auth, onboarding, Teen, Parent, and founder/internal groups
 - **Local state:** React state, context, hooks, and AsyncStorage
 - **Cloud data:** Supabase Auth, Postgres, RLS, Storage, Edge Functions, and ordered migrations
 - **API layer:** canonical Cloudflare Worker `sekret-backend`
@@ -199,24 +177,23 @@ L5 is blocked until L4 reaches `verified`.
 - **Production verification:** exact commit marker plus Worker check, health probe, production Playwright, and retained evidence
 - **Schema source of truth:** `supabase/migrations/`
 
-Legacy compatibility files are not a second production authority.
+Legacy compatibility files and historical provider identities are not a second production authority.
 
 ## Launch posture
 
 A controlled internal demo may use synthetic or non-sensitive data while unfinished areas are clearly labeled. Controlled alpha and public launch remain separate decisions.
 
-Current launch-critical blockers include:
+Launch-critical evidence still includes, where applicable:
 
-1. founder access recovery plus a complete real-account onboarding journey on a physical device;
-2. complete repository type, lint, test, bundle, audit, and Playwright proof against the exact release candidate;
-3. remaining live migration, catalog, and behavior verification for trigger-history repairs and high-risk database functions;
-4. controlled production proof for Bridge and parent relationship journeys;
-5. account deletion across database, Auth, Storage, caches, relationship access, retries, receipts, and isolation;
-6. focused denial and behavior proof for remaining private surfaces and high-blast-radius RPCs;
-7. controlled trigger assurance for paths with external effects or `auth.users` writes;
-8. physical-device, accessibility, offline, notification, moderation, and failure-state QA;
-9. legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness;
-10. exact production evidence for features still marked integrated rather than verified or released.
+- exact production routing and release proof;
+- founder access and complete real-account auth/onboarding/recovery journeys;
+- complete repository type/lint/test/bundle/audit/Playwright proof for the exact candidate;
+- remaining live database and high-risk behavior verification;
+- controlled production proof for Bridge and Parent relationship journeys;
+- account deletion across database, Auth, Storage, caches, relationships, retries, and receipts;
+- focused denial and behavior proof for remaining private surfaces;
+- physical-device, accessibility, offline, notification, moderation, and failure-state QA;
+- legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness.
 
 L4 and L5 are preserved future lanes, not automatic public-launch dependencies.
 
@@ -275,7 +252,7 @@ npm run test:e2e:production
 npm run verify:prepush
 ```
 
-Production verification is documented in `DEPLOYMENT.md`. Production Playwright must distinguish a test committed to the repository from a test that actually executed against the deployed exact head.
+Production verification is documented in `DEPLOYMENT.md`. A Playwright test committed to the repository is not proof that it executed against deployed current `main`.
 
 ## AI operating contracts
 
@@ -294,16 +271,18 @@ Project-local instructions may become stricter, but they may not weaken teen pri
 
 ## Key guides
 
-- `docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md`
+- `docs/CURRENT_STATUS.md`
+- `SPRINT.md`
+- `docs/LAUNCH_GATE_STATUS_2026-07-31.md`
 - `docs/LAUNCH_ROADMAP.md`
 - `docs/DOCUMENTATION_MAP.md`
-- `SPRINT.md`
-- `docs/CURRENT_STATUS.md`
 - `docs/WIRING_STATUS.md`
 - `DEPLOYMENT.md`
 - `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
 - `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
 - `docs/FOUNDER_CONTROL_ROOM.md`
+
+Dated documents, historical PR bodies, and older SHAs remain evidence for the time they describe. They do not override a fresh current-main lookup.
 
 Documentation is an implementation guardrail. When code, production configuration, evidence, and docs disagree, fix the stale source and preserve the evidence trail.
 

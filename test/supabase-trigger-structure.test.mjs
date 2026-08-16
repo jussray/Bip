@@ -401,10 +401,10 @@ test('baseline separates repository truth, live catalog observation, and behavio
   assert.equal(baseline.verification.liveCatalogObserved, true);
   assert.equal(baseline.verification.liveBehaviorVerified, false);
   assert.equal(baseline.verification.externalEffectsSafelyStubbed, false);
-  assert.equal(baseline.functions.length, 13);
-  assert.equal(repositoryFunctions.size, 12);
-  assert.equal(baseline.attachments.length, 16);
-  assert.equal(repositoryAttachments.size, 15);
+  assert.equal(baseline.functions.length, 14);
+  assert.equal(repositoryFunctions.size, 13);
+  assert.equal(baseline.attachments.length, 18);
+  assert.equal(repositoryAttachments.size, 17);
 });
 
 test('live-only legacy points trigger drift is explicit and remains unresolved', () => {
