@@ -200,6 +200,35 @@ test('falls back across token candidates and retains only redacted matching Acce
   assert.ok(authorizationSeen.includes(activeToken));
 });
 
+test('preserves absent Access organization settings as unknown instead of false', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-access-org-unknown-'));
+  const evidencePath = path.join(dir, 'evidence.json');
+
+  const receipt = await auditCloudflareAccessCoverage({
+    env: {
+      CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+      CLOUDFLARE_API_TOKEN: 'active-token',
+      CLOUDFLARE_ACCESS_EVIDENCE_PATH: evidencePath,
+    },
+    fetchImpl: async (url) => {
+      if (url.endsWith('/access/apps?per_page=1000')) return response([]);
+      if (url.endsWith('/access/organizations')) {
+        return response({ auth_domain: 'mcgill-raylene.cloudflareaccess.com' });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    },
+  });
+
+  assert.deepEqual(receipt.organization, {
+    authDomain: 'mcgill-raylene.cloudflareaccess.com',
+    denyUnmatchedRequests: null,
+    targetZone: 'sekretbip.net',
+    targetZoneExempted: null,
+    exemptedZoneCount: null,
+    isUiReadOnly: null,
+  });
+});
+
 test('writes a fail-closed receipt when Access organization settings cannot be read', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-access-org-fail-'));
   const evidencePath = path.join(dir, 'evidence.json');
