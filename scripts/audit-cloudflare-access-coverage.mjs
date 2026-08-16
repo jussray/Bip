@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 const API_BASE = 'https://api.cloudflare.com/client/v4';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/cloudflare-access-coverage.json';
 export const DEFAULT_TARGET_HOSTS = Object.freeze([
+  'sekretbip.net',
   'app.sekretbip.net',
   'api.sekretbip.net',
 ]);
@@ -261,42 +262,39 @@ export async function auditCloudflareAccessCoverage({
   };
 
   if (!accountId || candidates.length === 0) {
-    const receipt = {
-      ...baseReceipt,
-      status: 'configuration-missing',
-      error: !accountId
-        ? 'CLOUDFLARE_ACCOUNT_ID is required.'
-        : 'At least one Cloudflare API token candidate is required.',
-    };
-    await writeEvidence(evidencePath, receipt);
-    throw new Error(receipt.error);
+    baseReceipt.status = 'configuration-missing';
+    baseReceipt.error = !accountId
+      ? 'CLOUDFLARE_ACCOUNT_ID is required.'
+      : 'At least one Cloudflare API token candidate is required.';
+    await writeEvidence(evidencePath, baseReceipt);
+    throw new Error(baseReceipt.error);
   }
 
-  let providerConfig = null;
+  let selectedConfig = null;
   let applications = null;
   for (const candidate of candidates) {
-    const config = { accountId, token: candidate.token };
     try {
-      applications = await listApplications(config, fetchImpl);
-      providerConfig = { ...config, source: candidate.source };
+      applications = await listApplications(
+        { accountId, token: candidate.token },
+        fetchImpl,
+      );
+      selectedConfig = { accountId, token: candidate.token, source: candidate.source };
       break;
     } catch (error) {
-      baseReceipt.credential.failures.push(errorReceipt(error, candidate.source));
+      baseReceipt.credential.failures.push(minimalErrorReceipt(error, candidate.source));
     }
   }
 
-  if (!providerConfig || !applications) {
-    const receipt = {
-      ...baseReceipt,
-      status: 'provider-read-failed',
-      error: 'No configured Cloudflare token could list Access applications.',
-    };
-    await writeEvidence(evidencePath, receipt);
-    throw new Error(receipt.error);
+  if (!selectedConfig || !applications) {
+    baseReceipt.status = 'provider-read-failed';
+    baseReceipt.error = 'No configured Cloudflare token could read Access applications.';
+    await writeEvidence(evidencePath, baseReceipt);
+    throw new Error(baseReceipt.error);
   }
 
-  baseReceipt.credential.selectedSource = providerConfig.source;
-  const coverage = [];
+  baseReceipt.credential.selectedSource = selectedConfig.source;
+  baseReceipt.applicationCountObserved = applications.length;
+
   for (const target of targetHosts) {
     const matchingApplications = [];
     for (const app of applications) {
@@ -308,61 +306,58 @@ export async function auditCloudflareAccessCoverage({
       const appId = clean(app?.id);
       if (appId) {
         try {
-          policies = await listPolicies(providerConfig, appId, fetchImpl);
+          policies = await listPolicies(selectedConfig, appId, fetchImpl);
         } catch (error) {
-          policyReadError = errorReceipt(error, providerConfig.source);
+          policyReadError = minimalErrorReceipt(error, selectedConfig.source);
         }
       }
       matchingApplications.push(publicApplication(app, reasons, policies, policyReadError));
     }
-    coverage.push({ hostname: target, matchingApplications });
+    baseReceipt.coverage.push({
+      hostname: target,
+      matchingApplications,
+    });
   }
-  baseReceipt.coverage = coverage;
 
-  let organizationConfig = null;
   let organization = null;
+  let organizationSelectedSource = null;
   for (const candidate of candidates) {
-    const config = { accountId, token: candidate.token };
     try {
-      organization = await getOrganization(config, fetchImpl);
-      if (!organization) throw new Error('Cloudflare Access organization response did not include an object result.');
-      organizationConfig = { ...config, source: candidate.source };
+      organization = await getOrganization(
+        { accountId, token: candidate.token },
+        fetchImpl,
+      );
+      organizationSelectedSource = candidate.source;
       break;
     } catch (error) {
       baseReceipt.credential.organizationFailures.push(minimalErrorReceipt(error, candidate.source));
     }
   }
 
-  if (!organizationConfig || !organization) {
-    const receipt = {
-      ...baseReceipt,
-      status: 'organization-read-failed',
-      applicationCountObserved: applications.length,
-      error: 'No configured Cloudflare token could read Access organization settings.',
-    };
-    await writeEvidence(evidencePath, receipt);
-    throw new Error(receipt.error);
+  if (!organizationSelectedSource || !organization) {
+    baseReceipt.status = 'organization-read-failed';
+    baseReceipt.error = 'No configured Cloudflare token could read Access organization settings.';
+    await writeEvidence(evidencePath, baseReceipt);
+    throw new Error(baseReceipt.error);
   }
 
-  baseReceipt.credential.organizationSelectedSource = organizationConfig.source;
+  baseReceipt.credential.organizationSelectedSource = organizationSelectedSource;
   baseReceipt.organization = publicOrganization(organization, targetZone);
+  baseReceipt.status = 'audited';
+  await writeEvidence(evidencePath, baseReceipt);
+  return baseReceipt;
+}
 
-  const receipt = {
-    ...baseReceipt,
-    status: 'audited',
-    applicationCountObserved: applications.length,
-  };
-  await writeEvidence(evidencePath, receipt);
-  console.log(
-    `CLOUDFLARE_ACCESS_AUDIT_COMPLETE targets=${coverage.length} matched=${coverage.reduce((sum, item) => sum + item.matchingApplications.length, 0)} appCredential=${providerConfig.source} organizationCredential=${organizationConfig.source}`,
-  );
-  return receipt;
+function printReceipt(receipt) {
+  console.log(JSON.stringify(receipt, null, 2));
 }
 
 const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 if (invokedDirectly) {
-  auditCloudflareAccessCoverage().catch((error) => {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exitCode = 1;
-  });
+  auditCloudflareAccessCoverage()
+    .then(printReceipt)
+    .catch((error) => {
+      console.error(error instanceof Error ? error.message : String(error));
+      process.exitCode = 1;
+    });
 }
