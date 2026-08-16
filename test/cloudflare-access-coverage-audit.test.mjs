@@ -78,6 +78,25 @@ test('falls back across token candidates and retains only redacted matching Acce
       ]);
     }
 
+    if (url.endsWith('/access/organizations')) {
+      if (token === staleToken) {
+        return response(null, {
+          ok: false,
+          status: 403,
+          statusText: 'Forbidden',
+          errors: [{ code: 10000, message: 'Authentication error' }],
+        });
+      }
+      assert.equal(token, activeToken);
+      return response({
+        name: 'Sensitive organization name',
+        auth_domain: 'mcgill-raylene.cloudflareaccess.com',
+        deny_unmatched_requests: true,
+        deny_unmatched_requests_exempted_zone_names: ['internal-example.invalid'],
+        is_ui_read_only: false,
+      });
+    }
+
     if (url.includes('/access/apps/all-workers-app/policies')) {
       return response([
         {
@@ -129,17 +148,22 @@ test('falls back across token candidates and retains only redacted matching Acce
       CLOUDFLARE_ACCESS_API_TOKEN: staleToken,
       CLOUDFLARE_API_TOKEN: activeToken,
       CLOUDFLARE_ACCESS_EVIDENCE_PATH: evidencePath,
+      CLOUDFLARE_ACCESS_TARGET_ZONE: 'sekretbip.net',
     },
     fetchImpl,
     now: () => new Date('2026-08-16T08:20:00.000Z'),
   });
 
+  assert.equal(receipt.version, 2);
   assert.equal(receipt.status, 'audited');
   assert.equal(receipt.mutationPerformed, false);
   assert.equal(receipt.backendWorkerId, 'sekret-backend');
   assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_API_TOKEN');
   assert.equal(receipt.credential.failures[0].status, 403);
   assert.deepEqual(receipt.credential.failures[0].providerCodes, [10000]);
+  assert.equal(receipt.credential.organizationSelectedSource, 'CLOUDFLARE_API_TOKEN');
+  assert.equal(receipt.credential.organizationFailures[0].status, 403);
+  assert.deepEqual(receipt.credential.organizationFailures[0].providerCodes, [10000]);
 
   const appCoverage = receipt.coverage.find((item) => item.hostname === 'app.sekretbip.net');
   const apiCoverage = receipt.coverage.find((item) => item.hostname === 'api.sekretbip.net');
@@ -153,6 +177,15 @@ test('falls back across token candidates and retains only redacted matching Acce
   );
   assert.deepEqual(appCoverage.matchingApplications[0].policies[0].includeSelectors, ['email']);
 
+  assert.deepEqual(receipt.organization, {
+    authDomain: 'mcgill-raylene.cloudflareaccess.com',
+    denyUnmatchedRequests: true,
+    targetZone: 'sekretbip.net',
+    targetZoneExempted: false,
+    exemptedZoneCount: 1,
+    isUiReadOnly: false,
+  });
+
   const retained = fs.readFileSync(evidencePath, 'utf8');
   assert.doesNotMatch(retained, new RegExp(staleToken));
   assert.doesNotMatch(retained, new RegExp(activeToken));
@@ -161,8 +194,52 @@ test('falls back across token candidates and retains only redacted matching Acce
   assert.doesNotMatch(retained, /Require login containing private@example.com/);
   assert.doesNotMatch(retained, /Other Product Worker/);
   assert.doesNotMatch(retained, /Unrelated Private App/);
+  assert.doesNotMatch(retained, /internal-example\.invalid/);
+  assert.doesNotMatch(retained, /Sensitive organization name/);
   assert.ok(authorizationSeen.includes(staleToken));
   assert.ok(authorizationSeen.includes(activeToken));
+});
+
+test('writes a fail-closed receipt when Access organization settings cannot be read', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-access-org-fail-'));
+  const evidencePath = path.join(dir, 'evidence.json');
+  const token = 'read-apps-only-token';
+
+  await assert.rejects(
+    () => auditCloudflareAccessCoverage({
+      env: {
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_API_TOKEN: token,
+        CLOUDFLARE_ACCESS_EVIDENCE_PATH: evidencePath,
+      },
+      fetchImpl: async (url) => {
+        if (url.endsWith('/access/apps?per_page=1000')) return response([]);
+        if (url.endsWith('/access/organizations')) {
+          return response(null, {
+            ok: false,
+            status: 403,
+            statusText: 'Forbidden',
+            errors: [{ code: 10000, message: 'Authentication error' }],
+          });
+        }
+        throw new Error(`Unexpected request: ${url}`);
+      },
+    }),
+    /No configured Cloudflare token could read Access organization settings/,
+  );
+
+  const receiptText = fs.readFileSync(evidencePath, 'utf8');
+  const receipt = JSON.parse(receiptText);
+  assert.equal(receipt.version, 2);
+  assert.equal(receipt.status, 'organization-read-failed');
+  assert.equal(receipt.mutationPerformed, false);
+  assert.equal(receipt.applicationCountObserved, 0);
+  assert.equal(receipt.organization, null);
+  assert.deepEqual(receipt.credential.organizationFailures, [
+    { source: 'CLOUDFLARE_API_TOKEN', status: 403, providerCodes: [10000] },
+  ]);
+  assert.doesNotMatch(receiptText, new RegExp(token));
+  assert.doesNotMatch(receiptText, /Authentication error/);
 });
 
 test('writes a fail-closed receipt when Cloudflare credentials are missing', async () => {
@@ -180,6 +257,7 @@ test('writes a fail-closed receipt when Cloudflare credentials are missing', asy
   );
 
   const receipt = JSON.parse(fs.readFileSync(evidencePath, 'utf8'));
+  assert.equal(receipt.version, 2);
   assert.equal(receipt.status, 'configuration-missing');
   assert.equal(receipt.mutationPerformed, false);
   assert.equal(receipt.accountIdConfigured, false);
