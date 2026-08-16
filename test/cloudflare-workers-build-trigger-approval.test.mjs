@@ -48,10 +48,28 @@ test('trusted main readback tries configured tokens independently while mutation
     workflow,
     /if: github\.event_name == 'workflow_dispatch' \|\| \(github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'\)/,
   );
+  assert.match(workflow, /Require and preflight Cloudflare control-plane credentials/);
+  assert.match(workflow, /TOKEN_PREFLIGHT_FAILED source=\$\{source\}/);
+  assert.match(workflow, /account-scoped-token-not-supported-by-workers-builds-api/);
+  assert.match(workflow, /TOKEN_PREFLIGHT source=\$\{source\} shape=\$\{shape\} result=accepted/);
   assert.match(workflow, /Read trigger with dedicated Builds token/);
   assert.match(workflow, /Read trigger with general Cloudflare token fallback/);
   assert.match(workflow, /continue-on-error: true/);
   assert.match(workflow, /WORKERS_TRIGGER_READBACK_ATTEMPT/);
+  assert.match(workflow, /provider_code=\$\{providerCode\(receipt\)\}/);
+  assert.match(workflow, /token-verify-failed/);
+  assert.match(workflow, /workers-scripts-read-failed/);
+  assert.match(workflow, /workers-ci-read-failed/);
+  assert.match(workflow, /token-selection-failed/);
+  const tokenVerifyClassification = workflow.indexOf("return 'token-verify-failed';");
+  const workerReadClassification = workflow.indexOf("return 'workers-scripts-read-failed';");
+  const triggerReadClassification = workflow.indexOf("return 'workers-ci-read-failed';");
+  const genericTokenClassification = workflow.indexOf("return 'token-selection-failed';");
+  assert.ok(tokenVerifyClassification >= 0);
+  assert.ok(workerReadClassification > tokenVerifyClassification);
+  assert.ok(triggerReadClassification > workerReadClassification);
+  assert.ok(genericTokenClassification > triggerReadClassification);
+  assert.doesNotMatch(workflow, /\|API Token\/i\.test\(message\)/);
   assert.match(workflow, /WORKERS_TRIGGER_PROVIDER_READBACK_FAILED/);
   assert.match(workflow, /WORKERS_TRIGGER_READBACK_SELECTED/);
   assert.match(workflow, /Require provider trigger to already be safe on main push/);
