@@ -5,6 +5,7 @@ import {fileURLToPath} from 'node:url';
 const DEFAULT_FRONTEND_RELEASE_URL = 'https://app.sekretbip.net/.well-known/sekret-release.json';
 const DEFAULT_BACKEND_HEALTH_URL = 'https://api.sekretbip.net/health';
 const DEFAULT_EVIDENCE_PATH = 'artifacts/production-release-endpoint-probe.json';
+const DEFAULT_CLOUDFLARE_EVIDENCE_PATH = 'artifacts/cloudflare-native-deploy.json';
 
 function safeString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -124,6 +125,46 @@ export function writeProductionReleaseEndpointEvidence(evidence, evidencePath = 
   return evidencePath;
 }
 
+export function buildCloudflareAccessBlockerEvidence(evidence) {
+  const expectedSha = safeString(evidence?.expectedSha)?.toLowerCase() ?? null;
+  return {
+    version: 5,
+    commitSha: expectedSha,
+    expectedSha,
+    status: 'failed',
+    complete: false,
+    readinessState: 'cloudflare-access-intercepted',
+    observerError: null,
+    transportBlocker: {
+      status: 'cloudflare-access-intercepted',
+      blockedSurfaces: Array.isArray(evidence?.blockedByAccess) ? [...evidence.blockedByAccess] : [],
+      frontendClassification: safeString(evidence?.frontend?.classification),
+      backendClassification: safeString(evidence?.backend?.classification),
+    },
+    checkSummary: {missing: [], pending: [], failed: [], unsuccessful: []},
+    requiredChecks: {},
+    pagesRelease: {commitSha: null, expectedSha, complete: false},
+    workerRuntime: {
+      expectedSha,
+      releaseSha: null,
+      versionId: null,
+      versionTag: null,
+      healthOk: false,
+      complete: false,
+    },
+  };
+}
+
+export function writeCloudflareAccessBlockerEvidence(
+  evidence,
+  evidencePath = process.env.CLOUDFLARE_EVIDENCE_PATH ?? DEFAULT_CLOUDFLARE_EVIDENCE_PATH,
+) {
+  const blocker = buildCloudflareAccessBlockerEvidence(evidence);
+  fs.mkdirSync(path.dirname(evidencePath), {recursive: true});
+  fs.writeFileSync(evidencePath, `${JSON.stringify(blocker, null, 2)}\n`, 'utf8');
+  return evidencePath;
+}
+
 async function main() {
   const evidence = await collectProductionReleaseEndpointEvidence();
   const evidencePath = process.env.RELEASE_ENDPOINT_PROBE_PATH ?? DEFAULT_EVIDENCE_PATH;
@@ -131,6 +172,7 @@ async function main() {
   console.log(JSON.stringify(evidence, null, 2));
 
   if (evidence.status === 'cloudflare-access-intercepted') {
+    writeCloudflareAccessBlockerEvidence(evidence);
     throw new Error(`CLOUDFLARE_ACCESS_INTERCEPTED surfaces=${evidence.blockedByAccess.join(',')}`);
   }
 }
