@@ -2,12 +2,25 @@ name = "sekret-backend"
 main = "worker/voice-entry.ts"
 compatibility_date = "2026-06-13"
 compatibility_flags = ["nodejs_compat"]
+logpush = true
 
 [build]
 command = "node scripts/write-worker-release-identity.mjs"
 
 [observability]
 enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+persist = true
 
 [version_metadata]
 binding = "CF_VERSION_METADATA"
