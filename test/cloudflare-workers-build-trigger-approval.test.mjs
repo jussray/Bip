@@ -36,7 +36,7 @@ function trigger({ buildCommand = '', deployCommand = '' } = {}) {
   };
 }
 
-test('trusted main pushes perform read-only provider readback while provider mutation remains explicit workflow_dispatch', () => {
+test('trusted main readback tries configured tokens independently while mutation remains explicit workflow_dispatch', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-workers-build-trigger.yml', import.meta.url),
     'utf8',
@@ -48,10 +48,23 @@ test('trusted main pushes perform read-only provider readback while provider mut
     workflow,
     /if: github\.event_name == 'workflow_dispatch' \|\| \(github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'\)/,
   );
+  assert.match(workflow, /Read trigger with dedicated Builds token/);
+  assert.match(workflow, /Read trigger with general Cloudflare token fallback/);
+  assert.match(workflow, /continue-on-error: true/);
+  assert.match(workflow, /WORKERS_TRIGGER_READBACK_ATTEMPT/);
+  assert.match(workflow, /WORKERS_TRIGGER_PROVIDER_READBACK_FAILED/);
+  assert.match(workflow, /WORKERS_TRIGGER_READBACK_SELECTED/);
   assert.match(workflow, /Require provider trigger to already be safe on main push/);
   assert.match(workflow, /WORKERS_TRIGGER_MAIN_READBACK_UNSAFE/);
   assert.match(workflow, /WORKERS_TRIGGER_MAIN_READBACK_SAFE/);
-  assert.match(workflow, /if: github\.event_name == 'workflow_dispatch' && inputs\.apply == true/);
+  assert.match(
+    workflow,
+    /if: github\.event_name == 'workflow_dispatch' && inputs\.apply == true && steps\.select_readback\.outputs\.selected == 'dedicated-builds-token'/,
+  );
+  assert.match(
+    workflow,
+    /if: github\.event_name == 'workflow_dispatch' && inputs\.apply == true && steps\.select_readback\.outputs\.selected == 'general-cloudflare-token'/,
+  );
   assert.match(workflow, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.doesNotMatch(workflow, /github\.event_name == 'push' \|\| inputs\.apply == true/);
   assert.doesNotMatch(workflow, /if: github\.event_name != 'pull_request'/);

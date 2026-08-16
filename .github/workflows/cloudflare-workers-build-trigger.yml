@@ -88,8 +88,6 @@ jobs:
     timeout-minutes: 10
     env:
       EXPECTED_HEAD_SHA: ${{ github.sha }}
-      # Keep both candidates distinct. The reconciliation script verifies each
-      # without exposing values and uses the first active user-scoped token.
       CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -126,8 +124,90 @@ jobs:
             exit 1
           }
 
-      - name: Show non-destructive trigger plan
+      - name: Read trigger with dedicated Builds token
+        id: dedicated_read
+        continue-on-error: true
+        env:
+          CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ''
+          CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-dedicated.json
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
+
+      - name: Read trigger with general Cloudflare token fallback
+        id: general_read
+        if: steps.dedicated_read.outcome != 'success'
+        continue-on-error: true
+        env:
+          CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ''
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-general.json
+        run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
+
+      - name: Select non-destructive trigger receipt
+        id: select_readback
+        if: always()
+        shell: bash
+        env:
+          DEDICATED_OUTCOME: ${{ steps.dedicated_read.outcome }}
+          GENERAL_OUTCOME: ${{ steps.general_read.outcome }}
+          DEDICATED_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-dedicated.json
+          GENERAL_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-general.json
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+
+          const attempts = [
+            {
+              source: 'dedicated-builds-token',
+              outcome: process.env.DEDICATED_OUTCOME || 'unknown',
+              path: process.env.DEDICATED_EVIDENCE_PATH,
+            },
+            {
+              source: 'general-cloudflare-token',
+              outcome: process.env.GENERAL_OUTCOME || 'skipped',
+              path: process.env.GENERAL_EVIDENCE_PATH,
+            },
+          ];
+
+          function readReceipt(filePath) {
+            if (!filePath || !fs.existsSync(filePath)) return null;
+            return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+          }
+
+          function classify(receipt) {
+            const message = String(receipt?.error || '');
+            if (/TOKEN_SELECTION_FAILED|NOT_ACTIVE_OR_NOT_USER_SCOPED|API Token/i.test(message)) {
+              return 'token-unusable';
+            }
+            if (/workers\/scripts/i.test(message)) return 'workers-scripts-read-failed';
+            if (/builds\/workers\/.*\/triggers/i.test(message)) return 'workers-ci-read-failed';
+            if (/PRODUCTION_TRIGGER_SELECTION_FAILED/i.test(message)) return 'production-trigger-selection-failed';
+            if (/NON_PRODUCTION_TRIGGER_SELECTION_FAILED/i.test(message)) return 'non-production-trigger-selection-failed';
+            return receipt?.status || 'unknown';
+          }
+
+          for (const attempt of attempts) {
+            const receipt = readReceipt(attempt.path);
+            console.log(
+              `WORKERS_TRIGGER_READBACK_ATTEMPT source=${attempt.source} outcome=${attempt.outcome} status=${receipt?.status || 'missing'} class=${classify(receipt)}`,
+            );
+          }
+
+          const selected = attempts.find((attempt) => attempt.outcome === 'success');
+          const canonical = process.env.CLOUDFLARE_BUILD_EVIDENCE_PATH;
+
+          if (!selected) {
+            const retainedFailure = [...attempts].reverse().find((attempt) => fs.existsSync(attempt.path));
+            if (retainedFailure) fs.copyFileSync(retainedFailure.path, canonical);
+            console.error('WORKERS_TRIGGER_PROVIDER_READBACK_FAILED: no configured token completed provider discovery.');
+            process.exit(1);
+          }
+
+          fs.copyFileSync(selected.path, canonical);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `selected=${selected.source}\n`);
+          console.log(`WORKERS_TRIGGER_READBACK_SELECTED=${selected.source}`);
+          NODE
 
       - name: Require provider trigger to already be safe on main push
         if: github.event_name == 'push'
@@ -147,8 +227,20 @@ jobs:
           console.log('WORKERS_TRIGGER_MAIN_READBACK_SAFE');
           NODE
 
-      - name: Apply, verify, and request exact native build
-        if: github.event_name == 'workflow_dispatch' && inputs.apply == true
+      - name: Apply, verify, and request exact native build with dedicated token
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true && steps.select_readback.outputs.selected == 'dedicated-builds-token'
+        env:
+          CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ''
+          CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
+        run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
+
+      - name: Apply, verify, and request exact native build with general token
+        if: github.event_name == 'workflow_dispatch' && inputs.apply == true && steps.select_readback.outputs.selected == 'general-cloudflare-token'
+        env:
+          CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ''
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
 
       - name: Upload trigger evidence
@@ -156,6 +248,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cloudflare-workers-build-trigger-${{ github.run_id }}
-          path: artifacts/cloudflare-workers-build-trigger.json
+          path: artifacts/cloudflare-workers-build-trigger*.json
           if-no-files-found: warn
           retention-days: 30
