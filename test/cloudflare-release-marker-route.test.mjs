@@ -12,7 +12,7 @@ test('native deployment verification uses the well-known release marker emitted 
 
   assert.match(
     workflow,
-    /FRONTEND_RELEASE_URL: https:\/\/sekretbip\.net\/\.well-known\/sekret-release\.json/,
+    /FRONTEND_RELEASE_URL: https:\/\/app\.sekretbip\.net\/\.well-known\/sekret-release\.json/,
   );
   assert.match(writer, /path\.join\(wellKnownDirectory, 'sekret-release\.json'\)/);
   assert.match(writer, /fs\.writeFileSync\(wellKnownDestination, serialized, 'utf8'\)/);
