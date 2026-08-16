@@ -26,6 +26,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   CLOUDFLARE_ACCESS_EVIDENCE_PATH: artifacts/cloudflare-access-coverage.json
   CLOUDFLARE_ACCESS_TARGET_HOSTS: app.sekretbip.net,api.sekretbip.net
+  CLOUDFLARE_ACCESS_TARGET_ZONE: sekretbip.net
 
 jobs:
   audit:
@@ -75,7 +76,7 @@ jobs:
             exit 1
           }
 
-      - name: Audit matching Cloudflare Access applications and policies
+      - name: Audit matching Cloudflare Access applications and organization state
         if: github.event_name != 'pull_request'
         env:
           CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}
