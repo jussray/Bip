@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 
 const DEFAULT_FRONTEND_RELEASE_URL = 'https://app.sekretbip.net/.well-known/sekret-release.json';
 const DEFAULT_BACKEND_HEALTH_URL = 'https://api.sekretbip.net/health';
@@ -97,7 +98,7 @@ async function main() {
   console.log(JSON.stringify(evidence, null, 2));
 }
 
-const isDirectExecution = process.argv[1] && new URL(import.meta.url).pathname === path.resolve(process.argv[1]);
+const isDirectExecution = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
 if (isDirectExecution) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.stack ?? error.message : error);
