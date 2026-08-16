@@ -48,7 +48,7 @@ test('retains redacted evidence when Cloudflare token verification fails before 
   const evidenceText = fs.readFileSync(evidencePath, 'utf8');
   const evidence = JSON.parse(evidenceText);
 
-  assert.equal(evidence.schemaVersion, 4);
+  assert.equal(evidence.schemaVersion, 6);
   assert.equal(evidence.status, 'provider-discovery-failed');
   assert.equal(evidence.verified, false);
   assert.equal(evidence.applyRequested, false);
