@@ -25,7 +25,7 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   CLOUDFLARE_ACCESS_EVIDENCE_PATH: artifacts/cloudflare-access-coverage.json
-  CLOUDFLARE_ACCESS_TARGET_HOSTS: app.sekretbip.net,api.sekretbip.net
+  CLOUDFLARE_ACCESS_TARGET_HOSTS: sekretbip.net,app.sekretbip.net,api.sekretbip.net
   CLOUDFLARE_ACCESS_TARGET_ZONE: sekretbip.net
 
 jobs:
@@ -35,9 +35,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out exact candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
@@ -48,7 +49,7 @@ jobs:
           test "$actual" = "$GITHUB_SHA"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
 
@@ -87,7 +88,7 @@ jobs:
 
       - name: Upload redacted Cloudflare Access evidence
         if: github.event_name != 'pull_request' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-access-coverage-${{ github.sha }}
           path: artifacts/cloudflare-access-coverage.json
