@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
+  buildCloudflareAccessBlockerEvidence,
   classifyEndpointProbe,
   collectProductionReleaseEndpointEvidence,
   probeJsonEndpoint,
@@ -129,6 +130,28 @@ test('production evidence identifies every surface intercepted by Cloudflare Acc
   assert.equal(evidence.version, 2);
   assert.equal(evidence.status, 'cloudflare-access-intercepted');
   assert.deepEqual(evidence.blockedByAccess, ['frontend', 'backend']);
+});
+
+test('Access interception is promoted into the retained v5 blocker receipt evidence', () => {
+  const expectedSha = '388cd65958cc6d80d9f0ef791a31b9737d325e89';
+  const blocker = buildCloudflareAccessBlockerEvidence({
+    expectedSha,
+    status: 'cloudflare-access-intercepted',
+    blockedByAccess: ['frontend', 'backend'],
+    frontend: {classification: 'cloudflare-access-intercepted'},
+    backend: {classification: 'cloudflare-access-intercepted'},
+  });
+
+  assert.equal(blocker.version, 5);
+  assert.equal(blocker.commitSha, expectedSha);
+  assert.equal(blocker.status, 'failed');
+  assert.equal(blocker.complete, false);
+  assert.equal(blocker.readinessState, 'cloudflare-access-intercepted');
+  assert.equal(blocker.observerError, null);
+  assert.deepEqual(blocker.transportBlocker.blockedSurfaces, ['frontend', 'backend']);
+  assert.equal(blocker.transportBlocker.frontendClassification, 'cloudflare-access-intercepted');
+  assert.equal(blocker.transportBlocker.backendClassification, 'cloudflare-access-intercepted');
+  assert.deepEqual(blocker.checkSummary, {missing: [], pending: [], failed: [], unsuccessful: []});
 });
 
 test('production Playwright verifies both public variants and their Enter paths', () => {
