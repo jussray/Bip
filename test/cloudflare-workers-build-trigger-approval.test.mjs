@@ -36,16 +36,19 @@ function trigger({ buildCommand = '', deployCommand = '' } = {}) {
   };
 }
 
-test('main pushes are plan-only and production mutation requires approved workflow_dispatch', () => {
+test('automatic pushes validate the contract while provider control remains explicit workflow_dispatch', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-workers-build-trigger.yml', import.meta.url),
     'utf8',
   );
 
-  assert.match(workflow, /if: github\.event_name == 'workflow_dispatch' && inputs\.apply == true/);
+  assert.match(workflow, /push:\n\s+branches: \[main\]/);
+  assert.match(workflow, /pull_request:\n\s+branches: \[main\]/);
+  assert.match(workflow, /if: github\.event_name == 'workflow_dispatch'/);
+  assert.match(workflow, /if: inputs\.apply == true/);
+  assert.doesNotMatch(workflow, /if: github\.event_name != 'pull_request'/);
+  assert.doesNotMatch(workflow, /Require provider trigger to already be safe on main push/);
   assert.doesNotMatch(workflow, /github\.event_name == 'push' \|\| inputs\.apply == true/);
-  assert.match(workflow, /Require provider trigger to already be safe on main push/);
-  assert.match(workflow, /evidence\.status !== 'already-correct' \|\| evidence\.verified !== true/);
 });
 
 test('rollback restores an originally absent deploy command after failed readback', async () => {
