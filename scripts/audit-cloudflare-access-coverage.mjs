@@ -183,8 +183,13 @@ async function getOrganization(config, fetchImpl) {
     : null;
 }
 
+function booleanOrNull(value) {
+  return typeof value === 'boolean' ? value : null;
+}
+
 function publicOrganization(organization, targetZone) {
-  const exemptedZoneNames = Array.isArray(organization?.deny_unmatched_requests_exempted_zone_names)
+  const hasExemptedZones = Array.isArray(organization?.deny_unmatched_requests_exempted_zone_names);
+  const exemptedZoneNames = hasExemptedZones
     ? organization.deny_unmatched_requests_exempted_zone_names
         .map((zone) => clean(zone).toLowerCase())
         .filter(Boolean)
@@ -192,13 +197,13 @@ function publicOrganization(organization, targetZone) {
   const normalizedTargetZone = clean(targetZone).toLowerCase();
   return {
     authDomain: clean(organization?.auth_domain) || null,
-    denyUnmatchedRequests: organization?.deny_unmatched_requests === true,
+    denyUnmatchedRequests: booleanOrNull(organization?.deny_unmatched_requests),
     targetZone: normalizedTargetZone || null,
-    targetZoneExempted: normalizedTargetZone
+    targetZoneExempted: hasExemptedZones && normalizedTargetZone
       ? exemptedZoneNames.includes(normalizedTargetZone)
-      : false,
-    exemptedZoneCount: exemptedZoneNames.length,
-    isUiReadOnly: organization?.is_ui_read_only === true,
+      : null,
+    exemptedZoneCount: hasExemptedZones ? exemptedZoneNames.length : null,
+    isUiReadOnly: booleanOrNull(organization?.is_ui_read_only),
   };
 }
 
