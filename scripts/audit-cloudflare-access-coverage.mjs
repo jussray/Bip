@@ -9,6 +9,7 @@ export const DEFAULT_TARGET_HOSTS = Object.freeze([
   'api.sekretbip.net',
 ]);
 export const DEFAULT_BACKEND_WORKER_ID = 'sekret-backend';
+export const DEFAULT_TARGET_ZONE = 'sekretbip.net';
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -171,6 +172,41 @@ async function listPolicies(config, appId, fetchImpl) {
   return (Array.isArray(payload?.result) ? payload.result : []).map(publicPolicy);
 }
 
+async function getOrganization(config, fetchImpl) {
+  const payload = await requestJson(
+    config,
+    `/accounts/${config.accountId}/access/organizations`,
+    fetchImpl,
+  );
+  return payload?.result && typeof payload.result === 'object' && !Array.isArray(payload.result)
+    ? payload.result
+    : null;
+}
+
+function booleanOrNull(value) {
+  return typeof value === 'boolean' ? value : null;
+}
+
+function publicOrganization(organization, targetZone) {
+  const hasExemptedZones = Array.isArray(organization?.deny_unmatched_requests_exempted_zone_names);
+  const exemptedZoneNames = hasExemptedZones
+    ? organization.deny_unmatched_requests_exempted_zone_names
+        .map((zone) => clean(zone).toLowerCase())
+        .filter(Boolean)
+    : [];
+  const normalizedTargetZone = clean(targetZone).toLowerCase();
+  return {
+    authDomain: clean(organization?.auth_domain) || null,
+    denyUnmatchedRequests: booleanOrNull(organization?.deny_unmatched_requests),
+    targetZone: normalizedTargetZone || null,
+    targetZoneExempted: hasExemptedZones && normalizedTargetZone
+      ? exemptedZoneNames.includes(normalizedTargetZone)
+      : null,
+    exemptedZoneCount: hasExemptedZones ? exemptedZoneNames.length : null,
+    isUiReadOnly: booleanOrNull(organization?.is_ui_read_only),
+  };
+}
+
 async function writeEvidence(evidencePath, receipt) {
   await mkdir(path.dirname(evidencePath), { recursive: true });
   await writeFile(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
@@ -185,6 +221,14 @@ function errorReceipt(error, source) {
   };
 }
 
+function minimalErrorReceipt(error, source) {
+  return {
+    source,
+    status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
+    providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
+  };
+}
+
 export async function auditCloudflareAccessCoverage({
   env = process.env,
   fetchImpl = fetch,
@@ -194,11 +238,12 @@ export async function auditCloudflareAccessCoverage({
     ? clean(env.CLOUDFLARE_ACCESS_TARGET_HOSTS).split(',').map((item) => clean(item).toLowerCase()).filter(Boolean)
     : [...DEFAULT_TARGET_HOSTS],
   backendWorkerId = clean(env.CLOUDFLARE_ACCESS_BACKEND_WORKER_ID) || DEFAULT_BACKEND_WORKER_ID,
+  targetZone = clean(env.CLOUDFLARE_ACCESS_TARGET_ZONE) || DEFAULT_TARGET_ZONE,
 } = {}) {
   const accountId = clean(env.CLOUDFLARE_ACCOUNT_ID);
   const candidates = tokenCandidatesFromEnv(env);
   const baseReceipt = {
-    version: 1,
+    version: 2,
     generatedAt: now().toISOString(),
     mutationPerformed: false,
     accountIdConfigured: Boolean(accountId),
@@ -208,8 +253,11 @@ export async function auditCloudflareAccessCoverage({
       candidateSources: candidates.map((candidate) => candidate.source),
       selectedSource: null,
       failures: [],
+      organizationSelectedSource: null,
+      organizationFailures: [],
     },
     coverage: [],
+    organization: null,
   };
 
   if (!accountId || candidates.length === 0) {
@@ -269,16 +317,44 @@ export async function auditCloudflareAccessCoverage({
     }
     coverage.push({ hostname: target, matchingApplications });
   }
+  baseReceipt.coverage = coverage;
+
+  let organizationConfig = null;
+  let organization = null;
+  for (const candidate of candidates) {
+    const config = { accountId, token: candidate.token };
+    try {
+      organization = await getOrganization(config, fetchImpl);
+      if (!organization) throw new Error('Cloudflare Access organization response did not include an object result.');
+      organizationConfig = { ...config, source: candidate.source };
+      break;
+    } catch (error) {
+      baseReceipt.credential.organizationFailures.push(minimalErrorReceipt(error, candidate.source));
+    }
+  }
+
+  if (!organizationConfig || !organization) {
+    const receipt = {
+      ...baseReceipt,
+      status: 'organization-read-failed',
+      applicationCountObserved: applications.length,
+      error: 'No configured Cloudflare token could read Access organization settings.',
+    };
+    await writeEvidence(evidencePath, receipt);
+    throw new Error(receipt.error);
+  }
+
+  baseReceipt.credential.organizationSelectedSource = organizationConfig.source;
+  baseReceipt.organization = publicOrganization(organization, targetZone);
 
   const receipt = {
     ...baseReceipt,
     status: 'audited',
     applicationCountObserved: applications.length,
-    coverage,
   };
   await writeEvidence(evidencePath, receipt);
   console.log(
-    `CLOUDFLARE_ACCESS_AUDIT_COMPLETE targets=${coverage.length} matched=${coverage.reduce((sum, item) => sum + item.matchingApplications.length, 0)} credential=${providerConfig.source}`,
+    `CLOUDFLARE_ACCESS_AUDIT_COMPLETE targets=${coverage.length} matched=${coverage.reduce((sum, item) => sum + item.matchingApplications.length, 0)} appCredential=${providerConfig.source} organizationCredential=${organizationConfig.source}`,
   );
   return receipt;
 }
