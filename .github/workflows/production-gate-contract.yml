@@ -11,12 +11,16 @@ on:
       - 'e2e/production-smoke.spec.ts'
       - 'playwright.production.config.ts'
       - 'scripts/playwright-executable.mjs'
+      - 'scripts/cloudflare-access-service-auth.mjs'
+      - 'scripts/probe-production-release-endpoints.mjs'
       - 'supabase/migrations/**'
       - 'scripts/bootstrap-release-metadata-source.mjs'
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
+      - 'test/cloudflare-access-production-verification.test.mjs'
+      - 'test/production-release-endpoint-probe.test.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
       - 'test/production-authority-workflow-contracts.test.mjs'
       - 'test/production-deployment-gate-contract.test.mjs'
@@ -75,6 +79,8 @@ jobs:
       - name: Verify production and release-marker contracts
         run: >-
           node --test
+          test/cloudflare-access-production-verification.test.mjs
+          test/production-release-endpoint-probe.test.mjs
           test/production-authority-workflow-contracts.test.mjs
           test/production-deployment-gate-contract.test.mjs
           test/production-release-observation.test.mjs
