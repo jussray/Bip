@@ -136,7 +136,8 @@ test('disallowed origins are rejected before auth/delegation', () => {
 });
 
 test('authoritative CORS defaults production to canonical origins and reserves wildcard for dev-open', () => {
-  assert.ok(/const DEFAULT_ALLOWED_ORIGINS = \[[\s\S]*https:\/\/sekretbip\.net[\s\S]*https:\/\/www\.sekretbip\.net/.test(voiceEntry));
+  assert.ok(/const DEFAULT_ALLOWED_ORIGINS = \[[\s\S]*https:\/\/sekretbip\.net[\s\S]*https:\/\/www\.sekretbip\.net[\s\S]*https:\/\/app\.sekretbip\.net/.test(voiceEntry),
+    'production defaults must include the canonical Pages app origin');
   assert.ok(/env\.SEKRET_AUTH_MODE === 'dev-open' \? null : DEFAULT_ALLOWED_ORIGINS/.test(voiceEntry));
   assert.doesNotMatch(voiceEntry, /if \(!configured \|\| configured === '\*'\) return null/);
   const blockedAt = voiceEntry.indexOf('const blocked = originRejected(request, env, cors);');
