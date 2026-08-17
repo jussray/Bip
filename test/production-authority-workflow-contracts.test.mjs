@@ -14,16 +14,29 @@ function workflow(name) {
   return fs.readFileSync(path.join(repositoryRoot, '.github/workflows', name), 'utf8');
 }
 
-test('CodeQL proof uses immutable actions and never persists checkout credentials', () => {
-  const content = workflow('codeql-pr-alert-proof.yml');
-
+function assertPinnedNodeWorkflow(content) {
   assert.match(content, new RegExp(`actions/checkout@${CHECKOUT_SHA}`));
   assert.match(content, /persist-credentials: false/);
   assert.match(content, new RegExp(`actions/setup-node@${SETUP_NODE_SHA}`));
   assert.match(content, new RegExp(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`));
+  assert.doesNotMatch(content, /actions\/(?:checkout|setup-node|upload-artifact)@v\d+/);
+}
+
+test('CodeQL proof uses immutable actions and never persists checkout credentials', () => {
+  const content = workflow('codeql-pr-alert-proof.yml');
+
+  assertPinnedNodeWorkflow(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
-  assert.doesNotMatch(content, /actions\/(?:checkout|setup-node|upload-artifact)@v\d+/);
+});
+
+test('Production Gate contract obeys the same exact-head supply-chain boundary it enforces', () => {
+  const content = workflow('production-gate-contract.yml');
+
+  assertPinnedNodeWorkflow(content);
+  assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
+  assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
+  assert.match(content, /test\/production-authority-workflow-contracts\.test\.mjs/);
 });
 
 test('routine Supabase production workflow cannot rewrite migration history', () => {
