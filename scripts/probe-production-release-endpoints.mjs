@@ -22,6 +22,22 @@ function isCloudflareAccessUrl(rawUrl) {
   }
 }
 
+export function sanitizeObservedUrl(rawUrl) {
+  const value = safeString(rawUrl);
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    parsed.search = '';
+    parsed.hash = '';
+    if (isCloudflareAccessUrl(value)) {
+      return `https://cloudflareaccess.com${parsed.pathname}`;
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 function hasCloudflareAccessBlockMarker(rawBody) {
   if (typeof rawBody !== 'string') return false;
   const normalized = rawBody.toLowerCase();
@@ -75,9 +91,18 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       }
     }
 
+    const rawFinalUrl = safeString(response.url);
+    const classificationEvidence = {
+      finalUrl: rawFinalUrl,
+      status: response.status,
+      ok: response.ok,
+      redirected: response.redirected,
+      jsonState,
+      accessBlockPage,
+    };
     const evidence = {
       requestedUrl: rawUrl,
-      finalUrl: safeString(response.url),
+      finalUrl: sanitizeObservedUrl(rawFinalUrl),
       status: response.status,
       ok: response.ok,
       redirected: response.redirected,
@@ -91,7 +116,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
 
     return {
       ...evidence,
-      classification: classifyEndpointProbe(evidence),
+      classification: classifyEndpointProbe(classificationEvidence),
     };
   } catch (error) {
     return {

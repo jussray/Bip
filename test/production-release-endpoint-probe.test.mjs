@@ -5,6 +5,7 @@ import {
   classifyEndpointProbe,
   collectProductionReleaseEndpointEvidence,
   probeJsonEndpoint,
+  sanitizeObservedUrl,
 } from '../scripts/probe-production-release-endpoints.mjs';
 
 function mockHeaders(values = {}) {
@@ -51,6 +52,29 @@ test('classifies redirects to a Cloudflare Access team domain', () => {
     }),
     'cloudflare-access-intercepted',
   );
+});
+
+test('redacts Cloudflare Access redirect authority and query metadata before evidence retention', async () => {
+  const rawRedirect = 'https://private-team.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net?kid=secret-kid&meta=signed-payload&token=opaque#fragment';
+  assert.equal(
+    sanitizeObservedUrl(rawRedirect),
+    'https://cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net',
+  );
+
+  const probe = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
+    fetchImpl: async () => mockResponse({
+      status: 200,
+      url: rawRedirect,
+      redirected: true,
+      headers: {'content-type': 'text/html'},
+      json: new SyntaxError('not JSON'),
+    }),
+  });
+
+  assert.equal(probe.classification, 'cloudflare-access-intercepted');
+  assert.equal(probe.finalUrl, 'https://cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
+  const retained = JSON.stringify(probe);
+  assert.doesNotMatch(retained, /private-team|secret-kid|signed-payload|opaque|[?&#]/);
 });
 
 test('classifies a Cloudflare Access default forbidden page without treating every 403 as Access', async () => {
