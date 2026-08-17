@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "project": "sekret-bip",
+  "mode": "production",
+  "surfaces": [
+    {
+      "name": "public-entry",
+      "kind": "browser",
+      "origin": "https://sekretbip.net",
+      "allowedFinalOrigins": ["https://sekretbip.net"],
+      "required": true
+    },
+    {
+      "name": "app",
+      "kind": "browser",
+      "origin": "https://app.sekretbip.net",
+      "allowedFinalOrigins": ["https://app.sekretbip.net"],
+      "required": true
+    },
+    {
+      "name": "welcome",
+      "kind": "browser",
+      "origin": "https://welcome.sekretbip.net",
+      "allowedFinalOrigins": ["https://welcome.sekretbip.net"],
+      "required": false
+    },
+    {
+      "name": "api-version",
+      "kind": "version",
+      "origin": "https://api.sekretbip.net",
+      "path": "/version",
+      "required": true
+    }
+  ]
+}

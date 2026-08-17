@@ -4,7 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { auditCloudflareAccessCoverage } from '../scripts/audit-cloudflare-access-coverage.mjs';
+import {
+  auditCloudflareAccessCoverage,
+  formatAccessAuditLogSummary,
+} from '../scripts/audit-cloudflare-access-coverage.mjs';
 
 const ACCOUNT_ID = '0123456789abcdef0123456789abcdef';
 
@@ -20,6 +23,52 @@ function response(result, { ok = true, status = 200, statusText = 'OK', errors =
     },
   };
 }
+
+test('formats a compact Access audit log summary without provider identifiers', () => {
+  const summary = formatAccessAuditLogSummary({
+    status: 'audited',
+    mutationPerformed: false,
+    targets: ['sekretbip.net', 'app.sekretbip.net', 'api.sekretbip.net'],
+    coverage: [
+      {
+        hostname: 'app.sekretbip.net',
+        matchingApplications: [
+          {
+            id: 'all-workers-app',
+            name: 'All Workers',
+            domain: 'app.sekretbip.net',
+            policies: [{ id: 'policy-all', decision: 'allow' }],
+            policyReadError: null,
+          },
+        ],
+      },
+      {
+        hostname: 'api.sekretbip.net',
+        matchingApplications: [
+          {
+            id: 'backend-worker-app',
+            name: 'Se’kret Backend Worker',
+            policies: [],
+            policyReadError: { status: 403 },
+          },
+        ],
+      },
+      { hostname: 'sekretbip.net', matchingApplications: [] },
+    ],
+    organization: {
+      authDomain: 'mcgill-raylene.cloudflareaccess.com',
+      denyUnmatchedRequests: true,
+    },
+  });
+
+  assert.equal(
+    summary,
+    'CLOUDFLARE_ACCESS_AUDIT status=audited targets=3 matchedTargets=2 matchingApplications=2 policyReadFailures=1 organizationVisible=true mutationPerformed=false',
+  );
+  assert.doesNotMatch(summary, /all-workers-app|All Workers|policy-all|backend-worker-app/);
+  assert.doesNotMatch(summary, /app\.sekretbip\.net|api\.sekretbip\.net/);
+  assert.doesNotMatch(summary, /mcgill-raylene\.cloudflareaccess\.com/);
+});
 
 test('falls back across token candidates and retains only redacted matching Access coverage', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-access-audit-'));
