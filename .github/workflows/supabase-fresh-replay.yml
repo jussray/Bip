@@ -23,9 +23,10 @@ jobs:
 
     steps:
       - name: Check out exact head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
@@ -60,7 +61,7 @@ jobs:
           test -s supabase/reference/legacy_migrations/20260701010000_circle_kind_add_parent_community.sql
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1
         with:
           version: 2.113.0
 
