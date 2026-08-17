@@ -23,6 +23,7 @@ on:
 permissions:
   contents: read
   actions: read
+  security-events: read
 
 concurrency:
   group: codeql-pr-alert-proof-${{ github.event.pull_request.number || github.ref }}
@@ -30,6 +31,7 @@ concurrency:
 
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+  CODEQL_WAIVER_PATH: security/codeql-local-waivers.json
 
 jobs:
   local-codeql:
@@ -59,6 +61,14 @@ jobs:
           printf 'expected=%s\nactual=%s\nlanguage=%s\n' "$EXPECTED_HEAD_SHA" "$actual" "${{ matrix.language }}"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
+      - name: Set up Node for proof contracts
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+
+      - name: Verify local CodeQL proof contract
+        run: node --test test/codeql-pr-alert-proof.test.mjs
+
       - name: Initialize local CodeQL security queries
         uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd
         with:
@@ -71,11 +81,6 @@ jobs:
           upload: never
           upload-database: false
           output: artifacts/codeql-local/${{ matrix.language }}/sarif
-
-      - name: Set up Node for evidence validation
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 22
 
       - name: Enforce local CodeQL SARIF proof
         env:

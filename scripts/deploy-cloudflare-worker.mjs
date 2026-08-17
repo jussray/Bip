@@ -23,6 +23,15 @@ function gitOutput(args, { cwd, execFile = execFileSync } = {}) {
   ).trim();
 }
 
+function readOptionalFile(filePath) {
+  try {
+    return { existed: true, contents: fs.readFileSync(filePath, 'utf8') };
+  } catch (error) {
+    if (error?.code === 'ENOENT') return { existed: false, contents: null };
+    throw error;
+  }
+}
+
 export function inspectDeployGitState({ cwd = process.cwd(), execFile = execFileSync } = {}) {
   const headSha = normalizeCommitSha(gitOutput(['rev-parse', 'HEAD'], { cwd, execFile }));
   if (!headSha) {
@@ -78,8 +87,7 @@ export function deployCloudflareWorker(options = {}) {
   const spawn = options.spawn ?? spawnSync;
   const writeIdentity = options.writeIdentity ?? writeWorkerReleaseIdentity;
   const identityPath = path.join(cwd, RELEASE_IDENTITY_PATH);
-  const identityExisted = fs.existsSync(identityPath);
-  const originalIdentity = identityExisted ? fs.readFileSync(identityPath, 'utf8') : null;
+  const originalIdentity = readOptionalFile(identityPath);
 
   try {
     const stampedSha = normalizeCommitSha(writeIdentity({
@@ -103,10 +111,10 @@ export function deployCloudflareWorker(options = {}) {
       throw new Error(`Cloudflare Worker deployment failed with exit code ${result.status ?? 'unknown'}.`);
     }
   } finally {
-    if (identityExisted) {
-      fs.writeFileSync(identityPath, originalIdentity, 'utf8');
-    } else if (fs.existsSync(identityPath)) {
-      fs.rmSync(identityPath);
+    if (originalIdentity.existed) {
+      fs.writeFileSync(identityPath, originalIdentity.contents, 'utf8');
+    } else {
+      fs.rmSync(identityPath, { force: true });
     }
   }
 
