@@ -136,6 +136,33 @@ export function buildTestLedger({
   };
 }
 
+export function assertLedgerMergeReady(ledger, outputPath = 'artifacts/control-room-test-ledger.json') {
+  const counts = ledger?.aggregate?.counts;
+  if (!counts || counts.total === 0) {
+    throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
+  }
+
+  if (ledger?.runner?.observerState !== 'stable') {
+    throw new Error(
+      `Exact-head checks did not reach a stable terminal state before the observation window expired. Evidence: ${outputPath}`,
+    );
+  }
+
+  if (counts.failed > 0) {
+    throw new Error(`Exact-head check failures remain. Evidence: ${outputPath}`);
+  }
+
+  if (counts.queued > 0 || counts.running > 0) {
+    throw new Error(`Exact-head checks are still pending. Evidence: ${outputPath}`);
+  }
+
+  if (counts.unknown > 0) {
+    throw new Error(`Exact-head checks contain unknown terminal states. Evidence: ${outputPath}`);
+  }
+
+  return ledger;
+}
+
 function sleep(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -308,10 +335,7 @@ export async function observeExactHeadChecks(env = process.env) {
     observerState: reachedStableTerminal ? 'stable' : 'window-expired',
   });
   writeLedger(outputPath, ledger);
-
-  if (ledger.aggregate.counts.total === 0) {
-    throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
-  }
+  assertLedgerMergeReady(ledger, outputPath);
 
   console.log(JSON.stringify(ledger, null, 2));
   return ledger;
