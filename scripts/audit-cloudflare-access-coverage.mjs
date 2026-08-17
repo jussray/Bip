@@ -230,6 +230,34 @@ function minimalErrorReceipt(error, source) {
   };
 }
 
+export function formatAccessAuditLogSummary(receipt) {
+  const coverage = Array.isArray(receipt?.coverage) ? receipt.coverage : [];
+  const matchedTargetCount = coverage.filter(
+    (entry) => Array.isArray(entry?.matchingApplications) && entry.matchingApplications.length > 0,
+  ).length;
+  const matchingApplicationCount = coverage.reduce(
+    (total, entry) => total + (Array.isArray(entry?.matchingApplications) ? entry.matchingApplications.length : 0),
+    0,
+  );
+  const policyReadFailureCount = coverage.reduce(
+    (total, entry) => total + (Array.isArray(entry?.matchingApplications)
+      ? entry.matchingApplications.filter((application) => Boolean(application?.policyReadError)).length
+      : 0),
+    0,
+  );
+
+  return [
+    'CLOUDFLARE_ACCESS_AUDIT',
+    `status=${clean(receipt?.status) || 'unknown'}`,
+    `targets=${Array.isArray(receipt?.targets) ? receipt.targets.length : 0}`,
+    `matchedTargets=${matchedTargetCount}`,
+    `matchingApplications=${matchingApplicationCount}`,
+    `policyReadFailures=${policyReadFailureCount}`,
+    `organizationVisible=${Boolean(receipt?.organization)}`,
+    `mutationPerformed=${receipt?.mutationPerformed === true}`,
+  ].join(' ');
+}
+
 export async function auditCloudflareAccessCoverage({
   env = process.env,
   fetchImpl = fetch,
@@ -349,7 +377,7 @@ export async function auditCloudflareAccessCoverage({
 }
 
 function printReceipt(receipt) {
-  console.log(JSON.stringify(receipt, null, 2));
+  console.log(formatAccessAuditLogSummary(receipt));
 }
 
 const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
