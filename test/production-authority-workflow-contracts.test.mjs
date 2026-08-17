@@ -47,11 +47,11 @@ test('routine Supabase production workflow is exact-main, dry-run-first, and sup
   assert.match(content, new RegExp(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`));
   assert.doesNotMatch(content, /(?:actions\/checkout|actions\/upload-artifact|supabase\/setup-cli)@v\d+/);
 
-  const exactTarget = content.indexOf('Verify exact target is current main');
-  const dryRun = content.indexOf('Preview production migration plan');
-  const preMutation = content.indexOf('Re-verify current main immediately before mutation');
-  const apply = content.indexOf('Apply production migrations');
-  const postVerify = content.indexOf('Verify exact production schema after mutation');
+  const exactTarget = content.indexOf('- name: Verify exact target is current main');
+  const dryRun = content.indexOf('- name: Preview production migration plan');
+  const preMutation = content.indexOf('- name: Re-verify current main immediately before mutation');
+  const apply = content.indexOf('- name: Apply production migrations');
+  const postVerify = content.indexOf('- name: Verify exact production schema after mutation');
 
   assert.ok(exactTarget >= 0);
   assert.ok(dryRun > exactTarget);
