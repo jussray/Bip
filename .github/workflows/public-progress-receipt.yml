@@ -1,0 +1,100 @@
+name: Public Progress Receipt
+
+on:
+  workflow_dispatch:
+    inputs:
+      claim:
+        description: Public-safe outcome claim. Do not include implementation details.
+        required: true
+        type: string
+      proof_state:
+        description: Current proof state for the exact checked-out SHA.
+        required: true
+        type: choice
+        options:
+          - verified
+          - partial
+          - blocked
+          - superseded
+      evidence_label:
+        description: Public-safe evidence label, e.g. exact-head CI + Playwright.
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      claim:
+        required: true
+        type: string
+      proof_state:
+        required: true
+        type: string
+      evidence_label:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-public-progress-receipt:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out exact target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          test "$actual" = "$GITHUB_SHA"
+
+      - name: Validate proof-state vocabulary
+        shell: bash
+        env:
+          PROOF_STATE: ${{ inputs.proof_state }}
+        run: |
+          set -euo pipefail
+          case "$PROOF_STATE" in
+            verified|partial|blocked|superseded) ;;
+            *) echo "invalid proof_state: $PROOF_STATE" >&2; exit 2 ;;
+          esac
+
+      - name: Build redacted receipt input
+        shell: bash
+        env:
+          CLAIM: ${{ inputs.claim }}
+          PROOF_STATE: ${{ inputs.proof_state }}
+          EVIDENCE_LABEL: ${{ inputs.evidence_label }}
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const input = {
+            repo: process.env.GITHUB_REPOSITORY,
+            headSha: process.env.GITHUB_SHA,
+            observedAt: new Date().toISOString(),
+            proofState: process.env.PROOF_STATE,
+            claim: process.env.CLAIM,
+            publicEvidence: process.env.EVIDENCE_LABEL ? { evidence: process.env.EVIDENCE_LABEL } : {},
+          };
+          fs.writeFileSync('public-progress-input.json', JSON.stringify(input, null, 2));
+          NODE
+
+      - name: Generate public-safe progress receipt
+        run: node scripts/public-progress-receipt.mjs public-progress-input.json public-progress-receipt.json public-progress-post.md
+
+      - name: Verify no sauce-bearing fields escaped
+        run: node --test test/public-progress-receipt.test.mjs
+
+      - name: Upload founder-review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-progress-receipt-${{ github.sha }}
+          path: |
+            public-progress-receipt.json
+            public-progress-post.md
+          retention-days: 14
