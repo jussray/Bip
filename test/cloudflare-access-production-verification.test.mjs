@@ -24,8 +24,8 @@ test('Access service auth is optional but must be configured as a complete pair'
 });
 
 test('Access credentials are sent to protected probes but never retained in probe evidence', async () => {
-  const clientId = 'client-id.access.example.com';
-  const clientSecret = 'super-secret-value';
+  const clientId = 'opaque-access-client-id-fixture';
+  const clientSecret = 'opaque-access-client-secret-fixture';
   const accessAuth = resolveCloudflareAccessServiceAuth({
     CLOUDFLARE_ACCESS_CLIENT_ID: clientId,
     CLOUDFLARE_ACCESS_CLIENT_SECRET: clientSecret,
@@ -68,5 +68,5 @@ test('production workflow reads Access credentials only from protected secrets',
   const workflow = fs.readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
   assert.match(workflow, /CLOUDFLARE_ACCESS_CLIENT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCESS_CLIENT_ID \}\}/);
   assert.match(workflow, /CLOUDFLARE_ACCESS_CLIENT_SECRET: \$\{\{ secrets\.CLOUDFLARE_ACCESS_CLIENT_SECRET \}\}/);
-  assert.doesNotMatch(workflow, /client-id\.access\.example\.com|super-secret-value/);
+  assert.doesNotMatch(workflow, /opaque-access-client-(?:id|secret)-fixture/);
 });
