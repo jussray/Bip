@@ -7,12 +7,14 @@ on:
       - '.github/workflows/audit-cloudflare-zone-access-coverage.yml'
       - 'scripts/audit-cloudflare-zone-access-coverage.mjs'
       - 'test/cloudflare-zone-access-coverage-audit.test.mjs'
+      - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
   push:
     branches: [main]
     paths:
       - '.github/workflows/audit-cloudflare-zone-access-coverage.yml'
       - 'scripts/audit-cloudflare-zone-access-coverage.mjs'
       - 'test/cloudflare-zone-access-coverage-audit.test.mjs'
+      - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -24,6 +26,7 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   CLOUDFLARE_ZONE_ACCESS_EVIDENCE_PATH: artifacts/cloudflare-zone-access-coverage.json
   CLOUDFLARE_ACCESS_TARGET_ZONE: sekretbip.net
   CLOUDFLARE_ACCESS_TARGET_HOSTS: app.sekretbip.net,api.sekretbip.net
@@ -36,25 +39,26 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Check out exact candidate
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
-          printf 'expected=%s\nactual=%s\n' "$GITHUB_SHA" "$actual"
-          test "$actual" = "$GITHUB_SHA"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
 
       - name: Verify redacted zone Access audit contract
-        run: node --test test/cloudflare-zone-access-coverage-audit.test.mjs
+        run: node --test test/cloudflare-zone-access-coverage-audit.test.mjs test/cloudflare-zone-access-workflow-contract.test.mjs
 
       - name: Require exact current main before Cloudflare secret use
         if: github.event_name != 'pull_request'
@@ -71,8 +75,8 @@ jobs:
               -H 'X-GitHub-Api-Version: 2022-11-28' \
               "https://api.github.com/repos/$REPOSITORY/commits/main"
           } | node -e "let body='';process.stdin.on('data',c=>body+=c);process.stdin.on('end',()=>{const parsed=JSON.parse(body);if(!parsed.sha)process.exit(2);process.stdout.write(parsed.sha);});")"
-          printf 'workflow_sha=%s\ncurrent_main=%s\n' "$GITHUB_SHA" "$current_main"
-          test "$GITHUB_SHA" = "$current_main" || {
+          printf 'expected_head=%s\ncurrent_main=%s\n' "$EXPECTED_HEAD_SHA" "$current_main"
+          test "$EXPECTED_HEAD_SHA" = "$current_main" || {
             echo 'Refusing Cloudflare zone Access audit because workflow SHA is no longer current main.' >&2
             exit 1
           }
@@ -89,9 +93,9 @@ jobs:
 
       - name: Upload redacted zone Access evidence
         if: github.event_name != 'pull_request' && always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: cloudflare-zone-access-coverage-${{ github.sha }}
+          name: cloudflare-zone-access-coverage-${{ env.EXPECTED_HEAD_SHA }}
           path: artifacts/cloudflare-zone-access-coverage.json
           if-no-files-found: error
           retention-days: 30
