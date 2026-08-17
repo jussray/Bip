@@ -1,97 +1,75 @@
-name: Documentation Truth Exact-Head Gate
+name: Documentation Truth Gate
 
 on:
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - README.md
-      - AGENTS.md
-      - SPRINT.md
-      - docs/CURRENT_STATUS.md
-      - docs/LAUNCH_GATE_STATUS_2026-07-29.md
-      - docs/DOCUMENTATION_MAP.md
-      - docs/LAUNCH_ROADMAP.md
-      - docs/REPO_KNOWLEDGE_REFRESH_2026-07-20.md
-      - docs/WIRING_STATUS.md
-      - docs/CLOUDFLARE_WORKER_CONSOLIDATION.md
-      - DEPLOYMENT.md
-      - .agents/skills/bip-architecture/SKILL.md
-      - test/launch-documentation-contract.test.mjs
-      - test/control-room-readme-sync.test.mjs
-      - test/supabase-trigger-structure.test.mjs
-      - implementation-ledger.json
-      - implementation-ledger.extensions/**
-      - .github/workflows/documentation-truth-gate.yml
+      - 'README.md'
+      - 'SPRINT.md'
+      - 'DEPLOYMENT.md'
+      - 'docs/**'
+      - '.control-room/README_SYNC_POLICY.md'
+      - 'scripts/audit-documentation-truth.mjs'
+      - 'test/documentation-truth-drift.test.mjs'
+      - '.github/workflows/documentation-truth-gate.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'SPRINT.md'
+      - 'DEPLOYMENT.md'
+      - 'docs/**'
+      - '.control-room/README_SYNC_POLICY.md'
+      - 'scripts/audit-documentation-truth.mjs'
+      - 'test/documentation-truth-drift.test.mjs'
+      - '.github/workflows/documentation-truth-gate.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: documentation-truth-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 env:
-  CI: true
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
-  verify-documentation-truth:
-    name: Exact head, documentation contracts, and ledger
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+  documentation-truth:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
     steps:
-      - name: Check out exact pull-request head
-        uses: actions/checkout@v4
+      - name: Checkout exact head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
-          fetch-depth: 1
+          persist-credentials: false
 
-      - name: Record and verify exact head
+      - name: Verify exact head
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p documentation-evidence
-          ACTUAL_HEAD_SHA="$(git rev-parse HEAD)"
-          printf 'expected_head_sha=%s\nactual_head_sha=%s\nworkflow_run_id=%s\n' \
-            "$EXPECTED_HEAD_SHA" "$ACTUAL_HEAD_SHA" "$GITHUB_RUN_ID" \
-            | tee documentation-evidence/exact-head.txt
-          test "$ACTUAL_HEAD_SHA" = "$EXPECTED_HEAD_SHA"
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-          cache: npm
 
-      - name: Install repository dependencies
-        run: npm ci
+      - name: Parse-check truth auditor
+        run: node --check scripts/audit-documentation-truth.mjs
 
-      - name: Run documentation authority contracts
-        shell: bash
-        run: |
-          set -o pipefail
-          node --test \
-            test/launch-documentation-contract.test.mjs \
-            test/control-room-readme-sync.test.mjs \
-            test/supabase-trigger-structure.test.mjs \
-            2>&1 | tee documentation-evidence/documentation-contracts.log
+      - name: Verify truth-expiry contracts
+        run: node --test test/documentation-truth-drift.test.mjs
 
-      - name: Verify implementation ledger claims
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run verify:implementation-ledger \
-            2>&1 | tee documentation-evidence/implementation-ledger.log
+      - name: Audit canonical documentation truth
+        run: node scripts/audit-documentation-truth.mjs --report=artifacts/documentation-truth-report.json
 
-      - name: Upload exact-head evidence
+      - name: Upload truth-drift evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: documentation-truth-evidence-${{ env.EXPECTED_HEAD_SHA }}
-          path: documentation-evidence/
+          name: documentation-truth-${{ env.EXPECTED_HEAD_SHA }}
+          path: artifacts/documentation-truth-report.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
