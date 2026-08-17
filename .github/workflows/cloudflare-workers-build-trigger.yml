@@ -9,6 +9,7 @@ on:
       - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
       - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
+      - 'test/cloudflare-workers-build-trigger-workflow-contract.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
   push:
     branches: [main]
@@ -18,6 +19,7 @@ on:
       - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
       - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
+      - 'test/cloudflare-workers-build-trigger-workflow-contract.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
   workflow_dispatch:
     inputs:
@@ -53,9 +55,10 @@ jobs:
       EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - name: Check out exact head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
@@ -66,7 +69,7 @@ jobs:
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
 
@@ -77,6 +80,7 @@ jobs:
           test/cloudflare-workers-build-trigger-approval.test.mjs
           test/cloudflare-workers-token-fallback.test.mjs
           test/cloudflare-workers-release-identity-trigger.test.mjs
+          test/cloudflare-workers-build-trigger-workflow-contract.test.mjs
 
   reconcile:
     name: Reconcile native Workers Builds trigger
@@ -93,7 +97,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Check out exact trusted head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
           persist-credentials: false
@@ -107,7 +111,7 @@ jobs:
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
 
@@ -329,7 +333,7 @@ jobs:
 
       - name: Upload trigger evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-workers-build-trigger-${{ github.run_id }}
           path: artifacts/cloudflare-workers-build-trigger*.json
