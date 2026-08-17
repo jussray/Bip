@@ -22,6 +22,11 @@ function normalizeBranches(value) {
   return [...new Set(value.map(clean).filter(Boolean))];
 }
 
+function normalizePaths(value) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.map(clean).filter(Boolean))];
+}
+
 function sameStrings(left, right) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -198,6 +203,8 @@ export function buildTriggerPlan(
   const previousDeployCommand = clean(trigger?.deploy_command);
   const previousBranchIncludes = normalizeBranches(trigger?.branch_includes);
   const previousBranchExcludes = normalizeBranches(trigger?.branch_excludes);
+  const previousPathIncludes = normalizePaths(trigger?.path_includes);
+  const previousPathExcludes = normalizePaths(trigger?.path_excludes);
   const desiredBranchIncludes = ['main'];
   const desiredBranchExcludes = [];
   const desiredBuild = reconcileBuildCommand ? clean(desiredBuildCommand) : null;
@@ -220,6 +227,8 @@ export function buildTriggerPlan(
         triggerName: clean(previewTrigger?.trigger_name) || null,
         branchIncludes: normalizeBranches(previewTrigger?.branch_includes),
         branchExcludes: normalizeBranches(previewTrigger?.branch_excludes),
+        pathIncludes: normalizePaths(previewTrigger?.path_includes),
+        pathExcludes: normalizePaths(previewTrigger?.path_excludes),
       }
     : null;
 
@@ -228,6 +237,8 @@ export function buildTriggerPlan(
     triggerName: clean(trigger?.trigger_name) || null,
     branchIncludes: previousBranchIncludes,
     branchExcludes: previousBranchExcludes,
+    pathIncludes: previousPathIncludes,
+    pathExcludes: previousPathExcludes,
     desiredBranchIncludes,
     desiredBranchExcludes,
     previousBuildCommand: previousBuildCommand || null,
@@ -235,6 +246,7 @@ export function buildTriggerPlan(
     reconcileBuildCommand,
     desiredBuildCommand: desiredBuild,
     desiredDeployCommand: desiredDeploy,
+    watchPathsMode: 'observe-only',
     nonProductionTrigger,
     nonProductionBuildsEnabled: Boolean(nonProductionTrigger),
     changeRequired: Object.keys(patch).length > 0 || Boolean(nonProductionTrigger),
@@ -294,7 +306,7 @@ async function writeEvidence(evidencePath, evidence) {
 
 function initialEvidence(config, apply, now) {
   return {
-    schemaVersion: 7,
+    schemaVersion: 8,
     generatedAt: now().toISOString(),
     accountId: config.accountId || null,
     credential: {
@@ -310,6 +322,8 @@ function initialEvidence(config, apply, now) {
     before: {
       branchIncludes: null,
       branchExcludes: null,
+      pathIncludes: null,
+      pathExcludes: null,
       buildCommand: null,
       deployCommand: null,
     },
@@ -318,6 +332,7 @@ function initialEvidence(config, apply, now) {
       branchExcludes: [],
       buildCommand: config.reconcileBuildCommand ? config.desiredBuildCommand : null,
       deployCommand: config.desiredDeployCommand || null,
+      watchPathsMode: 'observe-only',
       nonProductionBuildsEnabled: false,
     },
     targetBuild: {
@@ -336,6 +351,8 @@ function initialEvidence(config, apply, now) {
       succeeded: null,
       branchIncludes: null,
       branchExcludes: null,
+      pathIncludes: null,
+      pathExcludes: null,
       buildCommand: null,
       deployCommand: null,
     },
@@ -361,6 +378,8 @@ async function verifyDesiredTrigger(config, workerTag, plan, fetchImpl) {
 
   const observedBranchIncludes = normalizeBranches(afterTrigger?.branch_includes);
   const observedBranchExcludes = normalizeBranches(afterTrigger?.branch_excludes);
+  const observedPathIncludes = normalizePaths(afterTrigger?.path_includes);
+  const observedPathExcludes = normalizePaths(afterTrigger?.path_excludes);
   const observedBuildCommand = clean(afterTrigger?.build_command);
   const observedDeployCommand = clean(afterTrigger?.deploy_command);
 
@@ -383,6 +402,8 @@ async function verifyDesiredTrigger(config, workerTag, plan, fetchImpl) {
   return {
     branchIncludes: observedBranchIncludes,
     branchExcludes: observedBranchExcludes,
+    pathIncludes: observedPathIncludes,
+    pathExcludes: observedPathExcludes,
     buildCommand: observedBuildCommand,
     deployCommand: observedDeployCommand,
     nonProductionBuildsEnabled: false,
@@ -456,11 +477,15 @@ export async function reconcileWorkersBuildTrigger({
       triggerName: plan.triggerName,
       branchIncludes: plan.branchIncludes,
       branchExcludes: plan.branchExcludes,
+      pathIncludes: plan.pathIncludes,
+      pathExcludes: plan.pathExcludes,
     };
     evidence.nonProductionTrigger = plan.nonProductionTrigger;
     evidence.before = {
       branchIncludes: plan.branchIncludes,
       branchExcludes: plan.branchExcludes,
+      pathIncludes: plan.pathIncludes,
+      pathExcludes: plan.pathExcludes,
       buildCommand: plan.previousBuildCommand,
       deployCommand: plan.previousDeployCommand,
     };
@@ -469,10 +494,13 @@ export async function reconcileWorkersBuildTrigger({
       branchExcludes: plan.desiredBranchExcludes,
       buildCommand: plan.reconcileBuildCommand ? plan.desiredBuildCommand : null,
       deployCommand: plan.desiredDeployCommand,
+      watchPathsMode: plan.watchPathsMode,
       nonProductionBuildsEnabled: false,
     };
     evidence.rollback.branchIncludes = plan.branchIncludes;
     evidence.rollback.branchExcludes = plan.branchExcludes;
+    evidence.rollback.pathIncludes = plan.pathIncludes;
+    evidence.rollback.pathExcludes = plan.pathExcludes;
     evidence.rollback.buildCommand = plan.previousBuildCommand;
     evidence.rollback.deployCommand = plan.previousDeployCommand;
     evidence.status = plan.nonProductionBuildsEnabled

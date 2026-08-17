@@ -10,6 +10,7 @@ on:
       - 'test/cloudflare-workers-token-fallback.test.mjs'
       - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
       - 'test/cloudflare-workers-build-trigger-workflow-contract.test.mjs'
+      - 'test/cloudflare-workers-build-watch-path-observation.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
   push:
     branches: [main]
@@ -20,6 +21,7 @@ on:
       - 'test/cloudflare-workers-token-fallback.test.mjs'
       - 'test/cloudflare-workers-release-identity-trigger.test.mjs'
       - 'test/cloudflare-workers-build-trigger-workflow-contract.test.mjs'
+      - 'test/cloudflare-workers-build-watch-path-observation.test.mjs'
       - '.github/workflows/cloudflare-workers-build-trigger.yml'
   workflow_dispatch:
     inputs:
@@ -81,6 +83,7 @@ jobs:
           test/cloudflare-workers-token-fallback.test.mjs
           test/cloudflare-workers-release-identity-trigger.test.mjs
           test/cloudflare-workers-build-trigger-workflow-contract.test.mjs
+          test/cloudflare-workers-build-watch-path-observation.test.mjs
 
   reconcile:
     name: Reconcile native Workers Builds trigger
