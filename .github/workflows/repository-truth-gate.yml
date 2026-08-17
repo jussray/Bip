@@ -27,10 +27,11 @@ jobs:
 
     steps:
       - name: Checkout exact head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
           fetch-depth: 2
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
@@ -60,7 +61,7 @@ jobs:
           printf 'base_sha=%s\n' "$BASE_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Use repository Node version
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
           cache: npm
@@ -68,11 +69,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Parse-check repository truth auditor
-        run: node --check scripts/audit-failure-truth.mjs
+      - name: Parse-check repository truth auditors
+        run: |
+          node --check scripts/audit-failure-truth.mjs
+          node --check scripts/verify-supabase-migration-lineage.mjs
 
       - name: Verify repository-truth gate contracts
-        run: node --test test/repository-truth-gates.test.mjs test/resumable-production-verification.test.mjs
+        run: node --test test/repository-truth-gates.test.mjs test/resumable-production-verification.test.mjs test/supabase-migration-lineage.test.mjs
 
       - name: Audit failure truth on current change
         id: failure_truth
@@ -91,6 +94,11 @@ jobs:
         continue-on-error: true
         run: node scripts/verify-implementation-ledger.mjs --changed-since=${{ steps.verification_base.outputs.base_sha }}
 
+      - name: Verify append-only Supabase migration lineage
+        id: migration_lineage
+        continue-on-error: true
+        run: node scripts/verify-supabase-migration-lineage.mjs --base=${{ steps.verification_base.outputs.base_sha }} --head=${{ env.EXPECTED_HEAD_SHA }} --report=artifacts/supabase-migration-lineage.json
+
       - name: Record aggregate truth conclusion
         if: always()
         shell: bash
@@ -98,20 +106,22 @@ jobs:
           FAILURE_TRUTH_OUTCOME: ${{ steps.failure_truth.outcome }}
           BRANCH_HYGIENE_OUTCOME: ${{ steps.branch_hygiene.outcome }}
           IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
+          MIGRATION_LINEAGE_OUTCOME: ${{ steps.migration_lineage.outcome }}
         run: |
           set -euo pipefail
-          printf '{\n  "schemaVersion": 1,\n  "eventName": "%s",\n  "exactHead": "%s",\n  "diffBase": "%s",\n  "failureTruth": "%s",\n  "branchHygiene": "%s",\n  "implementationLedger": "%s"\n}\n' \
+          printf '{\n  "schemaVersion": 2,\n  "eventName": "%s",\n  "exactHead": "%s",\n  "diffBase": "%s",\n  "failureTruth": "%s",\n  "branchHygiene": "%s",\n  "implementationLedger": "%s",\n  "supabaseMigrationLineage": "%s"\n}\n' \
             "$GITHUB_EVENT_NAME" \
             "$EXPECTED_HEAD_SHA" \
             "${{ steps.verification_base.outputs.base_sha }}" \
             "$FAILURE_TRUTH_OUTCOME" \
             "$BRANCH_HYGIENE_OUTCOME" \
             "$IMPLEMENTATION_LEDGER_OUTCOME" \
+            "$MIGRATION_LINEAGE_OUTCOME" \
             | tee artifacts/repository-truth-conclusion.json
 
       - name: Upload repository-truth evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: repository-truth-${{ env.EXPECTED_HEAD_SHA }}
           path: artifacts/
@@ -125,8 +135,10 @@ jobs:
           FAILURE_TRUTH_OUTCOME: ${{ steps.failure_truth.outcome }}
           BRANCH_HYGIENE_OUTCOME: ${{ steps.branch_hygiene.outcome }}
           IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
+          MIGRATION_LINEAGE_OUTCOME: ${{ steps.migration_lineage.outcome }}
         run: |
           set -euo pipefail
           test "$FAILURE_TRUTH_OUTCOME" = success
           test "$BRANCH_HYGIENE_OUTCOME" = success
           test "$IMPLEMENTATION_LEDGER_OUTCOME" = success
+          test "$MIGRATION_LINEAGE_OUTCOME" = success
