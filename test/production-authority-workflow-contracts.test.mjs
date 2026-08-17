@@ -118,3 +118,23 @@ test('routine Supabase production workflow is exact-main, dry-run-first, and sup
   assert.match(content, /supabase db push --linked --dry-run/);
   assert.match(content, /supabase db push --linked 2>&1/);
 });
+
+test('production Edge Function deployment is exact-current-main and immutable before mutation', () => {
+  const content = workflow('deploy-supabase-function.yml');
+
+  assert.match(content, /environment:\s*production/);
+  assert.match(content, /EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(content, new RegExp(`actions/checkout@${CHECKOUT_SHA}`));
+  assert.match(content, /persist-credentials: false/);
+  assert.match(content, new RegExp(`supabase/setup-cli@${SUPABASE_SETUP_SHA}`));
+  assert.match(content, /version: 2\.113\.0/);
+  assert.doesNotMatch(content, /supabase\/setup-cli@v\d+/);
+
+  const exactTarget = content.indexOf('- name: Verify exact target is current main');
+  const preMutation = content.indexOf('- name: Re-verify current main immediately before mutation');
+  const deploy = content.indexOf('- name: Deploy selected function');
+  assert.ok(exactTarget >= 0);
+  assert.ok(preMutation > exactTarget);
+  assert.ok(deploy > preMutation);
+  assert.match(content, /test "\$EXPECTED_HEAD_SHA" = "\$current_main"/);
+});
