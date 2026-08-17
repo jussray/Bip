@@ -16,12 +16,15 @@ on:
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/write-worker-release-identity.mjs'
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
+      - 'scripts/cloudflare-access-service-auth.mjs'
       - 'scripts/probe-production-release-endpoints.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
       - 'scripts/playwright-executable.mjs'
+      - 'test/cloudflare-access-production-verification.test.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
+      - 'test/production-release-endpoint-probe.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
       - 'test/production-worker-release-witness.test.mjs'
@@ -62,6 +65,8 @@ jobs:
     timeout-minutes: 40
     env:
       GITHUB_TOKEN: ${{ github.token }}
+      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
+      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
       CLOUDFLARE_CHECK_TIMEOUT_MS: '1800000'
       CLOUDFLARE_CHECK_POLL_MS: '10000'
       CLOUDFLARE_EVIDENCE_PATH: artifacts/cloudflare-native-deploy.json
@@ -180,8 +185,20 @@ jobs:
 
       - name: Verify backend health
         id: backend_health
+        shell: bash
         run: |
-          curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$BACKEND_HEALTH_URL"
+          set -euo pipefail
+          access_headers=()
+          if [[ -n "${CLOUDFLARE_ACCESS_CLIENT_ID:-}" || -n "${CLOUDFLARE_ACCESS_CLIENT_SECRET:-}" ]]; then
+            test -n "${CLOUDFLARE_ACCESS_CLIENT_ID:-}"
+            test -n "${CLOUDFLARE_ACCESS_CLIENT_SECRET:-}"
+            access_headers+=(
+              -H "CF-Access-Client-Id: $CLOUDFLARE_ACCESS_CLIENT_ID"
+              -H "CF-Access-Client-Secret: $CLOUDFLARE_ACCESS_CLIENT_SECRET"
+            )
+          fi
+          curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors \
+            "${access_headers[@]}" "$BACKEND_HEALTH_URL"
 
       - name: Verify Supabase runtime contracts
         id: supabase_health
