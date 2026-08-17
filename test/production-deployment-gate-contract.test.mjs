@@ -29,7 +29,7 @@ test('production release proof targets the application frontend and preserves ba
   assert.match(productionConfig, /https:\/\/app\.sekretbip\.net/);
 });
 
-test('production release transport evidence is retained without response bodies', () => {
+test('production release transport evidence retains classification without persisting response bodies', () => {
   assert.match(workflow, /node scripts\/probe-production-release-endpoints\.mjs/);
   assert.match(workflow, /artifacts\/production-release-endpoint-probe\.json/);
   assert.match(releaseProbe, /status: response\.status/);
@@ -39,11 +39,12 @@ test('production release transport evidence is retained without response bodies'
   assert.match(releaseProbe, /jsonState/);
   assert.match(releaseProbe, /releaseSha/);
   assert.match(releaseProbe, /CLOUDFLARE_ACCESS_INTERCEPTED/);
-  assert.doesNotMatch(releaseProbe, /responseBody|bodyText|response\.text\(/);
+  assert.match(releaseProbe, /accessBlockPage = hasCloudflareAccessBlockMarker\(responseBody\)/);
+  assert.doesNotMatch(releaseProbe, /responseBody\s*:/);
   assert.doesNotMatch(releaseProbe, /set-cookie|authorization/i);
 });
 
-test('release transport probe classifies non-OK responses without reading their bodies', async () => {
+test('release transport probe classifies non-OK responses without retaining their bodies', async () => {
   let jsonCalled = false;
   const evidence = await probeJsonEndpoint('https://api.sekretbip.net/health', {
     fetchImpl: async () => ({
@@ -65,6 +66,7 @@ test('release transport probe classifies non-OK responses without reading their 
   assert.equal(evidence.jsonState, 'skipped-non-ok');
   assert.equal(evidence.releaseSha, null);
   assert.equal(evidence.classification, 'http-error');
+  assert.equal('responseBody' in evidence, false);
 });
 
 test('release transport probe retains only public identity fields from JSON', async () => {
@@ -91,7 +93,7 @@ test('release transport probe retains only public identity fields from JSON', as
   assert.equal('privateValue' in evidence, false);
 });
 
-test('Cloudflare Access redirects are classified as release blockers', async () => {
+test('Cloudflare Access redirects are classified as release blockers with tenant identity redacted', async () => {
   const evidence = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
     fetchImpl: async () => ({
       ok: true,
@@ -107,7 +109,8 @@ test('Cloudflare Access redirects are classified as release blockers', async () 
 
   assert.equal(evidence.classification, 'cloudflare-access-intercepted');
   assert.equal(classifyEndpointProbe(evidence), 'cloudflare-access-intercepted');
-  assert.equal(evidence.finalUrl, 'https://mcgill-raylene.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
+  assert.equal(evidence.finalUrl, 'https://cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
+  assert.doesNotMatch(evidence.finalUrl, /mcgill-raylene/);
 });
 
 test('production evidence identifies every surface intercepted by Cloudflare Access', async () => {
