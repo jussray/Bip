@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {resolveCloudflareAccessServiceAuth} from './cloudflare-access-service-auth.mjs';
 
 export const REQUIRED_CLOUDFLARE_CHECKS = Object.freeze([
   'Workers Builds: sekret-backend',
@@ -135,25 +136,26 @@ async function fetchCheckRuns({repository, sha, token}) {
   return Array.isArray(payload.check_runs) ? payload.check_runs : [];
 }
 
-async function fetchJsonWithNoCache(rawUrl) {
+async function fetchJsonWithNoCache(rawUrl, accessAuth) {
   const url = new URL(rawUrl);
   url.searchParams.set('verify', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const response = await fetch(url, {
     headers: {
       Accept: 'application/json',
       'Cache-Control': 'no-cache, no-store, max-age=0',
+      ...accessAuth.headers,
     },
   });
   if (!response.ok) return null;
   return response.json().catch(() => null);
 }
 
-async function fetchReleaseMarker(releaseUrl) {
-  return fetchJsonWithNoCache(releaseUrl);
+async function fetchReleaseMarker(releaseUrl, accessAuth) {
+  return fetchJsonWithNoCache(releaseUrl, accessAuth);
 }
 
-async function fetchWorkerHealth(backendHealthUrl) {
-  return fetchJsonWithNoCache(backendHealthUrl);
+async function fetchWorkerHealth(backendHealthUrl, accessAuth) {
+  return fetchJsonWithNoCache(backendHealthUrl, accessAuth);
 }
 
 function publicCheckEvidence(run) {
@@ -259,6 +261,7 @@ async function verifyCloudflareNativeDeploy() {
   const timeoutMs = Number(process.env.CLOUDFLARE_CHECK_TIMEOUT_MS ?? 25 * 60 * 1000);
   const pollMs = Number(process.env.CLOUDFLARE_CHECK_POLL_MS ?? 10_000);
   const evidencePath = process.env.CLOUDFLARE_EVIDENCE_PATH ?? 'artifacts/cloudflare-native-deploy.json';
+  const accessAuth = resolveCloudflareAccessServiceAuth();
 
   if (!repository || !sha || !token) {
     throw new Error('GITHUB_REPOSITORY, GITHUB_SHA, and GITHUB_TOKEN are required.');
@@ -310,8 +313,8 @@ async function verifyCloudflareNativeDeploy() {
 
     checkEvaluation = evaluateCloudflareChecks(allCheckRuns);
     const [marker, workerHealth] = await Promise.all([
-      fetchReleaseMarker(releaseUrl).catch(() => null),
-      fetchWorkerHealth(backendHealthUrl).catch(() => null),
+      fetchReleaseMarker(releaseUrl, accessAuth).catch(() => null),
+      fetchWorkerHealth(backendHealthUrl, accessAuth).catch(() => null),
     ]);
     releaseEvaluation = evaluateReleaseMarker(marker, sha);
     workerEvaluation = evaluateWorkerRuntime(workerHealth, sha);

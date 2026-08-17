@@ -1,12 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {resolveCloudflareAccessServiceAuth} from './cloudflare-access-service-auth.mjs';
 
 const DEFAULT_FRONTEND_RELEASE_URL = 'https://app.sekretbip.net/.well-known/sekret-release.json';
 const DEFAULT_BACKEND_HEALTH_URL = 'https://api.sekretbip.net/health';
 const DEFAULT_EVIDENCE_PATH = 'artifacts/production-release-endpoint-probe.json';
 const DEFAULT_CLOUDFLARE_EVIDENCE_PATH = 'artifacts/cloudflare-native-deploy.json';
-const CLOUDFLARE_ACCESS_BLOCK_MARKERS = ['cloudflare access', 'that account does not have access'];
 
 function safeString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -38,17 +38,8 @@ export function sanitizeObservedUrl(rawUrl) {
   }
 }
 
-function hasCloudflareAccessBlockMarker(rawBody) {
-  if (typeof rawBody !== 'string') return false;
-  const normalized = rawBody.toLowerCase();
-  return CLOUDFLARE_ACCESS_BLOCK_MARKERS.some((marker) => normalized.includes(marker));
-}
-
 export function classifyEndpointProbe(evidence) {
   if (evidence?.redirected && isCloudflareAccessUrl(evidence?.finalUrl)) {
-    return 'cloudflare-access-intercepted';
-  }
-  if ((evidence?.status === 401 || evidence?.status === 403) && evidence?.accessBlockPage === true) {
     return 'cloudflare-access-intercepted';
   }
   if (evidence?.jsonState === 'fetch-error') return 'fetch-error';
@@ -57,15 +48,17 @@ export function classifyEndpointProbe(evidence) {
   return 'ok';
 }
 
-export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
+export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch, accessAuth} = {}) {
   const requestedUrl = new URL(rawUrl);
   requestedUrl.searchParams.set('probe', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const resolvedAccessAuth = accessAuth ?? resolveCloudflareAccessServiceAuth();
 
   try {
     const response = await fetchImpl(requestedUrl, {
       headers: {
         Accept: 'application/json',
         'Cache-Control': 'no-cache, no-store, max-age=0',
+        ...resolvedAccessAuth.headers,
       },
       redirect: 'follow',
     });
@@ -73,7 +66,6 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
     const contentType = safeString(response.headers.get('content-type'));
     let json = null;
     let jsonState = response.ok ? 'invalid' : 'skipped-non-ok';
-    let accessBlockPage = false;
 
     if (response.ok) {
       try {
@@ -81,13 +73,6 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
         jsonState = 'ok';
       } catch {
         jsonState = 'invalid';
-      }
-    } else if (response.status === 401 || response.status === 403) {
-      try {
-        const responseBody = await response.text();
-        accessBlockPage = hasCloudflareAccessBlockMarker(responseBody);
-      } catch {
-        accessBlockPage = false;
       }
     }
 
@@ -98,7 +83,6 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       ok: response.ok,
       redirected: response.redirected,
       jsonState,
-      accessBlockPage,
     };
     const evidence = {
       requestedUrl: rawUrl,
@@ -108,7 +92,8 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       redirected: response.redirected,
       contentType,
       jsonState,
-      accessBlockPage,
+      accessBlockPage: false,
+      accessServiceAuthConfigured: resolvedAccessAuth.configured,
       commitSha: safeString(json?.commitSha),
       releaseSha: safeString(json?.releaseSha),
       healthOk: json?.ok === true,
@@ -128,6 +113,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       contentType: null,
       jsonState: 'fetch-error',
       accessBlockPage: false,
+      accessServiceAuthConfigured: resolvedAccessAuth.configured,
       commitSha: null,
       releaseSha: null,
       healthOk: false,
@@ -142,10 +128,11 @@ export async function collectProductionReleaseEndpointEvidence({
   backendHealthUrl = process.env.BACKEND_HEALTH_URL ?? DEFAULT_BACKEND_HEALTH_URL,
   expectedSha = process.env.EXPECTED_RELEASE_SHA ?? process.env.GITHUB_SHA ?? null,
   fetchImpl = fetch,
+  accessAuth = resolveCloudflareAccessServiceAuth(),
 } = {}) {
   const [frontend, backend] = await Promise.all([
-    probeJsonEndpoint(frontendReleaseUrl, {fetchImpl}),
-    probeJsonEndpoint(backendHealthUrl, {fetchImpl}),
+    probeJsonEndpoint(frontendReleaseUrl, {fetchImpl, accessAuth}),
+    probeJsonEndpoint(backendHealthUrl, {fetchImpl, accessAuth}),
   ]);
 
   const blockedByAccess = [
@@ -154,10 +141,11 @@ export async function collectProductionReleaseEndpointEvidence({
   ].filter(Boolean);
 
   return {
-    version: 2,
+    version: 3,
     observedAt: new Date().toISOString(),
     expectedSha: safeString(expectedSha)?.toLowerCase() ?? null,
     status: blockedByAccess.length > 0 ? 'cloudflare-access-intercepted' : 'observed',
+    accessServiceAuthConfigured: accessAuth.configured,
     blockedByAccess,
     frontend,
     backend,
@@ -182,6 +170,7 @@ export function buildCloudflareAccessBlockerEvidence(evidence) {
     observerError: null,
     transportBlocker: {
       status: 'cloudflare-access-intercepted',
+      accessServiceAuthConfigured: evidence?.accessServiceAuthConfigured === true,
       blockedSurfaces: Array.isArray(evidence?.blockedByAccess) ? [...evidence.blockedByAccess] : [],
       frontendClassification: safeString(evidence?.frontend?.classification),
       backendClassification: safeString(evidence?.backend?.classification),

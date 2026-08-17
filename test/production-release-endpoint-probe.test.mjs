@@ -23,7 +23,6 @@ function mockResponse({
   redirected = false,
   headers = {'content-type': 'application/json'},
   json = {commitSha: 'a'.repeat(40)},
-  body = '',
 } = {}) {
   return {
     status,
@@ -34,9 +33,6 @@ function mockResponse({
     async json() {
       if (json instanceof Error) throw json;
       return json;
-    },
-    async text() {
-      return body;
     },
   };
 }
@@ -77,40 +73,29 @@ test('redacts Cloudflare Access redirect authority and query metadata before evi
   assert.doesNotMatch(retained, /private-team|secret-kid|signed-payload|opaque|[?&#]/);
 });
 
-test('classifies a Cloudflare Access default forbidden page without treating every 403 as Access', async () => {
-  const accessProbe = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
+test('treats an opaque forbidden response as an HTTP error without reading its body', async () => {
+  const forbidden = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
     fetchImpl: async () =>
       mockResponse({
         status: 403,
         headers: {'content-type': 'text/html'},
-        body: '<html><title>Cloudflare Access</title><body>That account does not have access</body></html>',
       }),
   });
 
-  assert.equal(accessProbe.accessBlockPage, true);
-  assert.equal(accessProbe.classification, 'cloudflare-access-intercepted');
-
-  const genericForbidden = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
-    fetchImpl: async () =>
-      mockResponse({
-        status: 403,
-        headers: {'content-type': 'text/html'},
-        body: '<html><body>Forbidden</body></html>',
-      }),
-  });
-
-  assert.equal(genericForbidden.accessBlockPage, false);
-  assert.equal(genericForbidden.classification, 'http-error');
+  assert.equal(forbidden.accessBlockPage, false);
+  assert.equal(forbidden.classification, 'http-error');
 });
 
-test('collects Access blocking only for positively identified surfaces', async () => {
+test('collects Access blocking only for positively identified redirect surfaces', async () => {
   const fetchImpl = async (url) => {
     const target = new URL(String(url));
     if (target.hostname === 'app.sekretbip.net') {
       return mockResponse({
-        status: 403,
+        status: 200,
+        url: 'https://private-team.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net',
+        redirected: true,
         headers: {'content-type': 'text/html'},
-        body: '<html><body>Cloudflare Access — That account does not have access</body></html>',
+        json: new SyntaxError('not JSON'),
       });
     }
     return mockResponse({
@@ -125,6 +110,7 @@ test('collects Access blocking only for positively identified surfaces', async (
     fetchImpl,
   });
 
+  assert.equal(evidence.version, 3);
   assert.equal(evidence.status, 'cloudflare-access-intercepted');
   assert.deepEqual(evidence.blockedByAccess, ['frontend']);
   assert.equal(evidence.frontend.classification, 'cloudflare-access-intercepted');

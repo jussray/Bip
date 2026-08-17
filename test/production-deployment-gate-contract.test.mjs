@@ -91,7 +91,7 @@ test('release transport probe retains only public identity fields from JSON', as
   assert.equal('privateValue' in evidence, false);
 });
 
-test('Cloudflare Access redirects are classified as release blockers', async () => {
+test('Cloudflare Access redirects are classified as release blockers with redacted authority', async () => {
   const evidence = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
     fetchImpl: async () => ({
       ok: true,
@@ -107,7 +107,7 @@ test('Cloudflare Access redirects are classified as release blockers', async () 
 
   assert.equal(evidence.classification, 'cloudflare-access-intercepted');
   assert.equal(classifyEndpointProbe(evidence), 'cloudflare-access-intercepted');
-  assert.equal(evidence.finalUrl, 'https://mcgill-raylene.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
+  assert.equal(evidence.finalUrl, 'https://cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
 });
 
 test('production evidence identifies every surface intercepted by Cloudflare Access', async () => {
@@ -127,7 +127,7 @@ test('production evidence identifies every surface intercepted by Cloudflare Acc
     fetchImpl,
   });
 
-  assert.equal(evidence.version, 2);
+  assert.equal(evidence.version, 3);
   assert.equal(evidence.status, 'cloudflare-access-intercepted');
   assert.deepEqual(evidence.blockedByAccess, ['frontend', 'backend']);
 });
