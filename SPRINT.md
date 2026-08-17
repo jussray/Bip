@@ -18,3 +18,14 @@ Each active mission should carry:
 - one next founder gate.
 
 A sprint handoff is not a release oracle. If `main` or provider state changes, re-pin before continuing.
+
+## Durable database assurance contract
+
+**SECURITY DEFINER trigger assurance** remains a separate evidence gate even when this sprint file is historical. Any active launch mission touching that assurance must retain all of the following as independent evidence classes:
+
+- structural migration-history coverage;
+- read-only live catalog parity;
+- an external-effect-safe behavioral harness; and
+- explicit cleanup evidence with zero retained synthetic rows.
+
+Do not mark trigger assurance verified from repository structure or catalog observation alone. Behavioral proof must run against the intended target with external effects contained and cleanup evidence retained.

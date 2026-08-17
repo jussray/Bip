@@ -86,6 +86,8 @@ jobs:
         run: node --check scripts/audit-documentation-truth.mjs
 
       - name: Run documentation authority contracts
+        id: documentation_contracts
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
@@ -97,6 +99,9 @@ jobs:
             2>&1 | tee documentation-evidence/documentation-contracts.log
 
       - name: Audit documentation truth expiry
+        id: truth_expiry
+        if: always()
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
@@ -105,11 +110,30 @@ jobs:
             2>&1 | tee documentation-evidence/documentation-truth-audit.log
 
       - name: Verify implementation ledger claims
+        id: implementation_ledger
+        if: always()
+        continue-on-error: true
         shell: bash
         run: |
           set -o pipefail
           npm run verify:implementation-ledger \
             2>&1 | tee documentation-evidence/implementation-ledger.log
+
+      - name: Record aggregate documentation truth conclusion
+        if: always()
+        shell: bash
+        env:
+          DOCUMENTATION_CONTRACTS_OUTCOME: ${{ steps.documentation_contracts.outcome }}
+          TRUTH_EXPIRY_OUTCOME: ${{ steps.truth_expiry.outcome }}
+          IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
+        run: |
+          set -euo pipefail
+          printf '{\n  "schemaVersion": 1,\n  "exactHead": "%s",\n  "documentationContracts": "%s",\n  "truthExpiry": "%s",\n  "implementationLedger": "%s"\n}\n' \
+            "$EXPECTED_HEAD_SHA" \
+            "$DOCUMENTATION_CONTRACTS_OUTCOME" \
+            "$TRUTH_EXPIRY_OUTCOME" \
+            "$IMPLEMENTATION_LEDGER_OUTCOME" \
+            | tee documentation-evidence/conclusion.json
 
       - name: Upload exact-head evidence
         if: always()
@@ -119,3 +143,16 @@ jobs:
           path: documentation-evidence/
           if-no-files-found: error
           retention-days: 30
+
+      - name: Enforce documentation truth conclusion
+        if: always()
+        shell: bash
+        env:
+          DOCUMENTATION_CONTRACTS_OUTCOME: ${{ steps.documentation_contracts.outcome }}
+          TRUTH_EXPIRY_OUTCOME: ${{ steps.truth_expiry.outcome }}
+          IMPLEMENTATION_LEDGER_OUTCOME: ${{ steps.implementation_ledger.outcome }}
+        run: |
+          set -euo pipefail
+          test "$DOCUMENTATION_CONTRACTS_OUTCOME" = success
+          test "$TRUTH_EXPIRY_OUTCOME" = success
+          test "$IMPLEMENTATION_LEDGER_OUTCOME" = success
