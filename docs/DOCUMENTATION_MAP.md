@@ -39,6 +39,7 @@ These prove only the scope they actually executed against.
 
 - `docs/TRUTH_AUTHORITY.md`
 - `docs/CURRENT_STATUS.md`
+- `docs/ISSUE_AUTHORITY.md`
 - `docs/LAUNCH_ROADMAP.md`
 - `DEPLOYMENT.md`
 - `README.md`
@@ -58,14 +59,14 @@ Dated status files, old sprint handoffs, old wiring/status inventories, prior PR
 | What is live right now? | Level 0 owning system + newest marked receipt for that exact target |
 | How do claims expire or get superseded? | `docs/TRUTH_AUTHORITY.md` |
 | What does “current status” mean here? | `docs/CURRENT_STATUS.md` |
+| Which issue owns a durable outcome? | `docs/ISSUE_AUTHORITY.md`, then GitHub live state |
 | What is the durable launch sequence? | `docs/LAUNCH_ROADMAP.md` |
 | What is the deployment contract? | `DEPLOYMENT.md` |
 | What feature state is machine tracked? | `implementation-ledger.json` + validated extensions |
-| What does the product promise? | `README.md` and architecture/privacy contracts |
 
 ## Historical documents
 
-`SPRINT.md`, `docs/WIRING_STATUS.md`, and `docs/ISSUE_AUTHORITY.md` are retained as historical entrypoints so old links do not break. Their top banners explicitly direct operators to fresh authority. Their detailed prior contents remain preserved in Git history.
+`SPRINT.md` and `docs/WIRING_STATUS.md` are retained as historical entrypoints so old links do not break. Their top banners explicitly direct operators to fresh authority. Their detailed prior contents remain preserved in Git history.
 
 Dated launch/status snapshots are historical by filename and observation window. They are not “current overlays” merely because another document still links to them.
 
@@ -99,7 +100,7 @@ When a change affects product scope, architecture, release state, wiring, valida
 2. update machine-tracked state when feature state changed;
 3. update durable docs only for changed invariants/procedures/ownership;
 4. put volatile outcomes into retained receipts or live systems, not durable prose;
-5. run `npm run audit:documentation-truth`;
+5. run `node scripts/audit-documentation-truth.mjs`;
 6. keep repository, provider, database, browser, account, and device evidence separate;
 7. merge only after the documentation describes the tested contract rather than a hoped-for future.
 

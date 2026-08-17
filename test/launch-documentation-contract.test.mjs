@@ -10,6 +10,7 @@ const DURABLE = [
   'docs/DOCUMENTATION_MAP.md',
   'docs/TRUTH_AUTHORITY.md',
   'docs/LAUNCH_ROADMAP.md',
+  'docs/ISSUE_AUTHORITY.md',
   'DEPLOYMENT.md',
   '.control-room/README_SYNC_POLICY.md',
 ];
@@ -17,7 +18,6 @@ const DURABLE = [
 const HISTORICAL = [
   'SPRINT.md',
   'docs/WIRING_STATUS.md',
-  'docs/ISSUE_AUTHORITY.md',
 ];
 
 test('durable founder and agent entry points declare a live truth boundary', async () => {
@@ -58,7 +58,19 @@ test('documentation map separates live systems, machine truth, durable contracts
   assert.match(map, /newer authoritative contradiction supersedes/i);
   assert.match(map, /Do not leave an old sprint, status, or provider incident looking current/);
   assert.match(map, /documentation-truth/i);
+  assert.match(map, /docs\/ISSUE_AUTHORITY\.md/);
   assert.doesNotMatch(map, /current launch-status overlay/i);
+});
+
+test('issue authority preserves stable outcome ownership without copying live issue state', async () => {
+  const issueAuthority = await read('docs/ISSUE_AUTHORITY.md');
+  assert.match(issueAuthority, /Trust-01/);
+  assert.match(issueAuthority, /#412/);
+  assert.match(issueAuthority, /#420/);
+  assert.match(issueAuthority, /Exact production release packet/);
+  assert.match(issueAuthority, /Cloudflare Worker branch\/build production-authority gate/);
+  assert.match(issueAuthority, /read GitHub live/);
+  assert.doesNotMatch(issueAuthority, /Current `main`/);
 });
 
 test('launch roadmap is phased but does not embed a dated current checkpoint', async () => {

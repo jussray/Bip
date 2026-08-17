@@ -8,10 +8,10 @@ const CONTRACTS = [
   { path: 'docs/DOCUMENTATION_MAP.md', mode: 'durable' },
   { path: 'docs/TRUTH_AUTHORITY.md', mode: 'durable' },
   { path: 'docs/LAUNCH_ROADMAP.md', mode: 'durable' },
+  { path: 'docs/ISSUE_AUTHORITY.md', mode: 'durable' },
   { path: 'DEPLOYMENT.md', mode: 'durable' },
   { path: '.control-room/README_SYNC_POLICY.md', mode: 'durable' },
   { path: 'docs/WIRING_STATUS.md', mode: 'historical' },
-  { path: 'docs/ISSUE_AUTHORITY.md', mode: 'historical' },
   { path: 'SPRINT.md', mode: 'historical' },
 ];
 
