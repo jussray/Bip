@@ -1,70 +1,109 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {
+  applyFindingWaivers,
+  summarizeSarifDocuments,
+} from '../scripts/codeql-pr-alert-proof.mjs';
 
-const proof = fs.readFileSync(new URL('../scripts/codeql-pr-alert-proof.mjs', import.meta.url), 'utf8');
 const workflow = fs.readFileSync(new URL('../.github/workflows/codeql-pr-alert-proof.yml', import.meta.url), 'utf8');
+const CODEQL_SHA = 'ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd';
 
-test('CodeQL aggregate gate accepts success only', () => {
-  assert.match(
-    proof,
-    /codeqlCheck\.conclusion !== 'success'/,
-    'cancelled, timed_out, action_required, stale, skipped, neutral, and failure conclusions must all fail closed',
-  );
-  assert.doesNotMatch(
-    proof,
-    /codeqlCheck\.conclusion === 'failure' \|\| currentHeadAlerts\.length > 0/,
-    'the gate must not reject only explicit failure',
-  );
+function sarif(results = []) {
+  return {
+    version: '2.1.0',
+    runs: [{
+      tool: { driver: { rules: [] } },
+      results,
+    }],
+  };
+}
+
+test('local CodeQL workflow analyzes every current default-setup language on the deterministic runner', () => {
+  assert.match(workflow, /name: Local CodeQL \(\$\{\{ matrix\.language \}\}\)/);
+  assert.match(workflow, /runs-on:\s*ubuntu-22\.04/);
+  assert.match(workflow, /- actions\s*\n\s*- javascript-typescript\s*\n\s*- python/);
+  assert.match(workflow, /queries:\s*security-extended/);
 });
 
-test('CodeQL proof distinguishes unsettled analysis from settled failure', () => {
-  assert.match(proof, /CODEQL_SETTLE_TIMEOUT_MS/);
-  assert.match(proof, /proof_state=unsettled/);
-  assert.match(proof, /JavaScript CodeQL analysis failed/);
-  assert.match(proof, /CodeQL aggregate failed/);
-  assert.match(proof, /currentHeadAlerts\.length > 0/);
+test('local CodeQL action is immutable and never uploads competing Code Scanning results', () => {
+  assert.match(workflow, new RegExp(`github/codeql-action/init@${CODEQL_SHA}`));
+  assert.match(workflow, new RegExp(`github/codeql-action/analyze@${CODEQL_SHA}`));
+  assert.match(workflow, /upload:\s*never/);
+  assert.match(workflow, /upload-database:\s*false/);
+  assert.doesNotMatch(workflow, /github\/codeql-action\/(?:init|analyze)@v\d+/);
+  assert.doesNotMatch(workflow, /security-events:\s*write/);
 });
 
-test('only a concrete executed JavaScript failure wins over aggregate settling', () => {
-  assert.match(
-    proof,
-    /function isExecutedJavascriptFailure\(check\) \{\s*return check\?\.status === 'completed' && check\.conclusion === 'failure';\s*\}/,
-    'early failure must be limited to the concrete failure conclusion',
-  );
-  assert.match(
-    proof,
-    /if \(isExecutedJavascriptFailure\(javascriptAnalysisCheck\)\) break;/,
-    'polling may stop early only for a concrete executed JavaScript failure',
-  );
-  assert.doesNotMatch(
-    proof,
-    /javascriptAnalysisCheck\.conclusion !== 'success'\) break/,
-    'startup_failure, cancelled, skipped, neutral, and other non-success infrastructure states must not be promoted to an executed analysis failure',
-  );
+test('local CodeQL SARIF summary preserves findings for fail-closed classification', () => {
+  const clean = summarizeSarifDocuments([sarif([])]);
+  assert.equal(clean.runCount, 1);
+  assert.equal(clean.findingCount, 0);
 
-  const failureBranch = proof.indexOf('if (javascriptExecutedFailure) {');
-  const unsettledBranch = proof.indexOf('if (!javascriptTerminal || !javascriptPassed || !aggregateSettled) {');
-  assert.notEqual(failureBranch, -1);
-  assert.notEqual(unsettledBranch, -1);
-  assert.ok(
-    failureBranch < unsettledBranch,
-    'a concrete executed JavaScript failure must be classified before aggregate settling ambiguity',
-  );
+  const finding = summarizeSarifDocuments([sarif([{
+    ruleId: 'js/example',
+    level: 'error',
+    message: {text: 'example security result'},
+    locations: [{
+      physicalLocation: {
+        artifactLocation: {uri: 'src/example.ts'},
+        region: {startLine: 4, endLine: 4},
+      },
+    }],
+  }])]);
+  assert.equal(finding.findingCount, 1);
+  assert.equal(finding.findings[0].ruleId, 'js/example');
+  assert.equal(finding.findings[0].path, 'src/example.ts');
 });
 
-test('non-executed terminal JavaScript conclusions remain unsettled', () => {
-  assert.match(
-    proof,
-    /if \(!javascriptTerminal \|\| !javascriptPassed \|\| !aggregateSettled\) \{/,
-    'terminal non-success states that are not concrete failures must remain unsettled instead of being diagnosed as code failure',
-  );
-  for (const conclusion of ['startup_failure', 'cancelled', 'skipped', 'neutral']) {
-    assert.notEqual(conclusion, 'failure');
-  }
+test('waivers are exact, bounded, expiring, and stale waivers fail closed', () => {
+  const findings = [
+    {ruleId: 'js/example', path: 'test/example.test.mjs', message: 'known static assertion'},
+    {ruleId: 'js/example', path: 'test/example.test.mjs', message: 'new second assertion'},
+  ];
+  const waiverDocument = {
+    schemaVersion: 1,
+    waivers: [{
+      id: 'test-static-assertion',
+      language: 'javascript-typescript',
+      ruleId: 'js/example',
+      path: 'test/example.test.mjs',
+      messageIncludes: 'assertion',
+      maxMatches: 1,
+      expiresAt: '2026-10-01T00:00:00Z',
+      rationale: 'Static repository-owned test assertion with no runtime trust boundary.',
+    }],
+  };
+
+  const classified = applyFindingWaivers(findings, waiverDocument, {
+    language: 'javascript-typescript',
+    now: new Date('2026-08-17T00:00:00Z'),
+  });
+  assert.equal(classified.waivedFindings.length, 1);
+  assert.equal(classified.blockingFindings.length, 1);
+  assert.equal(classified.waiverErrors.length, 1, 'match growth beyond maxMatches must fail closed');
+
+  const stale = applyFindingWaivers([], waiverDocument, {
+    language: 'javascript-typescript',
+    now: new Date('2026-08-17T00:00:00Z'),
+  });
+  assert.equal(stale.waiverErrors.length, 1, 'a waiver that no longer matches must be removed');
+
+  const expired = applyFindingWaivers([findings[0]], waiverDocument, {
+    language: 'javascript-typescript',
+    now: new Date('2026-10-02T00:00:00Z'),
+  });
+  assert.equal(expired.blockingFindings.length, 1);
+  assert.match(expired.waiverErrors[0], /expired/);
 });
 
-test('workflow gives the proof more runtime than its settle window', () => {
-  assert.match(workflow, /CODEQL_SETTLE_TIMEOUT_MS: '1080000'/);
-  assert.match(workflow, /timeout-minutes: 25/);
+test('local CodeQL proof preserves exact-head, waiver, and evidence boundaries', () => {
+  assert.match(workflow, /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/);
+  assert.match(workflow, /persist-credentials:\s*false/);
+  assert.match(workflow, /CODEQL_WAIVER_PATH:\s*security\/codeql-local-waivers\.json/);
+  assert.match(workflow, /CODEQL_SARIF_DIR:/);
+  assert.match(workflow, /EVIDENCE_DIR:/);
+  assert.match(workflow, /node --test test\/codeql-pr-alert-proof\.test\.mjs/);
+  assert.match(workflow, /node scripts\/codeql-pr-alert-proof\.mjs/);
+  assert.match(workflow, /retention-days:\s*30/);
 });

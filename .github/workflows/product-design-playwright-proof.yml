@@ -70,12 +70,16 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: product-design-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   product-design-proof:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - name: Check out exact event head

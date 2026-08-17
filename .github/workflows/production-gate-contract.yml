@@ -18,6 +18,7 @@ on:
       - 'scripts/verify-supabase-production-schema.mjs'
       - 'scripts/publish-production-release-observation.mjs'
       - 'test/cloudflare-pages-build-environment.test.mjs'
+      - 'test/production-authority-workflow-contracts.test.mjs'
       - 'test/production-deployment-gate-contract.test.mjs'
       - 'test/production-release-observation.test.mjs'
       - 'test/supabase-production-schema-witness.test.mjs'
@@ -30,6 +31,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: production-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPO_NO_TELEMETRY: '1'
@@ -38,13 +43,14 @@ env:
 jobs:
   validate-production-gate:
     name: Validate production proof contract
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
       - name: Check out exact pull-request head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
@@ -55,7 +61,7 @@ jobs:
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
           cache: npm
@@ -69,6 +75,7 @@ jobs:
       - name: Verify production and release-marker contracts
         run: >-
           node --test
+          test/production-authority-workflow-contracts.test.mjs
           test/production-deployment-gate-contract.test.mjs
           test/production-release-observation.test.mjs
           test/supabase-production-schema-witness.test.mjs
@@ -137,7 +144,7 @@ jobs:
 
       - name: Upload exact release-marker build evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: production-release-bootstrap-${{ env.EXPECTED_HEAD_SHA }}
           path: |
