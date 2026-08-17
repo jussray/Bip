@@ -27,34 +27,42 @@ function assertCancelsSupersededRuns(content) {
   assert.match(content, /cancel-in-progress:\s*true/);
 }
 
-test('CodeQL proof uses immutable actions, never persists checkout credentials, and cancels stale heads', () => {
+function assertKnownWorkingProofRunner(content) {
+  assert.match(content, /runs-on:\s*ubuntu-22\.04/);
+  assert.doesNotMatch(content, /runs-on:\s*ubuntu-latest/);
+}
+
+test('CodeQL proof uses immutable actions, a deterministic runner, and cancels stale heads', () => {
   const content = workflow('codeql-pr-alert-proof.yml');
 
   assertPinnedNodeWorkflow(content);
   assertCancelsSupersededRuns(content);
+  assertKnownWorkingProofRunner(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
 });
 
-test('Production Gate contract obeys the same exact-head supply-chain and scheduling boundary it enforces', () => {
+test('Production Gate obeys the exact-head supply-chain and scheduler boundary it enforces', () => {
   const content = workflow('production-gate-contract.yml');
 
   assertPinnedNodeWorkflow(content);
   assertCancelsSupersededRuns(content);
+  assertKnownWorkingProofRunner(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
   assert.match(content, /test\/production-authority-workflow-contracts\.test\.mjs/);
 });
 
-test('Product Design proof cancels superseded heads instead of building stale UX evidence', () => {
+test('Product Design proof uses a deterministic runner and cancels superseded UX evidence', () => {
   const content = workflow('product-design-playwright-proof.yml');
 
   assertPinnedNodeWorkflow(content);
   assertCancelsSupersededRuns(content);
+  assertKnownWorkingProofRunner(content);
   assert.match(content, /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
 });
 
-test('Founder Shield is credential-minimal, immutable, and cancels superseded heads', () => {
+test('Founder Shield is credential-minimal, immutable, deterministic, and cancels stale heads', () => {
   const content = workflow('founder-shield.yml');
 
   assert.match(content, new RegExp(`actions/checkout@${CHECKOUT_SHA}`));
@@ -62,7 +70,16 @@ test('Founder Shield is credential-minimal, immutable, and cancels superseded he
   assert.match(content, new RegExp(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`));
   assert.doesNotMatch(content, /actions\/(?:checkout|upload-artifact)@v\d+/);
   assertCancelsSupersededRuns(content);
+  assertKnownWorkingProofRunner(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
+});
+
+test('Repository Truth uses the same deterministic proof runner and stale-head cancellation', () => {
+  const content = workflow('repository-truth-gate.yml');
+
+  assertPinnedNodeWorkflow(content);
+  assertCancelsSupersededRuns(content);
+  assertKnownWorkingProofRunner(content);
 });
 
 test('routine Supabase production workflow cannot rewrite migration history', () => {

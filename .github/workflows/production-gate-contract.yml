@@ -43,7 +43,7 @@ env:
 jobs:
   validate-production-gate:
     name: Validate production proof contract
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
       - name: Check out exact pull-request head

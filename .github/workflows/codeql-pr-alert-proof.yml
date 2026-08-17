@@ -34,7 +34,7 @@ env:
 
 jobs:
   codeql-pr-alert-proof:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
       - name: Checkout exact pull-request head

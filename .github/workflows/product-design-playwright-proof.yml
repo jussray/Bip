@@ -79,7 +79,7 @@ env:
 
 jobs:
   product-design-proof:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - name: Check out exact event head
