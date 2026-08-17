@@ -13,6 +13,7 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: [
     'production-smoke.spec.ts',
+    'production-audience-journeys.spec.ts',
     'production-auth-reachability.spec.ts',
     'production-password-recovery.spec.ts',
     'production-signup-transport.spec.ts',
