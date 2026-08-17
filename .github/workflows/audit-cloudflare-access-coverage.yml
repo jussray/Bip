@@ -7,12 +7,14 @@ on:
       - '.github/workflows/audit-cloudflare-access-coverage.yml'
       - 'scripts/audit-cloudflare-access-coverage.mjs'
       - 'test/cloudflare-access-coverage-audit.test.mjs'
+      - 'test/cloudflare-access-workflow-contract.test.mjs'
   push:
     branches: [main]
     paths:
       - '.github/workflows/audit-cloudflare-access-coverage.yml'
       - 'scripts/audit-cloudflare-access-coverage.mjs'
       - 'test/cloudflare-access-coverage-audit.test.mjs'
+      - 'test/cloudflare-access-workflow-contract.test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -55,7 +57,7 @@ jobs:
           node-version: '24'
 
       - name: Verify redacted Access audit contract
-        run: node --test test/cloudflare-access-coverage-audit.test.mjs
+        run: node --test test/cloudflare-access-coverage-audit.test.mjs test/cloudflare-access-workflow-contract.test.mjs
 
       - name: Require exact current main before Cloudflare secret use
         if: github.event_name != 'pull_request'
