@@ -1,157 +1,103 @@
-# Se'kret Bip — Current Status
+<!-- truth-mode: durable -->
+# Se’kret Bip — Current Status Protocol
 
-**Last reviewed:** 2026-08-15  
-**Implementation baseline audited for this documentation:** `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`  
-**Historical fully reviewed application baseline:** `824b4dcffb9e0ffc7468a002f0390cbba98d79ae`  
-**Launch-status overlay:** `docs/LAUNCH_GATE_STATUS_2026-07-31.md`  
-**Current execution:** `SPRINT.md`
+This file explains how to determine Se’kret Bip’s **current** status without freezing volatile provider/runtime facts into repository prose.
 
-The documentation repair itself may advance `main` beyond the audited implementation baseline without changing application behavior. Always resolve fresh current `main` before making a new exact-head claim.
+## Live truth boundary
 
-The historical application baseline remains useful evidence for the scope that was reviewed at that time, but it is **not current `main`**. Current repository claims must begin from a fresh `main` lookup and then bind to the exact implementation, workflow, provider, database, browser, device, and account evidence that actually exists for that head.
+Do not use this document to determine the live `main` SHA, the open/closed state of an issue, a Cloudflare result, a Supabase runtime result, or whether production Playwright passed.
 
-## Current authority overlay
+Resolve those facts from live authority at decision time:
 
-This block supersedes the July 31 current-status overlay while preserving the historical sections in Git history and the dated launch-status document.
+1. GitHub branch / PR / issue / check / review / job state;
+2. the newest marked release receipt on issue #696;
+3. Cloudflare provider evidence for the same target;
+4. the intended Supabase project and live migration/runtime evidence;
+5. production browser, controlled-account, and physical-device evidence where applicable.
 
-### Repository truth
+`docs/TRUTH_AUTHORITY.md` defines how earlier verification becomes historical or superseded when new evidence contradicts it.
 
-- The implementation baseline audited for this status is `802dbcecfa58a9b00e3f2f5605d7161771fd0d81`; resolve fresh `main` before relying on that SHA as current.
-- PR #825 merged the fail-closed `app.sekretbip.net` ownership reconciler. It may remove only an exact `sekret-backend` binding after proving Pages project `sekret-bip` is ready to own the hostname; broad, wildcard, foreign, or ambiguous bindings fail closed.
-- PR #827 retained sanitized Cloudflare preflight-failure evidence.
-- PR #828 added the ChatGPT plugin-management contract for GitHub, Supabase, and Figma while preserving Se'kret Bip privacy and release-truth boundaries.
-- PR #829 hardened that plugin live-state contract with closed schemas and recursive rejection of nested live-state claims.
-- PR #832 added the bounded founder command that dispatches the existing app-domain reconciler only after exact-current-main verification.
-- Issue #646 is closed/completed. Its branch-control proof remains historical/provider evidence and must not be presented as a current open implementation blocker.
+## Durable repository posture
 
-### Current production-routing gate
+Se’kret Bip has an integrated application and infrastructure foundation and uses evidence-gated launch progression. Integrated code is not automatically production verified.
 
-The latest exact-main app-domain reconcile evidence on `802dbcecfa58a9b00e3f2f5605d7161771fd0d81` is GitHub Actions run `31857828587`, attempt 3.
+Durable foundations include:
 
-The runner and repository-side gates executed successfully through:
+- Expo Router auth, onboarding, Teen, Parent, and founder/internal route groups;
+- Supabase Auth, Postgres, RLS, Storage, Edge Functions, and ordered migrations;
+- canonical Cloudflare Worker `sekret-backend`;
+- canonical Cloudflare Pages project `sekret-bip`;
+- shared typed frontend-to-Worker contracts and stable error mapping;
+- privacy-safe companion, Circle, Calm/Comfort, relationship, deletion, and operational contracts at varying evidence levels;
+- exact-release verification machinery and retained evidence boundaries;
+- production audience journeys for Teen, Bip Jr, and Parent that still require an exact deployed-release execution before they become production proof.
 
-1. exact checkout;
-2. Node setup;
-3. focused route-reconciler contract;
-4. non-destructive plan;
-5. exact-current-main verification; and
-6. Cloudflare credential-presence validation.
+## Evidence layers
 
-The provider call then failed at **`pages-domains-read`** with HTTP **403** / Cloudflare code **10000**.
+Keep these independent:
 
-The retained receipt records:
-
-```text
-phase: preflight-failed-before-mutation
-mutationState: not-reachable
-actions: []
-```
-
-Therefore:
-
-- no Cloudflare route/domain deletion occurred;
-- no Pages binding was changed;
-- no Worker binding was changed;
-- no Supabase mutation occurred;
-- production browser/release proof remains blocked behind provider read authority.
-
-Do **not** weaken the Pages precondition merely to get past this failure. The next provider action is to reconcile the Cloudflare API token/account permission needed to read Pages domains, then rerun the same bounded exact-main reconciler against the then-current `main` SHA.
-
-### Release truth
-
-[P0 issue #696](https://github.com/jussray/Sekret-Bip/issues/696) remains open and owns exact-production release proof. Its older intended-release SHA and earlier receipts are historical evidence, not authority for current `main`.
-
-Do not declare a public release from repository merge, Cloudflare upload, a 200 response, or an old release-marker receipt. The deployed frontend must still be tied to the intended current-main SHA through the canonical release marker plus the applicable Worker, health, browser, device, account, privacy, and operational witnesses.
-
-## Truth rules
-
-Keep these evidence layers separate:
-
-- code merged into current `main`;
-- exact-head pull-request checks;
-- checks that executed on the merge/current-main commit;
-- Cloudflare Pages/Worker configuration and deployment evidence;
-- live Supabase schema/authorization evidence;
-- production-browser evidence;
-- physical-device and real-account journey evidence.
+- code present in a branch;
+- exact-head PR checks;
+- checks on the merge/current-main commit;
+- Cloudflare build/deployment/configuration evidence;
+- live Supabase schema/authorization/runtime evidence;
+- production browser evidence;
+- controlled-account evidence;
+- physical-device evidence.
 
 A green signal in one layer does not silently prove another.
 
-Use the contract:
+## Current-status query contract
+
+When an agent or founder asks “where are we now?”, return a small status packet rather than quoting old prose:
 
 ```text
-State -> Evidence -> Claim
+STATE
+OBSERVED_AT
+TARGET_SHA
+AUTHORITY
+EVIDENCE_REF
+CURRENT | HISTORICAL | SUPERSEDED | UNKNOWN
 ```
 
-A completion claim must identify the state that changed, the evidence proving it, the authority that produced the evidence, and which boundaries the evidence actually covers.
+Then apply:
 
-## Current launch posture
+```text
+State → Evidence → Claim
+```
 
-Se'kret Bip has a substantial integrated product and infrastructure foundation and remains in **controlled-alpha / launch-readiness work**, not unrestricted public-launch readiness.
+If `main` moved after exact-head evidence, re-pin. If a provider/runtime observation is newer and contradictory, supersede the older current-state claim while retaining it as historical evidence.
 
-Independent launch gates still include, where applicable:
+## Launch evidence classes
 
-- exact production routing and release-marker proof;
-- founder access and a complete real-account auth/onboarding/recovery journey;
-- parent/Bridge lifecycle and privacy proof;
-- account deletion and Storage/cache cleanup proof;
-- remaining authorization and high-blast-radius RPC behavior proof;
-- trigger behavioral assurance with safe external-effect controls;
+Before public-launch readiness is claimed, applicable gates include:
+
+- exact production routing and release identity;
+- canonical Worker/backend health;
+- live Supabase migration and runtime/authorization evidence;
+- auth, session restore, recovery, and onboarding journeys;
+- Teen, Bip Jr, Parent/Bridge, Cloud/Comfort, privacy-denial, unlink, and deletion journeys;
 - physical-device, accessibility, offline, notification, moderation, and failure-state QA;
-- legal, safeguarding, app-store, support, incident-response, backup, restore, and rollback readiness.
+- legal, safeguarding, store, support, incident-response, backup, restore, and rollback readiness.
 
-L4 and L5 remain future product lanes and are not automatic launch dependencies unless a separately approved current plan makes them so.
-
-## Integrated foundation
-
-- Expo Router Teen, Parent, and internal/founder route groups
-- Supabase Auth, synchronization, ordered migrations, RLS, Storage, and Edge Functions
-- canonical Cloudflare Worker `sekret-backend`
-- canonical Cloudflare Pages project `sekret-bip`
-- shared typed frontend-to-Worker contracts
-- companion reply, transcription, speech, and metadata-only telemetry flows
-- Suhana and Sy canonical display/canon naming with compatibility normalization for legacy identifiers
-- Teen Room, Pages, voice reflection, Calm/Comfort/Mind + Body Reset, Circle, rewards, and trusted-relationship surfaces
-- Privacy-safe Daily Intentions
-- Bridge linking/consent/summary/revocation contracts
-- exact-release verification machinery and retained evidence boundaries
-- fail-closed app-domain ownership reconciliation on the repository side
-- governed plugin-management declarations that do not pretend repository config is live provider state
-
-Integrated does not mean verified in production.
+The exact set must come from the then-current launch plan and issue authority, not from a historical snapshot.
 
 ## Product and UX direction
 
-Se'kret Bip is a real premium, living app experience. Cosmic and character art is visual DNA and atmosphere, not the product architecture. Current UX work should prioritize interactive product states, companions embedded into flows, responsive emotional feedback, personalized home behavior, clear Teen / Parent / Bip Jr journeys, accessible motion, and a coherent mobile design system.
+Se’kret Bip is a premium, living app experience. Cosmic and character art is atmosphere and visual DNA; it is not the product architecture. Prioritize interactive states, embedded companions, emotional responsiveness, personalized home behavior, clear Teen / Parent / Bip Jr journeys, accessible motion, and a coherent mobile design system.
 
-Do not regress the product into static splash-art-led UX.
+## Planned lanes
 
-## Planned only — not implemented
-
-Unless a newer exact repository implementation proves otherwise, these remain future lanes:
-
-- durable L4 continuity memory;
-- persistent companion goals;
-- scheduled reflection jobs;
-- relationship phases derived from durable evidence;
-- inter-companion coordination;
-- L5 cross-companion synthesis and consented goal proposals.
-
-L5 remains blocked until L4 reaches `verified` under a separately approved consent and authority contract.
+L4 continuity memory and L5 synthesis remain separately governed future lanes unless a newer approved plan and exact implementation prove otherwise. They do not enter launch scope merely because they appear in historical strategy material.
 
 ## Canonical references
 
+- `docs/TRUTH_AUTHORITY.md`
+- `docs/DOCUMENTATION_MAP.md`
+- `docs/LAUNCH_ROADMAP.md`
+- `DEPLOYMENT.md`
 - `implementation-ledger.json`
 - `implementation-ledger.extensions/`
-- `SPRINT.md`
-- `docs/LAUNCH_GATE_STATUS_2026-07-31.md`
-- `docs/LAUNCH_ROADMAP.md`
-- `docs/DOCUMENTATION_MAP.md`
-- `docs/WIRING_STATUS.md`
-- `DEPLOYMENT.md`
-- `docs/security/SUPABASE_AUTHORIZATION_PHASE0.md`
-- `docs/legal/LAUNCH_COMPLIANCE_CHECKLIST.md`
+- issue #696 for exact-production release receipts
 
-Historical dated documents and PR bodies remain evidence for the time they describe. They do not override fresh current-main, issue, workflow, provider, runtime, browser, or device truth.
-
-Documentation is an implementation guardrail. When code, production configuration, evidence, and documentation disagree, reconcile the stale source rather than selecting the happiest version.
+Historical dated documents remain useful evidence for their observation window. They do not override fresh live authority.
