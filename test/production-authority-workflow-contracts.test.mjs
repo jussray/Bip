@@ -22,21 +22,47 @@ function assertPinnedNodeWorkflow(content) {
   assert.doesNotMatch(content, /actions\/(?:checkout|setup-node|upload-artifact)@v\d+/);
 }
 
-test('CodeQL proof uses immutable actions and never persists checkout credentials', () => {
+function assertCancelsSupersededRuns(content) {
+  assert.match(content, /concurrency:\s*\n\s*group:/);
+  assert.match(content, /cancel-in-progress:\s*true/);
+}
+
+test('CodeQL proof uses immutable actions, never persists checkout credentials, and cancels stale heads', () => {
   const content = workflow('codeql-pr-alert-proof.yml');
 
   assertPinnedNodeWorkflow(content);
+  assertCancelsSupersededRuns(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
 });
 
-test('Production Gate contract obeys the same exact-head supply-chain boundary it enforces', () => {
+test('Production Gate contract obeys the same exact-head supply-chain and scheduling boundary it enforces', () => {
   const content = workflow('production-gate-contract.yml');
 
   assertPinnedNodeWorkflow(content);
+  assertCancelsSupersededRuns(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
   assert.match(content, /test\/production-authority-workflow-contracts\.test\.mjs/);
+});
+
+test('Product Design proof cancels superseded heads instead of building stale UX evidence', () => {
+  const content = workflow('product-design-playwright-proof.yml');
+
+  assertPinnedNodeWorkflow(content);
+  assertCancelsSupersededRuns(content);
+  assert.match(content, /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
+});
+
+test('Founder Shield is credential-minimal, immutable, and cancels superseded heads', () => {
+  const content = workflow('founder-shield.yml');
+
+  assert.match(content, new RegExp(`actions/checkout@${CHECKOUT_SHA}`));
+  assert.match(content, /persist-credentials: false/);
+  assert.match(content, new RegExp(`actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`));
+  assert.doesNotMatch(content, /actions\/(?:checkout|upload-artifact)@v\d+/);
+  assertCancelsSupersededRuns(content);
+  assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
 });
 
 test('routine Supabase production workflow cannot rewrite migration history', () => {

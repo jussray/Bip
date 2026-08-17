@@ -23,6 +23,10 @@ permissions:
   checks: read
   security-events: read
 
+concurrency:
+  group: codeql-pr-alert-proof-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
   CODEQL_SETTLE_TIMEOUT_MS: '1080000'
