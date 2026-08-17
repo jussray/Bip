@@ -12,6 +12,7 @@ on:
       - 'assets/**'
       - 'worker/**'
       - 'security/**'
+      - 'supabase/migrations/**'
       - 'public/_headers'
       - 'wrangler.toml'
       - '.dev.vars.example'
@@ -43,6 +44,7 @@ on:
       - 'assets/**'
       - 'worker/**'
       - 'security/**'
+      - 'supabase/migrations/**'
       - 'public/_headers'
       - 'wrangler.toml'
       - '.dev.vars.example'
@@ -77,9 +79,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out exact event head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
 
       - name: Record and verify exact head
         shell: bash
@@ -89,7 +92,7 @@ jobs:
           printf 'event=%s\nexpected=%s\nactual=%s\n' "$GITHUB_EVENT_NAME" "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
           cache: npm
@@ -113,7 +116,7 @@ jobs:
 
       - name: Upload Product Design evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: product-design-playwright-${{ env.EXPECTED_HEAD_SHA }}
           path: artifacts/product-design-playwright
