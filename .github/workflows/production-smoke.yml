@@ -1,7 +1,12 @@
 name: Production Smoke
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      expected_release_sha:
+        description: 'Exact deployed main SHA to prove'
+        required: true
+        type: string
   workflow_run:
     workflows: ["Deploy to Cloudflare"]
     types: [completed]
@@ -11,6 +16,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_RELEASE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_release_sha || github.event.workflow_run.head_sha }}
 
 concurrency:
   group: production-smoke
@@ -26,8 +32,26 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - name: Check out repository
+      - name: Check out exact proof source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_RELEASE_SHA }}
+          persist-credentials: false
+
+      - name: Record and verify exact proof source
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_RELEASE_SHA" "$actual"
+          test "$actual" = "$EXPECTED_RELEASE_SHA"
+
+      - name: Require production proof to target main history
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin main
+          git merge-base --is-ancestor "$EXPECTED_RELEASE_SHA" origin/main
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -44,14 +68,16 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run read-only smoke checks against the live domain
+      - name: Run read-only exact-release checks against the live domain
         run: npx playwright test --config=playwright.production.config.ts
 
-      - name: Upload Playwright report
-        if: failure()
+      - name: Upload Playwright evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: production-smoke-report
-          path: playwright-report-production/
-          if-no-files-found: ignore
-          retention-days: 7
+          name: production-smoke-${{ env.EXPECTED_RELEASE_SHA }}
+          path: |
+            playwright-report-production/
+            test-results/
+          if-no-files-found: warn
+          retention-days: 14
