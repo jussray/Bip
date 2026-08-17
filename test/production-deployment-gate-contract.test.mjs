@@ -10,8 +10,10 @@ import {
 } from '../scripts/probe-production-release-endpoints.mjs';
 
 const workflow = readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
+const productionSmokeWorkflow = readFileSync('.github/workflows/production-smoke.yml', 'utf8');
 const productionConfig = readFileSync('playwright.production.config.ts', 'utf8');
 const productionSmoke = readFileSync('e2e/production-smoke.spec.ts', 'utf8');
+const productionJourneys = readFileSync('e2e/production-audience-journeys.spec.ts', 'utf8');
 const releaseProbe = readFileSync('scripts/probe-production-release-endpoints.mjs', 'utf8');
 
 test('production verification runs after relevant main pushes', () => {
@@ -27,6 +29,23 @@ test('production release proof targets the application frontend and preserves ba
   assert.match(workflow, /BACKEND_HEALTH_URL: https:\/\/api\.sekretbip\.net\/health/);
   assert.doesNotMatch(workflow, /FRONTEND_RELEASE_URL: https:\/\/sekretbip\.net\//);
   assert.match(productionConfig, /https:\/\/app\.sekretbip\.net/);
+});
+
+test('production smoke proves one explicit deployed main SHA and retains its evidence', () => {
+  assert.match(productionSmokeWorkflow, /expected_release_sha:/);
+  assert.match(productionSmokeWorkflow, /EXPECTED_RELEASE_SHA:/);
+  assert.match(productionSmokeWorkflow, /ref: \$\{\{ env\.EXPECTED_RELEASE_SHA \}\}/);
+  assert.match(productionSmokeWorkflow, /git merge-base --is-ancestor "\$EXPECTED_RELEASE_SHA" origin\/main/);
+  assert.match(productionSmokeWorkflow, /production-smoke-\$\{\{ env\.EXPECTED_RELEASE_SHA \}\}/);
+  assert.match(productionSmokeWorkflow, /if: always\(\)/);
+});
+
+test('production Playwright includes read-only Teen, Bip Jr, and Parent audience journeys', () => {
+  assert.match(productionConfig, /production-audience-journeys\.spec\.ts/);
+  assert.match(productionJourneys, /production Teen journey reaches age-gated onboarding without a write/);
+  assert.match(productionJourneys, /production Bip Jr journey hands off to the parent-controlled entry without a write/);
+  assert.match(productionJourneys, /production Parent journey reaches sign-in and keeps approvals protected/);
+  assert.doesNotMatch(productionJourneys, /\.fill\(|page\.type\(|\.pressSequentially\(|request\.post\(|\bfetch\(/);
 });
 
 test('production release transport evidence is retained without response bodies', () => {
