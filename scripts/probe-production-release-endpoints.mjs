@@ -6,6 +6,7 @@ const DEFAULT_FRONTEND_RELEASE_URL = 'https://app.sekretbip.net/.well-known/sekr
 const DEFAULT_BACKEND_HEALTH_URL = 'https://api.sekretbip.net/health';
 const DEFAULT_EVIDENCE_PATH = 'artifacts/production-release-endpoint-probe.json';
 const DEFAULT_CLOUDFLARE_EVIDENCE_PATH = 'artifacts/cloudflare-native-deploy.json';
+const CLOUDFLARE_ACCESS_BLOCK_MARKERS = ['cloudflare access', 'that account does not have access'];
 
 function safeString(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -21,8 +22,17 @@ function isCloudflareAccessUrl(rawUrl) {
   }
 }
 
+function hasCloudflareAccessBlockMarker(rawBody) {
+  if (typeof rawBody !== 'string') return false;
+  const normalized = rawBody.toLowerCase();
+  return CLOUDFLARE_ACCESS_BLOCK_MARKERS.some((marker) => normalized.includes(marker));
+}
+
 export function classifyEndpointProbe(evidence) {
   if (evidence?.redirected && isCloudflareAccessUrl(evidence?.finalUrl)) {
+    return 'cloudflare-access-intercepted';
+  }
+  if ((evidence?.status === 401 || evidence?.status === 403) && evidence?.accessBlockPage === true) {
     return 'cloudflare-access-intercepted';
   }
   if (evidence?.jsonState === 'fetch-error') return 'fetch-error';
@@ -47,6 +57,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
     const contentType = safeString(response.headers.get('content-type'));
     let json = null;
     let jsonState = response.ok ? 'invalid' : 'skipped-non-ok';
+    let accessBlockPage = false;
 
     if (response.ok) {
       try {
@@ -54,6 +65,13 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
         jsonState = 'ok';
       } catch {
         jsonState = 'invalid';
+      }
+    } else if (response.status === 401 || response.status === 403) {
+      try {
+        const responseBody = await response.text();
+        accessBlockPage = hasCloudflareAccessBlockMarker(responseBody);
+      } catch {
+        accessBlockPage = false;
       }
     }
 
@@ -65,6 +83,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       redirected: response.redirected,
       contentType,
       jsonState,
+      accessBlockPage,
       commitSha: safeString(json?.commitSha),
       releaseSha: safeString(json?.releaseSha),
       healthOk: json?.ok === true,
@@ -83,6 +102,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch} = {}) {
       redirected: false,
       contentType: null,
       jsonState: 'fetch-error',
+      accessBlockPage: false,
       commitSha: null,
       releaseSha: null,
       healthOk: false,
