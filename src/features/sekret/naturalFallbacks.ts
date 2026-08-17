@@ -37,7 +37,10 @@ export interface NaturalFallbackResponse {
 export const NATURAL_FALLBACK_PACK_VERSION = 'fallback-natural-v1.0.0';
 export const NATURAL_FALLBACK_VARIANTS_PER_COMPANION = 500;
 
-const SAFETY_PATTERN = /\b(suicidal|self[- ]?harm|not safe|abuse|danger)\b/i;
+// Keep deterministic client fallback safety aligned with the Worker classifier.
+// This path is active specifically when the Worker/model path is unavailable,
+// so explicit first-person danger language must still fail closed.
+const SAFETY_PATTERN = /\b(kill myself|end my life|want to die|suicid(?:e|al)|self[- ]?harm|hurt myself|cut myself|disappear forever|run away|abuse|abused|assault|unsafe|not safe|danger|emergency)\b/i;
 const IDENTITY_PATTERN = /\b(are you real|are you human|you human|robot|ai|artificial|sentient|alive|real friend|real person)\b/i;
 
 const BANNED_HUMAN_CLAIMS = [
