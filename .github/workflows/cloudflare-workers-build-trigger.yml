@@ -111,7 +111,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Require and preflight Cloudflare control-plane credentials
+      - name: Require Cloudflare control-plane credentials
         shell: bash
         run: |
           set -euo pipefail
@@ -123,39 +123,43 @@ jobs:
             echo 'CLOUDFLARE_ACCOUNT_ID is not configured.' >&2
             exit 1
           }
-          node - <<'NODE'
-          const candidates = [
-            ['dedicated-builds-token', process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || ''],
-            ['general-cloudflare-token', process.env.CLOUDFLARE_API_TOKEN || ''],
-          ];
 
-          for (const [source, token] of candidates) {
-            if (!token) continue;
-            if (token !== token.trim()) {
-              throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=leading-or-trailing-whitespace`);
-            }
-            if (/[^\x21-\x7e]/.test(token) || /\s/.test(token)) {
-              throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=non-ascii-or-whitespace`);
-            }
-            if (/^Bearer\s+/i.test(token)) {
-              throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=bearer-prefix-stored-in-secret`);
-            }
-            if (/^["']|["']$/.test(token)) {
-              throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=quoted-secret`);
-            }
-            if (/^[A-Z_][A-Z0-9_]*=/.test(token)) {
-              throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=variable-assignment-stored-in-secret`);
-            }
-            if (token.startsWith('cfat_')) {
-              throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=account-scoped-token-not-supported-by-workers-builds-api`);
-            }
-            const shape = token.startsWith('cfut_') ? 'user-prefixed' : 'legacy-opaque';
-            console.log(`TOKEN_PREFLIGHT source=${source} shape=${shape} result=accepted`);
+      - name: Preflight dedicated Builds token
+        id: dedicated_preflight
+        continue-on-error: true
+        env:
+          TOKEN_VALUE: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
+          TOKEN_SOURCE: dedicated-builds-token
+        run: |
+          node - <<'NODE'
+          const source = process.env.TOKEN_SOURCE || 'unknown';
+          const token = process.env.TOKEN_VALUE || '';
+          if (!token) throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=not-configured`);
+          if (token !== token.trim()) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=leading-or-trailing-whitespace`);
           }
+          if (/[^\x21-\x7e]/.test(token) || /\s/.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=non-ascii-or-whitespace`);
+          }
+          if (/^Bearer\s+/i.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=bearer-prefix-stored-in-secret`);
+          }
+          if (/^["']|["']$/.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=quoted-secret`);
+          }
+          if (/^[A-Z_][A-Z0-9_]*=/.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=variable-assignment-stored-in-secret`);
+          }
+          if (token.startsWith('cfat_')) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=account-scoped-token-not-supported-by-workers-builds-api`);
+          }
+          const shape = token.startsWith('cfut_') ? 'user-prefixed' : 'legacy-opaque';
+          console.log(`TOKEN_PREFLIGHT source=${source} shape=${shape} result=accepted`);
           NODE
 
       - name: Read trigger with dedicated Builds token
         id: dedicated_read
+        if: steps.dedicated_preflight.outcome == 'success'
         continue-on-error: true
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
@@ -163,9 +167,43 @@ jobs:
           CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-dedicated.json
         run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
 
+      - name: Preflight general Cloudflare token fallback
+        id: general_preflight
+        if: steps.dedicated_read.outcome != 'success'
+        continue-on-error: true
+        env:
+          TOKEN_VALUE: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TOKEN_SOURCE: general-cloudflare-token
+        run: |
+          node - <<'NODE'
+          const source = process.env.TOKEN_SOURCE || 'unknown';
+          const token = process.env.TOKEN_VALUE || '';
+          if (!token) throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=not-configured`);
+          if (token !== token.trim()) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=leading-or-trailing-whitespace`);
+          }
+          if (/[^\x21-\x7e]/.test(token) || /\s/.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=non-ascii-or-whitespace`);
+          }
+          if (/^Bearer\s+/i.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=bearer-prefix-stored-in-secret`);
+          }
+          if (/^["']|["']$/.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=quoted-secret`);
+          }
+          if (/^[A-Z_][A-Z0-9_]*=/.test(token)) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=variable-assignment-stored-in-secret`);
+          }
+          if (token.startsWith('cfat_')) {
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=account-scoped-token-not-supported-by-workers-builds-api`);
+          }
+          const shape = token.startsWith('cfut_') ? 'user-prefixed' : 'legacy-opaque';
+          console.log(`TOKEN_PREFLIGHT source=${source} shape=${shape} result=accepted`);
+          NODE
+
       - name: Read trigger with general Cloudflare token fallback
         id: general_read
-        if: steps.dedicated_read.outcome != 'success'
+        if: steps.dedicated_read.outcome != 'success' && steps.general_preflight.outcome == 'success'
         continue-on-error: true
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ''
@@ -178,7 +216,9 @@ jobs:
         if: always()
         shell: bash
         env:
+          DEDICATED_PREFLIGHT_OUTCOME: ${{ steps.dedicated_preflight.outcome }}
           DEDICATED_OUTCOME: ${{ steps.dedicated_read.outcome }}
+          GENERAL_PREFLIGHT_OUTCOME: ${{ steps.general_preflight.outcome }}
           GENERAL_OUTCOME: ${{ steps.general_read.outcome }}
           DEDICATED_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-dedicated.json
           GENERAL_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-general.json
@@ -190,11 +230,13 @@ jobs:
           const attempts = [
             {
               source: 'dedicated-builds-token',
-              outcome: process.env.DEDICATED_OUTCOME || 'unknown',
+              preflight: process.env.DEDICATED_PREFLIGHT_OUTCOME || 'unknown',
+              outcome: process.env.DEDICATED_OUTCOME || 'skipped',
               path: process.env.DEDICATED_EVIDENCE_PATH,
             },
             {
               source: 'general-cloudflare-token',
+              preflight: process.env.GENERAL_PREFLIGHT_OUTCOME || 'skipped',
               outcome: process.env.GENERAL_OUTCOME || 'skipped',
               path: process.env.GENERAL_EVIDENCE_PATH,
             },
@@ -232,7 +274,7 @@ jobs:
           for (const attempt of attempts) {
             const receipt = readReceipt(attempt.path);
             console.log(
-              `WORKERS_TRIGGER_READBACK_ATTEMPT source=${attempt.source} outcome=${attempt.outcome} status=${receipt?.status || 'missing'} class=${classify(receipt)} provider_code=${providerCode(receipt)}`,
+              `WORKERS_TRIGGER_READBACK_ATTEMPT source=${attempt.source} preflight=${attempt.preflight} outcome=${attempt.outcome} status=${receipt?.status || 'missing'} class=${classify(receipt)} provider_code=${providerCode(receipt)}`,
             );
           }
 

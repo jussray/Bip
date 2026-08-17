@@ -36,7 +36,7 @@ function trigger({ buildCommand = '', deployCommand = '' } = {}) {
   };
 }
 
-test('trusted main readback tries configured tokens independently while mutation remains explicit workflow_dispatch', () => {
+test('trusted main readback isolates token preflight while mutation remains explicit workflow_dispatch', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/cloudflare-workers-build-trigger.yml', import.meta.url),
     'utf8',
@@ -48,12 +48,25 @@ test('trusted main readback tries configured tokens independently while mutation
     workflow,
     /if: github\.event_name == 'workflow_dispatch' \|\| \(github\.event_name == 'push' && github\.ref == 'refs\/heads\/main'\)/,
   );
-  assert.match(workflow, /Require and preflight Cloudflare control-plane credentials/);
+  assert.match(workflow, /Require Cloudflare control-plane credentials/);
+  assert.match(workflow, /Preflight dedicated Builds token/);
+  assert.match(workflow, /id: dedicated_preflight/);
+  assert.match(workflow, /Preflight general Cloudflare token fallback/);
+  assert.match(workflow, /id: general_preflight/);
   assert.match(workflow, /TOKEN_PREFLIGHT_FAILED source=\$\{source\}/);
   assert.match(workflow, /account-scoped-token-not-supported-by-workers-builds-api/);
   assert.match(workflow, /TOKEN_PREFLIGHT source=\$\{source\} shape=\$\{shape\} result=accepted/);
   assert.match(workflow, /Read trigger with dedicated Builds token/);
+  assert.match(workflow, /if: steps\.dedicated_preflight\.outcome == 'success'/);
+  assert.match(workflow, /if: steps\.dedicated_read\.outcome != 'success'/);
   assert.match(workflow, /Read trigger with general Cloudflare token fallback/);
+  assert.match(
+    workflow,
+    /if: steps\.dedicated_read\.outcome != 'success' && steps\.general_preflight\.outcome == 'success'/,
+  );
+  assert.match(workflow, /DEDICATED_PREFLIGHT_OUTCOME: \$\{\{ steps\.dedicated_preflight\.outcome \}\}/);
+  assert.match(workflow, /GENERAL_PREFLIGHT_OUTCOME: \$\{\{ steps\.general_preflight\.outcome \}\}/);
+  assert.match(workflow, /preflight=\$\{attempt\.preflight\}/);
   assert.match(workflow, /continue-on-error: true/);
   assert.match(workflow, /WORKERS_TRIGGER_READBACK_ATTEMPT/);
   assert.match(workflow, /provider_code=\$\{providerCode\(receipt\)\}/);
