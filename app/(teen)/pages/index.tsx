@@ -180,6 +180,8 @@ const PAGES_COMPANION_POSES = {
 } as const;
 
 function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
+  character = normalizeAvatar(character);
+
   if (character === 'suhana' || character === 'sekret') {
     return getTeenCompanionAsset('raylene', PAGES_COMPANION_POSES.raylene[state]) ?? IMAGES.rayleneNeutral;
   }
