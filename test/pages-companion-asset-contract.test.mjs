@@ -8,6 +8,7 @@ const manifest = readFileSync('src/constants/companionManifest.ts', 'utf8');
 
 test('Teen Pages resolves human companion portraits through the canonical registry', () => {
   assert.match(pages, /import \{ getTeenCompanionAsset \} from '@\/utils\/companions';/);
+  assert.match(pages, /character = normalizeAvatar\(character\);/);
   assert.match(pages, /getTeenCompanionAsset\('raylene'/);
   assert.match(pages, /getTeenCompanionAsset\('rylane'/);
   assert.match(pages, /getTeenCompanionAsset\('night'/);
