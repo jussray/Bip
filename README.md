@@ -33,6 +33,14 @@ For every material completion or blocker claim, identify:
 
 Keep repository, CI, Cloudflare, Supabase, browser, device, and account witnesses separate.
 
+## Founder control authority
+
+`.control-room/founder-control.contract.json` is the durable Se’kret Bip adoption point for the canonical founder-control decision contract owned by `jussray/founder-control-room`.
+
+Founder-facing AI surfaces may relay an explicit founder decision, but they do not self-authorize. Silence is not approval. If the proposed action changes after approval, that approval no longer binds the changed proposal. Execution requires exact proposal binding and an execution receipt, and provider success alone is not outcome proof.
+
+This operating contract is metadata-only. It must not become a path for Teen, Parent, or Bip Jr private content to enter control-plane evidence or orchestration systems.
+
 ## Product promise
 
 - Private reflections stay private.
@@ -114,6 +122,7 @@ A Playwright file committed to the repository is not proof that it executed agai
 
 ## Canonical operating references
 
+- `.control-room/founder-control.contract.json` — adopted founder decision, exact-binding, and receipt contract
 - `docs/TRUTH_AUTHORITY.md` — claim freshness, expiry, and supersession
 - `docs/CURRENT_STATUS.md` — how to resolve current status without copying volatile state into docs
 - `docs/DOCUMENTATION_MAP.md` — documentation authority and archive rules
