@@ -834,6 +834,12 @@ export default function TeenPagesRoute() {
               value={journalText}
               onChangeText={setJournalText}
               onFocus={() => setAvatarState(aiCompanion ? 'listening' : 'neutral')}
+              accessibilityLabel="Teen Pages composer"
+              accessibilityHint={
+                aiCompanion
+                  ? `Share what's on your mind with ${companion.name}`
+                  : 'Write privately in your Pages'
+              }
               placeholder={promptPool[promptIdx]}
               placeholderTextColor="#7a6e83"
               style={s.composerInput}
@@ -843,6 +849,12 @@ export default function TeenPagesRoute() {
             <TouchableOpacity
               onPress={saveAndReply}
               disabled={(!journalText.trim() && !mediaUri) || saving}
+              accessibilityRole="button"
+              accessibilityLabel={
+                aiCompanion
+                  ? `Send page to ${companion.name}`
+                  : 'Save private page'
+              }
               style={[
                 s.sendBtn,
                 { backgroundColor: companion.accent },
