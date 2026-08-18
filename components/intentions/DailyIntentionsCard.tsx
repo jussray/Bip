@@ -66,7 +66,7 @@ export function DailyIntentionsCard({
   const [items, setItems] = useState<DailyIntention[]>([]);
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [privacyOpen, setPrivacyOpen] = useState(false);
   const generatedInitial = useRef(false);
 
