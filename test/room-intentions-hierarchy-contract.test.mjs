@@ -17,6 +17,11 @@ const roomRoute = readFileSync(
   'utf8',
 );
 
+const roomScreen = readFileSync(
+  'screens/UserRoomScreen.tsx',
+  'utf8',
+);
+
 const workflow = readFileSync(
   '.github/workflows/product-design-playwright-proof.yml',
   'utf8',
@@ -45,37 +50,53 @@ test('collapsed daily intentions leave the lower-right Room utility rail reachab
   );
 });
 
-test('Living Sanctuary v2 makes companion presence visual-first without taking interaction authority', () => {
+test('Room owns one canonical companion visual with separate bounded interaction geometry', () => {
   assert.ok(
     roomRoute.includes("import { LivingSanctuaryLayer } from '../../components/rooms/LivingSanctuaryLayer';"),
-    'Teen Room must render the Living Sanctuary composition layer',
+    'Teen Room must retain the Living Sanctuary atmosphere layer',
   );
   assert.ok(
     roomRoute.includes('<LivingSanctuaryLayer companionKey={companionKey} />'),
-    'Living Sanctuary must consume the existing companion compatibility boundary',
+    'The route must preserve the established companion compatibility boundary',
   );
   assert.ok(
     sanctuary.includes('pointerEvents="none"'),
-    'The visual composition layer must never intercept existing Room interactions',
+    'The atmosphere layer must never intercept Room interactions',
+  );
+  assert.doesNotMatch(
+    sanctuary,
+    /Image|living-sanctuary-companion-visual|YOUR SANCTUARY|yours to explore|living-sanctuary-halo/,
+    'Atmosphere must not render a second companion or restore rejected overlay chrome',
   );
   assert.ok(
-    sanctuary.includes('testID="living-sanctuary-companion-visual"'),
-    'The composition must expose an exact visual witness for the companion anchor',
+    roomScreen.includes('const COMPANION_VISUAL_POSITIONS'),
+    'Room must own explicit visual companion geometry',
   );
-  assert.match(sanctuary, /IMAGES\.rayleneFullbody/);
-  assert.match(sanctuary, /IMAGES\.rylaneFullbody/);
-  assert.match(sanctuary, /IMAGES\.nightFullbody/);
-  assert.match(sanctuary, /IMAGES\.cloudAvatarFullbody/);
-  assert.doesNotMatch(
-    sanctuary,
-    /YOUR SANCTUARY|yours to explore|living-sanctuary-halo/,
-    'Rejected overlay copy and decorative halo must not return',
+  assert.ok(
+    roomScreen.includes('const COMPANION_HIT_TARGETS'),
+    'Room must own a separate bounded companion interaction geometry',
   );
-  assert.doesNotMatch(
-    sanctuary,
-    /Animated\.|useReducedMotion|setInterval|setTimeout/,
-    'This composition layer must remain physically still',
+  assert.ok(
+    roomScreen.includes('testID="room-companion-visual"'),
+    'The one canonical companion visual must expose a deterministic witness',
   );
+  assert.ok(
+    roomScreen.includes('testID="room-companion-hit-target"'),
+    'The bounded tap target must expose a deterministic witness',
+  );
+  assert.ok(
+    roomScreen.includes('pointerEvents="none"\n        testID="room-companion-visual"'),
+    'The enlarged visual must not itself capture taps',
+  );
+  assert.ok(
+    roomScreen.includes('const cSrc        = cRuntime.source ?? cPoseSrc;'),
+    'Room must prefer the canonical runtime asset for the single companion visual',
+  );
+  assert.doesNotMatch(roomScreen, /const COMPANION_POSITIONS/);
+});
+
+test('Living Sanctuary atmosphere remains presentation-only and physically still', () => {
+  assert.doesNotMatch(sanctuary, /Animated\.|useReducedMotion|setInterval|setTimeout/);
   assert.doesNotMatch(sanctuary, /AsyncStorage|router\.|setScreen\(|supabase/i);
 });
 
