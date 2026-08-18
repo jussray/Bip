@@ -45,10 +45,10 @@ test('collapsed daily intentions leave the lower-right Room utility rail reachab
   );
 });
 
-test('Living Sanctuary remains a static presentation layer over existing Room product contracts', () => {
+test('Living Sanctuary v2 makes companion presence visual-first without taking interaction authority', () => {
   assert.ok(
     roomRoute.includes("import { LivingSanctuaryLayer } from '../../components/rooms/LivingSanctuaryLayer';"),
-    'Teen Room must render the selected Living Sanctuary redesign slice',
+    'Teen Room must render the Living Sanctuary composition layer',
   );
   assert.ok(
     roomRoute.includes('<LivingSanctuaryLayer companionKey={companionKey} />'),
@@ -56,12 +56,25 @@ test('Living Sanctuary remains a static presentation layer over existing Room pr
   );
   assert.ok(
     sanctuary.includes('pointerEvents="none"'),
-    'The sanctuary frame must never intercept existing Room interactions',
+    'The visual composition layer must never intercept existing Room interactions',
+  );
+  assert.ok(
+    sanctuary.includes('testID="living-sanctuary-companion-visual"'),
+    'The composition must expose an exact visual witness for the companion anchor',
+  );
+  assert.match(sanctuary, /IMAGES\.rayleneFullbody/);
+  assert.match(sanctuary, /IMAGES\.rylaneFullbody/);
+  assert.match(sanctuary, /IMAGES\.nightFullbody/);
+  assert.match(sanctuary, /IMAGES\.cloudAvatarFullbody/);
+  assert.doesNotMatch(
+    sanctuary,
+    /YOUR SANCTUARY|yours to explore|living-sanctuary-halo/,
+    'Rejected overlay copy and decorative halo must not return',
   );
   assert.doesNotMatch(
     sanctuary,
     /Animated\.|useReducedMotion|setInterval|setTimeout/,
-    'This slice must remain physically still rather than starting motion before preference authority resolves',
+    'This composition layer must remain physically still',
   );
   assert.doesNotMatch(sanctuary, /AsyncStorage|router\.|setScreen\(|supabase/i);
 });
