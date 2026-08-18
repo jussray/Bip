@@ -138,3 +138,25 @@ test('production Edge Function deployment is exact-current-main and immutable be
   assert.ok(deploy > preMutation);
   assert.match(content, /test "\$EXPECTED_HEAD_SHA" = "\$current_main"/);
 });
+
+test('Pages deploy hook is manual-only, exact-current-main, and cannot masquerade as release proof', () => {
+  const content = workflow('cloudflare-pages-deploy-hook.yml');
+
+  assert.match(content, /on:\s*\n\s*workflow_dispatch:/);
+  assert.doesNotMatch(content, /\n\s*push:/);
+  assert.doesNotMatch(content, /\n\s*pull_request:/);
+  assert.match(content, /environment:\s*Production/);
+  assertKnownWorkingProofRunner(content);
+  assert.match(content, /EXPECTED_HEAD_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(content, /test "\$EXPECTED_HEAD_SHA" = "\$current_main"/);
+  assert.match(content, /CLOUDFLARE_DEPLOY_HOOK_URL: \$\{\{ secrets\.CLOUDFLARE_DEPLOY_HOOK_URL \}\}/);
+  assert.match(content, /--request POST/);
+  assert.match(content, /This is trigger evidence, not deployed-runtime or Playwright proof\./);
+
+  const exactMainGuard = content.indexOf('- name: Verify dispatch target is exact current main');
+  const hookSecret = content.indexOf('CLOUDFLARE_DEPLOY_HOOK_URL: ${{ secrets.CLOUDFLARE_DEPLOY_HOOK_URL }}');
+  const hookCall = content.indexOf('--request POST');
+  assert.ok(exactMainGuard >= 0);
+  assert.ok(hookSecret > exactMainGuard);
+  assert.ok(hookCall > hookSecret);
+});

@@ -57,6 +57,14 @@ This command requires independently authorized Cloudflare credentials. Private W
 
 The canonical Pages project is `sekret-bip`. The repository build contract emits `dist/.well-known/sekret-release.json`; that exact marker is the canonical frontend release witness. `dist/release.json` is compatibility output, not release authority.
 
+The repository-owned Pages build contract is durable:
+
+- Node runtime: `.node-version` must resolve to `22.16.0`;
+- build command: `npm run build:web`;
+- output directory: `dist`.
+
+Expo SDK 56 requires Node 22.13 or newer. The repository pin keeps the build on a supported runtime without relying on a provider-side default.
+
 Emergency manual preview fallback:
 
 ```bash
