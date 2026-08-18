@@ -16,19 +16,53 @@ async function saveEvidence(page: Page, name: string) {
   });
 }
 
-test('Teen Room and VibeLab expose canonical companion display names', async ({ page }) => {
+test('Teen Room keeps one canonical companion visual with bounded interaction geometry', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/room?bipDevSide=teen', { waitUntil: 'domcontentloaded' });
 
+  const companionVisual = page.getByTestId('room-companion-visual');
+  const companionHitTarget = page.getByTestId('room-companion-hit-target');
+  const intentions = page.getByTestId('daily-intentions-card');
+  const companionButton = page.getByRole('button', {
+    name: 'Suhana is here. Tap to talk.',
+    exact: true,
+  });
+
+  await expect(companionVisual).toBeVisible({ timeout: 15_000 });
+  await expect(companionHitTarget).toBeVisible({ timeout: 15_000 });
+  await expect(intentions).toBeVisible({ timeout: 15_000 });
+  await expect(companionVisual).toHaveCount(1);
   await expect(page.getByText(/Suhana's Room/)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Suhana is nearby.', { exact: true })).toBeVisible({ timeout: 15_000 });
-  await expect(
-    page.getByRole('button', { name: 'Suhana is here. Tap to talk.', exact: true }),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(companionButton).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('✦ today', { exact: true })).toBeVisible();
+  await expect(page.getByText('your 3 small things', { exact: true })).toHaveCount(0);
   await expect(page.getByText(/Raylene's Room/)).toHaveCount(0);
   await expect(page.getByText('Raylene is nearby.', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('YOUR SANCTUARY', { exact: true })).toHaveCount(0);
+  await expect(companionVisual).toHaveCSS('pointer-events', 'none');
 
-  await saveEvidence(page, '01-room-canonical-display');
+  const [visualBox, tapBox, intentionsBox] = await Promise.all([
+    companionVisual.boundingBox(),
+    companionHitTarget.boundingBox(),
+    intentions.boundingBox(),
+  ]);
+  expect(visualBox).not.toBeNull();
+  expect(tapBox).not.toBeNull();
+  expect(intentionsBox).not.toBeNull();
+  expect(visualBox!.width).toBeGreaterThan(250);
+  expect(visualBox!.height).toBeGreaterThan(400);
+  expect(visualBox!.width).toBeGreaterThan(tapBox!.width);
+  expect(visualBox!.height).toBeGreaterThan(tapBox!.height);
+  expect(intentionsBox!.width).toBeLessThanOrEqual(190);
+
+  await saveEvidence(page, '01-room-companion-first-composition');
+
+  const journal = page.getByRole('button', { name: 'Journal 📖', exact: true });
+  await expect(journal).toBeVisible();
+  await journal.click();
+  await expect(page).toHaveURL(/\/pages/);
+  await page.goBack({ waitUntil: 'domcontentloaded' });
 
   await page.getByRole('button', { name: 'Customize your room in VibeLab', exact: true }).click();
   await expect(page.getByText('your room ✦', { exact: true })).toBeVisible();
