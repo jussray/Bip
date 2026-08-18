@@ -54,6 +54,7 @@ import {
   type SekretCharacterId,
   type SekretHistoryTurn,
 } from '@/utils/api';
+import { getTeenCompanionAsset } from '@/utils/companions';
 import type { JournalEntry } from '@/types';
 import {
   sendCompanionMessage,
@@ -140,7 +141,7 @@ const PROMPTS: Record<string, string[]> = {
   ],
 };
 
-// ─── Avatar image helpers (unchanged from original) ───────────────────────────
+// ─── Avatar image helpers ─────────────────────────────────────────────────────
 function normalizeAvatar(value?: string): SekretCharacterId {
   if (value === 'sy' || value === 'rylane') return 'sy';
   if (value === 'cloud') return 'cloud';
@@ -148,16 +149,60 @@ function normalizeAvatar(value?: string): SekretCharacterId {
   return 'suhana';
 }
 
+const PAGES_COMPANION_POSES = {
+  raylene: {
+    neutral: 'neutral',
+    listening: 'listening',
+    thinking: 'thinking',
+    comforting: 'encouraging',
+    happy: 'happy',
+    concerned: 'encouraging',
+    responding: 'writing',
+  },
+  rylane: {
+    neutral: 'neutral',
+    listening: 'listening',
+    thinking: 'thinking',
+    comforting: 'calm',
+    happy: 'happy',
+    concerned: 'encouraging',
+    responding: 'writing',
+  },
+  night: {
+    neutral: 'neutral',
+    listening: 'listening',
+    thinking: 'thinking',
+    comforting: 'comfort',
+    happy: 'happy',
+    concerned: 'comfort',
+    responding: 'writing',
+  },
+} as const;
+
 function avatarImage(character: SekretCharacterId, state: SekretAvatarState) {
-  const map: Record<SekretCharacterId, Record<SekretAvatarState, any>> = {
-    suhana: { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
-    sy:      { neutral: IMAGES.rylaneNeutral,  listening: IMAGES.rylaneThinking,  thinking: IMAGES.rylaneThinking,  comforting: IMAGES.rylaneWindow,  happy: IMAGES.rylaneHappy,  concerned: IMAGES.rylaneWindow,  responding: IMAGES.rylaneFullbody },
-    cloud:   { neutral: IMAGES.cloudAvatarNeutral, listening: IMAGES.cloudAvatarThinking, thinking: IMAGES.cloudAvatarThinking, comforting: IMAGES.cloudAvatarWindow, happy: IMAGES.cloudAvatarHappy, concerned: IMAGES.cloudAvatarWindow, responding: IMAGES.cloudAvatarWriting },
-    night:   { neutral: IMAGES.nightNeutral, listening: IMAGES.nightListening, thinking: IMAGES.nightThinking, comforting: IMAGES.nightRelaxed, happy: IMAGES.nightHappy, concerned: IMAGES.nightProtective, responding: IMAGES.nightSoftsmile },
-    sekret:  { neutral: IMAGES.rayleneNeutral, listening: IMAGES.rayleneThinking, thinking: IMAGES.rayleneThinking, comforting: IMAGES.rayleneWindow, happy: IMAGES.rayleneHappy, concerned: IMAGES.rayleeneSad, responding: IMAGES.rayleneConfident },
+  if (character === 'suhana' || character === 'sekret') {
+    return getTeenCompanionAsset('raylene', PAGES_COMPANION_POSES.raylene[state]) ?? IMAGES.rayleneNeutral;
+  }
+
+  if (character === 'sy') {
+    return getTeenCompanionAsset('rylane', PAGES_COMPANION_POSES.rylane[state]) ?? IMAGES.rylaneNeutral;
+  }
+
+  if (character === 'night') {
+    return getTeenCompanionAsset('night', PAGES_COMPANION_POSES.night[state]) ?? IMAGES.nightNeutral;
+  }
+
+  const cloud: Record<SekretAvatarState, any> = {
+    neutral: IMAGES.cloudAvatarNeutral,
+    listening: IMAGES.cloudAvatarThinking,
+    thinking: IMAGES.cloudAvatarThinking,
+    comforting: IMAGES.cloudAvatarWindow,
+    happy: IMAGES.cloudAvatarHappy,
+    concerned: IMAGES.cloudAvatarWindow,
+    responding: IMAGES.cloudAvatarWriting,
   };
-  // 'me' and 'oracle' are never passed — isAiTab() guards all call sites.
-  return map[character][state] ?? map[character].neutral;
+
+  return cloud[state] ?? cloud.neutral;
 }
 
 function inferState(state: SekretAvatarState, mood?: string, tone?: string): SekretAvatarState {
