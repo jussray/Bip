@@ -103,17 +103,21 @@ jobs:
             --header "CF-Access-Client-Secret: $CLOUDFLARE_ACCESS_CLIENT_SECRET"
           )
 
+          pages_headers="$RUNNER_TEMP/founder-shield-sekretbip.headers"
+          api_root_headers="$RUNNER_TEMP/founder-shield-api-root.headers"
+          api_options_headers="$RUNNER_TEMP/founder-shield-api-options.headers"
+
           pages_status="$(curl --silent --show-error --location --max-time 20 \
             "${access_headers[@]}" \
-            --dump-header artifacts/founder-shield-live/sekretbip.headers \
-            --output artifacts/founder-shield-live/sekretbip.body \
+            --dump-header "$pages_headers" \
+            --output /dev/null \
             --write-out '%{http_code}' \
             https://sekretbip.net/)"
 
           api_status="$(curl --silent --show-error --max-time 20 \
             "${access_headers[@]}" \
-            --dump-header artifacts/founder-shield-live/api-root.headers \
-            --output artifacts/founder-shield-live/api-root.body \
+            --dump-header "$api_root_headers" \
+            --output /dev/null \
             --write-out '%{http_code}' \
             https://api.sekretbip.net/)"
 
@@ -123,10 +127,33 @@ jobs:
             --header 'Origin: https://sekretbip.net' \
             --header 'Access-Control-Request-Method: POST' \
             --header 'Access-Control-Request-Headers: authorization,content-type' \
-            --dump-header artifacts/founder-shield-live/api-options.headers \
-            --output artifacts/founder-shield-live/api-options.body \
+            --dump-header "$api_options_headers" \
+            --output /dev/null \
             --write-out '%{http_code}' \
             https://api.sekretbip.net/api/sekret/reply)"
+
+          node - "$pages_headers" "$api_root_headers" "$api_options_headers" <<'NODE'
+          const fs = require('node:fs');
+
+          const pairs = [
+            [process.argv[2], 'artifacts/founder-shield-live/sekretbip.headers'],
+            [process.argv[3], 'artifacts/founder-shield-live/api-root.headers'],
+            [process.argv[4], 'artifacts/founder-shield-live/api-options.headers'],
+          ];
+          const sensitiveHeader = /^(?:set-cookie|cookie|authorization|proxy-authorization|cf-authorization|cf-access-token|cf-access-client-id|cf-access-client-secret):/i;
+
+          for (const [source, destination] of pairs) {
+            const input = fs.readFileSync(source, 'utf8');
+            const redacted = input
+              .split(/\r?\n/u)
+              .map((line) => {
+                const match = line.match(/^([^:]+):/u);
+                return match && sensitiveHeader.test(line) ? `${match[1]}: [REDACTED]` : line;
+              })
+              .join('\n');
+            fs.writeFileSync(destination, `${redacted}\n`, 'utf8');
+          }
+          NODE
 
           printf 'pages_status=%s\napi_root_status=%s\napi_options_status=%s\n' \
             "$pages_status" "$api_status" "$options_status" \
