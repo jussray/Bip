@@ -72,6 +72,29 @@ test('Founder Shield is credential-minimal, immutable, deterministic, and cancel
   assertCancelsSupersededRuns(content);
   assertKnownWorkingProofRunner(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
+
+  assert.match(content, /verify-live-edge:\s*\n\s*name: Verify authenticated live edge on main/);
+  assert.match(content, /if: github\.event_name == 'push'/);
+  assert.match(content, /environment: Production/);
+  assert.match(content, /CLOUDFLARE_ACCESS_CLIENT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCESS_CLIENT_ID \}\}/);
+  assert.match(content, /CLOUDFLARE_ACCESS_CLIENT_SECRET: \$\{\{ secrets\.CLOUDFLARE_ACCESS_CLIENT_SECRET \}\}/);
+  assert.match(content, /CF-Access-Client-Id: \$CLOUDFLARE_ACCESS_CLIENT_ID/);
+  assert.match(content, /CF-Access-Client-Secret: \$CLOUDFLARE_ACCESS_CLIENT_SECRET/);
+  assert.equal(
+    (content.match(/--output \/dev\/null/g) || []).length,
+    3,
+    'authenticated live-edge response bodies must not be retained',
+  );
+  assert.doesNotMatch(
+    content,
+    /--output artifacts\/founder-shield-live\/.*\.body/,
+    'authenticated response bodies must not enter retained evidence',
+  );
+  assert.ok(
+    content.includes('set-cookie|cookie|authorization|proxy-authorization|cf-authorization|cf-access-token|cf-access-client-id|cf-access-client-secret'),
+    'Founder Shield must redact reusable Access/session credentials from retained response headers',
+  );
+  assert.match(content, /\[REDACTED\]/);
 });
 
 test('Repository Truth uses the same deterministic proof runner and stale-head cancellation', () => {
