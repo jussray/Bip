@@ -45,7 +45,7 @@ test('collapsed daily intentions leave the lower-right Room utility rail reachab
   );
 });
 
-test('Living Sanctuary remains a presentation layer over existing Room product contracts', () => {
+test('Living Sanctuary remains a static presentation layer over existing Room product contracts', () => {
   assert.ok(
     roomRoute.includes("import { LivingSanctuaryLayer } from '../../components/rooms/LivingSanctuaryLayer';"),
     'Teen Room must render the selected Living Sanctuary redesign slice',
@@ -58,9 +58,10 @@ test('Living Sanctuary remains a presentation layer over existing Room product c
     sanctuary.includes('pointerEvents="none"'),
     'The sanctuary frame must never intercept existing Room interactions',
   );
-  assert.ok(
-    sanctuary.includes('useReducedMotion()'),
-    'New sanctuary atmosphere must honor the shared reduced-motion authority',
+  assert.doesNotMatch(
+    sanctuary,
+    /Animated\.|useReducedMotion|setInterval|setTimeout/,
+    'This slice must remain physically still rather than starting motion before preference authority resolves',
   );
   assert.doesNotMatch(sanctuary, /AsyncStorage|router\.|setScreen\(|supabase/i);
 });
