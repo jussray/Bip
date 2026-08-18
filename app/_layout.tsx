@@ -108,20 +108,6 @@ export default function RootLayout() {
     installSekretBipGuardrailRuntime();
   }, []);
 
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    const previousHtmlOverflowX = document.documentElement.style.overflowX;
-    const previousBodyOverflowX = document.body.style.overflowX;
-    document.documentElement.style.overflowX = 'hidden';
-    document.body.style.overflowX = 'hidden';
-
-    return () => {
-      document.documentElement.style.overflowX = previousHtmlOverflowX;
-      document.body.style.overflowX = previousBodyOverflowX;
-    };
-  }, []);
-
   return (
     <VerificationProvider>
       <AppProvider>
