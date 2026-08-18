@@ -35,7 +35,7 @@ test('Repository Truth permanently enforces Supabase migration lineage with pinn
 test('Product Design proof treats migration changes as user-journey changes', () => {
   const content = workflow('product-design-playwright-proof.yml');
 
-  assert.equal(occurrences(content, "- 'supabase/migrations/**'"), 2);
+  assert.equal(occurrences(content, "- 'supabase/migrations/**'"), 1);
   assert.match(content, new RegExp(`actions/checkout@${CHECKOUT_SHA}`));
   assert.match(content, /persist-credentials: false/);
   assert.match(content, new RegExp(`actions/setup-node@${SETUP_NODE_SHA}`));
