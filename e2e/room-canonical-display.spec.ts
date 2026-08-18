@@ -41,6 +41,7 @@ test('Teen Room keeps one canonical companion visual with bounded interaction ge
   await expect(page.getByText('Raylene is nearby.', { exact: true })).toHaveCount(0);
   await expect(page.getByText('YOUR SANCTUARY', { exact: true })).toHaveCount(0);
   await expect(companionVisual).toHaveCSS('pointer-events', 'none');
+  await expect(companionVisual).toHaveCSS('opacity', '1', { timeout: 5_000 });
 
   const [visualBox, tapBox, intentionsBox] = await Promise.all([
     companionVisual.boundingBox(),
