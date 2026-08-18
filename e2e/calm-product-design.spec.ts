@@ -35,7 +35,8 @@ async function readMotion(locator: Locator) {
 }
 
 for (const companion of COMPANIONS) {
-  test(`Calm presents ${companion.label} without changing the stored companion id`, async ({ page }, testInfo: TestInfo) => {
+  test(`Calm static witness presents ${companion.label} without changing the stored companion id`, async ({ page }, testInfo: TestInfo) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.setViewportSize(VIEWPORTS[0]);
     await seedTeenCompanion(page, companion.key);
     await page.goto('/calm?bipDevSide=teen', { waitUntil: 'networkidle' });
@@ -43,6 +44,7 @@ for (const companion of COMPANIONS) {
     await expect(page.getByTestId('calm-presence-pill')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(`${companion.label}'s here · weighted blanket mode`, { exact: true })).toBeVisible();
     await expect(page.getByText(`${companion.label} says ${companion.emoji}`, { exact: true })).toBeVisible();
+    await expect(page.getByText('Calm Tools ✦', { exact: true })).toBeVisible();
 
     await testInfo.attach(`calm-${companion.key}-identity.png`, {
       body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
