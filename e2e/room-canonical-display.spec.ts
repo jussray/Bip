@@ -16,12 +16,13 @@ async function saveEvidence(page: Page, name: string) {
   });
 }
 
-test('Teen Room keeps canonical identity while the companion leads the composition', async ({ page }) => {
+test('Teen Room keeps one canonical companion visual with bounded interaction geometry', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/room?bipDevSide=teen', { waitUntil: 'domcontentloaded' });
 
   const sanctuary = page.getByTestId('living-sanctuary-layer');
-  const companionVisual = page.getByTestId('living-sanctuary-companion-visual');
+  const companionVisual = page.getByTestId('room-companion-visual');
+  const companionHitTarget = page.getByTestId('room-companion-hit-target');
   const companionButton = page.getByRole('button', {
     name: 'Suhana is here. Tap to talk.',
     exact: true,
@@ -29,6 +30,9 @@ test('Teen Room keeps canonical identity while the companion leads the compositi
 
   await expect(sanctuary).toBeVisible({ timeout: 15_000 });
   await expect(companionVisual).toBeVisible({ timeout: 15_000 });
+  await expect(companionHitTarget).toBeVisible({ timeout: 15_000 });
+  await expect(companionVisual).toHaveCount(1);
+  await expect(page.getByTestId('living-sanctuary-companion-visual')).toHaveCount(0);
   await expect(page.getByText(/Suhana's Room/)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Suhana is nearby.', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(companionButton).toBeVisible({ timeout: 15_000 });
@@ -37,10 +41,11 @@ test('Teen Room keeps canonical identity while the companion leads the compositi
   await expect(page.getByText('YOUR SANCTUARY', { exact: true })).toHaveCount(0);
   await expect(page.getByText('✦ yours to explore', { exact: true })).toHaveCount(0);
   await expect(sanctuary).toHaveCSS('pointer-events', 'none');
+  await expect(companionVisual).toHaveCSS('pointer-events', 'none');
 
   const [visualBox, tapBox] = await Promise.all([
     companionVisual.boundingBox(),
-    companionButton.boundingBox(),
+    companionHitTarget.boundingBox(),
   ]);
   expect(visualBox).not.toBeNull();
   expect(tapBox).not.toBeNull();
@@ -49,7 +54,7 @@ test('Teen Room keeps canonical identity while the companion leads the compositi
   expect(visualBox!.width).toBeGreaterThan(tapBox!.width);
   expect(visualBox!.height).toBeGreaterThan(tapBox!.height);
 
-  await saveEvidence(page, '01-room-living-sanctuary-v2');
+  await saveEvidence(page, '01-room-companion-first-composition');
 
   await page.getByRole('button', { name: 'Customize your room in VibeLab', exact: true }).click();
   await expect(page.getByText('your room ✦', { exact: true })).toBeVisible();
@@ -71,7 +76,7 @@ test('Teen Room keeps canonical identity while the companion leads the compositi
   await saveEvidence(page, '03-vibelab-companion-picker-canonical-display');
 });
 
-test('Living Sanctuary v2 stays physically still under reduced motion', async ({ browser }) => {
+test('Living Sanctuary atmosphere adds no motion when reduced motion is requested', async ({ browser }) => {
   const context = await browser.newContext({
     reducedMotion: 'reduce',
     viewport: { width: 390, height: 844 },
@@ -81,25 +86,25 @@ test('Living Sanctuary v2 stays physically still under reduced motion', async ({
   try {
     await page.goto('/room?bipDevSide=teen', { waitUntil: 'domcontentloaded' });
     const sanctuary = page.getByTestId('living-sanctuary-layer');
-    const companionVisual = page.getByTestId('living-sanctuary-companion-visual');
+    const depth = page.getByTestId('living-sanctuary-depth');
 
     await expect(sanctuary).toBeVisible({ timeout: 15_000 });
-    await expect(companionVisual).toBeVisible({ timeout: 15_000 });
+    await expect(depth).toBeVisible({ timeout: 15_000 });
 
-    const before = await companionVisual.evaluate(element => {
+    const before = await depth.evaluate(element => {
       const style = window.getComputedStyle(element);
-      return `${style.transform}|${style.opacity}|${style.left}|${style.bottom}`;
+      return `${style.transform}|${style.opacity}|${style.backgroundImage}`;
     });
 
     await page.waitForTimeout(700);
 
-    const after = await companionVisual.evaluate(element => {
+    const after = await depth.evaluate(element => {
       const style = window.getComputedStyle(element);
-      return `${style.transform}|${style.opacity}|${style.left}|${style.bottom}`;
+      return `${style.transform}|${style.opacity}|${style.backgroundImage}`;
     });
 
     expect(after).toBe(before);
-    await saveEvidence(page, '04-room-living-sanctuary-v2-reduced-motion');
+    await saveEvidence(page, '04-room-sanctuary-atmosphere-reduced-motion');
   } finally {
     await context.close();
   }
