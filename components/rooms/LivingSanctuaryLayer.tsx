@@ -1,14 +1,68 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
-  getCompanionRuntime,
+  Dimensions,
+  Image,
+  type ImageSourcePropType,
+  type ImageStyle,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { IMAGES } from '@/constants/theme';
+import {
+  resolveCompanionId,
+  type CompanionId,
   type CompanionRuntimeKey,
 } from '@/config/companionRuntimeRegistry';
 
 interface LivingSanctuaryLayerProps {
   companionKey: string;
 }
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const HUMAN_WIDTH = Math.min(SCREEN_WIDTH * 0.78, 330);
+const HUMAN_HEIGHT = Math.min(SCREEN_HEIGHT * 0.62, 520);
+
+type StageProfile = Pick<ImageStyle, 'left' | 'right' | 'bottom' | 'width' | 'height'>;
+
+const STAGE_PROFILES: Record<CompanionId, StageProfile> = {
+  suhana: {
+    left: -24,
+    bottom: 72,
+    width: HUMAN_WIDTH,
+    height: HUMAN_HEIGHT,
+  },
+  sy: {
+    right: -20,
+    bottom: 72,
+    width: HUMAN_WIDTH,
+    height: HUMAN_HEIGHT,
+  },
+  night: {
+    left: -18,
+    bottom: 70,
+    width: HUMAN_WIDTH,
+    height: HUMAN_HEIGHT,
+  },
+  cloud: {
+    left: Math.max(18, SCREEN_WIDTH * 0.1),
+    bottom: 206,
+    width: Math.min(SCREEN_WIDTH * 0.7, 280),
+    height: Math.min(SCREEN_WIDTH * 0.56, 224),
+  },
+  mom: {
+    left: -24,
+    bottom: 72,
+    width: HUMAN_WIDTH,
+    height: HUMAN_HEIGHT,
+  },
+  dad: {
+    right: -20,
+    bottom: 72,
+    width: HUMAN_WIDTH,
+    height: HUMAN_HEIGHT,
+  },
+};
 
 function resolveRuntimeKey(value: string): CompanionRuntimeKey {
   if (
@@ -27,11 +81,21 @@ function resolveRuntimeKey(value: string): CompanionRuntimeKey {
   return 'raylene';
 }
 
+function fullBodySource(id: CompanionId): ImageSourcePropType | null {
+  if (id === 'suhana') return IMAGES.rayleneFullbody;
+  if (id === 'sy') return IMAGES.rylaneFullbody;
+  if (id === 'night') return IMAGES.nightFullbody;
+  if (id === 'cloud') return IMAGES.cloudAvatarFullbody;
+  return null;
+}
+
 export function LivingSanctuaryLayer({ companionKey }: LivingSanctuaryLayerProps) {
-  const companion = useMemo(
-    () => getCompanionRuntime(resolveRuntimeKey(companionKey)),
+  const companionId = useMemo(
+    () => resolveCompanionId(resolveRuntimeKey(companionKey)),
     [companionKey],
   );
+  const source = fullBodySource(companionId);
+  const stage = STAGE_PROFILES[companionId];
 
   return (
     <View
@@ -42,96 +106,34 @@ export function LivingSanctuaryLayer({ companionKey }: LivingSanctuaryLayerProps
       importantForAccessibility="no-hide-descendants"
     >
       <LinearGradient
+        testID="living-sanctuary-depth"
         colors={[
-          'rgba(8,3,22,0.58)',
-          'rgba(8,3,22,0.08)',
-          'rgba(8,3,22,0.02)',
+          'rgba(8,3,22,0.01)',
+          'rgba(8,3,22,0.03)',
           'rgba(8,3,22,0.34)',
         ]}
-        locations={[0, 0.2, 0.62, 1]}
+        locations={[0, 0.58, 1]}
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={s.innerFrame} />
-      <View testID="living-sanctuary-halo" style={s.halo} />
-
-      <View style={s.heading}>
-        <Text style={s.eyebrow}>YOUR SANCTUARY</Text>
-        <View style={s.headingRule} />
-        <Text style={s.tagline}>your room, your pace.</Text>
-      </View>
-
-      <View style={s.discovery}>
-        <Text style={s.discoveryLabel}>✦ yours to explore</Text>
-        <Text style={s.discoverySub}>{companion.label} is already here</Text>
-      </View>
+      {source && (
+        <Image
+          testID="living-sanctuary-companion-visual"
+          source={source}
+          resizeMode="contain"
+          style={[s.companionVisual, stage]}
+          accessibilityIgnoresInvertColors
+          accessible={false}
+        />
+      )}
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  innerFrame: {
+  companionVisual: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
-    bottom: 86,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(221,214,254,0.12)',
-  },
-  halo: {
-    position: 'absolute',
-    top: '22%',
-    right: '-14%',
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: 'rgba(192,132,252,0.22)',
-    opacity: 0.24,
-  },
-  heading: {
-    position: 'absolute',
-    top: 34,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  eyebrow: {
-    color: 'rgba(245,243,255,0.74)',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 2.4,
-  },
-  headingRule: {
-    width: 34,
-    height: 1,
-    marginTop: 7,
-    marginBottom: 6,
-    backgroundColor: 'rgba(216,180,254,0.48)',
-  },
-  tagline: {
-    color: 'rgba(245,243,255,0.64)',
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.25,
-  },
-  discovery: {
-    position: 'absolute',
-    right: 18,
-    bottom: 136,
-    alignItems: 'flex-end',
-  },
-  discoveryLabel: {
-    color: 'rgba(245,243,255,0.84)',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.7,
-  },
-  discoverySub: {
-    marginTop: 3,
-    color: 'rgba(221,214,254,0.54)',
-    fontSize: 9,
-    fontWeight: '600',
+    zIndex: 1,
+    opacity: 0.98,
   },
 });
