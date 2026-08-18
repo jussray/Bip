@@ -6,6 +6,7 @@ const registry = await readFile(new URL('../src/config/companionRuntimeRegistry.
 const sprite = await readFile(new URL('../src/components/room/character/SekretSprite.tsx', import.meta.url), 'utf8');
 const layer = await readFile(new URL('../src/components/room/character/CharacterLayer.tsx', import.meta.url), 'utf8');
 const userRoom = await readFile(new URL('../screens/UserRoomScreen.tsx', import.meta.url), 'utf8');
+const themeEntry = await readFile(new URL('../constants/theme.ts', import.meta.url), 'utf8');
 
 test('canonical companion identities preserve only legacy compatibility aliases', () => {
   assert.match(registry, /type CompanionId = 'night' \| 'suhana' \| 'sy' \| 'cloud' \| 'mom' \| 'dad'/);
@@ -13,6 +14,14 @@ test('canonical companion identities preserve only legacy compatibility aliases'
   assert.match(registry, /if \(key === 'rylane'\) return 'sy'/);
   assert.match(registry, /label: 'Suhana'/);
   assert.match(registry, /label: 'Sy'/);
+});
+
+test('public image map wires Suhana full-body staging to the production standing asset', () => {
+  assert.match(
+    themeEntry,
+    /const rayleneFullbody = require\('\.\.\/assets\/images\/raylene-fullbody\.png'\);/,
+  );
+  assert.match(themeEntry, /\.\.\.BASE_IMAGES,[\s\S]*rayleneFullbody,/);
 });
 
 test('Teen Room uses the canonical runtime label at user-facing legacy-key boundaries', () => {
