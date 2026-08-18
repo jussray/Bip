@@ -35,13 +35,31 @@ test('Product Design proof remains exact-head and failure-preserving', () => {
     'if-no-files-found: error',
     'retention-days: 30',
     'test/founder-visual-authority-contract.test.mjs',
+    'test/founder-visual-approval-receipt.test.mjs',
     'test/pages-companion-asset-contract.test.mjs',
+    'test/calm-companion-motion-contract.test.mjs',
   ]) {
     assert.ok(workflow.includes(required), `missing Product Design workflow contract: ${required}`);
   }
 
-  assert.ok(
-    !workflow.includes('ref: ${{ github.sha }}'),
-    'PR evidence must not validate the synthetic merge SHA',
-  );
+  assert.ok(!workflow.includes('ref: ${{ github.sha }}'), 'PR evidence must not validate the synthetic merge SHA');
+});
+
+test('visual PR proof fails closed until the founder approves the exact head artifact', () => {
+  for (const required of [
+    'issues: read',
+    'pull-requests: read',
+    'Verify exact-head founder visual approval receipt',
+    "if: github.event_name == 'pull_request'",
+    'GITHUB_TOKEN: ${{ github.token }}',
+    'PR_NUMBER: ${{ github.event.pull_request.number }}',
+    'FOUNDER_GITHUB_LOGIN: jussray',
+    'node scripts/verify-founder-visual-approval.mjs',
+  ]) {
+    assert.ok(workflow.includes(required), `missing founder approval workflow gate: ${required}`);
+  }
+
+  const uploadIndex = workflow.indexOf('Upload Product Design evidence');
+  const approvalIndex = workflow.indexOf('Verify exact-head founder visual approval receipt');
+  assert.ok(uploadIndex !== -1 && approvalIndex > uploadIndex, 'founder approval must be checked only after the exact-head packet is uploaded for inspection');
 });
