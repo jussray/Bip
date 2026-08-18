@@ -43,11 +43,11 @@ const STORAGE_KEY_V1 = 'sekretbip_user_room_v1';
 export type LightingMode = RoomPhase | 'auto';
 
 export interface PlacedItem {
-  uid:       string;     // unique instance id
-  stickerId: string;     // FurnishItem.id from FURNISH_CATALOG
-  x:         number;     // % from left (0–100)
-  y:         number;     // % from top  (0–100)
-  scale:     number;     // default 1.0
+  uid:       string;
+  stickerId: string;
+  x:         number;
+  y:         number;
+  scale:     number;
 }
 
 export interface UserRoomConfig {
@@ -56,9 +56,9 @@ export interface UserRoomConfig {
   companionId:  Character;
   roomName:     string;
   placedItems:  PlacedItem[];
-  vibeOverlay:  string;   // rgba color or 'none'
-  roomQuote:    string;   // pinned note, max 60 chars
-  glowColor:    string;   // hex for accent glow
+  vibeOverlay:  string;
+  roomQuote:    string;
+  glowColor:    string;
 }
 
 const DEFAULT_USER_ROOM: UserRoomConfig = {
@@ -72,7 +72,6 @@ const DEFAULT_USER_ROOM: UserRoomConfig = {
   glowColor:    '#c084fc',
 };
 
-// Spread-out default drop positions (right side / bottom to avoid companion on left)
 const PLACE_SLOTS: { x: number; y: number }[] = [
   { x: 64, y: 26 }, { x: 76, y: 18 }, { x: 72, y: 46 },
   { x: 80, y: 60 }, { x: 56, y: 66 }, { x: 66, y: 38 },
@@ -81,7 +80,7 @@ const PLACE_SLOTS: { x: number; y: number }[] = [
 
 const MAX_PLACED = 8;
 
-type Mood     = string;
+type Mood      = string;
 type TimeOfDay = 'morning' | 'day' | 'evening' | 'night';
 type Pose =
   | 'neutral' | 'happy' | 'thinking' | 'writing' | 'window' | 'fullbody'
@@ -104,6 +103,12 @@ type Hotspot = {
 };
 
 type AvatarMap = Partial<Record<Pose, ImageSourcePropType>>;
+type CompanionPlacement = {
+  bottom: DimensionValue;
+  left: DimensionValue;
+  w: number;
+  h: number;
+};
 
 // ─── Asset maps ───────────────────────────────────────────────────────────────
 
@@ -135,18 +140,31 @@ const CHARACTER_OVERLAYS: Record<Character, string> = {
   night:   'rgba(6,2,22,0.25)',
 };
 
-// ─── Companion placement ──────────────────────────────────────────────────────
-// Positions chosen so the companion sits naturally in each room's left/open area
+// ─── Companion composition ────────────────────────────────────────────────────
+// The visual and its tap target intentionally have separate geometry. The Room
+// may stage a larger companion without turning that entire area into an input
+// layer that steals taps from the environment.
 
-const COMPANION_POSITIONS: Record<Character, { bottom: DimensionValue; left: DimensionValue; w: number; h: number }> = {
-  raylene: { bottom: '21%', left: '2%',  w: width * 0.54, h: height * 0.46 },
-  rylane:  { bottom: '21%', left: '0%',  w: width * 0.50, h: height * 0.44 },
-  cloud:   { bottom: '30%', left: '28%', w: width * 0.44, h: height * 0.34 },
-  night:   { bottom: '21%', left: '2%',  w: width * 0.52, h: height * 0.45 },
+const HUMAN_VISUAL_W = Math.min(width * 0.78, 420);
+const HUMAN_VISUAL_H = Math.min(height * 0.62, 560);
+const HUMAN_HIT_W    = Math.min(Math.max(width * 0.32, 124), 168);
+const HUMAN_HIT_H    = Math.min(Math.max(height * 0.24, 190), 240);
+
+const COMPANION_VISUAL_POSITIONS: Record<Character, CompanionPlacement> = {
+  raylene: { bottom: '9%',  left: '-7%', w: HUMAN_VISUAL_W, h: HUMAN_VISUAL_H },
+  rylane:  { bottom: '9%',  left: '20%', w: HUMAN_VISUAL_W, h: HUMAN_VISUAL_H },
+  cloud:   { bottom: '24%', left: '16%', w: Math.min(width * 0.62, 280), h: Math.min(height * 0.38, 320) },
+  night:   { bottom: '9%',  left: '-5%', w: HUMAN_VISUAL_W, h: HUMAN_VISUAL_H },
+};
+
+const COMPANION_HIT_TARGETS: Record<Character, CompanionPlacement> = {
+  raylene: { bottom: '22%', left: '4%',  w: HUMAN_HIT_W, h: HUMAN_HIT_H },
+  rylane:  { bottom: '22%', left: '34%', w: HUMAN_HIT_W, h: HUMAN_HIT_H },
+  cloud:   { bottom: '31%', left: '31%', w: Math.min(Math.max(width * 0.28, 108), 148), h: Math.min(Math.max(height * 0.18, 150), 190) },
+  night:   { bottom: '22%', left: '5%',  w: HUMAN_HIT_W, h: HUMAN_HIT_H },
 };
 
 // ─── Hotspot maps ─────────────────────────────────────────────────────────────
-// Summon hotspot removed — companion image is the tap target now
 
 const RAYLENE_HOTSPOTS: Hotspot[] = [
   { id: 'pages',         label: 'Journal 📖',       target: 'pages',         pulse: true,  hint: 'tap the journal', style: { bottom: '10%', left: '14%',  width: '36%', height: '18%' } },
@@ -298,7 +316,6 @@ const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
     if (tod === 'night') return 'window';
     return 'neutral';
   }
-  // cloud
   if (m.includes('happy') || m.includes('good'))   return 'happy';
   if (m.includes('think') || m.includes('listen')) return 'thinking';
   if (m.includes('tired') || m.includes('sleepy')) return 'window';
@@ -308,7 +325,6 @@ const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
 const safe = (src: ImageSourcePropType | undefined, fallback: ImageSourcePropType): ImageSourcePropType =>
   src ?? fallback;
 
-// Resolve image for any placed item — checks furnish catalog first, falls back to sticker images
 function resolveItemSource(id: string): ImageSourcePropType | null {
   const fi = FURNISH_CATALOG.find(i => i.id === id);
   if (fi) return fi.source;
@@ -316,7 +332,6 @@ function resolveItemSource(id: string): ImageSourcePropType | null {
   return si ?? null;
 }
 
-// Category filter metadata for decor tab
 const CATEGORY_META: Record<FurnishCategory | 'all', { label: string; emoji: string }> = {
   all:         { label: 'all',         emoji: '✦'  },
   furniture:   { label: 'furniture',   emoji: '🛏️'  },
@@ -358,7 +373,6 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
 
   const sheetY = slideAnim.interpolate({ inputRange: [0, 1], outputRange: [600, 0] });
 
-  // Items scoped to this room's origin (+ shared) then filtered by category
   const filteredItems = useMemo(() => {
     const byOrigin = FURNISH_CATALOG.filter(
       fi => fi.origin === draft.baseRoomId || fi.origin === 'shared',
@@ -368,9 +382,8 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
 
   const addSticker = useCallback((stickerId: string) => {
     setDraft(d => {
-      const newFi      = FURNISH_CATALOG.find(fi => fi.id === stickerId);
-      const newCat     = newFi?.category;
-      // Each category allows only one item at a time — placing a new one replaces the old
+      const newFi  = FURNISH_CATALOG.find(fi => fi.id === stickerId);
+      const newCat = newFi?.category;
       const base = newCat
         ? d.placedItems.filter(p => {
             const pFi = FURNISH_CATALOG.find(fi => fi.id === p.stickerId);
@@ -404,25 +417,23 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
         <View style={vl.handle} />
         <Text style={vl.title}>your room ✦</Text>
 
-        {/* Tabs */}
         <View style={vl.tabRow}>
-          {(['room', 'lighting', 'companion', 'decor', 'vibe'] as VLTab[]).map(t => (
+          {(['room', 'lighting', 'companion', 'decor', 'vibe'] as VLTab[]).map(tabName => (
             <TouchableOpacity
-              key={t}
-              style={[vl.tab, tab === t && vl.tabActive]}
-              onPress={() => setTab(t)}
+              key={tabName}
+              style={[vl.tab, tab === tabName && vl.tabActive]}
+              onPress={() => setTab(tabName)}
             >
-              <Text style={[vl.tabText, tab === t && vl.tabTextActive]}>
-                {t === 'room'      ? '🏠' :
-                 t === 'lighting'  ? '✨' :
-                 t === 'companion' ? '💫' :
-                 t === 'decor'     ? '🖼️' : '✦'}
+              <Text style={[vl.tabText, tab === tabName && vl.tabTextActive]}>
+                {tabName === 'room'      ? '🏠' :
+                 tabName === 'lighting'  ? '✨' :
+                 tabName === 'companion' ? '💫' :
+                 tabName === 'decor'     ? '🖼️' : '✦'}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Room picker */}
         {tab === 'room' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.scroll} contentContainerStyle={vl.hContent}>
             {CHARACTERS.map(id => {
@@ -446,7 +457,6 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
           </ScrollView>
         )}
 
-        {/* Lighting picker */}
         {tab === 'lighting' && (
           <ScrollView style={vl.scroll} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
             {LIGHTING_PRESETS.map(preset => {
@@ -470,7 +480,6 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
           </ScrollView>
         )}
 
-        {/* Companion picker */}
         {tab === 'companion' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.scroll} contentContainerStyle={vl.hContent}>
             {CHARACTERS.map(id => {
@@ -493,20 +502,18 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
           </ScrollView>
         )}
 
-        {/* Decor / furnishing picker — items sourced from this room's style catalog */}
         {tab === 'decor' && (
           <View style={{ flex: 1 }}>
-            {/* Category filter chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={vl.filterRow} contentContainerStyle={vl.filterContent}>
-              {(['all', 'furniture', 'lighting', 'decor', 'accessories', 'plants'] as DecorFilter[]).map(f => {
-                const meta = CATEGORY_META[f];
+              {(['all', 'furniture', 'lighting', 'decor', 'accessories', 'plants'] as DecorFilter[]).map(filter => {
+                const meta = CATEGORY_META[filter];
                 return (
                   <TouchableOpacity
-                    key={f}
-                    style={[vl.filterChip, decorFilter === f && vl.filterChipActive]}
-                    onPress={() => setDecorFilter(f)}
+                    key={filter}
+                    style={[vl.filterChip, decorFilter === filter && vl.filterChipActive]}
+                    onPress={() => setDecorFilter(filter)}
                   >
-                    <Text style={[vl.filterChipText, decorFilter === f && vl.filterChipTextActive]}>
+                    <Text style={[vl.filterChipText, decorFilter === filter && vl.filterChipTextActive]}>
                       {meta.emoji} {meta.label}
                     </Text>
                   </TouchableOpacity>
@@ -514,7 +521,6 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
               })}
             </ScrollView>
 
-            {/* Catalog grid — room-native items + shared */}
             <ScrollView style={vl.decorScroll} contentContainerStyle={vl.decorGrid} showsVerticalScrollIndicator={false}>
               {filteredItems.map(fi => {
                 const src    = fi.source;
@@ -547,7 +553,6 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
               })}
             </ScrollView>
 
-            {/* In your room — placed items strip */}
             {draft.placedItems.length > 0 && (
               <View style={vl.placedSection}>
                 <Text style={vl.placedTitle}>in your room ({draft.placedItems.length}/{MAX_PLACED})</Text>
@@ -581,14 +586,13 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
           </View>
         )}
 
-        {/* Vibe tab */}
         {tab === 'vibe' && (
           <ScrollView style={vl.scroll} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
             <Text style={vl.vibeLabel}>room name</Text>
             <TextInput
               style={vl.vibeInput}
               value={draft.roomName}
-              onChangeText={v => setDraft(d => ({ ...d, roomName: v.slice(0, 30) }))}
+              onChangeText={value => setDraft(d => ({ ...d, roomName: value.slice(0, 30) }))}
               placeholder="name your space…"
               placeholderTextColor="rgba(196,181,253,0.35)"
               maxLength={30}
@@ -598,7 +602,7 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
             <TextInput
               style={[vl.vibeInput, { height: 64 }]}
               value={draft.roomQuote}
-              onChangeText={v => setDraft(d => ({ ...d, roomQuote: v.slice(0, 60) }))}
+              onChangeText={value => setDraft(d => ({ ...d, roomQuote: value.slice(0, 60) }))}
               placeholder="something pinned to your wall…"
               placeholderTextColor="rgba(196,181,253,0.35)"
               multiline
@@ -620,14 +624,14 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
 
             <Text style={[vl.vibeLabel, { marginTop: 16 }]}>wall vibe</Text>
             <View style={vl.overlayRow}>
-              {VIBE_OVERLAYS.map(o => (
+              {VIBE_OVERLAYS.map(overlay => (
                 <TouchableOpacity
-                  key={o.color}
-                  style={[vl.overlayChip, draft.vibeOverlay === o.color && vl.overlayChipActive]}
-                  onPress={() => setDraft(d => ({ ...d, vibeOverlay: o.color }))}
+                  key={overlay.color}
+                  style={[vl.overlayChip, draft.vibeOverlay === overlay.color && vl.overlayChipActive]}
+                  onPress={() => setDraft(d => ({ ...d, vibeOverlay: overlay.color }))}
                 >
-                  <Text style={vl.overlayEmoji}>{o.emoji}</Text>
-                  <Text style={vl.overlayLabel}>{o.label}</Text>
+                  <Text style={vl.overlayEmoji}>{overlay.emoji}</Text>
+                  <Text style={vl.overlayLabel}>{overlay.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -668,8 +672,6 @@ export function UserRoomScreen({
   BottomNav,
   updateRoomMemory,
 }: UserRoomScreenProps) {
-
-  // Derive initial companion from selectedSekret so first load feels right
   const initialCompanion: Character =
     selectedSekret === 'rylane' ? 'rylane' :
     selectedSekret === 'cloud'  ? 'cloud'  :
@@ -682,7 +684,6 @@ export function UserRoomScreen({
   });
   const [vibeLabOpen, setVibeLabOpen] = useState(false);
 
-  // Load persisted config on mount — migrates v1 saves to v2, clearing old sticker placements
   useEffect(() => {
     (async () => {
       const raw2 = await AsyncStorage.getItem(STORAGE_KEY);
@@ -690,7 +691,6 @@ export function UserRoomScreen({
         try { setUserRoom(prev => ({ ...prev, ...(JSON.parse(raw2) as Partial<UserRoomConfig>) })); } catch {}
         return;
       }
-      // v1 → v2 migration: carry room/lighting/companion settings, drop old sticker placements
       const raw1 = await AsyncStorage.getItem(STORAGE_KEY_V1);
       if (raw1) {
         try {
@@ -700,7 +700,7 @@ export function UserRoomScreen({
             lightingMode: old.lightingMode,
             companionId:  old.companionId,
             roomName:     old.roomName ?? '',
-            placedItems:  [], // old sticker IDs don't match new catalog — start fresh
+            placedItems:  [],
           };
           setUserRoom(prev => ({ ...prev, ...migrated }));
           AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...DEFAULT_USER_ROOM, ...migrated })).catch(() => {});
@@ -715,8 +715,7 @@ export function UserRoomScreen({
     updateRoomMemory?.({ character: cfg.companionId });
   }, [updateRoomMemory]);
 
-  // ─── Time / phase ──────────────────────────────────────────────────────
-  const now      = useMemo(() => new Date(), []);
+  const now       = useMemo(() => new Date(), []);
   const timeOfDay = useMemo<TimeOfDay>(() => getTimeOfDay(), [now]);
 
   const roomPhase = useMemo<RoomPhase>(() => {
@@ -728,15 +727,16 @@ export function UserRoomScreen({
 
   const vibePack = THEME_PACKS[vibe] ?? THEME_PACKS.raylene;
 
-  // ─── Companion ─────────────────────────────────────────────────────────
-  const cId   = userRoom.companionId;
-  const pose  = useMemo(() => getPose(mood, timeOfDay, cId), [mood, timeOfDay, cId]);
-  const cPos  = COMPANION_POSITIONS[cId];
-  const cSrc  = safe(AVATARS[cId]?.[pose], FALLBACK_AVATAR[cId]);
-  const hotspots = useMemo(() => ROOM_HOTSPOTS[userRoom.baseRoomId], [userRoom.baseRoomId]);
-  const roomLabel = userRoom.roomName || ROOM_META[userRoom.baseRoomId].name;
+  const cId         = userRoom.companionId;
+  const pose        = useMemo(() => getPose(mood, timeOfDay, cId), [mood, timeOfDay, cId]);
+  const cRuntime    = getCompanionRuntime(cId);
+  const cPoseSrc    = safe(AVATARS[cId]?.[pose], FALLBACK_AVATAR[cId]);
+  const cSrc        = cRuntime.source ?? cPoseSrc;
+  const cVisualPos  = COMPANION_VISUAL_POSITIONS[cId];
+  const cHitPos     = COMPANION_HIT_TARGETS[cId];
+  const hotspots    = useMemo(() => ROOM_HOTSPOTS[userRoom.baseRoomId], [userRoom.baseRoomId]);
+  const roomLabel   = userRoom.roomName || ROOM_META[userRoom.baseRoomId].name;
 
-  // ─── Animations ────────────────────────────────────────────────────────
   const fadeAnim       = useRef(new Animated.Value(0)).current;
   const glowAnim       = useRef(new Animated.Value(0.2)).current;
   const pulseAnim      = useRef(new Animated.Value(0)).current;
@@ -793,8 +793,6 @@ export function UserRoomScreen({
     }).start();
   }, [hintSpot]);
 
-  // ─── Handlers ──────────────────────────────────────────────────────────
-
   const handleHotspot = useCallback((target: RoomTarget) => {
     updateRoomMemory?.({ lastHotspot: target, lastVisit: new Date().toISOString() });
     setScreen(target);
@@ -805,22 +803,17 @@ export function UserRoomScreen({
     setScreen('sekret');
   }, [setScreen, cId, updateRoomMemory]);
 
-  // ─── Render ────────────────────────────────────────────────────────────
-
   return (
     <View style={s.root}>
       <StatusBar style="light" />
 
-      {/* ── Ambient weather overlay ──────────────────────────────────────── */}
       <AmbientWeatherOverlay phase={roomPhase} />
 
-      {/* ── LAYER 0: Bare room shell (walls, floor, window, atmosphere) ── */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
         <BareRoomRenderer
           character={userRoom.baseRoomId}
           lightingMode={roomPhase}
         />
-        {/* LAYER 1: Time-of-day tint + vibe/character overlays */}
         <View style={[s.overlay, { backgroundColor: ROOM_PHASE_OVERLAYS[roomPhase] }]} />
         <View style={[s.overlay, { backgroundColor: vibePack.background + '22' }]} />
         {CHARACTER_OVERLAYS[userRoom.baseRoomId] !== 'transparent' && (
@@ -831,22 +824,20 @@ export function UserRoomScreen({
         )}
       </Animated.View>
 
-      {/* Night room atmosphere clock */}
       {userRoom.baseRoomId === 'night' && (
         <View style={s.nightTimeWrap} pointerEvents="none">
           <Text style={s.nightTimeText}>
             {(() => {
-              const h = new Date().getHours();
-              const m = new Date().getMinutes();
-              const h12 = h % 12 || 12;
-              return `${h12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+              const hour = new Date().getHours();
+              const minute = new Date().getMinutes();
+              const hour12 = hour % 12 || 12;
+              return `${hour12}:${String(minute).padStart(2, '0')} ${hour >= 12 ? 'PM' : 'AM'}`;
             })()}
           </Text>
           <Text style={s.nightStars}>✦ ✧ ✦</Text>
         </View>
       )}
 
-      {/* Room quote sticky note */}
       {userRoom.roomQuote.length > 0 && (() => {
         const qp = QUOTE_POSITIONS[userRoom.baseRoomId];
         return (
@@ -863,7 +854,6 @@ export function UserRoomScreen({
         );
       })()}
 
-      {/* ── LAYER 2: Hotspots ─────────────────────────────────────────── */}
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
         {hotspots.map(spot => {
           const isHinted = hintSpot === spot.id;
@@ -882,7 +872,7 @@ export function UserRoomScreen({
                   style={[
                     s.pulseRing,
                     {
-                      opacity:   pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }),
+                      opacity: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.55] }),
                       transform: [{ scale: pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] }) }],
                       borderColor: t.accent ?? '#d946ef',
                     },
@@ -890,10 +880,13 @@ export function UserRoomScreen({
                 />
               )}
               {isHinted && (
-                <Animated.View style={[s.tapHintWrap, {
-                  opacity: hintAnim,
-                  transform: [{ translateY: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }],
-                }]}>
+                <Animated.View style={[
+                  s.tapHintWrap,
+                  {
+                    opacity: hintAnim,
+                    transform: [{ translateY: hintAnim.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }],
+                  },
+                ]}>
                   <Text style={s.tapHint}>{spot.hint ?? 'Tap'}</Text>
                 </Animated.View>
               )}
@@ -902,22 +895,21 @@ export function UserRoomScreen({
         })}
       </Animated.View>
 
-      {/* ── LAYER 3: Placed decor / furnishing items ─────────────────── */}
       {userRoom.placedItems.map(item => {
         const src = resolveItemSource(item.stickerId);
         if (!src) return null;
-        const sz = width * 0.2 * item.scale;
+        const size = width * 0.2 * item.scale;
         return (
           <Image
             key={item.uid}
             source={src}
             style={{
               position: 'absolute',
-              left:     `${item.x}%` as any,
-              top:      `${item.y}%` as any,
-              width:    sz,
-              height:   sz,
-              zIndex:   6,
+              left: `${item.x}%` as any,
+              top: `${item.y}%` as any,
+              width: size,
+              height: size,
+              zIndex: 6,
             }}
             resizeMode="contain"
             accessible={false}
@@ -925,15 +917,17 @@ export function UserRoomScreen({
         );
       })}
 
-      {/* ── LAYER 5: Companion — always visible, tappable ─────────────── */}
+      {/* One canonical companion visual. It never owns the full interaction box. */}
       <Animated.View
+        pointerEvents="none"
+        testID="room-companion-visual"
         style={[
           s.companionWrap,
           {
-            bottom: cPos.bottom,
-            left:   cPos.left,
-            width:  cPos.w,
-            height: cPos.h,
+            bottom: cVisualPos.bottom,
+            left: cVisualPos.left,
+            width: cVisualPos.w,
+            height: cVisualPos.h,
             opacity: companionAnim,
             transform: [
               { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
@@ -942,32 +936,44 @@ export function UserRoomScreen({
           },
         ]}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={handleCompanionTap}
-          activeOpacity={0.88}
-          accessibilityRole="button"
-          accessibilityLabel={`${getCompanionRuntime(cId).label} is here. Tap to talk.`}
-        >
-          <Image
-            source={cSrc}
-            style={s.companionImage}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-            accessible={false}
-          />
-          {/* Ambient breath glow to signal tappability */}
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              s.companionGlow,
-              { opacity: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.18] }), backgroundColor: userRoom.glowColor },
-            ]}
-          />
-        </TouchableOpacity>
+        <Image
+          source={cSrc}
+          style={s.companionImage}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          accessible={false}
+        />
       </Animated.View>
 
-      {/* Cloud mascot shortcut when companion is not Cloud */}
+      {/* Bounded transparent hit target preserves Room hotspot authority. */}
+      <TouchableOpacity
+        testID="room-companion-hit-target"
+        style={[
+          s.companionHitTarget,
+          {
+            bottom: cHitPos.bottom,
+            left: cHitPos.left,
+            width: cHitPos.w,
+            height: cHitPos.h,
+          },
+        ]}
+        onPress={handleCompanionTap}
+        activeOpacity={0.78}
+        accessibilityRole="button"
+        accessibilityLabel={`${cRuntime.label} is here. Tap to talk.`}
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            s.companionGlow,
+            {
+              opacity: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] }),
+              backgroundColor: userRoom.glowColor,
+            },
+          ]}
+        />
+      </TouchableOpacity>
+
       {cId !== 'cloud' && (
         <TouchableOpacity
           style={[s.cloudPresence, { borderColor: (t.accent ?? '#d946ef') + '88' }]}
@@ -980,8 +986,7 @@ export function UserRoomScreen({
         </TouchableOpacity>
       )}
 
-      {/* ── Top bar: room name label ───────────────────────────────────── */}
-      <Animated.View style={[s.topBar, { opacity: fadeAnim }]}> 
+      <Animated.View style={[s.topBar, { opacity: fadeAnim }]}>
         <View style={s.roomBadge}>
           <Text style={s.roomBadgeText}>
             {ROOM_META[userRoom.baseRoomId].emoji} {roomLabel}
@@ -989,14 +994,13 @@ export function UserRoomScreen({
         </View>
       </Animated.View>
 
-      {/* ── Presence pill ─────────────────────────────────────────────── */}
       <Animated.View
         style={[
           s.presencePill,
           {
             opacity: Animated.multiply(
               fadeAnim,
-              breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] })
+              breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0.78, 1] }),
             ),
             transform: [{ scale: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.02] }) }],
           },
@@ -1015,7 +1019,6 @@ export function UserRoomScreen({
         <Text style={s.presenceText}>{getPresenceLine(cId, timeOfDay)}</Text>
       </Animated.View>
 
-      {/* ── VibeLab edit button ───────────────────────────────────────── */}
       <Animated.View style={[s.vibeLabBtnWrap, { opacity: fadeAnim }]}>
         <TouchableOpacity
           style={[s.vibeLabBtn, { borderColor: userRoom.glowColor + '88', shadowColor: userRoom.glowColor }]}
@@ -1028,10 +1031,8 @@ export function UserRoomScreen({
         </TouchableOpacity>
       </Animated.View>
 
-      {/* ── Bottom nav ────────────────────────────────────────────────── */}
       <View style={s.bottomSlot}>{BottomNav}</View>
 
-      {/* ── VibeLab V2 sheet ──────────────────────────────────────────── */}
       <VibeLab2Sheet
         visible={vibeLabOpen}
         current={userRoom}
@@ -1045,15 +1046,30 @@ export function UserRoomScreen({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root:              { flex: 1, backgroundColor: '#0d0014' },
-  bg:                { width, height },
-  overlay:           StyleSheet.absoluteFill,
+  root:    { flex: 1, backgroundColor: '#0d0014' },
+  bg:      { width, height },
+  overlay: StyleSheet.absoluteFill,
 
-  companionWrap:     { position: 'absolute', zIndex: 10 },
-  companionImage:    { width: '100%', height: '100%' },
-  companionGlow:     {
-    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
-    borderRadius: 120,
+  companionWrap: {
+    position: 'absolute',
+    zIndex: 10,
+  },
+  companionImage: {
+    width: '100%',
+    height: '100%',
+  },
+  companionHitTarget: {
+    position: 'absolute',
+    zIndex: 11,
+    borderRadius: 999,
+  },
+  companionGlow: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 999,
     backgroundColor: '#c084fc',
   },
 
@@ -1061,37 +1077,59 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: Platform.OS === 'ios' ? 116 : 94,
     right: 18,
-    width: 76, height: 76,
-    borderRadius: 24, borderWidth: 1,
+    width: 76,
+    height: 76,
+    borderRadius: 24,
+    borderWidth: 1,
     backgroundColor: 'rgba(22,12,42,0.58)',
-    alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 8,
   },
   cloudPresenceImage: { width: 47, height: 40 },
   cloudPresenceText:  { color: '#f3edff', fontSize: 9, fontWeight: '700', marginTop: -2 },
 
-  hotspot:       { position: 'absolute' },
-  hotspotGlow:   {
+  hotspot: { position: 'absolute' },
+  hotspotGlow: {
     borderRadius: 16,
     backgroundColor: 'rgba(244,114,182,0.08)',
-    shadowColor: '#f472b6', shadowOpacity: 0.45, shadowRadius: 12,
+    shadowColor: '#f472b6',
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
   pulseRing: {
-    position: 'absolute', width: '100%', height: '100%',
-    borderRadius: 16, borderWidth: 1.5,
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+    borderWidth: 1.5,
   },
   tapHintWrap: {
-    position: 'absolute', top: -26, left: -2,
+    position: 'absolute',
+    top: -26,
+    left: -2,
     backgroundColor: 'rgba(253,247,236,0.94)',
     borderColor: 'rgba(124,58,237,0.45)',
-    borderWidth: 1, borderStyle: 'dashed',
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 8, transform: [{ rotate: '-2deg' }],
-    shadowColor: '#7c3aed', shadowOpacity: 0.18, shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 }, elevation: 3,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    transform: [{ rotate: '-2deg' }],
+    shadowColor: '#7c3aed',
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  tapHint: { color: '#3b0764', fontSize: 10, fontWeight: '600', fontStyle: 'italic', letterSpacing: 0.2 },
+  tapHint: {
+    color: '#3b0764',
+    fontSize: 10,
+    fontWeight: '600',
+    fontStyle: 'italic',
+    letterSpacing: 0.2,
+  },
 
   topBar: {
     position: 'absolute',
@@ -1099,7 +1137,12 @@ const s = StyleSheet.create({
     left: 16,
     zIndex: 20,
   },
-  roomBadge:     { backgroundColor: 'rgba(13,0,20,0.68)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 5 },
+  roomBadge: {
+    backgroundColor: 'rgba(13,0,20,0.68)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
   roomBadgeText: { color: '#c4b5fd', fontSize: 12, fontWeight: '600' },
 
   presencePill: {
@@ -1107,8 +1150,13 @@ const s = StyleSheet.create({
     top: Platform.OS === 'ios' ? 96 : 74,
     left: 16,
     backgroundColor: 'rgba(13,0,20,0.70)',
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
-    flexDirection: 'row', alignItems: 'center', gap: 7, zIndex: 12,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    zIndex: 12,
   },
   presenceDot:  { width: 8, height: 8, borderRadius: 4, backgroundColor: '#d946ef' },
   presenceText: { color: '#e9d5ff', fontSize: 11, fontWeight: '500' },
@@ -1116,7 +1164,9 @@ const s = StyleSheet.create({
   nightTimeWrap: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 116 : 94,
-    left: 18, alignItems: 'flex-start', zIndex: 5,
+    left: 18,
+    alignItems: 'flex-start',
+    zIndex: 5,
   },
   nightTimeText: { color: 'rgba(187,183,239,0.75)', fontSize: 13, fontWeight: '300', letterSpacing: 1.5 },
   nightStars:    { color: 'rgba(187,183,239,0.45)', fontSize: 10, marginTop: 2, letterSpacing: 4 },
@@ -1124,10 +1174,16 @@ const s = StyleSheet.create({
   vibeLabBtnWrap: { position: 'absolute', bottom: 100, right: 18, zIndex: 20 },
   vibeLabBtn: {
     backgroundColor: 'rgba(13,0,20,0.80)',
-    borderWidth: 1, borderColor: 'rgba(167,114,192,0.45)',
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
-    shadowColor: '#c084fc', shadowOpacity: 0.22, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }, elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(167,114,192,0.45)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    shadowColor: '#c084fc',
+    shadowOpacity: 0.22,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
   vibeLabBtnText: { color: '#c4b5fd', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
 
@@ -1159,173 +1215,279 @@ const s = StyleSheet.create({
 
 const vl = StyleSheet.create({
   backdrop: {
-    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.54)',
   },
   sheet: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#150830',
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    borderTopWidth: 1, borderColor: 'rgba(147,51,234,0.28)',
-    paddingTop: 12, paddingHorizontal: 20, paddingBottom: 36,
-    shadowColor: '#7c3aed', shadowOpacity: 0.3, shadowRadius: 24,
-    shadowOffset: { width: 0, height: -6 }, elevation: 20,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderColor: 'rgba(147,51,234,0.28)',
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    shadowColor: '#7c3aed',
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: -6 },
+    elevation: 20,
     minHeight: 400,
   },
   handle: {
-    alignSelf: 'center', width: 40, height: 4,
-    borderRadius: 2, backgroundColor: 'rgba(196,181,253,0.35)',
+    alignSelf: 'center',
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(196,181,253,0.35)',
     marginBottom: 14,
   },
   title: {
-    color: '#e9d5ff', fontSize: 18, fontWeight: '700',
-    letterSpacing: 0.3, marginBottom: 14,
+    color: '#e9d5ff',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    marginBottom: 14,
   },
 
-  tabRow:       { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  tab:          { flex: 1, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', alignItems: 'center' },
-  tabActive:    { backgroundColor: 'rgba(147,51,234,0.28)', borderWidth: 1, borderColor: 'rgba(196,181,253,0.4)' },
-  tabText:      { color: 'rgba(196,181,253,0.55)', fontSize: 11, fontWeight: '600' },
-  tabTextActive:{ color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+  tabRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  tab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    alignItems: 'center',
+  },
+  tabActive: {
+    backgroundColor: 'rgba(147,51,234,0.28)',
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.4)',
+  },
+  tabText: { color: 'rgba(196,181,253,0.55)', fontSize: 11, fontWeight: '600' },
+  tabTextActive: { color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
 
-  scroll:   { maxHeight: 220 },
+  scroll: { maxHeight: 220 },
   hContent: { paddingRight: 16, gap: 12, flexDirection: 'row' },
 
   roomCard: {
-    width: 130, borderRadius: 16, overflow: 'hidden',
+    width: 130,
+    borderRadius: 16,
+    overflow: 'hidden',
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1.5, borderColor: 'rgba(147,51,234,0.18)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(147,51,234,0.18)',
   },
   roomThumb: { width: 130, height: 90 },
   cardSelected: {
-    borderColor: '#c084fc', borderWidth: 2,
-    shadowColor: '#c084fc', shadowOpacity: 0.45, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 }, elevation: 6,
+    borderColor: '#c084fc',
+    borderWidth: 2,
+    shadowColor: '#c084fc',
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 6,
   },
   selectedOverlay: {
-    position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(192,132,252,0.15)',
   },
   cardEmoji: { color: '#e9d5ff', fontSize: 18, textAlign: 'center', marginTop: 8 },
-  cardName:  { color: '#e9d5ff', fontSize: 11, fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 },
-  cardSub:   { color: 'rgba(196,181,253,0.6)', fontSize: 9, textAlign: 'center', paddingHorizontal: 8, marginBottom: 8 },
+  cardName: { color: '#e9d5ff', fontSize: 11, fontWeight: '700', textAlign: 'center', paddingHorizontal: 8 },
+  cardSub: { color: 'rgba(196,181,253,0.6)', fontSize: 9, textAlign: 'center', paddingHorizontal: 8, marginBottom: 8 },
 
   lightRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 11, paddingHorizontal: 12,
-    borderRadius: 12, marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 6,
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   lightRowSelected: {
     backgroundColor: 'rgba(147,51,234,0.18)',
-    borderWidth: 1, borderColor: 'rgba(196,181,253,0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.35)',
   },
-  lightEmoji:     { fontSize: 20, width: 28, textAlign: 'center' },
+  lightEmoji: { fontSize: 20, width: 28, textAlign: 'center' },
   lightTextBlock: { flex: 1 },
-  lightLabel:     { color: '#e9d5ff', fontSize: 13, fontWeight: '600' },
-  lightHint:      { color: 'rgba(196,181,253,0.55)', fontSize: 10, marginTop: 1 },
-  check:          { color: '#c084fc', fontSize: 16, fontWeight: '700' },
+  lightLabel: { color: '#e9d5ff', fontSize: 13, fontWeight: '600' },
+  lightHint: { color: 'rgba(196,181,253,0.55)', fontSize: 10, marginTop: 1 },
+  check: { color: '#c084fc', fontSize: 16, fontWeight: '700' },
 
   companionCard: {
-    width: 120, borderRadius: 16,
+    width: 120,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1.5, borderColor: 'rgba(147,51,234,0.18)',
-    alignItems: 'center', paddingBottom: 10,
+    borderWidth: 1.5,
+    borderColor: 'rgba(147,51,234,0.18)',
+    alignItems: 'center',
+    paddingBottom: 10,
   },
   companionAvatar: { width: 100, height: 120 },
 
-  // ── Decor tab ────────────────────────────────────────────────────────────────
-
-  filterRow:    { maxHeight: 36, marginBottom: 10 },
-  filterContent:{ paddingRight: 8, gap: 8, flexDirection: 'row', alignItems: 'center' },
-  filterChip:   {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+  filterRow: { maxHeight: 36, marginBottom: 10 },
+  filterContent: { paddingRight: 8, gap: 8, flexDirection: 'row', alignItems: 'center' },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1, borderColor: 'rgba(147,51,234,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(147,51,234,0.18)',
   },
   filterChipActive: {
     backgroundColor: 'rgba(124,58,237,0.28)',
     borderColor: 'rgba(196,181,253,0.55)',
   },
-  filterChipText:      { color: 'rgba(196,181,253,0.55)', fontSize: 11, fontWeight: '600' },
-  filterChipTextActive:{ color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+  filterChipText: { color: 'rgba(196,181,253,0.55)', fontSize: 11, fontWeight: '600' },
+  filterChipTextActive: { color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
 
   decorScroll: { maxHeight: 200 },
   decorGrid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    gap: 10, paddingBottom: 8, paddingTop: 2,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingBottom: 8,
+    paddingTop: 2,
   },
   decorCell: {
     width: (width - 80) / 4,
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12, paddingVertical: 6,
-    borderWidth: 1, borderColor: 'rgba(147,51,234,0.14)',
+    borderRadius: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(147,51,234,0.14)',
   },
   decorCellDim: { opacity: 0.35 },
-  decorThumb:   { width: 46, height: 46 },
-  decorPlaceholder: { width: 46, height: 46, backgroundColor: 'rgba(147,51,234,0.12)', borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  decorThumb: { width: 46, height: 46 },
+  decorPlaceholder: {
+    width: 46,
+    height: 46,
+    backgroundColor: 'rgba(147,51,234,0.12)',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   decorPlaceholderEmoji: { fontSize: 20 },
-  decorLabel:   { color: 'rgba(196,181,253,0.6)', fontSize: 8, marginTop: 4, textAlign: 'center', paddingHorizontal: 2 },
+  decorLabel: { color: 'rgba(196,181,253,0.6)', fontSize: 8, marginTop: 4, textAlign: 'center', paddingHorizontal: 2 },
   decorBadge: {
-    position: 'absolute', top: 4, right: 4,
-    width: 16, height: 16, borderRadius: 8,
-    backgroundColor: '#7c3aed', alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#7c3aed',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   decorBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
 
-  placedSection: { paddingTop: 10, borderTopWidth: 1, borderColor: 'rgba(147,51,234,0.18)', marginTop: 6 },
-  placedTitle:   { color: 'rgba(196,181,253,0.6)', fontSize: 10, fontWeight: '600', marginBottom: 8 },
-  placedRow:     { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  placedChip:    {
-    width: 64, borderRadius: 12, paddingVertical: 6,
-    backgroundColor: 'rgba(124,58,237,0.15)',
-    borderWidth: 1, borderColor: 'rgba(196,181,253,0.28)',
-    alignItems: 'center', justifyContent: 'center',
+  placedSection: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderColor: 'rgba(147,51,234,0.18)',
+    marginTop: 6,
   },
-  placedThumb:       { width: 38, height: 38 },
+  placedTitle: { color: 'rgba(196,181,253,0.6)', fontSize: 10, fontWeight: '600', marginBottom: 8 },
+  placedRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
+  placedChip: {
+    width: 64,
+    borderRadius: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(124,58,237,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(196,181,253,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  placedThumb: { width: 38, height: 38 },
   placedRemove: {
-    position: 'absolute', top: -6, right: -6,
-    width: 18, height: 18, borderRadius: 9,
-    backgroundColor: 'rgba(220,38,38,0.85)', alignItems: 'center', justifyContent: 'center',
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(220,38,38,0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   placedRemoveText: { color: '#fff', fontSize: 9, fontWeight: '700' },
 
-  // ── Save button ───────────────────────────────────────────────────────────────
-
   saveBtn: {
-    marginTop: 14, paddingVertical: 14, borderRadius: 18,
-    backgroundColor: '#7c3aed', alignItems: 'center',
-    shadowColor: '#7c3aed', shadowOpacity: 0.5, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 8,
+    marginTop: 14,
+    paddingVertical: 14,
+    borderRadius: 18,
+    backgroundColor: '#7c3aed',
+    alignItems: 'center',
+    shadowColor: '#7c3aed',
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
 
-  vibeLabel:    { color: 'rgba(196,181,253,0.75)', fontSize: 11, fontWeight: '600', marginBottom: 8, letterSpacing: 0.3 },
+  vibeLabel: { color: 'rgba(196,181,253,0.75)', fontSize: 11, fontWeight: '600', marginBottom: 8, letterSpacing: 0.3 },
   vibeInput: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: 1, borderColor: 'rgba(147,51,234,0.30)',
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
-    color: '#e9d5ff', fontSize: 13,
+    borderWidth: 1,
+    borderColor: 'rgba(147,51,234,0.30)',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#e9d5ff',
+    fontSize: 13,
   },
-  vibeCount:    { color: 'rgba(196,181,253,0.4)', fontSize: 9, textAlign: 'right', marginTop: 4 },
-  colorRow:     { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 4 },
-  colorSwatch:  { width: 36, height: 36, borderRadius: 18, borderWidth: 2.5, borderColor: 'transparent' },
+  vibeCount: { color: 'rgba(196,181,253,0.4)', fontSize: 9, textAlign: 'right', marginTop: 4 },
+  colorRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginBottom: 4 },
+  colorSwatch: { width: 36, height: 36, borderRadius: 18, borderWidth: 2.5, borderColor: 'transparent' },
   colorSwatchSelected: {
     borderColor: '#fff',
-    shadowColor: '#fff', shadowOpacity: 0.5, shadowRadius: 6, shadowOffset: { width: 0, height: 0 }, elevation: 4,
+    shadowColor: '#fff',
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
   },
-  overlayRow:   { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  overlayRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   overlayChip: {
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1, borderColor: 'rgba(147,51,234,0.18)',
-    alignItems: 'center', minWidth: 72,
+    borderWidth: 1,
+    borderColor: 'rgba(147,51,234,0.18)',
+    alignItems: 'center',
+    minWidth: 72,
   },
   overlayChipActive: { backgroundColor: 'rgba(124,58,237,0.28)', borderColor: 'rgba(196,181,253,0.55)' },
   overlayEmoji: { fontSize: 18, textAlign: 'center' },
   overlayLabel: { color: 'rgba(196,181,253,0.65)', fontSize: 9, fontWeight: '600', textAlign: 'center', marginTop: 4 },
-  scaleBtnRow:  { flexDirection: 'row', gap: 4, marginTop: 4 },
-  scaleBtn:     { width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(147,51,234,0.35)', alignItems: 'center', justifyContent: 'center' },
+  scaleBtnRow: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  scaleBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(147,51,234,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scaleBtnText: { color: '#e9d5ff', fontSize: 13, fontWeight: '700', lineHeight: 20 },
 });
