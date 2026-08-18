@@ -31,6 +31,7 @@ import STICKER_IMAGES from '../constants/stickerImages';
 import { FURNISH_CATALOG, type FurnishCategory } from '../constants/furnishingCatalog';
 import { BareRoomRenderer } from '../components/rooms/BareRoomRenderer';
 import { AmbientWeatherOverlay } from '../components/AmbientWeatherOverlay';
+import { getCompanionRuntime } from '@/config/companionRuntimeRegistry';
 
 const { width, height } = Dimensions.get('window');
 
@@ -205,8 +206,8 @@ const LIGHTING_PRESETS: { key: LightingMode; label: string; emoji: string; hint:
 ];
 
 const ROOM_META: Record<Character, { name: string; emoji: string; vibe: string }> = {
-  raylene: { name: "Raylene's Room", emoji: '💜', vibe: 'scrapbook soft' },
-  rylane:  { name: "Rylane's Room",  emoji: '⚡', vibe: 'city night'      },
+  raylene: { name: `${getCompanionRuntime('raylene').label}'s Room`, emoji: '💜', vibe: 'scrapbook soft' },
+  rylane:  { name: `${getCompanionRuntime('rylane').label}'s Room`,  emoji: '⚡', vibe: 'city night'      },
   cloud:   { name: 'Cloud Room',     emoji: '☁️', vibe: 'brain dump space' },
   night:   { name: "Night's Room",   emoji: '🌙', vibe: '2AM energy'      },
 };
@@ -260,10 +261,11 @@ const getTimeOfDay = (): TimeOfDay => {
 };
 
 const getPresenceLine = (companion: Character, tod: TimeOfDay): string => {
-  if (companion === 'cloud') return 'Cloud is drifting nearby.';
-  if (companion === 'night') return tod === 'night' ? 'Night is here. Just us awake.' : 'Night is watching over.';
-  if (companion === 'raylene') return 'Raylene is nearby.';
-  return 'Rylane is posted up.';
+  const displayName = getCompanionRuntime(companion).label;
+  if (companion === 'cloud') return `${displayName} is drifting nearby.`;
+  if (companion === 'night') return tod === 'night' ? `${displayName} is here. Just us awake.` : `${displayName} is watching over.`;
+  if (companion === 'raylene') return `${displayName} is nearby.`;
+  return `${displayName} is posted up.`;
 };
 
 const getPose = (mood: Mood, tod: TimeOfDay, character: Character): Pose => {
@@ -484,7 +486,7 @@ function VibeLab2Sheet({ visible, current, onSave, onClose }: VibeLab2SheetProps
                 >
                   <Image source={avatarSrc} style={vl.companionAvatar} resizeMode="contain" />
                   <Text style={vl.cardEmoji}>{meta.emoji}</Text>
-                  <Text style={vl.cardName}>{id}</Text>
+                  <Text style={vl.cardName}>{getCompanionRuntime(id).label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -945,7 +947,7 @@ export function UserRoomScreen({
           onPress={handleCompanionTap}
           activeOpacity={0.88}
           accessibilityRole="button"
-          accessibilityLabel={`${cId} is here. Tap to talk.`}
+          accessibilityLabel={`${getCompanionRuntime(cId).label} is here. Tap to talk.`}
         >
           <Image
             source={cSrc}
@@ -979,7 +981,7 @@ export function UserRoomScreen({
       )}
 
       {/* ── Top bar: room name label ───────────────────────────────────── */}
-      <Animated.View style={[s.topBar, { opacity: fadeAnim }]}>
+      <Animated.View style={[s.topBar, { opacity: fadeAnim }]}> 
         <View style={s.roomBadge}>
           <Text style={s.roomBadgeText}>
             {ROOM_META[userRoom.baseRoomId].emoji} {roomLabel}

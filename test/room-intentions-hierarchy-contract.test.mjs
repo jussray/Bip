@@ -24,6 +24,17 @@ test('Teen Room arrives with daily intentions collapsed so the room remains prim
   );
 });
 
+test('collapsed daily intentions leave the lower-right Room utility rail reachable', () => {
+  assert.ok(
+    component.includes('const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(220, SCREEN_WIDTH - 120));'),
+    'Collapsed intentions must reserve a right-side interaction rail',
+  );
+  assert.ok(
+    component.includes('width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH'),
+    'Intentions should return to full width only when the user explicitly expands them',
+  );
+});
+
 test('Product Design proof watches shared component visual surfaces', () => {
   assert.ok(
     workflow.includes("- 'components/**'"),
