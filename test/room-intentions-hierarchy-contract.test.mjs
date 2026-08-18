@@ -22,6 +22,11 @@ const roomScreen = readFileSync(
   'utf8',
 );
 
+const themeEntry = readFileSync(
+  'constants/theme.ts',
+  'utf8',
+);
+
 const workflow = readFileSync(
   '.github/workflows/product-design-playwright-proof.yml',
   'utf8',
@@ -37,16 +42,26 @@ test('Teen Room arrives with daily intentions collapsed so the room remains prim
     component.includes("accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} today's intentions`}"),
     'Collapsed intentions must remain explicitly discoverable and expandable',
   );
+
+  assert.ok(
+    component.includes('const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, 174);'),
+    'Collapsed intentions must stay visually subordinate to the Room',
+  );
+
+  assert.ok(
+    component.includes('<Text style={s.collapsedLabel}>✦ today</Text>'),
+    'Collapsed intentions should render as a small peek, not the full panel title',
+  );
 });
 
-test('collapsed daily intentions leave the lower-right Room utility rail reachable', () => {
+test('collapsed daily intentions leave the Room utility rail reachable', () => {
   assert.ok(
-    component.includes('const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(220, SCREEN_WIDTH - 120));'),
-    'Collapsed intentions must reserve a right-side interaction rail',
+    component.includes('{ width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH }'),
+    'Intentions should return to full width only when the user explicitly expands them',
   );
   assert.ok(
-    component.includes('width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH'),
-    'Intentions should return to full width only when the user explicitly expands them',
+    component.includes('!expanded && s.cardCollapsed'),
+    'Collapsed intentions must use the quieter pill presentation',
   );
 });
 
@@ -93,6 +108,14 @@ test('Room owns one canonical companion visual with separate bounded interaction
     'Room staging must prefer the approved full-body pose while retaining canonical-runtime fallback authority',
   );
   assert.doesNotMatch(roomScreen, /const COMPANION_POSITIONS/);
+});
+
+test('public theme entry wires the production Suhana standing asset to rayleneFullbody', () => {
+  assert.ok(
+    themeEntry.includes("const rayleneFullbody = require('../assets/images/raylene-fullbody.png');"),
+    'The public image map must use the actual production full-body standing asset',
+  );
+  assert.match(themeEntry, /\.\.\.BASE_IMAGES,[\s\S]*rayleneFullbody,/);
 });
 
 test('Living Sanctuary atmosphere remains presentation-only and physically still', () => {
