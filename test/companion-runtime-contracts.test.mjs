@@ -20,7 +20,7 @@ test('canonical companion identities preserve only legacy compatibility aliases'
 test('public image map preserves the existing Suhana full-body asset authority', () => {
   assert.match(
     themeBase,
-    /rayleneFullbody:\s*require\('\.\.\/assets\/images\/raylene-confident-new\.png'\)/,
+    /const\s+rayleneFullbody\s*=\s*require\(["']\.\.\/assets\/images\/raylene-confident-new\.png["']\)/,
   );
   assert.doesNotMatch(
     themeEntry,
