@@ -1,13 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const EVIDENCE_DIR = path.resolve(
   process.env.PLAYWRIGHT_ARTIFACT_DIR ?? 'artifacts/product-design-playwright',
   'room-canonical-display',
 );
 
-async function saveEvidence(page: Parameters<typeof test>[0] extends never ? never : any, name: string) {
+async function saveEvidence(page: Page, name: string) {
   await fs.mkdir(EVIDENCE_DIR, { recursive: true });
   await page.screenshot({
     path: path.join(EVIDENCE_DIR, `${name}.png`),
