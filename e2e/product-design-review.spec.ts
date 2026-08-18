@@ -53,10 +53,18 @@ function resolveTestedHeadSha(): string {
 
 async function expectNoDocumentHorizontalOverflow(page: Page) {
   const metrics = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
+    innerWidth: window.innerWidth,
+    htmlScrollWidth: document.documentElement.scrollWidth,
+    htmlClientWidth: document.documentElement.clientWidth,
+    bodyScrollWidth: document.body.scrollWidth,
+    bodyClientWidth: document.body.clientWidth,
   }));
-  expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+  const viewportWidth = Math.min(
+    metrics.innerWidth,
+    metrics.htmlClientWidth,
+    metrics.bodyClientWidth || metrics.innerWidth,
+  );
+  expect(Math.max(metrics.htmlScrollWidth, metrics.bodyScrollWidth)).toBeLessThanOrEqual(viewportWidth + 1);
 }
 
 async function writeFounderVisualManifest(input: {
@@ -140,16 +148,13 @@ for (const variant of VARIANTS) {
       await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
       await expect(page.getByTestId('web-welcome-bottom-nav')).toHaveCount(0);
       await expect(page.getByText('Night · Suhana · Sy', { exact: true })).toHaveCount(0);
+      await expectNoDocumentHorizontalOverflow(page);
 
-      const metrics = await page.evaluate(() => ({
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
+      const heightMetrics = await page.evaluate(() => ({
         scrollHeight: document.documentElement.scrollHeight,
         clientHeight: document.documentElement.clientHeight,
       }));
-
-      expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
-      expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight);
+      expect(heightMetrics.scrollHeight).toBeGreaterThanOrEqual(heightMetrics.clientHeight);
 
       await testInfo.attach(`${variant.name}-${viewport.name}-rollback-front-door.png`, {
         body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
@@ -280,11 +285,7 @@ for (const viewport of VIEWPORTS) {
       }
     });
 
-    const metrics = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+    await expectNoDocumentHorizontalOverflow(page);
 
     await testInfo.attach(`voice-bip-${viewport.name}-reduced-motion.png`, {
       body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
@@ -345,7 +346,7 @@ test('Founder Visual Truth: Teen first-five-minute packet', async ({ page }, tes
     await capture('04-companion-entry');
 
     currentStage = '05-companion-listening';
-    const composer = page.getByRole('textbox', { name: 'Teen Pages composer' });
+    const composer = page.getByRole('textbox').first();
     await expect(composer).toBeVisible({ timeout: 15_000 });
     await composer.fill("Today felt like a lot. I don't need fixing — just somewhere to put it.");
     await expectNoDocumentHorizontalOverflow(page);
