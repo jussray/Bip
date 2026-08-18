@@ -1,0 +1,219 @@
+name: Enforce Cloudflare Worker Branch Authority
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-worker-branch-authority
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EVIDENCE_PATH: artifacts/cloudflare-worker-branch-authority.json
+
+jobs:
+  enforce:
+    name: Enforce main-only Worker build authority
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Repair and verify Worker branch authority from trusted main
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node <<'NODE'
+          const fs = require('node:fs');
+
+          const API = 'https://api.cloudflare.com/client/v4';
+          const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+          const evidencePath = process.env.EVIDENCE_PATH || 'artifacts/cloudflare-worker-branch-authority.json';
+          const workers = [
+            {
+              name: 'sekret-backend',
+              deployCommand: 'npm run deploy:api:production',
+              buildCommand: '',
+              reconcileBuildCommand: true,
+            },
+            {
+              name: 'sekret',
+              deployCommand: 'npx wrangler versions upload',
+              reconcileBuildCommand: false,
+            },
+            {
+              name: 'bip-mail',
+              deployCommand: 'npx wrangler versions upload',
+              reconcileBuildCommand: false,
+            },
+          ];
+          const terminalOutcomes = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated']);
+
+          function clean(value) {
+            return String(value ?? '').trim();
+          }
+
+          async function request(token, path, options = {}) {
+            const response = await fetch(`${API}${path}`, {
+              method: options.method || 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: options.body === undefined ? undefined : JSON.stringify(options.body),
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || payload?.success === false) {
+              const detail = payload?.errors?.map((e) => `${e.code ?? ''}:${e.message ?? ''}`).join('; ') || response.statusText;
+              throw new Error(`${options.method || 'GET'} ${path} failed: ${detail}`);
+            }
+            return payload?.result;
+          }
+
+          async function chooseToken() {
+            const candidates = [
+              ['CLOUDFLARE_WORKERS_BUILDS_API_TOKEN', clean(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN)],
+              ['CLOUDFLARE_API_TOKEN', clean(process.env.CLOUDFLARE_API_TOKEN)],
+            ].filter(([, token]) => token);
+            const failures = [];
+            for (const [source, token] of candidates) {
+              try {
+                const result = await request(token, '/user/tokens/verify');
+                if (result?.status === 'active') return { source, token };
+                failures.push(`${source}: inactive`);
+              } catch (error) {
+                failures.push(`${source}: ${error.message}`);
+              }
+            }
+            throw new Error(`No active user-scoped Cloudflare token: ${failures.join(' | ') || 'none configured'}`);
+          }
+
+          function activeTriggers(rows) {
+            return (Array.isArray(rows) ? rows : []).filter((trigger) => !trigger?.deleted_on);
+          }
+
+          function productionTriggers(rows) {
+            return activeTriggers(rows).filter((trigger) => {
+              const includes = Array.isArray(trigger?.branch_includes) ? trigger.branch_includes.map(clean) : [];
+              const excludes = Array.isArray(trigger?.branch_excludes) ? trigger.branch_excludes.map(clean) : [];
+              return includes.includes('main') && !excludes.includes('main') && !excludes.includes('*');
+            });
+          }
+
+          async function cancelNonMainBuilds(token, workerName) {
+            const rows = await request(token, `/accounts/${accountId}/builds/workers/${workerName}/builds?per_page=50`);
+            const cancelled = [];
+            for (const build of Array.isArray(rows) ? rows : []) {
+              const branch = clean(build?.build_trigger_metadata?.branch);
+              const outcome = clean(build?.build_outcome).toLowerCase();
+              const uuid = clean(build?.build_uuid);
+              if (!uuid || !branch || branch === 'main' || terminalOutcomes.has(outcome)) continue;
+              await request(token, `/accounts/${accountId}/builds/builds/${uuid}/cancel`, { method: 'PUT' });
+              cancelled.push({ buildUuid: uuid, branch });
+            }
+            return cancelled;
+          }
+
+          if (!accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required.');
+          const selected = await chooseToken();
+          const scripts = await request(selected.token, `/accounts/${accountId}/workers/scripts?per_page=100`);
+          const receipt = {
+            schemaVersion: 1,
+            generatedAt: new Date().toISOString(),
+            trustedGitRef: process.env.GITHUB_REF || null,
+            trustedGitSha: process.env.GITHUB_SHA || null,
+            credentialSource: selected.source,
+            workers: [],
+            verified: false,
+          };
+
+          for (const desired of workers) {
+            const matches = (Array.isArray(scripts) ? scripts : []).filter((script) => clean(script?.id) === desired.name);
+            if (matches.length !== 1) throw new Error(`Expected exactly one ${desired.name} Worker, found ${matches.length}.`);
+            const tag = clean(matches[0]?.tag);
+            if (!tag) throw new Error(`${desired.name} is missing an immutable script tag.`);
+
+            const beforeRows = await request(selected.token, `/accounts/${accountId}/builds/workers/${tag}/triggers`);
+            const beforeActive = activeTriggers(beforeRows);
+            const productions = productionTriggers(beforeRows);
+            if (productions.length !== 1) {
+              throw new Error(`${desired.name}: expected exactly one production trigger including main, found ${productions.length}.`);
+            }
+            const production = productions[0];
+            const productionUuid = clean(production?.trigger_uuid);
+            if (!productionUuid) throw new Error(`${desired.name}: production trigger UUID missing.`);
+            const previews = beforeActive.filter((trigger) => clean(trigger?.trigger_uuid) !== productionUuid);
+
+            const cancelledBuilds = await cancelNonMainBuilds(selected.token, desired.name);
+            const deletedPreviewTriggers = [];
+            for (const preview of previews) {
+              const uuid = clean(preview?.trigger_uuid);
+              if (!uuid) throw new Error(`${desired.name}: preview trigger UUID missing.`);
+              await request(selected.token, `/accounts/${accountId}/builds/triggers/${uuid}`, { method: 'DELETE' });
+              deletedPreviewTriggers.push(uuid);
+            }
+
+            const patch = {
+              branch_includes: ['main'],
+              branch_excludes: [],
+              deploy_command: desired.deployCommand,
+            };
+            if (desired.reconcileBuildCommand) patch.build_command = desired.buildCommand;
+            await request(selected.token, `/accounts/${accountId}/builds/triggers/${productionUuid}`, {
+              method: 'PATCH',
+              body: patch,
+            });
+
+            const afterRows = await request(selected.token, `/accounts/${accountId}/builds/workers/${tag}/triggers`);
+            const afterActive = activeTriggers(afterRows);
+            const afterProductions = productionTriggers(afterRows);
+            if (afterActive.length !== 1 || afterProductions.length !== 1) {
+              throw new Error(`${desired.name}: readback still exposes non-production trigger authority.`);
+            }
+            const after = afterProductions[0];
+            const includes = Array.isArray(after?.branch_includes) ? after.branch_includes.map(clean) : [];
+            const excludes = Array.isArray(after?.branch_excludes) ? after.branch_excludes.map(clean) : [];
+            if (JSON.stringify(includes) !== JSON.stringify(['main']) || excludes.length !== 0) {
+              throw new Error(`${desired.name}: branch readback is not main-only.`);
+            }
+            if (clean(after?.deploy_command) !== desired.deployCommand) {
+              throw new Error(`${desired.name}: deploy command readback mismatch.`);
+            }
+            if (desired.reconcileBuildCommand && clean(after?.build_command) !== desired.buildCommand) {
+              throw new Error(`${desired.name}: build command readback mismatch.`);
+            }
+
+            receipt.workers.push({
+              name: desired.name,
+              scriptTag: tag,
+              productionTriggerUuid: productionUuid,
+              desiredDeployCommand: desired.deployCommand,
+              deletedPreviewTriggers,
+              cancelledNonMainBuilds: cancelledBuilds,
+              verifiedMainOnly: true,
+              activeTriggerCount: afterActive.length,
+            });
+          }
+
+          receipt.verified = receipt.workers.length === workers.length && receipt.workers.every((worker) => worker.verifiedMainOnly);
+          fs.writeFileSync(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+          if (!receipt.verified) process.exit(1);
+          console.log('CLOUDFLARE_WORKER_BRANCH_AUTHORITY_VERIFIED');
+          NODE
+
+      - name: Upload Cloudflare branch-authority evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cloudflare-worker-branch-authority-${{ github.sha }}
+          path: ${{ env.EVIDENCE_PATH }}
+          if-no-files-found: warn
+          retention-days: 30
