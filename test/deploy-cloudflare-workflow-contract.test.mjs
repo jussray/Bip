@@ -14,6 +14,7 @@ test('Cloudflare native deployment verifier is credential-minimal and action-pin
     'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
     "environment: Production",
     "RELEASE_OBSERVATION_MODE: blocked",
+    "      - 'components/**'",
   ]) {
     assert.ok(workflow.includes(required), `missing deployment workflow contract: ${required}`);
   }
