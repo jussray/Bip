@@ -7,16 +7,6 @@ const component = readFileSync(
   'utf8',
 );
 
-const sanctuary = readFileSync(
-  'components/rooms/LivingSanctuaryLayer.tsx',
-  'utf8',
-);
-
-const roomRoute = readFileSync(
-  'app/(teen)/room.tsx',
-  'utf8',
-);
-
 const workflow = readFileSync(
   '.github/workflows/product-design-playwright-proof.yml',
   'utf8',
@@ -43,27 +33,6 @@ test('collapsed daily intentions leave the lower-right Room utility rail reachab
     component.includes('width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH'),
     'Intentions should return to full width only when the user explicitly expands them',
   );
-});
-
-test('Living Sanctuary remains a static presentation layer over existing Room product contracts', () => {
-  assert.ok(
-    roomRoute.includes("import { LivingSanctuaryLayer } from '../../components/rooms/LivingSanctuaryLayer';"),
-    'Teen Room must render the selected Living Sanctuary redesign slice',
-  );
-  assert.ok(
-    roomRoute.includes('<LivingSanctuaryLayer companionKey={companionKey} />'),
-    'Living Sanctuary must consume the existing companion compatibility boundary',
-  );
-  assert.ok(
-    sanctuary.includes('pointerEvents="none"'),
-    'The sanctuary frame must never intercept existing Room interactions',
-  );
-  assert.doesNotMatch(
-    sanctuary,
-    /Animated\.|useReducedMotion|setInterval|setTimeout/,
-    'This slice must remain physically still rather than starting motion before preference authority resolves',
-  );
-  assert.doesNotMatch(sanctuary, /AsyncStorage|router\.|setScreen\(|supabase/i);
 });
 
 test('Product Design proof watches shared component visual surfaces', () => {

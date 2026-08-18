@@ -11,7 +11,6 @@ import { router } from 'expo-router';
 import { UserRoomScreen } from '@screens/UserRoomScreen';
 import { BipReturnOverlay } from '../../components/retention/BipReturnOverlay';
 import { DailyIntentionsCard } from '../../components/intentions/DailyIntentionsCard';
-import { LivingSanctuaryLayer } from '../../components/rooms/LivingSanctuaryLayer';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
@@ -81,7 +80,6 @@ export default function TeenRoomRoute() {
         sekretMode={selectedSekret}
         updateRoomMemory={updateRoomMemory}
       />
-      <LivingSanctuaryLayer companionKey={companionKey} />
       <DailyIntentionsCard
         mood={mood}
         companionKey={companionKey}
