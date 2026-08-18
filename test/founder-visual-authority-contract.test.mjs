@@ -36,3 +36,19 @@ test('visual proof chain preserves founder precedence through runtime evidence',
   assert.match(authority.githubRole, /machine-verifiable product contracts/i);
   assert.match(authority.runtimeProofRole, /exact-head browser evidence/i);
 });
+
+test('founder approval receipt is exact-head, provider-backed, and expires on movement', () => {
+  const receipt = authority.approvalReceipt;
+  assert.equal(receipt.marker, 'FOUNDER-VISUAL-APPROVAL v1');
+  assert.equal(receipt.provider, 'github-pr-comment');
+  assert.equal(receipt.requiredAuthorLogin, 'jussray');
+  assert.equal(receipt.requiredAuthorAssociation, 'OWNER');
+  assert.equal(receipt.requiredDecision, 'approved');
+  assert.deepEqual(receipt.binds, [
+    'pull-request',
+    'exact-head-sha',
+    'exact-head-product-design-artifact-name',
+  ]);
+  assert.equal(receipt.staleWhenHeadMoves, true);
+  assert.equal(receipt.runtimeProofIsNotApproval, true);
+});
