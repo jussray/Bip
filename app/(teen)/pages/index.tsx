@@ -604,7 +604,7 @@ export default function TeenPagesRoute() {
           >
             {c.id !== 'me' && c.id !== 'oracle' ? (
               <Image
-                source={avatarImage(c.id as SekretCharacterId, active ? avatarState : 'neutral')}
+                source={avatarImage(normalizeAvatar(c.id), active ? avatarState : 'neutral')}
                 style={[s.tabImg, !unlocked && { opacity: 0.3 }]}
               />
             ) : (
