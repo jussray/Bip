@@ -1,11 +1,10 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   getCompanionRuntime,
   type CompanionRuntimeKey,
 } from '@/config/companionRuntimeRegistry';
-import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 interface LivingSanctuaryLayerProps {
   companionKey: string;
@@ -29,39 +28,10 @@ function resolveRuntimeKey(value: string): CompanionRuntimeKey {
 }
 
 export function LivingSanctuaryLayer({ companionKey }: LivingSanctuaryLayerProps) {
-  const reduceMotion = useReducedMotion();
-  const halo = useRef(new Animated.Value(0)).current;
   const companion = useMemo(
     () => getCompanionRuntime(resolveRuntimeKey(companionKey)),
     [companionKey],
   );
-
-  useEffect(() => {
-    halo.stopAnimation();
-
-    if (reduceMotion) {
-      halo.setValue(0);
-      return;
-    }
-
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(halo, {
-          toValue: 1,
-          duration: 5200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(halo, {
-          toValue: 0,
-          duration: 5200,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    loop.start();
-    return () => loop.stop();
-  }, [halo, reduceMotion]);
 
   return (
     <View
@@ -83,19 +53,7 @@ export function LivingSanctuaryLayer({ companionKey }: LivingSanctuaryLayerProps
       />
 
       <View style={s.innerFrame} />
-
-      <Animated.View
-        testID="living-sanctuary-halo"
-        style={[
-          s.halo,
-          {
-            opacity: halo.interpolate({ inputRange: [0, 1], outputRange: [0.16, 0.34] }),
-            transform: [
-              { scale: halo.interpolate({ inputRange: [0, 1], outputRange: [1, 1.08] }) },
-            ],
-          },
-        ]}
-      />
+      <View testID="living-sanctuary-halo" style={s.halo} />
 
       <View style={s.heading}>
         <Text style={s.eyebrow}>YOUR SANCTUARY</Text>
@@ -104,7 +62,7 @@ export function LivingSanctuaryLayer({ companionKey }: LivingSanctuaryLayerProps
       </View>
 
       <View style={s.discovery}>
-        <Text style={s.discoveryLabel}>✦ tap what glows</Text>
+        <Text style={s.discoveryLabel}>✦ yours to explore</Text>
         <Text style={s.discoverySub}>{companion.label} is already here</Text>
       </View>
     </View>
@@ -129,7 +87,8 @@ const s = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(192,132,252,0.26)',
+    backgroundColor: 'rgba(192,132,252,0.22)',
+    opacity: 0.24,
   },
   heading: {
     position: 'absolute',
