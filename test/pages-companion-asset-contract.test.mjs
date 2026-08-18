@@ -46,5 +46,8 @@ test('canonical neutral sprites remain present and production-marked', () => {
 });
 
 test('Cloud stays on its existing asset system during the human companion migration', () => {
-  assert.match(pages, /cloud:\s*\{\s*neutral:\s*IMAGES\.cloudAvatarNeutral/);
+  assert.match(pages, /const cloud: Record<SekretAvatarState, any> = \{/);
+  assert.match(pages, /neutral:\s*IMAGES\.cloudAvatarNeutral/);
+  assert.match(pages, /thinking:\s*IMAGES\.cloudAvatarThinking/);
+  assert.match(pages, /responding:\s*IMAGES\.cloudAvatarWriting/);
 });
