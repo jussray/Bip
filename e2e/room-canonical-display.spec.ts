@@ -23,6 +23,7 @@ test('Teen Room keeps one canonical companion visual with bounded interaction ge
   const sanctuary = page.getByTestId('living-sanctuary-layer');
   const companionVisual = page.getByTestId('room-companion-visual');
   const companionHitTarget = page.getByTestId('room-companion-hit-target');
+  const intentions = page.getByTestId('daily-intentions-card');
   const companionButton = page.getByRole('button', {
     name: 'Suhana is here. Tap to talk.',
     exact: true,
@@ -31,11 +32,14 @@ test('Teen Room keeps one canonical companion visual with bounded interaction ge
   await expect(sanctuary).toBeVisible({ timeout: 15_000 });
   await expect(companionVisual).toBeVisible({ timeout: 15_000 });
   await expect(companionHitTarget).toBeVisible({ timeout: 15_000 });
+  await expect(intentions).toBeVisible({ timeout: 15_000 });
   await expect(companionVisual).toHaveCount(1);
   await expect(page.getByTestId('living-sanctuary-companion-visual')).toHaveCount(0);
   await expect(page.getByText(/Suhana's Room/)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Suhana is nearby.', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(companionButton).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('✦ today', { exact: true })).toBeVisible();
+  await expect(page.getByText('your 3 small things', { exact: true })).toHaveCount(0);
   await expect(page.getByText(/Raylene's Room/)).toHaveCount(0);
   await expect(page.getByText('Raylene is nearby.', { exact: true })).toHaveCount(0);
   await expect(page.getByText('YOUR SANCTUARY', { exact: true })).toHaveCount(0);
@@ -43,16 +47,19 @@ test('Teen Room keeps one canonical companion visual with bounded interaction ge
   await expect(sanctuary).toHaveCSS('pointer-events', 'none');
   await expect(companionVisual).toHaveCSS('pointer-events', 'none');
 
-  const [visualBox, tapBox] = await Promise.all([
+  const [visualBox, tapBox, intentionsBox] = await Promise.all([
     companionVisual.boundingBox(),
     companionHitTarget.boundingBox(),
+    intentions.boundingBox(),
   ]);
   expect(visualBox).not.toBeNull();
   expect(tapBox).not.toBeNull();
+  expect(intentionsBox).not.toBeNull();
   expect(visualBox!.width).toBeGreaterThan(250);
   expect(visualBox!.height).toBeGreaterThan(400);
   expect(visualBox!.width).toBeGreaterThan(tapBox!.width);
   expect(visualBox!.height).toBeGreaterThan(tapBox!.height);
+  expect(intentionsBox!.width).toBeLessThanOrEqual(190);
 
   await saveEvidence(page, '01-room-companion-first-composition');
 
