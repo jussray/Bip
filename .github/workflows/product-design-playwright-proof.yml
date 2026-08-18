@@ -20,10 +20,12 @@ on:
       - 'scripts/verify-firewall-v10.mjs'
       - 'scripts/codeql-pr-alert-proof.mjs'
       - 'scripts/playwright-executable.mjs'
+      - 'scripts/verify-founder-visual-approval.mjs'
       - 'e2e/product-design-review.spec.ts'
       - 'e2e/calm-product-design.spec.ts'
       - 'e2e/room-canonical-display.spec.ts'
       - 'test/founder-visual-authority-contract.test.mjs'
+      - 'test/founder-visual-approval-receipt.test.mjs'
       - 'test/product-design-workflow-contract.test.mjs'
       - 'test/room-intentions-hierarchy-contract.test.mjs'
       - 'test/pages-companion-asset-contract.test.mjs'
@@ -47,6 +49,8 @@ on:
 
 permissions:
   contents: read
+  issues: read
+  pull-requests: read
 
 concurrency:
   group: product-design-proof-${{ github.event.pull_request.number || github.ref }}
@@ -85,7 +89,7 @@ jobs:
         run: npm run type-check
 
       - name: Verify Product Design contracts
-        run: node --test test/founder-visual-authority-contract.test.mjs test/product-design-workflow-contract.test.mjs test/room-intentions-hierarchy-contract.test.mjs test/pages-companion-asset-contract.test.mjs test/night-room-runtime-registry.test.mjs test/companion-runtime-contracts.test.mjs test/dual-front-door-contract.test.mjs test/front-door-motion-contract.test.mjs test/voice-presence-motion-contract.test.mjs test/calm-companion-motion-contract.test.mjs
+        run: node --test test/founder-visual-authority-contract.test.mjs test/founder-visual-approval-receipt.test.mjs test/product-design-workflow-contract.test.mjs test/room-intentions-hierarchy-contract.test.mjs test/pages-companion-asset-contract.test.mjs test/night-room-runtime-registry.test.mjs test/companion-runtime-contracts.test.mjs test/dual-front-door-contract.test.mjs test/front-door-motion-contract.test.mjs test/voice-presence-motion-contract.test.mjs test/calm-companion-motion-contract.test.mjs
 
       - run: npx playwright install --with-deps chromium
 
@@ -104,3 +108,11 @@ jobs:
           path: artifacts/product-design-playwright
           if-no-files-found: error
           retention-days: 30
+
+      - name: Verify exact-head founder visual approval receipt
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          FOUNDER_GITHUB_LOGIN: jussray
+        run: node scripts/verify-founder-visual-approval.mjs
