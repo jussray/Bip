@@ -5,6 +5,7 @@ import test from 'node:test';
 const registry = await readFile(new URL('../src/config/companionRuntimeRegistry.ts', import.meta.url), 'utf8');
 const sprite = await readFile(new URL('../src/components/room/character/SekretSprite.tsx', import.meta.url), 'utf8');
 const layer = await readFile(new URL('../src/components/room/character/CharacterLayer.tsx', import.meta.url), 'utf8');
+const userRoom = await readFile(new URL('../screens/UserRoomScreen.tsx', import.meta.url), 'utf8');
 
 test('canonical companion identities preserve only legacy compatibility aliases', () => {
   assert.match(registry, /type CompanionId = 'night' \| 'suhana' \| 'sy' \| 'cloud' \| 'mom' \| 'dad'/);
@@ -12,6 +13,20 @@ test('canonical companion identities preserve only legacy compatibility aliases'
   assert.match(registry, /if \(key === 'rylane'\) return 'sy'/);
   assert.match(registry, /label: 'Suhana'/);
   assert.match(registry, /label: 'Sy'/);
+});
+
+test('Teen Room uses the canonical runtime label at user-facing legacy-key boundaries', () => {
+  assert.match(
+    userRoom,
+    /import \{ getCompanionRuntime \} from '@\/config\/companionRuntimeRegistry';/,
+  );
+  assert.match(userRoom, /getCompanionRuntime\(companion\)\.label/);
+  assert.match(userRoom, /getCompanionRuntime\(id\)\.label/);
+  assert.match(userRoom, /getCompanionRuntime\(cId\)\.label/);
+  assert.doesNotMatch(userRoom, /Raylene's Room/);
+  assert.doesNotMatch(userRoom, /Rylane's Room/);
+  assert.doesNotMatch(userRoom, /Raylene is nearby/);
+  assert.doesNotMatch(userRoom, /Rylane is posted up/);
 });
 
 test('each companion receives a role-specific runtime contract', () => {
