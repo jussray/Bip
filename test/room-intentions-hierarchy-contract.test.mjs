@@ -89,8 +89,8 @@ test('Room owns one canonical companion visual with separate bounded interaction
     'The enlarged visual must not itself capture taps',
   );
   assert.ok(
-    roomScreen.includes('const cSrc        = cRuntime.source ?? cPoseSrc;'),
-    'Room must prefer the canonical runtime asset for the single companion visual',
+    roomScreen.includes('const cSrc        = safe(AVATARS[cId]?.fullbody, cRuntime.source ?? cPoseSrc);'),
+    'Room staging must prefer the approved full-body pose while retaining canonical-runtime fallback authority',
   );
   assert.doesNotMatch(roomScreen, /const COMPANION_POSITIONS/);
 });
