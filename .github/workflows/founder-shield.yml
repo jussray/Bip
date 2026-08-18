@@ -74,19 +74,44 @@ jobs:
       - name: Verify Worker authority contract
         run: node --test test/cloudflare-worker-consolidation.test.mjs
 
-      - name: Capture live public edge evidence
+  verify-live-edge:
+    name: Verify authenticated live edge on main
+    if: github.event_name == 'push'
+    needs: verify-founder-shield
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    environment: Production
+    env:
+      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
+      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
+    steps:
+      - name: Require complete Cloudflare Access service auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCESS_CLIENT_ID"
+          test -n "$CLOUDFLARE_ACCESS_CLIENT_SECRET"
+
+      - name: Capture authenticated live public edge evidence
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/founder-shield-live
 
+          access_headers=(
+            --header "CF-Access-Client-Id: $CLOUDFLARE_ACCESS_CLIENT_ID"
+            --header "CF-Access-Client-Secret: $CLOUDFLARE_ACCESS_CLIENT_SECRET"
+          )
+
           pages_status="$(curl --silent --show-error --location --max-time 20 \
+            "${access_headers[@]}" \
             --dump-header artifacts/founder-shield-live/sekretbip.headers \
             --output artifacts/founder-shield-live/sekretbip.body \
             --write-out '%{http_code}' \
             https://sekretbip.net/)"
 
           api_status="$(curl --silent --show-error --max-time 20 \
+            "${access_headers[@]}" \
             --dump-header artifacts/founder-shield-live/api-root.headers \
             --output artifacts/founder-shield-live/api-root.body \
             --write-out '%{http_code}' \
@@ -94,6 +119,7 @@ jobs:
 
           options_status="$(curl --silent --show-error --max-time 20 \
             --request OPTIONS \
+            "${access_headers[@]}" \
             --header 'Origin: https://sekretbip.net' \
             --header 'Access-Control-Request-Method: POST' \
             --header 'Access-Control-Request-Headers: authorization,content-type' \
