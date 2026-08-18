@@ -48,7 +48,7 @@ function providerError(payload, fallback = 'Cloudflare request failed') {
   };
 }
 
-async function requestJson({ accountId, token }, requestPath, fetchImpl) {
+async function requestJson({ token }, requestPath, fetchImpl) {
   const response = await fetchImpl(`${API_BASE}${requestPath}`, {
     headers: {
       Accept: 'application/json',
@@ -211,15 +211,6 @@ function publicOrganization(organization, targetZone) {
 async function writeEvidence(evidencePath, receipt) {
   await mkdir(path.dirname(evidencePath), { recursive: true });
   await writeFile(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
-}
-
-function errorReceipt(error, source) {
-  return {
-    source,
-    status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
-    providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
-    error: error instanceof Error ? error.message : String(error),
-  };
 }
 
 function minimalErrorReceipt(error, source) {
