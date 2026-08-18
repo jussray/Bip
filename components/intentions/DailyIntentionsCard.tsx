@@ -26,7 +26,9 @@ import {
 } from '@/features/intentions/dailyIntentionsRepository';
 
 const MODE_KEY = 'sekretbip:daily-intentions:personalization:v1';
-const CARD_WIDTH = Math.min(Dimensions.get('window').width - 28, 340);
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_WIDTH = Math.min(SCREEN_WIDTH - 28, 340);
+const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(220, SCREEN_WIDTH - 120));
 
 type IntentionMode = 'basic' | 'personalized' | 'off';
 
@@ -181,7 +183,10 @@ export function DailyIntentionsCard({
   const personalized = mode === 'personalized';
 
   return (
-    <View style={[s.card, { width: CARD_WIDTH }]} testID="daily-intentions-card">
+    <View
+      style={[s.card, { width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH }]}
+      testID="daily-intentions-card"
+    >
       <TouchableOpacity
         style={s.header}
         onPress={() => setExpanded(value => !value)}
