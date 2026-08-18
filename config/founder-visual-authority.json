@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "project": "sekret-bip",
   "visualAuthority": {
     "finalDecisionOwner": "founder",
@@ -15,6 +15,20 @@
       "github-implementation",
       "playwright-runtime-proof"
     ],
-    "conflictRule": "When Canva, GitHub implementation, or runtime evidence conflicts with explicit founder direction, the lower layer must be corrected. Canva and generated visuals cannot override founder intent."
+    "conflictRule": "When Canva, GitHub implementation, or runtime evidence conflicts with explicit founder direction, the lower layer must be corrected. Canva and generated visuals cannot override founder intent.",
+    "approvalReceipt": {
+      "marker": "FOUNDER-VISUAL-APPROVAL v1",
+      "provider": "github-pr-comment",
+      "requiredAuthorLogin": "jussray",
+      "requiredAuthorAssociation": "OWNER",
+      "requiredDecision": "approved",
+      "binds": [
+        "pull-request",
+        "exact-head-sha",
+        "exact-head-product-design-artifact-name"
+      ],
+      "staleWhenHeadMoves": true,
+      "runtimeProofIsNotApproval": true
+    }
   }
 }
