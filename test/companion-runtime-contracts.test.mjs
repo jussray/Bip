@@ -22,7 +22,8 @@ test('Teen Room uses the canonical runtime label at user-facing legacy-key bound
   );
   assert.match(userRoom, /getCompanionRuntime\(companion\)\.label/);
   assert.match(userRoom, /getCompanionRuntime\(id\)\.label/);
-  assert.match(userRoom, /getCompanionRuntime\(cId\)\.label/);
+  assert.match(userRoom, /const cRuntime\s*=\s*getCompanionRuntime\(cId\)/);
+  assert.match(userRoom, /accessibilityLabel={`\$\{cRuntime\.label\} is here\. Tap to talk\.`}/);
   assert.doesNotMatch(userRoom, /Raylene's Room/);
   assert.doesNotMatch(userRoom, /Rylane's Room/);
   assert.doesNotMatch(userRoom, /Raylene is nearby/);
