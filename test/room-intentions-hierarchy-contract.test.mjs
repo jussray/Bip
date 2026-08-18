@@ -24,10 +24,10 @@ test('Teen Room arrives with daily intentions collapsed so the room remains prim
   );
 });
 
-test('Product Design proof watches the Room intentions visual surface', () => {
+test('Product Design proof watches shared component visual surfaces', () => {
   assert.ok(
-    workflow.includes("- 'components/intentions/**'"),
-    'Room intentions changes must trigger Product Design proof on pull requests',
+    workflow.includes("- 'components/**'"),
+    'Shared component changes must trigger Product Design proof on pull requests',
   );
 
   assert.ok(
