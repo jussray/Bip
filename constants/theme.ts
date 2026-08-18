@@ -7,11 +7,9 @@ export * from './theme.base';
 
 const sekretSplashTeen = require('../assets/images/splash-teen.jpeg');
 const sekretSplashParent = require('../assets/images/splash-parent.png');
-const rayleneFullbody = require('../assets/images/raylene-fullbody.png');
 
 export const IMAGES = {
   ...BASE_IMAGES,
-  rayleneFullbody,
   sekretSplash: sekretSplashTeen,
   sekretSplashTeen,
   sekretSplashParent,

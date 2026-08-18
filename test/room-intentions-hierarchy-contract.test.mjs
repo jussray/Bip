@@ -17,6 +17,11 @@ const themeEntry = readFileSync(
   'utf8',
 );
 
+const themeBase = readFileSync(
+  'constants/theme.base.ts',
+  'utf8',
+);
+
 const workflow = readFileSync(
   '.github/workflows/product-design-playwright-proof.yml',
   'utf8',
@@ -73,12 +78,12 @@ test('Room owns one canonical companion visual with a separate bounded tap targe
   assert.doesNotMatch(roomScreen, /const COMPANION_POSITIONS/);
 });
 
-test('public theme entry wires the production Suhana standing asset to rayleneFullbody', () => {
-  assert.ok(
-    themeEntry.includes("const rayleneFullbody = require('../assets/images/raylene-fullbody.png');"),
-    'The public image map must use the production full-body standing asset',
+test('Room reuses the existing base full-body asset rather than overriding it in the public theme entry', () => {
+  assert.match(
+    themeBase,
+    /rayleneFullbody:\s*require\('\.\.\/assets\/images\/raylene-confident-new\.png'\)/,
   );
-  assert.match(themeEntry, /\.\.\.BASE_IMAGES,[\s\S]*rayleneFullbody,/);
+  assert.doesNotMatch(themeEntry, /raylene-fullbody\.png/);
 });
 
 test('Product Design proof watches the composition surfaces', () => {

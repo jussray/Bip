@@ -74,10 +74,9 @@ test('Teen Room keeps one canonical companion visual with bounded interaction ge
   await saveEvidence(page, '02-vibelab-room-picker-canonical-display');
 
   await page.getByText('💫', { exact: true }).click();
-  await expect(page.getByText('Suhana', { exact: true })).toBeVisible();
-  await expect(page.getByText('Sy', { exact: true })).toBeVisible();
-  await expect(page.getByText('Cloud', { exact: true })).toBeVisible();
-  await expect(page.getByText('Night', { exact: true })).toBeVisible();
+  for (const name of ['Suhana', 'Sy', 'Cloud', 'Night']) {
+    await expect(page.getByText(name, { exact: true }).last()).toBeVisible();
+  }
   await expect(page.getByText('raylene', { exact: true })).toHaveCount(0);
   await expect(page.getByText('rylane', { exact: true })).toHaveCount(0);
 
