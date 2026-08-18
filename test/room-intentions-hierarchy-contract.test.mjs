@@ -81,7 +81,7 @@ test('Room owns one canonical companion visual with a separate bounded tap targe
 test('Room reuses the existing base full-body asset rather than overriding it in the public theme entry', () => {
   assert.match(
     themeBase,
-    /rayleneFullbody:\s*require\('\.\.\/assets\/images\/raylene-confident-new\.png'\)/,
+    /const\s+rayleneFullbody\s*=\s*require\(["']\.\.\/assets\/images\/raylene-confident-new\.png["']\)/,
   );
   assert.doesNotMatch(themeEntry, /raylene-fullbody\.png/);
 });
