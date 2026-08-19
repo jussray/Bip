@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 const expectedReleaseSha = process.env.EXPECTED_RELEASE_SHA?.trim().toLowerCase();
+const BACKEND_HEALTH_URL = 'https://api.sekretbip.net/health';
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
   const overflow = await page.evaluate(
@@ -9,7 +10,7 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
   expect(overflow).toBe(false);
 }
 
-test('production exposes the exact expected release commit', async ({ request }) => {
+test('production exposes the exact expected Pages and Worker release commit', async ({ request }) => {
   test.skip(!expectedReleaseSha, 'EXPECTED_RELEASE_SHA is required for exact production release proof.');
 
   const response = await request.get(`/.well-known/sekret-release.json?playwright=${Date.now()}`, {
@@ -30,6 +31,21 @@ test('production exposes the exact expected release commit', async ({ request })
     branch: 'main',
     deploymentProvider: 'cloudflare-pages',
     canonicalUrl: 'https://sekretbip.net',
+  });
+
+  const backendResponse = await request.get(`${BACKEND_HEALTH_URL}?playwright=${Date.now()}`, {
+    headers: {
+      'cache-control': 'no-cache, no-store, max-age=0',
+    },
+  });
+  expect(backendResponse.ok()).toBe(true);
+  expect(backendResponse.headers()['content-type']).toContain('application/json');
+
+  const backendHealth = await backendResponse.json();
+  expect(backendHealth).toMatchObject({
+    ok: true,
+    worker: 'sekret-backend',
+    releaseSha: expectedReleaseSha,
   });
 });
 
