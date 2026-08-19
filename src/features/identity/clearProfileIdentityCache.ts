@@ -12,6 +12,7 @@ const PROFILE_IDENTITY_KEYS: string[] = [
   'bip_onboarding_name',
   'bip_onboarding_gender',
   'bip_onboarding_companion',
+  'bip_companion_presentation_v1',
   'bip_onboarding_reflection',
   'sekret_self_discovery_profile',
 ];
