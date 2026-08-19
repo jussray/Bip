@@ -78,12 +78,29 @@ test('Room owns one canonical companion visual with a separate bounded tap targe
   assert.doesNotMatch(roomScreen, /const COMPANION_POSITIONS/);
 });
 
-test('Room reuses the existing base full-body asset rather than overriding it in the public theme entry', () => {
+test('Room scopes Suhana standing art through AVATARS without changing the shared IMAGES alias', () => {
   assert.match(
     themeBase,
     /const\s+rayleneFullbody\s*=\s*require\(["']\.\.\/assets\/images\/raylene-confident-new\.png["']\)/,
+    'The historical shared IMAGES alias must remain untouched for non-Room consumers',
   );
-  assert.doesNotMatch(themeEntry, /raylene-fullbody\.png/);
+  assert.match(
+    themeEntry,
+    /const\s+suhanaRoomFullbody\s*=\s*require\(["']\.\.\/assets\/images\/raylene-fullbody\.png["']\)/,
+    'The public Room avatar map must load the production Suhana standing asset',
+  );
+  assert.match(
+    themeEntry,
+    /export const AVATARS = \{[\s\S]*raylene:\s*\{[\s\S]*fullbody:\s*suhanaRoomFullbody/,
+    'Suhana full-body presentation must be overridden only through the Room avatar map',
+  );
+
+  const imageExport = themeEntry.match(/export const IMAGES = \{([\s\S]*?)\} as const;/)?.[1] ?? '';
+  assert.doesNotMatch(
+    imageExport,
+    /rayleneFullbody/,
+    'Public IMAGES must not override rayleneFullbody because Bippin2 consumes that compatibility key',
+  );
 });
 
 test('Product Design proof watches the composition surfaces', () => {
