@@ -91,8 +91,9 @@ export default function IdentityScreen() {
               key={item.id}
               onPress={() => setChoice(item.id)}
               style={[styles.card, choice === item.id && styles.cardActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: choice === item.id }}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: choice === item.id }}
+              aria-checked={choice === item.id}
             >
               <Text style={[styles.cardText, choice === item.id && styles.cardTextActive]}>{item.label}</Text>
             </TouchableOpacity>
