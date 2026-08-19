@@ -70,14 +70,15 @@ export default function IdentityScreen() {
         <Text style={styles.sub}>Pick a starting point. You can change it later in Profile.</Text>
 
         <Text style={styles.label}>You are</Text>
-        <View style={styles.grid}>
+        <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel="You are">
           {IDENTITIES.map(item => (
             <TouchableOpacity
               key={item.id}
               onPress={() => chooseIdentity(item.id)}
               style={[styles.card, identity === item.id && styles.cardActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: identity === item.id }}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: identity === item.id }}
+              aria-checked={identity === item.id}
             >
               <Text style={[styles.cardText, identity === item.id && styles.cardTextActive]}>{item.label}</Text>
             </TouchableOpacity>
@@ -85,7 +86,7 @@ export default function IdentityScreen() {
         </View>
 
         <Text style={styles.label}>Your first Se'kret</Text>
-        <View style={styles.grid}>
+        <View style={styles.grid} accessibilityRole="radiogroup" accessibilityLabel="Your first Se'kret">
           {COMPANIONS.map(item => (
             <TouchableOpacity
               key={item.id}
