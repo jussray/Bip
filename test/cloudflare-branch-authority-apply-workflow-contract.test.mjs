@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const applyWorkflow = await readFile(new URL('../.github/workflows/cloudflare-branch-authority-apply.yml', import.meta.url), 'utf8');
 const auditWorkflow = await readFile(new URL('../.github/workflows/cloudflare-branch-authority.yml', import.meta.url), 'utf8');
+const pagesVerifier = await readFile(new URL('../scripts/verify-cloudflare-pages-branch-authority.mjs', import.meta.url), 'utf8');
 const targets = JSON.parse(await readFile(new URL('../config/cloudflare-targets.json', import.meta.url), 'utf8'));
 
 test('provider topology is exactly one production Worker, one founder-gated alpha Worker, and one Pages project', () => {
@@ -23,10 +24,10 @@ test('founder apply remains manual-only, exact-main pinned, and Production-envir
   assert.match(applyWorkflow, /git ls-remote/);
   assert.match(applyWorkflow, /environment: Production/);
   assert.match(applyWorkflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
-  assert.doesNotMatch(applyWorkflow, /CLOUDFLARE_API_TOKEN/);
+  assert.match(applyWorkflow, /CLOUDFLARE_API_TOKEN/);
 });
 
-test('repair mutates only sekret-backend and never treats alpha or Pages as production mutation targets', () => {
+test('repair mutates only sekret-backend and never treats alpha or Pages as mutation targets', () => {
   assert.match(applyWorkflow, /const productionWorker = 'sekret-backend'/);
   assert.match(applyWorkflow, /const alphaWorker = 'sekret-backend-alpha'/);
   assert.match(applyWorkflow, /const pagesProject = 'sekret-bip'/);
@@ -46,12 +47,34 @@ test('repair fails closed on unexpected multi-trigger production topology instea
   assert.doesNotMatch(applyWorkflow, /delete-trigger/);
 });
 
-test('read-only audit uses the same current topology and keeps Pages as a separate authority gate', () => {
+test('Pages authority is a load-bearing provider read in both audit and founder preflight', () => {
+  assert.match(auditWorkflow, /verify-cloudflare-pages-branch-authority\.mjs/);
+  assert.match(auditWorkflow, /CLOUDFLARE_API_TOKEN/);
+  assert.match(auditWorkflow, /PAGES_EVIDENCE_PATH/);
+  assert.match(auditWorkflow, /load-bearing-provider-readback/);
+  assert.match(applyWorkflow, /snapshot Pages branch authority before Worker mutation can be approved/);
+  assert.match(applyWorkflow, /verify-cloudflare-pages-branch-authority\.mjs/);
+  assert.match(applyWorkflow, /--expect-snapshot \"\$PAGES_EVIDENCE_PATH\"/);
+  assert.match(applyWorkflow, /pagesReadback\?\.verified !== true/);
+  assert.match(applyWorkflow, /pagesReadback\?\.snapshotMatched !== true/);
+});
+
+test('Pages verifier is read-only and checks current Cloudflare Pages branch-control fields', () => {
+  assert.match(pagesVerifier, /\/pages\/projects\//);
+  assert.match(pagesVerifier, /production_deployments_enabled/);
+  assert.match(pagesVerifier, /preview_deployment_setting/);
+  assert.match(pagesVerifier, /productionBranch/);
+  assert.match(pagesVerifier, /sourceType !== 'github'/);
+  assert.match(pagesVerifier, /mutationPerformed: false/);
+  assert.doesNotMatch(pagesVerifier, /method:\s*['"](?:PATCH|PUT|DELETE)['"]/);
+});
+
+test('read-only audit uses the current two-Worker topology with Pages as a separate non-mutating authority surface', () => {
   assert.match(auditWorkflow, /const productionWorker = 'sekret-backend'/);
   assert.match(auditWorkflow, /const alphaWorker = 'sekret-backend-alpha'/);
   assert.match(auditWorkflow, /const pagesProject = 'sekret-bip'/);
   assert.match(auditWorkflow, /founderGatedObservationOnly: true/);
-  assert.match(auditWorkflow, /separate-pages-authority-gate/);
+  assert.match(auditWorkflow, /load-bearing-provider-readback/);
   assert.doesNotMatch(auditWorkflow, /name: 'sekret',/);
   assert.doesNotMatch(auditWorkflow, /name: 'bip-mail',/);
 });

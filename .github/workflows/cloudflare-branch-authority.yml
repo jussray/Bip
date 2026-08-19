@@ -1,4 +1,4 @@
-name: Audit Cloudflare Worker Branch Authority
+name: Audit Cloudflare Worker and Pages Branch Authority
 
 on:
   push:
@@ -15,10 +15,11 @@ concurrency:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EVIDENCE_PATH: artifacts/cloudflare-worker-branch-authority.json
+  PAGES_EVIDENCE_PATH: artifacts/cloudflare-pages-branch-authority.json
 
 jobs:
   audit:
-    name: Audit production Worker branch authority against current topology
+    name: Audit current two-Worker and one-Pages authority
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,7 +32,7 @@ jobs:
           test -n "$current_main"
           test "$GITHUB_SHA" = "$current_main"
 
-      - name: Read current two-Worker topology and verify production branch authority
+      - name: Read current two-Worker topology and verify production Worker branch authority
         shell: bash
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
@@ -90,7 +91,7 @@ jobs:
             activeNonMainBuilds.length === 0;
           const alphaTriggers = await get(`/accounts/${accountId}/builds/workers/${alphaTag}/triggers`);
           const receipt = {
-            schemaVersion: 3,
+            schemaVersion: 4,
             generatedAt: new Date().toISOString(),
             trustedGitRef: process.env.GITHUB_REF || null,
             trustedGitSha: process.env.GITHUB_SHA || null,
@@ -122,7 +123,7 @@ jobs:
             },
             pagesProject: {
               name: pagesProject,
-              verification: 'separate-pages-authority-gate',
+              verification: 'load-bearing-provider-readback',
               mutationAuthorized: false
             },
             workersAuthorityVerified: verifiedMainOnly
@@ -135,11 +136,21 @@ jobs:
           console.log('CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_VERIFIED_READ_ONLY');
           NODE
 
+      - name: Read and verify Pages branch authority
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: sekret-bip
+          CLOUDFLARE_PAGES_PRODUCTION_BRANCH: main
+        run: node scripts/verify-cloudflare-pages-branch-authority.mjs --output "$PAGES_EVIDENCE_PATH"
+
       - name: Upload Cloudflare branch-authority evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: cloudflare-worker-branch-authority-${{ github.sha }}
-          path: ${{ env.EVIDENCE_PATH }}
+          name: cloudflare-branch-authority-${{ github.sha }}
+          path: |
+            ${{ env.EVIDENCE_PATH }}
+            ${{ env.PAGES_EVIDENCE_PATH }}
           if-no-files-found: warn
           retention-days: 30

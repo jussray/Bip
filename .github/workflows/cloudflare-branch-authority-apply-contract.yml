@@ -8,7 +8,9 @@ on:
       - '.github/workflows/cloudflare-branch-authority-apply.yml'
       - '.github/workflows/cloudflare-branch-authority-apply-contract.yml'
       - 'config/cloudflare-targets.json'
+      - 'scripts/verify-cloudflare-pages-branch-authority.mjs'
       - 'test/cloudflare-branch-authority-apply-workflow-contract.test.mjs'
+      - 'test/cloudflare-pages-branch-authority.test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -51,5 +53,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify Cloudflare topology and founder-apply contract
-        run: node --test test/cloudflare-branch-authority-apply-workflow-contract.test.mjs
+      - name: Verify Cloudflare topology, Pages authority, and founder-apply contracts
+        run: >-
+          node --test
+          test/cloudflare-branch-authority-apply-workflow-contract.test.mjs
+          test/cloudflare-pages-branch-authority.test.mjs
