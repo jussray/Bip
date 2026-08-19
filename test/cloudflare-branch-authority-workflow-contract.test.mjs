@@ -6,15 +6,25 @@ const workflow = await readFile(
   new URL('../.github/workflows/cloudflare-branch-authority.yml', import.meta.url),
   'utf8',
 );
+const workerVerifier = await readFile(
+  new URL('../scripts/verify-cloudflare-worker-branch-authority.mjs', import.meta.url),
+  'utf8',
+);
 
-test('Cloudflare Worker branch-authority workflow is read-only and exact-current-main gated', () => {
-  assert.match(workflow, /name: Audit Cloudflare Worker Branch Authority/);
+test('Cloudflare Worker and Pages branch-authority workflow is read-only and exact-current-main gated', () => {
+  assert.match(workflow, /name: Audit Cloudflare Worker and Pages Branch Authority/);
   assert.match(workflow, /Verify exact current main before provider credential use/);
   assert.match(workflow, /git ls-remote/);
   assert.match(workflow, /test \"\$GITHUB_SHA\" = \"\$current_main\"/);
   assert.match(workflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
-  assert.match(workflow, /mode: 'read-only'/);
-  assert.match(workflow, /mutationPerformed: false/);
+  assert.match(workflow, /verify-cloudflare-worker-branch-authority\.mjs/);
+  assert.match(workflow, /verify-cloudflare-pages-branch-authority\.mjs/);
+
+  assert.match(workerVerifier, /mode: 'read-only'/);
+  assert.match(workerVerifier, /mutationPerformed: false/);
+  assert.match(workerVerifier, /const separateWorker = 'sekret'/);
+  assert.match(workerVerifier, /const productionWorker = 'sekret-backend'/);
+  assert.match(workerVerifier, /const alphaWorker = 'sekret-backend-alpha'/);
 
   assert.doesNotMatch(workflow, /CLOUDFLARE_API_TOKEN/);
   assert.doesNotMatch(workflow, /method:\s*['\"]?(?:PUT|PATCH|DELETE)/i);
