@@ -7,6 +7,9 @@ const API_BASE = 'https://api.cloudflare.com/client/v4';
 const DEFAULT_OUTPUT = 'artifacts/cloudflare-pages-branch-authority.json';
 const DEFAULT_PROJECT = 'sekret-bip';
 const DEFAULT_BRANCH = 'main';
+const DEFAULT_REPO_OWNER = 'jussray';
+const DEFAULT_REPO_NAME = 'Sekret-Bip';
+const DEFAULT_CANONICAL_DOMAIN = 'app.sekretbip.net';
 const VALID_PREVIEW_SETTINGS = new Set(['all', 'none', 'custom']);
 
 function clean(value) {
@@ -32,7 +35,9 @@ export function normalizePagesProject(project = {}) {
     previewBranchIncludes: cleanArray(sourceConfig?.preview_branch_includes),
     previewBranchExcludes: cleanArray(sourceConfig?.preview_branch_excludes),
     sourceType: clean(source?.type) || null,
+    repoOwner: clean(sourceConfig?.owner) || null,
     repoName: clean(sourceConfig?.repo_name) || null,
+    domains: cleanArray(project?.domains).filter(Boolean),
   };
 }
 
@@ -42,13 +47,22 @@ export function fingerprintPagesAuthority(observed) {
 
 export function evaluatePagesBranchAuthority(
   project,
-  { expectedProject = DEFAULT_PROJECT, expectedBranch = DEFAULT_BRANCH } = {},
+  {
+    expectedProject = DEFAULT_PROJECT,
+    expectedBranch = DEFAULT_BRANCH,
+    expectedRepoOwner = DEFAULT_REPO_OWNER,
+    expectedRepoName = DEFAULT_REPO_NAME,
+    expectedCanonicalDomain = DEFAULT_CANONICAL_DOMAIN,
+  } = {},
 ) {
   const observed = normalizePagesProject(project);
   const failures = [];
 
   if (observed.name !== expectedProject) failures.push(`project-name:${observed.name || 'missing'}`);
   if (observed.sourceType !== 'github') failures.push(`source-type:${observed.sourceType || 'missing'}`);
+  if (observed.repoOwner !== expectedRepoOwner) failures.push(`repo-owner:${observed.repoOwner || 'missing'}`);
+  if (observed.repoName !== expectedRepoName) failures.push(`repo-name:${observed.repoName || 'missing'}`);
+  if (!observed.domains.includes(expectedCanonicalDomain)) failures.push(`canonical-domain:${expectedCanonicalDomain}:missing`);
   if (observed.productionBranch !== expectedBranch) failures.push(`production-branch:${observed.productionBranch || 'missing'}`);
   if (observed.productionDeploymentsEnabled !== true) failures.push(`production-deployments-enabled:${String(observed.productionDeploymentsEnabled)}`);
   if (!VALID_PREVIEW_SETTINGS.has(observed.previewDeploymentSetting)) failures.push(`preview-deployment-setting:${observed.previewDeploymentSetting || 'missing'}`);
@@ -100,6 +114,9 @@ export async function verifyPagesBranchAuthority({ argv = [], env = process.env 
   const accountId = clean(env.CLOUDFLARE_ACCOUNT_ID);
   const projectName = clean(env.CLOUDFLARE_PAGES_PROJECT) || DEFAULT_PROJECT;
   const expectedBranch = clean(env.CLOUDFLARE_PAGES_PRODUCTION_BRANCH) || DEFAULT_BRANCH;
+  const expectedRepoOwner = clean(env.CLOUDFLARE_PAGES_REPO_OWNER) || DEFAULT_REPO_OWNER;
+  const expectedRepoName = clean(env.CLOUDFLARE_PAGES_REPO_NAME) || DEFAULT_REPO_NAME;
+  const expectedCanonicalDomain = clean(env.CLOUDFLARE_PAGES_CANONICAL_DOMAIN) || DEFAULT_CANONICAL_DOMAIN;
 
   if (!token) throw new Error('CLOUDFLARE_PAGES_READ_API_TOKEN is required for read-only Pages authority.');
   if (!accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required for Pages readback.');
@@ -114,6 +131,9 @@ export async function verifyPagesBranchAuthority({ argv = [], env = process.env 
   const verdict = evaluatePagesBranchAuthority(project, {
     expectedProject: projectName,
     expectedBranch,
+    expectedRepoOwner,
+    expectedRepoName,
+    expectedCanonicalDomain,
   });
 
   let expectedSnapshotFingerprint = null;
@@ -125,13 +145,16 @@ export async function verifyPagesBranchAuthority({ argv = [], env = process.env 
   }
 
   const receipt = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     mode: 'read-only',
     mutationPerformed: false,
     credentialSource: 'CLOUDFLARE_PAGES_READ_API_TOKEN',
     project: projectName,
     expectedProductionBranch: expectedBranch,
+    expectedRepoOwner,
+    expectedRepoName,
+    expectedCanonicalDomain,
     ...verdict,
     expectedSnapshotFingerprint,
     snapshotMatched,
@@ -143,7 +166,7 @@ export async function verifyPagesBranchAuthority({ argv = [], env = process.env 
   if (!verdict.verified) throw new Error(`CLOUDFLARE_PAGES_BRANCH_AUTHORITY_NOT_VERIFIED: ${verdict.failures.join(',')}`);
   if (expectSnapshot && snapshotMatched !== true) throw new Error('CLOUDFLARE_PAGES_BRANCH_AUTHORITY_DRIFTED');
 
-  console.log(`CLOUDFLARE_PAGES_BRANCH_AUTHORITY_VERIFIED project=${projectName} production_branch=${verdict.observed.productionBranch} preview=${verdict.observed.previewDeploymentSetting}`);
+  console.log(`CLOUDFLARE_PAGES_BRANCH_AUTHORITY_VERIFIED project=${projectName} repo=${expectedRepoOwner}/${expectedRepoName} domain=${expectedCanonicalDomain} production_branch=${verdict.observed.productionBranch} preview=${verdict.observed.previewDeploymentSetting}`);
   return receipt;
 }
 
