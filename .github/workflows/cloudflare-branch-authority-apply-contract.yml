@@ -4,8 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/cloudflare-branch-authority.yml'
       - '.github/workflows/cloudflare-branch-authority-apply.yml'
       - '.github/workflows/cloudflare-branch-authority-apply-contract.yml'
+      - 'config/cloudflare-targets.json'
       - 'test/cloudflare-branch-authority-apply-workflow-contract.test.mjs'
   workflow_dispatch:
 
@@ -21,7 +23,7 @@ env:
 
 jobs:
   contract:
-    name: Verify founder apply safety contract
+    name: Verify current provider-topology safety contract
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -49,5 +51,5 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify Cloudflare founder-apply contract
+      - name: Verify Cloudflare topology and founder-apply contract
         run: node --test test/cloudflare-branch-authority-apply-workflow-contract.test.mjs

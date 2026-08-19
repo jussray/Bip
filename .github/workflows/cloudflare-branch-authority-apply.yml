@@ -26,7 +26,7 @@ env:
 
 jobs:
   preflight:
-    name: Capture immutable Worker branch-authority snapshot
+    name: Capture current two-Worker topology and production trigger snapshot
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,7 +45,7 @@ jobs:
           test "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA"
           test "$CONFIRMATION" = "FIX_646_MAIN_ONLY_WORKER_BUILDS"
 
-      - name: Preflight and persist immutable provider snapshot
+      - name: Read provider topology and persist immutable snapshot
         shell: bash
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
@@ -58,162 +58,95 @@ jobs:
           node <<'NODE'
           const crypto = require('node:crypto');
           const fs = require('node:fs');
-
           const API = 'https://api.cloudflare.com/client/v4';
           const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
           const token = String(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || '').trim();
-          const workers = [
-            { name: 'sekret-backend', deployCommand: 'npm run deploy:api:production', buildCommand: '', patchBuildCommand: true },
-            { name: 'sekret', deployCommand: 'npx wrangler versions upload', patchBuildCommand: false },
-            { name: 'bip-mail', deployCommand: 'npx wrangler versions upload', patchBuildCommand: false },
-          ];
+          const productionWorker = 'sekret-backend';
+          const alphaWorker = 'sekret-backend-alpha';
+          const pagesProject = 'sekret-bip';
           const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated']);
           const clean = (value) => String(value ?? '').trim();
-          const cleanArray = (value) => (Array.isArray(value) ? value.map(clean) : []);
+          const cleanArray = (value) => Array.isArray(value) ? value.map(clean) : [];
           const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
-          const production = (rows) => active(rows).filter((row) => {
-            const includes = cleanArray(row?.branch_includes);
-            const excludes = cleanArray(row?.branch_excludes);
-            return includes.includes('main') && !excludes.includes('main') && !excludes.includes('*');
+          const stableTrigger = (row) => ({
+            triggerUuid: clean(row?.trigger_uuid),
+            branchIncludes: cleanArray(row?.branch_includes),
+            branchExcludes: cleanArray(row?.branch_excludes),
+            buildCommand: clean(row?.build_command),
+            deployCommand: clean(row?.deploy_command),
           });
-
-          function safeProviderError(method, path, response, payload) {
-            const error = new Error(`${method} ${path} failed with provider status ${response.status}`);
-            error.providerStatus = response.status;
-            error.providerCodes = (Array.isArray(payload?.errors) ? payload.errors : [])
-              .map((item) => item?.code)
-              .filter((code) => Number.isInteger(code));
-            return error;
-          }
-
+          const fingerprint = (rows) => crypto.createHash('sha256')
+            .update(JSON.stringify(active(rows).map(stableTrigger).sort((a, b) => a.triggerUuid.localeCompare(b.triggerUuid))))
+            .digest('hex');
           async function get(path) {
-            const response = await fetch(`${API}${path}`, {
-              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            });
+            const response = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
             const payload = await response.json().catch(() => null);
-            if (!response.ok || payload?.success === false) throw safeProviderError('GET', path, response, payload);
+            if (!response.ok || payload?.success === false) throw new Error(`GET ${path} failed with provider status ${response.status}`);
             return payload?.result;
           }
-
-          function createPayload(row, scriptTag) {
-            const repoConnection = row?.repo_connection && typeof row.repo_connection === 'object'
-              ? row.repo_connection
-              : {};
-            const payload = {
-              external_script_id: clean(row?.external_script_id) || scriptTag,
-              repo_connection_uuid: clean(repoConnection?.repo_connection_uuid),
-              build_token_uuid: clean(row?.build_token_uuid),
-              trigger_name: clean(row?.trigger_name),
-              build_command: clean(row?.build_command),
-              deploy_command: clean(row?.deploy_command),
-              root_directory: clean(row?.root_directory),
-              branch_includes: cleanArray(row?.branch_includes),
-              branch_excludes: cleanArray(row?.branch_excludes),
-              path_includes: cleanArray(row?.path_includes),
-              path_excludes: cleanArray(row?.path_excludes),
-            };
-            if (typeof row?.build_caching_enabled === 'boolean') {
-              payload.build_caching_enabled = row.build_caching_enabled;
-            }
-            for (const key of ['external_script_id', 'repo_connection_uuid', 'build_token_uuid', 'trigger_name']) {
-              if (!clean(payload[key])) throw new Error(`rollback snapshot missing required ${key}`);
-            }
-            return payload;
-          }
-
-          function stableTrigger(row, scriptTag) {
-            return {
-              triggerUuid: clean(row?.trigger_uuid),
-              createPayload: createPayload(row, scriptTag),
-            };
-          }
-
-          function triggerFingerprint(rows, scriptTag) {
-            return crypto
-              .createHash('sha256')
-              .update(JSON.stringify(active(rows)
-                .map((row) => stableTrigger(row, scriptTag))
-                .sort((a, b) => a.triggerUuid.localeCompare(b.triggerUuid))))
-              .digest('hex');
-          }
-
           if (!accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required.');
           if (!token) throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN is required.');
           const tokenState = await get('/user/tokens/verify');
           if (tokenState?.status !== 'active') throw new Error('Dedicated Workers Builds API token is not active.');
           const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
+          const findWorker = (name) => (Array.isArray(scripts) ? scripts : []).filter((row) => clean(row?.id) === name);
+          const productionMatches = findWorker(productionWorker);
+          const alphaMatches = findWorker(alphaWorker);
+          if (productionMatches.length !== 1) throw new Error(`${productionWorker}: expected exactly one Worker, found ${productionMatches.length}.`);
+          if (alphaMatches.length !== 1) throw new Error(`${alphaWorker}: expected exactly one Worker, found ${alphaMatches.length}.`);
+          const productionTag = clean(productionMatches[0]?.tag);
+          const alphaTag = clean(alphaMatches[0]?.tag);
+          if (!productionTag || !alphaTag) throw new Error('Both current Workers must expose immutable script tags.');
+          const productionTriggers = await get(`/accounts/${accountId}/builds/workers/${productionTag}/triggers`);
+          const activeProductionTriggers = active(productionTriggers);
+          if (activeProductionTriggers.length !== 1) {
+            throw new Error(`${productionWorker}: expected exactly one active build trigger; refusing automatic repair of a multi-trigger topology.`);
+          }
+          const productionTrigger = stableTrigger(activeProductionTriggers[0]);
+          if (!productionTrigger.triggerUuid) throw new Error(`${productionWorker}: active trigger UUID missing.`);
+          const productionBuilds = await get(`/accounts/${accountId}/builds/workers/${productionWorker}/builds?per_page=50`);
+          const activeNonMainBuilds = (Array.isArray(productionBuilds) ? productionBuilds : []).filter((build) => {
+            const branch = clean(build?.build_trigger_metadata?.branch);
+            const outcome = clean(build?.build_outcome).toLowerCase();
+            return branch && branch !== 'main' && !terminal.has(outcome);
+          }).map((build) => ({ buildUuid: clean(build?.build_uuid), branch: clean(build?.build_trigger_metadata?.branch), outcome: clean(build?.build_outcome) }));
+          if (activeNonMainBuilds.some((build) => !build.buildUuid)) throw new Error(`${productionWorker}: active non-main build UUID missing.`);
+          const alphaTriggers = await get(`/accounts/${accountId}/builds/workers/${alphaTag}/triggers`);
           const before = {
-            schemaVersion: 3,
+            schemaVersion: 4,
             capturedAt: new Date().toISOString(),
             trustedGitRef: process.env.GITHUB_REF || null,
             trustedGitSha: process.env.GITHUB_SHA || null,
             mode: 'preflight-before-mutation',
-            credentialSource: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
             mutationPerformed: false,
-            rollbackScope: 'durable-trigger-configuration',
-            canceledBuildsAreRestartable: false,
-            verifiedForApply: false,
-            workers: [],
+            providerTopology: {
+              workers: [
+                { name: productionWorker, role: 'production' },
+                { name: alphaWorker, role: 'founder-gated-alpha', mutationAuthorized: false }
+              ],
+              pages: [{ name: pagesProject, role: 'frontend', mutationAuthorized: false }]
+            },
+            productionWorker: {
+              name: productionWorker,
+              scriptTag: productionTag,
+              trigger: productionTrigger,
+              triggerFingerprint: fingerprint(productionTriggers),
+              activeNonMainBuilds
+            },
+            alphaWorker: {
+              name: alphaWorker,
+              scriptTag: alphaTag,
+              triggerFingerprint: fingerprint(alphaTriggers),
+              mutationAuthorized: false
+            },
+            pagesProject: { name: pagesProject, mutationAuthorized: false, verification: 'separate-pages-authority-gate' },
+            verifiedForApply: true
           };
-
-          for (const desired of workers) {
-            const matches = (Array.isArray(scripts) ? scripts : []).filter((script) => clean(script?.id) === desired.name);
-            if (matches.length !== 1) throw new Error(`${desired.name}: expected exactly one Worker, found ${matches.length}.`);
-            const scriptTag = clean(matches[0]?.tag);
-            if (!scriptTag) throw new Error(`${desired.name}: immutable script tag missing.`);
-            const triggerRows = await get(`/accounts/${accountId}/builds/workers/${scriptTag}/triggers`);
-            const buildRows = await get(`/accounts/${accountId}/builds/workers/${desired.name}/builds?per_page=50`);
-            const activeTriggers = active(triggerRows);
-            const productions = production(triggerRows);
-            if (productions.length !== 1) throw new Error(`${desired.name}: expected exactly one main production trigger, found ${productions.length}.`);
-            const productionTrigger = productions[0];
-            const productionUuid = clean(productionTrigger?.trigger_uuid);
-            if (!productionUuid) throw new Error(`${desired.name}: production trigger UUID missing.`);
-
-            const triggerSnapshots = activeTriggers.map((row) => stableTrigger(row, scriptTag));
-            if (triggerSnapshots.some((item) => !item.triggerUuid)) {
-              throw new Error(`${desired.name}: active trigger UUID missing.`);
-            }
-            const nonProduction = triggerSnapshots.filter((item) => item.triggerUuid !== productionUuid);
-            for (const snapshot of nonProduction) {
-              const envVars = await get(`/accounts/${accountId}/builds/triggers/${snapshot.triggerUuid}/environment_variables`);
-              const envCount = envVars && typeof envVars === 'object' ? Object.keys(envVars).length : 0;
-              if (envCount !== 0) {
-                throw new Error(`${desired.name}: refusing preview-trigger deletion because ${envCount} build environment variable(s) cannot be safely retained in rollback evidence.`);
-              }
-            }
-
-            const activeNonMainBuilds = (Array.isArray(buildRows) ? buildRows : []).filter((build) => {
-              const branch = clean(build?.build_trigger_metadata?.branch);
-              const outcome = clean(build?.build_outcome).toLowerCase();
-              return branch && branch !== 'main' && !terminal.has(outcome);
-            }).map((build) => ({
-              buildUuid: clean(build?.build_uuid),
-              branch: clean(build?.build_trigger_metadata?.branch),
-              outcome: clean(build?.build_outcome),
-            }));
-            if (activeNonMainBuilds.some((build) => !build.buildUuid)) {
-              throw new Error(`${desired.name}: active non-main build UUID missing.`);
-            }
-
-            before.workers.push({
-              name: desired.name,
-              scriptTag,
-              desired,
-              productionTriggerUuid: productionUuid,
-              triggerFingerprint: triggerFingerprint(triggerRows, scriptTag),
-              activeTriggers: triggerSnapshots,
-              nonProductionTriggerCount: nonProduction.length,
-              activeNonMainBuilds,
-            });
-          }
-
-          before.verifiedForApply = before.workers.length === workers.length;
           fs.writeFileSync(process.env.BEFORE_EVIDENCE_PATH, `${JSON.stringify(before, null, 2)}\n`, 'utf8');
-          console.log('CLOUDFLARE_WORKER_BRANCH_AUTHORITY_PREFLIGHT_SNAPSHOT_WRITTEN');
+          console.log('CLOUDFLARE_TWO_WORKER_TOPOLOGY_PREFLIGHT_WRITTEN');
           NODE
 
-      - name: Upload before-state rollback evidence
+      - name: Upload before-state evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-worker-branch-authority-before-${{ github.sha }}
@@ -222,7 +155,7 @@ jobs:
           retention-days: 30
 
   apply:
-    name: Founder-authorized main-only Worker repair
+    name: Founder-authorized production Worker branch repair
     needs: preflight
     runs-on: ubuntu-latest
     environment: Production
@@ -243,19 +176,13 @@ jobs:
           test "$EXPECTED_MAIN_SHA" = "$GITHUB_SHA"
           test "$CONFIRMATION" = "FIX_646_MAIN_ONLY_WORKER_BUILDS"
 
-      - name: Download retained before-state rollback evidence
+      - name: Download retained before-state evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: cloudflare-worker-branch-authority-before-${{ github.sha }}
           path: artifacts
 
-      - name: Verify retained rollback snapshot exists
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -s "$BEFORE_EVIDENCE_PATH"
-
-      - name: Apply repair from retained snapshot and journal every mutation
+      - name: Apply main-only branch control to production Worker
         shell: bash
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
@@ -264,248 +191,112 @@ jobs:
           set -euo pipefail
           current_main="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
           test "$GITHUB_SHA" = "$current_main"
+          test -s "$BEFORE_EVIDENCE_PATH"
           node <<'NODE'
           const crypto = require('node:crypto');
           const fs = require('node:fs');
-          const { execFileSync } = require('node:child_process');
-
           const API = 'https://api.cloudflare.com/client/v4';
           const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
           const token = String(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || '').trim();
-          const beforePath = process.env.BEFORE_EVIDENCE_PATH;
-          const evidencePath = process.env.EVIDENCE_PATH;
+          const beforeRaw = fs.readFileSync(process.env.BEFORE_EVIDENCE_PATH, 'utf8');
+          const before = JSON.parse(beforeRaw);
           const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated']);
           const clean = (value) => String(value ?? '').trim();
-          const cleanArray = (value) => (Array.isArray(value) ? value.map(clean) : []);
+          const cleanArray = (value) => Array.isArray(value) ? value.map(clean) : [];
           const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
-          const production = (rows) => active(rows).filter((row) => {
-            const includes = cleanArray(row?.branch_includes);
-            const excludes = cleanArray(row?.branch_excludes);
-            return includes.includes('main') && !excludes.includes('main') && !excludes.includes('*');
-          });
-
-          function safeProviderError(method, path, response, payload) {
-            const error = new Error(`${method} ${path} failed with provider status ${response.status}`);
-            error.providerStatus = response.status;
-            error.providerCodes = (Array.isArray(payload?.errors) ? payload.errors : [])
-              .map((item) => item?.code)
-              .filter((code) => Number.isInteger(code));
-            return error;
-          }
-
+          const stableTrigger = (row) => ({ triggerUuid: clean(row?.trigger_uuid), branchIncludes: cleanArray(row?.branch_includes), branchExcludes: cleanArray(row?.branch_excludes), buildCommand: clean(row?.build_command), deployCommand: clean(row?.deploy_command) });
+          const fingerprint = (rows) => crypto.createHash('sha256')
+            .update(JSON.stringify(active(rows).map(stableTrigger).sort((a, b) => a.triggerUuid.localeCompare(b.triggerUuid))))
+            .digest('hex');
           async function request(path, options = {}) {
             const method = options.method || 'GET';
             const response = await fetch(`${API}${path}`, {
               method,
               headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-              body: options.body === undefined ? undefined : JSON.stringify(options.body),
+              body: options.body === undefined ? undefined : JSON.stringify(options.body)
             });
             const payload = await response.json().catch(() => null);
-            if (!response.ok || payload?.success === false) throw safeProviderError(method, path, response, payload);
+            if (!response.ok || payload?.success === false) throw new Error(`${method} ${path} failed with provider status ${response.status}`);
             return payload?.result;
           }
-
-          function createPayload(row, scriptTag) {
-            const repoConnection = row?.repo_connection && typeof row.repo_connection === 'object'
-              ? row.repo_connection
-              : {};
-            const payload = {
-              external_script_id: clean(row?.external_script_id) || scriptTag,
-              repo_connection_uuid: clean(repoConnection?.repo_connection_uuid),
-              build_token_uuid: clean(row?.build_token_uuid),
-              trigger_name: clean(row?.trigger_name),
-              build_command: clean(row?.build_command),
-              deploy_command: clean(row?.deploy_command),
-              root_directory: clean(row?.root_directory),
-              branch_includes: cleanArray(row?.branch_includes),
-              branch_excludes: cleanArray(row?.branch_excludes),
-              path_includes: cleanArray(row?.path_includes),
-              path_excludes: cleanArray(row?.path_excludes),
-            };
-            if (typeof row?.build_caching_enabled === 'boolean') payload.build_caching_enabled = row.build_caching_enabled;
-            for (const key of ['external_script_id', 'repo_connection_uuid', 'build_token_uuid', 'trigger_name']) {
-              if (!clean(payload[key])) throw new Error(`rollback snapshot missing required ${key}`);
-            }
-            return payload;
-          }
-
-          function stableTrigger(row, scriptTag) {
-            return { triggerUuid: clean(row?.trigger_uuid), createPayload: createPayload(row, scriptTag) };
-          }
-
-          function triggerFingerprint(rows, scriptTag) {
-            return crypto
-              .createHash('sha256')
-              .update(JSON.stringify(active(rows)
-                .map((row) => stableTrigger(row, scriptTag))
-                .sort((a, b) => a.triggerUuid.localeCompare(b.triggerUuid))))
-              .digest('hex');
-          }
-
-          function assertCurrentMain() {
-            const output = execFileSync('git', ['ls-remote', `https://github.com/${process.env.GITHUB_REPOSITORY}.git`, 'refs/heads/main'], { encoding: 'utf8' }).trim();
-            const currentMain = output.split(/\s+/)[0] || '';
-            if (!currentMain || currentMain !== process.env.GITHUB_SHA) {
-              throw new Error('repository main moved during founder apply');
-            }
-          }
-
-          if (!accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required.');
-          if (!token) throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN is required.');
-          if (!beforePath || !fs.existsSync(beforePath)) throw new Error('Retained preflight snapshot is missing.');
-          if (!evidencePath) throw new Error('EVIDENCE_PATH is required.');
-          const beforeRaw = fs.readFileSync(beforePath, 'utf8');
-          const before = JSON.parse(beforeRaw);
-          if (before.schemaVersion !== 3 || !before.verifiedForApply) throw new Error('Preflight snapshot was not verified for apply.');
-          if (before.trustedGitSha !== process.env.GITHUB_SHA) throw new Error('Preflight snapshot SHA does not match this run.');
-
+          if (before.schemaVersion !== 4 || !before.verifiedForApply) throw new Error('Preflight evidence is not authorized for apply.');
+          if (before.trustedGitSha !== process.env.GITHUB_SHA) throw new Error('Preflight SHA does not match this workflow run.');
+          if (before.productionWorker?.name !== 'sekret-backend') throw new Error('Unexpected production Worker identity.');
+          if (before.alphaWorker?.name !== 'sekret-backend-alpha' || before.alphaWorker?.mutationAuthorized !== false) throw new Error('Alpha Worker boundary is not preserved.');
+          if (before.pagesProject?.name !== 'sekret-bip' || before.pagesProject?.mutationAuthorized !== false) throw new Error('Pages boundary is not preserved.');
+          const tokenState = await request('/user/tokens/verify');
+          if (tokenState?.status !== 'active') throw new Error('Dedicated Workers Builds API token is not active.');
+          const productionTriggers = await request(`/accounts/${accountId}/builds/workers/${before.productionWorker.scriptTag}/triggers`);
+          const alphaTriggers = await request(`/accounts/${accountId}/builds/workers/${before.alphaWorker.scriptTag}/triggers`);
+          if (fingerprint(productionTriggers) !== before.productionWorker.triggerFingerprint) throw new Error('Production Worker trigger state drifted after preflight.');
+          if (fingerprint(alphaTriggers) !== before.alphaWorker.triggerFingerprint) throw new Error('Founder-gated alpha Worker changed after preflight; refusing production mutation.');
+          const activeProductionTriggers = active(productionTriggers);
+          if (activeProductionTriggers.length !== 1) throw new Error('Production Worker no longer has exactly one active build trigger.');
+          const currentTrigger = stableTrigger(activeProductionTriggers[0]);
+          if (currentTrigger.triggerUuid !== before.productionWorker.trigger.triggerUuid) throw new Error('Production trigger identity changed after preflight.');
           const receipt = {
-            schemaVersion: 3,
-            startedAt: new Date().toISOString(),
-            finishedAt: null,
-            trustedGitRef: process.env.GITHUB_REF || null,
-            trustedGitSha: process.env.GITHUB_SHA || null,
+            schemaVersion: 4,
+            trustedGitSha: process.env.GITHUB_SHA,
             mode: 'founder-authorized-apply',
-            credentialSource: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
             beforeEvidenceSha256: crypto.createHash('sha256').update(beforeRaw).digest('hex'),
-            status: 'running',
             mutationPerformed: false,
             journal: [],
-            workers: [],
+            alphaWorkerMutationPerformed: false,
+            pagesMutationPerformed: false,
             verified: false,
-            rollback: {
-              durableTriggerConfigurationReconstructable: true,
-              canceledBuildsAreRestartable: false,
-              source: 'retained-before-state-artifact',
-            },
-            failure: null,
+            failure: null
           };
-          const persist = () => fs.writeFileSync(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
-          const record = (entry) => {
-            receipt.mutationPerformed = true;
-            receipt.journal.push({ at: new Date().toISOString(), ...entry });
-            persist();
-          };
+          const persist = () => fs.writeFileSync(process.env.EVIDENCE_PATH, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+          const record = (entry) => { receipt.mutationPerformed = true; receipt.journal.push({ at: new Date().toISOString(), ...entry }); persist(); };
           persist();
-
           try {
-            const tokenState = await request('/user/tokens/verify');
-            if (tokenState?.status !== 'active') throw new Error('Dedicated Workers Builds API token is not active.');
-
-            assertCurrentMain();
-            for (const snapshot of before.workers) {
-              const triggerRows = await request(`/accounts/${accountId}/builds/workers/${snapshot.scriptTag}/triggers`);
-              if (triggerFingerprint(triggerRows, snapshot.scriptTag) !== snapshot.triggerFingerprint) {
-                throw new Error(`${snapshot.name}: provider trigger state drifted after retained preflight snapshot.`);
-              }
-              const productions = production(triggerRows);
-              if (productions.length !== 1 || clean(productions[0]?.trigger_uuid) !== snapshot.productionTriggerUuid) {
-                throw new Error(`${snapshot.name}: production trigger identity drifted after retained preflight snapshot.`);
-              }
-              for (const trigger of active(triggerRows).filter((row) => clean(row?.trigger_uuid) !== snapshot.productionTriggerUuid)) {
-                const uuid = clean(trigger?.trigger_uuid);
-                const envVars = await request(`/accounts/${accountId}/builds/triggers/${uuid}/environment_variables`);
-                const envCount = envVars && typeof envVars === 'object' ? Object.keys(envVars).length : 0;
-                if (envCount !== 0) {
-                  throw new Error(`${snapshot.name}: preview-trigger environment changed after preflight; refusing mutation.`);
-                }
-              }
+            const builds = await request(`/accounts/${accountId}/builds/workers/sekret-backend/builds?per_page=50`);
+            const activeNonMainBuilds = (Array.isArray(builds) ? builds : []).filter((build) => {
+              const branch = clean(build?.build_trigger_metadata?.branch);
+              const outcome = clean(build?.build_outcome).toLowerCase();
+              return branch && branch !== 'main' && !terminal.has(outcome);
+            });
+            for (const build of activeNonMainBuilds) {
+              const uuid = clean(build?.build_uuid);
+              if (!uuid) throw new Error('Active non-main build UUID missing.');
+              await request(`/accounts/${accountId}/builds/builds/${uuid}/cancel`, { method: 'PUT' });
+              record({ action: 'cancel-build', worker: 'sekret-backend', buildUuid: uuid, branch: clean(build?.build_trigger_metadata?.branch) });
             }
-
-            for (const snapshot of before.workers) {
-              assertCurrentMain();
-              const triggerRows = await request(`/accounts/${accountId}/builds/workers/${snapshot.scriptTag}/triggers`);
-              if (triggerFingerprint(triggerRows, snapshot.scriptTag) !== snapshot.triggerFingerprint) {
-                throw new Error(`${snapshot.name}: provider trigger state drifted before mutation.`);
-              }
-              const activeTriggers = active(triggerRows);
-              const productions = production(triggerRows);
-              if (productions.length !== 1) throw new Error(`${snapshot.name}: production trigger count changed before mutation.`);
-              const productionTrigger = productions[0];
-              const productionUuid = clean(productionTrigger?.trigger_uuid);
-              if (productionUuid !== snapshot.productionTriggerUuid) throw new Error(`${snapshot.name}: production trigger identity changed before mutation.`);
-
-              const buildRows = await request(`/accounts/${accountId}/builds/workers/${snapshot.name}/builds?per_page=50`);
-              const activeNonMainBuilds = (Array.isArray(buildRows) ? buildRows : []).filter((build) => {
-                const branch = clean(build?.build_trigger_metadata?.branch);
-                const outcome = clean(build?.build_outcome).toLowerCase();
-                return branch && branch !== 'main' && !terminal.has(outcome);
-              });
-              for (const build of activeNonMainBuilds) {
-                const uuid = clean(build?.build_uuid);
-                if (!uuid) throw new Error(`${snapshot.name}: active non-main build UUID missing.`);
-                await request(`/accounts/${accountId}/builds/builds/${uuid}/cancel`, { method: 'PUT' });
-                record({ worker: snapshot.name, action: 'cancel-build', buildUuid: uuid, branch: clean(build?.build_trigger_metadata?.branch) });
-              }
-
-              for (const trigger of activeTriggers.filter((row) => clean(row?.trigger_uuid) !== productionUuid)) {
-                const uuid = clean(trigger?.trigger_uuid);
-                if (!uuid) throw new Error(`${snapshot.name}: non-production trigger UUID missing.`);
-                const envVars = await request(`/accounts/${accountId}/builds/triggers/${uuid}/environment_variables`);
-                const envCount = envVars && typeof envVars === 'object' ? Object.keys(envVars).length : 0;
-                if (envCount !== 0) throw new Error(`${snapshot.name}: refusing trigger deletion because rollback environment is no longer empty.`);
-                await request(`/accounts/${accountId}/builds/triggers/${uuid}`, { method: 'DELETE' });
-                record({ worker: snapshot.name, action: 'delete-trigger', triggerUuid: uuid, rollbackSnapshotIndex: snapshot.activeTriggers.findIndex((item) => item.triggerUuid === uuid) });
-              }
-
-              const desired = snapshot.desired;
-              const patch = { branch_includes: ['main'], branch_excludes: [], deploy_command: desired.deployCommand };
-              if (desired.patchBuildCommand) patch.build_command = desired.buildCommand;
-              await request(`/accounts/${accountId}/builds/triggers/${productionUuid}`, { method: 'PATCH', body: patch });
-              record({ worker: snapshot.name, action: 'patch-production-trigger', triggerUuid: productionUuid, appliedPatch: patch });
-
-              const verifyTriggers = await request(`/accounts/${accountId}/builds/workers/${snapshot.scriptTag}/triggers`);
-              const verifyBuilds = await request(`/accounts/${accountId}/builds/workers/${snapshot.name}/builds?per_page=50`);
-              const verifyActive = active(verifyTriggers);
-              const verifyProductions = production(verifyTriggers);
-              const verifyProduction = verifyProductions.length === 1 ? verifyProductions[0] : null;
-              const includes = cleanArray(verifyProduction?.branch_includes);
-              const excludes = cleanArray(verifyProduction?.branch_excludes);
-              const nonMainActive = (Array.isArray(verifyBuilds) ? verifyBuilds : []).filter((build) => {
-                const branch = clean(build?.build_trigger_metadata?.branch);
-                const outcome = clean(build?.build_outcome).toLowerCase();
-                return branch && branch !== 'main' && !terminal.has(outcome);
-              });
-              const verified =
-                verifyActive.length === 1 &&
-                verifyProductions.length === 1 &&
-                JSON.stringify(includes) === JSON.stringify(['main']) &&
-                excludes.length === 0 &&
-                clean(verifyProduction?.deploy_command) === desired.deployCommand &&
-                (!desired.patchBuildCommand || clean(verifyProduction?.build_command) === desired.buildCommand) &&
-                nonMainActive.length === 0;
-              receipt.workers.push({
-                name: snapshot.name,
-                productionTriggerUuid: productionUuid,
-                activeTriggerCount: verifyActive.length,
-                activeNonMainBuildCount: nonMainActive.length,
-                verified,
-              });
-              persist();
-              if (!verified) throw new Error(`${snapshot.name}: post-mutation readback is not main-only.`);
-            }
-
-            receipt.verified = receipt.workers.length === before.workers.length && receipt.workers.every((worker) => worker.verified);
-            if (!receipt.verified) throw new Error('Final provider readback is not main-only for every Worker.');
-            receipt.status = 'verified';
-            receipt.finishedAt = new Date().toISOString();
+            const patch = { branch_includes: ['main'], branch_excludes: [], deploy_command: 'npm run deploy:api:production', build_command: '' };
+            await request(`/accounts/${accountId}/builds/triggers/${currentTrigger.triggerUuid}`, { method: 'PATCH', body: patch });
+            record({ action: 'patch-production-trigger', worker: 'sekret-backend', triggerUuid: currentTrigger.triggerUuid, appliedPatch: patch });
+            const verifyTriggers = await request(`/accounts/${accountId}/builds/workers/${before.productionWorker.scriptTag}/triggers`);
+            const verifyAlpha = await request(`/accounts/${accountId}/builds/workers/${before.alphaWorker.scriptTag}/triggers`);
+            const verifyBuilds = await request(`/accounts/${accountId}/builds/workers/sekret-backend/builds?per_page=50`);
+            const verifyActive = active(verifyTriggers);
+            const verifyTrigger = verifyActive.length === 1 ? stableTrigger(verifyActive[0]) : null;
+            const remainingNonMain = (Array.isArray(verifyBuilds) ? verifyBuilds : []).filter((build) => {
+              const branch = clean(build?.build_trigger_metadata?.branch);
+              const outcome = clean(build?.build_outcome).toLowerCase();
+              return branch && branch !== 'main' && !terminal.has(outcome);
+            });
+            const verified = verifyActive.length === 1 && verifyTrigger &&
+              JSON.stringify(verifyTrigger.branchIncludes) === JSON.stringify(['main']) &&
+              verifyTrigger.branchExcludes.length === 0 &&
+              verifyTrigger.deployCommand === 'npm run deploy:api:production' &&
+              verifyTrigger.buildCommand === '' &&
+              remainingNonMain.length === 0 &&
+              fingerprint(verifyAlpha) === before.alphaWorker.triggerFingerprint;
+            receipt.verified = Boolean(verified);
+            receipt.alphaWorkerMutationPerformed = false;
+            receipt.pagesMutationPerformed = false;
             persist();
-            console.log('CLOUDFLARE_WORKER_BRANCH_AUTHORITY_VERIFIED_AFTER_FOUNDER_APPLY');
+            if (!receipt.verified) throw new Error('Post-mutation production Worker readback is not main-only or alpha changed.');
+            console.log('CLOUDFLARE_PRODUCTION_WORKER_MAIN_ONLY_VERIFIED');
           } catch (error) {
-            receipt.status = 'failed';
             receipt.verified = false;
-            receipt.finishedAt = new Date().toISOString();
-            receipt.failure = {
-              message: error instanceof Error ? error.message : 'unknown failure',
-              providerStatus: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
-              providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
-            };
+            receipt.failure = { message: error instanceof Error ? error.message : String(error) };
             persist();
             throw error;
           }
           NODE
 
-      - name: Upload apply journal and after-state evidence
+      - name: Upload apply evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

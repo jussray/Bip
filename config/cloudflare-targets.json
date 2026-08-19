@@ -1,6 +1,15 @@
 {
-  "version": 1,
-  "reviewedAt": "2026-07-29",
+  "version": 2,
+  "reviewedAt": "2026-08-18",
+  "providerInventory": {
+    "workers": [
+      "sekret-backend",
+      "sekret-backend-alpha"
+    ],
+    "pages": [
+      "sekret-bip"
+    ]
+  },
   "production": {
     "pages": {
       "name": "sekret-bip",
@@ -33,12 +42,14 @@
     {
       "name": "bip-mail",
       "kind": "worker",
-      "action": "retire-after-email-routing-cutover"
+      "status": "retired-provider-absent",
+      "action": "do-not-recreate"
     },
     {
       "name": "sekret",
       "kind": "worker",
-      "action": "retire-after-route-binding-and-traffic-audit"
+      "status": "retired-provider-absent",
+      "action": "do-not-recreate"
     }
   ]
 }

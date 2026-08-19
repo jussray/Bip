@@ -18,7 +18,7 @@ env:
 
 jobs:
   audit:
-    name: Audit main-only Worker build authority
+    name: Audit production Worker branch authority against current topology
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -29,10 +29,9 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main"
           current_main="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
           test -n "$current_main"
-          printf 'event_sha=%s\ncurrent_main=%s\n' "$GITHUB_SHA" "$current_main"
           test "$GITHUB_SHA" = "$current_main"
 
-      - name: Read and verify Worker branch authority
+      - name: Read current two-Worker topology and verify production branch authority
         shell: bash
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
@@ -42,137 +41,98 @@ jobs:
           mkdir -p artifacts
           node <<'NODE'
           const fs = require('node:fs');
-
           const API = 'https://api.cloudflare.com/client/v4';
           const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
           const token = String(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || '').trim();
-          const evidencePath = process.env.EVIDENCE_PATH || 'artifacts/cloudflare-worker-branch-authority.json';
-          const workers = [
-            {
-              name: 'sekret-backend',
-              deployCommand: 'npm run deploy:api:production',
-              buildCommand: '',
-              checkBuildCommand: true,
-            },
-            {
-              name: 'sekret',
-              deployCommand: 'npx wrangler versions upload',
-              checkBuildCommand: false,
-            },
-            {
-              name: 'bip-mail',
-              deployCommand: 'npx wrangler versions upload',
-              checkBuildCommand: false,
-            },
-          ];
-          const terminalOutcomes = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated']);
-
-          function clean(value) {
-            return String(value ?? '').trim();
-          }
-
-          async function request(path) {
-            const response = await fetch(`${API}${path}`, {
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-            });
+          const productionWorker = 'sekret-backend';
+          const alphaWorker = 'sekret-backend-alpha';
+          const pagesProject = 'sekret-bip';
+          const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated']);
+          const clean = (value) => String(value ?? '').trim();
+          const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
+          async function get(path) {
+            const response = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } });
             const payload = await response.json().catch(() => null);
-            if (!response.ok || payload?.success === false) {
-              const detail = payload?.errors?.map((e) => `${e.code ?? ''}:${e.message ?? ''}`).join('; ') || response.statusText;
-              throw new Error(`GET ${path} failed: ${detail}`);
-            }
+            if (!response.ok || payload?.success === false) throw new Error(`GET ${path} failed with provider status ${response.status}`);
             return payload?.result;
           }
-
-          function activeTriggers(rows) {
-            return (Array.isArray(rows) ? rows : []).filter((trigger) => !trigger?.deleted_on);
-          }
-
-          function productionTriggers(rows) {
-            return activeTriggers(rows).filter((trigger) => {
-              const includes = Array.isArray(trigger?.branch_includes) ? trigger.branch_includes.map(clean) : [];
-              const excludes = Array.isArray(trigger?.branch_excludes) ? trigger.branch_excludes.map(clean) : [];
-              return includes.includes('main') && !excludes.includes('main') && !excludes.includes('*');
-            });
-          }
-
           if (!accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required.');
           if (!token) throw new Error('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN is required.');
-
-          const tokenState = await request('/user/tokens/verify');
+          const tokenState = await get('/user/tokens/verify');
           if (tokenState?.status !== 'active') throw new Error('Dedicated Workers Builds API token is not active.');
-
-          const scripts = await request(`/accounts/${accountId}/workers/scripts?per_page=100`);
+          const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
+          const findWorker = (name) => (Array.isArray(scripts) ? scripts : []).filter((row) => clean(row?.id) === name);
+          const productionMatches = findWorker(productionWorker);
+          const alphaMatches = findWorker(alphaWorker);
+          if (productionMatches.length !== 1) throw new Error(`${productionWorker}: expected exactly one Worker, found ${productionMatches.length}.`);
+          if (alphaMatches.length !== 1) throw new Error(`${alphaWorker}: expected exactly one Worker, found ${alphaMatches.length}.`);
+          const productionTag = clean(productionMatches[0]?.tag);
+          const alphaTag = clean(alphaMatches[0]?.tag);
+          if (!productionTag || !alphaTag) throw new Error('Both current Workers must expose immutable script tags.');
+          const triggerRows = await get(`/accounts/${accountId}/builds/workers/${productionTag}/triggers`);
+          const buildRows = await get(`/accounts/${accountId}/builds/workers/${productionWorker}/builds?per_page=50`);
+          const activeTriggers = active(triggerRows);
+          const productionTrigger = activeTriggers.length === 1 ? activeTriggers[0] : null;
+          const includes = Array.isArray(productionTrigger?.branch_includes) ? productionTrigger.branch_includes.map(clean) : [];
+          const excludes = Array.isArray(productionTrigger?.branch_excludes) ? productionTrigger.branch_excludes.map(clean) : [];
+          const deployCommand = clean(productionTrigger?.deploy_command);
+          const buildCommand = clean(productionTrigger?.build_command);
+          const activeNonMainBuilds = (Array.isArray(buildRows) ? buildRows : []).filter((build) => {
+            const branch = clean(build?.build_trigger_metadata?.branch);
+            const outcome = clean(build?.build_outcome).toLowerCase();
+            return branch && branch !== 'main' && !terminal.has(outcome);
+          });
+          const verifiedMainOnly = activeTriggers.length === 1 &&
+            JSON.stringify(includes) === JSON.stringify(['main']) &&
+            excludes.length === 0 &&
+            deployCommand === 'npm run deploy:api:production' &&
+            buildCommand === '' &&
+            activeNonMainBuilds.length === 0;
+          const alphaTriggers = await get(`/accounts/${accountId}/builds/workers/${alphaTag}/triggers`);
           const receipt = {
-            schemaVersion: 2,
+            schemaVersion: 3,
             generatedAt: new Date().toISOString(),
             trustedGitRef: process.env.GITHUB_REF || null,
             trustedGitSha: process.env.GITHUB_SHA || null,
             mode: 'read-only',
-            credentialSource: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
             mutationPerformed: false,
-            workers: [],
-            verified: false,
-          };
-
-          for (const desired of workers) {
-            const matches = (Array.isArray(scripts) ? scripts : []).filter((script) => clean(script?.id) === desired.name);
-            if (matches.length !== 1) throw new Error(`Expected exactly one ${desired.name} Worker, found ${matches.length}.`);
-            const tag = clean(matches[0]?.tag);
-            if (!tag) throw new Error(`${desired.name} is missing an immutable script tag.`);
-
-            const triggerRows = await request(`/accounts/${accountId}/builds/workers/${tag}/triggers`);
-            const buildRows = await request(`/accounts/${accountId}/builds/workers/${desired.name}/builds?per_page=50`);
-            const active = activeTriggers(triggerRows);
-            const productions = productionTriggers(triggerRows);
-            const production = productions.length === 1 ? productions[0] : null;
-            const productionUuid = clean(production?.trigger_uuid);
-            const nonProductionTriggers = active.filter((trigger) => clean(trigger?.trigger_uuid) !== productionUuid);
-            const activeNonMainBuilds = (Array.isArray(buildRows) ? buildRows : []).filter((build) => {
-              const branch = clean(build?.build_trigger_metadata?.branch);
-              const outcome = clean(build?.build_outcome).toLowerCase();
-              return branch && branch !== 'main' && !terminalOutcomes.has(outcome);
-            });
-
-            const includes = Array.isArray(production?.branch_includes) ? production.branch_includes.map(clean) : [];
-            const excludes = Array.isArray(production?.branch_excludes) ? production.branch_excludes.map(clean) : [];
-            const deployCommand = clean(production?.deploy_command);
-            const buildCommand = clean(production?.build_command);
-            const verifiedMainOnly =
-              active.length === 1 &&
-              productions.length === 1 &&
-              JSON.stringify(includes) === JSON.stringify(['main']) &&
-              excludes.length === 0 &&
-              deployCommand === desired.deployCommand &&
-              (!desired.checkBuildCommand || buildCommand === desired.buildCommand) &&
-              nonProductionTriggers.length === 0 &&
-              activeNonMainBuilds.length === 0;
-
-            receipt.workers.push({
-              name: desired.name,
-              scriptTag: tag,
-              productionTriggerUuid: productionUuid || null,
+            providerTopology: {
+              workers: [
+                { name: productionWorker, role: 'production' },
+                { name: alphaWorker, role: 'founder-gated-alpha', mutationAuthorized: false }
+              ],
+              pages: [{ name: pagesProject, role: 'frontend', mutationAuthorized: false }]
+            },
+            productionWorker: {
+              name: productionWorker,
+              scriptTag: productionTag,
+              activeTriggerCount: activeTriggers.length,
               branchIncludes: includes,
               branchExcludes: excludes,
               deployCommand,
               buildCommand,
-              activeTriggerCount: active.length,
-              productionTriggerCount: productions.length,
-              nonProductionTriggerCount: nonProductionTriggers.length,
               activeNonMainBuildCount: activeNonMainBuilds.length,
-              verifiedMainOnly,
-            });
-          }
-
-          receipt.verified = receipt.workers.length === workers.length && receipt.workers.every((worker) => worker.verifiedMainOnly);
-          fs.writeFileSync(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
-          if (!receipt.verified) {
-            console.error('CLOUDFLARE_WORKER_BRANCH_AUTHORITY_NOT_VERIFIED');
+              verifiedMainOnly
+            },
+            alphaWorker: {
+              name: alphaWorker,
+              scriptTag: alphaTag,
+              activeTriggerCount: active(alphaTriggers).length,
+              founderGatedObservationOnly: true
+            },
+            pagesProject: {
+              name: pagesProject,
+              verification: 'separate-pages-authority-gate',
+              mutationAuthorized: false
+            },
+            workersAuthorityVerified: verifiedMainOnly
+          };
+          fs.writeFileSync(process.env.EVIDENCE_PATH, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
+          if (!verifiedMainOnly) {
+            console.error('CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_NOT_VERIFIED');
             process.exit(1);
           }
-          console.log('CLOUDFLARE_WORKER_BRANCH_AUTHORITY_VERIFIED_READ_ONLY');
+          console.log('CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_VERIFIED_READ_ONLY');
           NODE
 
       - name: Upload Cloudflare branch-authority evidence
