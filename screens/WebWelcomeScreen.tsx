@@ -226,6 +226,12 @@ export function WebWelcomeScreen({
         subtitle: 'A playful family space where everyone can stay connected and every child still has room to grow.',
         hero: BIP_JR_HERO,
         heroLabel: 'The Bip Jr family welcome artwork',
+        cues: [
+          { symbol: '☁', label: 'set up together' },
+          { symbol: '♡', label: 'stay connected' },
+          { symbol: '✦', label: 'room to grow' },
+        ],
+        cueLabel: 'Bip Jr world cues: set up together, stay connected, room to grow',
         note: 'Made for real family rhythms.',
         enterLabel: 'Bip Jr family welcome — continue to family setup',
       }
@@ -234,6 +240,12 @@ export function WebWelcomeScreen({
         subtitle: 'A close-knit world where teens and parents can stay connected without losing their own space.',
         hero: TEEN_HERO,
         heroLabel: 'Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together',
+        cues: [
+          { symbol: '☾', label: 'start quiet' },
+          { symbol: '♡', label: 'stay close' },
+          { symbol: '✦', label: 'keep your space' },
+        ],
+        cueLabel: "Se'kret Bip world cues: start quiet, stay close, keep your space",
         note: '☁  stay awhile. start when you’re ready.',
         enterLabel: "Se'kret Bip teen welcome — continue to age setup",
       };
@@ -339,6 +351,25 @@ export function WebWelcomeScreen({
                 accessibilityLabel={copy.heroLabel}
               />
             </Animated.View>
+          </View>
+
+          <View
+            testID="web-welcome-world-cues"
+            accessible
+            accessibilityLabel={copy.cueLabel}
+            style={styles.worldCues}
+          >
+            {copy.cues.map(cue => (
+              <View
+                key={cue.label}
+                accessible={false}
+                importantForAccessibility="no-hide-descendants"
+                style={styles.worldCue}
+              >
+                <Text style={styles.worldCueSymbol}>{cue.symbol}</Text>
+                <Text style={styles.worldCueLabel}>{cue.label}</Text>
+              </View>
+            ))}
           </View>
 
           <Text style={styles.handNote}>{copy.note}</Text>
@@ -615,6 +646,37 @@ const styles = StyleSheet.create({
   },
   heroBipJr: {
     borderRadius: RADIUS.xxl + SPACE[1.5],
+  },
+  worldCues: {
+    marginHorizontal: SPACE[5],
+    marginBottom: SPACE[3],
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE[2],
+  },
+  worldCue: {
+    minHeight: 38,
+    paddingHorizontal: SPACE[3],
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surfaceSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE[1.5],
+  },
+  worldCueSymbol: {
+    color: color.pinkLight,
+    fontSize: TYPE.sm,
+  },
+  worldCueLabel: {
+    color: color.textMid,
+    fontSize: TYPE.xs,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
   handNote: {
     color: color.textMid,
