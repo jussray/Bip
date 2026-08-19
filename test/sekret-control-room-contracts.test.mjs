@@ -31,9 +31,21 @@ function compile(relativePath, outputName, rewrite = (source) => source) {
   return outputPath;
 }
 
+compile(
+  'src/features/identity/companionIds.ts',
+  'companionIds.mjs',
+);
+compile(
+  'src/features/identity/legacyCompanionIdMigration.ts',
+  'legacyCompanionIdMigration.mjs',
+  (source) => source.replace("from './companionIds'", "from './companionIds.mjs'"),
+);
 const identityPath = compile(
   'src/features/sekret/identityContract.ts',
   'identityContract.mjs',
+  (source) => source
+    .replace("from '@/features/identity/companionIds'", "from './companionIds.mjs'")
+    .replace("from '@/features/identity/legacyCompanionIdMigration'", "from './legacyCompanionIdMigration.mjs'"),
 );
 const styleProfilesPath = compile(
   'src/features/sekret/styleProfiles.ts',
