@@ -3,8 +3,10 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import {
+  appProbeIsFrontend,
   backendHealthIdentityMatches,
   classifyWorkerBindings,
+  isCloudflareAccessUrl,
   routePatternMayMatchHost,
   routePatternTargetsExactHost,
   validateResolvedZone,
@@ -60,6 +62,55 @@ test('every broad route matching the app hostname is surfaced regardless of Work
   assert.deepEqual(
     classified.broadRoutes.map((item) => item.id),
     ['owned-wildcard', 'foreign-wildcard'],
+  );
+});
+
+test('Cloudflare Access login can never satisfy public frontend readiness', () => {
+  assert.equal(
+    isCloudflareAccessUrl('https://sekret.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net'),
+    true,
+  );
+  assert.equal(
+    isCloudflareAccessUrl('https://app.sekretbip.net/cdn-cgi/access/login'),
+    true,
+  );
+
+  assert.equal(
+    appProbeIsFrontend({
+      url: 'https://app.sekretbip.net',
+      requestedUrl: 'https://app.sekretbip.net',
+      finalUrl: 'https://sekret.cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net',
+      redirected: true,
+      status: 200,
+      contentType: 'text/html; charset=UTF-8',
+      bodyFingerprint: '<title>Cloudflare Access Login</title>',
+    }),
+    false,
+  );
+
+  assert.equal(
+    appProbeIsFrontend({
+      url: 'https://app.sekretbip.net',
+      requestedUrl: 'https://app.sekretbip.net',
+      finalUrl: 'https://app.sekretbip.net',
+      redirected: false,
+      status: 200,
+      contentType: 'text/html; charset=UTF-8',
+      bodyFingerprint: '<title>Se’kret Bip</title>',
+    }),
+    true,
+  );
+});
+
+test('Access-looking HTML fails closed even when redirect metadata is unavailable', () => {
+  assert.equal(
+    appProbeIsFrontend({
+      url: 'https://app.sekretbip.net',
+      status: 200,
+      contentType: 'text/html',
+      bodyFingerprint: '<main>Cloudflare Access sign in</main>',
+    }),
+    false,
   );
 });
 
