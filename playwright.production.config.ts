@@ -11,6 +11,7 @@ const executablePath = resolvePlaywrightExecutablePath();
 export default defineConfig({
   testDir: './e2e',
   testMatch: [
+    'production-public-front-door.spec.ts',
     'production-smoke.spec.ts',
     'production-audience-journeys.spec.ts',
     'production-auth-reachability.spec.ts',
