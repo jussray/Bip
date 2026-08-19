@@ -216,6 +216,29 @@ test('reduced motion is still from the first rendered hero frame', async ({ page
   }
 });
 
+test('teen welcome cinematic entrance settles into the canonical still pose', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?bipDevAudience=teen', { waitUntil: 'domcontentloaded' });
+
+  const heroMotion = page.getByTestId('web-welcome-hero-motion');
+  await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible();
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
+  await expect(page.getByTestId('web-welcome-motion-settled')).toHaveCount(1, {
+    timeout: 5_000,
+  });
+
+  const first = await heroMotion.boundingBox();
+  expect(first).not.toBeNull();
+  await page.waitForTimeout(300);
+  const second = await heroMotion.boundingBox();
+  expect(second).not.toBeNull();
+
+  for (const key of ['x', 'y', 'width', 'height'] as const) {
+    expect(Math.abs(first![key] - second![key])).toBeLessThanOrEqual(0.5);
+  }
+});
+
 test('Teen entry preserves the teen onboarding path', async ({ page }) => {
   await page.goto('/?bipDevAudience=teen', { waitUntil: 'networkidle' });
   await page.getByTestId('web-welcome-enter').click();
