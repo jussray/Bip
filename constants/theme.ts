@@ -1,6 +1,6 @@
 // constants/theme.ts
 // Public theme entrypoint. The preserved implementation remains in theme.base.ts;
-// canonical app-entry assets override only the legacy splash aliases here.
+// canonical app-entry assets override only legacy/fallback aliases here.
 import { IMAGES as BASE_IMAGES } from './theme.base';
 
 export * from './theme.base';
