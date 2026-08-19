@@ -29,9 +29,11 @@ test('production Playwright runs only launch-safe exact-domain specs', () => {
   assert.doesNotMatch(productionConfig, /live-onboarding-email\.spec\.ts/);
 });
 
-test('production launch proof matches the current release and front-door contract', () => {
+test('production launch proof binds Pages and Worker to the same release', () => {
   assert.match(productionSmoke, /schemaVersion:\s*2/);
   assert.match(productionSmoke, /\.well-known\/sekret-release\.json/);
+  assert.match(productionSmoke, /https:\/\/api\.sekretbip\.net\/health/);
+  assert.match(productionSmoke, /releaseSha:\s*expectedReleaseSha/);
   assert.match(productionSmoke, /YOUR PEOPLE\. YOUR PEACE\./);
   assert.match(productionSmoke, /YOUR FAMILY\. YOUR SPACE\./);
   assert.doesNotMatch(productionSmoke, /THE SOFTER ORIGINAL/);
