@@ -44,6 +44,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: cloudflare-production
     env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}
       CLOUDFLARE_PAGES_PROJECT_NAME: sekret
       SEKRET_FRONTEND_URL: ${{ vars.SEKRET_FRONTEND_URL }}
       EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
@@ -60,16 +61,25 @@ jobs:
       - run: npm ci
       - name: Verify frontend deployment configuration
         run: |
-          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "Missing cloudflare-production secret: CLOUDFLARE_PAGES_API_TOKEN" >&2; exit 1; }
           test -n "$CLOUDFLARE_ACCOUNT_ID"
           test "$CLOUDFLARE_PAGES_PROJECT_NAME" = "sekret"
+          grep -Eq '^name = "sekret"$' cloudflare/pages/wrangler.toml
+          grep -Eq '^pages_build_output_dir = "../../dist"$' cloudflare/pages/wrangler.toml
           test -n "$SEKRET_FRONTEND_URL"
           test -n "$EXPO_PUBLIC_SUPABASE_URL"
           test -n "$EXPO_PUBLIC_SUPABASE_ANON_KEY"
           test -n "$EXPO_PUBLIC_BACKEND_URL"
+      - name: Verify Pages API access
+        working-directory: cloudflare/pages
+        run: |
+          npx wrangler pages project list --json > pages-projects.json
+          node -e 'const projects = JSON.parse(require("fs").readFileSync("pages-projects.json", "utf8")); if (!projects.some(({ name }) => name === process.env.CLOUDFLARE_PAGES_PROJECT_NAME)) throw new Error(`Cloudflare Pages project not found: ${process.env.CLOUDFLARE_PAGES_PROJECT_NAME}`)'
+          rm pages-projects.json
       - name: Build Expo web frontend
         run: npm run build:web
       - name: Deploy Expo web export to Cloudflare Pages project sekret
-        run: npx wrangler pages deploy dist --project-name="$CLOUDFLARE_PAGES_PROJECT_NAME" --branch=main
+        working-directory: cloudflare/pages
+        run: npx wrangler pages deploy --project-name="$CLOUDFLARE_PAGES_PROJECT_NAME" --branch=main
       - name: Verify custom-domain frontend health
         run: curl --fail-with-body --silent --show-error --location "$SEKRET_FRONTEND_URL"

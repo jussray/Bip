@@ -51,6 +51,29 @@ Build and deploy with:
 npm run deploy:pages
 ```
 
+Pages uses `cloudflare/pages/wrangler.toml`; the root `wrangler.toml` remains
+the canonical Worker configuration because Wrangler does not allow `main` and
+`pages_build_output_dir` in the same configuration. Wrangler Pages also does
+not support a custom `--config` path, so Pages commands run from that isolated
+directory.
+
+The production workflow uses separate least-privilege credentials for the two
+Cloudflare products:
+
+- `CLOUDFLARE_API_TOKEN` deploys the backend and requires **Workers Scripts:
+  Edit**.
+- `CLOUDFLARE_PAGES_API_TOKEN` deploys the frontend and requires **Cloudflare
+  Pages: Edit**.
+
+Both tokens must target the account identified by `CLOUDFLARE_ACCOUNT_ID` and
+must be stored as secrets in the `cloudflare-production` GitHub environment.
+The Pages job maps `CLOUDFLARE_PAGES_API_TOKEN` to the standard
+`CLOUDFLARE_API_TOKEN` environment variable consumed by Wrangler and verifies
+API access to the `sekret` project before spending time on the Expo export. API
+error code `10000` means the corresponding token/account configuration must be
+corrected; retrying the workflow or changing application code cannot grant
+those external permissions.
+
 Configure only the required public client variables in the Pages build environment. Keep server credentials in Worker or Supabase secret stores.
 
 ## Native builds

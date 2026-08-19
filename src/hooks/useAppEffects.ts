@@ -180,6 +180,7 @@ export function useAppEffects(state: AppState, setState: SetState) {
       moodCount:    state.moodHistory.length,
       journalCount: state.journalEntries.length,
       voiceCount:   state.voiceNotes.length,
+      circleCount:  state.circlePosts.length,
       comfortCount: state.comfortSessions.length,
       crewCount:    state.crewCheckIns.length,
       streakDays:   state.streakDays,

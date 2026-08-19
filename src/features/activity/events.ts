@@ -33,6 +33,7 @@ export type ActivityEventType =
   | 'circle_post'
   | 'circle_reaction'
   | 'companion_message'
+  | 'app_opened'
   | 'goal_completed'
   | 'streak_milestone';
 
@@ -52,6 +53,7 @@ export interface ActivityEventMeta {
   messageIndex?:  number;   // companion_message
   reactionKey?:   string;   // circle_reaction
   milestone?:     number;   // streak_milestone
+  date?:          string;   // app_opened
 }
 
 // ── Subscriber registry (in-process, synchronous) ───────────────────────────
