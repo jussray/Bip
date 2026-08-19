@@ -1,8 +1,9 @@
 {
-  "version": 2,
-  "reviewedAt": "2026-08-18",
+  "version": 3,
+  "reviewedAt": "2026-08-19",
   "providerInventory": {
     "workers": [
+      "sekret",
       "sekret-backend",
       "sekret-backend-alpha"
     ],
@@ -31,6 +32,14 @@
       ]
     }
   },
+  "separateWorkerAuthorities": {
+    "sekret": {
+      "kind": "worker",
+      "status": "founder-confirmed-active",
+      "routeBinding": "provider-readback-required",
+      "mutationPolicy": "preserve-until-exact-provider-binding-proven"
+    }
+  },
   "nonProduction": {
     "worker": {
       "name": "sekret-backend-alpha",
@@ -41,12 +50,6 @@
   "legacyDashboardServices": [
     {
       "name": "bip-mail",
-      "kind": "worker",
-      "status": "retired-provider-absent",
-      "action": "do-not-recreate"
-    },
-    {
-      "name": "sekret",
       "kind": "worker",
       "status": "retired-provider-absent",
       "action": "do-not-recreate"
