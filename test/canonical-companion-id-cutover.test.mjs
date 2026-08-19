@@ -27,11 +27,30 @@ test('canonical identity contract contains no legacy companion ids', () => {
   assert.match(identity, /migratePersistedCompanionId\(identity\)/);
 });
 
-test('legacy ids are quarantined to the read-only migration adapter', () => {
+test('legacy ids are quarantined to the migration boundary', () => {
   const migration = read('src/features/identity/legacyCompanionIdMigration.ts');
 
   assert.match(migration, /raylene: 'suhana'/);
   assert.match(migration, /rylane: 'sy'/);
-  assert.match(migration, /New writes must never use these legacy keys/);
+  assert.match(migration, /suhana: 'raylene'/);
+  assert.match(migration, /sy: 'rylane'/);
+  assert.match(migration, /Canonical app state must not grow new legacy IDs/);
+  assert.match(migration, /Transitional write-boundary adapter/);
   assert.doesNotMatch(migration, /AsyncStorage\.setItem|AsyncStorage\.multiSet|supabase\.|fetch\(/);
+});
+
+test('Reflection translates canonical local state only at the legacy profile persistence boundary', () => {
+  const reflection = read('app/(onboarding)/reflection.tsx');
+
+  assert.match(
+    reflection,
+    /migratePersistedCompanionId\(values\[2\]\[1\] \?\? 'suhana'\)/,
+  );
+  assert.match(
+    reflection,
+    /const persistedChoice = toLegacyPersistedCompanionId\(canonicalChoice\)/,
+  );
+  assert.match(reflection, /selectedCompanion: persistedChoice/);
+  assert.match(reflection, /setSelectedSekret\(persistedChoice\)/);
+  assert.doesNotMatch(reflection, /function isCompanion\(/);
 });
