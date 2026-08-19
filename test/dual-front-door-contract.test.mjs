@@ -127,5 +127,5 @@ test('a founder account gets its own front door instead of dead-ending in the te
   assert.ok(onboardingGateIndex !== -1 && founderCheckIndex !== -1 && parentBranchIndex !== -1);
   assert.ok(onboardingGateIndex < founderCheckIndex, 'founder check must run after the onboarding-complete gate');
   assert.ok(founderCheckIndex < parentBranchIndex, 'founder check must run before the parent/teen room routing');
-  assert.match(index, /Founder-status lookup failed during front-door routing/);
+  assert.match(index, /Founder-status lookup is a routing convenience only/);
 });
