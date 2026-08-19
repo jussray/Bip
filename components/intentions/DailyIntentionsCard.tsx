@@ -28,7 +28,7 @@ import {
 const MODE_KEY = 'sekretbip:daily-intentions:personalization:v1';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = Math.min(SCREEN_WIDTH - 28, 340);
-const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(220, SCREEN_WIDTH - 120));
+const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, 174);
 
 type IntentionMode = 'basic' | 'personalized' | 'off';
 
@@ -184,7 +184,11 @@ export function DailyIntentionsCard({
 
   return (
     <View
-      style={[s.card, { width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH }]}
+      style={[
+        s.card,
+        !expanded && s.cardCollapsed,
+        { width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH },
+      ]}
       testID="daily-intentions-card"
     >
       <TouchableOpacity
@@ -194,10 +198,16 @@ export function DailyIntentionsCard({
         accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} today's intentions`}
       >
         <View style={s.headerCopy}>
-          <Text style={s.eyebrow}>TODAY, GENTLY</Text>
-          <Text style={s.title}>your 3 small things</Text>
+          {expanded ? (
+            <>
+              <Text style={s.eyebrow}>TODAY, GENTLY</Text>
+              <Text style={s.title}>your 3 small things</Text>
+            </>
+          ) : (
+            <Text style={s.collapsedLabel}>✦ today</Text>
+          )}
         </View>
-        <View style={s.progressPill}>
+        <View style={[s.progressPill, !expanded && s.progressPillCollapsed]}>
           <Text style={s.progressText}>{completedCount}/{items.length || 3}</Text>
         </View>
       </TouchableOpacity>
@@ -358,11 +368,22 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 7 },
     elevation: 9,
   },
+  cardCollapsed: {
+    borderRadius: 999,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderColor: 'rgba(196,181,253,0.30)',
+    backgroundColor: 'rgba(18,8,36,0.78)',
+    shadowOpacity: 0.16,
+    shadowRadius: 8,
+  },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   headerCopy: { flex: 1 },
+  collapsedLabel: { color: '#ddd6fe', fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
   eyebrow: { color: '#c4b5fd', fontSize: 9, fontWeight: '800', letterSpacing: 1.7 },
   title: { color: '#fff', fontSize: 16, fontWeight: '800', marginTop: 2 },
   progressPill: { backgroundColor: 'rgba(196,181,253,0.13)', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5 },
+  progressPillCollapsed: { paddingHorizontal: 8, paddingVertical: 4, marginLeft: 8 },
   progressText: { color: '#ddd6fe', fontSize: 11, fontWeight: '800' },
   divider: { height: 1, backgroundColor: 'rgba(196,181,253,0.16)', marginVertical: 10 },
   itemRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6, gap: 9 },
