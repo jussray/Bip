@@ -34,6 +34,18 @@ test('Bip Jr remains a separate welcome world while preserving role compatibilit
   assert.match(index, /variant=\{publicWelcomeSide\}/);
 });
 
+test('world cues deepen each welcome experience without adding role or safety claims', () => {
+  assert.match(welcome, /testID="web-welcome-world-cues"/);
+  assert.match(welcome, /start quiet/);
+  assert.match(welcome, /stay close/);
+  assert.match(welcome, /keep your space/);
+  assert.match(welcome, /set up together/);
+  assert.match(welcome, /stay connected/);
+  assert.match(welcome, /room to grow/);
+  assert.match(welcome, /accessibilityLabel=\{copy\.cueLabel\}/);
+  assert.doesNotMatch(welcome, /you(?:’|'| a)re safe here|guaranteed private|completely private/i);
+});
+
 test('explicit Enter choice outranks preview and build defaults', () => {
   assert.match(index, /getDevSplitViewSideOverride/);
   assert.match(index, /const publicEntrySide: AccountSide = selectedEntrySide \?\? previewSide \?\? buildSide \?\? userSide \?\? 'teen'/);
@@ -115,5 +127,5 @@ test('a founder account gets its own front door instead of dead-ending in the te
   assert.ok(onboardingGateIndex !== -1 && founderCheckIndex !== -1 && parentBranchIndex !== -1);
   assert.ok(onboardingGateIndex < founderCheckIndex, 'founder check must run after the onboarding-complete gate');
   assert.ok(founderCheckIndex < parentBranchIndex, 'founder check must run before the parent/teen room routing');
-  assert.match(index, /Founder-status lookup is a routing convenience only/);
+  assert.match(index, /Founder-status lookup failed during front-door routing/);
 });
