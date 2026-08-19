@@ -1,34 +1,33 @@
 # Cloudflare Ownership
 
-Last reviewed: 2026-07-29
+Last reviewed: 2026-08-19
 
 ## Current release gate
 
-[P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) is open: the local build emits the marker but the live Pages domain does not serve JSON at the canonical well-known path. The topology below is repository authority and intended production configuration; it is not a substitute for an exact deployed frontend witness.
+[P0 #696](https://github.com/jussray/Sekret-Bip/issues/696) owns exact-production release truth. Repository topology below is intended authority and safety policy; it is not a substitute for live Cloudflare route/custom-domain readback for the same target.
 
-## Canonical production split
+## Canonical Cloudflare surfaces
 
-Se'kret Bip has two canonical Cloudflare production deployment targets, both sourced from `main`:
+Se’kret Bip must keep these Cloudflare identities separate:
 
-1. `sekret-bip` — Cloudflare Pages frontend;
-2. `sekret-backend` — the single production Worker.
+1. `sekret-bip` — Cloudflare Pages frontend project;
+2. `sekret-backend` — canonical API/backend Worker;
+3. `sekret` — separate founder-confirmed active Worker whose exact live hostname/routes remain provider-readback authority;
+4. `sekret-backend-alpha` — founder-gated non-production Worker.
 
-The Cloudflare dashboard may still show four production-named items during cleanup:
+`bip-mail` remains the legacy Worker retirement target after its Email Routing cutover is independently verified.
 
-- `sekret-bip` — canonical Pages project;
-- `sekret-backend` — canonical Worker;
-- `bip-mail` — legacy Worker pending Email Routing cutover and retirement;
-- `sekret` — legacy Worker pending route, binding, secret, and traffic audit and retirement.
+`sekret` is **not** a legacy/deletion target. Its existence must not be collapsed into `sekret-backend`, and automation must not remove its routes, domains, triggers, secrets, or bindings merely because `sekret-backend` is the canonical API Worker.
 
-Dashboard existence does not create architectural authority. `config/cloudflare-targets.json` and the repository runtime define the intended target map.
+Dashboard existence alone does not assign a hostname. `config/cloudflare-targets.json`, repository runtime contracts, founder topology intent, and fresh Cloudflare provider readback must be reconciled before any provider mutation.
 
-### `sekret-backend` — single production Worker
+### `sekret-backend` — canonical backend Worker
 
 Repository authority is defined by `wrangler.toml`, Worker identity tests, and the expected Cloudflare Workers Builds check:
 
 - Worker name: `sekret-backend`;
 - entry point: `worker/voice-entry.ts`;
-- production endpoint: `https://sekret-backend.mcgill-raylene.workers.dev`.
+- canonical API custom domain: `https://api.sekretbip.net`.
 
 Responsibilities:
 
@@ -41,42 +40,52 @@ Responsibilities:
 - metadata-only telemetry;
 - inbound Bip email processing through `worker/email-router.ts`.
 
-`worker/voice-entry.ts` exports both `fetch()` and `email()`: it delegates ordinary HTTP traffic to `worker/observed-index.ts` and retains inbound email handling through `worker/email-router.ts`. A second production Worker is not required for Sekret API work or incoming mail.
+`worker/voice-entry.ts` exports both `fetch()` and `email()`: it delegates ordinary HTTP traffic to `worker/observed-index.ts` and retains inbound email handling through `worker/email-router.ts`.
 
-Mobile and web clients call this backend through `EXPO_PUBLIC_BACKEND_URL`.
+Mobile and web clients call the backend through `EXPO_PUBLIC_BACKEND_URL`.
 
-### `sekret-bip` — frontend Cloudflare Pages project
+### `sekret` — separate Worker authority
 
-Canonical responsibilities:
+`sekret` is a distinct active Cloudflare Worker identity. Its exact current hostname, routes, custom domains, build trigger, secret names, bindings, and traffic are provider truth and must be retained in an evidence receipt before any mutation.
 
-- host the Expo web export;
-- serve the custom domain;
+Until that provider readback exists:
+
+- do not delete `sekret`;
+- do not rename it to `sekret-backend`;
+- do not move its routes or custom domains;
+- do not treat it as a foreign Worker that may be detached automatically;
+- do not infer its role from a historical Wrangler file alone.
+
+If live readback later proves a route conflict with Pages or `sekret-backend`, repair only the exact conflicting binding after founder authorization and preserve an explicit rollback path.
+
+### `sekret-bip` — Cloudflare Pages project
+
+Canonical Pages responsibilities remain:
+
+- host the Expo web export where Pages is the intended frontend authority;
+- serve its attached custom domain(s);
 - deliver frontend routes and static assets;
 - bootstrap the React Native Web application;
 - expose the public non-sensitive `/.well-known/sekret-release.json` commit marker.
 
-The intended Cloudflare Pages Git build contract is:
+The intended Pages Git build contract is:
 
 ```text
 Build command: npm run build:web
 Output directory: dist
 ```
 
-GitHub Actions does not run a second production upload. A dashboard configuration statement and a green repository check do not prove the live marker; use #696’s acceptance evidence.
+A Pages build badge does not prove a custom domain is actually reaching Pages. #696 must verify the live release marker from the intended public hostname.
 
-## Request flow
+## Request and ownership invariants
+
+The repository currently proves:
 
 ```text
-sekretbip.net
+api.sekretbip.net
     |
     v
-Cloudflare Pages project: sekret-bip
-    |
-    v
-Expo web frontend + /.well-known/sekret-release.json
-    |
-    v
-Cloudflare Worker: sekret-backend (worker/voice-entry.ts)
+Cloudflare Worker: sekret-backend
     |
     +--> ordinary HTTP via worker/observed-index.ts
     +--> Sekret reply / voice / transcription
@@ -88,61 +97,61 @@ Cloudflare Worker: sekret-backend (worker/voice-entry.ts)
 Cloudflare Email Routing
     |
     v
-Cloudflare Worker email() handler: sekret-backend
+sekret-backend email() handler
     |
     v
 worker/email-router.ts --> verified destination
 ```
 
+The live route/custom-domain mapping for `sekret` must be read from Cloudflare and recorded separately. Do not overwrite that unknown with the Pages or backend model.
+
 ## Ownership rules
 
-- Frontend assets, Expo routes, and browser delivery belong to `sekret-bip`.
-- API routes, secrets, database access, Sekret runtime behavior, and business logic belong to `sekret-backend`.
-- Inbound Email Routing must target the `email()` handler exported by `worker/voice-entry.ts`.
-- `bip-mail` and `sekret` must not receive new code, routes, triggers, secrets, or bindings.
-- Do not delete a legacy Worker until its routes, triggers, bindings, secrets, recent traffic, and rollback path have been inspected.
+- API routes, server secrets, database access, Sekret backend runtime behavior, and business logic belong to `sekret-backend`.
+- `api.sekretbip.net` must continue to resolve to `sekret-backend`.
+- `sekret` is a protected separate Worker identity until exact provider ownership is proven.
+- Frontend Pages authority and Worker authority are separate; do not infer one from the other.
+- Inbound Email Routing must target the `email()` handler exported by `worker/voice-entry.ts` after the controlled `bip-mail` cutover.
+- `bip-mail` must not receive new production authority and may be retired only after exact provider proof.
+- Do not delete any Worker until its routes, triggers, bindings, secrets, recent traffic, and rollback path have been inspected.
 - Service-role credentials, AI provider credentials, and server-only shared secrets must never enter the frontend bundle.
-- Do not create a second token-based production deployment path alongside Cloudflare native Git integration.
+- Do not create a second token-based production deployment path alongside reviewed provider integration.
 
-The exact retirement sequence is defined in `docs/CLOUDFLARE_WORKER_CONSOLIDATION.md`.
+The exact Worker preservation/retirement sequence is defined in `docs/CLOUDFLARE_WORKER_CONSOLIDATION.md`.
 
 ## Non-production Worker
 
-`sekret-backend-alpha`, configured by `wrangler.alpha.toml`, is a distinct founder-gated non-production service. It is not one of the legacy production Workers and must not be deleted as part of this cleanup.
+`sekret-backend-alpha`, configured by `wrangler.alpha.toml`, is a distinct founder-gated non-production service. It must not be deleted or promoted into canonical production authority by cleanup automation.
 
 ## Exact-release verification
 
 Production verification requires independent evidence for the exact expected `main` commit:
 
-1. `Workers Builds: sekret-backend` succeeds for that commit.
-2. `https://sekretbip.net/.well-known/sekret-release.json` reports the same commit SHA and branch.
-3. `https://sekret-backend.mcgill-raylene.workers.dev/health` succeeds.
-4. read-only production Playwright verifies the release marker and protected routes.
-5. controlled requests verify Sekret reply, voice, and transcription through `sekret-backend`.
-6. controlled messages verify every supported email alias through `sekret-backend`.
-7. the evidence artifact is retained by GitHub Actions or Founder Control Room.
+1. exact current repository authority;
+2. canonical frontend/release marker from the intended public frontend hostname;
+3. canonical `sekret-backend` release identity and health from `api.sekretbip.net`;
+4. retained provider route/custom-domain evidence for `sekret` when its binding affects the release path;
+5. read-only production Playwright against the exact release;
+6. controlled backend/voice/email journeys where applicable;
+7. retained evidence in GitHub Actions or Founder Control Room.
 
-```bash
-curl --fail https://sekret-backend.mcgill-raylene.workers.dev/health
-curl --fail https://sekretbip.net/.well-known/sekret-release.json
-npm run test:e2e:production
-```
-
-A stale Pages check, an idle legacy Worker, or a historical deployment function is not proof of what is serving traffic.
+A stale Pages check, a Worker deployment badge, a historical route statement, or an Access interception is not proof of what currently serves traffic.
 
 ## Retired release path
 
 The Supabase `release-health` Edge Function is retired as a JWT-protected HTTP 410 endpoint. It must not be used as deployment authority, release telemetry, or proof of the current commit.
 
-Canonical evidence comes from `.github/workflows/deploy-cloudflare.yml`, `scripts/verify-cloudflare-native-deploy.mjs`, the deployed release marker, Worker health, production Playwright, and the consolidation evidence recorded in Founder Control Room.
+Canonical evidence comes from `.github/workflows/deploy-cloudflare.yml`, provider readback, the deployed release marker, Worker health, production Playwright, and the evidence recorded in Founder Control Room.
 
 ## Emergency manual fallback
 
-Manual Worker or Pages upload is an administrator-only fallback documented in `DEPLOYMENT.md`. Any emergency use must record:
+Manual Worker, route, domain, or Pages mutation is administrator-only fallback. Any emergency use must record:
 
 - exact source commit;
-- command and target;
+- exact Worker/project and hostname;
+- command or provider action;
 - credentials scope;
+- before/after provider readback;
 - validation performed;
 - rollback;
 - immediate repository reconciliation.
