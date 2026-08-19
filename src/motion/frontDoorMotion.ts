@@ -1,4 +1,8 @@
 export const FRONT_DOOR_MOTION = Object.freeze({
+  arrivalDurationMs: 1100,
+  arrivalOpacity: [0.18, 1],
+  arrivalTranslateY: [28, 0],
+  arrivalScale: [0.985, 1],
   pulseDurationMs: 3200,
   driftDurationMs: 4200,
   reducedPulseRestValue: 0.35,
