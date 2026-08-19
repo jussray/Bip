@@ -3,6 +3,7 @@ import fs from 'node:fs';
 const API = 'https://api.cloudflare.com/client/v4';
 const accountId = String(process.env.CLOUDFLARE_ACCOUNT_ID || '').trim();
 const token = String(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN || '').trim();
+const separateWorker = 'sekret';
 const productionWorker = 'sekret-backend';
 const alphaWorker = 'sekret-backend-alpha';
 const pagesProject = 'sekret-bip';
@@ -28,13 +29,16 @@ const tokenState = await get('/user/tokens/verify');
 if (tokenState?.status !== 'active') throw new Error('Dedicated Workers Builds API token is not active.');
 const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
 const findWorker = (name) => (Array.isArray(scripts) ? scripts : []).filter((row) => clean(row?.id) === name);
+const separateMatches = findWorker(separateWorker);
 const productionMatches = findWorker(productionWorker);
 const alphaMatches = findWorker(alphaWorker);
+if (separateMatches.length !== 1) throw new Error(`${separateWorker}: expected exactly one Worker, found ${separateMatches.length}.`);
 if (productionMatches.length !== 1) throw new Error(`${productionWorker}: expected exactly one Worker, found ${productionMatches.length}.`);
 if (alphaMatches.length !== 1) throw new Error(`${alphaWorker}: expected exactly one Worker, found ${alphaMatches.length}.`);
+const separateTag = clean(separateMatches[0]?.tag);
 const productionTag = clean(productionMatches[0]?.tag);
 const alphaTag = clean(alphaMatches[0]?.tag);
-if (!productionTag || !alphaTag) throw new Error('Both current Workers must expose immutable script tags.');
+if (!separateTag || !productionTag || !alphaTag) throw new Error('All protected Worker identities must expose immutable script tags.');
 const triggerRows = await get(`/accounts/${accountId}/builds/workers/${productionTag}/triggers`);
 const buildRows = await get(`/accounts/${accountId}/builds/workers/${productionWorker}/builds?per_page=50`);
 const activeTriggers = active(triggerRows);
@@ -56,7 +60,7 @@ const verifiedMainOnly = activeTriggers.length === 1 &&
   activeNonMainBuilds.length === 0;
 const alphaTriggers = await get(`/accounts/${accountId}/builds/workers/${alphaTag}/triggers`);
 const receipt = {
-  schemaVersion: 4,
+  schemaVersion: 5,
   generatedAt: new Date().toISOString(),
   trustedGitRef: process.env.GITHUB_REF || null,
   trustedGitSha: process.env.GITHUB_SHA || null,
@@ -64,10 +68,17 @@ const receipt = {
   mutationPerformed: false,
   providerTopology: {
     workers: [
+      { name: separateWorker, role: 'separate-protected', mutationAuthorized: false },
       { name: productionWorker, role: 'production' },
       { name: alphaWorker, role: 'founder-gated-alpha', mutationAuthorized: false },
     ],
     pages: [{ name: pagesProject, role: 'frontend', mutationAuthorized: false }],
+  },
+  separateWorker: {
+    name: separateWorker,
+    scriptTag: separateTag,
+    mutationAuthorized: false,
+    bindingAuthority: 'provider-readback-required',
   },
   productionWorker: {
     name: productionWorker,
@@ -91,6 +102,7 @@ const receipt = {
     verification: 'load-bearing-provider-readback',
     mutationAuthorized: false,
   },
+  separateWorkerObserved: true,
   workersAuthorityVerified: verifiedMainOnly,
 };
 fs.mkdirSync('artifacts', { recursive: true });
@@ -99,4 +111,4 @@ if (!verifiedMainOnly) {
   console.error('CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_NOT_VERIFIED');
   process.exit(1);
 }
-console.log('CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_VERIFIED_READ_ONLY');
+console.log('CLOUDFLARE_PROTECTED_WORKER_TOPOLOGY_VERIFIED_READ_ONLY');
