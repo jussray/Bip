@@ -136,9 +136,9 @@ jobs:
           console.log('CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_VERIFIED_READ_ONLY');
           NODE
 
-      - name: Read and verify Pages branch authority
+      - name: Read and verify Pages branch authority with dedicated read-only credential
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_PAGES_READ_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_READ_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: sekret-bip
           CLOUDFLARE_PAGES_PRODUCTION_BRANCH: main

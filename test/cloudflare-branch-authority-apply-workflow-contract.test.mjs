@@ -24,7 +24,8 @@ test('founder apply remains manual-only, exact-main pinned, and Production-envir
   assert.match(applyWorkflow, /git ls-remote/);
   assert.match(applyWorkflow, /environment: Production/);
   assert.match(applyWorkflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
-  assert.match(applyWorkflow, /CLOUDFLARE_API_TOKEN/);
+  assert.match(applyWorkflow, /CLOUDFLARE_PAGES_READ_API_TOKEN/);
+  assert.doesNotMatch(applyWorkflow, /CLOUDFLARE_API_TOKEN/);
 });
 
 test('repair mutates only sekret-backend and never treats alpha or Pages as mutation targets', () => {
@@ -49,7 +50,8 @@ test('repair fails closed on unexpected multi-trigger production topology instea
 
 test('Pages authority is a load-bearing provider read in both audit and founder preflight', () => {
   assert.match(auditWorkflow, /verify-cloudflare-pages-branch-authority\.mjs/);
-  assert.match(auditWorkflow, /CLOUDFLARE_API_TOKEN/);
+  assert.match(auditWorkflow, /CLOUDFLARE_PAGES_READ_API_TOKEN/);
+  assert.doesNotMatch(auditWorkflow, /CLOUDFLARE_API_TOKEN/);
   assert.match(auditWorkflow, /PAGES_EVIDENCE_PATH/);
   assert.match(auditWorkflow, /load-bearing-provider-readback/);
   assert.match(applyWorkflow, /snapshot Pages branch authority before Worker mutation can be approved/);
@@ -59,7 +61,9 @@ test('Pages authority is a load-bearing provider read in both audit and founder 
   assert.match(applyWorkflow, /pagesReadback\?\.snapshotMatched !== true/);
 });
 
-test('Pages verifier is read-only and checks current Cloudflare Pages branch-control fields', () => {
+test('Pages verifier is read-only, dedicated-credential only, and checks current branch-control fields', () => {
+  assert.match(pagesVerifier, /CLOUDFLARE_PAGES_READ_API_TOKEN/);
+  assert.doesNotMatch(pagesVerifier, /CLOUDFLARE_API_TOKEN/);
   assert.match(pagesVerifier, /\/pages\/projects\//);
   assert.match(pagesVerifier, /production_deployments_enabled/);
   assert.match(pagesVerifier, /preview_deployment_setting/);

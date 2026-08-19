@@ -47,21 +47,11 @@ export function evaluatePagesBranchAuthority(
   const observed = normalizePagesProject(project);
   const failures = [];
 
-  if (observed.name !== expectedProject) {
-    failures.push(`project-name:${observed.name || 'missing'}`);
-  }
-  if (observed.sourceType !== 'github') {
-    failures.push(`source-type:${observed.sourceType || 'missing'}`);
-  }
-  if (observed.productionBranch !== expectedBranch) {
-    failures.push(`production-branch:${observed.productionBranch || 'missing'}`);
-  }
-  if (observed.productionDeploymentsEnabled !== true) {
-    failures.push(`production-deployments-enabled:${String(observed.productionDeploymentsEnabled)}`);
-  }
-  if (!VALID_PREVIEW_SETTINGS.has(observed.previewDeploymentSetting)) {
-    failures.push(`preview-deployment-setting:${observed.previewDeploymentSetting || 'missing'}`);
-  }
+  if (observed.name !== expectedProject) failures.push(`project-name:${observed.name || 'missing'}`);
+  if (observed.sourceType !== 'github') failures.push(`source-type:${observed.sourceType || 'missing'}`);
+  if (observed.productionBranch !== expectedBranch) failures.push(`production-branch:${observed.productionBranch || 'missing'}`);
+  if (observed.productionDeploymentsEnabled !== true) failures.push(`production-deployments-enabled:${String(observed.productionDeploymentsEnabled)}`);
+  if (!VALID_PREVIEW_SETTINGS.has(observed.previewDeploymentSetting)) failures.push(`preview-deployment-setting:${observed.previewDeploymentSetting || 'missing'}`);
 
   return {
     observed,
@@ -73,10 +63,7 @@ export function evaluatePagesBranchAuthority(
 
 async function cloudflareGet(token, pathName) {
   const response = await fetch(`${API_BASE}${pathName}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
@@ -109,18 +96,16 @@ function parseArgs(argv) {
 
 export async function verifyPagesBranchAuthority({ argv = [], env = process.env } = {}) {
   const { output, expectSnapshot } = parseArgs(argv);
-  const token = clean(env.CLOUDFLARE_API_TOKEN);
+  const token = clean(env.CLOUDFLARE_PAGES_READ_API_TOKEN);
   const accountId = clean(env.CLOUDFLARE_ACCOUNT_ID);
   const projectName = clean(env.CLOUDFLARE_PAGES_PROJECT) || DEFAULT_PROJECT;
   const expectedBranch = clean(env.CLOUDFLARE_PAGES_PRODUCTION_BRANCH) || DEFAULT_BRANCH;
 
-  if (!token) throw new Error('CLOUDFLARE_API_TOKEN is required for Pages readback.');
+  if (!token) throw new Error('CLOUDFLARE_PAGES_READ_API_TOKEN is required for read-only Pages authority.');
   if (!accountId) throw new Error('CLOUDFLARE_ACCOUNT_ID is required for Pages readback.');
 
   const tokenState = await cloudflareGet(token, '/user/tokens/verify');
-  if (tokenState?.status !== 'active') {
-    throw new Error('Cloudflare Pages read token is not active.');
-  }
+  if (tokenState?.status !== 'active') throw new Error('Dedicated Cloudflare Pages read token is not active.');
 
   const project = await cloudflareGet(
     token,
@@ -144,7 +129,7 @@ export async function verifyPagesBranchAuthority({ argv = [], env = process.env 
     generatedAt: new Date().toISOString(),
     mode: 'read-only',
     mutationPerformed: false,
-    credentialSource: 'CLOUDFLARE_API_TOKEN',
+    credentialSource: 'CLOUDFLARE_PAGES_READ_API_TOKEN',
     project: projectName,
     expectedProductionBranch: expectedBranch,
     ...verdict,
@@ -155,16 +140,10 @@ export async function verifyPagesBranchAuthority({ argv = [], env = process.env 
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 
-  if (!verdict.verified) {
-    throw new Error(`CLOUDFLARE_PAGES_BRANCH_AUTHORITY_NOT_VERIFIED: ${verdict.failures.join(',')}`);
-  }
-  if (expectSnapshot && snapshotMatched !== true) {
-    throw new Error('CLOUDFLARE_PAGES_BRANCH_AUTHORITY_DRIFTED');
-  }
+  if (!verdict.verified) throw new Error(`CLOUDFLARE_PAGES_BRANCH_AUTHORITY_NOT_VERIFIED: ${verdict.failures.join(',')}`);
+  if (expectSnapshot && snapshotMatched !== true) throw new Error('CLOUDFLARE_PAGES_BRANCH_AUTHORITY_DRIFTED');
 
-  console.log(
-    `CLOUDFLARE_PAGES_BRANCH_AUTHORITY_VERIFIED project=${projectName} production_branch=${verdict.observed.productionBranch} preview=${verdict.observed.previewDeploymentSetting}`,
-  );
+  console.log(`CLOUDFLARE_PAGES_BRANCH_AUTHORITY_VERIFIED project=${projectName} production_branch=${verdict.observed.productionBranch} preview=${verdict.observed.previewDeploymentSetting}`);
   return receipt;
 }
 
@@ -178,6 +157,4 @@ export async function main(argv = process.argv.slice(2), env = process.env) {
 }
 
 const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
-if (isDirectRun) {
-  await main();
-}
+if (isDirectRun) await main();
