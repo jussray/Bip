@@ -54,6 +54,11 @@ function getPreviewAudience(defaultAudience: WelcomeAudience): WelcomeAudience {
   return defaultAudience;
 }
 
+function getInitialReduceMotionPreference(): boolean | null {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return null;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function WebWelcomeScreen({
   onEnter,
   variant = 'teen',
@@ -61,8 +66,10 @@ export function WebWelcomeScreen({
   showSignIn = false,
 }: WebWelcomeScreenProps) {
   const { width, height } = useWindowDimensions();
+  const initialReduceMotion = useRef<boolean | null>(getInitialReduceMotionPreference()).current;
   const [aboutOpen, setAboutOpen] = useState(false);
-  const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  const [reduceMotion, setReduceMotion] = useState<boolean | null>(initialReduceMotion);
+  const [introSettled, setIntroSettled] = useState(initialReduceMotion !== false);
   const motionEnabled = reduceMotion === false;
   const compact = width < 520;
   const shortViewport = compact && height < 700;
@@ -79,8 +86,9 @@ export function WebWelcomeScreen({
     : compact
       ? heroContract.compactHeight
       : heroContract.desktopHeight;
+  const introProgress = useRef(new Animated.Value(initialReduceMotion === false ? 0 : 1)).current;
   const worldPulse = useRef(new Animated.Value(0)).current;
-  const heroDrift = useRef(new Animated.Value(0)).current;
+  const worldDrift = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -105,11 +113,55 @@ export function WebWelcomeScreen({
   }, []);
 
   useEffect(() => {
+    let active = true;
+    introProgress.stopAnimation();
+
+    if (!motionEnabled) {
+      introProgress.setValue(1);
+      setIntroSettled(true);
+      return () => {
+        active = false;
+        introProgress.stopAnimation();
+      };
+    }
+
+    setIntroSettled(false);
+    introProgress.setValue(0);
+
+    const intro = Animated.sequence([
+      Animated.delay(FRONT_DOOR_MOTION.introLeadInMs),
+      Animated.timing(introProgress, {
+        toValue: 0.82,
+        duration: FRONT_DOOR_MOTION.introApproachDurationMs,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(introProgress, {
+        toValue: 1,
+        duration: FRONT_DOOR_MOTION.introSettleDurationMs,
+        easing: Easing.inOut(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]);
+
+    intro.start(({ finished }) => {
+      if (!active || !finished) return;
+      introProgress.setValue(1);
+      setIntroSettled(true);
+    });
+
+    return () => {
+      active = false;
+      intro.stop();
+    };
+  }, [introProgress, motionEnabled]);
+
+  useEffect(() => {
     if (!motionEnabled) {
       worldPulse.stopAnimation();
-      heroDrift.stopAnimation();
+      worldDrift.stopAnimation();
       worldPulse.setValue(FRONT_DOOR_MOTION.reducedPulseRestValue);
-      heroDrift.setValue(0);
+      worldDrift.setValue(0);
       return;
     }
 
@@ -131,13 +183,13 @@ export function WebWelcomeScreen({
     );
     const driftLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(heroDrift, {
+        Animated.timing(worldDrift, {
           toValue: 1,
           duration: FRONT_DOOR_MOTION.driftDurationMs,
           easing: Easing.inOut(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(heroDrift, {
+        Animated.timing(worldDrift, {
           toValue: 0,
           duration: FRONT_DOOR_MOTION.driftDurationMs,
           easing: Easing.inOut(Easing.quad),
@@ -153,7 +205,7 @@ export function WebWelcomeScreen({
       pulseLoop.stop();
       driftLoop.stop();
     };
-  }, [heroDrift, motionEnabled, worldPulse]);
+  }, [motionEnabled, worldDrift, worldPulse]);
 
   const ambientMotionStyle = motionEnabled
     ? {
@@ -176,22 +228,27 @@ export function WebWelcomeScreen({
       };
   const heroMotionStyle = motionEnabled
     ? {
+        opacity: introProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: FRONT_DOOR_MOTION.introHeroOpacity,
+        }),
         transform: [
           {
-            translateY: heroDrift.interpolate({
+            translateY: introProgress.interpolate({
               inputRange: [0, 1],
-              outputRange: FRONT_DOOR_MOTION.heroTranslateY,
+              outputRange: FRONT_DOOR_MOTION.introHeroTranslateY,
             }),
           },
           {
-            scale: worldPulse.interpolate({
+            scale: introProgress.interpolate({
               inputRange: [0, 1],
-              outputRange: FRONT_DOOR_MOTION.heroScale,
+              outputRange: FRONT_DOOR_MOTION.introHeroScale,
             }),
           },
         ],
       }
     : {
+        opacity: 1,
         transform: [{ translateY: 0 }, { scale: 1 }],
       };
   const sparkMotionStyle = motionEnabled
@@ -202,7 +259,7 @@ export function WebWelcomeScreen({
         }),
         transform: [
           {
-            translateY: heroDrift.interpolate({
+            translateY: worldDrift.interpolate({
               inputRange: [0, 1],
               outputRange: FRONT_DOOR_MOTION.sparkTranslateY,
             }),
@@ -254,6 +311,15 @@ export function WebWelcomeScreen({
     <View style={[styles.page, { minHeight: height }]}>
       <Animated.View pointerEvents="none" style={[styles.ambientTop, ambientMotionStyle]} />
       <Animated.View pointerEvents="none" style={[styles.ambientBottom, ambientMotionStyle]} />
+      {introSettled && (
+        <View
+          pointerEvents="none"
+          testID="web-welcome-motion-settled"
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          style={styles.motionSettledMarker}
+        />
+      )}
       <View
         pointerEvents="none"
         testID="web-welcome-living-world"
@@ -440,6 +506,12 @@ const styles = StyleSheet.create({
     left: -160,
     borderRadius: RADIUS.pill,
     backgroundColor: color.ambientPink,
+  },
+  motionSettledMarker: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
   livingWorld: {
     position: 'absolute',
