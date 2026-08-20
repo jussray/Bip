@@ -21,6 +21,7 @@ test('Cloudflare Sandbox stays isolated from the teen-facing production Worker',
   const tsconfig = JSON.parse(tsconfigText);
 
   assert.equal(config.name, 'sekret-internal-sandbox');
+  assert.equal(config.tsconfig, './tsconfig.json');
   assert.equal(config.workers_dev, false);
   assert.equal(config.routes, undefined);
   assert.equal(config.containers?.length, 1);
