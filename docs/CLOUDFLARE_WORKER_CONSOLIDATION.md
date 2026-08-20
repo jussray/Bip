@@ -1,91 +1,154 @@
 # Cloudflare Worker Topology and Consolidation
 
-Last reviewed: 2026-08-19
+Last reviewed: 2026-08-20
 
 ## Decision
 
-Se’kret Bip has multiple distinct Cloudflare authorities that must not be collapsed into one Worker identity:
+Se’kret Bip has distinct Cloudflare authorities that must not be collapsed into one identity:
 
 1. `sekret-bip` — Cloudflare Pages frontend project;
-2. `sekret-backend` — canonical API/backend Worker;
-3. `sekret` — separate founder-confirmed active Worker whose exact live route/custom-domain ownership must be read back from Cloudflare before any mutation;
-4. `sekret-backend-alpha` — separate founder-gated non-production Worker.
+2. `sekret-backend` — canonical public API/front-door and privileged platform Worker;
+3. `sekret` — founder-confirmed active companion API Worker lineage;
+4. `sekret-backend-alpha` — founder-gated non-production Worker.
 
-`bip-mail` remains the legacy migration/retirement target. `sekret` is **not** a retirement target and must not be deleted, detached, renamed, or have its routes/triggers/secrets reassigned merely because repository code proves `sekret-backend` is the canonical API Worker.
+`bip-mail` is retired. `sekret` is **not** a retirement target.
 
-> **Current release boundary:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) owns exact production proof. Repository topology is not a substitute for live Cloudflare route/domain readback.
+> **Current release boundary:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) owns exact production proof. Repository topology is not a substitute for live Cloudflare route/domain/binding readback.
 
-## Canonical backend authority
+## What the code attack proved
 
-`worker/voice-entry.ts` is the configured `sekret-backend` production entry point and exports both Cloudflare handler types:
+The product code already contains a strong service boundary even though deployment is currently consolidated.
 
-- `fetch()` delegates ordinary HTTP/API work to `worker/observed-index.ts`;
-- `email()` delegates inbound mail to `worker/email-router.ts`.
+### Companion contract
 
-The backend router owns Sekret reply, voice, transcription, Bridge summary, authentication, rate limiting, safety, push, and supporting backend business logic. This proves what `sekret-backend` owns; it does **not** prove that another Cloudflare Worker named `sekret` is unused or safe to retire.
+`src/contracts/sekretApi.ts` and `src/services/backend/sekretClient.ts` group these operations together:
 
-The repository contract pins `api.sekretbip.net` to `sekret-backend`. The exact current hostname, routes, custom domains, triggers, and traffic owned by `sekret` remain provider truth and must be observed before any route change.
+- `/api/sekret/reply`;
+- `/api/sekret/voice`;
+- `/api/sekret/transcribe`;
+- Worker health and stable companion error/trace semantics.
 
-## Cutover gate for `bip-mail`
+`worker/sekret-reply.ts` contains the companion brain, intent handling, safety-response path, reply policy, fallback behavior, TTS, and transcription. `worker/index.ts` adds shared auth/rate limiting and runtime style enforcement around that companion contract.
 
-Do not delete `bip-mail` first. Complete this order in the Cloudflare dashboard/provider control plane:
+Historical Cloudflare-generated rename PRs show that `sekret` repeatedly pointed at the same backend lineage before the repository later standardized the public Worker identity as `sekret-backend`. The founder confirms `sekret` still holds companion API purpose.
 
-1. Deploy or confirm the exact intended `sekret-backend` release.
-2. Confirm the canonical backend health route succeeds.
-3. Open Email Routing for the Bip domain.
-4. Change every supported alias Worker action from `bip-mail` to `sekret-backend`:
-   - `hello`;
-   - `support`;
-   - `parents`;
-   - `safety`;
-   - `privacy`;
-   - `legal`;
-   - `security`.
-5. Send a controlled message to every alias.
-6. Confirm every message reaches the verified destination and preserves the expected `X-Bip-*` classification headers.
-7. Confirm `bip-mail` has no remaining Email Routing rules, routes, triggers, service bindings, queues, cron schedules, or custom domains.
-8. Only then delete `bip-mail`.
+### Privileged platform contract
 
-Rollback: restore the prior Email Routing Worker action before deleting anything if any alias fails.
+`worker/bridge-summary.ts` is structurally different. It performs privacy-sensitive source lookup and summary persistence with server-owned Supabase access. `worker/email-router.ts` is also platform infrastructure rather than companion inference.
 
-## Preservation gate for `sekret`
+`worker/audit/persist-event.ts` currently uses `SUPABASE_SERVICE_ROLE_KEY` to write assurance metadata. That persistence mechanism is a migration constraint, not a reason to give the companion Worker broad database privilege.
 
-`sekret` is a separate Worker authority and **must not be deleted** from repository assumptions or provider state.
+## Current repository routing
 
-Before any change involving `sekret`, retain exact provider route/custom-domain readback showing:
+The checked-in client remains intentionally single-homed:
 
-- routes and custom domains;
-- service bindings;
-- queues, cron triggers, Durable Objects, KV, D1, R2, and Analytics Engine bindings;
-- environment variables and secret names without exposing secret values;
-- Git repository and branch connection;
-- current build/deploy trigger policy;
-- recent request volume and error logs;
-- the exact public hostname(s) currently served by the Worker.
+```text
+EXPO_PUBLIC_BACKEND_URL=https://api.sekretbip.net
+                            |
+                            v
+                    sekret-backend
+```
 
-If the provider readback shows a binding conflict with Pages or `sekret-backend`, repair only the exact conflicting binding after founder authorization. Do not infer that `sekret` is disposable from the presence of `sekret-backend`.
+The current `wrangler.toml` maps `api.sekretbip.net` to `sekret-backend` and uses `worker/voice-entry.ts` as its entry point. That is the current release contract until an approved provider cutover is proven.
+
+## Best-fit target topology
+
+Do **not** solve the split by teaching the app two public Worker URLs.
+
+Preferred topology:
+
+```text
+                           +---------------------------+
+client -> api.sekretbip.net -> sekret-backend          |
+                           | public/platform authority |
+                           +-------------+-------------+
+                                         |
+                           /api/sekret/*  | Service Binding
+                                         v
+                           +---------------------------+
+                           | sekret                    |
+                           | companion execution plane |
+                           +---------------------------+
+```
+
+Cloudflare Service Bindings are the preferred boundary because the backend can forward the original request to the companion Worker without a second public network hop or client routing decision.
+
+### `sekret` should own
+
+- companion reply inference;
+- companion runtime style/identity enforcement;
+- companion safety-response logic coupled to reply generation;
+- companion TTS and transcription;
+- AI/voice provider selection and provider secrets;
+- companion-scoped metadata telemetry that does not require broad database privilege.
+
+### `sekret-backend` should own
+
+- the stable `api.sekretbip.net` public origin;
+- shared ingress/auth/rate-limit/release controls as approved by the migration;
+- Bridge summary generation and privacy-sensitive source access;
+- server-side Supabase service-role operations;
+- email routing/forwarding;
+- privileged operational/business logic outside companion inference;
+- a narrow assurance-ingest path if needed so `sekret` does not receive the Supabase service-role key.
+
+### Not proven as a backend route
+
+`worker/push-notifications.ts` is a privileged helper, but current source does not show it wired into the public Worker router. Do not describe “push” as a live `sekret-backend` HTTP responsibility until route evidence exists. Supabase Edge Functions also own parts of push/safety behavior.
+
+## Migration sequence for `sekret`
+
+This is a forward-only, evidence-gated migration. No step is implied complete by this document.
+
+1. **Provider census:** retain `sekret` routes/custom domains, workers.dev state, bindings, secret names, Git trigger, immutable version/script tag, request volume, errors, and callers.
+2. **Compatibility proof:** prove the deployed `sekret` companion contract is compatible with current `/api/sekret/*` request/response shapes, or prepare the smallest code update on `sekret` first.
+3. **Least-privilege secret map:** AI/voice provider secrets may live with the companion runtime; `SUPABASE_SERVICE_ROLE_KEY` remains backend-only unless a separately reviewed need proves otherwise.
+4. **Telemetry seam:** replace direct companion service-role persistence with a narrow internal/backend-owned ingestion path or another least-privilege mechanism.
+5. **Service binding:** add a `sekret-backend -> sekret` binding and route only `/api/sekret/*` through it. Keep `api.sekretbip.net` stable.
+6. **Shadow/controlled proof:** verify reply, voice, transcription, auth denial, rate limiting, fallback, trace identity, and telemetry on a controlled release without changing unrelated Bridge/email behavior.
+7. **Production cutover:** explicitly approve and apply the binding/routing change.
+8. **Exact release proof:** bind the public backend SHA/version, companion Worker SHA/version, service binding, Supabase state, and production Playwright/device journeys into one release packet.
+9. **Remove duplicate companion code from `sekret-backend` only after rollback confidence exists.** Do not delete fallback code in the same step that first activates the service binding.
+
+Rollback: disable the delegation and return `/api/sekret/*` to the previously proven local `sekret-backend` implementation. Do not require a client release for rollback.
+
+## Why this is safer than two public APIs
+
+- no client config migration;
+- no public CORS/origin split;
+- no second public authentication contract;
+- `api.sekretbip.net` remains the stable release witness;
+- companion code can evolve independently;
+- privileged Bridge/email/data logic stays isolated;
+- rollback is a server-side routing decision rather than an app-store or web-client redeploy.
+
+## `bip-mail`
+
+`bip-mail` is retired and must not regain production authority. Inbound email belongs to the backend/platform plane through `worker/voice-entry.ts -> worker/email-router.ts` until an independently approved future email architecture changes that contract.
 
 ## Provider-safe app-domain rule
 
-The app-domain reconciler must treat both `sekret` and `sekret-backend` as protected Worker identities. A provider mutation must fail closed until the exact Worker attached to the target hostname is explicitly identified from live provider readback.
+Provider automation must treat both `sekret` and `sekret-backend` as protected identities. It must fail closed until the exact Worker attached to a target hostname/binding is identified from live provider readback.
 
 In particular:
 
-- `api.sekretbip.net` remains bound to canonical backend Worker `sekret-backend`;
+- `api.sekretbip.net` remains bound to `sekret-backend` during the preferred service-binding migration;
 - `sekret` remains independently protected;
 - Pages `sekret-bip` remains an independent frontend authority;
-- a 405/Access response on the public app hostname is evidence of interception, not proof of which Worker may be safely removed;
-- no broad wildcard route may be deleted automatically.
+- no broad wildcard route, service binding, secret, or custom domain may be deleted automatically;
+- a 405/Access response is interception evidence, not deletion authority.
 
 ## Completion evidence
 
-Topology repair is complete only when all applicable current-use claims have fresh evidence:
+The purpose split is complete only when all applicable claims have fresh evidence:
 
-- `sekret-bip` serves the intended frontend release marker where Pages is authoritative;
-- `sekret-backend` passes exact release identity and backend health on its canonical API hostname;
-- `sekret` has an explicit retained provider route/custom-domain ownership receipt;
-- all supported email aliases route through the intended backend email handler;
-- `bip-mail` has no remaining provider authority before retirement;
-- Founder Control Room records the exact target, provider observations, actions, and rollback boundary.
+- `sekret-bip` serves the exact intended frontend release marker;
+- `sekret-backend` serves the exact public backend release at `api.sekretbip.net`;
+- `sekret` has a retained provider ownership receipt and exact companion release identity;
+- the service binding/delegation is independently read back;
+- reply, voice, transcription, auth-denial, fallback, and telemetry journeys pass through the companion Worker;
+- Bridge and email remain correct on the platform Worker;
+- no broad service-role credential was copied into `sekret` merely for convenience;
+- Founder Control Room records target, observations, actions, proof, and rollback.
 
-Deleting or detaching a Worker without the preceding route and binding audit is not consolidation. It is an outage lottery ticket.
+Deleting or detaching a Worker without the preceding route/binding audit is not consolidation. It is an outage lottery ticket.
