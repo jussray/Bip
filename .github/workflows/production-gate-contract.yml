@@ -25,6 +25,7 @@ on:
       - 'test/production-authority-workflow-contracts.test.mjs'
       - 'test/production-deployment-gate-contract.test.mjs'
       - 'test/production-release-observation.test.mjs'
+      - 'test/pgjwt-production-state-witness.test.mjs'
       - 'test/supabase-production-schema-witness.test.mjs'
       - 'test/supabase-verifier-legacy-receipts.test.mjs'
       - 'test/supabase-production-blocker-evidence.test.mjs'
@@ -84,6 +85,7 @@ jobs:
           test/production-authority-workflow-contracts.test.mjs
           test/production-deployment-gate-contract.test.mjs
           test/production-release-observation.test.mjs
+          test/pgjwt-production-state-witness.test.mjs
           test/supabase-production-schema-witness.test.mjs
           test/supabase-verifier-legacy-receipts.test.mjs
           test/supabase-production-blocker-evidence.test.mjs
