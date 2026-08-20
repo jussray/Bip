@@ -4,18 +4,21 @@ import test from 'node:test';
 
 const root = new URL('../', import.meta.url);
 const read = async (path) => readFile(new URL(path, root), 'utf8');
+const SANDBOX_VERSION = '0.13.0-next.738.2';
 
 test('Cloudflare Sandbox stays isolated from the teen-facing production Worker', async () => {
-  const [configText, packageText, dockerfile, source, productionWrangler] = await Promise.all([
+  const [configText, packageText, dockerfile, source, tsconfigText, productionWrangler] = await Promise.all([
     read('tools/cloudflare-sandbox/wrangler.jsonc'),
     read('tools/cloudflare-sandbox/package.json'),
     read('tools/cloudflare-sandbox/Dockerfile'),
     read('tools/cloudflare-sandbox/src/index.ts'),
+    read('tools/cloudflare-sandbox/tsconfig.json'),
     read('wrangler.toml'),
   ]);
 
   const config = JSON.parse(configText);
   const pkg = JSON.parse(packageText);
+  const tsconfig = JSON.parse(tsconfigText);
 
   assert.equal(config.name, 'sekret-internal-sandbox');
   assert.equal(config.workers_dev, false);
@@ -28,14 +31,20 @@ test('Cloudflare Sandbox stays isolated from the teen-facing production Worker',
   assert.equal(config.durable_objects?.bindings?.[0]?.class_name, 'InternalSandbox');
   assert.deepEqual(config.migrations?.[0]?.new_sqlite_classes, ['InternalSandbox']);
 
-  assert.equal(pkg.dependencies?.['@cloudflare/sandbox'], 'next');
-  assert.match(dockerfile, /^FROM docker\.io\/cloudflare\/sandbox:next\s*$/m);
+  assert.equal(pkg.dependencies?.['@cloudflare/sandbox'], SANDBOX_VERSION);
+  assert.match(
+    dockerfile,
+    new RegExp(`^FROM docker\\.io/cloudflare/sandbox:${SANDBOX_VERSION.replaceAll('.', '\\.')}\\s*$`, 'm'),
+  );
+  assert.equal(tsconfig.extends, undefined);
+  assert.equal(tsconfig.compilerOptions?.noEmit, true);
 
   assert.match(source, /enableInternet\s*=\s*false/);
   assert.doesNotMatch(source, /proxyToSandbox/);
   assert.doesNotMatch(source, /exposePort|tunnels\./);
   assert.doesNotMatch(source, /\['bash'|"bash"|curl|wget/);
   assert.match(source, /ALLOWED_EXECUTABLES = new Set\(\['node', 'npm', 'npx', 'git'\]\)/);
+  assert.match(source, /value === '\/workspace' \|\| value\.startsWith\('\/workspace\/'\)/);
 
   const authIndex = source.indexOf('if (!authorized(request, env))');
   const sandboxIndex = source.indexOf('const sandbox = getSandbox');
