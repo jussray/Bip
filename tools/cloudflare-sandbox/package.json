@@ -1,0 +1,17 @@
+{
+  "name": "@sekret-bip/cloudflare-sandbox",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "wrangler deploy --dry-run --config wrangler.jsonc --outdir .wrangler-dry-run",
+    "dev": "wrangler dev --config wrangler.jsonc",
+    "deploy": "wrangler deploy --config wrangler.jsonc --containers-rollout=immediate"
+  },
+  "dependencies": {
+    "@cloudflare/sandbox": "next"
+  },
+  "devDependencies": {
+    "wrangler": "4.100.0"
+  }
+}
