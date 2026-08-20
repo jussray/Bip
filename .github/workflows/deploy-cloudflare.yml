@@ -3,41 +3,6 @@ name: Verify Cloudflare Native Deployment
 on:
   push:
     branches: [main]
-    paths:
-      - 'app/**'
-      - 'app.config.ts'
-      - 'app.json'
-      - 'screens/**'
-      - 'components/**'
-      - 'assets/**'
-      - 'src/**'
-      - 'worker/**'
-      - 'supabase/migrations/**'
-      - 'scripts/bootstrap-release-metadata-source.mjs'
-      - 'scripts/write-release-metadata.mjs'
-      - 'scripts/write-worker-release-identity.mjs'
-      - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
-      - 'scripts/cloudflare-access-service-auth.mjs'
-      - 'scripts/probe-production-release-endpoints.mjs'
-      - 'scripts/verify-cloudflare-native-deploy.mjs'
-      - 'scripts/verify-supabase-production-schema.mjs'
-      - 'scripts/publish-production-release-observation.mjs'
-      - 'scripts/playwright-executable.mjs'
-      - 'test/cloudflare-access-production-verification.test.mjs'
-      - 'test/cloudflare-pages-build-environment.test.mjs'
-      - 'test/production-release-endpoint-probe.test.mjs'
-      - 'test/release-metadata-bootstrap.test.mjs'
-      - 'test/release-metadata.test.mjs'
-      - 'test/production-worker-release-witness.test.mjs'
-      - 'test/supabase-production-schema-witness.test.mjs'
-      - 'e2e/production-smoke.spec.ts'
-      - 'playwright.production.config.ts'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'wrangler.toml'
-      - '.github/workflows/cloudflare-workers-build-trigger.yml'
-      - '.github/workflows/deploy-cloudflare.yml'
-      - '.github/workflows/production-gate-contract.yml'
   workflow_dispatch:
     inputs:
       target_sha:
@@ -51,19 +16,87 @@ concurrency:
 
 permissions:
   contents: read
-  checks: read
-  issues: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   DEPLOYMENT_SHA: ${{ inputs.target_sha || github.sha }}
 
 jobs:
+  classify-production-impact:
+    name: Classify exact main-push production impact
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      production_impact: ${{ steps.scope.outputs.production_impact }}
+    steps:
+      - name: Check out exact main push without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node for trusted scope classifier
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+
+      - name: Classify merged diff fail closed
+        id: scope
+        shell: bash
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          production_impact=true
+          reason=classifier-failed-closed
+          trusted_classifier="$RUNNER_TEMP/classify-production-impact.mjs"
+
+          if [[ ! "$BEFORE_SHA" =~ ^[0-9a-fA-F]{40}$ ]] || [[ "$BEFORE_SHA" =~ ^0{40}$ ]]; then
+            reason=missing-or-initial-before-sha
+          elif ! git cat-file -e "$BEFORE_SHA^{commit}" 2>/dev/null; then
+            reason=before-sha-unavailable
+          elif ! git cat-file -e "$CURRENT_SHA^{commit}" 2>/dev/null; then
+            reason=current-sha-unavailable
+          elif ! git show "$BEFORE_SHA:scripts/classify-production-impact.mjs" > "$trusted_classifier" 2>/dev/null; then
+            reason=trusted-classifier-unavailable
+          elif [[ ! -s "$trusted_classifier" ]]; then
+            reason=trusted-classifier-empty
+          else
+            changed_paths="$(git diff --name-only --no-renames "$BEFORE_SHA" "$CURRENT_SHA")"
+            printf '%s\n' "$changed_paths"
+            classification="$(printf '%s\n' "$changed_paths" | node "$trusted_classifier")"
+            case "$classification" in
+              true|false)
+                production_impact="$classification"
+                reason=classified-by-previous-main
+                ;;
+              *)
+                echo "Unexpected trusted production-impact classifier output: $classification" >&2
+                exit 1
+                ;;
+            esac
+          fi
+
+          printf 'production_impact=%s\nreason=%s\n' "$production_impact" "$reason"
+          printf 'production_impact=%s\n' "$production_impact" >> "$GITHUB_OUTPUT"
+
   verify-native-deployment:
     name: Verify exact frontend Worker, backend Worker, and release
+    needs: classify-production-impact
+    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify-production-impact.result != 'success' || needs.classify-production-impact.outputs.production_impact != 'false') }}
     runs-on: ubuntu-latest
     environment: Production
     timeout-minutes: 40
+    permissions:
+      contents: read
+      checks: read
+      issues: write
     env:
       GITHUB_TOKEN: ${{ github.token }}
       CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
