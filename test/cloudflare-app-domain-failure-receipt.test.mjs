@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { classifyObservedRequest } from '../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs';
+import {
+  appDomainApplyBlockReason,
+  classifyObservedRequest,
+} from '../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs';
 
 test('sanitized request classification identifies Cloudflare preflight operations without URLs or secrets', () => {
   assert.deepEqual(
@@ -33,6 +36,14 @@ test('sanitized request classification identifies Cloudflare preflight operation
   );
 });
 
+test('stale one-worker apply path is blocked until provider readback pins the two-worker topology', () => {
+  assert.equal(appDomainApplyBlockReason([]), null);
+  assert.equal(
+    appDomainApplyBlockReason(['--apply']),
+    'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED',
+  );
+});
+
 test('failure wrapper persists a safe receipt and never serializes caught exception text', () => {
   const wrapper = fs.readFileSync(
     new URL('../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs', import.meta.url),
@@ -43,6 +54,8 @@ test('failure wrapper persists a safe receipt and never serializes caught except
   assert.match(wrapper, /mutationState/);
   assert.match(wrapper, /providerCodes/);
   assert.match(wrapper, /FAILURE_EVIDENCE_WRITTEN/);
+  assert.match(wrapper, /two-worker-topology-guard/);
+  assert.match(wrapper, /protectedWorkers: PROTECTED_WORKERS/);
   assert.doesNotMatch(wrapper, /error\.message|String\(error\)|payload\?\.errors[^\n]*message/);
 });
 

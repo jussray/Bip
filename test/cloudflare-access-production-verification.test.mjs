@@ -23,7 +23,7 @@ test('Access service auth is optional but must be configured as a complete pair'
   );
 });
 
-test('Access credentials are sent to protected probes but never retained in probe evidence', async () => {
+test('Access credentials are sent to intentionally protected probes but never retained in probe evidence', async () => {
   const clientId = 'opaque-access-client-id-fixture';
   const clientSecret = 'opaque-access-client-secret-fixture';
   const accessAuth = resolveCloudflareAccessServiceAuth({
@@ -57,14 +57,16 @@ test('Access credentials are sent to protected probes but never retained in prob
   assert.equal(retained.includes(clientSecret), false);
 });
 
-test('production browser verification disables traces while Access credentials are configured', () => {
+test('public production browser verification is anonymous and cannot inherit Access service auth', () => {
   const config = fs.readFileSync('playwright.production.config.ts', 'utf8');
-  assert.match(config, /resolveCloudflareAccessServiceAuth/);
-  assert.match(config, /extraHTTPHeaders: accessAuth\.headers/);
-  assert.match(config, /trace: accessAuth\.configured \? 'off' : 'on-first-retry'/);
+  assert.doesNotMatch(config, /resolveCloudflareAccessServiceAuth/);
+  assert.doesNotMatch(config, /extraHTTPHeaders/);
+  assert.doesNotMatch(config, /CF-Access-Client-(?:Id|Secret)/);
+  assert.match(config, /trace: 'on-first-retry'/);
+  assert.match(config, /production-public-front-door\.spec\.ts/);
 });
 
-test('production workflow reads Access credentials only from protected secrets', () => {
+test('production workflow reads any machine Access credentials only from protected secrets', () => {
   const workflow = fs.readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
   assert.match(workflow, /CLOUDFLARE_ACCESS_CLIENT_ID: \$\{\{ secrets\.CLOUDFLARE_ACCESS_CLIENT_ID \}\}/);
   assert.match(workflow, /CLOUDFLARE_ACCESS_CLIENT_SECRET: \$\{\{ secrets\.CLOUDFLARE_ACCESS_CLIENT_SECRET \}\}/);

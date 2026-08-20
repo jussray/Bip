@@ -13,18 +13,21 @@ test('onboarding exposes canonical companion identity only', async ({ page }, te
 
   await expect(page.getByText('Make this space feel like you.', { exact: true })).toBeVisible();
 
-  for (const name of ['Suhana', 'Sy', 'Cloud', 'Night']) {
-    await expect(page.getByRole('button', { name, exact: true })).toBeVisible();
+  for (const name of ['Girl', 'Boy', 'My own way', 'Suhana', 'Sy', 'Cloud', 'Night']) {
+    await expect(page.getByRole('radio', { name, exact: true })).toBeVisible();
   }
 
   await expect(page.getByText('Raylene', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Rylane', { exact: true })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Girl', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Suhana', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('radio', { name: 'Girl', exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'Girl', exact: true })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Suhana', exact: true })).toBeChecked();
 
-  await page.getByRole('button', { name: 'Boy', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Sy', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.getByRole('radio', { name: 'Boy', exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'Boy', exact: true })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Sy', exact: true })).toBeChecked();
+  await expect(page.getByRole('radio', { name: 'Suhana', exact: true })).not.toBeChecked();
 
   await fs.mkdir(ARTIFACT_DIR, { recursive: true });
   const body = await page.screenshot({ fullPage: true, animations: 'disabled' });

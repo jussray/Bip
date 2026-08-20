@@ -178,11 +178,36 @@ async function listWorkerRoutes(config) {
   return payload?.result || [];
 }
 
+export function isCloudflareAccessUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    const hostname = url.hostname.toLowerCase();
+    return (
+      hostname === 'cloudflareaccess.com' ||
+      hostname.endsWith('.cloudflareaccess.com') ||
+      url.pathname.toLowerCase().startsWith('/cdn-cgi/access/')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function probeLooksLikeCloudflareAccess(probe) {
+  const finalUrl = probe?.finalUrl || probe?.url || '';
+  if (isCloudflareAccessUrl(finalUrl)) return true;
+
+  const body = String(probe?.bodyFingerprint || '').toLowerCase();
+  return body.includes('cloudflare access') && (body.includes('login') || body.includes('sign in'));
+}
+
 async function runtimeProbe(url) {
   const response = await fetch(url, { redirect: 'follow' });
   const body = await response.text();
   return {
     url,
+    requestedUrl: url,
+    finalUrl: response.url || url,
+    redirected: response.redirected === true,
     status: response.status,
     contentType: response.headers.get('content-type') || '',
     bodyFingerprint: body.replace(/[\r\n]+/g, '').slice(0, 240),
@@ -257,8 +282,9 @@ function assertSafeBindings(classification, config) {
   }
 }
 
-function appProbeIsFrontend(probe) {
+export function appProbeIsFrontend(probe) {
   if (!probe || probe.status < 200 || probe.status >= 400) return false;
+  if (probeLooksLikeCloudflareAccess(probe)) return false;
   if (probe.contentType.toLowerCase().startsWith('application/json')) return false;
   return !probe.bodyFingerprint.includes('"error":"Method not allowed"');
 }
@@ -268,7 +294,7 @@ async function waitForFrontend(config, attempts = 24, delayMs = 5000) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     lastProbe = await runtimeProbe(config.appUrl);
     console.log(
-      `APP_DOMAIN_PROBE attempt=${attempt} status=${lastProbe.status} content_type=${lastProbe.contentType || 'unknown'}`,
+      `APP_DOMAIN_PROBE attempt=${attempt} status=${lastProbe.status} content_type=${lastProbe.contentType || 'unknown'} access_intercepted=${probeLooksLikeCloudflareAccess(lastProbe)}`,
     );
     if (appProbeIsFrontend(lastProbe)) return lastProbe;
     if (attempt < attempts) {

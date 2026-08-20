@@ -6,6 +6,7 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), '
 
 const analytics = read('components/Analytics.web.tsx');
 const productionConfig = read('playwright.production.config.ts');
+const productionFrontDoor = read('e2e/production-public-front-door.spec.ts');
 const productionSmoke = read('e2e/production-smoke.spec.ts');
 const productionAuth = read('e2e/production-auth-reachability.spec.ts');
 const productionSignup = read('e2e/production-signup-transport.spec.ts');
@@ -18,6 +19,7 @@ test('Cloudflare production does not inject the Vercel analytics runtime', () =>
 
 test('production Playwright runs only launch-safe exact-domain specs', () => {
   for (const spec of [
+    'production-public-front-door.spec.ts',
     'production-smoke.spec.ts',
     'production-auth-reachability.spec.ts',
     'production-password-recovery.spec.ts',
@@ -27,6 +29,16 @@ test('production Playwright runs only launch-safe exact-domain specs', () => {
   }
   assert.match(productionConfig, /testMatch/);
   assert.doesNotMatch(productionConfig, /live-onboarding-email\.spec\.ts/);
+});
+
+test('public production browser proof is anonymous and fails on Cloudflare Access navigation', () => {
+  assert.doesNotMatch(productionConfig, /resolveCloudflareAccessServiceAuth/);
+  assert.doesNotMatch(productionConfig, /extraHTTPHeaders/);
+  assert.match(productionFrontDoor, /documentNavigations/);
+  assert.match(productionFrontDoor, /cloudflareaccess\.com/);
+  assert.match(productionFrontDoor, /\/cdn-cgi\/access\//);
+  assert.match(productionFrontDoor, /web-welcome-enter/);
+  assert.match(productionFrontDoor, /app\.sekretbip\.net/);
 });
 
 test('production launch proof binds Pages and Worker to the same release', () => {

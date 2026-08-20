@@ -1,35 +1,37 @@
-# Cloudflare Worker Consolidation
+# Cloudflare Worker Topology and Consolidation
 
-Last reviewed: 2026-07-29
+Last reviewed: 2026-08-19
 
 ## Decision
 
-Production has two canonical Cloudflare deployment targets:
+Se’kret Bip has multiple distinct Cloudflare authorities that must not be collapsed into one Worker identity:
 
-1. `sekret-bip` — Cloudflare Pages frontend;
-2. `sekret-backend` — the single production Worker.
+1. `sekret-bip` — Cloudflare Pages frontend project;
+2. `sekret-backend` — canonical API/backend Worker;
+3. `sekret` — separate founder-confirmed active Worker whose exact live route/custom-domain ownership must be read back from Cloudflare before any mutation;
+4. `sekret-backend-alpha` — separate founder-gated non-production Worker.
 
-The dashboard Workers `bip-mail` and `sekret` are legacy migration candidates. They are not canonical deployment targets and must not receive new code, routes, triggers, or secrets.
+`bip-mail` remains the legacy migration/retirement target. `sekret` is **not** a retirement target and must not be deleted, detached, renamed, or have its routes/triggers/secrets reassigned merely because repository code proves `sekret-backend` is the canonical API Worker.
 
-`sekret-backend-alpha` is a separate founder-gated non-production service and is outside this production cleanup.
+> **Current release boundary:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) owns exact production proof. Repository topology is not a substitute for live Cloudflare route/domain readback.
 
-> **Current release boundary:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) is open because the live Pages marker is not served as JSON. Do not treat the frontend marker completion item below as satisfied until its exact public witness exists.
+## Canonical backend authority
 
-## Why one production Worker is sufficient
-
-`worker/voice-entry.ts` is the configured production Worker entry point and exports both Cloudflare handler types:
+`worker/voice-entry.ts` is the configured `sekret-backend` production entry point and exports both Cloudflare handler types:
 
 - `fetch()` delegates ordinary HTTP/API work to `worker/observed-index.ts`;
 - `email()` delegates inbound mail to `worker/email-router.ts`.
 
-The backend router already owns Sekret reply, voice, transcription, Bridge summary, authentication, rate limiting, safety, push, and supporting business logic. A second production `sekret` Worker would duplicate that authority.
+The backend router owns Sekret reply, voice, transcription, Bridge summary, authentication, rate limiting, safety, push, and supporting backend business logic. This proves what `sekret-backend` owns; it does **not** prove that another Cloudflare Worker named `sekret` is unused or safe to retire.
+
+The repository contract pins `api.sekretbip.net` to `sekret-backend`. The exact current hostname, routes, custom domains, triggers, and traffic owned by `sekret` remain provider truth and must be observed before any route change.
 
 ## Cutover gate for `bip-mail`
 
-Do not delete `bip-mail` first. Complete this order in the Cloudflare dashboard:
+Do not delete `bip-mail` first. Complete this order in the Cloudflare dashboard/provider control plane:
 
 1. Deploy or confirm the exact intended `sekret-backend` release.
-2. Confirm `https://sekret-backend.mcgill-raylene.workers.dev/health` returns success.
+2. Confirm the canonical backend health route succeeds.
 3. Open Email Routing for the Bip domain.
 4. Change every supported alias Worker action from `bip-mail` to `sekret-backend`:
    - `hello`;
@@ -46,42 +48,44 @@ Do not delete `bip-mail` first. Complete this order in the Cloudflare dashboard:
 
 Rollback: restore the prior Email Routing Worker action before deleting anything if any alias fails.
 
-## Cutover gate for `sekret`
+## Preservation gate for `sekret`
 
-Before deleting the dashboard Worker named `sekret`, inspect and record:
+`sekret` is a separate Worker authority and **must not be deleted** from repository assumptions or provider state.
+
+Before any change involving `sekret`, retain exact provider route/custom-domain readback showing:
 
 - routes and custom domains;
 - service bindings;
 - queues, cron triggers, Durable Objects, KV, D1, R2, and Analytics Engine bindings;
-- environment variables and secrets;
+- environment variables and secret names without exposing secret values;
 - Git repository and branch connection;
-- recent request volume and error logs.
+- current build/deploy trigger policy;
+- recent request volume and error logs;
+- the exact public hostname(s) currently served by the Worker.
 
-Any unique dependency blocks deletion until it is deliberately migrated to `sekret-backend` and verified.
+If the provider readback shows a binding conflict with Pages or `sekret-backend`, repair only the exact conflicting binding after founder authorization. Do not infer that `sekret` is disposable from the presence of `sekret-backend`.
 
-Then verify the canonical backend paths:
+## Provider-safe app-domain rule
 
-```text
-GET  /health
-POST /api/sekret/reply
-POST /api/sekret/voice
-POST /api/sekret/transcribe
-POST /api/bridge/summary/generate
-```
+The app-domain reconciler must treat both `sekret` and `sekret-backend` as protected Worker identities. A provider mutation must fail closed until the exact Worker attached to the target hostname is explicitly identified from live provider readback.
 
-Confirm all clients use `EXPO_PUBLIC_BACKEND_URL` for `sekret-backend`. Remove all routes, triggers, and bindings from `sekret`; verify the canonical paths again; then delete `sekret`.
+In particular:
 
-Rollback: restore the previous route or binding to `sekret` if the canonical backend proof fails before deletion.
+- `api.sekretbip.net` remains bound to canonical backend Worker `sekret-backend`;
+- `sekret` remains independently protected;
+- Pages `sekret-bip` remains an independent frontend authority;
+- a 405/Access response on the public app hostname is evidence of interception, not proof of which Worker may be safely removed;
+- no broad wildcard route may be deleted automatically.
 
 ## Completion evidence
 
-The consolidation is complete only when all of the following are true:
+Topology repair is complete only when all applicable current-use claims have fresh evidence:
 
-- `sekret-bip` serves the frontend and the exact `/.well-known/sekret-release.json` marker;
-- `sekret-backend` passes health, Sekret reply, voice, transcription, and Bridge checks;
-- all supported email aliases route through `sekret-backend`;
-- `bip-mail` and `sekret` have no routes, triggers, bindings, or traffic;
-- both legacy Workers are deleted from Cloudflare;
-- the Founder Control Room records the exact release, checks, deletion action, and rollback boundary.
+- `sekret-bip` serves the intended frontend release marker where Pages is authoritative;
+- `sekret-backend` passes exact release identity and backend health on its canonical API hostname;
+- `sekret` has an explicit retained provider route/custom-domain ownership receipt;
+- all supported email aliases route through the intended backend email handler;
+- `bip-mail` has no remaining provider authority before retirement;
+- Founder Control Room records the exact target, provider observations, actions, and rollback boundary.
 
-Deleting a Worker without the preceding route and binding audit is not consolidation. It is an outage lottery ticket.
+Deleting or detaching a Worker without the preceding route and binding audit is not consolidation. It is an outage lottery ticket.

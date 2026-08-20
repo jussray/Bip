@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { main as reconcileMain } from './reconcile-cloudflare-app-domain.mjs';
 
 const EVIDENCE_PATH = 'artifacts/cloudflare-app-domain-routing-evidence.json';
+const PROTECTED_WORKERS = ['sekret', 'sekret-backend'];
 
 function inputUrl(input) {
   if (typeof input === 'string') return input;
@@ -57,6 +58,10 @@ export function classifyObservedRequest(input, init = {}) {
   return { provider: 'external', operation: 'external-request', method };
 }
 
+export function appDomainApplyBlockReason(argv = []) {
+  return argv.includes('--apply') ? 'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED' : null;
+}
+
 function numericProviderCodes(payload) {
   return (payload?.errors || [])
     .map((item) => item?.code)
@@ -88,6 +93,8 @@ async function writeFailureReceipt(existing, observation, env = process.env) {
     hostname: env.BIP_APP_HOSTNAME || 'app.sekretbip.net',
     pagesProject: env.BIP_APP_PAGES_PROJECT || 'sekret-bip',
     backendWorker: env.BIP_APP_BACKEND_WORKER || 'sekret-backend',
+    protectedWorkers: PROTECTED_WORKERS,
+    topologyAuthority: 'provider-readback-required',
     actions: [],
   };
 
@@ -97,7 +104,7 @@ async function writeFailureReceipt(existing, observation, env = process.env) {
     `${JSON.stringify(
       {
         ...base,
-        schemaVersion: 2,
+        schemaVersion: 3,
         generatedAt: new Date().toISOString(),
         phase,
         mutationState,
@@ -112,6 +119,22 @@ async function writeFailureReceipt(existing, observation, env = process.env) {
 }
 
 export async function run(argv = process.argv.slice(2), env = process.env) {
+  const blockedReason = appDomainApplyBlockReason(argv);
+  if (blockedReason) {
+    await writeFailureReceipt(
+      null,
+      {
+        provider: 'control-plane',
+        operation: 'two-worker-topology-guard',
+        method: null,
+        status: null,
+        providerCodes: [],
+      },
+      env,
+    );
+    throw new Error(blockedReason);
+  }
+
   const originalFetch = globalThis.fetch;
   let observation = {
     provider: 'none',

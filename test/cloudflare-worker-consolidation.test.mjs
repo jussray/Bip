@@ -20,15 +20,30 @@ const ownership = read('docs/CLOUDFLARE_OWNERSHIP.md');
 const emailRouting = read('docs/CLOUDFLARE_EMAIL_ROUTING.md');
 const consolidation = read('docs/CLOUDFLARE_WORKER_CONSOLIDATION.md');
 
-const legacyNames = ['bip-mail', 'sekret'];
+const legacyNames = ['bip-mail'];
+const protectedSeparateWorker = 'sekret';
 
-test('production Cloudflare authority is exactly Pages plus one Worker', () => {
+test('production Cloudflare authority keeps Pages, canonical backend, and the separate sekret Worker distinct', () => {
   assert.deepEqual(Object.keys(targets.production).sort(), ['pages', 'worker']);
   assert.equal(targets.production.pages.name, 'sekret-bip');
   assert.equal(targets.production.pages.buildCommand, 'npm run build:web');
   assert.equal(targets.production.pages.outputDirectory, 'dist');
   assert.equal(targets.production.worker.name, 'sekret-backend');
   assert.equal(targets.production.worker.entrypoint, 'worker/voice-entry.ts');
+
+  assert.ok(targets.providerInventory.workers.includes(protectedSeparateWorker));
+  assert.equal(
+    targets.separateWorkerAuthorities?.[protectedSeparateWorker]?.status,
+    'founder-confirmed-active',
+  );
+  assert.equal(
+    targets.separateWorkerAuthorities?.[protectedSeparateWorker]?.routeBinding,
+    'provider-readback-required',
+  );
+  assert.equal(
+    targets.legacyDashboardServices.some((service) => service.name === protectedSeparateWorker),
+    false,
+  );
 });
 
 test('sekret-backend owns voice, ordinary HTTP, and inbound email handlers', () => {
@@ -54,7 +69,7 @@ test('Sekret runtime routes remain inside the canonical backend code path', () =
   assert.ok(targets.production.worker.roles.includes('inbound-email-routing'));
 });
 
-test('legacy dashboard Workers are retirement targets, not deploy targets', () => {
+test('only actually retired dashboard Workers remain retirement targets', () => {
   assert.deepEqual(
     targets.legacyDashboardServices.map((service) => service.name).sort(),
     legacyNames.slice().sort(),
@@ -64,21 +79,19 @@ test('legacy dashboard Workers are retirement targets, not deploy targets', () =
   for (const file of wranglerFiles) {
     const content = read(file);
     assert.doesNotMatch(content, /^name = "bip-mail"$/m, `${file} must not deploy bip-mail`);
-    assert.doesNotMatch(content, /^name = "sekret"$/m, `${file} must not deploy sekret`);
   }
 });
 
-test('documentation requires verified cutover before legacy Worker deletion', () => {
-  for (const name of legacyNames) {
-    assert.ok(ownership.includes(`\`${name}\``));
-    assert.ok(consolidation.includes(`\`${name}\``));
-  }
+test('documentation preserves sekret until exact provider route ownership is proven', () => {
+  assert.ok(ownership.includes('`sekret`'));
+  assert.ok(consolidation.includes('`sekret`'));
+  assert.ok(consolidation.includes('must not be deleted'));
+  assert.ok(consolidation.includes('exact provider route/custom-domain readback'));
 
   assert.ok(emailRouting.includes('change the Worker action from `bip-mail` to `sekret-backend`'));
   assert.ok(consolidation.includes('routes and custom domains'));
   assert.ok(consolidation.includes('service bindings'));
   assert.ok(consolidation.includes('recent request volume and error logs'));
   assert.ok(consolidation.includes('Only then delete `bip-mail`'));
-  assert.ok(consolidation.includes('then delete `sekret`'));
   assert.ok(consolidation.includes('Founder Control Room records'));
 });

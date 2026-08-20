@@ -13,6 +13,7 @@ on:
       - 'test/cloudflare-workers-build-trigger-failure-evidence.test.mjs'
       - 'test/controlled-alpha-activation.test.mjs'
       - 'test/main-contract-drift-proof.test.mjs'
+      - 'test/sekret-control-room-contracts.test.mjs'
       - 'supabase/migrations/20260806024500_harden_uos_set_updated_at_search_path.sql'
       - 'test/uos-trigger-search-path.test.mjs'
       - '.github/workflows/main-contract-drift-exact-head.yml'
