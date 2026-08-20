@@ -21,6 +21,7 @@
   },
   "exclude": [
     "supabase/functions/**",
-    "tools/zapier/**"
+    "tools/zapier/**",
+    "tools/cloudflare-sandbox/**"
   ]
 }
