@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import {resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
 const NON_PRODUCTION_PREFIXES = Object.freeze([
@@ -82,7 +83,7 @@ async function readStdin() {
   return input;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
   const input = await readStdin();
   const result = classifyProductionImpact(input.split(/\r?\n/u));
   process.stdout.write(`${result.productionImpact ? 'true' : 'false'}\n`);
