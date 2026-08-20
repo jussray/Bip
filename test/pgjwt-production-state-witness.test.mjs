@@ -24,7 +24,11 @@ function fixture() {
   return { migrationsDir, evidencePath };
 }
 
-function fakeResponse({ installed, version }) {
+function fakeResponse({
+  installed,
+  version,
+  migrationName = 'drop_deprecated_pgjwt',
+}) {
   return {
     ok: true,
     status: 201,
@@ -33,7 +37,7 @@ function fakeResponse({ installed, version }) {
         live_max_version: '20260820214601',
         migration_history: [{
           version: '20260820214601',
-          name: 'drop_deprecated_pgjwt',
+          name: migrationName,
         }],
         pgjwt_installed: installed,
         pgjwt_version: version,
@@ -42,12 +46,12 @@ function fakeResponse({ installed, version }) {
   };
 }
 
-test('founder production policy pins pgjwt installed at 0.2.0', () => {
+test('founder production policy allows pgjwt optionally at the approved installed version', () => {
   assert.deepEqual(PRODUCTION_PGJWT_POLICY, {
-    installed: true,
-    version: '0.2.0',
+    mode: 'optional',
+    allowedInstalledVersion: '0.2.0',
     authority: 'founder-explicit',
-    decision: 'retain',
+    decision: 'allow',
     boundTo: 'supabase-dashboard:2026-08-20T21:51:28.984Z',
   });
 });
@@ -62,7 +66,7 @@ test('production witness reads pgjwt presence and exact version without mutation
   assert.doesNotMatch(query, /\b(insert|update|delete|alter|drop|create|grant|revoke)\b/i);
 });
 
-test('intentional founder-approved pgjwt 0.2.0 state verifies green', async () => {
+test('intentional founder-approved pgjwt 0.2.0 state verifies with explicit override evidence', async () => {
   const { migrationsDir, evidencePath } = fixture();
   const evidence = await verifySupabaseProductionSchema({
     config: {
@@ -76,31 +80,33 @@ test('intentional founder-approved pgjwt 0.2.0 state verifies green', async () =
   });
 
   assert.equal(evidence.verified, true);
-  assert.equal(evidence.status, 'verified');
+  assert.equal(evidence.status, 'verified-with-founder-extension-override');
   assert.equal(evidence.pgjwtObserved, true);
   assert.equal(evidence.pgjwtInstalled, true);
   assert.equal(evidence.pgjwtVersion, '0.2.0');
 });
 
-test('unexpected pgjwt disable fails closed against founder policy', async () => {
+test('pgjwt absence is valid because the founder policy is optional', async () => {
   const { migrationsDir, evidencePath } = fixture();
+  const evidence = await verifySupabaseProductionSchema({
+    config: {
+      token: 'test-token',
+      projectRef: 'tbsevonvegdnlyjgplmm',
+      migrationsDir,
+      evidencePath,
+    },
+    requirePgjwtState: true,
+    fetchImpl: async () => fakeResponse({ installed: false, version: null }),
+  });
 
-  await assert.rejects(
-    verifySupabaseProductionSchema({
-      config: {
-        token: 'test-token',
-        projectRef: 'tbsevonvegdnlyjgplmm',
-        migrationsDir,
-        evidencePath,
-      },
-      requirePgjwtState: true,
-      fetchImpl: async () => fakeResponse({ installed: false, version: null }),
-    }),
-    /SUPABASE_EXTENSION_POLICY_DRIFT/,
-  );
+  assert.equal(evidence.verified, true);
+  assert.equal(evidence.status, 'verified');
+  assert.equal(evidence.pgjwtObserved, true);
+  assert.equal(evidence.pgjwtInstalled, false);
+  assert.equal(evidence.pgjwtVersion, null);
 });
 
-test('unexpected pgjwt version change fails closed against founder policy', async () => {
+test('unexpected installed pgjwt version fails closed against optional founder policy', async () => {
   const { migrationsDir, evidencePath } = fixture();
 
   await assert.rejects(
@@ -116,6 +122,32 @@ test('unexpected pgjwt version change fails closed against founder policy', asyn
     }),
     /SUPABASE_EXTENSION_POLICY_DRIFT/,
   );
+});
+
+test('founder pgjwt policy cannot hide migration-history drift', async () => {
+  const { migrationsDir, evidencePath } = fixture();
+
+  await assert.rejects(
+    verifySupabaseProductionSchema({
+      config: {
+        token: 'test-token',
+        projectRef: 'tbsevonvegdnlyjgplmm',
+        migrationsDir,
+        evidencePath,
+      },
+      requirePgjwtState: true,
+      fetchImpl: async () => fakeResponse({
+        installed: true,
+        version: '0.2.0',
+        migrationName: 'different_migration',
+      }),
+    }),
+    /SUPABASE_PRODUCTION_SCHEMA_DRIFT/,
+  );
+
+  const retained = fs.readFileSync(evidencePath, 'utf8');
+  assert.match(retained, /"verified": false/);
+  assert.match(retained, /"status": "schema-drift"/);
 });
 
 test('missing live pgjwt observation is not policy proof', () => {
