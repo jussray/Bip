@@ -132,7 +132,12 @@ export function buildReadOnlyQuery() {
       order by version
     ),
     '[]'::jsonb
-  ) as migration_history
+  ) as migration_history,
+  exists(
+    select 1
+    from pg_extension
+    where extname = 'pgjwt'
+  ) as pgjwt_installed
 from supabase_migrations.schema_migrations;`;
 }
 
@@ -336,6 +341,7 @@ function initialEvidence(config) {
     authorityFloorVersion: PRODUCTION_HISTORY_AUTHORITY_FLOOR,
     expectedVersion: null,
     liveMaxVersion: null,
+    pgjwtInstalled: null,
     requiredCanonicalVersions: [],
     representedCanonicalVersions: [],
     acceptedAliasVersions: [],
@@ -468,18 +474,30 @@ export async function verifySupabaseProductionSchema(options = {}) {
     ...row,
     migration_history: migrationHistory,
   }, repositoryMigrations);
+  const rawPgjwtInstalled = row?.pgjwt_installed ?? row?.pgjwtInstalled;
+  const pgjwtInstalled = rawPgjwtInstalled === true || rawPgjwtInstalled === 'true';
+
   evidence.authorityFloorVersion = evaluated.authorityFloorVersion;
   evidence.expectedVersion = evaluated.expectedVersion;
   evidence.liveMaxVersion = evaluated.liveMaxVersion;
+  evidence.pgjwtInstalled = pgjwtInstalled;
   evidence.requiredCanonicalVersions = evaluated.requiredCanonicalVersions;
   evidence.representedCanonicalVersions = evaluated.representedCanonicalVersions;
   evidence.acceptedAliasVersions = evaluated.acceptedAliasVersions;
   evidence.missingCanonicalVersions = evaluated.missingCanonicalVersions;
   evidence.unexpectedRecentVersions = evaluated.unexpectedRecentVersions;
-  evidence.verified = evaluated.verified;
-  evidence.status = evaluated.verified ? 'verified' : 'schema-drift';
+  evidence.verified = evaluated.verified && !pgjwtInstalled;
+  evidence.status = pgjwtInstalled
+    ? 'deprecated-extension-present'
+    : (evaluated.verified ? 'verified' : 'schema-drift');
   evidence.checkedAt = new Date().toISOString();
   await writeEvidence(config.evidencePath, evidence);
+
+  if (pgjwtInstalled) {
+    throw new Error(
+      'SUPABASE_DEPRECATED_EXTENSION_PRESENT: pgjwt is installed in production despite the canonical drop migration.',
+    );
+  }
 
   if (!evaluated.verified) {
     const missing = evaluated.missingCanonicalVersions.join(',') || 'none';
