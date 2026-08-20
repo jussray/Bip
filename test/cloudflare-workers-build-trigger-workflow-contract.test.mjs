@@ -24,6 +24,11 @@ test('Workers Builds trigger workflow is exact-head, credential-minimal, and act
     2,
     'both Workers trigger checkout steps must disable persisted credentials',
   );
+  assert.equal(
+    (workflow.match(/- 'wrangler\.toml'/g) || []).length,
+    2,
+    'Wrangler identity changes must trigger this workflow for both pull requests and main pushes',
+  );
   assert.ok(!/uses:\s+actions\/(?:checkout|setup-node|upload-artifact)@v\d+/u.test(workflow), 'Workers trigger actions must be SHA-pinned');
   assert.ok(!workflow.includes('persist-credentials: true'), 'Workers trigger checkout credentials must not persist');
 });

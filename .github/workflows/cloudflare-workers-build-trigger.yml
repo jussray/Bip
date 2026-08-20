@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'wrangler.toml'
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
       - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
@@ -15,6 +16,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'wrangler.toml'
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
       - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
