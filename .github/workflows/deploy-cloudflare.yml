@@ -44,6 +44,8 @@ jobs:
         with:
           node-version: '24'
 
+      # Fail-closed classifier invariants: changes to scripts/playwright-executable.mjs
+      # or supabase/migrations/** are production-impacting and must run verification.
       - name: Classify merged diff fail closed
         id: scope
         shell: bash
