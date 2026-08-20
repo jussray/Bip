@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
@@ -87,4 +88,22 @@ test('empty or malformed path evidence fails closed', () => {
   assert.equal(classifyProductionImpact([]).productionImpact, true);
   assert.equal(classifyProductionImpact(['../worker/voice-entry.ts']).productionImpact, true);
   assert.equal(classifyProductionImpact(['C:\\worker\\voice-entry.ts']).productionImpact, true);
+});
+
+test('classifier CLI works when invoked through a relative script path', () => {
+  const nonProduction = spawnSync(process.execPath, ['scripts/classify-production-impact.mjs'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    input: 'docs/CURRENT_STATUS.md\ntest/example.test.mjs\n',
+  });
+  assert.equal(nonProduction.status, 0, nonProduction.stderr);
+  assert.equal(nonProduction.stdout.trim(), 'false');
+
+  const production = spawnSync(process.execPath, ['scripts/classify-production-impact.mjs'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    input: '.node-version\n',
+  });
+  assert.equal(production.status, 0, production.stderr);
+  assert.equal(production.stdout.trim(), 'true');
 });
