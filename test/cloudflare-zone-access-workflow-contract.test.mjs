@@ -15,13 +15,18 @@ test('zone Access audit is exact-head, credential-minimal, and action-pinned', (
     'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020',
     'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
     'CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}',
+    'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}',
     'name: cloudflare-zone-access-coverage-${{ env.EXPECTED_HEAD_SHA }}',
   ]) {
     assert.ok(workflow.includes(required), `missing zone Access workflow contract: ${required}`);
   }
 
+  const dedicatedTokenIndex = workflow.indexOf('CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}');
+  const generalTokenIndex = workflow.indexOf('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
+  assert.ok(dedicatedTokenIndex >= 0 && generalTokenIndex >= 0, 'zone Access audit must receive dedicated and general token candidates');
+  assert.ok(dedicatedTokenIndex < generalTokenIndex, 'dedicated Access token must remain the preferred candidate before the general fallback');
+
   assert.ok(!workflow.includes('ref: ${{ github.sha }}'), 'zone audit must not validate the synthetic PR merge SHA');
   assert.ok(!/uses:\s+actions\/(?:checkout|setup-node|upload-artifact)@v\d+/u.test(workflow), 'security-sensitive actions must be SHA-pinned');
-  assert.ok(!workflow.includes('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}'), 'zone Access audit must not receive the general Cloudflare API token');
   assert.ok(!workflow.includes('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}'), 'zone Access audit must not receive the Workers Builds token');
 });
