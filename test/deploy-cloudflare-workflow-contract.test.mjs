@@ -63,6 +63,8 @@ test('build inputs and unknown paths fail closed as production-impacting', () =>
     'babel.config.js',
     'metro.config.js',
     'tsconfig.json',
+    'scripts/playwright-executable.mjs',
+    'supabase/migrations/20260820190000_example.sql',
     'hooks/useSession.ts',
     'utils/runtime.ts',
     'public/icon.png',
