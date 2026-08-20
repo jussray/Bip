@@ -1,0 +1,86 @@
+name: Cloudflare Sandbox Exact-Head Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'tools/cloudflare-sandbox/**'
+      - 'test/cloudflare-sandbox-contract.test.mjs'
+      - '.github/workflows/cloudflare-sandbox-exact-head.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+  EXPECTED_SANDBOX_VERSION: 0.13.0-next.738.2
+
+jobs:
+  sandbox-contract:
+    name: Verify isolated Cloudflare Sandbox contract
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
+
+      - name: Verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+
+      - name: Verify repository Sandbox boundaries
+        run: node --test test/cloudflare-sandbox-contract.test.mjs
+
+      - name: Generate proof lockfile from pinned Sandbox manifest
+        working-directory: tools/cloudflare-sandbox
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Install isolated Sandbox dependencies
+        working-directory: tools/cloudflare-sandbox
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify and record exact Sandbox SDK version
+        working-directory: tools/cloudflare-sandbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          node - <<'NODE' | tee artifacts/sandbox-version.json
+          const p = require('./node_modules/@cloudflare/sandbox/package.json');
+          const expected = process.env.EXPECTED_SANDBOX_VERSION;
+          if (p.version !== expected) {
+            throw new Error(`Sandbox package drift: expected ${expected}, got ${p.version}`);
+          }
+          console.log(JSON.stringify({
+            sandboxPackage: p.version,
+            dockerImage: `cloudflare/sandbox:${expected}`,
+            head: process.env.EXPECTED_HEAD_SHA,
+          }, null, 2));
+          NODE
+
+      - name: Wrangler container dry-run only
+        working-directory: tools/cloudflare-sandbox
+        run: npm run check
+
+      - name: Upload Sandbox proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cloudflare-sandbox-proof-${{ env.EXPECTED_HEAD_SHA }}
+          path: |
+            tools/cloudflare-sandbox/artifacts/
+            tools/cloudflare-sandbox/package-lock.json
+          if-no-files-found: error
+          retention-days: 14
