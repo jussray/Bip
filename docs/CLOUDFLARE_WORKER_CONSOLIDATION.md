@@ -100,7 +100,7 @@ Cloudflare Service Bindings are the preferred boundary because the backend can f
 
 This is a forward-only, evidence-gated migration. No step is implied complete by this document.
 
-1. **Provider census:** retain `sekret` routes/custom domains, workers.dev state, bindings, secret names, Git trigger, immutable version/script tag, request volume, errors, and callers.
+1. **Provider census:** retain exact provider route/custom-domain readback for `sekret`, including its routes and custom domains, workers.dev state, service bindings, secret names, Git trigger, immutable version/script tag, recent request volume and error logs, and known callers.
 2. **Compatibility proof:** prove the deployed `sekret` companion contract is compatible with current `/api/sekret/*` request/response shapes, or prepare the smallest code update on `sekret` first.
 3. **Least-privilege secret map:** AI/voice provider secrets may live with the companion runtime; `SUPABASE_SERVICE_ROLE_KEY` remains backend-only unless a separately reviewed need proves otherwise.
 4. **Telemetry seam:** replace direct companion service-role persistence with a narrow internal/backend-owned ingestion path or another least-privilege mechanism.
@@ -125,6 +125,8 @@ Rollback: disable the delegation and return `/api/sekret/*` to the previously pr
 ## `bip-mail`
 
 `bip-mail` is retired and must not regain production authority. Inbound email belongs to the backend/platform plane through `worker/voice-entry.ts -> worker/email-router.ts` until an independently approved future email architecture changes that contract.
+
+The retirement rule remains explicit for historical/provider reconciliation: verify the Email Routing cutover, callers, routes, bindings, and rollback first. Only then delete `bip-mail` if a legacy provider object is still present. Never recreate it after provider absence has been proven.
 
 ## Provider-safe app-domain rule
 

@@ -15,6 +15,8 @@ The companion-purpose split does **not** move email into `sekret`. `sekret` is r
 
 `bip-mail` is the retired legacy email Worker and must not regain production authority.
 
+The historical cutover rule remains explicit for contract compatibility: change the Worker action from `bip-mail` to `sekret-backend` only after exact Email Routing/provider evidence proves the target and rollback. Current provider-absent evidence means `bip-mail` must not be recreated.
+
 ## Supported inbox aliases
 
 - `hello@<bip-domain>`
