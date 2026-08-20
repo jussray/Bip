@@ -90,6 +90,14 @@ export function FrontDoorSceneArrival({ children }: PropsWithChildren) {
       accessibilityValue={{ text: arrivalState }}
       style={[styles.scene, sceneStyle]}
     >
+      {arrivalState !== 'entering' ? (
+        <Animated.View
+          testID="web-welcome-scene-settled"
+          accessible={false}
+          pointerEvents="none"
+          style={styles.stateMarker}
+        />
+      ) : null}
       {children}
     </Animated.View>
   );
@@ -102,5 +110,11 @@ const styles = StyleSheet.create({
   settled: {
     opacity: 1,
     transform: [{ translateY: 0 }, { scale: 1 }],
+  },
+  stateMarker: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
 });

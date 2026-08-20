@@ -21,6 +21,8 @@ test('canonical front door arrives as one scene before ambient motion continues'
   assert.match(entrypoint, /FrontDoorSceneArrival/);
   assert.match(entrypoint, /<FrontDoorSceneArrival>/);
   assert.match(arrival, /web-welcome-scene-arrival/);
+  assert.match(arrival, /web-welcome-scene-settled/);
+  assert.match(arrival, /arrivalState !== 'entering'/);
   assert.match(arrival, /arrivalDurationMs/);
   assert.match(arrival, /arrivalOpacity/);
   assert.match(arrival, /arrivalTranslateY/);

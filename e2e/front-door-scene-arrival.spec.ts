@@ -63,7 +63,7 @@ test('canonical teen front door enters as one scene, settles, and stays interact
   const pointerEvents = await scene.evaluate(node => getComputedStyle(node).pointerEvents);
   expect(pointerEvents).not.toBe('none');
 
-  await expect(scene).toHaveAttribute('aria-busy', 'false', { timeout: 5_000 });
+  await expect(page.getByTestId('web-welcome-scene-settled')).toHaveCount(1, { timeout: 5_000 });
   await page.waitForTimeout(100);
 
   const samples = await readSamples(page);
@@ -92,7 +92,7 @@ test('reduced motion renders the canonical scene settled from the first sampled 
   const scene = page.getByTestId('web-welcome-scene-arrival');
   await expect(scene).toBeVisible();
   await expect(page.getByTestId('web-welcome-hero-teen')).toBeVisible();
-  await expect(scene).toHaveAttribute('aria-busy', 'false');
+  await expect(page.getByTestId('web-welcome-scene-settled')).toHaveCount(1);
   await page.waitForTimeout(450);
 
   const samples = await readSamples(page);
