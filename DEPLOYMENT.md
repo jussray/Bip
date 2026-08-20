@@ -5,7 +5,7 @@ This guide defines the deployment contract. It does not declare the live release
 
 ## Live truth boundary
 
-Before any deployment or release claim, resolve fresh GitHub `main`, the newest marked exact-production receipt on issue #696, Cloudflare provider/runtime evidence for the same target, the intended Supabase project, and applicable production browser/account/device evidence. See `docs/TRUTH_AUTHORITY.md` for expiry and supersession.
+Before any deployment or release claim, resolve fresh GitHub `main`, the newest marked exact-production receipt on issue #696, Cloudflare provider/runtime evidence for the same release target, the intended Supabase project, and applicable production browser/account/device evidence. See `docs/TRUTH_AUTHORITY.md` for scope-aware expiry and supersession.
 
 ## Production authority
 
@@ -73,20 +73,35 @@ npm run deploy:pages
 
 Preview success is preview evidence only. It must not be promoted into canonical-domain production proof.
 
+## Repository head versus production release target
+
+Keep repository identity and release identity exact, but do not pretend they are always the same fact.
+
+- `repository_head_sha` is the exact current GitHub `main` commit.
+- `release_target_sha` is the exact source commit represented by the canonical production release witness.
+
+A production-impacting or unknown-scope `main` change invalidates current release authority until the new intended release target is verified. A positively verified non-production-only merge may advance `repository_head_sha` without changing `release_target_sha`.
+
+Non-production-only classification is fail-closed and requires the exact merged diff plus current ownership/build contracts. A workflow path filter is supporting evidence, not sole authority. Any ambiguous path or effect must be treated as production-impacting/UNKNOWN and re-verified.
+
+An isolated tooling, documentation, test-only, or internal-control-plane change qualifies only when it cannot alter the canonical app, `sekret-backend`, `sekret-bip`, Supabase production behavior, native release artifact, production route, secret/config binding, or deployment authority.
+
+This distinction cannot turn a known failed provider check into success. If the retained release target is blocked, it remains blocked until newer authoritative provider/runtime evidence supersedes that blocker.
+
 ## Exact production verification
 
-A production release is VERIFIED only when the same intended release target has all applicable witnesses:
+A production release is VERIFIED only when the same intended `release_target_sha` has all applicable witnesses:
 
-1. exact-current-main repository authority;
-2. successful canonical Pages provider event and deployed release marker matching the target;
-3. canonical `sekret-backend` identity and healthy runtime;
+1. exact repository authority records both the then-current `repository_head_sha` and the exact `release_target_sha`, including scope evidence if they differ;
+2. successful canonical Pages provider event and deployed release marker matching `release_target_sha`;
+3. canonical `sekret-backend` identity and healthy runtime for `release_target_sha`;
 4. live Supabase migration/schema/runtime evidence for the intended project;
 5. read-only production Playwright against that exact deployment;
 6. any required controlled-account or physical-device journeys.
 
 If Cloudflare Access protects a verification path, use only an explicitly authorized service-auth verification lane. Never weaken Access, leak credentials into traces/artifacts, or treat an interception as application success.
 
-The verifier must fail closed. Zero-step/no-log jobs, missing markers, stale SHAs, skipped browser steps, provider upload receipts, or unauthenticated control-plane reads cannot be relabeled as release proof.
+The verifier must fail closed. Zero-step/no-log jobs, missing markers, stale SHAs, skipped browser steps, provider upload receipts, unauthenticated control-plane reads, or unclassified repository/release-target divergence cannot be relabeled as release proof.
 
 ## Validation
 
@@ -107,4 +122,4 @@ npm run verify:prepush
 
 Before calling an environment demo-ready or launch-ready, verify the applicable exact release identity, database authorization/runtime state, secrets/configuration boundaries, CORS, Teen/Parent privacy, account deletion/cleanup, accessibility/device behavior, legal/safeguarding/store requirements, monitoring, incident response, backup, restore, and rollback.
 
-The implementation ledger must not promote an integrated feature to verified/released without evidence that matches the claimed environment and target.
+The implementation ledger must not promote an integrated feature to verified/released without evidence that matches the claimed environment, target, and scope.
