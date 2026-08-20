@@ -7,10 +7,10 @@ import * as core from './verify-supabase-production-schema-core.mjs';
 export * from './verify-supabase-production-schema-core.mjs';
 
 export const PRODUCTION_PGJWT_POLICY = Object.freeze({
-  mode: 'optional',
-  allowedInstalledVersion: '0.2.0',
+  installed: true,
+  version: '0.2.0',
   authority: 'founder-explicit',
-  decision: 'allow',
+  decision: 'retain',
   boundTo: 'supabase-dashboard:2026-08-20T21:51:28.984Z',
 });
 
@@ -43,8 +43,8 @@ function readPgjwtState(row, { allowInjectedFallback = false } = {}) {
   if (!observed && allowInjectedFallback) {
     return {
       observed: false,
-      installed: false,
-      version: null,
+      installed: PRODUCTION_PGJWT_POLICY.installed,
+      version: PRODUCTION_PGJWT_POLICY.version,
     };
   }
 
@@ -55,15 +55,17 @@ function readPgjwtState(row, { allowInjectedFallback = false } = {}) {
 
 export function evaluatePgjwtPolicy(row, options = {}) {
   const state = readPgjwtState(row, options);
-  const allowedInstalledVersion = PRODUCTION_PGJWT_POLICY.allowedInstalledVersion;
+  const expectedInstalled = PRODUCTION_PGJWT_POLICY.installed;
+  const expectedVersion = expectedInstalled ? PRODUCTION_PGJWT_POLICY.version : null;
   const verified = state.observed
-    ? (!state.installed || state.version === allowedInstalledVersion)
+    ? state.installed === expectedInstalled
+      && (!expectedInstalled || state.version === expectedVersion)
     : Boolean(options.allowInjectedFallback);
 
   return {
     ...state,
-    mode: PRODUCTION_PGJWT_POLICY.mode,
-    allowedInstalledVersion,
+    expectedInstalled,
+    expectedVersion,
     verified,
   };
 }
@@ -269,9 +271,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
   evidence.verified = evaluated.verified && policy.verified;
   evidence.status = !evaluated.verified
     ? 'schema-drift'
-    : (!policy.verified
-      ? 'extension-policy-drift'
-      : (policy.installed ? 'verified-with-founder-extension-override' : 'verified'));
+    : (policy.verified ? 'verified' : 'extension-policy-drift');
   evidence.checkedAt = new Date().toISOString();
   await writeEvidence(config.evidencePath, evidence);
 
@@ -290,7 +290,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
   if (!policy.verified) {
     throw new Error(
       'SUPABASE_EXTENSION_POLICY_DRIFT: '
-      + `pgjwt is optional; when installed expected version=${policy.allowedInstalledVersion}, `
+      + `pgjwt expected installed=${policy.expectedInstalled} version=${policy.expectedVersion ?? 'none'}, `
       + `live installed=${policy.installed} version=${policy.version ?? 'none'}, observed=${policy.observed}.`,
     );
   }
@@ -302,7 +302,7 @@ async function main() {
   const evidence = await verifySupabaseProductionSchema();
   process.stdout.write(
     `Supabase production schema verified at ${evidence.expectedVersion}; `
-    + `pgjwt installed=${evidence.pgjwtInstalled} version=${evidence.pgjwtVersion ?? 'none'}.\n`,
+    + `pgjwt policy verified at ${evidence.pgjwtVersion}.\n`,
   );
 }
 
