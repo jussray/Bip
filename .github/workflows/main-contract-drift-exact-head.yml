@@ -16,6 +16,8 @@ on:
       - 'test/sekret-control-room-contracts.test.mjs'
       - 'supabase/migrations/20260806024500_harden_uos_set_updated_at_search_path.sql'
       - 'test/uos-trigger-search-path.test.mjs'
+      - 'scripts/verify-supabase-production-schema.mjs'
+      - 'test/supabase-bridge-production-receipt-alias.test.mjs'
       - '.github/workflows/main-contract-drift-exact-head.yml'
       - 'package.json'
       - 'wrangler.toml'
