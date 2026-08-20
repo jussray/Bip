@@ -15,6 +15,8 @@ Before any deployment or release claim, resolve fresh GitHub `main`, the newest 
 - Database/Auth/Storage/RLS/Edge Functions: Supabase.
 - Native builds: Expo / EAS.
 
+The canonical Cloudflare Worker `sekret-backend` remains the repository-configured public production API authority until an explicitly approved and independently proven routing change says otherwise.
+
 GitHub Actions verifies production evidence; it must not quietly become a second normal production deployment authority. Manual deployment commands are emergency administrator fallbacks and require separate authority.
 
 ## Worker purpose boundary

@@ -11,7 +11,7 @@ Se’kret Bip has distinct Cloudflare authorities that must not be collapsed int
 3. `sekret` — founder-confirmed active companion API Worker lineage;
 4. `sekret-backend-alpha` — founder-gated non-production Worker.
 
-`bip-mail` is retired. `sekret` is **not** a retirement target.
+`bip-mail` is retired. `sekret` is **not** a retirement target. `sekret` must not be deleted, renamed, detached, or repurposed until exact Cloudflare provider route/binding ownership and rollback are proven.
 
 > **Current release boundary:** [#696](https://github.com/jussray/Sekret-Bip/issues/696) owns exact production proof. Repository topology is not a substitute for live Cloudflare route/domain/binding readback.
 
