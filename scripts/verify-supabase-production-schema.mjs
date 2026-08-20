@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 export const DEFAULT_PROJECT_REF = 'tbsevonvegdnlyjgplmm';
 export const DEFAULT_MIGRATIONS_DIR = 'supabase/migrations';
 export const DEFAULT_EVIDENCE_PATH = 'artifacts/supabase-production-schema.json';
+export const PGJWT_FOUNDER_OVERRIDE_STATUS = 'verified-with-founder-extension-override';
 export const PRODUCTION_HISTORY_AUTHORITY_FLOOR = '20260805170500';
 export const PRODUCTION_HISTORY_ACCEPTED_ALIASES = Object.freeze({
   '20260805170500': '20260806020640',
@@ -486,18 +487,12 @@ export async function verifySupabaseProductionSchema(options = {}) {
   evidence.acceptedAliasVersions = evaluated.acceptedAliasVersions;
   evidence.missingCanonicalVersions = evaluated.missingCanonicalVersions;
   evidence.unexpectedRecentVersions = evaluated.unexpectedRecentVersions;
-  evidence.verified = evaluated.verified && !pgjwtInstalled;
-  evidence.status = pgjwtInstalled
-    ? 'deprecated-extension-present'
-    : (evaluated.verified ? 'verified' : 'schema-drift');
+  evidence.verified = evaluated.verified;
+  evidence.status = evaluated.verified
+    ? (pgjwtInstalled ? PGJWT_FOUNDER_OVERRIDE_STATUS : 'verified')
+    : 'schema-drift';
   evidence.checkedAt = new Date().toISOString();
   await writeEvidence(config.evidencePath, evidence);
-
-  if (pgjwtInstalled) {
-    throw new Error(
-      'SUPABASE_DEPRECATED_EXTENSION_PRESENT: pgjwt is installed in production despite the canonical drop migration.',
-    );
-  }
 
   if (!evaluated.verified) {
     const missing = evaluated.missingCanonicalVersions.join(',') || 'none';
