@@ -7,18 +7,20 @@ const read = async (path) => readFile(new URL(path, root), 'utf8');
 const SANDBOX_VERSION = '0.13.0-next.738.2';
 
 test('Cloudflare Sandbox stays isolated from the teen-facing production Worker', async () => {
-  const [configText, packageText, dockerfile, source, tsconfigText, productionWrangler] = await Promise.all([
+  const [configText, packageText, dockerfile, source, tsconfigText, rootTsconfigText, productionWrangler] = await Promise.all([
     read('tools/cloudflare-sandbox/wrangler.jsonc'),
     read('tools/cloudflare-sandbox/package.json'),
     read('tools/cloudflare-sandbox/Dockerfile'),
     read('tools/cloudflare-sandbox/src/index.ts'),
     read('tools/cloudflare-sandbox/tsconfig.json'),
+    read('tsconfig.json'),
     read('wrangler.toml'),
   ]);
 
   const config = JSON.parse(configText);
   const pkg = JSON.parse(packageText);
   const tsconfig = JSON.parse(tsconfigText);
+  const rootTsconfig = JSON.parse(rootTsconfigText);
 
   assert.equal(config.name, 'sekret-internal-sandbox');
   assert.equal(config.tsconfig, './tsconfig.json');
@@ -39,6 +41,10 @@ test('Cloudflare Sandbox stays isolated from the teen-facing production Worker',
   );
   assert.equal(tsconfig.extends, undefined);
   assert.equal(tsconfig.compilerOptions?.noEmit, true);
+  assert.ok(
+    rootTsconfig.exclude?.includes('tools/cloudflare-sandbox/**'),
+    'root Expo TypeScript must not compile the isolated Sandbox package',
+  );
 
   assert.match(source, /enableInternet\s*=\s*false/);
   assert.doesNotMatch(source, /proxyToSandbox/);
