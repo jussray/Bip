@@ -29,7 +29,6 @@ test('production verification classifies every main push instead of relying on a
   for (const required of [
     'classify-production-impact:',
     'fetch-depth: 0',
-    'scripts/classify-production-impact.mjs',
     'needs: classify-production-impact',
     "needs.classify-production-impact.outputs.production_impact != 'false'",
   ]) {
@@ -37,6 +36,22 @@ test('production verification classifies every main push instead of relying on a
   }
 
   assert.doesNotMatch(workflow, /push:\s*\n\s*branches: \[main\]\s*\n\s*paths:/u);
+});
+
+test('main-push classification executes the previous trusted main classifier, never target-controlled classifier code', () => {
+  for (const required of [
+    'trusted_classifier="$RUNNER_TEMP/classify-production-impact.mjs"',
+    'git show "$BEFORE_SHA:scripts/classify-production-impact.mjs" > "$trusted_classifier"',
+    'node "$trusted_classifier"',
+    'reason=trusted-classifier-unavailable',
+  ]) {
+    assert.ok(workflow.includes(required), `missing trusted-classifier boundary: ${required}`);
+  }
+
+  assert.doesNotMatch(
+    workflow,
+    /classification="\$\(printf '%s\\n' "\$changed_paths" \| node scripts\/classify-production-impact\.mjs\)"/u,
+  );
 });
 
 test('sandbox-only merge is positively classified as non-production-only', () => {
