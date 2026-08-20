@@ -9,7 +9,7 @@
     "deploy": "wrangler deploy --config wrangler.jsonc --containers-rollout=immediate"
   },
   "dependencies": {
-    "@cloudflare/sandbox": "next"
+    "@cloudflare/sandbox": "0.13.0-next.738.2"
   },
   "devDependencies": {
     "wrangler": "4.100.0"
