@@ -1,17 +1,19 @@
 # Cloudflare Email Routing for Se'kret Bip
 
-Last reviewed: 2026-08-08
+Last reviewed: 2026-08-20
 
 ## Canonical handler
 
-Incoming Bip email belongs to the existing production Worker named `sekret-backend`.
+Incoming Bip email belongs to the privileged platform Worker `sekret-backend`, not to the companion Worker `sekret`.
 
-The Worker entry point is `worker/voice-entry.ts`. It exports both:
+The current backend entry point is `worker/voice-entry.ts`. It exports both:
 
-- `fetch()` for the HTTP/API backend, delegating ordinary traffic to `worker/observed-index.ts`;
+- `fetch()` for the public HTTP/API front door;
 - `email()` for inbound email processing through `worker/email-router.ts`.
 
-The Cloudflare dashboard may still contain a legacy Worker named `bip-mail`. That Worker is a cutover source, not the canonical destination. Do not create or preserve a second Wrangler configuration for mail.
+The companion-purpose split does **not** move email into `sekret`. `sekret` is reserved for companion reply/voice/transcription execution. Email is platform infrastructure and should remain isolated from companion AI/provider secrets and conversation execution.
+
+`bip-mail` is the retired legacy email Worker and must not regain production authority.
 
 ## Supported inbox aliases
 
@@ -27,29 +29,31 @@ The Cloudflare dashboard may still contain a legacy Worker named `bip-mail`. Tha
 
 Unknown aliases are rejected rather than silently forwarded.
 
-## Deploy the canonical Worker
+## Deployment boundary
 
-From the repository root, use the existing root configuration:
+Current production API/email deployment remains rooted in `sekret-backend` through `wrangler.toml`.
 
 ```bash
 npm run deploy:worker
 ```
 
-`deploy:worker` delegates to `deploy:api:production`, which invokes `wrangler deploy`. The root `wrangler.toml` deploys `worker/voice-entry.ts` as `sekret-backend`. Do not deploy `worker/email-router.ts` directly under the same Worker name, because that would replace the HTTP/API entry point.
+This is an emergency/manual deployment path requiring separately authorized Cloudflare credentials. Do not deploy `worker/email-router.ts` directly under the same Worker name because that would replace the HTTP entry point.
 
-## Cut over from `bip-mail`
+A future `sekret-backend -> sekret` Service Binding for `/api/sekret/*` must leave `email()` on `sekret-backend`. A companion cutover is not an email cutover.
 
-1. Confirm the intended `sekret-backend` release is deployed.
-2. Confirm its `/health` endpoint succeeds.
-3. Run the `Reconcile Cloudflare Email Routing` GitHub Actions workflow with `apply=false` and inspect the plan.
-4. Configure the required repository secret `CLOUDFLARE_API_TOKEN`, then run the workflow again with `apply=true`. `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_ACCOUNT_ID` may also be stored as repository secrets to pin resolution, but they are optional: with Zone Read access the reconciler can resolve `sekretbip.net` and derive the owning account. The token must have the required Cloudflare permissions. This reconciliation must change the Worker action from `bip-mail` to `sekret-backend` for every supported alias that still points at the legacy Worker.
-5. If the workflow reports `DESTINATION_VERIFICATION_REQUIRED`, verify `sekretbip@gmail.com` from Cloudflare's email and rerun `apply=true`.
-6. Send a controlled message to every supported alias.
-7. Confirm every message reaches the verified destination and preserves the expected `X-Bip-*` headers.
-8. Confirm `bip-mail` has no remaining Email Routing rules, routes, triggers, bindings, or recent traffic.
-9. Only then delete `bip-mail`.
+## Provider verification
 
-If any alias fails, restore its prior Worker action before deleting anything. The complete deletion and rollback gate is in `docs/CLOUDFLARE_WORKER_CONSOLIDATION.md`.
+Before modifying Email Routing:
+
+1. Prove the intended exact `sekret-backend` release.
+2. Read the live Email Routing rules and destination state.
+3. Confirm every supported alias targets the backend/platform Worker intended to export `email()`.
+4. Send controlled messages through applicable aliases.
+5. Confirm expected `X-Bip-*` headers and verified destination delivery.
+6. Confirm `bip-mail` has no remaining provider authority.
+7. Retain rollback before any routing mutation.
+
+Do not infer Email Routing from Worker names alone.
 
 ## GitHub-managed Cloudflare setup
 
@@ -58,28 +62,35 @@ The repository owns the desired Email Routing rule set through:
 - `.github/workflows/cloudflare-email-routing.yml`;
 - `scripts/reconcile-cloudflare-email-routing.mjs`.
 
-The workflow is manual and plan-only by default. It does not create a catch-all rule and it does not delete Email Routing rules or legacy Workers. `apply=true` performs an idempotent reconciliation that:
+The workflow is manual and plan-only by default. It must remain scoped to email routing and must not mutate companion Worker routes, service bindings, or provider secrets as a side effect of an email repair.
 
-1. targets `sekretbip.net` using supplied repository-secret IDs when present, otherwise discovers the active zone and derives its account with Zone Read access;
-2. validates `CLOUDFLARE_API_TOKEN` as a user token, an account-owned token when the account ID is available, or by proving scoped access to the intended zone before any live routing mutation;
-3. enables the Cloudflare Email Routing DNS contract when needed;
-4. ensures `sekretbip@gmail.com` exists as the destination address and stops until it is verified;
-5. creates or repairs only the supported literal-address rules so they target `sekret-backend`;
-6. rereads the rule set and fails if any supported alias does not resolve to the canonical Worker.
-
-The only required GitHub Actions repository secret is `CLOUDFLARE_API_TOKEN`. `CLOUDFLARE_ZONE_ID` and `CLOUDFLARE_ACCOUNT_ID` are optional repository secrets that pin zone/account resolution; do not configure those IDs as repository variables for this workflow. If either ID is omitted, the reconciler uses Cloudflare Zone Read access to resolve the missing context and fails closed with a precise discovery error if it cannot. The token needs Cloudflare permissions sufficient for Zone Read, Zone Settings Write, Email Routing Rules Write, and Email Routing Addresses Write.
+The only required GitHub Actions repository secret is `CLOUDFLARE_API_TOKEN`. Optional zone/account IDs may pin discovery as documented by the workflow. Credentials must never be printed or copied into repository prose.
 
 ## Privacy behavior
 
-The email handler does not store message bodies, invoke AI, or write email content to Supabase. It only:
+The email handler does not store message bodies, invoke companion AI, or write email content to Supabase. It only:
 
 - validates the destination alias;
 - adds `X-Bip-*` classification headers;
 - logs limited delivery metadata;
-- forwards the original message to the verified Gmail destination.
+- forwards the original message to the verified destination.
 
-Safety and security aliases are marked `urgent`; privacy and legal aliases are marked `important`.
+Safety and security aliases are marked urgent; privacy and legal aliases are marked important.
 
-## Deployment note
+## Architecture invariant
 
-Cloudflare Email Routing rules are reconciled by the manual GitHub Actions control plane after `sekret-backend` is deployed. The Worker contains the email-processing handler; the workflow controls which supported custom addresses Cloudflare sends to that handler. Dashboard changes remain visible operational state, but they are no longer the only supported configuration path.
+```text
+Cloudflare Email Routing
+        |
+        v
+sekret-backend email()
+        |
+        v
+worker/email-router.ts
+
+NOT
+
+Cloudflare Email Routing -> sekret companion runtime
+```
+
+Keeping email on the platform Worker reduces the blast radius of companion runtime changes and keeps unrelated provider/business traffic out of the companion execution plane.
