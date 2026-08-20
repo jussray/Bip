@@ -66,7 +66,9 @@ function parseArgv(value: unknown): string[] | null {
 function parseCwd(value: unknown): string | undefined | null {
   if (value === undefined || value === null || value === '') return undefined;
   if (typeof value !== 'string') return null;
-  if (!value.startsWith('/workspace') || value.includes('..') || value.length > 256) return null;
+
+  const isWorkspacePath = value === '/workspace' || value.startsWith('/workspace/');
+  if (!isWorkspacePath || value.includes('..') || value.length > 256) return null;
   return value;
 }
 
