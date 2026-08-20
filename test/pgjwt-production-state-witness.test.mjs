@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   buildReadOnlyQuery,
+  PGJWT_FOUNDER_OVERRIDE_STATUS,
   verifySupabaseProductionSchema,
 } from '../scripts/verify-supabase-production-schema.mjs';
 
@@ -22,7 +23,7 @@ function fixture() {
   return { migrationsDir, evidencePath };
 }
 
-function fakeResponse(pgjwtInstalled) {
+function fakeResponse(pgjwtInstalled, migrationName = 'drop_deprecated_pgjwt') {
   return {
     ok: true,
     status: 201,
@@ -31,7 +32,7 @@ function fakeResponse(pgjwtInstalled) {
         live_max_version: '20260820214601',
         migration_history: [{
           version: '20260820214601',
-          name: 'drop_deprecated_pgjwt',
+          name: migrationName,
         }],
         pgjwt_installed: pgjwtInstalled,
       }]);
@@ -47,7 +48,30 @@ test('production witness reads live pgjwt extension state', () => {
   assert.match(query, /supabase_migrations\.schema_migrations/i);
 });
 
-test('applied drop receipt cannot fake green while pgjwt is installed', async () => {
+test('founder-approved pgjwt installation remains visible without failing clean schema history', async () => {
+  const { migrationsDir, evidencePath } = fixture();
+
+  const evidence = await verifySupabaseProductionSchema({
+    config: {
+      token: 'test-token',
+      projectRef: 'tbsevonvegdnlyjgplmm',
+      migrationsDir,
+      evidencePath,
+    },
+    fetchImpl: async () => fakeResponse(true),
+  });
+
+  assert.equal(evidence.verified, true);
+  assert.equal(evidence.pgjwtInstalled, true);
+  assert.equal(evidence.status, PGJWT_FOUNDER_OVERRIDE_STATUS);
+
+  const retained = fs.readFileSync(evidencePath, 'utf8');
+  assert.match(retained, /"pgjwtInstalled": true/);
+  assert.match(retained, /"verified": true/);
+  assert.match(retained, /"status": "verified-with-founder-extension-override"/);
+});
+
+test('founder pgjwt override cannot hide migration-history drift', async () => {
   const { migrationsDir, evidencePath } = fixture();
 
   await assert.rejects(
@@ -58,18 +82,18 @@ test('applied drop receipt cannot fake green while pgjwt is installed', async ()
         migrationsDir,
         evidencePath,
       },
-      fetchImpl: async () => fakeResponse(true),
+      fetchImpl: async () => fakeResponse(true, 'different_migration'),
     }),
-    /SUPABASE_DEPRECATED_EXTENSION_PRESENT/,
+    /SUPABASE_PRODUCTION_SCHEMA_DRIFT/,
   );
 
   const retained = fs.readFileSync(evidencePath, 'utf8');
   assert.match(retained, /"pgjwtInstalled": true/);
   assert.match(retained, /"verified": false/);
-  assert.match(retained, /"status": "deprecated-extension-present"/);
+  assert.match(retained, /"status": "schema-drift"/);
 });
 
-test('same receipt verifies when pgjwt is actually absent', async () => {
+test('same receipt verifies normally when pgjwt is absent', async () => {
   const { migrationsDir, evidencePath } = fixture();
 
   const evidence = await verifySupabaseProductionSchema({
