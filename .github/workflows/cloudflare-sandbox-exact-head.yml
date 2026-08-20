@@ -4,6 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'tsconfig.json'
       - 'tools/cloudflare-sandbox/**'
       - 'test/cloudflare-sandbox-contract.test.mjs'
       - '.github/workflows/cloudflare-sandbox-exact-head.yml'
@@ -39,6 +40,12 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
+
+      - name: Install root application dependencies
+        run: npm ci
+
+      - name: Verify root application TypeScript excludes the isolated Sandbox
+        run: npm run type-check
 
       - name: Verify repository Sandbox boundaries
         run: node --test test/cloudflare-sandbox-contract.test.mjs
