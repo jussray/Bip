@@ -32,6 +32,13 @@ jobs:
           test -n "$current_main"
           test "$GITHUB_SHA" = "$current_main"
 
+      - name: Check out exact current main without credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Read current two-Worker topology and verify production Worker branch authority
         shell: bash
         env:
