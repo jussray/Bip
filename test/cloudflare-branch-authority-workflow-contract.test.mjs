@@ -56,6 +56,7 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.match(workerVerifier, /const separateWorker = 'sekret'/);
   assert.match(workerVerifier, /const productionWorker = 'sekret-backend'/);
   assert.match(workerVerifier, /const alphaWorker = 'sekret-backend-alpha'/);
+  assert.match(workerVerifier, /raw\.split\(accountId\)\.join\(':account'\)/);
 
   const initialReceiptIndex = workerVerifier.indexOf('writeReceipt();');
   const tokenVerifyIndex = workerVerifier.indexOf("await get('/user/tokens/verify')");
@@ -119,6 +120,74 @@ test('Cloudflare Worker authority verifier retains a sanitized blocked receipt o
     assert.equal(receipt.failure?.providerStatus, 400);
     assert.equal(raw.includes('test-token-secret'), false);
     assert.equal(raw.includes('provider-body-must-not-be-retained'), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
+test('Cloudflare Worker authority verifier redacts account IDs from scoped provider failure evidence', async () => {
+  const originalFetch = globalThis.fetch;
+  const envKeys = [
+    'CLOUDFLARE_ACCOUNT_ID',
+    'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+    'EVIDENCE_PATH',
+    'GITHUB_REF',
+    'GITHUB_SHA',
+  ];
+  const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+  const tempDir = await mkdtemp(join(tmpdir(), 'sekret-cloudflare-authority-account-'));
+  const evidencePath = join(tempDir, 'receipt.json');
+  const accountId = 'account-id-must-not-be-retained';
+
+  process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+  process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN = 'scoped-test-token-secret';
+  process.env.EVIDENCE_PATH = evidencePath;
+  process.env.GITHUB_REF = 'refs/heads/main';
+  process.env.GITHUB_SHA = '2222222222222222222222222222222222222222';
+  globalThis.fetch = async (url) => {
+    if (String(url).endsWith('/user/tokens/verify')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, result: { status: 'active' } }),
+      };
+    }
+    if (String(url).includes(`/accounts/${accountId}/workers/scripts`)) {
+      return {
+        ok: false,
+        status: 403,
+        json: async () => ({ success: false, errors: [{ message: 'scoped-provider-body-must-not-be-retained' }] }),
+      };
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  };
+
+  let thrown;
+  try {
+    await import(`${workerVerifierUrl.href}?account-redaction-test=${Date.now()}`);
+  } catch (error) {
+    thrown = error;
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of envKeys) {
+      if (originalEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = originalEnv[key];
+    }
+  }
+
+  try {
+    assert.ok(thrown instanceof Error);
+    assert.match(thrown.message, /GET \/accounts\/:account\/workers\/scripts\?per_page=100 failed with provider status 403/);
+
+    const raw = await readFile(evidencePath, 'utf8');
+    const receipt = JSON.parse(raw);
+    assert.equal(receipt.status, 'blocked');
+    assert.equal(receipt.failure?.code, 'provider-http-failure');
+    assert.equal(receipt.failure?.providerPath, '/accounts/:account/workers/scripts?per_page=100');
+    assert.equal(receipt.failure?.providerStatus, 403);
+    assert.equal(raw.includes(accountId), false);
+    assert.equal(raw.includes('scoped-test-token-secret'), false);
+    assert.equal(raw.includes('scoped-provider-body-must-not-be-retained'), false);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
