@@ -6,14 +6,18 @@ on:
     paths:
       - '.github/workflows/audit-cloudflare-zone-access-coverage.yml'
       - 'scripts/audit-cloudflare-zone-access-coverage.mjs'
+      - 'scripts/audit-cloudflare-app-binding-authority.mjs'
       - 'test/cloudflare-zone-access-coverage-audit.test.mjs'
+      - 'test/cloudflare-app-binding-authority-audit.test.mjs'
       - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
   push:
     branches: [main]
     paths:
       - '.github/workflows/audit-cloudflare-zone-access-coverage.yml'
       - 'scripts/audit-cloudflare-zone-access-coverage.mjs'
+      - 'scripts/audit-cloudflare-app-binding-authority.mjs'
       - 'test/cloudflare-zone-access-coverage-audit.test.mjs'
+      - 'test/cloudflare-app-binding-authority-audit.test.mjs'
       - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
   workflow_dispatch:
 
@@ -28,13 +32,18 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
   CLOUDFLARE_ZONE_ACCESS_EVIDENCE_PATH: artifacts/cloudflare-zone-access-coverage.json
+  CLOUDFLARE_APP_BINDING_EVIDENCE_PATH: artifacts/cloudflare-app-binding-authority.json
   CLOUDFLARE_ACCESS_TARGET_ZONE: sekretbip.net
   CLOUDFLARE_ACCESS_TARGET_HOSTS: app.sekretbip.net,api.sekretbip.net
   CLOUDFLARE_ACCESS_BACKEND_WORKER_ID: sekret-backend
+  CLOUDFLARE_APP_HOSTNAME: app.sekretbip.net
+  CLOUDFLARE_PAGES_PROJECT: sekret-bip
+  CLOUDFLARE_APP_URL: https://app.sekretbip.net
+  CLOUDFLARE_API_HEALTH_URL: https://api.sekretbip.net/health
 
 jobs:
   audit:
-    name: Audit Se’kret zone-scoped Access coverage
+    name: Audit Se’kret public front-door authority
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -57,8 +66,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify redacted zone Access audit contract
-        run: node --test test/cloudflare-zone-access-coverage-audit.test.mjs test/cloudflare-zone-access-workflow-contract.test.mjs
+      - name: Verify redacted public front-door audit contracts
+        run: node --test test/cloudflare-zone-access-coverage-audit.test.mjs test/cloudflare-app-binding-authority-audit.test.mjs test/cloudflare-zone-access-workflow-contract.test.mjs
 
       - name: Require exact current main before Cloudflare secret use
         if: github.event_name != 'pull_request'
@@ -77,7 +86,7 @@ jobs:
           } | node -e "let body='';process.stdin.on('data',c=>body+=c);process.stdin.on('end',()=>{const parsed=JSON.parse(body);if(!parsed.sha)process.exit(2);process.stdout.write(parsed.sha);});")"
           printf 'expected_head=%s\ncurrent_main=%s\n' "$EXPECTED_HEAD_SHA" "$current_main"
           test "$EXPECTED_HEAD_SHA" = "$current_main" || {
-            echo 'Refusing Cloudflare zone Access audit because workflow SHA is no longer current main.' >&2
+            echo 'Refusing Cloudflare public front-door audit because workflow SHA is no longer current main.' >&2
             exit 1
           }
 
@@ -90,11 +99,21 @@ jobs:
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         run: node scripts/audit-cloudflare-zone-access-coverage.mjs
 
-      - name: Upload redacted zone Access evidence
+      - name: Audit public app Pages and Worker binding authority
+        if: github.event_name != 'pull_request'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+        run: node scripts/audit-cloudflare-app-binding-authority.mjs
+
+      - name: Upload redacted public front-door evidence
         if: github.event_name != 'pull_request' && always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-zone-access-coverage-${{ env.EXPECTED_HEAD_SHA }}
-          path: artifacts/cloudflare-zone-access-coverage.json
+          path: |
+            artifacts/cloudflare-zone-access-coverage.json
+            artifacts/cloudflare-app-binding-authority.json
           if-no-files-found: error
           retention-days: 30
