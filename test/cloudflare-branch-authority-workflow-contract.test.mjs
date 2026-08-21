@@ -35,6 +35,7 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.match(workflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
   assert.match(workflow, /verify-cloudflare-worker-branch-authority\.mjs/);
   assert.match(workflow, /verify-cloudflare-pages-branch-authority\.mjs/);
+  assert.match(workflow, /if-no-files-found: error/);
 
   const checkoutIndex = workflow.indexOf('Check out exact current main without credentials');
   const setupNodeIndex = workflow.indexOf('Set up Node for Cloudflare authority verifier');
