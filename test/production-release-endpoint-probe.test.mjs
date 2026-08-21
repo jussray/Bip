@@ -23,6 +23,7 @@ function mockResponse({
   redirected = false,
   headers = {'content-type': 'application/json'},
   json = {commitSha: 'a'.repeat(40)},
+  body = '',
 } = {}) {
   return {
     status,
@@ -30,6 +31,13 @@ function mockResponse({
     url,
     redirected,
     headers: mockHeaders(headers),
+    clone() {
+      return {
+        async text() {
+          return body;
+        },
+      };
+    },
     async json() {
       if (json instanceof Error) throw json;
       return json;
@@ -71,6 +79,43 @@ test('redacts Cloudflare Access redirect authority and query metadata before evi
   assert.equal(probe.finalUrl, 'https://cloudflareaccess.com/cdn-cgi/access/login/app.sekretbip.net');
   const retained = JSON.stringify(probe);
   assert.doesNotMatch(retained, /private-team|secret-kid|signed-payload|opaque|[?&#]/);
+});
+
+test('classifies a same-host 200 Cloudflare Access sign-in page without retaining the HTML', async () => {
+  const accessHtml = '<!DOCTYPE html><html><head><title>Sign in ・ Cloudflare Access</title></head><body>/cdn-cgi/access/login</body></html>';
+  const probe = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
+    fetchImpl: async () =>
+      mockResponse({
+        status: 200,
+        url: 'https://app.sekretbip.net/.well-known/sekret-release.json',
+        redirected: false,
+        headers: {'content-type': 'text/html; charset=UTF-8'},
+        body: accessHtml,
+        json: new SyntaxError('not JSON'),
+      }),
+  });
+
+  assert.equal(probe.accessBlockPage, true);
+  assert.equal(probe.classification, 'cloudflare-access-intercepted');
+  const retained = JSON.stringify(probe);
+  assert.doesNotMatch(retained, /Sign in|Cloudflare Access|cdn-cgi\/access\/login/);
+});
+
+test('does not promote ordinary same-host HTML into a Cloudflare Access claim', async () => {
+  const probe = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
+    fetchImpl: async () =>
+      mockResponse({
+        status: 200,
+        url: 'https://app.sekretbip.net/.well-known/sekret-release.json',
+        redirected: false,
+        headers: {'content-type': 'text/html'},
+        body: '<html><head><title>Maintenance</title></head><body>Please retry later</body></html>',
+        json: new SyntaxError('not JSON'),
+      }),
+  });
+
+  assert.equal(probe.accessBlockPage, false);
+  assert.equal(probe.classification, 'invalid-json');
 });
 
 test('treats an opaque forbidden response as an HTTP error without reading its body', async () => {
