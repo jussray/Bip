@@ -176,7 +176,7 @@ test('production reconciler workflow runs safety checks on PRs and keeps provide
   assert.match(workflow, /push:\s*\n\s+branches:\s*\[main\]/);
   assert.match(workflow, /workflow_dispatch:\s*\n\s+inputs:/);
   assert.match(workflow, /Verify focused route reconciler contract/);
-  assert.match(workflow, /node --test test\/cloudflare-app-domain-reconciler\.test\.mjs/);
+  assert.match(workflow, /node --test\s+test\/cloudflare-app-domain-reconciler\.test\.mjs/);
   assert.match(workflow, /apply:/);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch' && inputs\.apply == true/);
   assert.doesNotMatch(workflow, /github\.event_name == 'push' \|\| inputs\.apply == true/);
