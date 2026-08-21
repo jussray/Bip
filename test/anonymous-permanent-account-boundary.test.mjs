@@ -30,14 +30,13 @@ test('anonymous sessions cannot write or read the canonical Bip event ledger', a
   assert.match(sql, /revoke all on table public\.bip_events from public, anon, authenticated/);
 });
 
-test('legacy activity event writes cannot mint points for anonymous sessions', async () => {
+test('live-only legacy activity events are hardened without breaking a clean replay', async () => {
   const sql = await readMigration();
-  const insertBody = policyBody(sql, 'activity_events_permanent_owner_insert', 'activity_events');
-  const selectBody = policyBody(sql, 'activity_events_permanent_owner_select', 'activity_events');
 
-  assert.match(insertBody, /public\.is_non_anonymous_user\(\)/);
-  assert.match(insertBody, /\(select auth\.uid\(\)\) = user_id/);
-  assert.match(selectBody, /public\.is_non_anonymous_user\(\)/);
+  assert.match(sql, /if to_regclass\('public\.activity_events'\) is not null then/);
+  assert.match(sql, /create policy activity_events_permanent_owner_insert on public\.activity_events for insert to authenticated with check \(public\.is_non_anonymous_user\(\) and \(select auth\.uid\(\)\) = user_id\)/);
+  assert.match(sql, /create policy activity_events_permanent_owner_select on public\.activity_events for select to authenticated using \(public\.is_non_anonymous_user\(\) and \(select auth\.uid\(\)\) = user_id\)/);
+  assert.doesNotMatch(sql, /^alter table public\.activity_events/m);
 });
 
 test('point, task, and redemption read policies require a permanent account', async () => {
