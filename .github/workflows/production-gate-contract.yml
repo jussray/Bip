@@ -18,6 +18,7 @@ on:
       - 'scripts/write-release-metadata.mjs'
       - 'scripts/verify-cloudflare-native-deploy.mjs'
       - 'scripts/verify-supabase-production-schema.mjs'
+      - 'scripts/verify-supabase-production-schema-core.mjs'
       - 'scripts/publish-production-release-observation.mjs'
       - 'test/cloudflare-access-production-verification.test.mjs'
       - 'test/production-release-endpoint-probe.test.mjs'
@@ -29,6 +30,7 @@ on:
       - 'test/supabase-verifier-legacy-receipts.test.mjs'
       - 'test/supabase-production-blocker-evidence.test.mjs'
       - 'test/supabase-production-migration-workflow.test.mjs'
+      - 'test/supabase-anonymous-boundary-production-receipt-alias.test.mjs'
       - 'test/release-metadata-bootstrap.test.mjs'
       - 'test/release-metadata.test.mjs'
 
@@ -88,6 +90,7 @@ jobs:
           test/supabase-verifier-legacy-receipts.test.mjs
           test/supabase-production-blocker-evidence.test.mjs
           test/supabase-production-migration-workflow.test.mjs
+          test/supabase-anonymous-boundary-production-receipt-alias.test.mjs
           test/release-metadata.test.mjs
           test/release-metadata-bootstrap.test.mjs
           test/cloudflare-pages-build-environment.test.mjs
