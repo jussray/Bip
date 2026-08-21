@@ -27,27 +27,24 @@ with check (
 comment on policy bip_events_permanent_owner_all on public.bip_events is
   'Permanent authenticated account may access only its own canonical Bip activity ledger.';
 
-alter table public.activity_events enable row level security;
-revoke all on table public.activity_events from public, anon, authenticated;
-grant select, insert on table public.activity_events to authenticated;
-drop policy if exists activity_events_owner_insert on public.activity_events;
-drop policy if exists activity_events_owner_select on public.activity_events;
-create policy activity_events_permanent_owner_insert
-on public.activity_events
-for insert
-to authenticated
-with check (
-  public.is_non_anonymous_user()
-  and (select auth.uid()) = user_id
-);
-create policy activity_events_permanent_owner_select
-on public.activity_events
-for select
-to authenticated
-using (
-  public.is_non_anonymous_user()
-  and (select auth.uid()) = user_id
-);
+-- activity_events exists in the current production lineage but is intentionally
+-- absent from a clean canonical replay. Harden that historical live-only table
+-- when present without making fresh database construction depend on it.
+do $$
+begin
+  if to_regclass('public.activity_events') is not null then
+    execute 'alter table public.activity_events enable row level security';
+    execute 'revoke all on table public.activity_events from public, anon, authenticated';
+    execute 'grant select, insert on table public.activity_events to authenticated';
+    execute 'drop policy if exists activity_events_owner_insert on public.activity_events';
+    execute 'drop policy if exists activity_events_owner_select on public.activity_events';
+    execute 'drop policy if exists activity_events_permanent_owner_insert on public.activity_events';
+    execute 'drop policy if exists activity_events_permanent_owner_select on public.activity_events';
+    execute 'create policy activity_events_permanent_owner_insert on public.activity_events for insert to authenticated with check (public.is_non_anonymous_user() and (select auth.uid()) = user_id)';
+    execute 'create policy activity_events_permanent_owner_select on public.activity_events for select to authenticated using (public.is_non_anonymous_user() and (select auth.uid()) = user_id)';
+  end if;
+end
+$$;
 
 -- Point-ledger reads should mirror the same permanent-account boundary as the
 -- private sync tables. Trigger functions remain server-owned.
