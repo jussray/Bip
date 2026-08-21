@@ -35,7 +35,9 @@ test('public entry and auth surfaces do not render private product data or secre
 
 test('public auth surfaces expose no parent surveillance or privileged controls', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.getByText('welcome back')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByLabel('Email')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Log in', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /view teen journal|open voice transcript|bypass consent|admin dashboard/i })).toHaveCount(0);
   await expect(page.getByRole('link', { name: /view teen journal|open voice transcript|bypass consent/i })).toHaveCount(0);
 });
