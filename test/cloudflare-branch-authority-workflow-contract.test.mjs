@@ -23,19 +23,30 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   );
   assert.match(workflow, /ref: \$\{\{ github\.sha \}\}/);
   assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /uses: actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/);
+  assert.match(workflow, /node-version: 24/);
   assert.match(workflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
   assert.match(workflow, /verify-cloudflare-worker-branch-authority\.mjs/);
   assert.match(workflow, /verify-cloudflare-pages-branch-authority\.mjs/);
+  assert.match(workflow, /if-no-files-found: error/);
 
   const checkoutIndex = workflow.indexOf('Check out exact current main without credentials');
+  const setupNodeIndex = workflow.indexOf('Use repository proof runtime');
   const providerReadIndex = workflow.indexOf(
     'Read current two-Worker topology and verify production Worker branch authority',
   );
   assert.ok(checkoutIndex >= 0);
-  assert.ok(providerReadIndex > checkoutIndex);
+  assert.ok(setupNodeIndex > checkoutIndex);
+  assert.ok(providerReadIndex > setupNodeIndex);
 
   assert.match(workerVerifier, /mode: 'read-only'/);
   assert.match(workerVerifier, /mutationPerformed: false/);
+  assert.match(workerVerifier, /verificationStatus: 'started'/);
+  assert.match(workerVerifier, /function writeReceipt\(\)/);
+  assert.match(workerVerifier, /function fail\(stage, error\)/);
+  assert.match(workerVerifier, /classification: 'provider-read-failed'/);
+  assert.match(workerVerifier, /writeReceipt\(\);\nif \(!accountId\)/);
+  assert.match(workerVerifier, /get\('\/user\/tokens\/verify', 'token-verification'\)/);
   assert.match(workerVerifier, /const separateWorker = 'sekret'/);
   assert.match(workerVerifier, /const productionWorker = 'sekret-backend'/);
   assert.match(workerVerifier, /const alphaWorker = 'sekret-backend-alpha'/);
