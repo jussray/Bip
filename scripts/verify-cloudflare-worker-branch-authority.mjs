@@ -68,6 +68,12 @@ function writeReceipt() {
   fs.writeFileSync(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 }
 
+function publicProviderPath(providerPath) {
+  const raw = clean(providerPath);
+  if (!raw) return null;
+  return accountId ? raw.split(accountId).join(':account') : raw;
+}
+
 function fail(code, message, details = {}) {
   receipt.status = 'blocked';
   receipt.failure = {
@@ -80,21 +86,22 @@ function fail(code, message, details = {}) {
 }
 
 async function get(providerPath) {
+  const retainedProviderPath = publicProviderPath(providerPath);
   let response;
   try {
     response = await fetch(`${API}${providerPath}`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     });
   } catch {
-    fail('provider-request-failed', `GET ${providerPath} failed before provider response`, {
-      providerPath,
+    fail('provider-request-failed', `GET ${retainedProviderPath} failed before provider response`, {
+      providerPath: retainedProviderPath,
     });
   }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
-    fail('provider-http-failure', `GET ${providerPath} failed with provider status ${response.status}`, {
-      providerPath,
+    fail('provider-http-failure', `GET ${retainedProviderPath} failed with provider status ${response.status}`, {
+      providerPath: retainedProviderPath,
       providerStatus: response.status,
     });
   }
