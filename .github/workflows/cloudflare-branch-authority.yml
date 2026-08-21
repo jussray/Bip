@@ -69,5 +69,5 @@ jobs:
           path: |
             ${{ env.EVIDENCE_PATH }}
             ${{ env.PAGES_EVIDENCE_PATH }}
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
