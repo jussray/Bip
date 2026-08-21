@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 const workflow = await readFile(
   new URL('../.github/workflows/cloudflare-branch-authority.yml', import.meta.url),
   'utf8',
 );
-const workerVerifier = await readFile(
-  new URL('../scripts/verify-cloudflare-worker-branch-authority.mjs', import.meta.url),
-  'utf8',
+const workerVerifierUrl = new URL(
+  '../scripts/verify-cloudflare-worker-branch-authority.mjs',
+  import.meta.url,
 );
+const workerVerifier = await readFile(workerVerifierUrl, 'utf8');
 
 test('Cloudflare Worker and Pages branch-authority workflow is read-only and exact-current-main gated', () => {
   assert.match(workflow, /name: Audit Cloudflare Worker and Pages Branch Authority/);
@@ -47,7 +50,6 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.match(workerVerifier, /mutationPerformed: false/);
   assert.match(workerVerifier, /status: 'started'/);
   assert.match(workerVerifier, /receipt\.status = 'blocked'/);
-  assert.match(workerVerifier, /providerPath: path/);
   assert.match(workerVerifier, /providerStatus: response\.status/);
   assert.match(workerVerifier, /receipt\.status = 'verified'/);
   assert.match(workerVerifier, /const separateWorker = 'sekret'/);
@@ -63,4 +65,60 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.doesNotMatch(workflow, /method:\s*['\"]?(?:PUT|PATCH|DELETE)/i);
   assert.doesNotMatch(workflow, /\/cancel(?:\b|`|\$\{)/);
   assert.doesNotMatch(workflow, /deletedPreviewTriggers|cancelledNonMainBuilds/);
+});
+
+test('Cloudflare Worker authority verifier retains a sanitized blocked receipt on early provider failure', async () => {
+  const originalFetch = globalThis.fetch;
+  const envKeys = [
+    'CLOUDFLARE_ACCOUNT_ID',
+    'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+    'EVIDENCE_PATH',
+    'GITHUB_REF',
+    'GITHUB_SHA',
+  ];
+  const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+  const tempDir = await mkdtemp(join(tmpdir(), 'sekret-cloudflare-authority-'));
+  const evidencePath = join(tempDir, 'receipt.json');
+
+  process.env.CLOUDFLARE_ACCOUNT_ID = 'test-account';
+  process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN = 'test-token-secret';
+  process.env.EVIDENCE_PATH = evidencePath;
+  process.env.GITHUB_REF = 'refs/heads/main';
+  process.env.GITHUB_SHA = '1111111111111111111111111111111111111111';
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 400,
+    json: async () => ({ success: false, errors: [{ message: 'provider-body-must-not-be-retained' }] }),
+  });
+
+  let thrown;
+  try {
+    await import(`${workerVerifierUrl.href}?blocked-receipt-test=${Date.now()}`);
+  } catch (error) {
+    thrown = error;
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of envKeys) {
+      if (originalEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = originalEnv[key];
+    }
+  }
+
+  try {
+    assert.ok(thrown instanceof Error);
+    assert.match(thrown.message, /GET \/user\/tokens\/verify failed with provider status 400/);
+
+    const raw = await readFile(evidencePath, 'utf8');
+    const receipt = JSON.parse(raw);
+    assert.equal(receipt.status, 'blocked');
+    assert.equal(receipt.mode, 'read-only');
+    assert.equal(receipt.mutationPerformed, false);
+    assert.equal(receipt.failure?.code, 'provider-http-failure');
+    assert.equal(receipt.failure?.providerPath, '/user/tokens/verify');
+    assert.equal(receipt.failure?.providerStatus, 400);
+    assert.equal(raw.includes('test-token-secret'), false);
+    assert.equal(raw.includes('provider-body-must-not-be-retained'), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
