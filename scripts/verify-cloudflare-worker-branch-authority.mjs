@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 
 const API = 'https://api.cloudflare.com/client/v4';
 const clean = (value) => String(value ?? '').trim();
@@ -62,8 +63,7 @@ const receipt = {
 };
 
 function writeReceipt() {
-  fs.mkdirSync(new URL('../artifacts/', import.meta.url), { recursive: true });
-  fs.mkdirSync(evidencePath.includes('/') ? evidencePath.slice(0, evidencePath.lastIndexOf('/')) : '.', { recursive: true });
+  fs.mkdirSync(path.dirname(evidencePath), { recursive: true });
   receipt.updatedAt = new Date().toISOString();
   fs.writeFileSync(evidencePath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 }
@@ -79,22 +79,22 @@ function fail(code, message, details = {}) {
   throw new Error(message);
 }
 
-async function get(path) {
+async function get(providerPath) {
   let response;
   try {
-    response = await fetch(`${API}${path}`, {
+    response = await fetch(`${API}${providerPath}`, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     });
   } catch {
-    fail('provider-request-failed', `GET ${path} failed before provider response`, {
-      providerPath: path,
+    fail('provider-request-failed', `GET ${providerPath} failed before provider response`, {
+      providerPath,
     });
   }
 
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
-    fail('provider-http-failure', `GET ${path} failed with provider status ${response.status}`, {
-      providerPath: path,
+    fail('provider-http-failure', `GET ${providerPath} failed with provider status ${response.status}`, {
+      providerPath,
       providerStatus: response.status,
     });
   }
