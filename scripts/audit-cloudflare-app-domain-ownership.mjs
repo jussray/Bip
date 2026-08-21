@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
@@ -60,11 +61,26 @@ async function probeApp(url) {
     status: response.status,
     contentType: response.headers.get('content-type') || '',
     bodyFingerprint: body.replace(/[\r\n]+/g, '').slice(0, 240),
+    bodySha256: createHash('sha256').update(body).digest('hex'),
   };
   return {
     ...probe,
     accessIntercepted: isCloudflareAccessUrl(probe.finalUrl),
     frontendLike: appProbeIsFrontend(probe),
+  };
+}
+
+function summarizeRuntime(runtime) {
+  return {
+    url: runtime.url,
+    requestedUrl: runtime.requestedUrl,
+    finalUrl: runtime.finalUrl,
+    redirected: runtime.redirected,
+    status: runtime.status,
+    contentType: runtime.contentType,
+    bodySha256: runtime.bodySha256,
+    accessIntercepted: runtime.accessIntercepted,
+    frontendLike: runtime.frontendLike,
   };
 }
 
@@ -170,7 +186,7 @@ export async function auditCloudflareAppDomainOwnership(env = process.env) {
       foreignExactRoutes: classification.foreignExactRoutes.map(summarizeRoute),
       broadRoutes: classification.broadRoutes.map(summarizeRoute),
     },
-    runtime,
+    runtime: summarizeRuntime(runtime),
     backend,
     decision,
     nextAuthority: 'provider mutation remains separately founder-gated',
