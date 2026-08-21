@@ -245,15 +245,33 @@ using (
   )
 );
 
+-- Production currently identifies reward owners with user_id, while a clean
+-- canonical replay still carries the earlier teen_id column. Harden whichever
+-- lineage is present and fail closed if neither ownership column exists.
 drop policy if exists reward_redemptions_owner_read on public.reward_redemptions;
-create policy reward_redemptions_owner_read
-on public.reward_redemptions
-for select
-to authenticated
-using (
-  public.is_non_anonymous_user()
-  and (select auth.uid()) = user_id
-);
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'reward_redemptions'
+      and column_name = 'user_id'
+  ) then
+    execute 'create policy reward_redemptions_owner_read on public.reward_redemptions for select to authenticated using (public.is_non_anonymous_user() and (select auth.uid()) = user_id)';
+  elsif exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'reward_redemptions'
+      and column_name = 'teen_id'
+  ) then
+    execute 'create policy reward_redemptions_owner_read on public.reward_redemptions for select to authenticated using (public.is_non_anonymous_user() and (select auth.uid()) = teen_id)';
+  else
+    raise exception 'reward_redemptions_owner_column_missing';
+  end if;
+end
+$$;
 
 -- Direct circle profile reads are owner-only for permanent accounts. The feed
 -- identity RPC intentionally exposes only pseudonym fields, so give it the same
