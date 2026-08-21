@@ -60,11 +60,7 @@ jobs:
           node-version: '24'
 
       - name: Verify focused route reconciler contract
-        run: >-
-          node --test
-          test/cloudflare-app-domain-reconciler.test.mjs
-          test/cloudflare-app-domain-failure-receipt.test.mjs
-          test/cloudflare-app-domain-readonly-audit.test.mjs
+        run: node --test test/cloudflare-app-domain-reconciler.test.mjs test/cloudflare-app-domain-failure-receipt.test.mjs test/cloudflare-app-domain-readonly-audit.test.mjs
 
       - name: Show non-destructive plan
         run: node scripts/reconcile-cloudflare-app-domain.mjs
