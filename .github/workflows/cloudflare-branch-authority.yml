@@ -39,6 +39,11 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - name: Set up Node for Cloudflare authority verifier
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+
       - name: Read current two-Worker topology and verify production Worker branch authority
         shell: bash
         env:
@@ -64,5 +69,5 @@ jobs:
           path: |
             ${{ env.EVIDENCE_PATH }}
             ${{ env.PAGES_EVIDENCE_PATH }}
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 30
