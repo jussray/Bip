@@ -81,7 +81,7 @@ test('unexplained interception stays fail-closed when no matching provider bindi
   );
 });
 
-test('audit implementation contains no provider mutation method', () => {
+test('audit implementation contains no provider mutation method and retains only a body digest', () => {
   const source = fs.readFileSync(
     new URL('../scripts/audit-cloudflare-app-domain-ownership.mjs', import.meta.url),
     'utf8',
@@ -91,6 +91,10 @@ test('audit implementation contains no provider mutation method', () => {
   assert.doesNotMatch(source, /method:\s*['"](?:DELETE|POST|PUT|PATCH)['"]/);
   assert.match(source, /mutationAttempted:\s*false/);
   assert.match(source, /provider mutation remains separately founder-gated/);
+  assert.match(source, /createHash\('sha256'\)/);
+  assert.match(source, /bodySha256/);
+  assert.match(source, /runtime:\s*summarizeRuntime\(runtime\)/);
+  assert.doesNotMatch(source, /runtime:\s*runtime[,\n]/);
 });
 
 test('workflow runs provider inspection only after merge to main and retains its receipt', () => {
