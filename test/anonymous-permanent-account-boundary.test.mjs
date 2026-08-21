@@ -39,7 +39,7 @@ test('live-only legacy activity events are hardened without breaking a clean rep
   assert.doesNotMatch(sql, /^alter table public\.activity_events/m);
 });
 
-test('point, task, and redemption read policies require a permanent account', async () => {
+test('point and task read policies require a permanent account', async () => {
   const sql = await readMigration();
   const requiredPolicies = [
     ['app_point_awards_owner_read', 'app_point_awards'],
@@ -51,13 +51,22 @@ test('point, task, and redemption read policies require a permanent account', as
     ['bip_tasks_linked_parent_select', 'bip_tasks'],
     ['task_submissions_teen_select', 'task_submissions'],
     ['task_submissions_linked_parent_select', 'task_submissions'],
-    ['reward_redemptions_owner_read', 'reward_redemptions'],
   ];
 
   for (const [policyName, tableName] of requiredPolicies) {
     const body = policyBody(sql, policyName, tableName);
     assert.match(body, /public\.is_non_anonymous_user\(\)/, `${policyName} must reject anonymous sessions`);
   }
+});
+
+test('reward redemption reads harden both production and clean-replay owner column variants', async () => {
+  const sql = await readMigration();
+
+  assert.match(sql, /table_name = 'reward_redemptions'[\s\S]*column_name = 'user_id'/);
+  assert.match(sql, /reward_redemptions_owner_read on public\.reward_redemptions for select to authenticated using \(public\.is_non_anonymous_user\(\) and \(select auth\.uid\(\)\) = user_id\)/);
+  assert.match(sql, /table_name = 'reward_redemptions'[\s\S]*column_name = 'teen_id'/);
+  assert.match(sql, /reward_redemptions_owner_read on public\.reward_redemptions for select to authenticated using \(public\.is_non_anonymous_user\(\) and \(select auth\.uid\(\)\) = teen_id\)/);
+  assert.match(sql, /raise exception 'reward_redemptions_owner_column_missing'/);
 });
 
 test('task mutations retain role/link rules while adding the permanent-account gate', async () => {
