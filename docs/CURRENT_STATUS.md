@@ -25,12 +25,25 @@ Durable foundations include:
 
 - Expo Router auth, onboarding, Teen, Parent, and founder/internal route groups;
 - Supabase Auth, Postgres, RLS, Storage, Edge Functions, and ordered migrations;
-- canonical Cloudflare Worker `sekret-backend`;
+- `https://api.sekretbip.net` as the stable public API origin currently configured to `sekret-backend`;
+- founder-confirmed active Cloudflare Worker `sekret` as the companion API lineage, with exact provider routing/bindings requiring live readback;
 - canonical Cloudflare Pages project `sekret-bip`;
-- shared typed frontend-to-Worker contracts and stable error mapping;
+- shared typed companion request/reply/voice/transcription contracts and stable error mapping;
 - privacy-safe companion, Circle, Calm/Comfort, relationship, deletion, and operational contracts at varying evidence levels;
 - exact-release verification machinery and retained evidence boundaries;
 - production audience journeys for Teen, Bip Jr, and Parent that still require an exact deployed-release execution before they become production proof.
+
+## Worker purpose rule
+
+Current routing and target architecture are intentionally separate claims.
+
+**Current repository routing:** clients call `api.sekretbip.net`, which `wrangler.toml` maps to `sekret-backend`.
+
+**Durable purpose boundary:** companion reply/voice/transcription execution belongs with `sekret`; privileged Bridge/data/email/platform work belongs with `sekret-backend`.
+
+**Preferred migration:** preserve the public API URL and delegate `/api/sekret/*` from `sekret-backend` to `sekret` through a Cloudflare Service Binding after provider readback, compatibility proof, least-privilege secret review, and founder approval.
+
+Until that cutover is proven, do not describe the service binding as live. Do not put `SUPABASE_SERVICE_ROLE_KEY` into `sekret` merely to preserve telemetry.
 
 ## Evidence layers
 
@@ -39,7 +52,7 @@ Keep these independent:
 - code present in a branch;
 - exact-head PR checks;
 - checks on the merge/current-main commit;
-- Cloudflare build/deployment/configuration evidence;
+- Cloudflare build/deployment/configuration evidence for each Worker and any binding between them;
 - live Supabase schema/authorization/runtime evidence;
 - production browser evidence;
 - controlled-account evidence;
@@ -68,12 +81,26 @@ State → Evidence → Claim
 
 If `main` moved after exact-head evidence, re-pin. If a provider/runtime observation is newer and contradictory, supersede the older current-state claim while retaining it as historical evidence.
 
+For Worker topology questions, separately report:
+
+```text
+PUBLIC_FRONT_DOOR
+COMPANION_WORKER
+PLATFORM_WORKER
+SERVICE_BINDING_STATE
+PROVIDER_ROUTE_READBACK
+EXACT_RELEASE_IDENTITY_PER_WORKER
+```
+
+Unknown provider bindings remain UNKNOWN rather than being inferred from repository filenames.
+
 ## Launch evidence classes
 
 Before public-launch readiness is claimed, applicable gates include:
 
 - exact production routing and release identity;
-- canonical Worker/backend health;
+- canonical public backend health;
+- exact companion Worker identity and service-binding proof once the split is activated;
 - live Supabase migration and runtime/authorization evidence;
 - auth, session restore, recovery, and onboarding journeys;
 - Teen, Bip Jr, Parent/Bridge, Cloud/Comfort, privacy-denial, unlink, and deletion journeys;
@@ -94,6 +121,8 @@ L4 continuity memory and L5 synthesis remain separately governed future lanes un
 
 - `docs/TRUTH_AUTHORITY.md`
 - `docs/DOCUMENTATION_MAP.md`
+- `docs/CLOUDFLARE_OWNERSHIP.md`
+- `docs/CLOUDFLARE_WORKER_CONSOLIDATION.md`
 - `docs/LAUNCH_ROADMAP.md`
 - `DEPLOYMENT.md`
 - `implementation-ledger.json`

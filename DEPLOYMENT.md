@@ -10,11 +10,28 @@ Before any deployment or release claim, resolve fresh GitHub `main`, the newest 
 ## Production authority
 
 - Web: Cloudflare Pages project `sekret-bip` through native Git integration.
-- API: canonical Cloudflare Worker `sekret-backend` through Workers Builds.
+- Public API origin: `https://api.sekretbip.net`, currently attached by repository configuration to `sekret-backend`.
+- Companion execution lineage: Cloudflare Worker `sekret`, founder-confirmed active; exact live provider binding remains Cloudflare readback truth.
 - Database/Auth/Storage/RLS/Edge Functions: Supabase.
 - Native builds: Expo / EAS.
 
+The canonical Cloudflare Worker `sekret-backend` remains the repository-configured public production API authority until an explicitly approved and independently proven routing change says otherwise.
+
 GitHub Actions verifies production evidence; it must not quietly become a second normal production deployment authority. Manual deployment commands are emergency administrator fallbacks and require separate authority.
+
+## Worker purpose boundary
+
+The production client remains single-homed to `api.sekretbip.net`. Do not add a second public companion endpoint to client configuration merely to separate Worker responsibilities.
+
+The preferred end-state is:
+
+- `sekret-backend`: public ingress, Bridge/privileged-data operations, server-side Supabase service-role work, inbound email, and other platform backend logic;
+- `sekret`: `/api/sekret/reply`, `/api/sekret/voice`, `/api/sekret/transcribe`, companion style/safety enforcement, and AI/voice provider execution;
+- `sekret-backend` delegates `/api/sekret/*` to `sekret` through a Cloudflare Service Binding after explicit provider readback, exact-head testing, and founder approval.
+
+This is a migration target, not a claim that delegation is currently deployed. Until cutover proof exists, current `wrangler.toml` and `api.sekretbip.net` remain the active repository deployment contract.
+
+`SUPABASE_SERVICE_ROLE_KEY` must stay with the privileged platform boundary. Do not copy it into `sekret` merely because the current companion telemetry path writes metadata directly to Supabase; migrate that telemetry through a narrow internal/backend-owned path first.
 
 ## Local development
 
@@ -41,9 +58,11 @@ Do not maintain a second bootstrap schema. Migration history is append-only; fre
 
 Deploy Edge Functions with reviewed authentication settings. Custom server-to-server authentication boundaries require focused negative-auth proof; repository configuration alone is not live behavior evidence.
 
-## Cloudflare Worker
+## Cloudflare Workers
 
-The canonical Worker is `sekret-backend`, configured by `wrangler.toml`.
+### `sekret-backend`
+
+Current canonical public Worker, configured by `wrangler.toml`.
 
 Emergency manual fallback:
 
@@ -52,6 +71,12 @@ npm run deploy:worker
 ```
 
 This command requires independently authorized Cloudflare credentials. Private Worker routes must verify authenticated identity and must not trust a user identifier supplied only in a request body.
+
+### `sekret`
+
+`sekret` is a protected founder-confirmed active companion Worker lineage. Before any deployment/routing mutation involving it, retain provider evidence for routes/custom domains, workers.dev state, service bindings, secret names, build trigger/branch, immutable version identity, traffic, errors, and callers.
+
+If the approved purpose split is implemented, deploy a backward-compatible `sekret` companion release first, then add/activate the backend service binding, then remove duplicate companion code only after rollback proof. Cloudflare Workers using Service Bindings are deployed separately, so the target companion Worker must exist before the caller declares the binding.
 
 ## Cloudflare Pages
 
@@ -75,14 +100,21 @@ Preview success is preview evidence only. It must not be promoted into canonical
 
 ## Exact production verification
 
-A production release is VERIFIED only when the same intended release target has all applicable witnesses:
+Before any Worker split, a production release is VERIFIED only when the same intended release target has all applicable witnesses:
 
 1. exact-current-main repository authority;
 2. successful canonical Pages provider event and deployed release marker matching the target;
-3. canonical `sekret-backend` identity and healthy runtime;
+3. canonical `sekret-backend` identity and healthy runtime at `api.sekretbip.net`;
 4. live Supabase migration/schema/runtime evidence for the intended project;
 5. read-only production Playwright against that exact deployment;
 6. any required controlled-account or physical-device journeys.
+
+After an approved `sekret-backend -> sekret` service-binding cutover, add these required witnesses:
+
+- exact `sekret` companion Worker release identity/version;
+- provider readback of the service binding;
+- reply, voice, and transcription journeys proving requests actually execute on the intended companion release;
+- rollback proof showing `/api/sekret/*` can return to the previous backend-local implementation without a client release.
 
 If Cloudflare Access protects a verification path, use only an explicitly authorized service-auth verification lane. Never weaken Access, leak credentials into traces/artifacts, or treat an interception as application success.
 
@@ -105,6 +137,6 @@ npm run verify:prepush
 
 ## Release decision checklist
 
-Before calling an environment demo-ready or launch-ready, verify the applicable exact release identity, database authorization/runtime state, secrets/configuration boundaries, CORS, Teen/Parent privacy, account deletion/cleanup, accessibility/device behavior, legal/safeguarding/store requirements, monitoring, incident response, backup, restore, and rollback.
+Before calling an environment demo-ready or launch-ready, verify the applicable exact release identity, Worker-to-Worker binding when present, database authorization/runtime state, secrets/configuration boundaries, CORS, Teen/Parent privacy, account deletion/cleanup, accessibility/device behavior, legal/safeguarding/store requirements, monitoring, incident response, backup, restore, and rollback.
 
 The implementation ledger must not promote an integrated feature to verified/released without evidence that matches the claimed environment and target.
