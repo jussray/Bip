@@ -18,6 +18,16 @@ test('TC-01 Barrier A removes automatic scanning from private and mixed-visibili
   assert.doesNotMatch(migration, /DROP TRIGGER IF EXISTS safety_scan_public_circle/);
 });
 
+test('database trigger function also fails closed to the public-only source', () => {
+  assert.match(migration, /IF TG_TABLE_NAME::text <> 'public_circle_posts' THEN\s+RETURN NEW;/s);
+  const httpBody = migration.match(/body := jsonb_build_object\([\s\S]*?\),\s+headers :=/);
+  assert.ok(httpBody, 'expected metadata-only net.http_post body');
+  assert.match(httpBody[0], /'record_id'/);
+  assert.match(httpBody[0], /'user_id'/);
+  assert.match(httpBody[0], /'source_table'/);
+  assert.doesNotMatch(httpBody[0], /'content'|_content|NEW\.text|NEW\.body/);
+});
+
 test('TC-01 Barrier B uses an explicit automatic-source allowlist', () => {
   assert.match(scanner, /AUTOMATIC_SAFETY_ELIGIBLE_SOURCES = new Set\(\['public_circle_posts'\]\)/);
   assert.match(scanner, /PRIVATE_OR_MIXED_SOURCES = new Set\(\[/);
