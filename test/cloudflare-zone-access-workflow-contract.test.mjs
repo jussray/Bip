@@ -34,6 +34,18 @@ test('public front-door audit is exact-head, independently retained, read-only, 
     assert.ok(workflow.includes(required), `missing public front-door workflow contract: ${required}`);
   }
 
+  const pullRequestIndex = workflow.indexOf('  pull_request:');
+  const pushIndex = workflow.indexOf('  push:');
+  const workflowDispatchIndex = workflow.indexOf('  workflow_dispatch:');
+  const pullRequestBlock = workflow.slice(pullRequestIndex, pushIndex);
+  const pushBlock = workflow.slice(pushIndex, workflowDispatchIndex);
+
+  assert.ok(pullRequestIndex >= 0 && pushIndex > pullRequestIndex, 'pull_request and push triggers must both exist');
+  assert.ok(workflowDispatchIndex > pushIndex, 'workflow_dispatch must follow the push trigger');
+  assert.ok(pullRequestBlock.includes('paths:'), 'PR audit runs should remain scoped to audit-contract changes');
+  assert.ok(pushBlock.includes('branches: [main]'), 'provider authority must reacquire on main pushes');
+  assert.ok(!pushBlock.includes('paths:'), 'every main movement must reacquire provider authority, even when unrelated files changed');
+
   const dedicatedTokenIndex = workflow.indexOf('CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}');
   const generalTokenIndex = workflow.indexOf('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
   assert.ok(dedicatedTokenIndex >= 0 && generalTokenIndex >= 0, 'Access audit must receive dedicated and general token candidates');
