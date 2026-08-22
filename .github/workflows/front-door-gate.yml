@@ -7,15 +7,19 @@ on:
     paths:
       - app/index.tsx
       - screens/WebWelcomeScreen.tsx
+      - src/components/FrontDoorSceneArrival.tsx
+      - src/motion/frontDoorMotion.ts
       - constants/frontDoorTheme.ts
       - constants/vibeColors.ts
       - test/dual-front-door-contract.test.mjs
+      - test/front-door-motion-contract.test.mjs
       - src/middleware/auth.ts
       - src/utils/supabase.ts
       - scripts/playwright-executable.mjs
       - assets/brand/sekret-bip-teen-family-v1.jpg
       - assets/images/parent-space-splash.png
       - e2e/smoke.spec.ts
+      - e2e/front-door-scene-arrival.spec.ts
       - playwright.config.ts
       - package.json
       - package-lock.json
@@ -73,7 +77,9 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node --test test/dual-front-door-contract.test.mjs \
+          node --test \
+            test/dual-front-door-contract.test.mjs \
+            test/front-door-motion-contract.test.mjs \
             2>&1 | tee gate-evidence/front-door-contracts.log
 
       - name: Compare TypeScript diagnostics with base
@@ -135,8 +141,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npx playwright test e2e/smoke.spec.ts \
-            --grep "teen front door|parent front door|rollback front door|web welcome|frontend entry" \
+          npx playwright test \
+            e2e/smoke.spec.ts \
+            e2e/front-door-scene-arrival.spec.ts \
+            --grep "teen front door|parent front door|rollback front door|web welcome|frontend entry|canonical teen front door|reduced motion renders" \
             --trace on 2>&1 | tee gate-evidence/playwright.log
 
       - name: Upload exact-head evidence
