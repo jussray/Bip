@@ -6,7 +6,10 @@ test('installs the public-safe Se’kret Bip guardrail snapshot', async ({ page 
   await expect(page.locator('html')).toHaveAttribute('data-product-stage', 'phased-production-readiness');
 
   const snapshot = await page.evaluate(() => window.__SEKRET_BIP_GUARDRAILS__);
+  expect(snapshot?.version).toBe('1.1.0');
   expect(snapshot?.vision.id).toBe('private-teen-emotional-growth');
+  expect(snapshot?.vision.culturalMission).toMatch(/love.*repair.*communication.*belonging.*family responsibility.*courage.*community/i);
+  expect(snapshot?.vision.proofStrategy).toMatch(/creation over censorship.*measurable evidence/i);
   expect(snapshot?.privacyDefault).toBe('private');
   expect(snapshot?.parentAccessMode).toBe('verified-consent-scoped');
   expect(snapshot?.publicIdentityMode).toBe('anonymous-contextual');
