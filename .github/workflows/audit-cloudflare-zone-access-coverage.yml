@@ -12,13 +12,6 @@ on:
       - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/audit-cloudflare-zone-access-coverage.yml'
-      - 'scripts/audit-cloudflare-zone-access-coverage.mjs'
-      - 'scripts/audit-cloudflare-app-binding-authority.mjs'
-      - 'test/cloudflare-zone-access-coverage-audit.test.mjs'
-      - 'test/cloudflare-app-binding-authority-audit.test.mjs'
-      - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
   workflow_dispatch:
 
 permissions:
