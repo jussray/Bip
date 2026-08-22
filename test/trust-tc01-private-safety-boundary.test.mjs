@@ -10,6 +10,10 @@ const scanner = fs.readFileSync(
   new URL('../supabase/functions/safety-scan/index.ts', import.meta.url),
   'utf8',
 );
+const safetySheet = fs.readFileSync(
+  new URL('../components/safety/SafetyExperienceSheet.tsx', import.meta.url),
+  'utf8',
+);
 
 test('TC-01 Barrier A removes automatic scanning from private and mixed-visibility sources', () => {
   assert.match(migration, /DROP TRIGGER IF EXISTS safety_scan_journal ON public\.journal_entries/);
@@ -76,4 +80,12 @@ test('rejection path emits no child identifiers or content to logs', () => {
 test('public-source parent notification remains content-free in this narrow repair', () => {
   assert.match(scanner, /public-source parent notify queued severity=\$\{severity\}/);
   assert.doesNotMatch(scanner, /parent notify queued[^\n]*(?:text|content|record_id|user_id)/);
+});
+
+test('child safety sheet states monitoring and response limits plainly', () => {
+  assert.match(safetySheet, /Bip is not monitoring what you write\./);
+  assert.match(safetySheet, /cannot promise they will answer\./);
+  assert.match(safetySheet, /If you want someone you trust to know, Bridge can help you reach them\./);
+  assert.match(safetySheet, /FALSE_PARENT_NOTIFICATION_CLAIM/);
+  assert.match(safetySheet, /displayedMessage = companionMessage\.replace/);
 });
