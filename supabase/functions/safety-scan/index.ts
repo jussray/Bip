@@ -9,14 +9,16 @@
 //   • Private-source rejection happens before content fetch, classification,
 //     vendor calls, database writes, parent resolution, notifications, or logs.
 //
-// This endpoint remains --no-verify-jwt because the caller is a Postgres trigger.
-// The x-scan-secret shared secret authenticates that internal caller.
+// Security:
+//   • --no-verify-jwt: caller is Postgres trigger, no user JWT available
+//   • Shared secret guard: x-scan-secret must match SAFETY_SCAN_SECRET
+//   • Service role begins only after the source contract passes
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const SCAN_SECRET = Deno.env.get('SAFETY_SCAN_SECRET') ?? '';
-const OPENAI_KEY = Deno.env.get('OPENAI_API_KEY') ?? '';
-const SUPA_URL = Deno.env.get('SUPABASE_URL') ?? '';
+const SCAN_SECRET  = Deno.env.get('SAFETY_SCAN_SECRET')        ?? '';
+const OPENAI_KEY   = Deno.env.get('OPENAI_API_KEY')            ?? '';
+const SUPA_URL     = Deno.env.get('SUPABASE_URL')              ?? '';
 const SUPA_SVC_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
 const AUTOMATIC_SAFETY_ELIGIBLE_SOURCES = new Set(['public_circle_posts']);
@@ -97,6 +99,7 @@ function severityFromMod(mod: ModerationResult): Severity | null {
   return 'low';
 }
 
+// Reduced metadata — never store full OpenAI score array
 function buildScanMetadata(mod: ModerationResult | null, kwTag: string | null): ScanMetadata {
   if (!mod) {
     return {
