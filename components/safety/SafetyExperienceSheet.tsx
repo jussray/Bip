@@ -14,11 +14,13 @@
  *   journal / dismiss       — local state
  *
  * On any action or dismiss: calls acknowledgeAlert(alertId) if alertId present.
- * Never throws — all async paths are guarded.
+ * Failed support actions are surfaced honestly instead of being silently treated
+ * as successful.
  */
 
 import React, { useEffect, useRef } from 'react';
 import {
+  Alert,
   Animated,
   Linking,
   Modal,
@@ -93,7 +95,6 @@ export function SafetyExperienceSheet({ experience, onDismiss }: Props) {
 
   const handleAction = async (target: SafetyAction['target']) => {
     await ack();
-    onDismiss();
     try {
       switch (target) {
         case 'call_988':
@@ -114,8 +115,12 @@ export function SafetyExperienceSheet({ experience, onDismiss }: Props) {
         case 'dismiss':
           break;
       }
+      onDismiss();
     } catch {
-      // Linking failures (simulator) are non-fatal.
+      Alert.alert(
+        'That option did not open',
+        'Please try another support option. Bip has not confirmed that anyone was contacted.',
+      );
     }
   };
 
