@@ -114,7 +114,8 @@ export function SafetyExperienceSheet({ experience, onDismiss }: Props) {
           break;
       }
       onDismiss();
-    } catch {
+    } catch (error) {
+      console.error('Failed to open selected support option', error);
       Alert.alert(
         'That option did not open',
         'Please try another support option. Bip has not confirmed that anyone was contacted.',
