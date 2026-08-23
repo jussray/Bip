@@ -180,6 +180,18 @@ function styleMetadata(style: RuntimeStyleContract): Record<string, unknown> {
   return enforceRuntimeStyleResponse({}, style);
 }
 
+/**
+ * `sekret-reply.ts` sets its own wildcard CORS headers on every response it
+ * builds. Routes delegated to it verbatim (anything not reshaped by
+ * rewriteStyledJsonResponse) must still carry this Worker's origin-locked
+ * headers, or the delegated response silently reopens CORS to '*'.
+ */
+function withCors(response: Response, cors: Record<string, string>): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(cors)) headers.set(key, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 async function rewriteStyledJsonResponse(
   response: Response,
   style: RuntimeStyleContract,
@@ -411,6 +423,7 @@ export default {
       return rewriteStyledJsonResponse(delegated, prepared.style, cors);
     }
 
-    return worker.fetch(request, env as { OPENAI_API_KEY: string }, principal);
+    const fallback = await worker.fetch(request, env as { OPENAI_API_KEY: string }, principal);
+    return withCors(fallback, cors);
   },
 };

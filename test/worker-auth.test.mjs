@@ -127,12 +127,22 @@ test('CORS allows Authorization and remains origin-configurable', () => {
 test('disallowed origins are rejected before auth/delegation', () => {
   const rejectAt = index.indexOf('const blocked = originRejected(');
   const authAt = index.indexOf('await authenticate(request, env)');
-  const delegateAt = index.indexOf('return worker.fetch(request');
+  const delegateAt = index.indexOf('await worker.fetch(request');
   assert.ok(rejectAt > 0);
   assert.ok(rejectAt < authAt);
   assert.ok(rejectAt < delegateAt);
   assert.ok(/origin not allowed' \}, 403/.test(index));
   assert.ok(/if \(!origin \|\| allowed\.includes\(origin\)\) return null/.test(index));
+});
+
+test("fallback delegation carries this Worker's CORS headers, not the delegate's wildcard", () => {
+  // sekret-reply.ts sets 'Access-Control-Allow-Origin': '*' on every response it
+  // builds. The generic fallback path returns that response, so it must be
+  // re-wrapped with the origin-locked headers computed here or CORS reopens to '*'.
+  assert.ok(/function withCors\(response: Response, cors: Record<string, string>\): Response \{/.test(index),
+    'a dedicated header-merge helper wraps the delegated response');
+  assert.ok(/const fallback = await worker\.fetch\(request, env as \{ OPENAI_API_KEY: string \}, principal\);\s*\n\s*return withCors\(fallback, cors\);/.test(index),
+    'the generic fallback path applies withCors before returning');
 });
 
 test('authoritative CORS defaults production to canonical origins and reserves wildcard for dev-open', () => {
