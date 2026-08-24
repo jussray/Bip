@@ -46,13 +46,13 @@ function fakeResponse({
   };
 }
 
-test('production policy requires deprecated pgjwt to remain absent', () => {
+test('founder production policy requires pgjwt installed at 0.2.0', () => {
   assert.deepEqual(PRODUCTION_PGJWT_POLICY, {
-    installed: false,
-    version: null,
-    authority: 'repository-migration',
-    decision: 'drop',
-    boundTo: 'supabase/migrations/20260820211200_drop_deprecated_pgjwt.sql',
+    installed: true,
+    version: '0.2.0',
+    authority: 'founder-explicit',
+    decision: 'retain',
+    boundTo: 'supabase-dashboard:2026-08-20T21:51:28.984Z',
   });
 });
 
@@ -66,7 +66,7 @@ test('production witness reads pgjwt presence and exact version without mutation
   assert.doesNotMatch(query, /\b(insert|update|delete|alter|drop|create|grant|revoke)\b/i);
 });
 
-test('intentional pgjwt absence after the deprecation migration verifies green', async () => {
+test('intentional founder-approved pgjwt 0.2.0 state verifies green', async () => {
   const { migrationsDir, evidencePath } = fixture();
   const evidence = await verifySupabaseProductionSchema({
     config: {
@@ -76,17 +76,17 @@ test('intentional pgjwt absence after the deprecation migration verifies green',
       evidencePath,
     },
     requirePgjwtState: true,
-    fetchImpl: async () => fakeResponse({ installed: false, version: null }),
+    fetchImpl: async () => fakeResponse({ installed: true, version: '0.2.0' }),
   });
 
   assert.equal(evidence.verified, true);
   assert.equal(evidence.status, 'verified');
   assert.equal(evidence.pgjwtObserved, true);
-  assert.equal(evidence.pgjwtInstalled, false);
-  assert.equal(evidence.pgjwtVersion, null);
+  assert.equal(evidence.pgjwtInstalled, true);
+  assert.equal(evidence.pgjwtVersion, '0.2.0');
 });
 
-test('unexpected pgjwt installation fails closed against current policy', async () => {
+test('unexpected pgjwt disable fails closed against founder policy', async () => {
   const { migrationsDir, evidencePath } = fixture();
 
   await assert.rejects(
@@ -98,13 +98,13 @@ test('unexpected pgjwt installation fails closed against current policy', async 
         evidencePath,
       },
       requirePgjwtState: true,
-      fetchImpl: async () => fakeResponse({ installed: true, version: '0.2.0' }),
+      fetchImpl: async () => fakeResponse({ installed: false, version: null }),
     }),
     /SUPABASE_EXTENSION_POLICY_DRIFT/,
   );
 });
 
-test('unexpected pgjwt version also fails closed against current policy', async () => {
+test('unexpected pgjwt version change fails closed against founder policy', async () => {
   const { migrationsDir, evidencePath } = fixture();
 
   await assert.rejects(
@@ -122,7 +122,7 @@ test('unexpected pgjwt version also fails closed against current policy', async 
   );
 });
 
-test('pgjwt policy cannot hide migration-history drift', async () => {
+test('founder pgjwt policy cannot hide migration-history drift', async () => {
   const { migrationsDir, evidencePath } = fixture();
 
   await assert.rejects(
@@ -135,8 +135,8 @@ test('pgjwt policy cannot hide migration-history drift', async () => {
       },
       requirePgjwtState: true,
       fetchImpl: async () => fakeResponse({
-        installed: false,
-        version: null,
+        installed: true,
+        version: '0.2.0',
         migrationName: 'different_migration',
       }),
     }),
