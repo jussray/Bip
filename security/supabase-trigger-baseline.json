@@ -311,27 +311,6 @@
       "deployedLive": true
     },
     {
-      "trigger": "safety_scan_circle",
-      "table": "public.circle_posts",
-      "function": "public.trigger_safety_scan()",
-      "timing": "AFTER",
-      "events": ["INSERT"]
-    },
-    {
-      "trigger": "safety_scan_journal",
-      "table": "public.journal_entries",
-      "function": "public.trigger_safety_scan()",
-      "timing": "AFTER",
-      "events": ["INSERT"]
-    },
-    {
-      "trigger": "safety_scan_posts",
-      "table": "public.posts",
-      "function": "public.trigger_safety_scan()",
-      "timing": "AFTER",
-      "events": ["INSERT"]
-    },
-    {
       "trigger": "safety_scan_public_circle",
       "table": "public.public_circle_posts",
       "function": "public.trigger_safety_scan()",
