@@ -12,11 +12,11 @@ export const PRODUCTION_HISTORY_RUNTIME_ALIASES = Object.freeze({
 });
 
 export const PRODUCTION_PGJWT_POLICY = Object.freeze({
-  installed: false,
-  version: null,
-  authority: 'repository-migration',
-  decision: 'drop',
-  boundTo: 'supabase/migrations/20260820211200_drop_deprecated_pgjwt.sql',
+  installed: true,
+  version: '0.2.0',
+  authority: 'founder-explicit',
+  decision: 'retain',
+  boundTo: 'supabase-dashboard:2026-08-20T21:51:28.984Z',
 });
 
 function clean(value) {
