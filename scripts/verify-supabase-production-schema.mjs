@@ -6,12 +6,17 @@ import * as core from './verify-supabase-production-schema-core.mjs';
 
 export * from './verify-supabase-production-schema-core.mjs';
 
+export const PRODUCTION_HISTORY_RUNTIME_ALIASES = Object.freeze({
+  ...core.PRODUCTION_HISTORY_ALL_ACCEPTED_ALIASES,
+  '20260822060000': '20260824004706',
+});
+
 export const PRODUCTION_PGJWT_POLICY = Object.freeze({
-  installed: true,
-  version: '0.2.0',
-  authority: 'founder-explicit',
-  decision: 'retain',
-  boundTo: 'supabase-dashboard:2026-08-20T21:51:28.984Z',
+  installed: false,
+  version: null,
+  authority: 'repository-migration',
+  decision: 'drop',
+  boundTo: 'supabase/migrations/20260820211200_drop_deprecated_pgjwt.sql',
 });
 
 function clean(value) {
@@ -252,7 +257,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
   const evaluated = core.evaluateMigrationHistory({
     ...row,
     migration_history: migrationHistory,
-  }, repositoryMigrations);
+  }, repositoryMigrations, core.PRODUCTION_HISTORY_AUTHORITY_FLOOR, PRODUCTION_HISTORY_RUNTIME_ALIASES);
   const policy = evaluatePgjwtPolicy(row, {
     allowInjectedFallback: Boolean(options.fetchImpl) && options.requirePgjwtState !== true,
   });
@@ -302,7 +307,7 @@ async function main() {
   const evidence = await verifySupabaseProductionSchema();
   process.stdout.write(
     `Supabase production schema verified at ${evidence.expectedVersion}; `
-    + `pgjwt policy verified at ${evidence.pgjwtVersion}.\n`,
+    + `pgjwt policy verified installed=${evidence.pgjwtInstalled}.\n`,
   );
 }
 
