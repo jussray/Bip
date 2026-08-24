@@ -7,6 +7,14 @@ import {classifyProductionImpact} from '../scripts/classify-production-impact.mj
 
 const workflow = readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
 
+function workflowStepBlock(name) {
+  const marker = `- name: ${name}`;
+  const start = workflow.indexOf(marker);
+  assert.notEqual(start, -1, `missing production workflow step: ${name}`);
+  const next = workflow.indexOf('\n      - name:', start + marker.length);
+  return workflow.slice(start, next === -1 ? workflow.length : next);
+}
+
 test('Cloudflare native deployment verifier is credential-minimal and action-pinned', () => {
   for (const required of [
     'ref: ${{ env.DEPLOYMENT_SHA }}',
@@ -51,6 +59,43 @@ test('main-push classification executes the previous trusted main classifier, ne
   assert.doesNotMatch(
     workflow,
     /classification="\$\(printf '%s\\n' "\$changed_paths" \| node scripts\/classify-production-impact\.mjs\)"/u,
+  );
+});
+
+test('production witnesses continue independently after one witness fails while the job still fails closed', () => {
+  const witnessSteps = [
+    'Verify exact Supabase production schema contract',
+    'Record safe frontend and backend transport evidence',
+    'Wait for exact frontend and backend Worker checks plus release marker',
+    'Verify backend health',
+    'Verify Supabase runtime contracts',
+    'Install Chromium',
+    'Verify exact deployed frontend with Playwright',
+  ];
+
+  for (const name of witnessSteps) {
+    const block = workflowStepBlock(name);
+    assert.match(
+      block,
+      /if: \$\{\{ always\(\) && steps\.trusted_current_main\.outcome == 'success' \}\}/u,
+      `${name} must still execute after an earlier production witness fails`,
+    );
+    assert.doesNotMatch(
+      block,
+      /continue-on-error:\s*true/u,
+      `${name} must remain a load-bearing failure signal`,
+    );
+  }
+
+  assert.match(
+    workflow,
+    /- name: Publish exact production release observation\n\s+if: success\(\)/u,
+    'verified release publication must still require every required witness to pass',
+  );
+  assert.match(
+    workflow,
+    /- name: Publish blocked exact production observation\n\s+if: failure\(\)/u,
+    'a failed witness must still produce a blocked release observation',
   );
 });
 
