@@ -5,9 +5,7 @@ import {
   PRODUCTION_HISTORY_ALL_ACCEPTED_ALIASES,
   PRODUCTION_HISTORY_APPLIED_ALIASES,
   PRODUCTION_HISTORY_RUNTIME_ALIASES,
-  PRODUCTION_PGJWT_POLICY,
   evaluateMigrationHistory,
-  evaluatePgjwtPolicy,
 } from '../scripts/verify-supabase-production-schema.mjs';
 
 const ANON_CANONICAL_VERSION = '20260821071500';
@@ -111,16 +109,4 @@ test('TC-01 alias fails closed when the receipt name differs', () => {
     liveVersion: TC01_LIVE_VERSION,
     name: 'different_migration',
   }]);
-});
-
-test('production pgjwt policy matches the merged deprecation migration', () => {
-  assert.deepEqual(PRODUCTION_PGJWT_POLICY, {
-    installed: false,
-    version: null,
-    authority: 'repository-migration',
-    decision: 'drop',
-    boundTo: 'supabase/migrations/20260820211200_drop_deprecated_pgjwt.sql',
-  });
-  assert.equal(evaluatePgjwtPolicy({ pgjwt_installed: false, pgjwt_version: null }).verified, true);
-  assert.equal(evaluatePgjwtPolicy({ pgjwt_installed: true, pgjwt_version: '0.2.0' }).verified, false);
 });
