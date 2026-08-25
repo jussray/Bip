@@ -13,14 +13,17 @@ const content = fs.readFileSync(
 test('Production Smoke runs live Playwright only after verified production deployment evidence', () => {
   assert.match(content, /workflows: \["Verify Cloudflare Native Deployment"\]/);
   assert.doesNotMatch(content, /\bpull_request:/);
+  assert.doesNotMatch(content, /\bworkflow_dispatch:/);
   assert.match(content, /actions: read/);
   assert.match(
     content,
-    /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
+    /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/,
   );
+  assert.doesNotMatch(content, /github\.event\.workflow_run\.head_sha \|\| github\.sha/);
   assert.match(content, /github\.event\.workflow_run\.head_branch == 'main'/);
   assert.match(content, /github\.event\.workflow_run\.conclusion == 'success'/);
   assert.match(content, /Require successful upstream production verification job/);
+  assert.doesNotMatch(content, /github\.event_name == 'workflow_dispatch'/);
   assert.match(content, /actions\/runs\/\$UPSTREAM_RUN_ID\/jobs\?per_page=100/);
   assert.match(content, /Verify exact frontend Worker, backend Worker, and release/);
   assert.match(content, /target\.conclusion !== "success"/);
