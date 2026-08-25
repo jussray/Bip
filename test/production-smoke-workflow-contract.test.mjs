@@ -28,10 +28,12 @@ test('Production Smoke runs live Playwright only after verified production deplo
   assert.match(content, /persist-credentials: false/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
   assert.match(content, /test "\$actual" = "\$EXPECTED_HEAD_SHA"/);
-  assert.match(content, /playwright\.production\.config\.ts/);
+  assert.match(content, /\.\/node_modules\/\.bin\/playwright install --with-deps chromium/);
+  assert.match(content, /\.\/node_modules\/\.bin\/playwright test --config=playwright\.production\.config\.ts/);
   assert.match(content, /actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/);
   assert.match(content, /actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/);
   assert.match(content, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
   assert.doesNotMatch(content, /workflows: \["Deploy to Cloudflare"\]/);
   assert.doesNotMatch(content, /npm install --no-save --no-package-lock @playwright\/test/);
+  assert.doesNotMatch(content, /\bnpx playwright\b/);
 });
