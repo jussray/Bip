@@ -15,6 +15,24 @@ function stripSqlComments(sql) {
     const char = sql[index];
     const next = sql[index + 1];
 
+    if ((char === 'E' || char === 'e') && next === "'") {
+      const start = index;
+      index += 2;
+      while (index < sql.length) {
+        if (sql[index] === '\\') {
+          index = Math.min(index + 2, sql.length);
+          continue;
+        }
+        if (sql[index] === "'" && sql[index + 1] === "'") {
+          index += 2;
+          continue;
+        }
+        if (sql[index++] === "'") break;
+      }
+      output += sql.slice(start, index);
+      continue;
+    }
+
     if (char === "'") {
       const start = index++;
       while (index < sql.length) {
@@ -108,6 +126,7 @@ test('the repair does not add anon or public policy roles', () => {
 test('role guard ignores SQL comments without erasing quoted executable text', () => {
   const sample = [
     "select '-- not a comment TO public' as note;",
+    "select E'kept \\'-- still literal' as note; alter policy \"unsafe\" on public.circles to public;",
     '/* historical TO public */',
     '$body$ -- literal TO public $body$;',
     'alter policy "example" on public.circles to authenticated;',
@@ -115,6 +134,8 @@ test('role guard ignores SQL comments without erasing quoted executable text', (
 
   const executable = stripSqlComments(sample);
   assert.match(executable, /'-- not a comment TO public'/u);
+  assert.match(executable, /E'kept \\'-- still literal'/u);
+  assert.match(executable, /alter policy "unsafe" on public\.circles to public/iu);
   assert.match(executable, /\$body\$ -- literal TO public \$body\$/u);
   assert.doesNotMatch(executable, /historical TO public/u);
   assert.match(executable, /alter policy "example" on public\.circles to authenticated/iu);
