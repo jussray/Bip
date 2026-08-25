@@ -10,21 +10,25 @@ const content = fs.readFileSync(
   'utf8',
 );
 
-test('Production Smoke binds proof to exact deployed or PR source and schedules all direct Playwright dependencies', () => {
+test('Production Smoke runs live Playwright only after verified production deployment evidence', () => {
   assert.match(content, /workflows: \["Verify Cloudflare Native Deployment"\]/);
-  assert.match(content, /pull_request:/);
-  assert.match(content, /playwright\.production\.config\.ts/);
-  assert.match(content, /e2e\/production-\*\.spec\.ts/);
-  assert.match(content, /scripts\/playwright-executable\.mjs/);
+  assert.doesNotMatch(content, /\bpull_request:/);
+  assert.match(content, /actions: read/);
   assert.match(
     content,
-    /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
+    /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/,
   );
   assert.match(content, /github\.event\.workflow_run\.head_branch == 'main'/);
+  assert.match(content, /github\.event\.workflow_run\.conclusion == 'success'/);
+  assert.match(content, /Require successful upstream production verification job/);
+  assert.match(content, /actions\/runs\/\$UPSTREAM_RUN_ID\/jobs\?per_page=100/);
+  assert.match(content, /Verify exact frontend Worker, backend Worker, and release/);
+  assert.match(content, /target\.conclusion !== "success"/);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /persist-credentials: false/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
   assert.match(content, /test "\$actual" = "\$EXPECTED_HEAD_SHA"/);
+  assert.match(content, /playwright\.production\.config\.ts/);
   assert.match(content, /actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/);
   assert.match(content, /actions\/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020/);
   assert.match(content, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
