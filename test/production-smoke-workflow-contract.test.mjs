@@ -32,7 +32,10 @@ test('Production Smoke runs live Playwright only after verified current producti
   assert.doesNotMatch(content, /github\.event_name == 'workflow_dispatch'/);
   assert.match(content, /actions\/runs\/\$UPSTREAM_RUN_ID\/jobs\?per_page=100/);
   assert.match(content, /Verify exact frontend Worker, backend Worker, and release/);
-  assert.match(content, /!target \|\| target\.conclusion === "skipped"/);
+  assert.match(content, /if \(!target\) \{/);
+  assert.match(content, /Required upstream production verification job is absent/);
+  assert.match(content, /target\.conclusion === "skipped"/);
+  assert.doesNotMatch(content, /!target \|\| target\.conclusion === "skipped"/);
   assert.match(content, /should_run=\$\{value\}/);
   assert.match(content, /target\.conclusion !== "success"/);
   assert.match(content, /UPSTREAM_HEAD_SHA !== process\.env\.CURRENT_MAIN/);
@@ -41,6 +44,11 @@ test('Production Smoke runs live Playwright only after verified current producti
   assert.match(content, /persist-credentials: false/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
   assert.match(content, /test "\$actual" = "\$EXPECTED_HEAD_SHA"/);
+  assert.match(content, /Reverify exact live release identities after smoke/);
+  assert.match(
+    content,
+    /--grep "production exposes the exact expected Pages and Worker release commit"/,
+  );
   assert.match(content, /Verify smoke target remained current main/);
   assert.match(content, /test "\$current_main" = "\$EXPECTED_HEAD_SHA"/);
   assert.match(content, /\.\/node_modules\/\.bin\/playwright install --with-deps chromium/);
