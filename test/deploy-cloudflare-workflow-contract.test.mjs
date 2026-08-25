@@ -8,7 +8,7 @@ import {classifyProductionImpact} from '../scripts/classify-production-impact.mj
 const workflow = readFileSync('.github/workflows/deploy-cloudflare.yml', 'utf8');
 
 function workflowStepBlock(name) {
-  const marker = `- name: ${name}`;
+  const marker = `- name: ${name}\n`;
   const start = workflow.indexOf(marker);
   assert.notEqual(start, -1, `missing production workflow step: ${name}`);
   const next = workflow.indexOf('\n      - name:', start + marker.length);
