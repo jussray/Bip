@@ -1,7 +1,6 @@
 name: Production Smoke
 
 on:
-  workflow_dispatch: {}
   workflow_run:
     workflows: ["Verify Cloudflare Native Deployment"]
     types: [completed]
@@ -12,10 +11,10 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
 
 concurrency:
-  group: production-smoke-${{ github.event.workflow_run.id || github.run_id }}
+  group: production-smoke-${{ github.event.workflow_run.id }}
   cancel-in-progress: false
 
 jobs:
@@ -24,13 +23,11 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 20
     if: >
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.head_branch == 'main')
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
 
     steps:
       - name: Require successful upstream production verification job
-        if: github.event_name == 'workflow_run'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
