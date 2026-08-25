@@ -123,13 +123,13 @@ function executableSqlOnly(sql) {
 function readPolicyRoles(sql) {
   const rolesByPolicy = new Map();
   const executable = executableSqlOnly(sql);
-  const statementPattern = /\b(create|alter)\s+policy\s+"([^"]+)"\s+on\s+([A-Za-z0-9_."]+)([\s\S]*?);/giu;
+  const statementPattern = /\b(create|alter)\s+policy\s+(?:"((?:[^"]|"")*)"|([A-Za-z_][A-Za-z0-9_$]*))\s+on\s+([A-Za-z0-9_.$"]+)([\s\S]*?);/giu;
 
   for (const match of executable.matchAll(statementPattern)) {
     const verb = match[1].toLowerCase();
-    const policy = match[2].toLowerCase();
-    const table = match[3].replaceAll('"', '').toLowerCase();
-    const options = match[4];
+    const policy = (match[2] ?? match[3]).replaceAll('""', '"').toLowerCase();
+    const table = match[4].replaceAll('"', '').toLowerCase();
+    const options = match[5];
     const toMatch = options.match(/\bto\s+([\s\S]*?)(?=\s+(?:using|with\s+check)\b|$)/iu);
 
     let roles;
@@ -228,6 +228,14 @@ test('role guard treats CREATE POLICY without TO as implicit PUBLIC', () => {
   const sample = 'create policy "implicit-public" on public.circles for select using (true);';
   assert.deepEqual(
     readPolicyRoles(sample).get('public.circles::implicit-public'),
+    ['public'],
+  );
+});
+
+test('role guard detects unquoted policy identifiers', () => {
+  const sample = 'create policy unsafe_unquoted on public.circles for select to public using (true);';
+  assert.deepEqual(
+    readPolicyRoles(sample).get('public.circles::unsafe_unquoted'),
     ['public'],
   );
 });
