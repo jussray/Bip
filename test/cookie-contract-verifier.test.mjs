@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { hasCookieUse } from '../scripts/verify-cookie-contract.mjs';
 
-test('cookie contract detects reads and alternate browser/server writers', () => {
+test('cookie contract detects browser, server, object, and tuple cookie operations', () => {
   const forbidden = [
     'const value = document.cookie;',
     'const value = document?.cookie;',
@@ -16,6 +16,8 @@ test('cookie contract detects reads and alternate browser/server writers', () =>
     'response.headers.append("set-cookie", value);',
     'res.setHeader("Set-Cookie", value);',
     'new Response(body, { headers: { "Set-Cookie": value } });',
+    'new Response(body, { headers: [["Set-Cookie", value]] });',
+    'new Headers([["Set-Cookie", value]]);',
     'setCookie("session", value);',
   ];
 
@@ -24,12 +26,16 @@ test('cookie contract detects reads and alternate browser/server writers', () =>
   }
 });
 
-test('cookie contract does not flag unrelated storage and header code', () => {
+test('cookie contract ignores comments, diagnostic strings, and non-cookie state', () => {
   const allowed = [
     'await SecureStore.setItemAsync("session", value);',
     'await AsyncStorage.getItem("session");',
     'response.headers.set("Cache-Control", "no-store");',
     'new Response(body, { headers: { "Content-Type": "application/json" } });',
+    '// Never use document.cookie here',
+    'const note = "document.cookie is forbidden";',
+    'const diagnostic = \'{ "Set-Cookie": "redacted" }\';',
+    'const tupleExample = "[[\\\"Set-Cookie\\\", value]]";',
   ];
 
   for (const source of allowed) {
