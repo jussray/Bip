@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import {
   appHasExactPublicDestination,
+  appHasOnlyManagedPublicDestination,
   configFromEnv,
   isCloudflareAccessUrl,
   isEveryoneBypassPolicy,
@@ -63,6 +64,35 @@ test('application public destination check does not treat worker scope as apex o
   );
 });
 
+test('managed bypass destination set is exactly apex-only', () => {
+  assert.equal(
+    appHasOnlyManagedPublicDestination(
+      { destinations: [{ type: 'public', uri: 'sekretbip.net/*' }] },
+      'sekretbip.net',
+    ),
+    true,
+  );
+  assert.equal(
+    appHasOnlyManagedPublicDestination(
+      {
+        destinations: [
+          { type: 'public', uri: 'sekretbip.net/*' },
+          { type: 'all_workers' },
+        ],
+      },
+      'sekretbip.net',
+    ),
+    false,
+  );
+  assert.equal(
+    appHasOnlyManagedPublicDestination(
+      { destinations: [{ type: 'public', uri: 'sekretbip.net/private/*' }] },
+      'sekretbip.net',
+    ),
+    false,
+  );
+});
+
 test('Cloudflare Access URLs are detected by host or Access path', () => {
   assert.equal(
     isCloudflareAccessUrl('https://jussray.cloudflareaccess.com/cdn-cgi/access/login/sekretbip.net'),
@@ -110,12 +140,28 @@ test('provider mutation is founder-gated behind the protected Production environ
   assert.match(workflowSource, /test "\$EXPECTED_MAIN_SHA" = "\$GITHUB_SHA"/);
 });
 
-test('a run-created bypass stays rollback-capable through browser proof', () => {
-  assert.match(workflowSource, /if: failure\(\) && steps\.reconcile\.outcome == 'success'/);
+test('current main is revalidated immediately before the provider mutation', () => {
+  assert.match(workflowSource, /Revalidate exact current main immediately before mutation/);
+  assert.match(workflowSource, /main moved during job setup/);
+  assert.match(workflowSource, /expected_main_sha is stale/);
+  const revalidateIndex = workflowSource.indexOf('Revalidate exact current main immediately before mutation');
+  const reconcileIndex = workflowSource.indexOf('Reconcile exact public apex Access exception');
+  assert.ok(revalidateIndex >= 0 && reconcileIndex > revalidateIndex);
+});
+
+test('a run-created bypass stays rollback-capable through browser proof and reconcile failure', () => {
+  assert.match(workflowSource, /if: failure\(\) && steps\.reconcile\.outcome != 'skipped'/);
   assert.match(workflowSource, /--rollback-created/);
   assert.match(reconcilerSource, /ROLLBACK_EVIDENCE_SCOPE_MISMATCH/);
+  assert.match(reconcilerSource, /evidence\?\.mutationPerformed !== true \|\| evidence\?\.rollbackPerformed === true/);
   assert.match(reconcilerSource, /ROLLBACK_MANAGED_APP_DESTINATION_MISMATCH/);
   assert.match(reconcilerSource, /rolled-back-after-proof-failure/);
+});
+
+test('managed and rollback paths reject destination broadening', () => {
+  assert.match(reconcilerSource, /MANAGED_PUBLIC_BYPASS_DESTINATION_DRIFT/);
+  assert.match(reconcilerSource, /appHasOnlyManagedPublicDestination\(createdApp, config\.targetHostname\)/);
+  assert.match(reconcilerSource, /appHasOnlyManagedPublicDestination\(candidate, config\.targetHostname\)/);
 });
 
 test('provider/account identifiers are not echoed in clear-text request failures', () => {
