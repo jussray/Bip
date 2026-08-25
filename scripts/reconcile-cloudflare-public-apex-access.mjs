@@ -326,7 +326,6 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
     throw new Error('EXISTING_PUBLIC_ACCESS_APP_REQUIRES_MANUAL_REVIEW');
   }
 
-  const preExistingAppIds = new Set(apps.map((app) => clean(app?.id)).filter(Boolean));
   await writeEvidence(config, {
     ...evidenceBase,
     status: apply ? 'pre-apply' : 'planned-create-public-bypass',
@@ -339,48 +338,48 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   if (!apply) return { status: 'planned-create-public-bypass', runtimeBefore };
 
   let createdApp = null;
-  let ambiguousCreateRecovered = false;
   try {
     createdApp = await createPublicBypassApplication(config);
   } catch (createError) {
-    let recoveredApps;
+    let observedCandidates = null;
+    let recoveryFailure = null;
     try {
-      recoveredApps = await listApplications(config);
-    } catch (recoveryError) {
-      await writeEvidence(config, {
-        ...evidenceBase,
-        status: 'mutation-state-unknown',
-        mutationState: 'unknown',
-        runtimeBefore,
-        blockingApplication: summarizeApp(blockingApp),
-        failure: failureSummary(createError),
-        recoveryFailure: failureSummary(recoveryError),
-      });
-      throw createError;
+      const observedApps = await listApplications(config);
+      observedCandidates = observedApps.filter((app) =>
+        clean(app?.name) === config.applicationName
+        && appHasOnlyManagedPublicDestination(app, config.targetHostname),
+      ).length;
+    } catch (error) {
+      recoveryFailure = failureSummary(error);
     }
 
-    const recoverCreateCandidates = recoveredApps.filter((app) =>
-      clean(app?.name) === config.applicationName
-      && !preExistingAppIds.has(clean(app?.id))
-      && appHasOnlyManagedPublicDestination(app, config.targetHostname),
-    );
-
-    if (recoverCreateCandidates.length !== 1) {
-      await writeEvidence(config, {
-        ...evidenceBase,
-        status: 'mutation-state-unknown',
-        mutationState: 'unknown',
-        runtimeBefore,
-        blockingApplication: summarizeApp(blockingApp),
-        attributableCandidateCount: recoverCreateCandidates.length,
-        failure: failureSummary(createError),
-      });
-      throw createError;
-    }
-
-    createdApp = recoverCreateCandidates[0];
-    ambiguousCreateRecovered = true;
+    await writeEvidence(config, {
+      ...evidenceBase,
+      status: 'mutation-state-unknown',
+      mutationState: 'unknown',
+      mutationAttribution: 'unproven',
+      runtimeBefore,
+      blockingApplication: summarizeApp(blockingApp),
+      observedManagedCandidateCount: observedCandidates,
+      failure: failureSummary(createError),
+      ...(recoveryFailure ? { recoveryFailure } : {}),
+    });
+    throw createError;
   }
+
+  // The provider returned an exact app identity, so record rollback authority
+  // immediately before any additional provider/runtime call can fail or the
+  // job can be cancelled. Ambiguous POST outcomes above never receive this
+  // authority and therefore can never be auto-deleted by rollback.
+  await writeEvidence(config, {
+    ...evidenceBase,
+    status: 'created-awaiting-proof',
+    mutationPerformed: true,
+    mutationAttribution: 'provider-returned-id',
+    runtimeBefore,
+    blockingApplication: summarizeApp(blockingApp),
+    managedApplication: summarizeApp(createdApp, { includeId: true }),
+  });
 
   try {
     const policies = await listPolicies(config, createdApp.id);
@@ -396,7 +395,7 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'reconciled',
       mutationPerformed: true,
-      ambiguousCreateRecovered,
+      mutationAttribution: 'provider-returned-id',
       runtimeBefore,
       runtimeAfter,
       blockingApplication: summarizeApp(blockingApp),
@@ -417,8 +416,8 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'apply-failed',
       mutationPerformed: Boolean(createdApp?.id),
+      mutationAttribution: createdApp?.id ? 'provider-returned-id' : 'unproven',
       rollbackPerformed,
-      ambiguousCreateRecovered,
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
       managedApplication: summarizeApp(createdApp, { includeId: true }),
@@ -445,6 +444,10 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
       rollbackPerformed: evidence?.rollbackPerformed === true,
     });
     return { status: 'rollback-not-required' };
+  }
+
+  if (evidence?.mutationAttribution !== 'provider-returned-id') {
+    throw new Error('ROLLBACK_MUTATION_ATTRIBUTION_UNPROVEN');
   }
 
   const appId = clean(evidence?.managedApplication?.id);
