@@ -6,12 +6,16 @@ import { hasCookieUse } from '../scripts/verify-cookie-contract.mjs';
 test('cookie contract detects reads and alternate browser/server writers', () => {
   const forbidden = [
     'const value = document.cookie;',
+    'const value = document?.cookie;',
+    'const value = document["cookie"];',
+    'const value = document?.["cookie"];',
     'document.cookie = "session=abc";',
     'await cookieStore.get("session");',
-    'await cookieStore.set("session", "abc");',
+    'await cookieStore?.set("session", "abc");',
     'response.headers.set("Set-Cookie", value);',
     'response.headers.append("set-cookie", value);',
     'res.setHeader("Set-Cookie", value);',
+    'new Response(body, { headers: { "Set-Cookie": value } });',
     'setCookie("session", value);',
   ];
 
@@ -25,6 +29,7 @@ test('cookie contract does not flag unrelated storage and header code', () => {
     'await SecureStore.setItemAsync("session", value);',
     'await AsyncStorage.getItem("session");',
     'response.headers.set("Cache-Control", "no-store");',
+    'new Response(body, { headers: { "Content-Type": "application/json" } });',
   ];
 
   for (const source of allowed) {
