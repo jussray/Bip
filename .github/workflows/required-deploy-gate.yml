@@ -44,7 +44,7 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install repository dependencies
+      - name: Install repository dependencies for Worker proof
         run: npm ci
 
       - name: Verify deployment authority contracts
@@ -68,14 +68,24 @@ jobs:
           printf 'pages_node_expected=%s\npages_node_actual=%s\n' "$expected" "$actual"
           test "$actual" = "$expected"
 
+      - name: Install repository dependencies for Pages proof
+        run: |
+          rm -rf node_modules
+          npm ci
+
       - name: Prove exact-head Pages build without deployment
+        env:
+          CF_PAGES: '1'
+          CF_PAGES_COMMIT_SHA: ${{ env.EXPECTED_HEAD_SHA }}
+          CF_PAGES_BRANCH: ${{ github.event.pull_request.head.ref }}
+          CF_PAGES_URL: https://exact-head.pages.dev
+          CF_PAGES_DEPLOYMENT_ID: github-required-deploy-${{ github.run_id }}
         shell: bash
         run: |
           set -euo pipefail
           set -a
           source .env.production
           set +a
-          export SEKRET_RELEASE_ENVIRONMENT=preview
           npm run build:web
 
       - name: Record deployability receipt
@@ -92,6 +102,7 @@ jobs:
             "productionMutation": false,
             "workerDryRun": true,
             "pagesBuild": true,
+            "pagesCloudflareMode": true,
             "pagesNodeVersion": "$(tr -d '[:space:]' < .node-version)",
             "authority": "deployability-only"
           }
