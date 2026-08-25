@@ -7,7 +7,15 @@ const migration = readFileSync(
   'utf8',
 );
 
-function stripSqlComments(sql) {
+function maskRange(sql, start, end) {
+  let masked = '';
+  for (let index = start; index < end; index += 1) {
+    masked += sql[index] === '\n' ? '\n' : ' ';
+  }
+  return masked;
+}
+
+function executableSqlOnly(sql) {
   let output = '';
   let index = 0;
 
@@ -29,7 +37,7 @@ function stripSqlComments(sql) {
         }
         if (sql[index++] === "'") break;
       }
-      output += sql.slice(start, index);
+      output += maskRange(sql, start, index);
       continue;
     }
 
@@ -42,10 +50,11 @@ function stripSqlComments(sql) {
         }
         if (sql[index++] === "'") break;
       }
-      output += sql.slice(start, index);
+      output += maskRange(sql, start, index);
       continue;
     }
 
+    // Double quotes are identifiers in PostgreSQL, so keep them executable.
     if (char === '"') {
       const start = index++;
       while (index < sql.length) {
@@ -67,20 +76,22 @@ function stripSqlComments(sql) {
         index += delimiter.length;
         const closing = sql.indexOf(delimiter, index);
         index = closing === -1 ? sql.length : closing + delimiter.length;
-        output += sql.slice(start, index);
+        output += maskRange(sql, start, index);
         continue;
       }
     }
 
     if (char === '-' && next === '-') {
+      const start = index;
       index += 2;
       while (index < sql.length && sql[index] !== '\n') index += 1;
-      if (index < sql.length) output += '\n';
-      index += 1;
+      if (index < sql.length) index += 1;
+      output += maskRange(sql, start, index);
       continue;
     }
 
     if (char === '/' && next === '*') {
+      const start = index;
       index += 2;
       let depth = 1;
       while (index < sql.length && depth > 0) {
@@ -96,10 +107,9 @@ function stripSqlComments(sql) {
           index += 2;
           continue;
         }
-        if (blockChar === '\n') output += '\n';
         index += 1;
       }
-      output += ' ';
+      output += maskRange(sql, start, index);
       continue;
     }
 
@@ -110,7 +120,23 @@ function stripSqlComments(sql) {
   return output;
 }
 
-const executableMigration = stripSqlComments(migration);
+function readPolicyRoles(sql) {
+  const rolesByPolicy = new Map();
+  const executable = executableSqlOnly(sql);
+  const pattern = /alter\s+policy\s+"([^"]+)"\s+on\s+([A-Za-z0-9_."]+)\s+to\s+([\s\S]*?)(?=\s+(?:using|with\s+check)\b|;)/giu;
+
+  for (const match of executable.matchAll(pattern)) {
+    const policy = match[1].toLowerCase();
+    const table = match[2].replaceAll('"', '').toLowerCase();
+    const roles = match[3]
+      .split(',')
+      .map((role) => role.trim().replaceAll('"', '').toLowerCase())
+      .filter(Boolean);
+    rolesByPolicy.set(`${table}::${policy}`, roles);
+  }
+
+  return rolesByPolicy;
+}
 
 const requiredPolicies = [
   ['circles select owner or member', 'public.circles'],
@@ -119,38 +145,40 @@ const requiredPolicies = [
   ['posts insert by author', 'public.posts'],
 ];
 
-test('Circle policies are explicitly restored to authenticated', () => {
+test('Circle policies are explicitly restored to authenticated only', () => {
+  const rolesByPolicy = readPolicyRoles(migration);
+
   for (const [policy, table] of requiredPolicies) {
-    const escapedPolicy = policy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const escapedTable = table.replace('.', '\\.');
-    const pattern = new RegExp(
-      `alter\\s+policy\\s+"${escapedPolicy}"\\s+on\\s+${escapedTable}\\s+to\\s+authenticated`,
-      'iu',
+    assert.deepEqual(
+      rolesByPolicy.get(`${table}::${policy}`),
+      ['authenticated'],
+      `${policy} must be scoped only to authenticated`,
     );
-    assert.match(executableMigration, pattern, `${policy} must be scoped to authenticated`);
   }
 });
 
-test('the repair does not add anon or public policy roles', () => {
-  assert.doesNotMatch(executableMigration, /\bto\s+(?:anon|public)\b/iu);
+test('the repair does not add anon or public anywhere in a policy role list', () => {
+  for (const roles of readPolicyRoles(migration).values()) {
+    assert.equal(roles.includes('anon'), false);
+    assert.equal(roles.includes('public'), false);
+  }
 });
 
-test('role guard ignores SQL comments without erasing quoted executable text', () => {
+test('role guard ignores SQL comments and quoted literal bodies', () => {
   const sample = [
-    "select '-- not a comment TO public' as note;",
-    "select E'kept \\'-- still literal' as note; alter policy \"unsafe\" on public.circles to public;",
-    '/* historical TO public */',
-    '$body$ -- literal TO public $body$;',
-    'alter policy "example" on public.circles to authenticated;',
+    "select 'alter policy \"circles select owner or member\" on public.circles to authenticated';",
+    "select E'kept \\'-- alter policy \"circles insert own\" on public.circles to authenticated';",
+    '/* alter policy "posts select by circle visibility" on public.posts to authenticated; */',
+    '$body$ alter policy "posts insert by author" on public.posts to authenticated; $body$;',
+    'alter policy "real" on public.circles to authenticated;',
   ].join('\n');
 
-  const executable = stripSqlComments(sample);
-  assert.match(executable, /'-- not a comment TO public'/u);
-  assert.match(executable, /E'kept \\'-- still literal'/u);
-  assert.match(executable, /alter policy "unsafe" on public\.circles to public/iu);
-  assert.match(executable, /\$body\$ -- literal TO public \$body\$/u);
-  assert.doesNotMatch(executable, /historical TO public/u);
-  assert.match(executable, /alter policy "example" on public\.circles to authenticated/iu);
+  const rolesByPolicy = readPolicyRoles(sample);
+  assert.equal(rolesByPolicy.has('public.circles::circles select owner or member'), false);
+  assert.equal(rolesByPolicy.has('public.circles::circles insert own'), false);
+  assert.equal(rolesByPolicy.has('public.posts::posts select by circle visibility'), false);
+  assert.equal(rolesByPolicy.has('public.posts::posts insert by author'), false);
+  assert.deepEqual(rolesByPolicy.get('public.circles::real'), ['authenticated']);
 });
 
 test('role guard tracks nested PostgreSQL block comments before executable policy roles', () => {
@@ -159,11 +187,16 @@ test('role guard tracks nested PostgreSQL block comments before executable polic
     'alter policy "unsafe-after-nested-comment" on public.circles to public;',
   ].join('\n');
 
-  const executable = stripSqlComments(sample);
-  assert.doesNotMatch(executable, /still outer/u);
-  assert.match(
-    executable,
-    /alter policy "unsafe-after-nested-comment" on public\.circles to public/iu,
+  assert.deepEqual(
+    readPolicyRoles(sample).get('public.circles::unsafe-after-nested-comment'),
+    ['public'],
   );
-  assert.match(executable, /\bto\s+public\b/iu);
+});
+
+test('role guard reads every role in a PostgreSQL policy role list', () => {
+  const sample = 'alter policy "unsafe-list" on public.circles to authenticated, public;';
+  assert.deepEqual(
+    readPolicyRoles(sample).get('public.circles::unsafe-list'),
+    ['authenticated', 'public'],
+  );
 });
