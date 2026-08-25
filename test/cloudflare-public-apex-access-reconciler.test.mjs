@@ -168,7 +168,10 @@ test('browser setup finishes before final current-main revalidation and provider
 });
 
 test('a run-created bypass stays rollback-capable through browser proof and reconcile failure', () => {
-  assert.match(workflowSource, /if: failure\(\) && steps\.reconcile\.outcome != 'skipped'/);
+  assert.match(
+    workflowSource,
+    /if: \(failure\(\) \|\| cancelled\(\)\) && steps\.reconcile\.outcome != 'skipped'/,
+  );
   assert.match(workflowSource, /--rollback-created/);
   assert.match(reconcilerSource, /ROLLBACK_EVIDENCE_SCOPE_MISMATCH/);
   assert.match(reconcilerSource, /evidence\?\.mutationPerformed !== true \|\| evidence\?\.rollbackPerformed === true/);

@@ -3,6 +3,8 @@ import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
+const PROVIDER_REQUEST_TIMEOUT_MS = 10_000;
+const RUNTIME_REQUEST_TIMEOUT_MS = 10_000;
 export const DEFAULT_TARGET_HOSTNAME = 'sekretbip.net';
 export const DEFAULT_TARGET_URL = 'https://sekretbip.net/';
 export const DEFAULT_APPLICATION_NAME = 'sekretbip.net - public apex bypass';
@@ -30,6 +32,14 @@ function providerCodes(payload) {
     : [];
 }
 
+function failureSummary(error) {
+  return {
+    code: error instanceof Error ? error.message : 'UNKNOWN_FAILURE',
+    status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
+    providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
+  };
+}
+
 async function cfRequest(config, requestPath, options = {}) {
   const method = options.method || 'GET';
   const response = await fetch(`${API_BASE}${requestPath}`, {
@@ -40,6 +50,7 @@ async function cfRequest(config, requestPath, options = {}) {
       ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.signal || AbortSignal.timeout(options.timeoutMs || PROVIDER_REQUEST_TIMEOUT_MS),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
@@ -162,7 +173,10 @@ function finalOrigin(value, fallback) {
 }
 
 async function runtimeProbe(url) {
-  const response = await fetch(url, { redirect: 'follow' });
+  const response = await fetch(url, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(RUNTIME_REQUEST_TIMEOUT_MS),
+  });
   const finalUrl = response.url || url;
   return {
     status: response.status,
@@ -238,8 +252,8 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   const runtimeBefore = await runtimeProbe(config.targetUrl);
   const apps = await listApplications(config);
   const blockingApp = selectBlockingApplication(apps, config.blockingAud);
+  const managedApps = apps.filter((app) => clean(app?.name) === config.applicationName);
   const exactPublicApps = apps.filter((app) => appHasExactPublicDestination(app, config.targetHostname));
-  const managedApps = exactPublicApps.filter((app) => clean(app?.name) === config.applicationName);
   const existingManaged = managedApps.length === 1 ? managedApps[0] : null;
 
   if (managedApps.length > 1) {
@@ -326,6 +340,48 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   let createdApp = null;
   try {
     createdApp = await createPublicBypassApplication(config);
+  } catch (createError) {
+    let observedCandidates = null;
+    let recoveryFailure = null;
+    try {
+      const observedApps = await listApplications(config);
+      observedCandidates = observedApps.filter((app) =>
+        clean(app?.name) === config.applicationName
+        && appHasOnlyManagedPublicDestination(app, config.targetHostname),
+      ).length;
+    } catch (error) {
+      recoveryFailure = failureSummary(error);
+    }
+
+    await writeEvidence(config, {
+      ...evidenceBase,
+      status: 'mutation-state-unknown',
+      mutationState: 'unknown',
+      mutationAttribution: 'unproven',
+      runtimeBefore,
+      blockingApplication: summarizeApp(blockingApp),
+      observedManagedCandidateCount: observedCandidates,
+      failure: failureSummary(createError),
+      ...(recoveryFailure ? { recoveryFailure } : {}),
+    });
+    throw createError;
+  }
+
+  // The provider returned an exact app identity, so record rollback authority
+  // immediately before any additional provider/runtime call can fail or the
+  // job can be cancelled. Ambiguous POST outcomes above never receive this
+  // authority and therefore can never be auto-deleted by rollback.
+  await writeEvidence(config, {
+    ...evidenceBase,
+    status: 'created-awaiting-proof',
+    mutationPerformed: true,
+    mutationAttribution: 'provider-returned-id',
+    runtimeBefore,
+    blockingApplication: summarizeApp(blockingApp),
+    managedApplication: summarizeApp(createdApp, { includeId: true }),
+  });
+
+  try {
     const policies = await listPolicies(config, createdApp.id);
     if (!appHasOnlyManagedPublicDestination(createdApp, config.targetHostname)) {
       throw new Error('CREATED_APP_DESTINATION_MISMATCH');
@@ -339,6 +395,7 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'reconciled',
       mutationPerformed: true,
+      mutationAttribution: 'provider-returned-id',
       runtimeBefore,
       runtimeAfter,
       blockingApplication: summarizeApp(blockingApp),
@@ -359,15 +416,12 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'apply-failed',
       mutationPerformed: Boolean(createdApp?.id),
+      mutationAttribution: createdApp?.id ? 'provider-returned-id' : 'unproven',
       rollbackPerformed,
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
       managedApplication: summarizeApp(createdApp, { includeId: true }),
-      failure: {
-        code: error instanceof Error ? error.message : 'UNKNOWN_FAILURE',
-        status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
-        providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
-      },
+      failure: failureSummary(error),
     });
     throw error;
   }
@@ -383,6 +437,20 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
   }
 
+  const mutationStateUnknown = (
+    evidence?.status === 'mutation-state-unknown'
+    || evidence?.mutationState === 'unknown'
+    || evidence?.mutationAttribution === 'unproven'
+  );
+  if (mutationStateUnknown) {
+    await writeEvidence(config, {
+      ...evidence,
+      status: 'rollback-blocked-mutation-state-unknown',
+      rollbackPerformed: false,
+    });
+    return { status: 'rollback-blocked-mutation-state-unknown' };
+  }
+
   if (evidence?.mutationPerformed !== true || evidence?.rollbackPerformed === true) {
     await writeEvidence(config, {
       ...evidence,
@@ -390,6 +458,10 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
       rollbackPerformed: evidence?.rollbackPerformed === true,
     });
     return { status: 'rollback-not-required' };
+  }
+
+  if (evidence?.mutationAttribution !== 'provider-returned-id') {
+    throw new Error('ROLLBACK_MUTATION_ATTRIBUTION_UNPROVEN');
   }
 
   const appId = clean(evidence?.managedApplication?.id);
