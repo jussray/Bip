@@ -3,7 +3,7 @@ name: Production Smoke
 on:
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Deploy to Cloudflare"]
+    workflows: ["Verify Cloudflare Native Deployment"]
     types: [completed]
 
 permissions:
@@ -11,9 +11,10 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 concurrency:
-  group: production-smoke
+  group: production-smoke-${{ github.event.workflow_run.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -23,11 +24,23 @@ jobs:
     timeout-minutes: 15
     if: >
       github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
 
     steps:
-      - name: Check out repository
+      - name: Check out exact deployed head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          persist-credentials: false
+
+      - name: Verify exact checked-out head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -51,7 +64,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: production-smoke-report
+          name: production-smoke-report-${{ env.EXPECTED_HEAD_SHA }}
           path: playwright-report-production/
           if-no-files-found: ignore
           retention-days: 7
