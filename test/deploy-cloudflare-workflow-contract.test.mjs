@@ -111,15 +111,21 @@ test('production witnesses continue independently after one witness fails but st
   );
 });
 
-test('bounded production witnesses reserve job time for evidence upload and blocked publication', () => {
+test('all production steps are bounded with reserved time for evidence publication', () => {
+  const jobTimeoutMinutes = 180;
   assert.match(
     workflow,
-    /verify-native-deployment:[\s\S]*?timeout-minutes: 130/u,
-    'the job budget must leave explicit headroom after bounded witnesses',
+    /verify-native-deployment:[\s\S]*?timeout-minutes: 180/u,
+    'the job budget must leave explicit headroom after every bounded step',
   );
 
   const stepBudgets = new Map([
+    ['Validate trusted release target before checkout', 5],
+    ['Check out release commit under verification', 5],
+    ['Record and verify exact target head', 2],
+    ['Set up Node', 5],
     ['Install repository dependencies', 10],
+    ['Revalidate current main before Production secret use', 5],
     ['Verify exact Supabase production schema contract', 5],
     ['Record safe frontend and backend transport evidence', 5],
     ['Wait for exact frontend and backend Worker checks plus release marker', 35],
@@ -127,6 +133,9 @@ test('bounded production witnesses reserve job time for evidence upload and bloc
     ['Verify Supabase runtime contracts', 5],
     ['Install Chromium', 15],
     ['Verify exact deployed frontend with Playwright', 30],
+    ['Upload deployment evidence', 5],
+    ['Publish exact production release observation', 5],
+    ['Publish blocked exact production observation', 5],
   ]);
 
   let boundedMinutes = 0;
@@ -136,7 +145,10 @@ test('bounded production witnesses reserve job time for evidence upload and bloc
     boundedMinutes += minutes;
   }
 
-  assert.ok(130 - boundedMinutes >= 20, 'job timeout must reserve at least 20 minutes for setup, evidence upload, and final publication');
+  assert.ok(
+    jobTimeoutMinutes - boundedMinutes >= 20,
+    'job timeout must reserve at least 20 minutes beyond the sum of every bounded setup, witness, evidence, and publication step',
+  );
 });
 
 test('durable docs and test-only changes can preserve release identity when positively classified', () => {
