@@ -123,7 +123,7 @@ function executableSqlOnly(sql) {
 function readPolicyRoles(sql) {
   const rolesByPolicy = new Map();
   const executable = executableSqlOnly(sql);
-  const pattern = /alter\s+policy\s+"([^"]+)"\s+on\s+([A-Za-z0-9_."]+)\s+to\s+([\s\S]*?)(?=\s+(?:using|with\s+check)\b|;)/giu;
+  const pattern = /(?:alter|create)\s+policy\s+"([^"]+)"\s+on\s+([A-Za-z0-9_."]+)\s+to\s+([\s\S]*?)(?=\s+(?:using|with\s+check)\b|;)/giu;
 
   for (const match of executable.matchAll(pattern)) {
     const policy = match[1].toLowerCase();
@@ -197,6 +197,14 @@ test('role guard reads every role in a PostgreSQL policy role list', () => {
   const sample = 'alter policy "unsafe-list" on public.circles to authenticated, public;';
   assert.deepEqual(
     readPolicyRoles(sample).get('public.circles::unsafe-list'),
+    ['authenticated', 'public'],
+  );
+});
+
+test('role guard inspects CREATE POLICY role lists too', () => {
+  const sample = 'create policy "unsafe-create" on public.circles to authenticated, public using (true);';
+  assert.deepEqual(
+    readPolicyRoles(sample).get('public.circles::unsafe-create'),
     ['authenticated', 'public'],
   );
 });
