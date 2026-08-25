@@ -7,7 +7,10 @@ on:
       - 'scripts/verify-cookie-contract.mjs'
       - 'test/cookie-contract-verifier.test.mjs'
       - 'app/**'
+      - 'src/**'
       - 'utils/**'
+      - 'worker/**'
+      - 'scripts/**'
       - 'supabase/**'
       - '.github/workflows/cookie-contract.yml'
   workflow_dispatch:
@@ -47,6 +50,9 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+
+      - name: Install parser dependency from lockfile
+        run: npm ci
 
       - name: Verify cookie policy and scanner regression
         run: node --test test/cookie-contract-verifier.test.mjs && node scripts/verify-cookie-contract.mjs
