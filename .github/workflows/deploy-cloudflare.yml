@@ -94,7 +94,7 @@ jobs:
     if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.classify-production-impact.result != 'success' || needs.classify-production-impact.outputs.production_impact != 'false') }}
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 130
+    timeout-minutes: 180
     permissions:
       contents: read
       checks: read
@@ -118,6 +118,7 @@ jobs:
     steps:
       - name: Validate trusted release target before checkout
         id: trusted_target
+        timeout-minutes: 5
         shell: bash
         env:
           TARGET_SHA: ${{ env.DEPLOYMENT_SHA }}
@@ -156,6 +157,7 @@ jobs:
 
       - name: Check out release commit under verification
         id: checkout
+        timeout-minutes: 5
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.DEPLOYMENT_SHA }}
@@ -163,6 +165,7 @@ jobs:
 
       - name: Record and verify exact target head
         id: exact_head
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
@@ -172,6 +175,7 @@ jobs:
 
       - name: Set up Node
         id: setup_node
+        timeout-minutes: 5
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
@@ -184,6 +188,7 @@ jobs:
 
       - name: Revalidate current main before Production secret use
         id: trusted_current_main
+        timeout-minutes: 5
         shell: bash
         env:
           TARGET_SHA: ${{ env.DEPLOYMENT_SHA }}
@@ -267,6 +272,7 @@ jobs:
       - name: Upload deployment evidence
         id: upload_evidence
         if: always()
+        timeout-minutes: 5
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-native-deployment-evidence-${{ env.DEPLOYMENT_SHA }}
@@ -281,10 +287,12 @@ jobs:
 
       - name: Publish exact production release observation
         if: success()
+        timeout-minutes: 5
         run: node scripts/publish-production-release-observation.mjs
 
       - name: Publish blocked exact production observation
         if: failure()
+        timeout-minutes: 5
         env:
           RELEASE_OBSERVATION_MODE: blocked
           VERIFICATION_JOB_STATUS: failure
