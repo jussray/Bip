@@ -1,0 +1,88 @@
+name: Required Deployability Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: required-deploy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  EXPO_NO_TELEMETRY: 1
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out exact pull-request head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Verify exact head
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          test "$actual" = "$EXPECTED_HEAD_SHA"
+
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install repository dependencies
+        run: npm ci
+
+      - name: Verify deployment authority contracts
+        run: node --test test/production-authority-workflow-contracts.test.mjs test/cloudflare-pages-build-contract.test.mjs test/cloudflare-worker-identity.test.mjs
+
+      - name: Prove exact-head Worker deployability without mutation
+        run: npx wrangler deploy --dry-run --config wrangler.toml
+
+      - name: Prove exact-head Pages build without deployment
+        env:
+          SEKRET_RELEASE_ENVIRONMENT: preview
+          EXPO_PUBLIC_SUPABASE_URL: https://tbsevonvegdnlyjgplmm.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: public-build-placeholder
+          EXPO_PUBLIC_BACKEND_URL: https://api.sekretbip.net
+        run: npm run build:web
+
+      - name: Record deployability receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/required-deploy
+          cat > artifacts/required-deploy/receipt.json <<JSON
+          {
+            "contract": "sekret-bip/required-deployability@v1",
+            "repository": "${GITHUB_REPOSITORY}",
+            "headSha": "${EXPECTED_HEAD_SHA}",
+            "event": "pull_request",
+            "productionMutation": false,
+            "workerDryRun": true,
+            "pagesBuild": true,
+            "authority": "deployability-only"
+          }
+          JSON
+
+      - name: Upload deployability receipt
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: required-deployability-${{ env.EXPECTED_HEAD_SHA }}
+          path: artifacts/required-deploy/receipt.json
+          if-no-files-found: error
+          retention-days: 30
