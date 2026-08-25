@@ -6,6 +6,7 @@ const migration = readFileSync(
   'supabase/migrations/20260824223800_restore_circle_authenticated_policy_roles.sql',
   'utf8',
 );
+const executableMigration = migration.replace(/--[^\n]*/gu, '');
 
 const requiredPolicies = [
   ['circles select owner or member', 'public.circles'],
@@ -27,5 +28,5 @@ test('Circle policies are explicitly restored to authenticated', () => {
 });
 
 test('the repair does not add anon or public policy roles', () => {
-  assert.doesNotMatch(migration, /\bto\s+(?:anon|public)\b/iu);
+  assert.doesNotMatch(executableMigration, /\bto\s+(?:anon|public)\b/iu);
 });
