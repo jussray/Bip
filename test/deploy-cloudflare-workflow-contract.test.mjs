@@ -62,6 +62,18 @@ test('main-push classification executes the previous trusted main classifier, ne
   );
 });
 
+test('production verification job remains fail-closed on dependency drift but stops when superseded', () => {
+  assert.match(
+    workflow,
+    /if: \$\{\{ !cancelled\(\) && \(github\.event_name == 'workflow_dispatch' \|\| needs\.classify-production-impact\.result != 'success' \|\| needs\.classify-production-impact\.outputs\.production_impact != 'false'\) \}\}/u,
+  );
+  assert.doesNotMatch(
+    workflow,
+    /verify-native-deployment:[\s\S]*?if: \$\{\{ always\(\)/u,
+    'the Production job must not use always() because cancelled superseded runs must terminate active witnesses',
+  );
+});
+
 test('production witnesses continue independently after one witness fails but stop when the run is cancelled', () => {
   const witnessSteps = [
     'Verify exact Supabase production schema contract',
@@ -97,6 +109,34 @@ test('production witnesses continue independently after one witness fails but st
     /- name: Publish blocked exact production observation\n\s+if: failure\(\)/u,
     'a failed witness must still produce a blocked release observation',
   );
+});
+
+test('bounded production witnesses reserve job time for evidence upload and blocked publication', () => {
+  assert.match(
+    workflow,
+    /verify-native-deployment:[\s\S]*?timeout-minutes: 130/u,
+    'the job budget must leave explicit headroom after bounded witnesses',
+  );
+
+  const stepBudgets = new Map([
+    ['Install repository dependencies', 10],
+    ['Verify exact Supabase production schema contract', 5],
+    ['Record safe frontend and backend transport evidence', 5],
+    ['Wait for exact frontend and backend Worker checks plus release marker', 35],
+    ['Verify backend health', 5],
+    ['Verify Supabase runtime contracts', 5],
+    ['Install Chromium', 15],
+    ['Verify exact deployed frontend with Playwright', 30],
+  ]);
+
+  let boundedMinutes = 0;
+  for (const [name, minutes] of stepBudgets) {
+    const block = workflowStepBlock(name);
+    assert.match(block, new RegExp(`timeout-minutes: ${minutes}\\b`, 'u'), `${name} must have a bounded timeout`);
+    boundedMinutes += minutes;
+  }
+
+  assert.ok(130 - boundedMinutes >= 20, 'job timeout must reserve at least 20 minutes for setup, evidence upload, and final publication');
 });
 
 test('durable docs and test-only changes can preserve release identity when positively classified', () => {
