@@ -54,12 +54,14 @@ jobs:
         run: npx wrangler deploy --dry-run --config wrangler.toml
 
       - name: Prove exact-head Pages build without deployment
-        env:
-          SEKRET_RELEASE_ENVIRONMENT: preview
-          EXPO_PUBLIC_SUPABASE_URL: https://tbsevonvegdnlyjgplmm.supabase.co
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: public-build-placeholder
-          EXPO_PUBLIC_BACKEND_URL: https://api.sekretbip.net
-        run: npm run build:web
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source .env.production
+          set +a
+          export SEKRET_RELEASE_ENVIRONMENT=preview
+          npm run build:web
 
       - name: Record deployability receipt
         shell: bash
