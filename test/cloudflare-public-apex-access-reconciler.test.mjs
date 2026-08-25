@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -9,6 +10,15 @@ import {
   publicDestinationTargetsHost,
   selectBlockingApplication,
 } from '../scripts/reconcile-cloudflare-public-apex-access.mjs';
+
+const workflowSource = readFileSync(
+  new URL('../.github/workflows/reconcile-cloudflare-public-apex-access.yml', import.meta.url),
+  'utf8',
+);
+const reconcilerSource = readFileSync(
+  new URL('../scripts/reconcile-cloudflare-public-apex-access.mjs', import.meta.url),
+  'utf8',
+);
 
 test('defaults target only the public apex', () => {
   const config = configFromEnv({});
@@ -89,4 +99,27 @@ test('blocking Access audience must resolve to at most one application', () => {
     () => selectBlockingApplication([{ id: 'a', aud: 'same' }, { id: 'b', aud: 'same' }], 'same'),
     /BLOCKING_AUD_NOT_UNIQUE/,
   );
+});
+
+test('provider mutation is founder-gated behind the protected Production environment', () => {
+  assert.match(workflowSource, /environment:\s*Production/);
+  assert.match(workflowSource, /test "\$GITHUB_ACTOR" = "jussray"/);
+  assert.match(workflowSource, /test "\$GITHUB_REF" = "refs\/heads\/main"/);
+  assert.match(workflowSource, /EXPECTED_MAIN_SHA:\s*\$\{\{ inputs\.expected_main_sha \}\}/);
+  assert.match(workflowSource, /FIX_SEKRET_BIP_PUBLIC_APEX_ACCESS/);
+  assert.match(workflowSource, /test "\$EXPECTED_MAIN_SHA" = "\$GITHUB_SHA"/);
+});
+
+test('a run-created bypass stays rollback-capable through browser proof', () => {
+  assert.match(workflowSource, /if: failure\(\) && steps\.reconcile\.outcome == 'success'/);
+  assert.match(workflowSource, /--rollback-created/);
+  assert.match(reconcilerSource, /ROLLBACK_EVIDENCE_SCOPE_MISMATCH/);
+  assert.match(reconcilerSource, /ROLLBACK_MANAGED_APP_DESTINATION_MISMATCH/);
+  assert.match(reconcilerSource, /rolled-back-after-proof-failure/);
+});
+
+test('provider/account identifiers are not echoed in clear-text request failures', () => {
+  assert.doesNotMatch(reconcilerSource, /Cloudflare \$\{options\.method/);
+  assert.doesNotMatch(reconcilerSource, /final_url=/);
+  assert.match(reconcilerSource, /Cloudflare provider request failed with status/);
 });
