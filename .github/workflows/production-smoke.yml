@@ -3,7 +3,7 @@ name: Production Smoke
 on:
   workflow_dispatch: {}
   workflow_run:
-    workflows: ["Deploy to Cloudflare"]
+    workflows: ["Verify Cloudflare Native Deployment"]
     types: [completed]
 
 permissions:
@@ -26,8 +26,19 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - name: Check out repository
+      - name: Check out exact smoke source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out source identity
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Set up Node
         uses: actions/setup-node@v4
