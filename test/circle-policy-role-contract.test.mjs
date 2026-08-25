@@ -123,15 +123,30 @@ function executableSqlOnly(sql) {
 function readPolicyRoles(sql) {
   const rolesByPolicy = new Map();
   const executable = executableSqlOnly(sql);
-  const pattern = /(?:alter|create)\s+policy\s+"([^"]+)"\s+on\s+([A-Za-z0-9_."]+)\s+to\s+([\s\S]*?)(?=\s+(?:using|with\s+check)\b|;)/giu;
+  const statementPattern = /\b(create|alter)\s+policy\s+"([^"]+)"\s+on\s+([A-Za-z0-9_."]+)([\s\S]*?);/giu;
 
-  for (const match of executable.matchAll(pattern)) {
-    const policy = match[1].toLowerCase();
-    const table = match[2].replaceAll('"', '').toLowerCase();
-    const roles = match[3]
-      .split(',')
-      .map((role) => role.trim().replaceAll('"', '').toLowerCase())
-      .filter(Boolean);
+  for (const match of executable.matchAll(statementPattern)) {
+    const verb = match[1].toLowerCase();
+    const policy = match[2].toLowerCase();
+    const table = match[3].replaceAll('"', '').toLowerCase();
+    const options = match[4];
+    const toMatch = options.match(/\bto\s+([\s\S]*?)(?=\s+(?:using|with\s+check)\b|$)/iu);
+
+    let roles;
+    if (toMatch) {
+      roles = toMatch[1]
+        .split(',')
+        .map((role) => role.trim().replaceAll('"', '').toLowerCase())
+        .filter(Boolean);
+    } else if (verb === 'create') {
+      // PostgreSQL CREATE POLICY defaults to PUBLIC when TO is omitted.
+      roles = ['public'];
+    } else {
+      // ALTER POLICY without TO leaves the existing role list unchanged. Keep
+      // an explicit empty value so required role-changing ALTERs cannot pass.
+      roles = [];
+    }
+
     rolesByPolicy.set(`${table}::${policy}`, roles);
   }
 
@@ -201,10 +216,18 @@ test('role guard reads every role in a PostgreSQL policy role list', () => {
   );
 });
 
-test('role guard inspects CREATE POLICY role lists too', () => {
-  const sample = 'create policy "unsafe-create" on public.circles to authenticated, public using (true);';
+test('role guard inspects CREATE POLICY role lists after AS and FOR options', () => {
+  const sample = 'create policy "unsafe-create" on public.circles as restrictive for select to authenticated, public using (true);';
   assert.deepEqual(
     readPolicyRoles(sample).get('public.circles::unsafe-create'),
     ['authenticated', 'public'],
+  );
+});
+
+test('role guard treats CREATE POLICY without TO as implicit PUBLIC', () => {
+  const sample = 'create policy "implicit-public" on public.circles for select using (true);';
+  assert.deepEqual(
+    readPolicyRoles(sample).get('public.circles::implicit-public'),
+    ['public'],
   );
 });
