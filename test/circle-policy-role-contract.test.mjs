@@ -82,11 +82,23 @@ function stripSqlComments(sql) {
 
     if (char === '/' && next === '*') {
       index += 2;
-      while (index < sql.length && !(sql[index] === '*' && sql[index + 1] === '/')) {
-        if (sql[index] === '\n') output += '\n';
+      let depth = 1;
+      while (index < sql.length && depth > 0) {
+        const blockChar = sql[index];
+        const blockNext = sql[index + 1];
+        if (blockChar === '/' && blockNext === '*') {
+          depth += 1;
+          index += 2;
+          continue;
+        }
+        if (blockChar === '*' && blockNext === '/') {
+          depth -= 1;
+          index += 2;
+          continue;
+        }
+        if (blockChar === '\n') output += '\n';
         index += 1;
       }
-      index = Math.min(index + 2, sql.length);
       output += ' ';
       continue;
     }
@@ -139,4 +151,19 @@ test('role guard ignores SQL comments without erasing quoted executable text', (
   assert.match(executable, /\$body\$ -- literal TO public \$body\$/u);
   assert.doesNotMatch(executable, /historical TO public/u);
   assert.match(executable, /alter policy "example" on public\.circles to authenticated/iu);
+});
+
+test('role guard tracks nested PostgreSQL block comments before executable policy roles', () => {
+  const sample = [
+    '/* outer /* inner */ -- still outer */',
+    'alter policy "unsafe-after-nested-comment" on public.circles to public;',
+  ].join('\n');
+
+  const executable = stripSqlComments(sample);
+  assert.doesNotMatch(executable, /still outer/u);
+  assert.match(
+    executable,
+    /alter policy "unsafe-after-nested-comment" on public\.circles to public/iu,
+  );
+  assert.match(executable, /\bto\s+public\b/iu);
 });
