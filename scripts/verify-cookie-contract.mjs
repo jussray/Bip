@@ -49,9 +49,9 @@ for (const cookie of manifest.cookies ?? []) {
 const ignored = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.wrangler', '.expo']);
 const extensions = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.py', '.html']);
 const patterns = [
-  /\bdocument\s*(?:\?\.)?\.\s*cookie\b/,
+  /\bdocument\s*(?:\?\.|\.)\s*cookie\b/,
   /\bdocument\s*(?:\?\.)?\[\s*['"]cookie['"]\s*\]/,
-  /\bcookieStore\s*(?:\?\.)?\.\s*(?:get|set|delete|getAll)\s*\(/,
+  /\bcookieStore\s*(?:\?\.|\.)\s*(?:get|set|delete|getAll)\s*\(/,
   /\bsetHeader\s*\(\s*['"]Set-Cookie['"]/i,
   /\bheaders\s*\.\s*(?:append|set)\s*\(\s*['"]Set-Cookie['"]/i,
   /['"]Set-Cookie['"]\s*:/i,
