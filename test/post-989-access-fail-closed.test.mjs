@@ -5,6 +5,7 @@ import test from 'node:test';
 const reconciler = await readFile('scripts/reconcile-cloudflare-public-apex-access.mjs', 'utf8');
 const workflow = await readFile('.github/workflows/reconcile-cloudflare-public-apex-access.yml', 'utf8');
 const browserContract = await readFile('test/cloudflare-production-browser-contract.test.mjs', 'utf8');
+const productionFrontDoor = await readFile('e2e/production-public-front-door.spec.ts', 'utf8');
 
 // Post-merge successor contract for the unresolved P1 findings left on #989.
 test('managed Access identity is selected before destination validation', () => {
@@ -41,7 +42,10 @@ test('workflow cleanup covers cancellation as well as ordinary failure', () => {
 });
 
 test('production browser contract follows the public apex destination', () => {
-  assert.match(browserContract, /sekretbip\.net/);
+  assert.match(productionFrontDoor, /https:\/\/sekretbip\.net\//);
+  assert.match(productionFrontDoor, /hostname\)\.toBe\('sekretbip\.net'\)/);
+  assert.doesNotMatch(productionFrontDoor, /app\.sekretbip\.net/);
+  assert.match(browserContract, /sekretbip\\\.net/);
   assert.doesNotMatch(
     browserContract,
     /require[^\n]*app\.sekretbip\.net|includes\([^\n]*app\.sekretbip\.net/i,
