@@ -91,10 +91,10 @@ jobs:
   verify-native-deployment:
     name: Verify exact frontend Worker, backend Worker, and release
     needs: classify-production-impact
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify-production-impact.result != 'success' || needs.classify-production-impact.outputs.production_impact != 'false') }}
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.classify-production-impact.result != 'success' || needs.classify-production-impact.outputs.production_impact != 'false') }}
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 40
+    timeout-minutes: 130
     permissions:
       contents: read
       checks: read
@@ -179,6 +179,7 @@ jobs:
 
       - name: Install repository dependencies
         id: install
+        timeout-minutes: 10
         run: npm ci
 
       - name: Revalidate current main before Production secret use
@@ -206,6 +207,7 @@ jobs:
       - name: Verify exact Supabase production schema contract
         id: supabase_schema
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: node scripts/verify-supabase-production-schema.mjs
@@ -213,11 +215,13 @@ jobs:
       - name: Record safe frontend and backend transport evidence
         id: release_transport
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
         run: node scripts/probe-production-release-endpoints.mjs
 
       - name: Wait for exact frontend and backend Worker checks plus release marker
         id: cloudflare_release
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 35
         env:
           GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
         run: node scripts/verify-cloudflare-native-deploy.mjs
@@ -225,6 +229,7 @@ jobs:
       - name: Verify backend health
         id: backend_health
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
         shell: bash
         run: |
           set -euo pipefail
@@ -243,17 +248,20 @@ jobs:
       - name: Verify Supabase runtime contracts
         id: supabase_health
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
         run: |
           curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$SUPABASE_RUNTIME_HEALTH_URL"
 
       - name: Install Chromium
         id: chromium
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 15
         run: npx playwright install --with-deps chromium
 
       - name: Verify exact deployed frontend with Playwright
         id: production_playwright
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 30
         run: npm run test:e2e:production
 
       - name: Upload deployment evidence
