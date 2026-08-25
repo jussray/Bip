@@ -26,10 +26,10 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
 
     steps:
-      - name: Check out exact smoke source
+      - name: Check out trusted main
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          ref: refs/heads/main
           persist-credentials: false
 
       - name: Verify checked-out source identity
@@ -38,7 +38,9 @@ jobs:
           EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+          actual="$(git rev-parse HEAD)"
+          printf 'expected=%s\nactual=%s\n' "$EXPECTED_SHA" "$actual"
+          test "$actual" = "$EXPECTED_SHA"
 
       - name: Set up Node
         uses: actions/setup-node@v4
