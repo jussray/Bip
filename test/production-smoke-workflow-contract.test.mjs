@@ -10,7 +10,7 @@ const content = fs.readFileSync(
   'utf8',
 );
 
-test('Production Smoke runs live Playwright only after verified production deployment evidence', () => {
+test('Production Smoke runs live Playwright only after verified current production deployment evidence', () => {
   assert.match(content, /workflows: \["Verify Cloudflare Native Deployment"\]/);
   assert.doesNotMatch(content, /\bpull_request:/);
   assert.doesNotMatch(content, /\bworkflow_dispatch:/);
@@ -19,18 +19,30 @@ test('Production Smoke runs live Playwright only after verified production deplo
     content,
     /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/,
   );
+  assert.match(
+    content,
+    /EXPECTED_RELEASE_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \}\}/,
+  );
   assert.doesNotMatch(content, /github\.event\.workflow_run\.head_sha \|\| github\.sha/);
   assert.match(content, /github\.event\.workflow_run\.head_branch == 'main'/);
   assert.match(content, /github\.event\.workflow_run\.conclusion == 'success'/);
-  assert.match(content, /Require successful upstream production verification job/);
+  assert.match(content, /group: production-smoke-main/);
+  assert.match(content, /cancel-in-progress: true/);
+  assert.match(content, /Classify upstream production verification and current target/);
   assert.doesNotMatch(content, /github\.event_name == 'workflow_dispatch'/);
   assert.match(content, /actions\/runs\/\$UPSTREAM_RUN_ID\/jobs\?per_page=100/);
   assert.match(content, /Verify exact frontend Worker, backend Worker, and release/);
+  assert.match(content, /!target \|\| target\.conclusion === "skipped"/);
+  assert.match(content, /should_run=\$\{value\}/);
   assert.match(content, /target\.conclusion !== "success"/);
+  assert.match(content, /UPSTREAM_HEAD_SHA !== process\.env\.CURRENT_MAIN/);
+  assert.match(content, /steps\.upstream\.outputs\.should_run == 'true'/);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
   assert.match(content, /persist-credentials: false/);
   assert.match(content, /actual="\$\(git rev-parse HEAD\)"/);
   assert.match(content, /test "\$actual" = "\$EXPECTED_HEAD_SHA"/);
+  assert.match(content, /Verify smoke target remained current main/);
+  assert.match(content, /test "\$current_main" = "\$EXPECTED_HEAD_SHA"/);
   assert.match(content, /\.\/node_modules\/\.bin\/playwright install --with-deps chromium/);
   assert.match(content, /\.\/node_modules\/\.bin\/playwright test --config=playwright\.production\.config\.ts/);
   assert.match(content, /actions\/checkout@11d5960a326750d5838078e36cf38b85af677262/);
