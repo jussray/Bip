@@ -317,7 +317,7 @@
       "timing": "AFTER",
       "events": ["INSERT"],
       "repositoryExpected": false,
-      "catalogDrift": "live_only_pending_tc01_production_application"
+      "catalogDrift": "historical_live_only_tc01_retired"
     },
     {
       "trigger": "safety_scan_journal",
@@ -326,7 +326,7 @@
       "timing": "AFTER",
       "events": ["INSERT"],
       "repositoryExpected": false,
-      "catalogDrift": "live_only_pending_tc01_production_application"
+      "catalogDrift": "historical_live_only_tc01_retired"
     },
     {
       "trigger": "safety_scan_posts",
@@ -335,7 +335,7 @@
       "timing": "AFTER",
       "events": ["INSERT"],
       "repositoryExpected": false,
-      "catalogDrift": "live_only_pending_tc01_production_application"
+      "catalogDrift": "historical_live_only_tc01_retired"
     },
     {
       "trigger": "safety_scan_public_circle",
