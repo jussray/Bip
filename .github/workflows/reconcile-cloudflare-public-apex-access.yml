@@ -127,6 +127,23 @@ jobs:
             exit 1
           }
 
+      - name: Revalidate exact current main immediately before mutation
+        shell: bash
+        env:
+          EXPECTED_MAIN_SHA: ${{ inputs.expected_main_sha }}
+        run: |
+          set -euo pipefail
+          current_main="$(git ls-remote "https://github.com/${GITHUB_REPOSITORY}.git" refs/heads/main | awk '{print $1}')"
+          test -n "$current_main"
+          test "$GITHUB_SHA" = "$current_main" || {
+            echo 'Refusing Cloudflare Access mutation because main moved during job setup.' >&2
+            exit 1
+          }
+          test "$EXPECTED_MAIN_SHA" = "$current_main" || {
+            echo 'Refusing Cloudflare Access mutation because expected_main_sha is stale.' >&2
+            exit 1
+          }
+
       - name: Reconcile exact public apex Access exception
         id: reconcile
         env:
@@ -142,8 +159,8 @@ jobs:
           CI: 'true'
         run: npx playwright test e2e/production-public-front-door.spec.ts --config=playwright.production.config.ts --project=chromium
 
-      - name: Roll back run-created bypass when browser proof fails
-        if: failure() && steps.reconcile.outcome == 'success'
+      - name: Roll back run-created bypass after any failed post-mutation path
+        if: failure() && steps.reconcile.outcome != 'skipped'
         env:
           CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
