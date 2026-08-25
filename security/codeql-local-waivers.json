@@ -142,16 +142,6 @@
       "rationale": "This is an exact Array.prototype.includes assertion over normalized provider-domain fixtures in a unit test. It neither parses nor authorizes runtime URLs."
     },
     {
-      "id": "app-domain-failure-receipt-fixed-path",
-      "language": "javascript-typescript",
-      "ruleId": "js/http-to-file-access",
-      "path": "scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs",
-      "messageIncludes": "Write to file system depends on",
-      "maxMatches": 1,
-      "expiresAt": "2026-10-01T00:00:00Z",
-      "rationale": "The taint flow is provider HTTP response metadata serialized with JSON.stringify into the repository-owned constant EVIDENCE_PATH. Provider data cannot influence the file path, and caught exception text or provider error messages are explicitly excluded from the retained receipt."
-    },
-    {
       "id": "public-front-door-static-url-assertions",
       "language": "javascript-typescript",
       "ruleId": "js/regex/missing-regexp-anchor",
