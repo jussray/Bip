@@ -2,6 +2,14 @@ name: Production Smoke
 
 on:
   workflow_dispatch: {}
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/production-smoke.yml'
+      - 'playwright.production.config.ts'
+      - 'e2e/production-*.spec.ts'
+      - 'scripts/playwright-executable.mjs'
   workflow_run:
     workflows: ["Verify Cloudflare Native Deployment"]
     types: [completed]
@@ -11,30 +19,32 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+  EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.workflow_run.head_sha || github.sha }}
 
 concurrency:
-  group: production-smoke-${{ github.event.workflow_run.id || github.run_id }}
+  group: production-smoke-${{ github.event.pull_request.number || github.event.workflow_run.id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   smoke:
-    name: Verify sekretbip.net
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    name: Verify public production front doors
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
     if: >
+      github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
 
     steps:
-      - name: Check out exact deployed head
-        uses: actions/checkout@v4
+      - name: Check out exact source head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.EXPECTED_HEAD_SHA }}
+          fetch-depth: 1
           persist-credentials: false
 
-      - name: Verify exact checked-out head
+      - name: Verify exact source head
         shell: bash
         run: |
           set -euo pipefail
@@ -42,8 +52,8 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
           cache: npm
@@ -51,18 +61,15 @@ jobs:
       - name: Install repository dependencies
         run: npm ci
 
-      - name: Install pinned Playwright test runner
-        run: npm install --no-save --no-package-lock @playwright/test@1.61.1
-
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run read-only smoke checks against the live domain
+      - name: Run read-only smoke checks against live public domains
         run: npx playwright test --config=playwright.production.config.ts
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: production-smoke-report-${{ env.EXPECTED_HEAD_SHA }}
           path: playwright-report-production/
