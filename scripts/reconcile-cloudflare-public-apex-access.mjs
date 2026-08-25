@@ -3,6 +3,8 @@ import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
+const PROVIDER_REQUEST_TIMEOUT_MS = 10_000;
+const RUNTIME_REQUEST_TIMEOUT_MS = 10_000;
 export const DEFAULT_TARGET_HOSTNAME = 'sekretbip.net';
 export const DEFAULT_TARGET_URL = 'https://sekretbip.net/';
 export const DEFAULT_APPLICATION_NAME = 'sekretbip.net - public apex bypass';
@@ -30,6 +32,14 @@ function providerCodes(payload) {
     : [];
 }
 
+function failureSummary(error) {
+  return {
+    code: error instanceof Error ? error.message : 'UNKNOWN_FAILURE',
+    status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
+    providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
+  };
+}
+
 async function cfRequest(config, requestPath, options = {}) {
   const method = options.method || 'GET';
   const response = await fetch(`${API_BASE}${requestPath}`, {
@@ -40,6 +50,7 @@ async function cfRequest(config, requestPath, options = {}) {
       ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: options.signal || AbortSignal.timeout(options.timeoutMs || PROVIDER_REQUEST_TIMEOUT_MS),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
@@ -162,7 +173,10 @@ function finalOrigin(value, fallback) {
 }
 
 async function runtimeProbe(url) {
-  const response = await fetch(url, { redirect: 'follow' });
+  const response = await fetch(url, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(RUNTIME_REQUEST_TIMEOUT_MS),
+  });
   const finalUrl = response.url || url;
   return {
     status: response.status,
@@ -238,8 +252,8 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   const runtimeBefore = await runtimeProbe(config.targetUrl);
   const apps = await listApplications(config);
   const blockingApp = selectBlockingApplication(apps, config.blockingAud);
+  const managedApps = apps.filter((app) => clean(app?.name) === config.applicationName);
   const exactPublicApps = apps.filter((app) => appHasExactPublicDestination(app, config.targetHostname));
-  const managedApps = exactPublicApps.filter((app) => clean(app?.name) === config.applicationName);
   const existingManaged = managedApps.length === 1 ? managedApps[0] : null;
 
   if (managedApps.length > 1) {
@@ -312,6 +326,7 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
     throw new Error('EXISTING_PUBLIC_ACCESS_APP_REQUIRES_MANUAL_REVIEW');
   }
 
+  const preExistingAppIds = new Set(apps.map((app) => clean(app?.id)).filter(Boolean));
   await writeEvidence(config, {
     ...evidenceBase,
     status: apply ? 'pre-apply' : 'planned-create-public-bypass',
@@ -324,8 +339,50 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   if (!apply) return { status: 'planned-create-public-bypass', runtimeBefore };
 
   let createdApp = null;
+  let ambiguousCreateRecovered = false;
   try {
     createdApp = await createPublicBypassApplication(config);
+  } catch (createError) {
+    let recoveredApps;
+    try {
+      recoveredApps = await listApplications(config);
+    } catch (recoveryError) {
+      await writeEvidence(config, {
+        ...evidenceBase,
+        status: 'mutation-state-unknown',
+        mutationState: 'unknown',
+        runtimeBefore,
+        blockingApplication: summarizeApp(blockingApp),
+        failure: failureSummary(createError),
+        recoveryFailure: failureSummary(recoveryError),
+      });
+      throw createError;
+    }
+
+    const recoverCreateCandidates = recoveredApps.filter((app) =>
+      clean(app?.name) === config.applicationName
+      && !preExistingAppIds.has(clean(app?.id))
+      && appHasOnlyManagedPublicDestination(app, config.targetHostname),
+    );
+
+    if (recoverCreateCandidates.length !== 1) {
+      await writeEvidence(config, {
+        ...evidenceBase,
+        status: 'mutation-state-unknown',
+        mutationState: 'unknown',
+        runtimeBefore,
+        blockingApplication: summarizeApp(blockingApp),
+        attributableCandidateCount: recoverCreateCandidates.length,
+        failure: failureSummary(createError),
+      });
+      throw createError;
+    }
+
+    createdApp = recoverCreateCandidates[0];
+    ambiguousCreateRecovered = true;
+  }
+
+  try {
     const policies = await listPolicies(config, createdApp.id);
     if (!appHasOnlyManagedPublicDestination(createdApp, config.targetHostname)) {
       throw new Error('CREATED_APP_DESTINATION_MISMATCH');
@@ -339,6 +396,7 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'reconciled',
       mutationPerformed: true,
+      ambiguousCreateRecovered,
       runtimeBefore,
       runtimeAfter,
       blockingApplication: summarizeApp(blockingApp),
@@ -360,14 +418,11 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       status: 'apply-failed',
       mutationPerformed: Boolean(createdApp?.id),
       rollbackPerformed,
+      ambiguousCreateRecovered,
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
       managedApplication: summarizeApp(createdApp, { includeId: true }),
-      failure: {
-        code: error instanceof Error ? error.message : 'UNKNOWN_FAILURE',
-        status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
-        providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
-      },
+      failure: failureSummary(error),
     });
     throw error;
   }
