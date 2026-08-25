@@ -38,7 +38,7 @@ jobs:
           printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
 
-      - name: Set up Node 24
+      - name: Set up Node 24 for repository and Worker proof
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
@@ -48,10 +48,25 @@ jobs:
         run: npm ci
 
       - name: Verify deployment authority contracts
-        run: node --test test/production-authority-workflow-contracts.test.mjs test/cloudflare-pages-build-contract.test.mjs test/cloudflare-worker-identity.test.mjs
+        run: node --test test/production-authority-workflow-contracts.test.mjs test/cloudflare-pages-build-environment.test.mjs test/cloudflare-worker-identity.test.mjs
 
       - name: Prove exact-head Worker deployability without mutation
         run: npx wrangler deploy --dry-run --config wrangler.toml
+
+      - name: Set up repository-pinned Node for Pages proof
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Verify Pages runtime matches repository contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .node-version)"
+          actual="$(node --version | sed 's/^v//')"
+          printf 'pages_node_expected=%s\npages_node_actual=%s\n' "$expected" "$actual"
+          test "$actual" = "$expected"
 
       - name: Prove exact-head Pages build without deployment
         shell: bash
@@ -77,6 +92,7 @@ jobs:
             "productionMutation": false,
             "workerDryRun": true,
             "pagesBuild": true,
+            "pagesNodeVersion": "$(tr -d '[:space:]' < .node-version)",
             "authority": "deployability-only"
           }
           JSON
