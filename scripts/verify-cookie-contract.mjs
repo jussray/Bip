@@ -49,13 +49,16 @@ for (const cookie of manifest.cookies ?? []) {
 const ignored = new Set(['.git', 'node_modules', 'dist', 'build', 'coverage', '.wrangler', '.expo']);
 const extensions = new Set(['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx', '.py', '.html']);
 const patterns = [
-  /document\.cookie\s*=/,
-  /setHeader\(\s*['"]Set-Cookie['"]/,
-  /headers\.append\(\s*['"]Set-Cookie['"]/,
+  /document\.cookie\b/,
+  /\bcookieStore\s*\./,
+  /setHeader\(\s*['"]Set-Cookie['"]/i,
+  /headers\.(?:append|set)\(\s*['"]Set-Cookie['"]/i,
   /createCookieSessionStorage\s*</,
   /serializeCookieHeader\s*\(/,
   /\bsetCookie\s*\(/,
 ];
+export const hasCookieUse = (source) => patterns.some((pattern) => pattern.test(source));
+
 const ext = (path) => path.slice(path.lastIndexOf('.'));
 async function walk(path) {
   const info = await stat(path);
@@ -78,8 +81,8 @@ for (const scanRoot of manifest.scanRoots ?? []) {
     const repoPath = relative(root, file).replaceAll('\\', '/');
     if (/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(repoPath) || repoPath.includes('/__tests__/')) continue;
     const source = await readFile(file, 'utf8');
-    if (patterns.some((pattern) => pattern.test(source)) && !allowed.has(repoPath)) {
-      errors.push(`undeclared cookie writer: ${repoPath}`);
+    if (hasCookieUse(source) && !allowed.has(repoPath)) {
+      errors.push(`undeclared cookie use: ${repoPath}`);
     }
   }
 }
