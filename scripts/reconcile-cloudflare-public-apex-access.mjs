@@ -71,6 +71,14 @@ export function appHasExactPublicDestination(app, hostname) {
   );
 }
 
+export function appHasOnlyManagedPublicDestination(app, hostname) {
+  const destinations = Array.isArray(app?.destinations) ? app.destinations : [];
+  if (destinations.length !== 1) return false;
+  const destination = destinations[0];
+  if (clean(destination?.type).toLowerCase() !== 'public') return false;
+  return normalizePublicUri(destination?.uri) === `${clean(hostname).toLowerCase()}/*`;
+}
+
 export function isCloudflareAccessUrl(value) {
   try {
     const url = new URL(String(value || ''));
@@ -243,6 +251,17 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   }
 
   if (existingManaged) {
+    if (!appHasOnlyManagedPublicDestination(existingManaged, config.targetHostname)) {
+      await writeEvidence(config, {
+        ...evidenceBase,
+        status: 'blocked-managed-app-destination-drift',
+        runtimeBefore,
+        blockingApplication: summarizeApp(blockingApp),
+        managedApplication: summarizeApp(existingManaged, { includeId: true }),
+      });
+      throw new Error('MANAGED_PUBLIC_BYPASS_DESTINATION_DRIFT');
+    }
+
     const policies = await listPolicies(config, existingManaged.id);
     if (!policies.some(isEveryoneBypassPolicy)) {
       await writeEvidence(config, {
@@ -305,7 +324,7 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   try {
     createdApp = await createPublicBypassApplication(config);
     const policies = await listPolicies(config, createdApp.id);
-    if (!appHasExactPublicDestination(createdApp, config.targetHostname)) {
+    if (!appHasOnlyManagedPublicDestination(createdApp, config.targetHostname)) {
       throw new Error('CREATED_APP_DESTINATION_MISMATCH');
     }
     if (!policies.some(isEveryoneBypassPolicy)) {
@@ -361,11 +380,11 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
   }
 
-  if (evidence?.mutationPerformed !== true || evidence?.status !== 'reconciled') {
+  if (evidence?.mutationPerformed !== true || evidence?.rollbackPerformed === true) {
     await writeEvidence(config, {
       ...evidence,
       status: 'rollback-not-required',
-      rollbackPerformed: false,
+      rollbackPerformed: evidence?.rollbackPerformed === true,
     });
     return { status: 'rollback-not-required' };
   }
@@ -378,7 +397,7 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
   if (candidates.length !== 1) throw new Error('ROLLBACK_MANAGED_APP_ID_NOT_UNIQUE');
   const candidate = candidates[0];
   if (clean(candidate?.name) !== config.applicationName) throw new Error('ROLLBACK_MANAGED_APP_NAME_MISMATCH');
-  if (!appHasExactPublicDestination(candidate, config.targetHostname)) {
+  if (!appHasOnlyManagedPublicDestination(candidate, config.targetHostname)) {
     throw new Error('ROLLBACK_MANAGED_APP_DESTINATION_MISMATCH');
   }
   const policies = await listPolicies(config, appId);
