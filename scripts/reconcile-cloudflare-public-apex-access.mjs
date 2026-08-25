@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
@@ -23,19 +24,16 @@ export function configFromEnv(env = process.env) {
   };
 }
 
-function providerError(payload, fallback = 'Cloudflare request failed') {
-  const messages = Array.isArray(payload?.errors)
-    ? payload.errors.map((item) => clean(item?.message)).filter(Boolean).slice(0, 5)
+function providerCodes(payload) {
+  return Array.isArray(payload?.errors)
+    ? payload.errors.map((item) => item?.code).filter((code) => Number.isInteger(code)).slice(0, 5)
     : [];
-  const codes = Array.isArray(payload?.errors)
-    ? payload.errors.map((item) => item?.code).filter((code) => Number.isInteger(code))
-    : [];
-  return { messages, codes, fallback: clean(fallback) || 'Cloudflare request failed' };
 }
 
 async function cfRequest(config, requestPath, options = {}) {
+  const method = options.method || 'GET';
   const response = await fetch(`${API_BASE}${requestPath}`, {
-    method: options.method || 'GET',
+    method,
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${config.token}`,
@@ -45,12 +43,9 @@ async function cfRequest(config, requestPath, options = {}) {
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
-    const detail = providerError(payload, response.statusText);
-    const error = new Error(
-      `Cloudflare ${options.method || 'GET'} ${requestPath} failed (${response.status}): ${detail.messages.join('; ') || detail.fallback}`,
-    );
+    const error = new Error(`Cloudflare provider request failed with status ${response.status}.`);
     error.providerStatus = response.status;
-    error.providerCodes = detail.codes;
+    error.providerCodes = providerCodes(payload);
     throw error;
   }
   return payload;
@@ -92,7 +87,9 @@ export function isCloudflareAccessUrl(value) {
 export function isEveryoneBypassPolicy(policy) {
   if (clean(policy?.decision).toLowerCase() !== 'bypass') return false;
   const include = Array.isArray(policy?.include) ? policy.include : [];
-  return include.some((rule) => rule && typeof rule === 'object' && rule.everyone && typeof rule.everyone === 'object');
+  return include.some(
+    (rule) => rule && typeof rule === 'object' && rule.everyone && typeof rule.everyone === 'object',
+  );
 }
 
 export function selectBlockingApplication(apps, blockingAud) {
@@ -124,12 +121,7 @@ async function createPublicBypassApplication(config) {
       type: 'self_hosted',
       domain: config.targetHostname,
       session_duration: '24h',
-      destinations: [
-        {
-          type: 'public',
-          uri: `${config.targetHostname}/*`,
-        },
-      ],
+      destinations: [{ type: 'public', uri: `${config.targetHostname}/*` }],
       policies: [
         {
           name: 'Bypass public Se’kret apex',
@@ -150,14 +142,22 @@ async function deleteApplication(config, appId) {
   });
 }
 
+function finalOrigin(value, fallback) {
+  try {
+    return new URL(value || fallback).origin;
+  } catch {
+    return null;
+  }
+}
+
 async function runtimeProbe(url) {
   const response = await fetch(url, { redirect: 'follow' });
+  const finalUrl = response.url || url;
   return {
-    requestedUrl: url,
-    finalUrl: response.url || url,
     status: response.status,
     redirected: response.redirected === true,
-    accessIntercepted: isCloudflareAccessUrl(response.url || url),
+    accessIntercepted: isCloudflareAccessUrl(finalUrl),
+    finalOrigin: finalOrigin(finalUrl, url),
     contentType: response.headers.get('content-type') || '',
   };
 }
@@ -167,7 +167,7 @@ async function waitForPublicRuntime(config, attempts = 12, delayMs = 5000) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     lastProbe = await runtimeProbe(config.targetUrl);
     console.log(
-      `PUBLIC_APEX_PROBE attempt=${attempt} status=${lastProbe.status} access_intercepted=${lastProbe.accessIntercepted} final_url=${lastProbe.finalUrl}`,
+      `PUBLIC_APEX_PROBE attempt=${attempt} status=${lastProbe.status} access_intercepted=${lastProbe.accessIntercepted}`,
     );
     if (!lastProbe.accessIntercepted && lastProbe.status >= 200 && lastProbe.status < 400) {
       return lastProbe;
@@ -177,51 +177,51 @@ async function waitForPublicRuntime(config, attempts = 12, delayMs = 5000) {
   throw Object.assign(new Error('PUBLIC_APEX_STILL_ACCESS_INTERCEPTED_OR_UNHEALTHY'), { lastProbe });
 }
 
-function summarizeApp(app) {
-  return app
-    ? {
-        id: clean(app.id) || null,
-        name: clean(app.name) || null,
-        type: clean(app.type) || null,
-        aud: clean(app.aud) || null,
-        domain: clean(app.domain) || null,
-        destinationTypes: (Array.isArray(app.destinations) ? app.destinations : [])
-          .map((destination) => clean(destination?.type).toLowerCase())
-          .filter(Boolean),
-      }
-    : null;
+function summarizeApp(app, { includeId = false } = {}) {
+  if (!app) return null;
+  return {
+    ...(includeId ? { id: clean(app.id) || null } : {}),
+    name: clean(app.name) || null,
+    type: clean(app.type) || null,
+    domain: clean(app.domain) || null,
+    destinationTypes: (Array.isArray(app.destinations) ? app.destinations : [])
+      .map((destination) => clean(destination?.type).toLowerCase())
+      .filter(Boolean),
+  };
 }
 
 async function writeEvidence(config, payload) {
-  await mkdir(new URL('.', `file://${process.cwd()}/${config.evidencePath}`).pathname, { recursive: true }).catch(() => {});
-  const slash = config.evidencePath.lastIndexOf('/');
-  if (slash > 0) await mkdir(config.evidencePath.slice(0, slash), { recursive: true });
+  const parent = dirname(config.evidencePath);
+  if (parent && parent !== '.') await mkdir(parent, { recursive: true });
   await writeFile(
     config.evidencePath,
-    `${JSON.stringify({ schemaVersion: 1, generatedAt: new Date().toISOString(), ...payload }, null, 2)}\n`,
+    `${JSON.stringify({ schemaVersion: 2, generatedAt: new Date().toISOString(), ...payload }, null, 2)}\n`,
     'utf8',
   );
 }
 
-export async function reconcilePublicApexAccess({
-  env = process.env,
-  apply = false,
-} = {}) {
-  const config = configFromEnv(env);
-  const baseEvidence = {
+function baseEvidence(config, apply) {
+  return {
     targetHostname: config.targetHostname,
-    targetUrl: config.targetUrl,
     applicationName: config.applicationName,
     blockingAudConfigured: Boolean(config.blockingAud),
     applyRequested: apply === true,
     mutationPerformed: false,
     rollbackPerformed: false,
   };
+}
+
+function requireProviderConfig(config) {
+  if (!config.token || !config.accountId) throw new Error('CLOUDFLARE_ACCESS_CONFIGURATION_MISSING');
+}
+
+export async function reconcilePublicApexAccess({ env = process.env, apply = false } = {}) {
+  const config = configFromEnv(env);
+  const evidenceBase = baseEvidence(config, apply);
 
   if (!config.token || !config.accountId) {
-    const error = new Error('CLOUDFLARE_ACCESS_CONFIGURATION_MISSING');
-    await writeEvidence(config, { ...baseEvidence, status: 'configuration-missing' });
-    throw error;
+    await writeEvidence(config, { ...evidenceBase, status: 'configuration-missing' });
+    throw new Error('CLOUDFLARE_ACCESS_CONFIGURATION_MISSING');
   }
 
   const runtimeBefore = await runtimeProbe(config.targetUrl);
@@ -229,11 +229,11 @@ export async function reconcilePublicApexAccess({
   const blockingApp = selectBlockingApplication(apps, config.blockingAud);
   const exactPublicApps = apps.filter((app) => appHasExactPublicDestination(app, config.targetHostname));
   const managedApps = exactPublicApps.filter((app) => clean(app?.name) === config.applicationName);
-
   const existingManaged = managedApps.length === 1 ? managedApps[0] : null;
+
   if (managedApps.length > 1) {
     await writeEvidence(config, {
-      ...baseEvidence,
+      ...evidenceBase,
       status: 'blocked-duplicate-managed-apps',
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
@@ -244,37 +244,36 @@ export async function reconcilePublicApexAccess({
 
   if (existingManaged) {
     const policies = await listPolicies(config, existingManaged.id);
-    const bypassReady = policies.some(isEveryoneBypassPolicy);
-    if (!bypassReady) {
+    if (!policies.some(isEveryoneBypassPolicy)) {
       await writeEvidence(config, {
-        ...baseEvidence,
+        ...evidenceBase,
         status: 'blocked-managed-app-policy-drift',
         runtimeBefore,
         blockingApplication: summarizeApp(blockingApp),
-        managedApplication: summarizeApp(existingManaged),
+        managedApplication: summarizeApp(existingManaged, { includeId: true }),
       });
       throw new Error('MANAGED_PUBLIC_BYPASS_POLICY_DRIFT');
     }
 
     if (!apply) {
       await writeEvidence(config, {
-        ...baseEvidence,
+        ...evidenceBase,
         status: 'planned-existing-bypass',
         runtimeBefore,
         blockingApplication: summarizeApp(blockingApp),
-        managedApplication: summarizeApp(existingManaged),
+        managedApplication: summarizeApp(existingManaged, { includeId: true }),
       });
       return { status: 'planned-existing-bypass', runtimeBefore };
     }
 
     const runtimeAfter = await waitForPublicRuntime(config);
     await writeEvidence(config, {
-      ...baseEvidence,
+      ...evidenceBase,
       status: 'already-reconciled',
       runtimeBefore,
       runtimeAfter,
       blockingApplication: summarizeApp(blockingApp),
-      managedApplication: summarizeApp(existingManaged),
+      managedApplication: summarizeApp(existingManaged, { includeId: true }),
     });
     return { status: 'already-reconciled', runtimeAfter };
   }
@@ -282,17 +281,17 @@ export async function reconcilePublicApexAccess({
   const foreignExactPublicApps = exactPublicApps.filter((app) => clean(app?.name) !== config.applicationName);
   if (foreignExactPublicApps.length > 0) {
     await writeEvidence(config, {
-      ...baseEvidence,
+      ...evidenceBase,
       status: 'blocked-existing-public-app',
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
-      foreignPublicApplications: foreignExactPublicApps.map(summarizeApp),
+      foreignPublicApplications: foreignExactPublicApps.map((app) => summarizeApp(app)),
     });
     throw new Error('EXISTING_PUBLIC_ACCESS_APP_REQUIRES_MANUAL_REVIEW');
   }
 
   await writeEvidence(config, {
-    ...baseEvidence,
+    ...evidenceBase,
     status: apply ? 'pre-apply' : 'planned-create-public-bypass',
     runtimeBefore,
     blockingApplication: summarizeApp(blockingApp),
@@ -315,13 +314,13 @@ export async function reconcilePublicApexAccess({
 
     const runtimeAfter = await waitForPublicRuntime(config);
     await writeEvidence(config, {
-      ...baseEvidence,
+      ...evidenceBase,
       status: 'reconciled',
       mutationPerformed: true,
       runtimeBefore,
       runtimeAfter,
       blockingApplication: summarizeApp(blockingApp),
-      managedApplication: summarizeApp(createdApp),
+      managedApplication: summarizeApp(createdApp, { includeId: true }),
     });
     return { status: 'reconciled', runtimeAfter, appId: createdApp.id };
   } catch (error) {
@@ -335,15 +334,15 @@ export async function reconcilePublicApexAccess({
       }
     }
     await writeEvidence(config, {
-      ...baseEvidence,
+      ...evidenceBase,
       status: 'apply-failed',
       mutationPerformed: Boolean(createdApp?.id),
       rollbackPerformed,
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
-      managedApplication: summarizeApp(createdApp),
+      managedApplication: summarizeApp(createdApp, { includeId: true }),
       failure: {
-        message: error instanceof Error ? error.message : String(error),
+        code: error instanceof Error ? error.message : 'UNKNOWN_FAILURE',
         status: Number.isInteger(error?.providerStatus) ? error.providerStatus : null,
         providerCodes: Array.isArray(error?.providerCodes) ? error.providerCodes : [],
       },
@@ -352,13 +351,61 @@ export async function reconcilePublicApexAccess({
   }
 }
 
+export async function rollbackRunCreatedPublicApexAccess({ env = process.env } = {}) {
+  const config = configFromEnv(env);
+  requireProviderConfig(config);
+
+  const raw = await readFile(config.evidencePath, 'utf8');
+  const evidence = JSON.parse(raw);
+  if (evidence?.targetHostname !== config.targetHostname || evidence?.applicationName !== config.applicationName) {
+    throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
+  }
+
+  if (evidence?.mutationPerformed !== true || evidence?.status !== 'reconciled') {
+    await writeEvidence(config, {
+      ...evidence,
+      status: 'rollback-not-required',
+      rollbackPerformed: false,
+    });
+    return { status: 'rollback-not-required' };
+  }
+
+  const appId = clean(evidence?.managedApplication?.id);
+  if (!appId) throw new Error('ROLLBACK_MANAGED_APP_ID_MISSING');
+
+  const apps = await listApplications(config);
+  const candidates = apps.filter((app) => clean(app?.id) === appId);
+  if (candidates.length !== 1) throw new Error('ROLLBACK_MANAGED_APP_ID_NOT_UNIQUE');
+  const candidate = candidates[0];
+  if (clean(candidate?.name) !== config.applicationName) throw new Error('ROLLBACK_MANAGED_APP_NAME_MISMATCH');
+  if (!appHasExactPublicDestination(candidate, config.targetHostname)) {
+    throw new Error('ROLLBACK_MANAGED_APP_DESTINATION_MISMATCH');
+  }
+  const policies = await listPolicies(config, appId);
+  if (!policies.some(isEveryoneBypassPolicy)) throw new Error('ROLLBACK_MANAGED_APP_POLICY_MISMATCH');
+
+  await deleteApplication(config, appId);
+  await writeEvidence(config, {
+    ...evidence,
+    status: 'rolled-back-after-proof-failure',
+    rollbackPerformed: true,
+  });
+  return { status: 'rolled-back-after-proof-failure' };
+}
+
 const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
 if (invokedDirectly) {
+  const command = process.argv.includes('--rollback-created') ? 'rollback' : 'reconcile';
   const apply = process.argv.includes('--apply');
-  reconcilePublicApexAccess({ apply })
-    .then((result) => console.log(`PUBLIC_APEX_ACCESS_RECONCILE status=${result.status}`))
+  const task = command === 'rollback'
+    ? rollbackRunCreatedPublicApexAccess()
+    : reconcilePublicApexAccess({ apply });
+
+  task
+    .then((result) => console.log(`PUBLIC_APEX_ACCESS_RESULT status=${result.status}`))
     .catch((error) => {
-      console.error(error instanceof Error ? error.message : String(error));
+      const code = error instanceof Error ? error.message : 'UNKNOWN_FAILURE';
+      console.error(`PUBLIC_APEX_ACCESS_FAILED code=${code}`);
       process.exitCode = 1;
     });
 }
