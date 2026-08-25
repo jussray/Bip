@@ -95,6 +95,9 @@ export function isCloudflareAccessUrl(value) {
 export function isEveryoneBypassPolicy(policy) {
   if (clean(policy?.decision).toLowerCase() !== 'bypass') return false;
   const include = Array.isArray(policy?.include) ? policy.include : [];
+  const require = Array.isArray(policy?.require) ? policy.require : [];
+  const exclude = Array.isArray(policy?.exclude) ? policy.exclude : [];
+  if (require.length > 0 || exclude.length > 0) return false;
   return include.some(
     (rule) => rule && typeof rule === 'object' && rule.everyone && typeof rule.everyone === 'object',
   );

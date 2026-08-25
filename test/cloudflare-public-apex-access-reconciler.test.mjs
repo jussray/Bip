@@ -102,7 +102,7 @@ test('Cloudflare Access URLs are detected by host or Access path', () => {
   assert.equal(isCloudflareAccessUrl('https://sekretbip.net/'), false);
 });
 
-test('bypass policy must explicitly include Everyone', () => {
+test('bypass policy must be unconditional Everyone', () => {
   assert.equal(
     isEveryoneBypassPolicy({ decision: 'bypass', include: [{ everyone: {} }] }),
     true,
@@ -113,6 +113,22 @@ test('bypass policy must explicitly include Everyone', () => {
   );
   assert.equal(
     isEveryoneBypassPolicy({ decision: 'bypass', include: [{ email: { email: 'owner@example.com' } }] }),
+    false,
+  );
+  assert.equal(
+    isEveryoneBypassPolicy({
+      decision: 'bypass',
+      include: [{ everyone: {} }],
+      require: [{ country: { country_code: 'US' } }],
+    }),
+    false,
+  );
+  assert.equal(
+    isEveryoneBypassPolicy({
+      decision: 'bypass',
+      include: [{ everyone: {} }],
+      exclude: [{ email_domain: { domain: 'example.com' } }],
+    }),
     false,
   );
 });
@@ -140,13 +156,15 @@ test('provider mutation is founder-gated behind the protected Production environ
   assert.match(workflowSource, /test "\$EXPECTED_MAIN_SHA" = "\$GITHUB_SHA"/);
 });
 
-test('current main is revalidated immediately before the provider mutation', () => {
+test('browser setup finishes before final current-main revalidation and provider mutation', () => {
+  assert.match(workflowSource, /Install Chromium for anonymous production proof/);
   assert.match(workflowSource, /Revalidate exact current main immediately before mutation/);
   assert.match(workflowSource, /main moved during job setup/);
   assert.match(workflowSource, /expected_main_sha is stale/);
+  const chromiumIndex = workflowSource.indexOf('Install Chromium for anonymous production proof');
   const revalidateIndex = workflowSource.indexOf('Revalidate exact current main immediately before mutation');
   const reconcileIndex = workflowSource.indexOf('Reconcile exact public apex Access exception');
-  assert.ok(revalidateIndex >= 0 && reconcileIndex > revalidateIndex);
+  assert.ok(chromiumIndex >= 0 && revalidateIndex > chromiumIndex && reconcileIndex > revalidateIndex);
 });
 
 test('a run-created bypass stays rollback-capable through browser proof and reconcile failure', () => {
