@@ -62,7 +62,7 @@ test('main-push classification executes the previous trusted main classifier, ne
   );
 });
 
-test('production witnesses continue independently after one witness fails while the job still fails closed', () => {
+test('production witnesses continue independently after one witness fails but stop when the run is cancelled', () => {
   const witnessSteps = [
     'Verify exact Supabase production schema contract',
     'Record safe frontend and backend transport evidence',
@@ -77,8 +77,8 @@ test('production witnesses continue independently after one witness fails while 
     const block = workflowStepBlock(name);
     assert.match(
       block,
-      /if: \$\{\{ always\(\) && steps\.trusted_current_main\.outcome == 'success' \}\}/u,
-      `${name} must still execute after an earlier production witness fails`,
+      /if: \$\{\{ !cancelled\(\) && steps\.trusted_current_main\.outcome == 'success' \}\}/u,
+      `${name} must continue after an earlier witness failure but stop on superseded-run cancellation`,
     );
     assert.doesNotMatch(
       block,
