@@ -107,6 +107,9 @@ jobs:
       CLOUDFLARE_CHECK_POLL_MS: '10000'
       CLOUDFLARE_EVIDENCE_PATH: artifacts/cloudflare-native-deploy.json
       RELEASE_ENDPOINT_PROBE_PATH: artifacts/production-release-endpoint-probe.json
+      FIREWALL_POLICY_PATH: security/firewall-v10.policy.json
+      FIREWALL_FINGERPRINT_PATH: artifacts/firewall-fingerprint.json
+      ATTACK20_EVIDENCE_PATH: artifacts/attack20-network-ingress.json
       PRODUCTION_BASE_URL: https://app.sekretbip.net
       FRONTEND_RELEASE_URL: https://app.sekretbip.net/.well-known/sekret-release.json
       BACKEND_HEALTH_URL: https://api.sekretbip.net/health
@@ -209,6 +212,12 @@ jobs:
             exit 1
           }
 
+      - name: Verify Firewall v10 repository contract
+        id: firewall_policy
+        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
+        run: node scripts/verify-firewall-v10.mjs
+
       - name: Verify exact Supabase production schema contract
         id: supabase_schema
         if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
@@ -269,17 +278,28 @@ jobs:
         timeout-minutes: 30
         run: npm run test:e2e:production
 
+      - name: Build separate Firewall Fingerprint
+        id: firewall_fingerprint
+        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
+        env:
+          FIREWALL_STEP_OUTCOMES: >-
+            {"firewall_policy":"${{ steps.firewall_policy.outcome }}","release_transport":"${{ steps.release_transport.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}"}
+        run: node scripts/build-firewall-fingerprint.mjs
+
       - name: Upload deployment evidence
         id: upload_evidence
         if: always()
         timeout-minutes: 5
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@ea165f8d65b5e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-native-deployment-evidence-${{ env.DEPLOYMENT_SHA }}
           path: |
             artifacts/cloudflare-native-deploy.json
             artifacts/production-release-endpoint-probe.json
             artifacts/supabase-production-schema.json
+            artifacts/firewall-fingerprint.json
+            artifacts/attack20-network-ingress.json
             playwright-report-production/
             test-results-production/
           if-no-files-found: warn
@@ -297,5 +317,5 @@ jobs:
           RELEASE_OBSERVATION_MODE: blocked
           VERIFICATION_JOB_STATUS: failure
           RELEASE_STEP_OUTCOMES: >-
-            {"trusted_target":"${{ steps.trusted_target.outcome }}","checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","trusted_current_main":"${{ steps.trusted_current_main.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","release_transport":"${{ steps.release_transport.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
+            {"trusted_target":"${{ steps.trusted_target.outcome }}","checkout":"${{ steps.checkout.outcome }}","exact_head":"${{ steps.exact_head.outcome }}","setup_node":"${{ steps.setup_node.outcome }}","install":"${{ steps.install.outcome }}","trusted_current_main":"${{ steps.trusted_current_main.outcome }}","firewall_policy":"${{ steps.firewall_policy.outcome }}","cloudflare_release":"${{ steps.cloudflare_release.outcome }}","supabase_schema":"${{ steps.supabase_schema.outcome }}","release_transport":"${{ steps.release_transport.outcome }}","backend_health":"${{ steps.backend_health.outcome }}","supabase_health":"${{ steps.supabase_health.outcome }}","chromium":"${{ steps.chromium.outcome }}","production_playwright":"${{ steps.production_playwright.outcome }}","firewall_fingerprint":"${{ steps.firewall_fingerprint.outcome }}","upload_evidence":"${{ steps.upload_evidence.outcome }}"}
         run: node "$RUNNER_TEMP/sekret-publish-production-release-observation.mjs"
