@@ -20,9 +20,11 @@ export const IMAGES = {
 // Preserve legacy internal ids while correcting the public visual mapping.
 // `raylene` remains the internal id; user-facing canon is Suhana.
 export const AVATARS = {
-  ...BASE_AVATARS,
   raylene: {
     ...BASE_AVATARS.raylene,
     fullbody: rayleneFullbody,
   },
+  rylane: BASE_AVATARS.rylane,
+  cloud: BASE_AVATARS.cloud,
+  night: BASE_AVATARS.night,
 } as const;
