@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const migrationPath = 'supabase/migrations/20260826012500_pseudonymize_open_bip_author_ids.sql';
 const readMigration = () => readFile(new URL(`../${migrationPath}`, import.meta.url), 'utf8');
+const readCircleV1 = () => readFile(new URL('../supabase/migrations/0002_circle_v1.sql', import.meta.url), 'utf8');
 const readRepository = () => readFile(new URL('../src/features/circle/circleRepository.ts', import.meta.url), 'utf8');
 
 test('Circle profiles receive a random stable public id separate from auth user id', async () => {
@@ -15,19 +16,32 @@ test('Circle profiles receive a random stable public id separate from auth user 
   assert.match(sql, /create unique index if not exists circle_profiles_public_id_uidx/);
 });
 
-test('direct profile reads remain owner-only so public ids cannot be reverse-mapped', async () => {
-  const sql = await readMigration();
-  const start = sql.indexOf('drop policy if exists circle_profiles_owner_select');
+test('relationship profile reads cannot expose the public id alongside auth-backed user ids', async () => {
+  const [sql, circleV1] = await Promise.all([readMigration(), readCircleV1()]);
+  const start = sql.indexOf('revoke all on table public.circle_profiles');
   const end = sql.indexOf('-- Preserve the existing RPC shape', start);
-  const boundary = sql.slice(start, end);
+  const grants = sql.slice(start, end);
 
-  assert.match(sql, /alter table public\.circle_profiles enable row level security/);
-  assert.match(boundary, /create policy circle_profiles_owner_select/);
-  assert.match(boundary, /for select\s+to authenticated/s);
-  assert.match(boundary, /\(select auth\.uid\(\)\) = user_id/);
-  assert.match(boundary, /auth\.jwt\(\)[\s\S]*is_anonymous[\s\S]*false/);
+  assert.match(
+    circleV1,
+    /create policy "circle_profiles_friends_read" on public\.circle_profiles/,
+    'legacy Friends visibility exists, so column privileges must carry the pseudonym privacy boundary',
+  );
   assert.match(sql, /revoke all on table public\.circle_profiles from public, anon, authenticated/);
-  assert.match(sql, /grant select on table public\.circle_profiles to authenticated/);
+  assert.match(
+    grants,
+    /grant select \(user_id, nickname, avatar_emoji, account_type, created_at, updated_at\)\s+on table public\.circle_profiles to authenticated/,
+  );
+  assert.doesNotMatch(
+    grants,
+    /grant\s+select\s+on\s+table\s+public\.circle_profiles/iu,
+    'authenticated must not regain table-level SELECT across public_id',
+  );
+  assert.doesNotMatch(
+    grants,
+    /grant\s+select\s*\([^)]*\bpublic_id\b[^)]*\)/iu,
+    'public_id must remain unreadable through direct authenticated table access',
+  );
 });
 
 test('public Circle ids are database-owned while existing profile upserts keep their write columns', async () => {
