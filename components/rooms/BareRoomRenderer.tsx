@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { Image, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import { IMAGES, type Character, type RoomPhase } from '../../constants/theme';
 import type { LightingMode } from '../../screens/UserRoomScreen';
 
@@ -72,14 +72,15 @@ export function BareRoomRenderer({ character, lightingMode }: BareRoomRendererPr
   const source = ROOM_ART[character]?.[phase] ?? ROOM_ART[character].day;
 
   return (
-    <Image
-      testID="room-production-art"
-      pointerEvents="none"
-      source={source}
-      style={StyleSheet.absoluteFill}
-      resizeMode="cover"
-      accessibilityIgnoresInvertColors
-      accessible={false}
-    />
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Image
+        testID="room-production-art"
+        source={source}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+        accessibilityIgnoresInvertColors
+        accessible={false}
+      />
+    </View>
   );
 }
