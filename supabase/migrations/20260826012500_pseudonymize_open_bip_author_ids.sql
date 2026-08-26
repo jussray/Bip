@@ -17,9 +17,10 @@ alter table public.circle_profiles
 create unique index if not exists circle_profiles_public_id_uidx
   on public.circle_profiles(public_id);
 
--- A random public id protects privacy only while direct profile reads stay
--- owner-only. Reassert that boundary here so an authenticated client cannot
--- enumerate public_id -> auth.users.id mappings and undo the pseudonymization.
+-- Existing Circle RLS still allows relationship-scoped profile reads for legacy
+-- Friends/Crew behavior. Keep that behavior, but never let authenticated clients
+-- select public_id directly alongside auth-backed user_id. The public pseudonym
+-- may cross the client boundary only through the bounded SECURITY DEFINER RPCs.
 alter table public.circle_profiles enable row level security;
 
 drop policy if exists circle_profiles_owner_select on public.circle_profiles;
@@ -33,9 +34,10 @@ using (
 );
 
 revoke all on table public.circle_profiles from public, anon, authenticated;
-grant select on table public.circle_profiles to authenticated;
+grant select (user_id, nickname, avatar_emoji, account_type, created_at, updated_at)
+  on table public.circle_profiles to authenticated;
 -- Preserve the existing PostgREST upsert shape without letting a client choose,
--- rotate, or overwrite the database-owned public pseudonym.
+-- rotate, overwrite, or directly read the database-owned public pseudonym.
 grant insert (user_id, nickname, avatar_emoji, account_type, updated_at)
   on table public.circle_profiles to authenticated;
 grant update (user_id, nickname, avatar_emoji, account_type, updated_at)
@@ -205,7 +207,7 @@ grant execute on function public.create_public_circle_post(text, text) to authen
 grant execute on function public.get_public_circle_profiles(uuid[]) to authenticated;
 
 comment on column public.circle_profiles.public_id is
-  'Random stable Circle pseudonym identifier. Safe for public-feed correlation; never use auth.users.id on Open Bip clients.';
+  'Random stable Circle pseudonym identifier. RPC-only for authenticated clients; never expose alongside auth.users.id on Open Bip clients.';
 comment on function public.get_public_circle_feed(integer) is
   'Open Bip feed. author_user_id is a compatibility field containing circle_profiles.public_id, never auth.users.id.';
 comment on function public.get_public_circle_profiles(uuid[]) is
