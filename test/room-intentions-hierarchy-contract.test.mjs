@@ -37,16 +37,31 @@ test('Teen Room arrives with daily intentions collapsed and visually subordinate
     'Collapsed intentions must remain explicitly discoverable and expandable',
   );
   assert.ok(
-    component.includes('const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, 174);'),
-    'Collapsed intentions must stay visually subordinate to the Room',
+    component.includes('const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(132, SCREEN_WIDTH * 0.4));'),
+    'Collapsed intentions must stay narrow enough to share the bottom utility rail on small phones',
+  );
+  assert.ok(
+    component.includes('expanded ? s.cardExpanded : s.cardCollapsed'),
+    'Expanded intentions must lift out of the bottom utility rail instead of colliding with it',
+  );
+  assert.match(
+    component,
+    /card:\s*\{[\s\S]*?bottom:\s*26,/,
+    'Collapsed intentions must use the real bottom dock rather than reserving a missing nav lane',
+  );
+  assert.match(
+    component,
+    /cardExpanded:\s*\{\s*bottom:\s*88,/,
+    'Expanded intentions must keep clearance above the return receipt lane',
+  );
+  assert.match(
+    component,
+    /offPill:\s*\{[^\n]*bottom:\s*26,/,
+    'The intentions-off affordance must stay aligned with the same bottom utility rail',
   );
   assert.ok(
     component.includes('<Text style={s.collapsedLabel}>✦ today</Text>'),
     'Collapsed intentions should render as a small peek, not the full panel title',
-  );
-  assert.ok(
-    component.includes('!expanded && s.cardCollapsed'),
-    'Collapsed intentions must use the quieter pill presentation',
   );
 });
 
