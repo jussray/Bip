@@ -4,6 +4,8 @@ import test from 'node:test';
 
 const route = readFileSync('app/(teen)/room.tsx', 'utf8');
 const atmosphere = readFileSync('components/rooms/VisualCanonAtmosphere.tsx', 'utf8');
+const roomRenderer = readFileSync('components/rooms/BareRoomRenderer.tsx', 'utf8');
+const publicTheme = readFileSync('constants/theme.ts', 'utf8');
 
 test('Teen Room mounts the visual-canon atmosphere between the room and utility overlays', () => {
   assert.ok(
@@ -30,4 +32,27 @@ test('Visual canon atmosphere is art-led, non-interactive, and motion restrained
   assert.ok(atmosphere.includes("'rgba(229, 209, 255, 0.92)'"), 'lilac star light must remain part of the visual grammar');
   assert.ok(atmosphere.includes('duration: 3200'), 'ambient shimmer must remain slow and cinematic');
   assert.doesNotMatch(atmosphere, /TouchableOpacity|Pressable|Button/);
+});
+
+test('User Room compatibility renderer uses production furnished room artwork', () => {
+  assert.ok(
+    roomRenderer.includes('testID="room-production-art"'),
+    'production room art needs a deterministic witness',
+  );
+  assert.ok(roomRenderer.includes('IMAGES.bgRayleneRoomNight'));
+  assert.ok(roomRenderer.includes('IMAGES.bgRylaneRoomNight'));
+  assert.ok(roomRenderer.includes('IMAGES.bgCloudRoomNight'));
+  assert.ok(roomRenderer.includes('IMAGES.bgNightRoomNight'));
+  assert.doesNotMatch(roomRenderer, /LinearGradient|windowOpening|skylineRow|curtainLeft/);
+});
+
+test('public avatar registry binds Suhana legacy id to the real full-body asset', () => {
+  assert.ok(
+    publicTheme.includes("const rayleneFullbody = require('../assets/images/raylene-fullbody.png');"),
+    'public theme must load the actual Suhana full-body file',
+  );
+  assert.ok(
+    publicTheme.includes('...BASE_AVATARS.raylene') && publicTheme.includes('fullbody: rayleneFullbody'),
+    'public avatar map must override only the legacy raylene full-body slot',
+  );
 });
