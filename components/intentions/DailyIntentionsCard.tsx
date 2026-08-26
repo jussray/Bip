@@ -28,7 +28,7 @@ import {
 const MODE_KEY = 'sekretbip:daily-intentions:personalization:v1';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = Math.min(SCREEN_WIDTH - 28, 340);
-const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, 174);
+const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(132, SCREEN_WIDTH * 0.4));
 
 type IntentionMode = 'basic' | 'personalized' | 'off';
 
@@ -186,7 +186,7 @@ export function DailyIntentionsCard({
     <View
       style={[
         s.card,
-        !expanded && s.cardCollapsed,
+        expanded ? s.cardExpanded : s.cardCollapsed,
         { width: expanded ? CARD_WIDTH : COLLAPSED_CARD_WIDTH },
       ]}
       testID="daily-intentions-card"
@@ -354,7 +354,7 @@ const s = StyleSheet.create({
   card: {
     position: 'absolute',
     left: 14,
-    bottom: 96,
+    bottom: 26,
     zIndex: 40,
     borderRadius: 18,
     borderWidth: 1,
@@ -367,6 +367,9 @@ const s = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 7 },
     elevation: 9,
+  },
+  cardExpanded: {
+    bottom: 88,
   },
   cardCollapsed: {
     borderRadius: 999,
@@ -395,7 +398,7 @@ const s = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   footerAction: { color: '#c4b5fd', fontSize: 10.5, fontWeight: '700' },
   trustLine: { color: 'rgba(221,214,254,0.57)', fontSize: 9.5, lineHeight: 14, marginTop: 8 },
-  offPill: { position: 'absolute', left: 14, bottom: 96, zIndex: 40, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(196,181,253,0.38)', backgroundColor: 'rgba(18,8,36,0.86)', paddingHorizontal: 13, paddingVertical: 8 },
+  offPill: { position: 'absolute', left: 14, bottom: 26, zIndex: 40, borderRadius: 99, borderWidth: 1, borderColor: 'rgba(196,181,253,0.38)', backgroundColor: 'rgba(18,8,36,0.86)', paddingHorizontal: 13, paddingVertical: 8 },
   offText: { color: '#c4b5fd', fontSize: 11, fontWeight: '800' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(4,2,12,0.72)', justifyContent: 'flex-end' },
   modalCard: { maxHeight: '82%', borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: '#160b29', borderWidth: 1, borderColor: 'rgba(196,181,253,0.28)', paddingHorizontal: 20, paddingTop: 22, paddingBottom: 28 },
