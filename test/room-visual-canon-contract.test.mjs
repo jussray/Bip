@@ -6,6 +6,7 @@ const route = readFileSync('app/(teen)/room.tsx', 'utf8');
 const atmosphere = readFileSync('components/rooms/VisualCanonAtmosphere.tsx', 'utf8');
 const roomRenderer = readFileSync('components/rooms/BareRoomRenderer.tsx', 'utf8');
 const publicTheme = readFileSync('constants/theme.ts', 'utf8');
+const baseTheme = readFileSync('constants/theme.base.ts', 'utf8');
 
 test('Teen Room mounts the visual-canon atmosphere between the room and utility overlays', () => {
   assert.ok(
@@ -46,13 +47,15 @@ test('User Room compatibility renderer uses production furnished room artwork', 
   assert.doesNotMatch(roomRenderer, /LinearGradient|windowOpening|skylineRow|curtainLeft/);
 });
 
-test('public avatar registry binds Suhana legacy id to the real full-body asset', () => {
-  assert.ok(
-    publicTheme.includes("const rayleneFullbody = require('../assets/images/raylene-fullbody.png');"),
-    'public theme must load the actual Suhana full-body file',
+test('visual-canon work preserves the proven companion asset authority', () => {
+  assert.match(
+    baseTheme,
+    /const\s+rayleneFullbody\s*=\s*require\(["']\.\.\/assets\/images\/raylene-confident-new\.png["']\)/,
+    'Suhana legacy id must keep the proven base full-body authority',
   );
-  assert.ok(
-    publicTheme.includes('...BASE_AVATARS.raylene') && publicTheme.includes('fullbody: rayleneFullbody'),
-    'public avatar map must override only the legacy raylene full-body slot',
+  assert.doesNotMatch(
+    publicTheme,
+    /raylene-fullbody\.png/,
+    'visual-canon work must not reintroduce the cropped legacy full-body file',
   );
 });
