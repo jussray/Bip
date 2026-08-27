@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 
 const migration = readFileSync(
-  'supabase/migrations/20260824223800_restore_circle_authenticated_policy_roles.sql',
+  'supabase/migrations/20260826065736_20260824223800_restore_circle_authenticated_policy_roles.sql',
   'utf8',
 );
 
