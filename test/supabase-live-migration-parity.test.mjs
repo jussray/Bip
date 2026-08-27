@@ -4,6 +4,11 @@ import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import {
+  PRODUCTION_HISTORY_EXACT_EMBEDDED_RECEIPTS,
+  normalizeProductionMigrationHistory,
+} from '../scripts/verify-supabase-production-schema.mjs';
+
 const root = fileURLToPath(new URL('../', import.meta.url));
 const migrationsRoot = path.join(root, 'supabase', 'migrations');
 
@@ -23,6 +28,29 @@ const staleNotificationPath = path.join(
   migrationsRoot,
   '20260713054000_harden_notification_delivery_ledger.sql',
 );
+
+const liveIdentityPairs = [
+  [
+    '20260723203050_20260718035000_deny_blocked_crew_access.sql',
+    '20260718035000_deny_blocked_crew_access.sql',
+  ],
+  [
+    '20260723203116_20260718035500_harden_bridge_source_idempotency.sql',
+    '20260718035500_harden_bridge_source_idempotency.sql',
+  ],
+  [
+    '20260820214601_drop_deprecated_pgjwt.sql',
+    '20260820211200_drop_deprecated_pgjwt.sql',
+  ],
+  [
+    '20260821073219_harden_anonymous_permanent_account_boundaries.sql',
+    '20260821071500_harden_anonymous_permanent_account_boundaries.sql',
+  ],
+  [
+    '20260826065736_20260824223800_restore_circle_authenticated_policy_roles.sql',
+    '20260824223800_restore_circle_authenticated_policy_roles.sql',
+  ],
+];
 
 const pointsFunction = fs.readFileSync(pointsFunctionPath, 'utf8');
 const pointsTrigger = fs.readFileSync(pointsTriggerPath, 'utf8');
@@ -57,4 +85,62 @@ test('notification hardening migration uses the exact live version and removes t
   assert.match(notification, /create policy notification_deliveries_deny_clients/i);
   assert.match(notification, /grant select, insert on table public\.notification_deliveries/i);
   assert.match(notification, /grant usage on sequence public\.notification_deliveries_id_seq/i);
+});
+
+test('repository migration filenames mirror the five current live Supabase ledger identities', () => {
+  for (const [liveFilename, staleFilename] of liveIdentityPairs) {
+    assert.equal(
+      fs.existsSync(path.join(migrationsRoot, liveFilename)),
+      true,
+      `${liveFilename} must exist`,
+    );
+    assert.equal(
+      fs.existsSync(path.join(migrationsRoot, staleFilename)),
+      false,
+      `${staleFilename} must not remain as a second migration identity`,
+    );
+  }
+});
+
+test('embedded historical receipt normalization is exact and fail-closed', () => {
+  assert.deepEqual(PRODUCTION_HISTORY_EXACT_EMBEDDED_RECEIPTS, {
+    '20260723203050': {
+      rawName: '20260718035000_deny_blocked_crew_access',
+      canonicalName: 'deny_blocked_crew_access',
+    },
+    '20260723203116': {
+      rawName: '20260718035500_harden_bridge_source_idempotency',
+      canonicalName: 'harden_bridge_source_idempotency',
+    },
+    '20260826065736': {
+      rawName: '20260824223800_restore_circle_authenticated_policy_roles',
+      canonicalName: 'restore_circle_authenticated_policy_roles',
+    },
+  });
+
+  const normalized = normalizeProductionMigrationHistory([
+    {
+      version: '20260723203050',
+      name: '20260718035000_deny_blocked_crew_access',
+    },
+    {
+      version: '20260723203116',
+      name: '20260718035500_harden_bridge_source_idempotency',
+    },
+    {
+      version: '20260826065736',
+      name: '20260824223800_restore_circle_authenticated_policy_roles',
+    },
+    {
+      version: '20260826065736',
+      name: '20260824223800_different_migration',
+    },
+  ]);
+
+  assert.deepEqual(normalized, [
+    { version: '20260723203050', name: 'deny_blocked_crew_access' },
+    { version: '20260723203116', name: 'harden_bridge_source_idempotency' },
+    { version: '20260826065736', name: 'restore_circle_authenticated_policy_roles' },
+    { version: '20260826065736', name: '20260824223800_different_migration' },
+  ]);
 });
