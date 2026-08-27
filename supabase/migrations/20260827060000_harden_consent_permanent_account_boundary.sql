@@ -39,7 +39,11 @@ declare
   v_timestamp timestamptz := now();
   v_action text;
 begin
-  if v_user_id is null or not public.is_non_anonymous_user() then
+  if v_user_id is null then
+    raise exception 'authentication_required' using errcode = '42501';
+  end if;
+
+  if not public.is_non_anonymous_user() then
     raise exception 'permanent_account_required' using errcode = '42501';
   end if;
 
