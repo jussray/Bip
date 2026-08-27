@@ -20,7 +20,7 @@ jobs:
   dispatch:
     name: Dispatch bounded app-domain ownership reconcile
     if: >-
-      github.event.issue.number == 825 &&
+      github.event.issue.number == 925 &&
       github.event.comment.user.login == 'jussray' &&
       startsWith(github.event.comment.body, '/reconcile-app-domain ')
     runs-on: ubuntu-latest
