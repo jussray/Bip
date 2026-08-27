@@ -14,6 +14,9 @@ const ANON_MIGRATION_NAME = 'harden_anonymous_permanent_account_boundaries';
 const TC01_CANONICAL_VERSION = '20260822060000';
 const TC01_LIVE_VERSION = '20260824004706';
 const TC01_MIGRATION_NAME = 'tc01_private_safety_boundary';
+const CIRCLE_POLICY_CANONICAL_VERSION = '20260824223800';
+const CIRCLE_POLICY_LIVE_VERSION = '20260826065736';
+const CIRCLE_POLICY_MIGRATION_NAME = 'restore_circle_authenticated_policy_roles';
 
 test('anonymous-boundary production apply receipt remains an explicit exact alias', () => {
   assert.equal(PRODUCTION_HISTORY_APPLIED_ALIASES[ANON_CANONICAL_VERSION], ANON_LIVE_VERSION);
@@ -88,4 +91,56 @@ test('TC-01 alias fails closed when the receipt name differs', () => {
 
   assert.equal(evaluated.verified, false);
   assert.deepEqual(evaluated.missingCanonicalVersions, [TC01_CANONICAL_VERSION]);
+});
+
+test('circle policy production receipt is an explicit exact runtime alias', () => {
+  assert.equal(
+    PRODUCTION_HISTORY_RUNTIME_ALIASES[CIRCLE_POLICY_CANONICAL_VERSION],
+    CIRCLE_POLICY_LIVE_VERSION,
+  );
+});
+
+test('circle policy live receipt represents only the matching canonical migration', () => {
+  const evaluated = evaluateMigrationHistory(
+    {
+      live_max_version: CIRCLE_POLICY_LIVE_VERSION,
+      migration_history: [{
+        version: CIRCLE_POLICY_LIVE_VERSION,
+        name: `${CIRCLE_POLICY_CANONICAL_VERSION}_${CIRCLE_POLICY_MIGRATION_NAME}`,
+      }],
+    },
+    [{ version: CIRCLE_POLICY_CANONICAL_VERSION, name: CIRCLE_POLICY_MIGRATION_NAME }],
+    undefined,
+    PRODUCTION_HISTORY_RUNTIME_ALIASES,
+  );
+
+  assert.equal(evaluated.verified, true);
+  assert.deepEqual(evaluated.representedCanonicalVersions, [CIRCLE_POLICY_CANONICAL_VERSION]);
+  assert.deepEqual(evaluated.acceptedAliasVersions, [{
+    canonicalVersion: CIRCLE_POLICY_CANONICAL_VERSION,
+    liveVersion: CIRCLE_POLICY_LIVE_VERSION,
+    name: CIRCLE_POLICY_MIGRATION_NAME,
+  }]);
+});
+
+test('circle policy alias fails closed when the embedded receipt name differs', () => {
+  const evaluated = evaluateMigrationHistory(
+    {
+      live_max_version: CIRCLE_POLICY_LIVE_VERSION,
+      migration_history: [{
+        version: CIRCLE_POLICY_LIVE_VERSION,
+        name: `${CIRCLE_POLICY_CANONICAL_VERSION}_different_migration`,
+      }],
+    },
+    [{ version: CIRCLE_POLICY_CANONICAL_VERSION, name: CIRCLE_POLICY_MIGRATION_NAME }],
+    undefined,
+    PRODUCTION_HISTORY_RUNTIME_ALIASES,
+  );
+
+  assert.equal(evaluated.verified, false);
+  assert.deepEqual(evaluated.missingCanonicalVersions, [CIRCLE_POLICY_CANONICAL_VERSION]);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, [{
+    liveVersion: CIRCLE_POLICY_LIVE_VERSION,
+    name: `${CIRCLE_POLICY_CANONICAL_VERSION}_different_migration`,
+  }]);
 });

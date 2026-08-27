@@ -1,12 +1,8 @@
-name: Supabase Fresh Replay
+name: Supabase PR Preview
 
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'supabase/migrations/**'
-      - 'supabase/reference/legacy_migrations/**'
-      - '.github/workflows/supabase-fresh-replay.yml'
   workflow_dispatch:
 
 permissions:
