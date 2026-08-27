@@ -1,6 +1,6 @@
 # Se'kret Bip MCP Stack
 
-Last reviewed: 2026-08-25
+Last reviewed: 2026-08-27
 
 This is the smallest MCP stack that matches the repository's operating surface: GitHub for source/release evidence, Supabase for scoped schema/runtime inspection, current documentation providers for implementation references, Figma for design handoff, Cloudflare for provider/build/observability evidence, and Playwright for browser verification.
 
