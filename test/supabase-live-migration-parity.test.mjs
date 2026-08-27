@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   PRODUCTION_HISTORY_EXACT_EMBEDDED_RECEIPTS,
+  evaluateMigrationHistory,
   normalizeProductionMigrationHistory,
 } from '../scripts/verify-supabase-production-schema.mjs';
 
@@ -143,4 +144,30 @@ test('embedded historical receipt normalization is exact and fail-closed', () =>
     { version: '20260826065736', name: 'restore_circle_authenticated_policy_roles' },
     { version: '20260826065736', name: '20260824223800_different_migration' },
   ]);
+});
+
+test('normalized Circle receipt verifies only against the exact live repository identity', () => {
+  const normalized = normalizeProductionMigrationHistory([
+    {
+      version: '20260826065736',
+      name: '20260824223800_restore_circle_authenticated_policy_roles',
+    },
+  ]);
+  const evaluated = evaluateMigrationHistory(
+    {
+      live_max_version: '20260826065736',
+      migration_history: normalized,
+    },
+    [{
+      version: '20260826065736',
+      name: '20260824223800_restore_circle_authenticated_policy_roles',
+    }],
+    '20260826065736',
+    {},
+  );
+
+  assert.equal(evaluated.verified, true);
+  assert.deepEqual(evaluated.representedCanonicalVersions, ['20260826065736']);
+  assert.deepEqual(evaluated.missingCanonicalVersions, []);
+  assert.deepEqual(evaluated.unexpectedRecentVersions, []);
 });
