@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migrationPath = 'supabase/migrations/20260821071500_harden_anonymous_permanent_account_boundaries.sql';
+const migrationPath = 'supabase/migrations/20260821073219_harden_anonymous_permanent_account_boundaries.sql';
 const readMigration = () => readFile(new URL(`../${migrationPath}`, import.meta.url), 'utf8');
 
 function policyBody(sql, policyName, tableName) {
