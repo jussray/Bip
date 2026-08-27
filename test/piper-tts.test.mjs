@@ -6,6 +6,7 @@ const worker = fs.readFileSync(new URL('../worker/index.ts', import.meta.url), '
 const client = fs.readFileSync(new URL('../worker/piper-tts.ts', import.meta.url), 'utf8');
 const service = fs.readFileSync(new URL('../services/piper-tts/server.py', import.meta.url), 'utf8');
 const dockerfile = fs.readFileSync(new URL('../services/piper-tts/Dockerfile', import.meta.url), 'utf8');
+const requirements = fs.readFileSync(new URL('../services/piper-tts/requirements.txt', import.meta.url), 'utf8');
 
 test('Voice Bip has a Piper-first route and fallback path', () => {
   for (const token of ['PIPER_TTS_URL', 'synthesizeWithPiper', 'voiceSource', 'piper', 'worker.fetch']) {
@@ -17,6 +18,21 @@ test('Piper client supports protected WAV synthesis', () => {
   for (const token of ['PIPER_TTS_TOKEN', 'Authorization', 'synthesize', 'wav']) {
     assert.equal(client.includes(token), true);
   }
+});
+
+test('Piper alignment lane is additive and fails soft to the stable WAV route', () => {
+  for (const token of ['synthesize-aligned', 'alignmentsAvailable', 'PiperPhonemeAlignment', 'response.status === 404 || response.status === 405']) {
+    assert.equal(client.includes(token), true);
+  }
+  for (const token of ['@app.post("/synthesize")', '@app.post("/synthesize-aligned")', 'include_alignments=True', 'startSeconds', 'durationSeconds']) {
+    assert.equal(service.includes(token), true);
+  }
+});
+
+test('Piper voice models are patched at image build time for timing output', () => {
+  assert.equal(requirements.includes('piper-tts[alignment]==1.4.2'), true);
+  assert.equal(dockerfile.includes('python -m piper.patch_voice_with_alignment'), true);
+  assert.equal(dockerfile.includes('for model in /voices/*.onnx'), true);
 });
 
 test('canonical Piper defaults match the voice models baked into the image', () => {
