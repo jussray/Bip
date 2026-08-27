@@ -279,6 +279,7 @@ async function handleStyledVoice(
           characterId: actorId,
           voiceSource: 'piper',
           voiceId: audio.voice,
+          phonemeTiming: audio.alignmentsAvailable ? audio.alignments : undefined,
           aiGenerated: true,
           styleDecision: 'allow',
         }, 200, cors);
