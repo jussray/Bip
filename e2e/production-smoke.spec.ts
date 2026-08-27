@@ -85,8 +85,10 @@ test('production Bip Jr front door renders and Enter reaches parent onboarding',
   });
 
   await page.getByTestId('web-welcome-enter').click();
-  await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
-  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/\/parent-welcome(?:\?|$)/);
+  await expect(page.getByRole('button', { name: 'Create my Parent account' })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'I already have an account' })).toBeVisible({ timeout: 30_000 });
+  await expectNoHorizontalOverflow(page);
 });
 
 test('unauthenticated visitor cannot reach a protected teen route from a blank session', async ({ page }) => {
