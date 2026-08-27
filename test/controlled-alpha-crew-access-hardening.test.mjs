@@ -4,7 +4,7 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const accessMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
+const accessMigrationPath = 'supabase/migrations/20260723203050_20260718035000_deny_blocked_crew_access.sql';
 const probePath = 'supabase/probes/controlled_alpha_relationship_contract_v2.sql';
 
 test('private Crew access helper is bound to the current permanent member', async () => {
