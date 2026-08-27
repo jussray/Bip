@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migrationPath = 'supabase/migrations/20260826005500_harden_consent_permanent_account_boundary.sql';
+const migrationPath = 'supabase/migrations/20260827060000_harden_consent_permanent_account_boundary.sql';
 const readMigration = () => readFile(new URL(`../${migrationPath}`, import.meta.url), 'utf8');
 const readConsentScreen = () => readFile(new URL('../app/(onboarding)/consent.tsx', import.meta.url), 'utf8');
 
