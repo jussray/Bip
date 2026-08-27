@@ -6,6 +6,12 @@ import * as core from './verify-supabase-production-schema-core.mjs';
 
 export * from './verify-supabase-production-schema-core.mjs';
 
+export const PRODUCTION_HISTORY_RUNTIME_ALIASES = Object.freeze({
+  ...core.PRODUCTION_HISTORY_ALL_ACCEPTED_ALIASES,
+  '20260822060000': '20260824004706',
+  '20260824223800': '20260826065736',
+});
+
 export const PRODUCTION_PGJWT_POLICY = Object.freeze({
   installed: true,
   version: '0.2.0',
@@ -252,7 +258,7 @@ export async function verifySupabaseProductionSchema(options = {}) {
   const evaluated = core.evaluateMigrationHistory({
     ...row,
     migration_history: migrationHistory,
-  }, repositoryMigrations);
+  }, repositoryMigrations, core.PRODUCTION_HISTORY_AUTHORITY_FLOOR, PRODUCTION_HISTORY_RUNTIME_ALIASES);
   const policy = evaluatePgjwtPolicy(row, {
     allowInjectedFallback: Boolean(options.fetchImpl) && options.requirePgjwtState !== true,
   });
