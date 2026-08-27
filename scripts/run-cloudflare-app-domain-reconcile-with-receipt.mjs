@@ -58,8 +58,13 @@ export function classifyObservedRequest(input, init = {}) {
   return { provider: 'external', operation: 'external-request', method };
 }
 
-export function appDomainApplyBlockReason(argv = []) {
-  return argv.includes('--apply') ? 'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED' : null;
+export function appDomainApplyBlockReason() {
+  // The reconciler itself performs the load-bearing provider readback before any
+  // mutation: Pages ownership must be active, Worker domains/routes are read,
+  // foreign or broad bindings fail closed, and only exact sekret-backend bindings
+  // can be removed. Blocking every --apply here prevents those reads from ever
+  // establishing the protected two-Worker topology.
+  return null;
 }
 
 function numericProviderCodes(payload) {
