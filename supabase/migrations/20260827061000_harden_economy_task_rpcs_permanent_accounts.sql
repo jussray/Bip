@@ -3,6 +3,8 @@ begin;
 -- SECURITY DEFINER RPCs bypass table RLS. The underlying Bip event/task/points
 -- tables already require permanent accounts, so the RPC boundary must enforce
 -- the same rule before reading or mutating those tables.
+-- Preserve each RPC's existing "authentication required" null-auth contract;
+-- only anonymous-authenticated sessions receive permanent_account_required.
 
 create or replace function public.apply_inactivity_point_adjustment()
 returns jsonb
