@@ -16,23 +16,26 @@ function functionBody(sql, functionName) {
   return sql.slice(start, end);
 }
 
-function assertPermanentAccountGuardBeforeDataAccess(body, firstDataPattern) {
-  const guard = body.indexOf('if ');
-  const permanentGate = body.indexOf('not public.is_non_anonymous_user()');
+function assertPermanentAccountGuardBeforeDataAccess(body, firstDataPattern, principal) {
+  const authGuard = body.indexOf(`if ${principal} is null then`);
+  const authError = body.indexOf("raise exception 'authentication required'");
+  const permanentGate = body.indexOf('if not public.is_non_anonymous_user() then');
+  const permanentError = body.indexOf("raise exception 'permanent_account_required'");
   const dataAccess = body.search(firstDataPattern);
 
-  assert.notEqual(guard, -1, 'missing early guard');
-  assert.notEqual(permanentGate, -1, 'missing permanent-account helper');
+  assert.notEqual(authGuard, -1, 'missing existing unauthenticated guard');
+  assert.ok(authError > authGuard, 'authentication required error must remain first');
+  assert.ok(permanentGate > authError, 'permanent-account guard must follow null-auth rejection');
+  assert.ok(permanentError > permanentGate, 'missing permanent_account_required error');
   assert.notEqual(dataAccess, -1, 'missing expected data access');
-  assert.ok(permanentGate < dataAccess, 'anonymous rejection must happen before SECURITY DEFINER data access');
-  assert.match(body, /raise exception 'permanent_account_required' using errcode = '42501'/);
+  assert.ok(permanentError < dataAccess, 'anonymous rejection must happen before SECURITY DEFINER data access');
 }
 
 test('inactivity adjustment rejects anonymous authenticated sessions before reading the event ledger', async () => {
   const sql = await readMigration();
   const body = functionBody(sql, 'apply_inactivity_point_adjustment');
 
-  assertPermanentAccountGuardBeforeDataAccess(body, /select max\(occurred_at\)::date/);
+  assertPermanentAccountGuardBeforeDataAccess(body, /select max\(occurred_at\)::date/, 'v_user');
   assert.match(body, /event_type not in \('app_opened', 'streak_milestone'\)/);
   assert.match(body, /daily_cap', 5/);
 });
@@ -41,7 +44,7 @@ test('teen task submission rejects anonymous sessions before bypassing task RLS'
   const sql = await readMigration();
   const body = functionBody(sql, 'submit_bip_task');
 
-  assertPermanentAccountGuardBeforeDataAccess(body, /select requires_approval, point_value/);
+  assertPermanentAccountGuardBeforeDataAccess(body, /select requires_approval, point_value/, 'v_user');
   assert.match(body, /where id = p_task_id\s+and teen_id = v_user/);
   assert.match(body, /insert into public\.task_submissions/);
 });
@@ -50,7 +53,7 @@ test('parent task review requires a permanent account and an actually active par
   const sql = await readMigration();
   const body = functionBody(sql, 'review_task_submission');
 
-  assertPermanentAccountGuardBeforeDataAccess(body, /select ts\.teen_id, ts\.task_id, bt\.point_value/);
+  assertPermanentAccountGuardBeforeDataAccess(body, /select ts\.teen_id, ts\.task_id, bt\.point_value/, 'v_parent');
   assert.match(body, /pl\.status = 'active'/);
   assert.match(body, /pl\.is_active = true/);
   assert.match(body, /insert into public\.bip_events/);
