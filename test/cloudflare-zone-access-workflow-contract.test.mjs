@@ -94,3 +94,25 @@ test('public front-door audit is exact-head, independently retained, read-only, 
   assert.ok(!workflow.includes('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}'), 'public front-door audit must not receive the Workers Builds token');
   assert.ok(!/\brun:\s+.*(?:--apply|DELETE|POST|PATCH|PUT)/u.test(auditJob), 'Cloudflare-reading audit job must not expose a mutation command');
 });
+
+test('sanitized binding publisher has explicit Node 24 CommonJS async semantics', () => {
+  const publisherIndex = workflow.indexOf('  publish_receipt:');
+  const publisherJob = workflow.slice(publisherIndex);
+  const heredocStart = publisherJob.indexOf("node <<'NODE'");
+  const heredocEnd = publisherJob.indexOf('\n          NODE', heredocStart);
+  const inlineNode = publisherJob.slice(heredocStart, heredocEnd);
+
+  assert.ok(heredocStart >= 0 && heredocEnd > heredocStart, 'publisher inline Node program must be extractable');
+  assert.match(inlineNode, /const fs = require\('node:fs'\);/);
+  assert.match(inlineNode, /const path = require\('node:path'\);/);
+  assert.match(inlineNode, /\(async \(\) => \{/);
+  assert.match(inlineNode, /\}\)\(\)\.catch\(\(error\) => \{/);
+
+  const iifeIndex = inlineNode.indexOf('(async () => {');
+  const firstAwaitIndex = inlineNode.indexOf('await ');
+  const catchIndex = inlineNode.indexOf('})().catch((error) => {');
+  assert.ok(iifeIndex >= 0, 'async IIFE must exist');
+  assert.ok(firstAwaitIndex > iifeIndex, 'all await expressions must be inside the async IIFE');
+  assert.ok(catchIndex > firstAwaitIndex, 'publisher must fail closed through the IIFE rejection handler');
+  assert.doesNotMatch(inlineNode.slice(0, iifeIndex), /\bawait\b/u);
+});
