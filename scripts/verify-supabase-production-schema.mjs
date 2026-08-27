@@ -12,21 +12,6 @@ export const PRODUCTION_HISTORY_RUNTIME_ALIASES = Object.freeze({
   '20260824223800': '20260826065736',
 });
 
-export const PRODUCTION_HISTORY_EXACT_EMBEDDED_RECEIPTS = Object.freeze({
-  '20260723203050': Object.freeze({
-    rawName: '20260718035000_deny_blocked_crew_access',
-    canonicalName: 'deny_blocked_crew_access',
-  }),
-  '20260723203116': Object.freeze({
-    rawName: '20260718035500_harden_bridge_source_idempotency',
-    canonicalName: 'harden_bridge_source_idempotency',
-  }),
-  '20260826065736': Object.freeze({
-    rawName: '20260824223800_restore_circle_authenticated_policy_roles',
-    canonicalName: 'restore_circle_authenticated_policy_roles',
-  }),
-});
-
 export const PRODUCTION_PGJWT_POLICY = Object.freeze({
   installed: true,
   version: '0.2.0',
@@ -52,20 +37,6 @@ function parseMigrationHistory(value) {
   } catch {
     return null;
   }
-}
-
-export function normalizeProductionMigrationHistory(history) {
-  if (!Array.isArray(history)) return history;
-
-  return history.map((migration) => {
-    const version = clean(migration?.version);
-    const receipt = PRODUCTION_HISTORY_EXACT_EMBEDDED_RECEIPTS[version];
-    if (!receipt || clean(migration?.name) !== receipt.rawName) return migration;
-    return {
-      ...migration,
-      name: receipt.canonicalName,
-    };
-  });
 }
 
 function readPgjwtState(row, { allowInjectedFallback = false } = {}) {
@@ -284,10 +255,9 @@ export async function verifySupabaseProductionSchema(options = {}) {
     );
   }
 
-  const normalizedMigrationHistory = normalizeProductionMigrationHistory(migrationHistory);
   const evaluated = core.evaluateMigrationHistory({
     ...row,
-    migration_history: normalizedMigrationHistory,
+    migration_history: migrationHistory,
   }, repositoryMigrations, core.PRODUCTION_HISTORY_AUTHORITY_FLOOR, PRODUCTION_HISTORY_RUNTIME_ALIASES);
   const policy = evaluatePgjwtPolicy(row, {
     allowInjectedFallback: Boolean(options.fetchImpl) && options.requirePgjwtState !== true,

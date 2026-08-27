@@ -17,7 +17,7 @@ function fixture() {
   const evidencePath = path.join(root, 'evidence.json');
   fs.mkdirSync(migrationsDir);
   fs.writeFileSync(
-    path.join(migrationsDir, '20260820214601_drop_deprecated_pgjwt.sql'),
+    path.join(migrationsDir, '20260820211200_drop_deprecated_pgjwt.sql'),
     '-- fixture\n',
     'utf8',
   );
