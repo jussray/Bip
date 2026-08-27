@@ -11,7 +11,7 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  EXPECTED_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+  EXPECTED_HEAD_SHA: ${{ github.sha }}
   EXPECTED_RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
 
 concurrency:
@@ -36,6 +36,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
           UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
@@ -55,9 +56,9 @@ jobs:
               "https://api.github.com/repos/$REPOSITORY/commits/main"
           } | node -e "let body='';process.stdin.on('data',c=>body+=c);process.stdin.on('end',()=>{const parsed=JSON.parse(body);if(!parsed.sha)process.exit(2);process.stdout.write(parsed.sha);});")"
 
-          printf 'upstream_head=%s\ncurrent_main=%s\n' "$UPSTREAM_HEAD_SHA" "$current_main"
+          printf 'upstream_head=%s\nworkflow_head=%s\ncurrent_main=%s\n' "$UPSTREAM_HEAD_SHA" "$WORKFLOW_HEAD_SHA" "$current_main"
 
-          UPSTREAM_HEAD_SHA="$UPSTREAM_HEAD_SHA" CURRENT_MAIN="$current_main" GITHUB_OUTPUT="$GITHUB_OUTPUT" node -e '
+          UPSTREAM_HEAD_SHA="$UPSTREAM_HEAD_SHA" WORKFLOW_HEAD_SHA="$WORKFLOW_HEAD_SHA" CURRENT_MAIN="$current_main" GITHUB_OUTPUT="$GITHUB_OUTPUT" node -e '
             const fs = require("node:fs");
             const payload = JSON.parse(process.argv[1]);
             const target = payload.jobs?.find(
@@ -78,14 +79,20 @@ jobs:
               console.error(`Required upstream production verification job concluded ${target.conclusion}.`);
               process.exit(3);
             }
-            if (process.env.UPSTREAM_HEAD_SHA !== process.env.CURRENT_MAIN) {
-              console.log("Verified release SHA is no longer current main; superseding stale smoke.");
+            if (process.env.UPSTREAM_HEAD_SHA !== process.env.WORKFLOW_HEAD_SHA) {
+              console.log("Verified release SHA differs from the workflow_run default-branch SHA; superseding stale smoke.");
+              out("false");
+              process.exit(0);
+            }
+            if (process.env.WORKFLOW_HEAD_SHA !== process.env.CURRENT_MAIN) {
+              console.log("Workflow-run default-branch SHA is no longer current main; superseding stale smoke.");
               out("false");
               process.exit(0);
             }
 
             console.log(`verified_upstream_job=${target.name}`);
             console.log(`verified_release_sha=${process.env.UPSTREAM_HEAD_SHA}`);
+            console.log(`trusted_checkout_sha=${process.env.WORKFLOW_HEAD_SHA}`);
             out("true");
           ' "$jobs_json"
 
@@ -103,8 +110,9 @@ jobs:
         run: |
           set -euo pipefail
           actual="$(git rev-parse HEAD)"
-          printf 'expected=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$actual"
+          printf 'expected=%s\nrelease=%s\nactual=%s\n' "$EXPECTED_HEAD_SHA" "$EXPECTED_RELEASE_SHA" "$actual"
           test "$actual" = "$EXPECTED_HEAD_SHA"
+          test "$EXPECTED_HEAD_SHA" = "$EXPECTED_RELEASE_SHA"
 
       - name: Set up Node 24
         if: steps.upstream.outputs.should_run == 'true'
