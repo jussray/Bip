@@ -14,7 +14,7 @@ const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated
 const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
 
 const receipt = {
-  schemaVersion: 7,
+  schemaVersion: 6,
   generatedAt: new Date().toISOString(),
   trustedGitRef: process.env.GITHUB_REF || null,
   trustedGitSha: process.env.GITHUB_SHA || null,
@@ -22,11 +22,6 @@ const receipt = {
   mutationPerformed: false,
   status: 'started',
   failure: null,
-  credentialVerification: {
-    ownerType: null,
-    userProviderStatus: null,
-    accountProviderStatus: null,
-  },
   providerTopology: {
     workers: [
       { name: separateWorker, role: 'separate-protected', mutationAuthorized: false },
@@ -90,7 +85,7 @@ function fail(code, message, details = {}) {
   throw new Error(message);
 }
 
-async function requestProvider(providerPath) {
+async function get(providerPath) {
   const retainedProviderPath = publicProviderPath(providerPath);
   let response;
   try {
@@ -98,73 +93,31 @@ async function requestProvider(providerPath) {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     });
   } catch {
-    return {
-      ok: false,
+    fail('provider-request-failed', `GET ${retainedProviderPath} failed before provider response`, {
       providerPath: retainedProviderPath,
-      providerStatus: null,
-      result: null,
-    };
+    });
   }
 
   const payload = await response.json().catch(() => null);
-  return {
-    ok: response.ok && payload?.success !== false,
-    providerPath: retainedProviderPath,
-    providerStatus: response.status,
-    result: payload?.result ?? null,
-  };
-}
-
-async function get(providerPath) {
-  const attempt = await requestProvider(providerPath);
-  if (!attempt.ok) {
-    if (attempt.providerStatus == null) {
-      fail('provider-request-failed', `GET ${attempt.providerPath} failed before provider response`, {
-        providerPath: attempt.providerPath,
-      });
-    }
-    fail('provider-http-failure', `GET ${attempt.providerPath} failed with provider status ${attempt.providerStatus}`, {
-      providerPath: attempt.providerPath,
-      providerStatus: attempt.providerStatus,
+  if (!response.ok || payload?.success === false) {
+    fail('provider-http-failure', `GET ${retainedProviderPath} failed with provider status ${response.status}`, {
+      providerPath: retainedProviderPath,
+      providerStatus: response.status,
     });
   }
-  return attempt.result;
-}
-
-async function verifyTokenOwnership() {
-  const userAttempt = await requestProvider('/user/tokens/verify');
-  receipt.credentialVerification.userProviderStatus = userAttempt.providerStatus;
-
-  if (userAttempt.ok && userAttempt.result?.status === 'active') {
-    receipt.credentialVerification.ownerType = 'user';
-    writeReceipt();
-    return;
-  }
-
-  const accountAttempt = await requestProvider(`/accounts/${accountId}/tokens/verify`);
-  receipt.credentialVerification.accountProviderStatus = accountAttempt.providerStatus;
-
-  if (accountAttempt.ok && accountAttempt.result?.status === 'active') {
-    receipt.credentialVerification.ownerType = 'account';
-    writeReceipt();
-    return;
-  }
-
-  fail(
-    'provider-token-verification-failed',
-    'Dedicated Workers Builds API token could not be verified as an active user-owned or account-owned token.',
-    {
-      userProviderStatus: userAttempt.providerStatus,
-      accountProviderStatus: accountAttempt.providerStatus,
-    },
-  );
+  return payload?.result;
 }
 
 writeReceipt();
 if (!accountId) fail('configuration-missing', 'CLOUDFLARE_ACCOUNT_ID is required.', { field: 'CLOUDFLARE_ACCOUNT_ID' });
 if (!token) fail('configuration-missing', 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN is required.', { field: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' });
 
-await verifyTokenOwnership();
+const tokenState = await get('/user/tokens/verify');
+if (tokenState?.status !== 'active') {
+  fail('provider-token-inactive', 'Dedicated Workers Builds API token is not active.', {
+    providerPath: '/user/tokens/verify',
+  });
+}
 
 const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
 const findWorker = (name) => (Array.isArray(scripts) ? scripts : []).filter((row) => clean(row?.id) === name);
