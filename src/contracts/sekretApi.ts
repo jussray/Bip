@@ -74,6 +74,13 @@ export interface CharacterAlignment {
   characterEndTimesSeconds: number[];
 }
 
+/** Piper phoneme timing used to drive a living portrait / viseme controller. */
+export interface PiperPhonemeAlignment {
+  phoneme: string;
+  startSeconds: number;
+  durationSeconds: number;
+}
+
 export interface VoiceSynthesisRequest {
   reply: string;
   characterId: CompanionId | LegacyCompanionId;
@@ -94,6 +101,7 @@ export interface VoiceSynthesisData {
   voiceId?: string;
   usedFallback?: boolean;
   timing?: CharacterAlignment;
+  phonemeTiming?: PiperPhonemeAlignment[];
   traceId?: string;
 }
 
