@@ -58,13 +58,15 @@ test('validator rejects a sixth pair and any altered mapping', () => {
   altered[0].canonicalVersion = '20260718035001';
   assert.throws(
     () => validateReconciliationPlan(altered),
-    /Unapproved Supabase history reconciliation pair/,
+    /Unrecognized Supabase history reconciliation pair/,
   );
 });
 
-test('the plan is evidence-only and contains no production mutation command', () => {
+test('the plan is evidence-only and carries zero mutation authority', () => {
   const evidence = validateReconciliationPlan();
   assert.equal(evidence.mutatesProduction, false);
+  assert.equal(evidence.historyMutationAuthorized, false);
+  assert.equal(evidence.securityApplyAuthorized, false);
   assert.equal(evidence.requiresFounderApprovalBeforeHistoryMutation, true);
   assert.equal(evidence.requiresFounderApprovalBeforePendingSecurityApply, true);
 
