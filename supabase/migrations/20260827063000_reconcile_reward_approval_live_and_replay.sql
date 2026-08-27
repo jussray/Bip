@@ -64,7 +64,7 @@ end
 $$;
 
 -- Rebuild the two SECURITY DEFINER RPCs against whichever reward table lineage
--- exists. Both variants expose the same request RPC return contract.
+-- exists. Both variants preserve the established request/review error contract.
 do $$
 begin
   if to_regclass('public.rewards') is not null
@@ -96,7 +96,7 @@ begin
         v_redemption_id uuid;
       begin
         if v_user_id is null then
-          raise exception 'authentication required';
+          raise exception 'unauthorized';
         end if;
         if not public.is_non_anonymous_user() then
           raise exception 'permanent_account_required' using errcode = '42501';
@@ -253,7 +253,7 @@ begin
         v_redemption_id uuid;
       begin
         if v_user_id is null then
-          raise exception 'authentication required';
+          raise exception 'unauthorized';
         end if;
         if not public.is_non_anonymous_user() then
           raise exception 'permanent_account_required' using errcode = '42501';
