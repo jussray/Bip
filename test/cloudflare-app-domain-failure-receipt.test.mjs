@@ -36,12 +36,9 @@ test('sanitized request classification identifies Cloudflare preflight operation
   );
 });
 
-test('stale one-worker apply path is blocked until provider readback pins the two-worker topology', () => {
+test('apply reaches the bounded reconciler so provider readback can prove or reject the two-worker topology', () => {
   assert.equal(appDomainApplyBlockReason([]), null);
-  assert.equal(
-    appDomainApplyBlockReason(['--apply']),
-    'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED',
-  );
+  assert.equal(appDomainApplyBlockReason(['--apply']), null);
 });
 
 test('failure wrapper persists a safe receipt and never serializes caught exception text', () => {
@@ -49,13 +46,20 @@ test('failure wrapper persists a safe receipt and never serializes caught except
     new URL('../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs', import.meta.url),
     'utf8',
   );
+  const reconciler = fs.readFileSync(
+    new URL('../scripts/reconcile-cloudflare-app-domain.mjs', import.meta.url),
+    'utf8',
+  );
 
   assert.match(wrapper, /preflight-failed-before-mutation/);
   assert.match(wrapper, /mutationState/);
   assert.match(wrapper, /providerCodes/);
   assert.match(wrapper, /FAILURE_EVIDENCE_WRITTEN/);
-  assert.match(wrapper, /two-worker-topology-guard/);
   assert.match(wrapper, /protectedWorkers: PROTECTED_WORKERS/);
+  assert.match(reconciler, /listPagesDomains\(resolved\)/);
+  assert.match(reconciler, /listWorkerDomains\(resolved\)/);
+  assert.match(reconciler, /listWorkerRoutes\(resolved\)/);
+  assert.match(reconciler, /assertSafeBindings\(preClassification, resolved\)/);
   assert.doesNotMatch(wrapper, /error\.message|String\(error\)|payload\?\.errors[^\n]*message/);
 });
 
