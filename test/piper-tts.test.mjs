@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 const worker = fs.readFileSync(new URL('../worker/index.ts', import.meta.url), 'utf8');
 const client = fs.readFileSync(new URL('../worker/piper-tts.ts', import.meta.url), 'utf8');
+const contract = fs.readFileSync(new URL('../src/contracts/sekretApi.ts', import.meta.url), 'utf8');
 const service = fs.readFileSync(new URL('../services/piper-tts/server.py', import.meta.url), 'utf8');
 const dockerfile = fs.readFileSync(new URL('../services/piper-tts/Dockerfile', import.meta.url), 'utf8');
 const requirements = fs.readFileSync(new URL('../services/piper-tts/requirements.txt', import.meta.url), 'utf8');
@@ -26,6 +27,13 @@ test('Piper alignment lane is additive and fails soft to the stable WAV route', 
   }
   for (const token of ['@app.post("/synthesize")', '@app.post("/synthesize-aligned")', 'include_alignments=True', 'startSeconds', 'durationSeconds']) {
     assert.equal(service.includes(token), true);
+  }
+});
+
+test('Piper phoneme timing reaches the public Voice Bip contract', () => {
+  assert.equal(worker.includes('phonemeTiming: audio.alignmentsAvailable ? audio.alignments : undefined'), true);
+  for (const token of ['PiperPhonemeAlignment', 'phonemeTiming?: PiperPhonemeAlignment[]']) {
+    assert.equal(contract.includes(token), true);
   }
 });
 
