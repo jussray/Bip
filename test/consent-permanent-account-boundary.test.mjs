@@ -13,16 +13,21 @@ test('consent read policies reject anonymous-authenticated sessions', async () =
   assert.match(sql, /create policy "Users read own audit log"[\s\S]*public\.is_non_anonymous_user\(\)[\s\S]*auth\.uid\(\)\) = user_id/);
 });
 
-test('record_user_consent checks permanent account before durable writes', async () => {
+test('record_user_consent preserves auth error and rejects anonymous accounts before durable writes', async () => {
   const sql = await readMigration();
   const start = sql.indexOf('create or replace function public.record_user_consent');
   const body = sql.slice(start, sql.indexOf('\nrevoke all on function', start));
-  const guard = body.indexOf('not public.is_non_anonymous_user()');
+  const unauthenticatedGuard = body.indexOf('if v_user_id is null then');
+  const unauthenticatedError = body.indexOf("raise exception 'authentication_required'");
+  const permanentGate = body.indexOf('if not public.is_non_anonymous_user() then');
+  const permanentError = body.indexOf("raise exception 'permanent_account_required'");
   const firstWrite = body.indexOf('insert into public.user_consents');
 
-  assert.ok(guard >= 0, 'missing permanent-account guard');
-  assert.ok(firstWrite > guard, 'guard must run before consent persistence');
-  assert.match(body, /raise exception 'permanent_account_required' using errcode = '42501'/);
+  assert.ok(unauthenticatedGuard >= 0, 'missing unauthenticated guard');
+  assert.ok(unauthenticatedError > unauthenticatedGuard, 'missing preserved authentication_required error');
+  assert.ok(permanentGate > unauthenticatedError, 'permanent-account gate must follow null-auth rejection');
+  assert.ok(permanentError > permanentGate, 'missing permanent_account_required error');
+  assert.ok(firstWrite > permanentError, 'all authorization guards must run before consent persistence');
 });
 
 test('server boundary mirrors onboarding redirect for anonymous auth users', async () => {
