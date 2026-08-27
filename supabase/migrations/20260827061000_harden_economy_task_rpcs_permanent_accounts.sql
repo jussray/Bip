@@ -18,7 +18,11 @@ declare
   v_adjustment integer := 0;
   v_rows integer := 0;
 begin
-  if v_user is null or not public.is_non_anonymous_user() then
+  if v_user is null then
+    raise exception 'authentication required';
+  end if;
+
+  if not public.is_non_anonymous_user() then
     raise exception 'permanent_account_required' using errcode = '42501';
   end if;
 
@@ -156,7 +160,11 @@ declare
   v_requires_approval boolean;
   v_points integer;
 begin
-  if v_user is null or not public.is_non_anonymous_user() then
+  if v_user is null then
+    raise exception 'authentication required';
+  end if;
+
+  if not public.is_non_anonymous_user() then
     raise exception 'permanent_account_required' using errcode = '42501';
   end if;
 
@@ -237,7 +245,11 @@ declare
   v_task_id uuid;
   v_points integer;
 begin
-  if v_parent is null or not public.is_non_anonymous_user() then
+  if v_parent is null then
+    raise exception 'authentication required';
+  end if;
+
+  if not public.is_non_anonymous_user() then
     raise exception 'permanent_account_required' using errcode = '42501';
   end if;
 
