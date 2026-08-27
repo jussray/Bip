@@ -91,7 +91,7 @@ export function validateReconciliationPlan(plan = PRODUCTION_HISTORY_RECONCILIAT
       || expected.liveName !== pair.liveName
       || expected.canonicalName !== pair.canonicalName
       || expected.evidenceMode !== pair.evidenceMode) {
-      throw new Error(`Unapproved Supabase history reconciliation pair: ${pair.liveVersion}:${pair.canonicalVersion}.`);
+      throw new Error(`Unrecognized Supabase history reconciliation pair: ${pair.liveVersion}:${pair.canonicalVersion}.`);
     }
 
     const canonicalPath = path.join(MIGRATIONS_ROOT, canonicalFilename(pair));
@@ -113,6 +113,8 @@ export function validateReconciliationPlan(plan = PRODUCTION_HISTORY_RECONCILIAT
     pairs: plan.map((pair) => ({ ...pair, canonicalFilename: canonicalFilename(pair) })),
     pendingSecurityMigrations: [...PENDING_SECURITY_MIGRATIONS],
     mutatesProduction: false,
+    historyMutationAuthorized: false,
+    securityApplyAuthorized: false,
     requiresFounderApprovalBeforeHistoryMutation: true,
     requiresFounderApprovalBeforePendingSecurityApply: true,
     verified: true,
