@@ -7,9 +7,10 @@ const workflow = fs.readFileSync(
   'utf8',
 );
 
-test('app-domain founder command is bound to repair PR 825 and founder authority', () => {
+test('app-domain founder command is bound to active launch gate 925 and founder authority', () => {
   assert.match(workflow, /issue_comment:/);
-  assert.match(workflow, /github\.event\.issue\.number == 825/);
+  assert.match(workflow, /github\.event\.issue\.number == 925/);
+  assert.doesNotMatch(workflow, /github\.event\.issue\.number == 825/);
   assert.match(workflow, /github\.event\.comment\.user\.login == 'jussray'/);
   assert.match(workflow, /startsWith\(github\.event\.comment\.body, '\/reconcile-app-domain '\)/);
   assert.match(workflow, /Expected exactly: \/reconcile-app-domain <40-char-main-sha> <approval-reference>/);
