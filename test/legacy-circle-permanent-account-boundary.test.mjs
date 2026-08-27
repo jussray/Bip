@@ -45,7 +45,7 @@ test('dormant polymorphic comments fail closed instead of reading across every C
   assert.doesNotMatch(sql, /create policy cc_read/i);
 });
 
-test('legacy Circle client roles lose broad table privileges and anon access', async () => {
+test('legacy Circle client roles lose broad table privileges and regain only required CRUD', async () => {
   const sql = await readMigration();
 
   for (const table of permanentTables) {
@@ -57,7 +57,10 @@ test('legacy Circle client roles lose broad table privileges and anon access', a
   assert.match(sql, /grant select, insert, update, delete\s+on table public\.friends_circle_posts to authenticated/i);
   assert.match(sql, /grant select, insert, update, delete\s+on table public\.crew_circle_posts to authenticated/i);
   assert.match(sql, /grant select, insert, update, delete\s+on table public\.parent_circle_posts to authenticated/i);
+  assert.match(sql, /grant select, insert, update, delete\s+on table public\.circle_comments to authenticated/i);
+  assert.match(sql, /grant select, insert, delete on table public\.blocked_users to authenticated/i);
   assert.match(sql, /grant select, insert, delete on table public\.reported_posts to authenticated/i);
+  assert.doesNotMatch(sql, /grant[^;]*update[^;]*on table public\.(?:blocked_users|reported_posts)/i);
 });
 
 test('serial sequences are not usable by anon after hardening', async () => {
@@ -93,6 +96,7 @@ test('migration covers the legacy direct-write compatibility paths still present
   assert.match(sync, /parent:\s*TABLES\.parentCirclePosts/);
   assert.match(sync, /syncParentCirclePost/);
   assert.match(moderation, /\.from\('reported_posts'\)\.insert/);
+  assert.doesNotMatch(moderation, /\.from\('blocked_users'\)/);
 
   assert.match(sql, /friends_circle_posts_permanent_accounts_only/);
   assert.match(sql, /crew_circle_posts_permanent_accounts_only/);
