@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const migrationPath = 'supabase/migrations/20260826004000_reconcile_reward_approval_live_and_replay.sql';
+const migrationPath = 'supabase/migrations/20260827063000_reconcile_reward_approval_live_and_replay.sql';
 
 const readMigration = () => readFile(new URL(`../${migrationPath}`, import.meta.url), 'utf8');
 const readClient = () => readFile(new URL('../src/utils/parentApprovals.ts', import.meta.url), 'utf8');
@@ -30,19 +30,31 @@ test('linked-parent reward reads require permanent account and active link in bo
   assert.equal((policySection.match(/pl\.is_active = true/g) ?? []).length, 2);
 });
 
-test('both reward SECURITY DEFINER variants reject anonymous sessions before privileged data access', async () => {
+test('reward SECURITY DEFINER variants preserve missing-auth compatibility and reject anonymous sessions before data access', async () => {
   const sql = await readMigration();
 
   assert.equal(
-    (sql.match(/not public\.is_non_anonymous_user\(\)/g) ?? []).length,
+    (sql.match(/raise exception 'authentication required'/g) ?? []).length,
     4,
-    'request + review must be guarded in both schema variants',
+    'request + review in both schema lineages must preserve the historical missing-auth error',
   );
   assert.equal(
     (sql.match(/raise exception 'permanent_account_required' using errcode = '42501'/g) ?? []).length,
     4,
+    'request + review in both schema lineages must separately reject anonymous-authenticated sessions',
+  );
+  assert.equal(
+    (sql.match(/if not public\.is_non_anonymous_user\(\) then/g) ?? []).length,
+    4,
   );
   assert.equal((sql.match(/pl\.is_active = true/g) ?? []).length, 4);
+
+  const guardPairs = [
+    /if v_user_id is null then\s+raise exception 'authentication required';\s+end if;\s+if not public\.is_non_anonymous_user\(\) then\s+raise exception 'permanent_account_required' using errcode = '42501';/g,
+    /if v_parent is null then\s+raise exception 'authentication required';\s+end if;\s+if not public\.is_non_anonymous_user\(\) then\s+raise exception 'permanent_account_required' using errcode = '42501';/g,
+  ];
+  assert.equal((sql.match(guardPairs[0]) ?? []).length, 2);
+  assert.equal((sql.match(guardPairs[1]) ?? []).length, 2);
 });
 
 test('parent approvals client queries and normalizes both reward schema lineages', async () => {
