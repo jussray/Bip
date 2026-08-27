@@ -4,8 +4,8 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationPath = 'supabase/migrations/20260718034500_controlled_alpha_relationship_boundaries.sql';
-const accessMigrationPath = 'supabase/migrations/20260718035000_deny_blocked_crew_access.sql';
-const bridgeIntentMigrationPath = 'supabase/migrations/20260718035500_harden_bridge_source_idempotency.sql';
+const accessMigrationPath = 'supabase/migrations/20260723203050_20260718035000_deny_blocked_crew_access.sql';
+const bridgeIntentMigrationPath = 'supabase/migrations/20260723203116_20260718035500_harden_bridge_source_idempotency.sql';
 const probePath = 'supabase/probes/controlled_alpha_relationship_contract.sql';
 
 test('controlled-alpha relationship features stop at the beta audience', async () => {
