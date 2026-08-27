@@ -70,6 +70,13 @@ RUN wget -q "${PIPER_VOICES_BASE}/en/en_US/lessac/low/en_US-lessac-low.onnx" \
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Patch the baked voices once so Piper 1.4.2 can expose phoneme/sample timing
+# without changing the existing CLI synthesis path. Piper documents patched
+# models as backwards-compatible with existing installations.
+RUN for model in /voices/*.onnx; do \
+      python -m piper.patch_voice_with_alignment "$model"; \
+    done
+
 # ── App ───────────────────────────────────────────────────────────────────────
 COPY server.py ./server.py
 
