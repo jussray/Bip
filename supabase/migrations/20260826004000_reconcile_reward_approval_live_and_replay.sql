@@ -95,7 +95,10 @@ begin
         v_status text;
         v_redemption_id uuid;
       begin
-        if v_user_id is null or not public.is_non_anonymous_user() then
+        if v_user_id is null then
+          raise exception 'authentication required';
+        end if;
+        if not public.is_non_anonymous_user() then
           raise exception 'permanent_account_required' using errcode = '42501';
         end if;
 
@@ -164,7 +167,10 @@ begin
         v_parent uuid := auth.uid();
         v_redemption public.reward_redemptions%rowtype;
       begin
-        if v_parent is null or not public.is_non_anonymous_user() then
+        if v_parent is null then
+          raise exception 'authentication required';
+        end if;
+        if not public.is_non_anonymous_user() then
           raise exception 'permanent_account_required' using errcode = '42501';
         end if;
 
@@ -246,7 +252,10 @@ begin
         v_status text;
         v_redemption_id uuid;
       begin
-        if v_user_id is null or not public.is_non_anonymous_user() then
+        if v_user_id is null then
+          raise exception 'authentication required';
+        end if;
+        if not public.is_non_anonymous_user() then
           raise exception 'permanent_account_required' using errcode = '42501';
         end if;
 
@@ -315,7 +324,10 @@ begin
         v_parent uuid := auth.uid();
         v_redemption public.reward_redemptions%rowtype;
       begin
-        if v_parent is null or not public.is_non_anonymous_user() then
+        if v_parent is null then
+          raise exception 'authentication required';
+        end if;
+        if not public.is_non_anonymous_user() then
           raise exception 'permanent_account_required' using errcode = '42501';
         end if;
 
