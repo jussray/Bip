@@ -37,27 +37,40 @@ test('Teen Room arrives with daily intentions collapsed and visually subordinate
     'Collapsed intentions must remain explicitly discoverable and expandable',
   );
   assert.ok(
-    component.includes('const COLLAPSED_CARD_WIDTH = Math.min(CARD_WIDTH, Math.max(132, SCREEN_WIDTH * 0.4));'),
-    'Collapsed intentions must stay narrow enough to share the bottom utility rail on small phones',
+    component.includes('const IS_NARROW_RAIL = SCREEN_WIDTH < 360;'),
+    'Utility rail geometry must adapt when three controls cannot safely share one row',
+  );
+  assert.ok(
+    component.includes('const COLLAPSED_CARD_WIDTH = IS_NARROW_RAIL ? Math.min(CARD_WIDTH, 118) : 108;'),
+    'Collapsed intentions must stay compact enough to fit between Mood and return controls',
+  );
+  assert.ok(
+    component.includes('const COLLAPSED_CARD_LEFT = IS_NARROW_RAIL ? 14 : Math.max(102, Math.round(SCREEN_WIDTH * 0.27));'),
+    'Collapsed intentions must occupy the center utility-rail slot on standard phone widths',
+  );
+  assert.ok(
+    component.includes('const COLLAPSED_CARD_BOTTOM = IS_NARROW_RAIL ? 126 : 26;'),
+    'Narrow phones must lift intentions above the utility rail instead of forcing overlap',
+  );
+  assert.ok(
+    component.includes('const EXPANDED_CARD_BOTTOM = 104;'),
+    'Expanded intentions must clear Mood, return receipt, and tab navigation',
   );
   assert.ok(
     component.includes('expanded ? s.cardExpanded : s.cardCollapsed'),
-    'Expanded intentions must lift out of the bottom utility rail instead of colliding with it',
+    'Expanded and collapsed intentions must retain distinct presentations',
   );
-  assert.match(
-    component,
-    /card:\s*\{[\s\S]*?bottom:\s*26,/,
-    'Collapsed intentions must use the real bottom dock rather than reserving a missing nav lane',
+  assert.ok(
+    component.includes('left: expanded ? 14 : COLLAPSED_CARD_LEFT'),
+    'Collapsed intentions must use the center rail slot while expanded content returns to the left reading edge',
   );
-  assert.match(
-    component,
-    /cardExpanded:\s*\{\s*bottom:\s*88,/,
-    'Expanded intentions must keep clearance above the return receipt lane',
+  assert.ok(
+    component.includes('bottom: expanded ? EXPANDED_CARD_BOTTOM : COLLAPSED_CARD_BOTTOM'),
+    'Intentions must switch between utility-rail and expanded clearance geometry explicitly',
   );
-  assert.match(
-    component,
-    /offPill:\s*\{[^\n]*bottom:\s*26,/,
-    'The intentions-off affordance must stay aligned with the same bottom utility rail',
+  assert.ok(
+    component.includes('{ left: COLLAPSED_CARD_LEFT, bottom: COLLAPSED_CARD_BOTTOM }'),
+    'The intentions-off affordance must share the same collision-safe placement contract',
   );
   assert.ok(
     component.includes('<Text style={s.collapsedLabel}>✦ today</Text>'),
@@ -113,5 +126,9 @@ test('Product Design proof watches the composition surfaces', () => {
   assert.ok(
     workflow.includes('test/room-intentions-hierarchy-contract.test.mjs'),
     'The Room hierarchy contract must execute in Product Design proof',
+  );
+  assert.ok(
+    workflow.includes('e2e/room-canonical-display.spec.ts'),
+    'The browser geometry witness must run inside Product Design proof',
   );
 });
