@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
+
+import {
+  DEFAULT_APPLICATION_NAME,
+  DEFAULT_TARGET_HOSTNAME,
+  rollbackRunCreatedPublicApexAccess,
+} from '../scripts/reconcile-cloudflare-public-apex-access.mjs';
 
 const reconciler = await readFile('scripts/reconcile-cloudflare-public-apex-access.mjs', 'utf8');
 const workflow = await readFile('.github/workflows/reconcile-cloudflare-public-apex-access.yml', 'utf8');
@@ -27,6 +35,41 @@ test('ambiguous Access create outcomes stay unknown and never acquire rollback a
   assert.match(reconciler, /observedManagedCandidateCount/);
   assert.doesNotMatch(reconciler, /createdApp\s*=\s*recoverCreateCandidates/);
   assert.match(reconciler, /ROLLBACK_MUTATION_ATTRIBUTION_UNPROVEN/);
+});
+
+test('rollback cleanup preserves an unknown mutation receipt instead of claiming no rollback is required', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'sekret-access-rollback-'));
+  const evidencePath = join(directory, 'evidence.json');
+  const evidence = {
+    status: 'mutation-state-unknown',
+    mutationState: 'unknown',
+    mutationPerformed: false,
+    mutationAttribution: 'unproven',
+    rollbackPerformed: false,
+    targetHostname: DEFAULT_TARGET_HOSTNAME,
+    applicationName: DEFAULT_APPLICATION_NAME,
+  };
+
+  try {
+    await writeFile(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
+    const result = await rollbackRunCreatedPublicApexAccess({
+      env: {
+        CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
+        CLOUDFLARE_ACCOUNT_ID: 'test-account',
+        BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
+      },
+    });
+    const persisted = JSON.parse(await readFile(evidencePath, 'utf8'));
+
+    assert.equal(result.status, 'rollback-blocked-mutation-state-unproven');
+    assert.equal(persisted.status, 'rollback-blocked-mutation-state-unproven');
+    assert.equal(persisted.mutationState, 'unknown');
+    assert.equal(persisted.mutationAttribution, 'unproven');
+    assert.equal(persisted.rollbackPerformed, false);
+    assert.notEqual(persisted.status, 'rollback-not-required');
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('a provider-returned create identity is durably recorded before post-create proof calls', () => {
