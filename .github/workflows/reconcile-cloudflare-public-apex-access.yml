@@ -7,8 +7,8 @@ on:
       - '.github/workflows/reconcile-cloudflare-public-apex-access.yml'
       - 'scripts/reconcile-cloudflare-public-apex-access.mjs'
       - 'test/cloudflare-public-apex-access-reconciler.test.mjs'
-      - 'test/cloudflare-production-browser-contract.test.mjs'
       - 'test/post-989-access-fail-closed.test.mjs'
+      - 'test/cloudflare-production-browser-contract.test.mjs'
       - 'e2e/production-public-front-door.spec.ts'
   workflow_dispatch:
     inputs:
@@ -62,8 +62,8 @@ jobs:
         run: >-
           node --test
           test/cloudflare-public-apex-access-reconciler.test.mjs
-          test/cloudflare-production-browser-contract.test.mjs
           test/post-989-access-fail-closed.test.mjs
+          test/cloudflare-production-browser-contract.test.mjs
 
   apply:
     name: Founder-authorized public apex Access repair
@@ -165,7 +165,7 @@ jobs:
           CI: 'true'
         run: npx playwright test e2e/production-public-front-door.spec.ts --config=playwright.production.config.ts --project=chromium
 
-      - name: Roll back run-created bypass after any failed post-mutation path
+      - name: Roll back run-created bypass after any failed or cancelled post-mutation path
         if: (failure() || cancelled()) && steps.reconcile.outcome != 'skipped'
         env:
           CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}

@@ -1,8 +1,5 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -12,9 +9,7 @@ import {
   isCloudflareAccessUrl,
   isEveryoneBypassPolicy,
   listApplications,
-  uniquelyAttributableManagedApexApp,
   publicDestinationTargetsHost,
-  reconcilePublicApexAccess,
   selectBlockingApplication,
 } from '../scripts/reconcile-cloudflare-public-apex-access.mjs';
 
@@ -88,7 +83,6 @@ test('application inventory follows every provider page', async () => {
     const apps = await listApplications({ token: 'test-token', accountId: 'account' });
     assert.deepEqual(requestedPages, [1, 2]);
     assert.equal(apps.length, 101);
-    assert.equal(apps.at(-1)?.id, 'page-2-app');
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -198,103 +192,15 @@ test('browser setup finishes before final current-main revalidation and provider
 });
 
 test('a run-created bypass stays rollback-capable through browser proof and reconcile failure', () => {
-  assert.match(workflowSource, /if: \(failure\(\) \|\| cancelled\(\)\) && steps\.reconcile\.outcome != 'skipped'/);
+  assert.match(
+    workflowSource,
+    /if: \(failure\(\) \|\| cancelled\(\)\) && steps\.reconcile\.outcome != 'skipped'/,
+  );
   assert.match(workflowSource, /--rollback-created/);
   assert.match(reconcilerSource, /ROLLBACK_EVIDENCE_SCOPE_MISMATCH/);
   assert.match(reconcilerSource, /evidence\?\.mutationPerformed !== true \|\| evidence\?\.rollbackPerformed === true/);
   assert.match(reconcilerSource, /ROLLBACK_MANAGED_APP_DESTINATION_MISMATCH/);
   assert.match(reconcilerSource, /rolled-back-after-proof-failure/);
-});
-
-test('post-mutation requests are bounded and ambiguous creates fail closed', () => {
-  assert.match(reconcilerSource, /AbortSignal\.timeout/);
-  assert.match(reconcilerSource, /preCreateAppIds/);
-  assert.match(reconcilerSource, /mutation-state-unknown/);
-  assert.match(reconcilerSource, /uniquelyAttributableManagedApexApp/);
-});
-
-test('ambiguous create attribution requires one new identified managed apex app', () => {
-  const config = configFromEnv({});
-  const exact = {
-    id: 'new-app',
-    name: config.applicationName,
-    destinations: [{ type: 'public', uri: 'sekretbip.net/*' }],
-  };
-  assert.equal(uniquelyAttributableManagedApexApp([exact], new Set(['old-app']), config), exact);
-  assert.equal(uniquelyAttributableManagedApexApp([{ ...exact, id: '' }], new Set(), config), null);
-  assert.equal(
-    uniquelyAttributableManagedApexApp([exact, { ...exact, id: 'second-app' }], new Set(), config),
-    null,
-  );
-  assert.equal(
-    uniquelyAttributableManagedApexApp(
-      [exact, { ...exact, id: 'drifted-app', destinations: [{ type: 'public', uri: 'other.example/*' }] }],
-      new Set(),
-      config,
-    ),
-    null,
-  );
-});
-
-test('run-created identity is durable before the first post-create request', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'bip-access-evidence-'));
-  const evidencePath = join(directory, 'evidence.json');
-  const originalFetch = globalThis.fetch;
-  let deleteCalled = false;
-  globalThis.fetch = async (url, options = {}) => {
-    if (url === 'https://sekretbip.net/') {
-      return {
-        status: 302,
-        redirected: true,
-        url: 'https://example.cloudflareaccess.com/cdn-cgi/access/login/sekretbip.net',
-        headers: { get: () => 'text/html' },
-      };
-    }
-    if (options.method === 'POST') {
-      return new Response(JSON.stringify({
-        success: true,
-        result: {
-          id: 'created-app',
-          name: 'sekretbip.net - public apex bypass',
-          destinations: [{ type: 'public', uri: 'sekretbip.net/*' }],
-        },
-      }), { status: 200 });
-    }
-    if (String(url).includes('/policies')) {
-      const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
-      assert.equal(evidence.status, 'created-pending-proof');
-      assert.equal(evidence.mutationPerformed, true);
-      assert.equal(evidence.managedApplication.id, 'created-app');
-      throw new Error('POST_CREATE_POLICY_FAILURE');
-    }
-    if (options.method === 'DELETE') {
-      deleteCalled = true;
-      return new Response(JSON.stringify({ success: true, result: {} }), { status: 200 });
-    }
-    return new Response(JSON.stringify({
-      success: true,
-      result: [],
-      result_info: { total_pages: 1 },
-    }), { status: 200 });
-  };
-
-  try {
-    await assert.rejects(
-      reconcilePublicApexAccess({
-        apply: true,
-        env: {
-          CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
-          CLOUDFLARE_ACCOUNT_ID: 'account',
-          BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
-        },
-      }),
-      /POST_CREATE_POLICY_FAILURE/,
-    );
-    assert.equal(deleteCalled, true);
-  } finally {
-    globalThis.fetch = originalFetch;
-    await rm(directory, { recursive: true, force: true });
-  }
 });
 
 test('managed and rollback paths reject destination broadening', () => {

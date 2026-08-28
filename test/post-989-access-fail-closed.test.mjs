@@ -5,6 +5,7 @@ import test from 'node:test';
 const reconciler = await readFile('scripts/reconcile-cloudflare-public-apex-access.mjs', 'utf8');
 const workflow = await readFile('.github/workflows/reconcile-cloudflare-public-apex-access.yml', 'utf8');
 const browserContract = await readFile('test/cloudflare-production-browser-contract.test.mjs', 'utf8');
+const productionFrontDoor = await readFile('e2e/production-public-front-door.spec.ts', 'utf8');
 
 // Post-merge successor contract for the unresolved P1 findings left on #989.
 test('managed Access identity is selected before destination validation', () => {
@@ -20,11 +21,25 @@ test('managed Access identity is selected before destination validation', () => 
   );
 });
 
-test('ambiguous Access create outcomes are provider-reconciled before recording mutation state', () => {
-  assert.match(reconciler, /preCreate|beforeCreate|existingAppIds|preExistingAppIds/i);
-  assert.match(reconciler, /ambiguous|recover.*create|reconcile.*create/i);
-  assert.match(reconciler, /mutation.*unknown|unknown.*mutation/i);
-  assert.match(reconciler, /created-pending-proof/);
+test('ambiguous Access create outcomes stay unknown and never acquire rollback authority', () => {
+  assert.match(reconciler, /status:\s*'mutation-state-unknown'/);
+  assert.match(reconciler, /mutationAttribution:\s*'unproven'/);
+  assert.match(reconciler, /observedManagedCandidateCount/);
+  assert.doesNotMatch(reconciler, /createdApp\s*=\s*recoverCreateCandidates/);
+  assert.match(reconciler, /ROLLBACK_MUTATION_ATTRIBUTION_UNPROVEN/);
+});
+
+test('a provider-returned create identity is durably recorded before post-create proof calls', () => {
+  const createIndex = reconciler.indexOf('createdApp = await createPublicBypassApplication(config)');
+  const evidenceIndex = reconciler.indexOf("status: 'created-awaiting-proof'", createIndex);
+  const policyIndex = reconciler.indexOf('const policies = await listPolicies(config, createdApp.id)', createIndex);
+  const runtimeIndex = reconciler.indexOf('const runtimeAfter = await waitForPublicRuntime(config)', createIndex);
+
+  assert.ok(createIndex >= 0, 'create call must exist');
+  assert.ok(evidenceIndex > createIndex, 'rollback-capable evidence must follow a successful create response');
+  assert.ok(policyIndex > evidenceIndex, 'rollback-capable evidence must precede post-create provider readback');
+  assert.ok(runtimeIndex > evidenceIndex, 'rollback-capable evidence must precede runtime proof');
+  assert.match(reconciler, /mutationAttribution:\s*'provider-returned-id'/);
 });
 
 test('post-mutation provider and runtime requests have explicit abort deadlines', () => {
@@ -42,7 +57,10 @@ test('workflow cleanup covers cancellation as well as ordinary failure', () => {
 });
 
 test('production browser contract follows the public apex destination', () => {
-  assert.match(browserContract, /sekretbip\.net/);
+  assert.match(productionFrontDoor, /https:\/\/sekretbip\.net\//);
+  assert.match(productionFrontDoor, /hostname\)\.toBe\('sekretbip\.net'\)/);
+  assert.doesNotMatch(productionFrontDoor, /app\.sekretbip\.net/);
+  assert.match(browserContract, /sekretbip\\\.net/);
   assert.doesNotMatch(
     browserContract,
     /require[^\n]*app\.sekretbip\.net|includes\([^\n]*app\.sekretbip\.net/i,
