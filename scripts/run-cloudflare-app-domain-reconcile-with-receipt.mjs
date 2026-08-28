@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { main as reconcileMain } from './reconcile-cloudflare-app-domain.mjs';
 
 const EVIDENCE_PATH = 'artifacts/cloudflare-app-domain-routing-evidence.json';
-const PROTECTED_WORKERS = ['sekret', 'sekret-backend'];
+const PROTECTED_WORKERS = ['bip', 'sekret-backend'];
 
 function inputUrl(input) {
   if (typeof input === 'string') return input;
