@@ -4,13 +4,14 @@ Last reviewed: 2026-08-27
 
 This is the smallest MCP stack that matches the repository's operating surface: GitHub for source/release evidence, Supabase for scoped schema/runtime inspection, current documentation providers for implementation references, Figma for design handoff, Cloudflare for provider/build/observability evidence, and Playwright for browser verification.
 
-Configuration lives in `.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, and `.mcp.example.json`. Credentials remain outside committed source.
+Configuration lives in `.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, `.codex/config.toml`, and `.mcp.example.json`. Credentials remain outside committed source.
 
 Client schemas are not interchangeable:
 
 - `.mcp.json`, `.mcp.example.json`, and Cursor's `.cursor/mcp.json` use a top-level `mcpServers` object.
 - VS Code workspace `.vscode/mcp.json` uses a top-level `servers` object.
-- `npm run verify:mcp` checks both shapes so a valid server list cannot silently become undiscoverable in one client.
+- Codex uses TOML tables named `mcp_servers.<server-name>` in `.codex/config.toml`; authentication remains in Codex's private credential store.
+- `npm run verify:mcp` checks every client shape so a valid server list cannot silently become undiscoverable in one client.
 
 ## Connected servers
 

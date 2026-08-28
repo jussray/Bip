@@ -74,6 +74,14 @@ function readJson(relativePath) {
   }
 }
 
+function readText(relativePath) {
+  try {
+    return fs.readFileSync(path.join(root, relativePath), 'utf8');
+  } catch (error) {
+    fail(`${relativePath} is missing or unreadable: ${error.message}`);
+  }
+}
+
 function sortedKeys(value) {
   return Object.keys(value ?? {}).sort();
 }
@@ -142,6 +150,23 @@ function validateIdeCloudflare(relativePath, servers) {
   }
 }
 
+function validateCodexCloudflare(config) {
+  for (const [name, url] of Object.entries(ideCloudflareUrls)) {
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const table = new RegExp(`^\\[mcp_servers\\.${escapedName}\\]\\nurl = "${escapedUrl}"$`, 'm');
+    assert(table.test(config), `.codex/config.toml:${name} is missing or its URL drifted`);
+  }
+
+  const configuredNames = [...config.matchAll(/^\[mcp_servers\.([^\]]+)\]$/gm)]
+    .map((match) => match[1])
+    .sort();
+  assert(
+    JSON.stringify(configuredNames) === JSON.stringify(ideCloudflareServerNames),
+    `.codex/config.toml must contain exactly: ${ideCloudflareServerNames.join(', ')}`,
+  );
+}
+
 function validateRouting(config) {
   assert(config?.schemaVersion === 1, 'config/mcp-skill-routing.json schemaVersion must be 1');
   assert(Array.isArray(config.alwaysLoad), 'MCP routing alwaysLoad must be an array');
@@ -202,6 +227,7 @@ const projectConfig = readJson('.mcp.json');
 const exampleConfig = readJson('.mcp.example.json');
 const vscodeConfig = readJson('.vscode/mcp.json');
 const cursorConfig = readJson('.cursor/mcp.json');
+const codexConfig = readText('.codex/config.toml');
 const routingConfig = readJson('config/mcp-skill-routing.json');
 
 const projectServers = projectConfig.mcpServers;
@@ -218,6 +244,7 @@ validatePlaywright('.mcp.example.json', exampleServers.playwright);
 validateBrightData('.mcp.example.json', exampleServers['bright-data']);
 validateIdeCloudflare('.vscode/mcp.json', vscodeConfig.servers);
 validateIdeCloudflare('.cursor/mcp.json', cursorConfig.mcpServers);
+validateCodexCloudflare(codexConfig);
 validateRouting(routingConfig);
 
 assert(!projectServers['bright-data'], '.mcp.json must remain credential-free and omit bright-data');
@@ -234,5 +261,6 @@ for (const [relativePath, parsed] of [
 ]) {
   assertNoCommittedSecrets(relativePath, parsed);
 }
+assertNoCommittedSecrets('.codex/config.toml', codexConfig);
 
 console.log('[verify:mcp] Bip MCP client schemas, skill routing, authority boundaries, and credential guards are valid.');
