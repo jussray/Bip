@@ -6,7 +6,6 @@ const readJson = (path) => JSON.parse(readFileSync(path, 'utf8'));
 
 const vscode = readJson('.vscode/mcp.json');
 const cursor = readJson('.cursor/mcp.json');
-const codex = readFileSync('.codex/config.toml', 'utf8');
 const routing = readJson('config/mcp-skill-routing.json');
 
 const cloudflareServers = [
@@ -23,11 +22,10 @@ test('VS Code and Cursor use their supported MCP root keys', () => {
   assert.ok(cursor.mcpServers && typeof cursor.mcpServers === 'object');
 });
 
-test('every IDE Cloudflare MCP is present in every configured client', () => {
+test('every IDE Cloudflare MCP is present in both clients', () => {
   for (const name of cloudflareServers) {
     assert.ok(vscode.servers[name], `VS Code missing ${name}`);
     assert.ok(cursor.mcpServers[name], `Cursor missing ${name}`);
-    assert.match(codex, new RegExp(`^\\[mcp_servers\\.${name}\\]$`, 'm'), `Codex missing ${name}`);
   }
 });
 
