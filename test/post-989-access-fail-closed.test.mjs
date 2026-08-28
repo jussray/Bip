@@ -24,6 +24,7 @@ test('ambiguous Access create outcomes are provider-reconciled before recording 
   assert.match(reconciler, /preCreate|beforeCreate|existingAppIds|preExistingAppIds/i);
   assert.match(reconciler, /ambiguous|recover.*create|reconcile.*create/i);
   assert.match(reconciler, /mutation.*unknown|unknown.*mutation/i);
+  assert.match(reconciler, /created-pending-proof/);
 });
 
 test('post-mutation provider and runtime requests have explicit abort deadlines', () => {

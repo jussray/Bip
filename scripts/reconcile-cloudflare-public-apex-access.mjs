@@ -3,6 +3,10 @@ import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const API_BASE = 'https://api.cloudflare.com/client/v4';
+const PROVIDER_REQUEST_TIMEOUT_MS = 15_000;
+const RUNTIME_REQUEST_TIMEOUT_MS = 10_000;
+const APPLICATIONS_PAGE_SIZE = 100;
+const MAX_APPLICATION_PAGES = 100;
 export const DEFAULT_TARGET_HOSTNAME = 'sekretbip.net';
 export const DEFAULT_TARGET_URL = 'https://sekretbip.net/';
 export const DEFAULT_APPLICATION_NAME = 'sekretbip.net - public apex bypass';
@@ -40,6 +44,7 @@ async function cfRequest(config, requestPath, options = {}) {
       ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: AbortSignal.timeout(options.timeoutMs || PROVIDER_REQUEST_TIMEOUT_MS),
   });
   const payload = await response.json().catch(() => null);
   if (!response.ok || payload?.success === false) {
@@ -111,9 +116,33 @@ export function selectBlockingApplication(apps, blockingAud) {
   return matches[0] || null;
 }
 
-async function listApplications(config) {
-  const payload = await cfRequest(config, `/accounts/${config.accountId}/access/apps?per_page=1000`);
-  return Array.isArray(payload?.result) ? payload.result : [];
+export async function listApplications(config) {
+  const applications = [];
+  for (let page = 1; page <= MAX_APPLICATION_PAGES; page += 1) {
+    const payload = await cfRequest(
+      config,
+      `/accounts/${config.accountId}/access/apps?per_page=${APPLICATIONS_PAGE_SIZE}&page=${page}`,
+    );
+    const result = Array.isArray(payload?.result) ? payload.result : [];
+    applications.push(...result);
+    const totalPages = Number(payload?.result_info?.total_pages);
+    if ((Number.isInteger(totalPages) && page >= totalPages) || result.length < APPLICATIONS_PAGE_SIZE) {
+      return applications;
+    }
+  }
+  throw new Error('ACCESS_APPLICATION_INVENTORY_PAGE_LIMIT_EXCEEDED');
+}
+
+export function uniquelyAttributableManagedApexApp(apps, preCreateAppIds, config) {
+  const previousIds = preCreateAppIds instanceof Set ? preCreateAppIds : new Set(preCreateAppIds);
+  const newManagedApps = (Array.isArray(apps) ? apps : []).filter((app) => {
+    const id = clean(app?.id);
+    return id && !previousIds.has(id) && clean(app?.name) === config.applicationName;
+  });
+  if (newManagedApps.length !== 1) return null;
+  return appHasOnlyManagedPublicDestination(newManagedApps[0], config.targetHostname)
+    ? newManagedApps[0]
+    : null;
 }
 
 async function listPolicies(config, appId) {
@@ -162,7 +191,10 @@ function finalOrigin(value, fallback) {
 }
 
 async function runtimeProbe(url) {
-  const response = await fetch(url, { redirect: 'follow' });
+  const response = await fetch(url, {
+    redirect: 'follow',
+    signal: AbortSignal.timeout(RUNTIME_REQUEST_TIMEOUT_MS),
+  });
   const finalUrl = response.url || url;
   return {
     status: response.status,
@@ -238,8 +270,9 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
   const runtimeBefore = await runtimeProbe(config.targetUrl);
   const apps = await listApplications(config);
   const blockingApp = selectBlockingApplication(apps, config.blockingAud);
-  const exactPublicApps = apps.filter((app) => appHasExactPublicDestination(app, config.targetHostname));
-  const managedApps = exactPublicApps.filter((app) => clean(app?.name) === config.applicationName);
+  // Select the identity we own from the complete inventory first. Destination
+  // filtering before this point could hide a managed app whose scope drifted.
+  const managedApps = apps.filter((app) => clean(app?.name) === config.applicationName);
   const existingManaged = managedApps.length === 1 ? managedApps[0] : null;
 
   if (managedApps.length > 1) {
@@ -300,6 +333,7 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
     return { status: 'already-reconciled', runtimeAfter };
   }
 
+  const exactPublicApps = apps.filter((app) => appHasExactPublicDestination(app, config.targetHostname));
   const foreignExactPublicApps = exactPublicApps.filter((app) => clean(app?.name) !== config.applicationName);
   if (foreignExactPublicApps.length > 0) {
     await writeEvidence(config, {
@@ -323,13 +357,56 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
 
   if (!apply) return { status: 'planned-create-public-bypass', runtimeBefore };
 
+  const preCreateAppIds = new Set(apps.map((app) => clean(app?.id)).filter(Boolean));
   let createdApp = null;
+  let mutationStateUnknown = false;
+  let createOutcomeAmbiguous = false;
   try {
-    createdApp = await createPublicBypassApplication(config);
-    const policies = await listPolicies(config, createdApp.id);
-    if (!appHasOnlyManagedPublicDestination(createdApp, config.targetHostname)) {
-      throw new Error('CREATED_APP_DESTINATION_MISMATCH');
+    try {
+      createdApp = await createPublicBypassApplication(config);
+    } catch (createError) {
+      if (Number.isInteger(createError?.providerStatus) && createError.providerStatus < 500) {
+        throw createError;
+      }
+      createOutcomeAmbiguous = true;
+      // A timeout or malformed success response can happen after Cloudflare has
+      // accepted the mutation. Re-read against the pre-create inventory so only
+      // a uniquely attributable, newly created exact managed apex app is rolled back.
+      try {
+        const afterAmbiguousCreate = await listApplications(config);
+        const attributableCreatedApp = uniquelyAttributableManagedApexApp(
+          afterAmbiguousCreate,
+          preCreateAppIds,
+          config,
+        );
+        if (attributableCreatedApp) {
+          createdApp = attributableCreatedApp;
+        } else {
+          mutationStateUnknown = true;
+        }
+      } catch {
+        mutationStateUnknown = true;
+      }
+      if (!createdApp) throw createError;
     }
+    if (!clean(createdApp?.id)
+      || preCreateAppIds.has(clean(createdApp.id))
+      || clean(createdApp?.name) !== config.applicationName
+      || !appHasOnlyManagedPublicDestination(createdApp, config.targetHostname)) {
+      mutationStateUnknown = createOutcomeAmbiguous;
+      throw new Error('CREATED_APP_IDENTITY_MISMATCH');
+    }
+    await writeEvidence(config, {
+      ...evidenceBase,
+      status: 'created-pending-proof',
+      mutationPerformed: true,
+      runtimeBefore,
+      blockingApplication: summarizeApp(blockingApp),
+      managedApplication: summarizeApp(createdApp, { includeId: true }),
+    });
+    if (createOutcomeAmbiguous) throw new Error('AMBIGUOUS_CREATE_RECOVERED_FOR_ROLLBACK');
+
+    const policies = await listPolicies(config, createdApp.id);
     if (!policies.some(isEveryoneBypassPolicy)) {
       throw new Error('CREATED_APP_BYPASS_POLICY_MISSING');
     }
@@ -357,8 +434,9 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
     }
     await writeEvidence(config, {
       ...evidenceBase,
-      status: 'apply-failed',
+      status: mutationStateUnknown ? 'mutation-state-unknown' : 'apply-failed',
       mutationPerformed: Boolean(createdApp?.id),
+      mutationStateUnknown,
       rollbackPerformed,
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
