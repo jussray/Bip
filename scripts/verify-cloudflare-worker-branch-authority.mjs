@@ -4,7 +4,8 @@ import path from 'node:path';
 const API = 'https://api.cloudflare.com/client/v4';
 const clean = (value) => String(value ?? '').trim();
 const accountId = clean(process.env.CLOUDFLARE_ACCOUNT_ID);
-const token = clean(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN);
+let token = clean(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN);
+const fallbackToken = clean(process.env.CLOUDFLARE_API_TOKEN);
 const evidencePath = clean(process.env.EVIDENCE_PATH) || 'artifacts/cloudflare-worker-branch-authority.json';
 const separateWorker = 'sekret';
 const productionWorker = 'sekret-backend';
@@ -14,7 +15,7 @@ const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated
 const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
 
 const receipt = {
-  schemaVersion: 6,
+  schemaVersion: 7,
   generatedAt: new Date().toISOString(),
   trustedGitRef: process.env.GITHUB_REF || null,
   trustedGitSha: process.env.GITHUB_SHA || null,
@@ -22,6 +23,14 @@ const receipt = {
   mutationPerformed: false,
   status: 'started',
   failure: null,
+  credential: {
+    configuredSources: [
+      token ? 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' : null,
+      fallbackToken ? 'CLOUDFLARE_API_TOKEN' : null,
+    ].filter(Boolean),
+    selectedSource: null,
+    fallbackUsed: false,
+  },
   providerTopology: {
     workers: [
       { name: separateWorker, role: 'separate-protected', mutationAuthorized: false },
@@ -35,6 +44,13 @@ const receipt = {
     scriptTag: null,
     mutationAuthorized: false,
     bindingAuthority: 'provider-readback-required',
+    activeTriggerCount: null,
+    branchIncludes: [],
+    branchExcludes: [],
+    deployCommand: null,
+    buildCommand: null,
+    activeNonMainBuildCount: null,
+    verifiedSafeBuildAuthority: false,
   },
   productionWorker: {
     name: productionWorker,
@@ -108,15 +124,46 @@ async function get(providerPath) {
   return payload?.result;
 }
 
+async function verifySelectedToken(source) {
+  const tokenState = await get('/user/tokens/verify');
+  if (tokenState?.status !== 'active') {
+    fail('provider-token-inactive', `${source} is not active.`, {
+      providerPath: '/user/tokens/verify',
+      credentialSource: source,
+    });
+  }
+  receipt.credential.selectedSource = source;
+  receipt.failure = null;
+  receipt.status = 'started';
+  writeReceipt();
+}
+
 writeReceipt();
 if (!accountId) fail('configuration-missing', 'CLOUDFLARE_ACCOUNT_ID is required.', { field: 'CLOUDFLARE_ACCOUNT_ID' });
-if (!token) fail('configuration-missing', 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN is required.', { field: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' });
+if (!token && !fallbackToken) {
+  fail(
+    'configuration-missing',
+    'At least one Cloudflare Workers Builds-capable API token is required.',
+    { fields: ['CLOUDFLARE_WORKERS_BUILDS_API_TOKEN', 'CLOUDFLARE_API_TOKEN'] },
+  );
+}
 
-const tokenState = await get('/user/tokens/verify');
-if (tokenState?.status !== 'active') {
-  fail('provider-token-inactive', 'Dedicated Workers Builds API token is not active.', {
-    providerPath: '/user/tokens/verify',
-  });
+if (token) {
+  try {
+    await verifySelectedToken('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN');
+  } catch (error) {
+    if (!fallbackToken || fallbackToken === token) throw error;
+    receipt.credential.fallbackUsed = true;
+    receipt.failure = null;
+    receipt.status = 'started';
+    token = fallbackToken;
+    writeReceipt();
+    await verifySelectedToken('CLOUDFLARE_API_TOKEN');
+  }
+} else {
+  token = fallbackToken;
+  receipt.credential.fallbackUsed = true;
+  await verifySelectedToken('CLOUDFLARE_API_TOKEN');
 }
 
 const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
@@ -141,6 +188,23 @@ receipt.productionWorker.scriptTag = productionTag;
 receipt.alphaWorker.scriptTag = alphaTag;
 writeReceipt();
 
+const separateTriggerRows = await get(`/accounts/${accountId}/builds/workers/${separateTag}/triggers`);
+const separateBuildRows = await get(`/accounts/${accountId}/builds/workers/${separateWorker}/builds?per_page=50`);
+const separateActiveTriggers = active(separateTriggerRows);
+const separateTrigger = separateActiveTriggers.length === 1 ? separateActiveTriggers[0] : null;
+const separateIncludes = Array.isArray(separateTrigger?.branch_includes) ? separateTrigger.branch_includes.map(clean) : [];
+const separateExcludes = Array.isArray(separateTrigger?.branch_excludes) ? separateTrigger.branch_excludes.map(clean) : [];
+const separateDeployCommand = clean(separateTrigger?.deploy_command);
+const separateBuildCommand = clean(separateTrigger?.build_command);
+const separateActiveNonMainBuilds = (Array.isArray(separateBuildRows) ? separateBuildRows : []).filter((build) => {
+  const branch = clean(build?.build_trigger_metadata?.branch);
+  const outcome = clean(build?.build_outcome).toLowerCase();
+  return branch && branch !== 'main' && !terminal.has(outcome);
+});
+const separateVerifiedSafeBuildAuthority =
+  separateActiveTriggers.length === 0 &&
+  separateActiveNonMainBuilds.length === 0;
+
 const triggerRows = await get(`/accounts/${accountId}/builds/workers/${productionTag}/triggers`);
 const buildRows = await get(`/accounts/${accountId}/builds/workers/${productionWorker}/builds?per_page=50`);
 const activeTriggers = active(triggerRows);
@@ -162,6 +226,13 @@ const verifiedMainOnly = activeTriggers.length === 1 &&
   activeNonMainBuilds.length === 0;
 const alphaTriggers = await get(`/accounts/${accountId}/builds/workers/${alphaTag}/triggers`);
 
+receipt.separateWorker.activeTriggerCount = separateActiveTriggers.length;
+receipt.separateWorker.branchIncludes = separateIncludes;
+receipt.separateWorker.branchExcludes = separateExcludes;
+receipt.separateWorker.deployCommand = separateDeployCommand;
+receipt.separateWorker.buildCommand = separateBuildCommand;
+receipt.separateWorker.activeNonMainBuildCount = separateActiveNonMainBuilds.length;
+receipt.separateWorker.verifiedSafeBuildAuthority = separateVerifiedSafeBuildAuthority;
 receipt.productionWorker.activeTriggerCount = activeTriggers.length;
 receipt.productionWorker.branchIncludes = includes;
 receipt.productionWorker.branchExcludes = excludes;
@@ -170,7 +241,14 @@ receipt.productionWorker.buildCommand = buildCommand;
 receipt.productionWorker.activeNonMainBuildCount = activeNonMainBuilds.length;
 receipt.productionWorker.verifiedMainOnly = verifiedMainOnly;
 receipt.alphaWorker.activeTriggerCount = active(alphaTriggers).length;
-receipt.workersAuthorityVerified = verifiedMainOnly;
+receipt.workersAuthorityVerified = verifiedMainOnly && separateVerifiedSafeBuildAuthority;
+
+if (!separateVerifiedSafeBuildAuthority) {
+  fail(
+    'separate-worker-build-authority-not-verified',
+    'CLOUDFLARE_SEKRET_WORKER_BUILD_AUTHORITY_NOT_VERIFIED',
+  );
+}
 
 if (!verifiedMainOnly) {
   fail('production-worker-branch-authority-not-verified', 'CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_NOT_VERIFIED');

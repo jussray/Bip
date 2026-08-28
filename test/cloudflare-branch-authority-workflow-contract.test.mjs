@@ -18,7 +18,7 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.match(workflow, /name: Audit Cloudflare Worker and Pages Branch Authority/);
   assert.match(workflow, /Verify exact current main before provider credential use/);
   assert.match(workflow, /git ls-remote/);
-  assert.match(workflow, /test \"\$GITHUB_SHA\" = \"\$current_main\"/);
+  assert.match(workflow, /test "\$GITHUB_SHA" = "\$current_main"/);
   assert.match(workflow, /Check out exact current main without credentials/);
   assert.match(
     workflow,
@@ -33,6 +33,9 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   );
   assert.match(workflow, /node-version: 24/);
   assert.match(workflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
+  assert.match(workflow, /CLOUDFLARE_API_TOKEN/);
+  assert.match(workflow, /continue-on-error: true/);
+  assert.match(workflow, /Require both independent provider readbacks/);
   assert.match(workflow, /verify-cloudflare-worker-branch-authority\.mjs/);
   assert.match(workflow, /verify-cloudflare-pages-branch-authority\.mjs/);
   assert.match(workflow, /if-no-files-found: error/);
@@ -40,13 +43,13 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   const checkoutIndex = workflow.indexOf('Check out exact current main without credentials');
   const setupNodeIndex = workflow.indexOf('Set up Node for Cloudflare authority verifier');
   const providerReadIndex = workflow.indexOf(
-    'Read current two-Worker topology and verify production Worker branch authority',
+    'Read current three-Worker topology and verify Worker build authority',
   );
   assert.ok(checkoutIndex >= 0);
   assert.ok(setupNodeIndex > checkoutIndex);
   assert.ok(providerReadIndex > setupNodeIndex);
 
-  assert.match(workerVerifier, /schemaVersion: 6/);
+  assert.match(workerVerifier, /schemaVersion: 7/);
   assert.match(workerVerifier, /mode: 'read-only'/);
   assert.match(workerVerifier, /mutationPerformed: false/);
   assert.match(workerVerifier, /status: 'started'/);
@@ -56,6 +59,9 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.match(workerVerifier, /const separateWorker = 'sekret'/);
   assert.match(workerVerifier, /const productionWorker = 'sekret-backend'/);
   assert.match(workerVerifier, /const alphaWorker = 'sekret-backend-alpha'/);
+  assert.match(workerVerifier, /CLOUDFLARE_API_TOKEN/);
+  assert.match(workerVerifier, /fallbackUsed/);
+  assert.match(workerVerifier, /separateActiveTriggers\.length === 0/);
   assert.match(workerVerifier, /raw\.split\(accountId\)\.join\(':account'\)/);
 
   const initialReceiptIndex = workerVerifier.indexOf('writeReceipt();');
@@ -63,7 +69,6 @@ test('Cloudflare Worker and Pages branch-authority workflow is read-only and exa
   assert.ok(initialReceiptIndex >= 0);
   assert.ok(tokenVerifyIndex > initialReceiptIndex);
 
-  assert.doesNotMatch(workflow, /CLOUDFLARE_API_TOKEN/);
   assert.doesNotMatch(workflow, /method:\s*['\"]?(?:PUT|PATCH|DELETE)/i);
   assert.doesNotMatch(workflow, /\/cancel(?:\b|`|\$\{)/);
   assert.doesNotMatch(workflow, /deletedPreviewTriggers|cancelledNonMainBuilds/);
@@ -74,6 +79,7 @@ test('Cloudflare Worker authority verifier retains a sanitized blocked receipt o
   const envKeys = [
     'CLOUDFLARE_ACCOUNT_ID',
     'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+    'CLOUDFLARE_API_TOKEN',
     'EVIDENCE_PATH',
     'GITHUB_REF',
     'GITHUB_SHA',
@@ -84,6 +90,7 @@ test('Cloudflare Worker authority verifier retains a sanitized blocked receipt o
 
   process.env.CLOUDFLARE_ACCOUNT_ID = 'test-account';
   process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN = 'test-token-secret';
+  delete process.env.CLOUDFLARE_API_TOKEN;
   process.env.EVIDENCE_PATH = evidencePath;
   process.env.GITHUB_REF = 'refs/heads/main';
   process.env.GITHUB_SHA = '1111111111111111111111111111111111111111';
@@ -125,11 +132,126 @@ test('Cloudflare Worker authority verifier retains a sanitized blocked receipt o
   }
 });
 
+test('Cloudflare Worker authority verifier falls back to the general token without retaining either secret', async () => {
+  const originalFetch = globalThis.fetch;
+  const envKeys = [
+    'CLOUDFLARE_ACCOUNT_ID',
+    'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+    'CLOUDFLARE_API_TOKEN',
+    'EVIDENCE_PATH',
+    'GITHUB_REF',
+    'GITHUB_SHA',
+  ];
+  const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
+  const tempDir = await mkdtemp(join(tmpdir(), 'sekret-cloudflare-authority-fallback-'));
+  const evidencePath = join(tempDir, 'receipt.json');
+  const accountId = 'fallback-account';
+  const staleToken = 'stale-dedicated-token';
+  const fallback = 'active-general-token';
+  const tags = {
+    sekret: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    'sekret-backend': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+    'sekret-backend-alpha': 'cccccccccccccccccccccccccccccccc',
+  };
+
+  process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+  process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN = staleToken;
+  process.env.CLOUDFLARE_API_TOKEN = fallback;
+  process.env.EVIDENCE_PATH = evidencePath;
+  process.env.GITHUB_REF = 'refs/heads/main';
+  process.env.GITHUB_SHA = '3333333333333333333333333333333333333333';
+
+  globalThis.fetch = async (url, options = {}) => {
+    const authToken = String(options.headers?.Authorization || '').replace(/^Bearer /, '');
+    const text = String(url);
+    if (text.endsWith('/user/tokens/verify')) {
+      if (authToken === staleToken) {
+        return { ok: false, status: 400, json: async () => ({ success: false }) };
+      }
+      assert.equal(authToken, fallback);
+      return { ok: true, status: 200, json: async () => ({ success: true, result: { status: 'active' } }) };
+    }
+
+    assert.equal(authToken, fallback);
+    if (text.includes(`/accounts/${accountId}/workers/scripts`)) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: Object.entries(tags).map(([id, tag]) => ({ id, tag })),
+        }),
+      };
+    }
+    if (text.endsWith(`/builds/workers/${tags.sekret}/triggers`)) {
+      return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
+    }
+    if (text.endsWith('/builds/workers/sekret/builds?per_page=50')) {
+      return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
+    }
+    if (text.endsWith(`/builds/workers/${tags['sekret-backend']}/triggers`)) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          success: true,
+          result: [{
+            trigger_uuid: 'prod-trigger',
+            branch_includes: ['main'],
+            branch_excludes: [],
+            deploy_command: 'npm run deploy:api:production',
+            build_command: '',
+            deleted_on: null,
+          }],
+        }),
+      };
+    }
+    if (text.endsWith('/builds/workers/sekret-backend/builds?per_page=50')) {
+      return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
+    }
+    if (text.endsWith(`/builds/workers/${tags['sekret-backend-alpha']}/triggers`)) {
+      return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
+    }
+    throw new Error(`Unexpected request: ${text}`);
+  };
+
+  let thrown;
+  try {
+    await import(`${workerVerifierUrl.href}?fallback-test=${Date.now()}`);
+  } catch (error) {
+    thrown = error;
+  } finally {
+    globalThis.fetch = originalFetch;
+    for (const key of envKeys) {
+      if (originalEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = originalEnv[key];
+    }
+  }
+
+  try {
+    assert.equal(thrown, undefined);
+    const raw = await readFile(evidencePath, 'utf8');
+    const receipt = JSON.parse(raw);
+    assert.equal(receipt.status, 'verified');
+    assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_API_TOKEN');
+    assert.equal(receipt.credential.fallbackUsed, true);
+    assert.equal(receipt.separateWorker.activeTriggerCount, 0);
+    assert.equal(receipt.separateWorker.verifiedSafeBuildAuthority, true);
+    assert.equal(receipt.productionWorker.verifiedMainOnly, true);
+    assert.equal(receipt.workersAuthorityVerified, true);
+    assert.equal(raw.includes(staleToken), false);
+    assert.equal(raw.includes(fallback), false);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test('Cloudflare Worker authority verifier redacts account IDs from scoped provider failure evidence', async () => {
   const originalFetch = globalThis.fetch;
   const envKeys = [
     'CLOUDFLARE_ACCOUNT_ID',
     'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+    'CLOUDFLARE_API_TOKEN',
     'EVIDENCE_PATH',
     'GITHUB_REF',
     'GITHUB_SHA',
@@ -141,6 +263,7 @@ test('Cloudflare Worker authority verifier redacts account IDs from scoped provi
 
   process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
   process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN = 'scoped-test-token-secret';
+  delete process.env.CLOUDFLARE_API_TOKEN;
   process.env.EVIDENCE_PATH = evidencePath;
   process.env.GITHUB_REF = 'refs/heads/main';
   process.env.GITHUB_SHA = '2222222222222222222222222222222222222222';
