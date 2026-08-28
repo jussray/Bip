@@ -437,6 +437,17 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
   }
 
+  const mutationStateUnproven = evidence?.status === 'mutation-state-unknown'
+    || evidence?.mutationState === 'unknown'
+    || evidence?.mutationAttribution === 'unproven'
+    || (evidence?.mutationPerformed === true && evidence?.mutationAttribution !== 'provider-returned-id');
+  if (mutationStateUnproven) {
+    // An ambiguous create may have reached Cloudflare even though this run has
+    // no safe deletion authority. Keep the receipt intact rather than turning
+    // missing attribution into a misleading "rollback not required" result.
+    return { status: 'rollback-blocked-mutation-state-unproven' };
+  }
+
   if (evidence?.mutationPerformed !== true || evidence?.rollbackPerformed === true) {
     await writeEvidence(config, {
       ...evidence,
