@@ -5,6 +5,16 @@ import { pathToFileURL } from 'node:url';
 const API_BASE = 'https://api.cloudflare.com/client/v4';
 const PROVIDER_REQUEST_TIMEOUT_MS = 10_000;
 const RUNTIME_REQUEST_TIMEOUT_MS = 10_000;
+const PROVEN_NO_MUTATION_STATUSES = new Set([
+  'blocked-duplicate-managed-apps',
+  'blocked-managed-app-destination-drift',
+  'blocked-managed-app-policy-drift',
+  'blocked-existing-public-app',
+  'planned-existing-bypass',
+  'planned-create-public-bypass',
+  'already-reconciled',
+  'rollback-not-required',
+]);
 export const DEFAULT_TARGET_HOSTNAME = 'sekretbip.net';
 export const DEFAULT_TARGET_URL = 'https://sekretbip.net/';
 export const DEFAULT_APPLICATION_NAME = 'sekretbip.net - public apex bypass';
@@ -448,11 +458,28 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     return { status: 'rollback-blocked-mutation-state-unproven' };
   }
 
-  if (evidence?.mutationPerformed !== true || evidence?.rollbackPerformed === true) {
+  if (evidence?.rollbackPerformed === true) {
     await writeEvidence(config, {
       ...evidence,
       status: 'rollback-not-required',
-      rollbackPerformed: evidence?.rollbackPerformed === true,
+      rollbackPerformed: true,
+    });
+    return { status: 'rollback-not-required' };
+  }
+
+  if (evidence?.mutationPerformed !== true) {
+    if (
+      evidence?.mutationPerformed !== false
+      || !PROVEN_NO_MUTATION_STATUSES.has(evidence?.status)
+      || evidence?.mutationAttribution === 'provider-returned-id'
+      || clean(evidence?.managedApplication?.id)
+    ) {
+      return { status: 'rollback-blocked-mutation-state-unproven' };
+    }
+    await writeEvidence(config, {
+      ...evidence,
+      status: 'rollback-not-required',
+      rollbackPerformed: false,
     });
     return { status: 'rollback-not-required' };
   }
