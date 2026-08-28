@@ -4,10 +4,12 @@ import path from 'node:path';
 const API = 'https://api.cloudflare.com/client/v4';
 const clean = (value) => String(value ?? '').trim();
 const accountId = clean(process.env.CLOUDFLARE_ACCOUNT_ID);
-let token = clean(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN);
-const fallbackToken = clean(process.env.CLOUDFLARE_API_TOKEN);
+const dedicatedTokenRaw = String(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN ?? '');
+const fallbackTokenRaw = String(process.env.CLOUDFLARE_API_TOKEN ?? '');
+let token = '';
 const evidencePath = clean(process.env.EVIDENCE_PATH) || 'artifacts/cloudflare-worker-branch-authority.json';
-const separateWorker = 'sekret';
+const separateWorker = 'bip';
+const previousSeparateWorker = 'sekret';
 const productionWorker = 'sekret-backend';
 const alphaWorker = 'sekret-backend-alpha';
 const pagesProject = 'sekret-bip';
@@ -15,7 +17,7 @@ const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated
 const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
 
 const receipt = {
-  schemaVersion: 7,
+  schemaVersion: 8,
   generatedAt: new Date().toISOString(),
   trustedGitRef: process.env.GITHUB_REF || null,
   trustedGitSha: process.env.GITHUB_SHA || null,
@@ -25,15 +27,17 @@ const receipt = {
   failure: null,
   credential: {
     configuredSources: [
-      token ? 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' : null,
-      fallbackToken ? 'CLOUDFLARE_API_TOKEN' : null,
+      dedicatedTokenRaw ? 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' : null,
+      fallbackTokenRaw ? 'CLOUDFLARE_API_TOKEN' : null,
     ].filter(Boolean),
     selectedSource: null,
+    selectedShape: null,
     fallbackUsed: false,
+    attempts: [],
   },
   providerTopology: {
     workers: [
-      { name: separateWorker, role: 'separate-protected', mutationAuthorized: false },
+      { name: separateWorker, previousName: previousSeparateWorker, role: 'separate-protected', mutationAuthorized: false },
       { name: productionWorker, role: 'production' },
       { name: alphaWorker, role: 'founder-gated-alpha', mutationAuthorized: false },
     ],
@@ -41,6 +45,7 @@ const receipt = {
   },
   separateWorker: {
     name: separateWorker,
+    previousName: previousSeparateWorker,
     scriptTag: null,
     mutationAuthorized: false,
     bindingAuthority: 'provider-readback-required',
@@ -50,6 +55,7 @@ const receipt = {
     deployCommand: null,
     buildCommand: null,
     activeNonMainBuildCount: null,
+    buildConnectionState: 'unknown',
     verifiedSafeBuildAuthority: false,
   },
   productionWorker: {
@@ -92,13 +98,94 @@ function publicProviderPath(providerPath) {
 
 function fail(code, message, details = {}) {
   receipt.status = 'blocked';
-  receipt.failure = {
-    code,
-    message,
-    ...details,
-  };
+  receipt.failure = { code, message, ...details };
   writeReceipt();
   throw new Error(message);
+}
+
+function inspectToken(rawValue, source) {
+  if (!rawValue) return { ok: false, source, shape: 'missing', code: 'token-not-configured' };
+  if (rawValue !== rawValue.trim()) return { ok: false, source, shape: 'invalid', code: 'token-leading-or-trailing-whitespace' };
+  if (/[^\x21-\x7e]/.test(rawValue) || /\s/.test(rawValue)) return { ok: false, source, shape: 'invalid', code: 'token-non-ascii-or-whitespace' };
+  if (/^Bearer\s+/i.test(rawValue)) return { ok: false, source, shape: 'invalid', code: 'token-bearer-prefix-stored' };
+  if (/^["']|["']$/.test(rawValue)) return { ok: false, source, shape: 'invalid', code: 'token-quoted-secret' };
+  if (/^[A-Z_][A-Z0-9_]*=/.test(rawValue)) return { ok: false, source, shape: 'invalid', code: 'token-variable-assignment-stored' };
+  if (rawValue.startsWith('cfat_')) return { ok: false, source, shape: 'account-scoped', code: 'workers-builds-account-token-unsupported' };
+  return {
+    ok: true,
+    source,
+    shape: rawValue.startsWith('cfut_') ? 'user-prefixed' : 'legacy-opaque',
+    token: rawValue,
+  };
+}
+
+async function verifyTokenCandidate(rawValue, source) {
+  const inspected = inspectToken(rawValue, source);
+  if (!inspected.ok) {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'rejected-preflight', failureCode: inspected.code });
+    return { ok: false, code: inspected.code, message: `${source} failed Workers Builds token preflight.`, shape: inspected.shape };
+  }
+
+  let response;
+  try {
+    response = await fetch(`${API}/user/tokens/verify`, {
+      headers: { Authorization: `Bearer ${inspected.token}`, 'Content-Type': 'application/json' },
+    });
+  } catch {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'provider-request-failed', failureCode: 'token-verify-request-failed' });
+    return { ok: false, code: 'token-verify-request-failed', message: `${source} token verification failed before provider response.`, shape: inspected.shape };
+  }
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.success === false) {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'provider-http-failure', failureCode: 'token-verify-http-failure', providerStatus: response.status });
+    return { ok: false, code: 'token-verify-http-failure', message: `${source} token verification failed with provider status ${response.status}.`, shape: inspected.shape, providerStatus: response.status };
+  }
+  if (payload?.result?.status !== 'active') {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'inactive', failureCode: 'provider-token-inactive' });
+    return { ok: false, code: 'provider-token-inactive', message: `${source} is not active.`, shape: inspected.shape };
+  }
+
+  receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'accepted' });
+  return { ok: true, source, shape: inspected.shape, token: inspected.token };
+}
+
+async function selectCredential() {
+  const candidates = [
+    { raw: dedicatedTokenRaw, source: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' },
+    { raw: fallbackTokenRaw, source: 'CLOUDFLARE_API_TOKEN' },
+  ].filter((candidate) => candidate.raw);
+
+  if (candidates.length === 0) {
+    fail('configuration-missing', 'At least one Cloudflare Workers Builds-capable API token is required.', {
+      fields: ['CLOUDFLARE_WORKERS_BUILDS_API_TOKEN', 'CLOUDFLARE_API_TOKEN'],
+    });
+  }
+
+  let lastFailure = null;
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
+    const result = await verifyTokenCandidate(candidate.raw, candidate.source);
+    if (result.ok) {
+      token = result.token;
+      receipt.credential.selectedSource = result.source;
+      receipt.credential.selectedShape = result.shape;
+      receipt.credential.fallbackUsed = index > 0;
+      receipt.failure = null;
+      receipt.status = 'started';
+      writeReceipt();
+      return;
+    }
+    lastFailure = result;
+    if (index === 0 && candidates.length > 1) receipt.credential.fallbackUsed = true;
+    writeReceipt();
+  }
+
+  fail(lastFailure?.code || 'token-selection-failed', lastFailure?.message || 'No configured token could satisfy Workers Builds verification.', {
+    credentialSource: candidates.at(-1)?.source || null,
+    tokenShape: lastFailure?.shape || null,
+    providerStatus: lastFailure?.providerStatus ?? null,
+  });
 }
 
 async function get(providerPath) {
@@ -109,9 +196,7 @@ async function get(providerPath) {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     });
   } catch {
-    fail('provider-request-failed', `GET ${retainedProviderPath} failed before provider response`, {
-      providerPath: retainedProviderPath,
-    });
+    fail('provider-request-failed', `GET ${retainedProviderPath} failed before provider response`, { providerPath: retainedProviderPath });
   }
 
   const payload = await response.json().catch(() => null);
@@ -124,63 +209,23 @@ async function get(providerPath) {
   return payload?.result;
 }
 
-async function verifySelectedToken(source) {
-  const tokenState = await get('/user/tokens/verify');
-  if (tokenState?.status !== 'active') {
-    fail('provider-token-inactive', `${source} is not active.`, {
-      providerPath: '/user/tokens/verify',
-      credentialSource: source,
-    });
-  }
-  receipt.credential.selectedSource = source;
-  receipt.failure = null;
-  receipt.status = 'started';
-  writeReceipt();
-}
-
 writeReceipt();
 if (!accountId) fail('configuration-missing', 'CLOUDFLARE_ACCOUNT_ID is required.', { field: 'CLOUDFLARE_ACCOUNT_ID' });
-if (!token && !fallbackToken) {
-  fail(
-    'configuration-missing',
-    'At least one Cloudflare Workers Builds-capable API token is required.',
-    { fields: ['CLOUDFLARE_WORKERS_BUILDS_API_TOKEN', 'CLOUDFLARE_API_TOKEN'] },
-  );
-}
-
-if (token) {
-  try {
-    await verifySelectedToken('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN');
-  } catch (error) {
-    if (!fallbackToken || fallbackToken === token) throw error;
-    receipt.credential.fallbackUsed = true;
-    receipt.failure = null;
-    receipt.status = 'started';
-    token = fallbackToken;
-    writeReceipt();
-    await verifySelectedToken('CLOUDFLARE_API_TOKEN');
-  }
-} else {
-  token = fallbackToken;
-  receipt.credential.fallbackUsed = true;
-  await verifySelectedToken('CLOUDFLARE_API_TOKEN');
-}
+await selectCredential();
 
 const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
 const findWorker = (name) => (Array.isArray(scripts) ? scripts : []).filter((row) => clean(row?.id) === name);
 const separateMatches = findWorker(separateWorker);
 const productionMatches = findWorker(productionWorker);
 const alphaMatches = findWorker(alphaWorker);
-if (separateMatches.length !== 1) fail('worker-identity-mismatch', `${separateWorker}: expected exactly one Worker, found ${separateMatches.length}.`, { worker: separateWorker, observedCount: separateMatches.length });
+if (separateMatches.length !== 1) fail('worker-identity-mismatch', `${separateWorker}: expected exactly one Worker, found ${separateMatches.length}.`, { worker: separateWorker, previousName: previousSeparateWorker, observedCount: separateMatches.length });
 if (productionMatches.length !== 1) fail('worker-identity-mismatch', `${productionWorker}: expected exactly one Worker, found ${productionMatches.length}.`, { worker: productionWorker, observedCount: productionMatches.length });
 if (alphaMatches.length !== 1) fail('worker-identity-mismatch', `${alphaWorker}: expected exactly one Worker, found ${alphaMatches.length}.`, { worker: alphaWorker, observedCount: alphaMatches.length });
 
 const separateTag = clean(separateMatches[0]?.tag);
 const productionTag = clean(productionMatches[0]?.tag);
 const alphaTag = clean(alphaMatches[0]?.tag);
-if (!separateTag || !productionTag || !alphaTag) {
-  fail('worker-tag-missing', 'All protected Worker identities must expose immutable script tags.');
-}
+if (!separateTag || !productionTag || !alphaTag) fail('worker-tag-missing', 'All protected Worker identities must expose immutable script tags.');
 
 receipt.separateWorker.scriptTag = separateTag;
 receipt.separateWorkerObserved = true;
@@ -201,9 +246,9 @@ const separateActiveNonMainBuilds = (Array.isArray(separateBuildRows) ? separate
   const outcome = clean(build?.build_outcome).toLowerCase();
   return branch && branch !== 'main' && !terminal.has(outcome);
 });
-const separateVerifiedSafeBuildAuthority =
-  separateActiveTriggers.length === 0 &&
-  separateActiveNonMainBuilds.length === 0;
+const separateBuildConnectionDisabled = separateActiveTriggers.length === 0;
+const separateBuildConnectionMainOnly = separateActiveTriggers.length === 1 && JSON.stringify(separateIncludes) === JSON.stringify(['main']) && separateExcludes.length === 0;
+const separateVerifiedSafeBuildAuthority = (separateBuildConnectionDisabled || separateBuildConnectionMainOnly) && separateActiveNonMainBuilds.length === 0;
 
 const triggerRows = await get(`/accounts/${accountId}/builds/workers/${productionTag}/triggers`);
 const buildRows = await get(`/accounts/${accountId}/builds/workers/${productionWorker}/builds?per_page=50`);
@@ -232,6 +277,7 @@ receipt.separateWorker.branchExcludes = separateExcludes;
 receipt.separateWorker.deployCommand = separateDeployCommand;
 receipt.separateWorker.buildCommand = separateBuildCommand;
 receipt.separateWorker.activeNonMainBuildCount = separateActiveNonMainBuilds.length;
+receipt.separateWorker.buildConnectionState = separateBuildConnectionDisabled ? 'disabled' : separateBuildConnectionMainOnly ? 'main-only' : 'unsafe-or-ambiguous';
 receipt.separateWorker.verifiedSafeBuildAuthority = separateVerifiedSafeBuildAuthority;
 receipt.productionWorker.activeTriggerCount = activeTriggers.length;
 receipt.productionWorker.branchIncludes = includes;
@@ -243,16 +289,8 @@ receipt.productionWorker.verifiedMainOnly = verifiedMainOnly;
 receipt.alphaWorker.activeTriggerCount = active(alphaTriggers).length;
 receipt.workersAuthorityVerified = verifiedMainOnly && separateVerifiedSafeBuildAuthority;
 
-if (!separateVerifiedSafeBuildAuthority) {
-  fail(
-    'separate-worker-build-authority-not-verified',
-    'CLOUDFLARE_SEKRET_WORKER_BUILD_AUTHORITY_NOT_VERIFIED',
-  );
-}
-
-if (!verifiedMainOnly) {
-  fail('production-worker-branch-authority-not-verified', 'CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_NOT_VERIFIED');
-}
+if (!separateVerifiedSafeBuildAuthority) fail('separate-worker-build-authority-not-verified', 'CLOUDFLARE_BIP_WORKER_BUILD_AUTHORITY_NOT_VERIFIED');
+if (!verifiedMainOnly) fail('production-worker-branch-authority-not-verified', 'CLOUDFLARE_PRODUCTION_WORKER_BRANCH_AUTHORITY_NOT_VERIFIED');
 
 receipt.status = 'verified';
 receipt.failure = null;
