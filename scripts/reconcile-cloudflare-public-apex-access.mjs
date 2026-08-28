@@ -437,6 +437,25 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
   }
 
+  const mutationAttributionUnproven = evidence?.mutationAttribution === 'unproven';
+  const mutationStateUnknown =
+    evidence?.status === 'mutation-state-unknown'
+    || evidence?.mutationState === 'unknown'
+    || mutationAttributionUnproven;
+  if (mutationStateUnknown) {
+    await writeEvidence(config, {
+      ...evidence,
+      status: 'rollback-blocked-mutation-state-unknown',
+      mutationState: 'unknown',
+      mutationAttribution: 'unproven',
+      rollbackPerformed: false,
+    });
+    return {
+      status: 'rollback-blocked-mutation-state-unknown',
+      mutationState: 'unknown',
+    };
+  }
+
   if (evidence?.mutationPerformed !== true || evidence?.rollbackPerformed === true) {
     await writeEvidence(config, {
       ...evidence,
