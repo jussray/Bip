@@ -39,35 +39,55 @@ test('ambiguous Access create outcomes stay unknown and never acquire rollback a
 
 test('rollback cleanup preserves an unknown mutation receipt instead of claiming no rollback is required', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'sekret-access-rollback-'));
-  const evidencePath = join(directory, 'evidence.json');
-  const evidence = {
-    status: 'mutation-state-unknown',
-    mutationState: 'unknown',
-    mutationPerformed: false,
-    mutationAttribution: 'unproven',
-    rollbackPerformed: false,
-    targetHostname: DEFAULT_TARGET_HOSTNAME,
-    applicationName: DEFAULT_APPLICATION_NAME,
+  const originalFetch = globalThis.fetch;
+  let providerRequestCount = 0;
+  globalThis.fetch = async () => {
+    providerRequestCount += 1;
+    throw new Error('unknown mutation cleanup must not call the provider');
   };
+  const cases = [
+    ['unknown status', { status: 'mutation-state-unknown' }],
+    ['unknown mutation state', { mutationState: 'unknown' }],
+    ['explicitly unproven attribution', { mutationAttribution: 'unproven' }],
+    [
+      'performed mutation without proven attribution',
+      { mutationPerformed: true, mutationAttribution: undefined },
+    ],
+  ];
 
   try {
-    await writeFile(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
-    const result = await rollbackRunCreatedPublicApexAccess({
-      env: {
-        CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
-        CLOUDFLARE_ACCOUNT_ID: 'test-account',
-        BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
-      },
-    });
-    const persisted = JSON.parse(await readFile(evidencePath, 'utf8'));
+    for (const [name, override] of cases) {
+      const evidencePath = join(directory, `${name.replaceAll(' ', '-')}.json`);
+      const evidence = {
+        status: 'apply-failed',
+        mutationState: 'known',
+        mutationPerformed: false,
+        mutationAttribution: 'none',
+        rollbackPerformed: false,
+        targetHostname: DEFAULT_TARGET_HOSTNAME,
+        applicationName: DEFAULT_APPLICATION_NAME,
+        ...override,
+      };
+      await writeFile(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
 
-    assert.equal(result.status, 'rollback-blocked-mutation-state-unproven');
-    assert.equal(persisted.status, 'rollback-blocked-mutation-state-unproven');
-    assert.equal(persisted.mutationState, 'unknown');
-    assert.equal(persisted.mutationAttribution, 'unproven');
-    assert.equal(persisted.rollbackPerformed, false);
-    assert.notEqual(persisted.status, 'rollback-not-required');
+      const result = await rollbackRunCreatedPublicApexAccess({
+        env: {
+          CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
+          CLOUDFLARE_ACCOUNT_ID: 'test-account',
+          BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
+        },
+      });
+      const persisted = JSON.parse(await readFile(evidencePath, 'utf8'));
+
+      assert.equal(result.status, 'rollback-blocked-mutation-state-unproven', name);
+      assert.equal(persisted.status, 'rollback-blocked-mutation-state-unproven', name);
+      assert.equal(persisted.mutationState, 'unknown', name);
+      assert.equal(persisted.rollbackPerformed, false, name);
+      assert.notEqual(persisted.status, 'rollback-not-required', name);
+    }
+    assert.equal(providerRequestCount, 0, 'unknown mutation cleanup must not acquire provider authority');
   } finally {
+    globalThis.fetch = originalFetch;
     await rm(directory, { recursive: true, force: true });
   }
 });
