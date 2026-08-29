@@ -32,4 +32,9 @@ test('Founder Shield proves the public edge anonymously and binds the release ma
   assert.doesNotMatch(workflow, /CF-Access-Client-Id:/i);
   assert.doesNotMatch(workflow, /CF-Access-Client-Secret:/i);
   assert.doesNotMatch(workflow, /access_headers=/);
+
+  assert.match(workflow, /sanitize_headers\(\)/);
+  assert.match(workflow, /release_json="\$\(cat "\$release_body"\)"/);
+  assert.doesNotMatch(workflow, /require\(['"]node:fs['"]\)/);
+  assert.doesNotMatch(workflow, /fs\.(?:readFileSync|writeFileSync|copyFileSync)/);
 });
