@@ -134,9 +134,12 @@ export async function listApplications(config) {
     const result = Array.isArray(payload?.result) ? payload.result : [];
     applications.push(...result);
     const totalPages = Number(payload?.result_info?.total_pages);
-    if ((Number.isInteger(totalPages) && page >= totalPages) || result.length < APPLICATIONS_PAGE_SIZE) {
-      return applications;
+    const hasAuthoritativeTotalPages = Number.isInteger(totalPages) && totalPages >= 1;
+    if (hasAuthoritativeTotalPages) {
+      if (page >= totalPages) return applications;
+      continue;
     }
+    if (result.length < APPLICATIONS_PAGE_SIZE) return applications;
   }
   throw new Error('ACCESS_APPLICATION_INVENTORY_PAGE_LIMIT_EXCEEDED');
 }
@@ -177,7 +180,6 @@ async function deleteApplication(config, appId) {
     method: 'DELETE',
   });
 }
-
 function finalOrigin(value, fallback) {
   try {
     return new URL(value || fallback).origin;
