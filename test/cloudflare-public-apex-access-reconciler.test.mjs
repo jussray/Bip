@@ -65,14 +65,14 @@ test('application public destination check does not treat worker scope as apex o
   );
 });
 
-test('application inventory follows every provider page', async () => {
+test('application inventory honors authoritative total_pages even when a page is short', async () => {
   const originalFetch = globalThis.fetch;
   const requestedPages = [];
   globalThis.fetch = async (url) => {
     const page = Number(new URL(url).searchParams.get('page'));
     requestedPages.push(page);
     const result = page === 1
-      ? Array.from({ length: 100 }, (_, index) => ({ id: `page-1-${index}` }))
+      ? [{ id: 'page-1-a' }, { id: 'page-1-b' }]
       : [{ id: 'page-2-app' }];
     return new Response(JSON.stringify({ success: true, result, result_info: { total_pages: 2 } }), {
       status: 200,
@@ -82,7 +82,7 @@ test('application inventory follows every provider page', async () => {
   try {
     const apps = await listApplications({ token: 'test-token', accountId: 'account' });
     assert.deepEqual(requestedPages, [1, 2]);
-    assert.equal(apps.length, 101);
+    assert.deepEqual(apps.map((app) => app.id), ['page-1-a', 'page-1-b', 'page-2-app']);
   } finally {
     globalThis.fetch = originalFetch;
   }
