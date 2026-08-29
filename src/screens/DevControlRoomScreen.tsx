@@ -3,13 +3,14 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { router } from 'expo-router';
 import DevControlRoomWorkspace from './DevControlRoomWorkspace';
 import FounderOperatorPanel from '@/features/control-room/FounderOperatorPanel';
+import TruthMembranePanel from '@/features/control-room/TruthMembranePanel';
 import PromptOsPanel from '@/features/control-room/PromptOsPanel';
 import GuardianReviewsPanel from '@/features/control-room/GuardianReviewsPanel';
 import WorkerPanel from '@/features/control-room/WorkerPanel';
 import FallbackTelemetryPanel from '@/features/control-room/FallbackTelemetryPanel';
 import { getCurrentFounderProfile, isFounderProfile, type FounderProfile } from '@/services/founderAudit';
 
-type ControlRoomSurface = 'founder-operator' | 'operations' | 'fallbacks' | 'guardian-reviews' | 'prompt-os' | 'worker';
+type ControlRoomSurface = 'founder-operator' | 'truth' | 'operations' | 'fallbacks' | 'guardian-reviews' | 'prompt-os' | 'worker';
 
 export default function DevControlRoomScreen() {
   const [surface, setSurface] = useState<ControlRoomSurface>('founder-operator');
@@ -56,6 +57,7 @@ export default function DevControlRoomScreen() {
     <View style={styles.switcher}>
       {([
         ['founder-operator', 'Operator'],
+        ['truth', 'Truth'],
         ['operations', 'Operations'],
         ['fallbacks', 'Fallbacks'],
         ['guardian-reviews', 'Guardians'],
@@ -77,15 +79,17 @@ export default function DevControlRoomScreen() {
     <View style={styles.content}>
       {surface === 'founder-operator'
         ? <FounderOperatorPanel />
-        : surface === 'operations'
-          ? <DevControlRoomWorkspace />
-          : surface === 'fallbacks'
-            ? <FallbackTelemetryPanel />
-            : surface === 'guardian-reviews'
-              ? <GuardianReviewsPanel />
-              : surface === 'prompt-os'
-                ? <PromptOsPanel />
-                : <WorkerPanel />}
+        : surface === 'truth'
+          ? <TruthMembranePanel />
+          : surface === 'operations'
+            ? <DevControlRoomWorkspace />
+            : surface === 'fallbacks'
+              ? <FallbackTelemetryPanel />
+              : surface === 'guardian-reviews'
+                ? <GuardianReviewsPanel />
+                : surface === 'prompt-os'
+                  ? <PromptOsPanel />
+                  : <WorkerPanel />}
     </View>
   </View>;
 }
