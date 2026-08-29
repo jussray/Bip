@@ -73,19 +73,20 @@ test('Founder Shield proves the anonymous public edge with minimal credentials a
   assertKnownWorkingProofRunner(content);
   assert.match(content, /ref: \$\{\{ env\.EXPECTED_HEAD_SHA \}\}/);
 
-  assert.match(content, /verify-live-edge:\s*\n\s*name: Verify anonymous live edge on main/);
-  assert.match(content, /if: github\.event_name == 'push'/);
-  assert.match(content, /environment: Production/);
+  assert.ok(content.includes('verify-live-edge:\n    name: Verify anonymous live edge on main'));
+  assert.ok(content.includes("if: github.event_name == 'push'"));
+  assert.ok(content.includes('environment: Production'));
   assert.ok(content.includes('https://sekretbip.net/.well-known/sekret-release.json'));
-  assert.match(content, /commitSha: expected/);
-  assert.match(content, /deploymentProvider: 'cloudflare-pages'/);
+  assert.ok(content.includes('commitSha: expected'));
+  assert.ok(content.includes("deploymentProvider: 'cloudflare-pages'"));
   assert.ok(content.includes("canonicalUrl: 'https://sekretbip.net'"));
-  assert.match(content, /cloudflareaccess\.com/);
-  assert.match(content, /\/cdn-cgi\/access\//);
-  assert.doesNotMatch(content, /CLOUDFLARE_ACCESS_CLIENT_ID/);
-  assert.doesNotMatch(content, /CLOUDFLARE_ACCESS_CLIENT_SECRET/);
-  assert.doesNotMatch(content, /CF-Access-Client-Id:/i);
-  assert.doesNotMatch(content, /CF-Access-Client-Secret:/i);
+  assert.ok(content.includes("host === 'cloudflareaccess.com'"));
+  assert.ok(content.includes("host.endsWith('.cloudflareaccess.com')"));
+  assert.ok(content.includes("path.startsWith('/cdn-cgi/access/')"));
+  assert.equal(content.includes('CLOUDFLARE_ACCESS_CLIENT_ID'), false);
+  assert.equal(content.includes('CLOUDFLARE_ACCESS_CLIENT_SECRET'), false);
+  assert.equal(content.toLowerCase().includes('cf-access-client-id:'), false);
+  assert.equal(content.toLowerCase().includes('cf-access-client-secret:'), false);
   assert.equal(
     (content.match(/--output \/dev\/null/g) || []).length,
     3,
