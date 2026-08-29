@@ -12,7 +12,7 @@ test('Founder Shield proves the public edge anonymously and binds the release ma
   assert.ok(workflow.includes('name: Verify anonymous live edge on main'));
   assert.equal(workflowLines.has('https://sekretbip.net/)"'), true);
   assert.equal(
-    workflowLines.has('"https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA")"'),
+    workflowLines.has('"https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA&attempt=$release_attempt")"'),
     true,
   );
   assert.equal(workflowLines.has('https://api.sekretbip.net/)"'), true);
@@ -23,6 +23,14 @@ test('Founder Shield proves the public edge anonymously and binds the release ma
   assert.ok(workflow.includes("branch: 'main'"));
   assert.ok(workflow.includes("deploymentProvider: 'cloudflare-pages'"));
   assert.ok(workflow.includes("canonicalUrl: 'https://sekretbip.net'"));
+
+  assert.ok(workflow.includes('for release_attempt in $(seq 1 16); do'));
+  assert.ok(workflow.includes('--max-time 5'));
+  assert.ok(workflow.includes('observed_release_sha='));
+  assert.ok(workflow.includes('"$observed_release_sha" == "${EXPECTED_HEAD_SHA,,}"'));
+  assert.ok(workflow.includes('release marker pending attempt=%s status=%s observed=%s expected=%s'));
+  assert.ok(workflow.includes('release marker converged attempt=%s sha=%s'));
+  assert.ok(workflow.includes('sleep 6'));
 
   assert.ok(workflow.includes("host === 'cloudflareaccess.com'"));
   assert.ok(workflow.includes("host.endsWith('.cloudflareaccess.com')"));
