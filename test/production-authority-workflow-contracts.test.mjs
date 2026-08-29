@@ -76,10 +76,10 @@ test('Founder Shield proves the anonymous public edge with minimal credentials a
   assert.match(content, /verify-live-edge:\s*\n\s*name: Verify anonymous live edge on main/);
   assert.match(content, /if: github\.event_name == 'push'/);
   assert.match(content, /environment: Production/);
-  assert.match(content, /https:\/\/sekretbip\.net\/\.well-known\/sekret-release\.json/);
+  assert.ok(content.includes('https://sekretbip.net/.well-known/sekret-release.json'));
   assert.match(content, /commitSha: expected/);
   assert.match(content, /deploymentProvider: 'cloudflare-pages'/);
-  assert.match(content, /canonicalUrl: 'https:\/\/sekretbip\.net'/);
+  assert.ok(content.includes("canonicalUrl: 'https://sekretbip.net'"));
   assert.match(content, /cloudflareaccess\.com/);
   assert.match(content, /\/cdn-cgi\/access\//);
   assert.doesNotMatch(content, /CLOUDFLARE_ACCESS_CLIENT_ID/);
