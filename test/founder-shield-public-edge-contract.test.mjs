@@ -12,7 +12,7 @@ test('Founder Shield proves the public edge anonymously and binds the release ma
   assert.ok(workflow.includes('name: Verify anonymous live edge on main'));
   assert.equal(workflowLines.has('https://sekretbip.net/)"'), true);
   assert.equal(
-    workflowLines.has('"https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA&attempt=$release_attempt")"'),
+    workflowLines.has('"https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA&attempt=$release_attempt")"; then'),
     true,
   );
   assert.equal(workflowLines.has('https://api.sekretbip.net/)"'), true);
