@@ -9,16 +9,16 @@ const workflow = readFileSync(
 
 test('Founder Shield proves the public edge anonymously and binds the release marker to exact main', () => {
   assert.match(workflow, /name: Verify anonymous live edge on main/);
-  assert.match(workflow, /https:\/\/sekretbip\.net\//);
-  assert.match(workflow, /https:\/\/sekretbip\.net\/\.well-known\/sekret-release\.json/);
-  assert.match(workflow, /https:\/\/api\.sekretbip\.net\//);
-  assert.match(workflow, /https:\/\/api\.sekretbip\.net\/api\/sekret\/reply/);
+  assert.ok(workflow.includes('https://sekretbip.net/'));
+  assert.ok(workflow.includes('https://sekretbip.net/.well-known/sekret-release.json'));
+  assert.ok(workflow.includes('https://api.sekretbip.net/'));
+  assert.ok(workflow.includes('https://api.sekretbip.net/api/sekret/reply'));
 
   assert.match(workflow, /release\?\.\[key\] !== value/);
   assert.match(workflow, /commitSha: expected/);
   assert.match(workflow, /branch: 'main'/);
   assert.match(workflow, /deploymentProvider: 'cloudflare-pages'/);
-  assert.match(workflow, /canonicalUrl: 'https:\/\/sekretbip\.net'/);
+  assert.ok(workflow.includes("canonicalUrl: 'https://sekretbip.net'"));
 
   assert.match(workflow, /cloudflareaccess\.com/);
   assert.match(workflow, /\/cdn-cgi\/access\//);
