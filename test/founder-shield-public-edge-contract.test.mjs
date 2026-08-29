@@ -8,33 +8,34 @@ const workflow = readFileSync(
 );
 
 test('Founder Shield proves the public edge anonymously and binds the release marker to exact main', () => {
-  assert.match(workflow, /name: Verify anonymous live edge on main/);
+  assert.ok(workflow.includes('name: Verify anonymous live edge on main'));
   assert.ok(workflow.includes('https://sekretbip.net/'));
   assert.ok(workflow.includes('https://sekretbip.net/.well-known/sekret-release.json'));
   assert.ok(workflow.includes('https://api.sekretbip.net/'));
   assert.ok(workflow.includes('https://api.sekretbip.net/api/sekret/reply'));
 
-  assert.match(workflow, /release\?\.\[key\] !== value/);
-  assert.match(workflow, /commitSha: expected/);
-  assert.match(workflow, /branch: 'main'/);
-  assert.match(workflow, /deploymentProvider: 'cloudflare-pages'/);
+  assert.ok(workflow.includes('release?.[key] !== value'));
+  assert.ok(workflow.includes('commitSha: expected'));
+  assert.ok(workflow.includes("branch: 'main'"));
+  assert.ok(workflow.includes("deploymentProvider: 'cloudflare-pages'"));
   assert.ok(workflow.includes("canonicalUrl: 'https://sekretbip.net'"));
 
-  assert.match(workflow, /cloudflareaccess\.com/);
-  assert.match(workflow, /\/cdn-cgi\/access\//);
-  assert.match(workflow, /assertPublicUrl\(pagesUrl, 'sekretbip\.net'/);
-  assert.match(workflow, /assertPublicUrl\(releaseUrl, 'sekretbip\.net'/);
-  assert.match(workflow, /assertPublicUrl\(apiUrl, 'api\.sekretbip\.net'/);
-  assert.match(workflow, /assertPublicUrl\(optionsUrl, 'api\.sekretbip\.net'/);
+  assert.ok(workflow.includes("host === 'cloudflareaccess.com'"));
+  assert.ok(workflow.includes("host.endsWith('.cloudflareaccess.com')"));
+  assert.ok(workflow.includes("path.startsWith('/cdn-cgi/access/')"));
+  assert.ok(workflow.includes("assertPublicUrl(pagesUrl, 'sekretbip.net'"));
+  assert.ok(workflow.includes("assertPublicUrl(releaseUrl, 'sekretbip.net'"));
+  assert.ok(workflow.includes("assertPublicUrl(apiUrl, 'api.sekretbip.net'"));
+  assert.ok(workflow.includes("assertPublicUrl(optionsUrl, 'api.sekretbip.net'"));
 
-  assert.doesNotMatch(workflow, /CLOUDFLARE_ACCESS_CLIENT_ID/);
-  assert.doesNotMatch(workflow, /CLOUDFLARE_ACCESS_CLIENT_SECRET/);
-  assert.doesNotMatch(workflow, /CF-Access-Client-Id:/i);
-  assert.doesNotMatch(workflow, /CF-Access-Client-Secret:/i);
-  assert.doesNotMatch(workflow, /access_headers=/);
+  assert.equal(workflow.includes('CLOUDFLARE_ACCESS_CLIENT_ID'), false);
+  assert.equal(workflow.includes('CLOUDFLARE_ACCESS_CLIENT_SECRET'), false);
+  assert.equal(workflow.toLowerCase().includes('cf-access-client-id:'), false);
+  assert.equal(workflow.toLowerCase().includes('cf-access-client-secret:'), false);
+  assert.equal(workflow.includes('access_headers='), false);
 
-  assert.match(workflow, /sanitize_headers\(\)/);
-  assert.match(workflow, /release_json="\$\(cat "\$release_body"\)"/);
+  assert.ok(workflow.includes('sanitize_headers()'));
+  assert.ok(workflow.includes('release_json="$(cat "$release_body")"'));
   assert.doesNotMatch(workflow, /require\(['"]node:fs['"]\)/);
   assert.doesNotMatch(workflow, /fs\.(?:readFileSync|writeFileSync|copyFileSync)/);
 });
