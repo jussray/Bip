@@ -26,6 +26,11 @@ test('Founder Shield proves the public edge anonymously and binds the release ma
 
   assert.ok(workflow.includes('for release_attempt in $(seq 1 16); do'));
   assert.ok(workflow.includes('--max-time 5'));
+  assert.ok(workflow.includes(': > "$release_headers"'));
+  assert.ok(workflow.includes(': > "$release_body"'));
+  assert.ok(workflow.includes('if release_result="$(curl'));
+  assert.ok(workflow.includes('release_status="000"'));
+  assert.ok(workflow.includes('release marker transport failure attempt=%s; retrying within bounded convergence window'));
   assert.ok(workflow.includes('observed_release_sha='));
   assert.ok(workflow.includes('"$observed_release_sha" == "${EXPECTED_HEAD_SHA,,}"'));
   assert.ok(workflow.includes('release marker pending attempt=%s status=%s observed=%s expected=%s'));
