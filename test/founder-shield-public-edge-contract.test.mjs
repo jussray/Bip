@@ -6,13 +6,17 @@ const workflow = readFileSync(
   new URL('../.github/workflows/founder-shield.yml', import.meta.url),
   'utf8',
 );
+const workflowLines = new Set(workflow.split(/\r?\n/u).map((line) => line.trim()));
 
 test('Founder Shield proves the public edge anonymously and binds the release marker to exact main', () => {
   assert.ok(workflow.includes('name: Verify anonymous live edge on main'));
-  assert.ok(workflow.includes('https://sekretbip.net/'));
-  assert.ok(workflow.includes('https://sekretbip.net/.well-known/sekret-release.json'));
-  assert.ok(workflow.includes('https://api.sekretbip.net/'));
-  assert.ok(workflow.includes('https://api.sekretbip.net/api/sekret/reply'));
+  assert.equal(workflowLines.has('https://sekretbip.net/)"'), true);
+  assert.equal(
+    workflowLines.has('"https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA")"'),
+    true,
+  );
+  assert.equal(workflowLines.has('https://api.sekretbip.net/)"'), true);
+  assert.equal(workflowLines.has('https://api.sekretbip.net/api/sekret/reply)"'), true);
 
   assert.ok(workflow.includes('release?.[key] !== value'));
   assert.ok(workflow.includes('commitSha: expected'));
