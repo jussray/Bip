@@ -132,51 +132,35 @@ jobs:
             https://api.sekretbip.net/api/sekret/reply)"
           read -r options_status options_url <<<"$options_result"
 
+          sanitize_headers() {
+            local source="$1"
+            local destination="$2"
+            awk '
+              {
+                line = $0
+                lower = tolower(line)
+                if (lower ~ /^(set-cookie|cookie|authorization|proxy-authorization|cf-authorization|cf-access-token|cf-access-client-id|cf-access-client-secret):/) {
+                  sub(/:.*/, ": [REDACTED]", line)
+                }
+                print line
+              }
+            ' "$source" > "$destination"
+          }
+
+          sanitize_headers "$pages_headers" artifacts/founder-shield-live/sekretbip.headers
+          sanitize_headers "$release_headers" artifacts/founder-shield-live/release.headers
+          sanitize_headers "$api_root_headers" artifacts/founder-shield-live/api-root.headers
+          sanitize_headers "$api_options_headers" artifacts/founder-shield-live/api-options.headers
+
+          release_json="$(cat "$release_body")"
           node - \
-            "$pages_headers" \
-            "$release_headers" \
-            "$api_root_headers" \
-            "$api_options_headers" \
             "$pages_url" \
             "$release_url" \
             "$api_url" \
             "$options_url" \
-            "$release_body" \
+            "$release_json" \
             "$EXPECTED_HEAD_SHA" <<'NODE'
-          const fs = require('node:fs');
-
-          const [
-            pagesHeaders,
-            releaseHeaders,
-            apiRootHeaders,
-            apiOptionsHeaders,
-            pagesUrl,
-            releaseUrl,
-            apiUrl,
-            optionsUrl,
-            releasePath,
-            expectedHeadSha,
-          ] = process.argv.slice(2);
-
-          const pairs = [
-            [pagesHeaders, 'artifacts/founder-shield-live/sekretbip.headers'],
-            [releaseHeaders, 'artifacts/founder-shield-live/release.headers'],
-            [apiRootHeaders, 'artifacts/founder-shield-live/api-root.headers'],
-            [apiOptionsHeaders, 'artifacts/founder-shield-live/api-options.headers'],
-          ];
-          const sensitiveHeader = /^(?:set-cookie|cookie|authorization|proxy-authorization|cf-authorization|cf-access-token|cf-access-client-id|cf-access-client-secret):/i;
-
-          for (const [source, destination] of pairs) {
-            const input = fs.readFileSync(source, 'utf8');
-            const redacted = input
-              .split(/\r?\n/u)
-              .map((line) => {
-                const match = line.match(/^([^:]+):/u);
-                return match && sensitiveHeader.test(line) ? `${match[1]}: [REDACTED]` : line;
-              })
-              .join('\n');
-            fs.writeFileSync(destination, `${redacted}\n`, 'utf8');
-          }
+          const [pagesUrl, releaseUrl, apiUrl, optionsUrl, releaseJson, expectedHeadSha] = process.argv.slice(2);
 
           function assertPublicUrl(rawUrl, expectedHost, label) {
             const url = new URL(rawUrl);
@@ -201,7 +185,7 @@ jobs:
 
           let release;
           try {
-            release = JSON.parse(fs.readFileSync(releasePath, 'utf8'));
+            release = JSON.parse(releaseJson);
           } catch (error) {
             throw new Error(`public release marker was not valid JSON: ${error.message}`);
           }
@@ -222,9 +206,9 @@ jobs:
               throw new Error(`release marker ${key} mismatch: expected ${JSON.stringify(value)}, observed ${JSON.stringify(release?.[key])}`);
             }
           }
-
-          fs.copyFileSync(releasePath, 'artifacts/founder-shield-live/sekret-release.json');
           NODE
+
+          cp "$release_body" artifacts/founder-shield-live/sekret-release.json
 
           printf 'pages_status=%s\nrelease_status=%s\napi_root_status=%s\napi_options_status=%s\n' \
             "$pages_status" "$release_status" "$api_status" "$options_status" \
