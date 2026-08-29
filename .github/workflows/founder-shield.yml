@@ -12,6 +12,7 @@ on:
       - test/worker-auth.test.mjs
       - test/front-door-security-telemetry.test.mjs
       - test/cloudflare-worker-consolidation.test.mjs
+      - test/founder-shield-public-edge-contract.test.mjs
       - wrangler.toml
       - .dev.vars.example
       - .github/workflows/codeql-pr-alert-proof.yml
@@ -30,6 +31,7 @@ on:
       - test/worker-auth.test.mjs
       - test/front-door-security-telemetry.test.mjs
       - test/cloudflare-worker-consolidation.test.mjs
+      - test/founder-shield-public-edge-contract.test.mjs
       - wrangler.toml
       - .dev.vars.example
       - .github/workflows/codeql-pr-alert-proof.yml
@@ -74,71 +76,93 @@ jobs:
       - name: Verify Worker authority contract
         run: node --test test/cloudflare-worker-consolidation.test.mjs
 
+      - name: Verify anonymous public-edge proof contract
+        run: node --test test/founder-shield-public-edge-contract.test.mjs
+
   verify-live-edge:
-    name: Verify authenticated live edge on main
+    name: Verify anonymous live edge on main
     if: github.event_name == 'push'
     needs: verify-founder-shield
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     environment: Production
-    env:
-      CLOUDFLARE_ACCESS_CLIENT_ID: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_ID }}
-      CLOUDFLARE_ACCESS_CLIENT_SECRET: ${{ secrets.CLOUDFLARE_ACCESS_CLIENT_SECRET }}
     steps:
-      - name: Require complete Cloudflare Access service auth
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$CLOUDFLARE_ACCESS_CLIENT_ID"
-          test -n "$CLOUDFLARE_ACCESS_CLIENT_SECRET"
-
-      - name: Capture authenticated live public edge evidence
+      - name: Capture anonymous live public edge evidence
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p artifacts/founder-shield-live
 
-          access_headers=(
-            --header "CF-Access-Client-Id: $CLOUDFLARE_ACCESS_CLIENT_ID"
-            --header "CF-Access-Client-Secret: $CLOUDFLARE_ACCESS_CLIENT_SECRET"
-          )
-
           pages_headers="$RUNNER_TEMP/founder-shield-sekretbip.headers"
+          release_headers="$RUNNER_TEMP/founder-shield-release.headers"
+          release_body="$RUNNER_TEMP/founder-shield-release.json"
           api_root_headers="$RUNNER_TEMP/founder-shield-api-root.headers"
           api_options_headers="$RUNNER_TEMP/founder-shield-api-options.headers"
 
-          pages_status="$(curl --silent --show-error --location --max-time 20 \
-            "${access_headers[@]}" \
+          pages_result="$(curl --silent --show-error --location --max-time 20 \
             --dump-header "$pages_headers" \
             --output /dev/null \
-            --write-out '%{http_code}' \
+            --write-out '%{http_code} %{url_effective}' \
             https://sekretbip.net/)"
+          read -r pages_status pages_url <<<"$pages_result"
 
-          api_status="$(curl --silent --show-error --max-time 20 \
-            "${access_headers[@]}" \
+          release_result="$(curl --silent --show-error --location --max-time 20 \
+            --header 'Cache-Control: no-cache, no-store, max-age=0' \
+            --dump-header "$release_headers" \
+            --output "$release_body" \
+            --write-out '%{http_code} %{url_effective}' \
+            "https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA")"
+          read -r release_status release_url <<<"$release_result"
+
+          api_result="$(curl --silent --show-error --location --max-time 20 \
             --dump-header "$api_root_headers" \
             --output /dev/null \
-            --write-out '%{http_code}' \
+            --write-out '%{http_code} %{url_effective}' \
             https://api.sekretbip.net/)"
+          read -r api_status api_url <<<"$api_result"
 
-          options_status="$(curl --silent --show-error --max-time 20 \
+          options_result="$(curl --silent --show-error --location --max-time 20 \
             --request OPTIONS \
-            "${access_headers[@]}" \
             --header 'Origin: https://sekretbip.net' \
             --header 'Access-Control-Request-Method: POST' \
             --header 'Access-Control-Request-Headers: authorization,content-type' \
             --dump-header "$api_options_headers" \
             --output /dev/null \
-            --write-out '%{http_code}' \
+            --write-out '%{http_code} %{url_effective}' \
             https://api.sekretbip.net/api/sekret/reply)"
+          read -r options_status options_url <<<"$options_result"
 
-          node - "$pages_headers" "$api_root_headers" "$api_options_headers" <<'NODE'
+          node - \
+            "$pages_headers" \
+            "$release_headers" \
+            "$api_root_headers" \
+            "$api_options_headers" \
+            "$pages_url" \
+            "$release_url" \
+            "$api_url" \
+            "$options_url" \
+            "$release_body" \
+            "$EXPECTED_HEAD_SHA" <<'NODE'
           const fs = require('node:fs');
 
+          const [
+            pagesHeaders,
+            releaseHeaders,
+            apiRootHeaders,
+            apiOptionsHeaders,
+            pagesUrl,
+            releaseUrl,
+            apiUrl,
+            optionsUrl,
+            releasePath,
+            expectedHeadSha,
+          ] = process.argv.slice(2);
+
           const pairs = [
-            [process.argv[2], 'artifacts/founder-shield-live/sekretbip.headers'],
-            [process.argv[3], 'artifacts/founder-shield-live/api-root.headers'],
-            [process.argv[4], 'artifacts/founder-shield-live/api-options.headers'],
+            [pagesHeaders, 'artifacts/founder-shield-live/sekretbip.headers'],
+            [releaseHeaders, 'artifacts/founder-shield-live/release.headers'],
+            [apiRootHeaders, 'artifacts/founder-shield-live/api-root.headers'],
+            [apiOptionsHeaders, 'artifacts/founder-shield-live/api-options.headers'],
           ];
           const sensitiveHeader = /^(?:set-cookie|cookie|authorization|proxy-authorization|cf-authorization|cf-access-token|cf-access-client-id|cf-access-client-secret):/i;
 
@@ -153,14 +177,65 @@ jobs:
               .join('\n');
             fs.writeFileSync(destination, `${redacted}\n`, 'utf8');
           }
+
+          function assertPublicUrl(rawUrl, expectedHost, label) {
+            const url = new URL(rawUrl);
+            const host = url.hostname.toLowerCase();
+            const path = url.pathname.toLowerCase();
+            if (
+              host === 'cloudflareaccess.com' ||
+              host.endsWith('.cloudflareaccess.com') ||
+              path.startsWith('/cdn-cgi/access/')
+            ) {
+              throw new Error(`${label} entered Cloudflare Access instead of the anonymous production edge: ${url}`);
+            }
+            if (host !== expectedHost) {
+              throw new Error(`${label} ended on unexpected host ${host}; expected ${expectedHost}`);
+            }
+          }
+
+          assertPublicUrl(pagesUrl, 'sekretbip.net', 'Pages front door');
+          assertPublicUrl(releaseUrl, 'sekretbip.net', 'Pages release marker');
+          assertPublicUrl(apiUrl, 'api.sekretbip.net', 'API root');
+          assertPublicUrl(optionsUrl, 'api.sekretbip.net', 'API CORS preflight');
+
+          let release;
+          try {
+            release = JSON.parse(fs.readFileSync(releasePath, 'utf8'));
+          } catch (error) {
+            throw new Error(`public release marker was not valid JSON: ${error.message}`);
+          }
+
+          const expected = expectedHeadSha.toLowerCase();
+          const required = {
+            schemaVersion: 2,
+            app: 'sekret-bip',
+            surface: 'web-front-door',
+            environment: 'production',
+            commitSha: expected,
+            branch: 'main',
+            deploymentProvider: 'cloudflare-pages',
+            canonicalUrl: 'https://sekretbip.net',
+          };
+          for (const [key, value] of Object.entries(required)) {
+            if (release?.[key] !== value) {
+              throw new Error(`release marker ${key} mismatch: expected ${JSON.stringify(value)}, observed ${JSON.stringify(release?.[key])}`);
+            }
+          }
+
+          fs.copyFileSync(releasePath, 'artifacts/founder-shield-live/sekret-release.json');
           NODE
 
-          printf 'pages_status=%s\napi_root_status=%s\napi_options_status=%s\n' \
-            "$pages_status" "$api_status" "$options_status" \
+          printf 'pages_status=%s\nrelease_status=%s\napi_root_status=%s\napi_options_status=%s\n' \
+            "$pages_status" "$release_status" "$api_status" "$options_status" \
             | tee artifacts/founder-shield-live/status.txt
+          printf 'pages_url=%s\nrelease_url=%s\napi_root_url=%s\napi_options_url=%s\n' \
+            "$pages_url" "$release_url" "$api_url" "$options_url" \
+            | tee artifacts/founder-shield-live/effective-urls.txt
 
           test "$pages_status" -ge 200
           test "$pages_status" -lt 400
+          test "$release_status" -eq 200
           test "$api_status" -ne 000
           test "$api_status" -lt 500
           test "$options_status" -ne 000
