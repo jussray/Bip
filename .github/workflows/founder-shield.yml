@@ -106,13 +106,40 @@ jobs:
             https://sekretbip.net/)"
           read -r pages_status pages_url <<<"$pages_result"
 
-          release_result="$(curl --silent --show-error --location --max-time 20 \
-            --header 'Cache-Control: no-cache, no-store, max-age=0' \
-            --dump-header "$release_headers" \
-            --output "$release_body" \
-            --write-out '%{http_code} %{url_effective}' \
-            "https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA")"
-          read -r release_status release_url <<<"$release_result"
+          release_status="000"
+          release_url="https://sekretbip.net/.well-known/sekret-release.json"
+          release_json=""
+          observed_release_sha=""
+          for release_attempt in $(seq 1 16); do
+            release_result="$(curl --silent --show-error --location --max-time 5 \
+              --header 'Cache-Control: no-cache, no-store, max-age=0' \
+              --dump-header "$release_headers" \
+              --output "$release_body" \
+              --write-out '%{http_code} %{url_effective}' \
+              "https://sekretbip.net/.well-known/sekret-release.json?founder_shield=$EXPECTED_HEAD_SHA&attempt=$release_attempt")"
+            read -r release_status release_url <<<"$release_result"
+            release_json="$(cat "$release_body")"
+            observed_release_sha="$(
+              node - "$release_json" <<'NODE'
+          const [releaseJson] = process.argv.slice(2);
+          try {
+            const release = JSON.parse(releaseJson);
+            process.stdout.write(typeof release?.commitSha === 'string' ? release.commitSha.toLowerCase() : '');
+          } catch {
+            process.stdout.write('');
+          }
+          NODE
+            )"
+            if [[ "$release_status" == "200" && "$observed_release_sha" == "${EXPECTED_HEAD_SHA,,}" ]]; then
+              printf 'release marker converged attempt=%s sha=%s\n' "$release_attempt" "$observed_release_sha"
+              break
+            fi
+            printf 'release marker pending attempt=%s status=%s observed=%s expected=%s\n' \
+              "$release_attempt" "$release_status" "${observed_release_sha:-missing}" "${EXPECTED_HEAD_SHA,,}"
+            if [[ "$release_attempt" -lt 16 ]]; then
+              sleep 6
+            fi
+          done
 
           api_result="$(curl --silent --show-error --location --max-time 20 \
             --dump-header "$api_root_headers" \
