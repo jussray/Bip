@@ -85,7 +85,7 @@ test('workflow preserves before, midpoint, after, and dry-run evidence', () => {
 });
 
 test('workflow uses the IPv4 session-pooler path and no stale Supabase management token', () => {
-  assert.match(workflow, /aws-0-us-east-1\.pooler\.supabase\.com/);
+  assert.match(workflow, /aws-1-us-east-1\.pooler\.supabase\.com/);
   assert.match(workflow, /postgres\.\$\{SUPABASE_PROJECT_REF\}/);
   assert.match(workflow, /supabase migration list --db-url/);
   assert.match(workflow, /supabase db push --db-url/);
