@@ -22,6 +22,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SUPABASE_PROJECT_REF: tbsevonvegdnlyjgplmm
+  SUPABASE_POOLER_HOST: aws-0-us-east-1.pooler.supabase.com
 
 concurrency:
   group: supabase-production-migrations
@@ -104,41 +105,35 @@ jobs:
         with:
           version: 2.113.0
 
-      - name: Verify production credentials
+      - name: Build masked production session-pooler URL
         shell: bash
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
-          test -n "$SUPABASE_ACCESS_TOKEN" || {
-            echo 'SUPABASE_ACCESS_TOKEN is not configured for this workflow.' >&2
-            exit 1
-          }
           test -n "$SUPABASE_DB_PASSWORD" || {
             echo 'SUPABASE_DB_PASSWORD is not configured for this workflow.' >&2
             exit 1
           }
-
-      - name: Link exact production project
-        shell: bash
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: |
-          set -euo pipefail
-          supabase link --project-ref "$SUPABASE_PROJECT_REF"
+          encoded_password="$(python3 - <<'PY'
+          import os
+          import urllib.parse
+          print(urllib.parse.quote(os.environ['SUPABASE_DB_PASSWORD'], safe=''))
+          PY
+          )"
+          db_url="postgresql://postgres.${SUPABASE_PROJECT_REF}:${encoded_password}@${SUPABASE_POOLER_HOST}:5432/postgres"
+          echo "::add-mask::$encoded_password"
+          echo "::add-mask::$db_url"
+          printf 'SUPABASE_DB_URL=%s\n' "$db_url" >> "$GITHUB_ENV"
 
       - name: Capture and validate migration history before mutation
         shell: bash
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           NO_COLOR: '1'
         run: |
           set -euo pipefail
           mkdir -p artifacts
-          supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-before-reconciliation.txt
+          supabase migration list --db-url "$SUPABASE_DB_URL" 2>&1 | tee artifacts/supabase-migration-list-before-reconciliation.txt
           python3 - <<'PY'
           import re
           from pathlib import Path
@@ -186,9 +181,6 @@ jobs:
 
       - name: Mark canonical versions applied
         shell: bash
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
           supabase migration repair \
@@ -197,23 +189,18 @@ jobs:
             20260820211200 \
             20260821071500 \
             20260824223800 \
-            --status applied --linked 2>&1 | tee artifacts/supabase-history-canonical-applied.txt
+            --status applied --db-url "$SUPABASE_DB_URL" 2>&1 | tee artifacts/supabase-history-canonical-applied.txt
 
       - name: Capture migration history after canonical markers
         shell: bash
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           NO_COLOR: '1'
         run: |
           set -euo pipefail
-          supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-mid-reconciliation.txt
+          supabase migration list --db-url "$SUPABASE_DB_URL" 2>&1 | tee artifacts/supabase-migration-list-mid-reconciliation.txt
 
       - name: Retire historical live aliases
         shell: bash
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
           supabase migration repair \
@@ -222,17 +209,15 @@ jobs:
             20260820214601 \
             20260821073219 \
             20260826065736 \
-            --status reverted --linked 2>&1 | tee artifacts/supabase-history-live-reverted.txt
+            --status reverted --db-url "$SUPABASE_DB_URL" 2>&1 | tee artifacts/supabase-history-live-reverted.txt
 
       - name: Verify exact post-reconciliation migration history
         shell: bash
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
           NO_COLOR: '1'
         run: |
           set -euo pipefail
-          supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-after-reconciliation.txt
+          supabase migration list --db-url "$SUPABASE_DB_URL" 2>&1 | tee artifacts/supabase-migration-list-after-reconciliation.txt
           python3 - <<'PY'
           import re
           from pathlib import Path
@@ -256,12 +241,9 @@ jobs:
 
       - name: Prove db push no longer fails on remote-only aliases
         shell: bash
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           set -euo pipefail
-          supabase db push --linked --dry-run 2>&1 | tee artifacts/supabase-db-push-after-history-reconciliation.txt
+          supabase db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee artifacts/supabase-db-push-after-history-reconciliation.txt
           ! grep -q 'Remote migration versions not found in local migrations directory' artifacts/supabase-db-push-after-history-reconciliation.txt
 
       - name: Retain reconciliation evidence
