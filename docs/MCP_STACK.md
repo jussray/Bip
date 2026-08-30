@@ -4,13 +4,14 @@ Last reviewed: 2026-08-27
 
 This is the smallest MCP stack that matches the repository's operating surface: GitHub for source/release evidence, Supabase for scoped schema/runtime inspection, current documentation providers for implementation references, Figma for design handoff, Cloudflare for provider/build/observability evidence, and Playwright for browser verification.
 
-Configuration lives in `.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, and `.mcp.example.json`. Credentials remain outside committed source.
+Workspace configuration lives in `.mcp.json`, `.vscode/mcp.json`, `.cursor/mcp.json`, and `.mcp.example.json`. Credentials remain outside committed source.
 
 Client schemas are not interchangeable:
 
 - `.mcp.json`, `.mcp.example.json`, and Cursor's `.cursor/mcp.json` use a top-level `mcpServers` object.
 - VS Code workspace `.vscode/mcp.json` uses a top-level `servers` object.
-- `npm run verify:mcp` checks both shapes so a valid server list cannot silently become undiscoverable in one client.
+- Codex CLI does not import these workspace client files. Run `npm run configure:mcp:codex-cloudflare` once to add the guarded server set to Codex's user configuration.
+- `npm run verify:mcp` checks the committed workspace shapes; the Codex setup script verifies existing user entries before changing them.
 
 ## Connected servers
 
@@ -30,6 +31,19 @@ Client schemas are not interchangeable:
 | `playwright` | Browser/runtime verification | Local isolated browser profile |
 
 Every configured server must also have an entry in `config/mcp-skill-routing.json`. Connectivity does not bypass the mapped Bip skills or their authority boundary.
+
+### Codex authentication
+
+Configure Codex's user-scoped server records without embedding credentials:
+
+```bash
+cd /path/to/Sekret-Bip
+npm run configure:mcp:codex-cloudflare
+export CLOUDFLARE_API_TOKEN='...'
+codex mcp get cloudflare
+```
+
+The setup is intentionally non-destructive: matching records are retained, missing records are added, and mismatched records stop with a review instruction instead of being overwritten. The full API server reads `CLOUDFLARE_API_TOKEN` from the process environment; no token value is stored by the script. Use a least-privilege token supplied by the operator's secret manager or shell. Never place its value in tracked configuration, dotenv files, command output, issues, or evidence receipts. Narrow OAuth-capable servers can use `codex mcp login <server-name>` when interactive authorization is available.
 
 ## Worker-aware Cloudflare inspection
 
