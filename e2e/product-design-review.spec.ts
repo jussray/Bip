@@ -1,4 +1,7 @@
-import { expect, test } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
@@ -22,6 +25,108 @@ const VARIANTS = [
   },
 ] as const;
 
+const FOUNDER_VISUAL_DIR = path.resolve(
+  process.env.PLAYWRIGHT_ARTIFACT_DIR ?? 'artifacts/product-design-playwright',
+  'founder-visual',
+);
+
+const EXPECTED_FOUNDER_SCREENS = [
+  '01-teen-welcome',
+  '02-teen-setup',
+  '03-teen-room',
+  '04-companion-entry',
+  '05-companion-listening',
+] as const;
+
+type FounderVisualStatus = 'running' | 'passed' | 'failed';
+
+function resolveTestedHeadSha(): string {
+  const configured = process.env.EXPECTED_HEAD_SHA ?? process.env.GITHUB_SHA;
+  if (configured) return configured.trim().toLowerCase();
+
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim().toLowerCase();
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function expectNoDocumentHorizontalOverflow(page: Page) {
+  const metrics = await page.evaluate(() => ({
+    innerWidth: window.innerWidth,
+    htmlScrollWidth: document.documentElement.scrollWidth,
+    htmlClientWidth: document.documentElement.clientWidth,
+    bodyScrollWidth: document.body.scrollWidth,
+    bodyClientWidth: document.body.clientWidth,
+  }));
+  const viewportWidth = Math.min(
+    metrics.innerWidth,
+    metrics.htmlClientWidth,
+    metrics.bodyClientWidth || metrics.innerWidth,
+  );
+  expect(Math.max(metrics.htmlScrollWidth, metrics.bodyScrollWidth)).toBeLessThanOrEqual(viewportWidth + 1);
+}
+
+async function writeFounderVisualManifest(input: {
+  completedScreens: string[];
+  status: FounderVisualStatus;
+  stage: string | null;
+  failure?: unknown;
+  retry: number;
+}) {
+  await fs.mkdir(FOUNDER_VISUAL_DIR, { recursive: true });
+
+  const failure = input.failure
+    ? {
+        stage: input.stage,
+        message: input.failure instanceof Error ? input.failure.message : String(input.failure),
+        occurredAt: new Date().toISOString(),
+      }
+    : null;
+
+  await fs.writeFile(
+    path.join(FOUNDER_VISUAL_DIR, 'manifest.json'),
+    JSON.stringify(
+      {
+        schemaVersion: 1,
+        repository: process.env.GITHUB_REPOSITORY ?? 'jussray/Sekret-Bip',
+        headSha: resolveTestedHeadSha(),
+        eventName: process.env.GITHUB_EVENT_NAME ?? 'local',
+        retry: input.retry,
+        status: input.status,
+        viewport: { width: 390, height: 844 },
+        audience: 'teen',
+        evidenceClass: 'controlled-founder-visual-proof',
+        productionClaim: false,
+        expectedScreens: EXPECTED_FOUNDER_SCREENS.map(name => `${name}.png`),
+        completedScreens: input.completedScreens.map(name => `${name}.png`),
+        failure,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+async function captureFounderVisual(
+  page: Page,
+  testInfo: TestInfo,
+  filename: string,
+) {
+  const body = await page.screenshot({
+    fullPage: true,
+    animations: 'disabled',
+  });
+
+  await fs.mkdir(FOUNDER_VISUAL_DIR, { recursive: true });
+  await fs.writeFile(path.join(FOUNDER_VISUAL_DIR, `${filename}.png`), body);
+
+  await testInfo.attach(`${filename}.png`, {
+    body,
+    contentType: 'image/png',
+  });
+}
+
 for (const variant of VARIANTS) {
   for (const viewport of VIEWPORTS) {
     test(`rollback evidence: ${variant.name} ${viewport.name} front door`, async ({ page }, testInfo) => {
@@ -43,16 +148,13 @@ for (const variant of VARIANTS) {
       await expect(page.getByRole('button', { name: variant.enterName, exact: true })).toBeVisible();
       await expect(page.getByTestId('web-welcome-bottom-nav')).toHaveCount(0);
       await expect(page.getByText('Night · Suhana · Sy', { exact: true })).toHaveCount(0);
+      await expectNoDocumentHorizontalOverflow(page);
 
-      const metrics = await page.evaluate(() => ({
-        scrollWidth: document.documentElement.scrollWidth,
-        clientWidth: document.documentElement.clientWidth,
+      const heightMetrics = await page.evaluate(() => ({
         scrollHeight: document.documentElement.scrollHeight,
         clientHeight: document.documentElement.clientHeight,
       }));
-
-      expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
-      expect(metrics.scrollHeight).toBeGreaterThanOrEqual(metrics.clientHeight);
+      expect(heightMetrics.scrollHeight).toBeGreaterThanOrEqual(heightMetrics.clientHeight);
 
       await testInfo.attach(`${variant.name}-${viewport.name}-rollback-front-door.png`, {
         body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
@@ -119,13 +221,16 @@ test('Teen entry preserves the teen onboarding path', async ({ page }) => {
   await page.getByTestId('web-welcome-enter').click();
   await expect(page).toHaveURL(/\/welcome(?:\?|$)/);
   await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
+  await expectNoDocumentHorizontalOverflow(page);
 });
 
-test('Bip Jr entry preserves the parent onboarding path', async ({ page }) => {
+test('Bip Jr entry preserves the parent onboarding path without a splash step', async ({ page }) => {
   await page.goto('/?bipDevAudience=bip-jr', { waitUntil: 'networkidle' });
   await page.getByTestId('web-welcome-enter').click();
-  await expect(page).toHaveURL(/\/parent-splash(?:\?|$)/);
-  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/\/parent-welcome(?:\?|$)/);
+  await expect(page.getByRole('button', { name: 'Create my Parent account' })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'I already have an account' })).toBeVisible({ timeout: 15_000 });
+  await expectNoDocumentHorizontalOverflow(page);
 });
 
 test('Circle renders Open Bip as the public audience layer with the face rule', async ({ page }, testInfo) => {
@@ -182,11 +287,7 @@ for (const viewport of VIEWPORTS) {
       }
     });
 
-    const metrics = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1);
+    await expectNoDocumentHorizontalOverflow(page);
 
     await testInfo.attach(`voice-bip-${viewport.name}-reduced-motion.png`, {
       body: await page.screenshot({ fullPage: true, animations: 'disabled' }),
@@ -194,3 +295,80 @@ for (const viewport of VIEWPORTS) {
     });
   });
 }
+
+test('Founder Visual Truth: Teen first-five-minute packet', async ({ page }, testInfo) => {
+  const completedScreens: string[] = [];
+  let currentStage: string | null = null;
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await writeFounderVisualManifest({
+    completedScreens,
+    status: 'running',
+    stage: currentStage,
+    retry: testInfo.retry,
+  });
+
+  const capture = async (name: (typeof EXPECTED_FOUNDER_SCREENS)[number]) => {
+    await captureFounderVisual(page, testInfo, name);
+    completedScreens.push(name);
+    await writeFounderVisualManifest({
+      completedScreens,
+      status: 'running',
+      stage: currentStage,
+      retry: testInfo.retry,
+    });
+  };
+
+  try {
+    currentStage = '01-teen-welcome';
+    await page.goto('/?bipDevAudience=teen', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('web-welcome-shell')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('YOUR PEOPLE. YOUR PEACE.', { exact: true })).toBeVisible();
+    await expectNoDocumentHorizontalOverflow(page);
+    await capture('01-teen-welcome');
+
+    currentStage = '02-teen-setup';
+    await page.getByTestId('web-welcome-enter').click();
+    await expect(page).toHaveURL(/\/welcome(?:\?|$)/);
+    await expect(page.getByText('How old are you?')).toBeVisible({ timeout: 15_000 });
+    await expectNoDocumentHorizontalOverflow(page);
+    await capture('02-teen-setup');
+
+    currentStage = '03-teen-room';
+    await page.goto('/room?bipDevSide=teen', { waitUntil: 'domcontentloaded' });
+    const companion = page.getByRole('button', { name: /is here\. Tap to talk\./i }).first();
+    await expect(companion).toBeVisible({ timeout: 15_000 });
+    await expectNoDocumentHorizontalOverflow(page);
+    await capture('03-teen-room');
+
+    currentStage = '04-companion-entry';
+    await companion.click();
+    await expect(page).toHaveURL(/\/pages(?:\/|\?|$)/);
+    await expectNoDocumentHorizontalOverflow(page);
+    await capture('04-companion-entry');
+
+    currentStage = '05-companion-listening';
+    const composer = page.getByRole('textbox').first();
+    await expect(composer).toBeVisible({ timeout: 15_000 });
+    await composer.fill("Today felt like a lot. I don't need fixing — just somewhere to put it.");
+    await expectNoDocumentHorizontalOverflow(page);
+    await capture('05-companion-listening');
+
+    currentStage = null;
+    await writeFounderVisualManifest({
+      completedScreens,
+      status: 'passed',
+      stage: currentStage,
+      retry: testInfo.retry,
+    });
+  } catch (error) {
+    await writeFounderVisualManifest({
+      completedScreens,
+      status: 'failed',
+      stage: currentStage,
+      failure: error,
+      retry: testInfo.retry,
+    });
+    throw error;
+  }
+});

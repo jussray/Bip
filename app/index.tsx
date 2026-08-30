@@ -5,6 +5,7 @@ import { useAppContext } from '@/context/AppContext';
 import { useVerificationContext } from '@/context/VerificationContext';
 import { SplashScreen } from '@screens/SplashScreen';
 import { WebWelcomeScreen } from '@screens/WebWelcomeScreen';
+import { FrontDoorSceneArrival } from '@/components/FrontDoorSceneArrival';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
 import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
 import {
@@ -221,16 +222,18 @@ export default function Index() {
   // This watched entrypoint intentionally participates in the exact-head release gate.
   if (Platform.OS === 'web' && !splashEntered) {
     return (
-      <WebWelcomeScreen
-        variant={publicWelcomeSide}
-        showSignIn={canOfferSignIn}
-        onEnter={(side) => {
-          setRouted(false);
-          setSelectedEntrySide(side);
-          setUserSide(side);
-          setSplashEntered(true);
-        }}
-      />
+      <FrontDoorSceneArrival>
+        <WebWelcomeScreen
+          variant={publicWelcomeSide}
+          showSignIn={canOfferSignIn}
+          onEnter={(side) => {
+            setRouted(false);
+            setSelectedEntrySide(side);
+            setUserSide(side);
+            setSplashEntered(true);
+          }}
+        />
+      </FrontDoorSceneArrival>
     );
   }
 

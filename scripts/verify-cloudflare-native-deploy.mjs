@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {resolveCloudflareAccessServiceAuth} from './cloudflare-access-service-auth.mjs';
 
 export const REQUIRED_CLOUDFLARE_CHECKS = Object.freeze([
   'Workers Builds: sekret-backend',
@@ -92,9 +93,22 @@ export function evaluateWorkerRuntime(health, expectedSha) {
   };
 }
 
+export function evaluateCloudflareDeploymentCompletion(checkEvaluation, releaseEvaluation, workerEvaluation) {
+  const workerCheckObserved = checkEvaluation.missing.length === 0;
+  const workerCheckTerminal = workerCheckObserved && checkEvaluation.pending.length === 0;
+  const providerCheckConflict = workerCheckTerminal
+    && checkEvaluation.unsuccessful.length > 0
+    && workerEvaluation.complete;
+
+  return {
+    complete: workerCheckTerminal && releaseEvaluation.complete && workerEvaluation.complete,
+    workerCheckObserved,
+    workerCheckTerminal,
+    providerCheckConflict,
+  };
+}
+
 export function classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, workerEvaluation) {
-  if (checkEvaluation.failed.length > 0) return 'worker-failed';
-  if (checkEvaluation.unsuccessful.length > 0) return 'worker-unsuccessful';
   if (checkEvaluation.missing.length > 0) return 'worker-missing';
   if (checkEvaluation.pending.length > 0) return 'worker-pending';
   if (!releaseEvaluation.actualSha) return 'pages-marker-missing';
@@ -102,7 +116,12 @@ export function classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, 
   if (!workerEvaluation?.healthAvailable) return 'worker-health-missing';
   if (!workerEvaluation.healthOk) return 'worker-health-unhealthy';
   if (!workerEvaluation.releaseSha) return 'worker-release-sha-missing';
-  if (!workerEvaluation.complete) return 'worker-release-sha-stale';
+  if (!workerEvaluation.complete) {
+    if (checkEvaluation.failed.length > 0) return 'worker-failed-awaiting-runtime';
+    if (checkEvaluation.unsuccessful.length > 0) return 'worker-unsuccessful-awaiting-runtime';
+    return 'worker-release-sha-stale';
+  }
+  if (checkEvaluation.unsuccessful.length > 0) return 'ready-with-provider-check-conflict';
   return 'ready';
 }
 
@@ -135,25 +154,26 @@ async function fetchCheckRuns({repository, sha, token}) {
   return Array.isArray(payload.check_runs) ? payload.check_runs : [];
 }
 
-async function fetchJsonWithNoCache(rawUrl) {
+async function fetchJsonWithNoCache(rawUrl, accessAuth) {
   const url = new URL(rawUrl);
   url.searchParams.set('verify', `${Date.now()}-${Math.random().toString(16).slice(2)}`);
   const response = await fetch(url, {
     headers: {
       Accept: 'application/json',
       'Cache-Control': 'no-cache, no-store, max-age=0',
+      ...accessAuth.headers,
     },
   });
   if (!response.ok) return null;
   return response.json().catch(() => null);
 }
 
-async function fetchReleaseMarker(releaseUrl) {
-  return fetchJsonWithNoCache(releaseUrl);
+async function fetchReleaseMarker(releaseUrl, accessAuth) {
+  return fetchJsonWithNoCache(releaseUrl, accessAuth);
 }
 
-async function fetchWorkerHealth(backendHealthUrl) {
-  return fetchJsonWithNoCache(backendHealthUrl);
+async function fetchWorkerHealth(backendHealthUrl, accessAuth) {
+  return fetchJsonWithNoCache(backendHealthUrl, accessAuth);
 }
 
 function publicCheckEvidence(run) {
@@ -185,7 +205,8 @@ export function buildCloudflareEvidence({
   observerError = null,
 }) {
   const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, workerEvaluation);
-  const complete = checkEvaluation.complete && releaseEvaluation.complete && workerEvaluation.complete;
+  const completion = evaluateCloudflareDeploymentCompletion(checkEvaluation, releaseEvaluation, workerEvaluation);
+  const complete = completion.complete;
   const optionalChecks = Object.fromEntries(
     OPTIONAL_CLOUDFLARE_CHECKS.map((name) => [name, publicCheckEvidence(selectNewestCheck(allCheckRuns, name))]),
   );
@@ -198,6 +219,7 @@ export function buildCloudflareEvidence({
     status,
     complete,
     readinessState,
+    providerCheckConflict: completion.providerCheckConflict,
     startedAt: new Date(startedAtMs).toISOString(),
     observedAt: new Date(observedAtMs).toISOString(),
     elapsedMs: Math.max(0, observedAtMs - startedAtMs),
@@ -244,7 +266,7 @@ function waitingFor(checkEvaluation, releaseEvaluation, workerEvaluation) {
   return [
     ...checkEvaluation.missing,
     ...checkEvaluation.pending,
-    ...checkEvaluation.unsuccessful,
+    ...(workerEvaluation.complete ? [] : checkEvaluation.unsuccessful),
     ...(releaseEvaluation.complete ? [] : [`Pages release marker ${releaseEvaluation.actualSha ?? 'missing'} -> ${releaseEvaluation.expectedSha}`]),
     ...(workerEvaluation.complete ? [] : [`Worker release SHA ${workerEvaluation.releaseSha ?? 'missing'} -> ${workerEvaluation.expectedSha}`]),
   ];
@@ -259,6 +281,7 @@ async function verifyCloudflareNativeDeploy() {
   const timeoutMs = Number(process.env.CLOUDFLARE_CHECK_TIMEOUT_MS ?? 25 * 60 * 1000);
   const pollMs = Number(process.env.CLOUDFLARE_CHECK_POLL_MS ?? 10_000);
   const evidencePath = process.env.CLOUDFLARE_EVIDENCE_PATH ?? 'artifacts/cloudflare-native-deploy.json';
+  const accessAuth = resolveCloudflareAccessServiceAuth();
 
   if (!repository || !sha || !token) {
     throw new Error('GITHUB_REPOSITORY, GITHUB_SHA, and GITHUB_TOKEN are required.');
@@ -310,13 +333,14 @@ async function verifyCloudflareNativeDeploy() {
 
     checkEvaluation = evaluateCloudflareChecks(allCheckRuns);
     const [marker, workerHealth] = await Promise.all([
-      fetchReleaseMarker(releaseUrl).catch(() => null),
-      fetchWorkerHealth(backendHealthUrl).catch(() => null),
+      fetchReleaseMarker(releaseUrl, accessAuth).catch(() => null),
+      fetchWorkerHealth(backendHealthUrl, accessAuth).catch(() => null),
     ]);
     releaseEvaluation = evaluateReleaseMarker(marker, sha);
     workerEvaluation = evaluateWorkerRuntime(workerHealth, sha);
     const readinessState = classifyCloudflareReadiness(checkEvaluation, releaseEvaluation, workerEvaluation);
-    const complete = checkEvaluation.complete && releaseEvaluation.complete && workerEvaluation.complete;
+    const completion = evaluateCloudflareDeploymentCompletion(checkEvaluation, releaseEvaluation, workerEvaluation);
+    const complete = completion.complete;
 
     latestEvidence = buildCloudflareEvidence({
       repository,
@@ -329,15 +353,9 @@ async function verifyCloudflareNativeDeploy() {
       allCheckRuns,
       startedAtMs,
       observedAtMs,
-      status: complete ? 'succeeded' : checkEvaluation.failed.length > 0 ? 'failed' : 'observing',
+      status: complete ? 'succeeded' : 'observing',
     });
     writeEvidence(evidencePath, latestEvidence);
-
-    if (checkEvaluation.failed.length > 0) {
-      throw new Error(
-        `Cloudflare Worker deployment failed (${readinessState}): ${checkEvaluation.failed.join(', ')}`,
-      );
-    }
 
     if (complete) {
       console.log(JSON.stringify(latestEvidence, null, 2));

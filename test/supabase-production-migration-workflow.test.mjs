@@ -4,6 +4,9 @@ import test from 'node:test';
 
 const WORKFLOW_PATH = '.github/workflows/deploy-supabase-migrations.yml';
 const workflow = fs.readFileSync(WORKFLOW_PATH, 'utf8');
+const CHECKOUT_SHA = '11d5960a326750d5838078e36cf38b85af677262';
+const UPLOAD_ARTIFACT_SHA = 'ea165f8d65b6e75b540449e92b4886f43607fa02';
+const SUPABASE_SETUP_SHA = 'ab058987d8d6c725971f6cf9d0b5c98467e30bd1';
 
 function indexOfRequired(fragment) {
   const index = workflow.indexOf(fragment);
@@ -18,25 +21,30 @@ function stepBlock(name, nextName) {
   return workflow.slice(start, end);
 }
 
-test('production migration workflow is manual and dry-run by default', () => {
+test('production migration workflow is manual, dry-run by default, and has no history-repair mode', () => {
   assert.match(workflow, /on:\n  workflow_dispatch:/);
   assert.doesNotMatch(workflow, /\n  push:/);
   assert.doesNotMatch(workflow, /\n  pull_request:/);
   assert.match(workflow, /target_sha:/);
   assert.match(workflow, /mode:[\s\S]*?default: dry-run/);
-  assert.match(workflow, /- dry-run\n\s+- apply\n\s+- repair/);
+  assert.match(workflow, /options:\s*\n\s*- dry-run\s*\n\s*- apply/);
+  assert.doesNotMatch(workflow, /normalize-alias|migration repair|canonical_version|execution_version|normalize_confirmation/i);
   assert.match(workflow, /confirm_project:/);
   assert.match(workflow, /apply_confirmation:/);
-  assert.match(workflow, /repair_version:/);
-  assert.match(workflow, /repair_confirmation:/);
   assert.match(workflow, /environment: production/);
   assert.match(workflow, /cancel-in-progress: false/);
 });
 
-test('production migration workflow pins project and CLI while scoping secrets to required steps', () => {
+test('production migration workflow pins project, CLI, and third-party actions', () => {
   assert.match(workflow, /SUPABASE_PROJECT_REF: tbsevonvegdnlyjgplmm/);
-  assert.match(workflow, /uses: supabase\/setup-cli@v1[\s\S]*?version: 2\.113\.0/);
+  assert.match(workflow, new RegExp(`uses: actions/checkout@${CHECKOUT_SHA}`));
+  assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, new RegExp(`uses: supabase/setup-cli@${SUPABASE_SETUP_SHA}[\\s\\S]*?version: 2\\.113\\.0`));
+  assert.match(workflow, new RegExp(`uses: actions/upload-artifact@${UPLOAD_ARTIFACT_SHA}`));
+  assert.doesNotMatch(workflow, /(?:actions\/checkout|actions\/upload-artifact|supabase\/setup-cli)@v\d+/);
+});
 
+test('production credentials are step-scoped and never attached to checkout or artifact upload', () => {
   const workflowEnv = workflow.match(/\nenv:\n([\s\S]*?)\n\nconcurrency:/)?.[1] ?? '';
   assert.doesNotMatch(workflowEnv, /SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD/);
 
@@ -46,80 +54,58 @@ test('production migration workflow pins project and CLI while scoping secrets t
   for (const [name, nextName] of [
     ['Verify production credentials', 'Link exact production project'],
     ['Link exact production project', 'Preview production migration plan'],
-    ['Preview production migration plan', 'Capture migration history before repair'],
-    ['Capture migration history before repair', 'Re-verify current main immediately before mutation'],
-    ['Apply production migrations', 'Repair production migration history'],
-    ['Repair production migration history', 'Capture migration history after repair'],
-    ['Capture migration history after repair', 'Verify exact production schema after mutation'],
+    ['Preview production migration plan', 'Verify production schema before mutation'],
+    ['Apply production migrations', 'Verify exact production schema after mutation'],
   ]) {
     const block = stepBlock(name, nextName);
     assert.match(block, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
     assert.match(block, /SUPABASE_DB_PASSWORD: \$\{\{ secrets\.SUPABASE_DB_PASSWORD \}\}/);
   }
 
-  const witness = stepBlock('Verify exact production schema after mutation', 'Retain migration evidence');
-  assert.match(witness, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
-  assert.doesNotMatch(witness, /SUPABASE_DB_PASSWORD/);
+  for (const [name, nextName] of [
+    ['Verify production schema before mutation', 'Re-verify current main immediately before mutation'],
+    ['Verify exact production schema after mutation', 'Retain migration evidence'],
+  ]) {
+    const witness = stepBlock(name, nextName);
+    assert.match(witness, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+    assert.doesNotMatch(witness, /SUPABASE_DB_PASSWORD/);
+  }
 
   const upload = stepBlock('Retain migration evidence');
   assert.doesNotMatch(upload, /secrets\.SUPABASE_ACCESS_TOKEN|secrets\.SUPABASE_DB_PASSWORD/);
-  assert.match(workflow, /test -n "\$SUPABASE_ACCESS_TOKEN"/);
-  assert.match(workflow, /test -n "\$SUPABASE_DB_PASSWORD"/);
-  assert.match(workflow, /supabase link --project-ref "\$SUPABASE_PROJECT_REF"/);
 });
 
-test('apply and repair are explicit exact-current-main mutations', () => {
+test('apply is explicit, exact-current-main, dry-run-first, and post-verified', () => {
   assert.match(workflow, /test "\$APPLY_CONFIRMATION" = 'APPLY PRODUCTION MIGRATIONS'/);
-  assert.match(workflow, /\[\[ "\$REPAIR_VERSION" =~ \^\[0-9\]\{14\}\$ \]\]/);
-  assert.match(workflow, /test "\$REPAIR_CONFIRMATION" = 'REPAIR MIGRATION HISTORY'/);
-  assert.match(workflow, /matches=\(supabase\/migrations\/"\$\{REPAIR_VERSION\}"_\*\.sql\)/);
-  assert.match(workflow, /test "\$\{#matches\[@\]\}" -eq 1/);
+  assert.match(workflow, /test "\$CONFIRM_PROJECT" = "\$SUPABASE_PROJECT_REF"/);
+
+  const initialAuthority = indexOfRequired('- name: Verify exact target is current main');
+  const dryRun = indexOfRequired('supabase db push --linked --dry-run 2>&1 | tee artifacts/supabase-db-push-dry-run.txt');
+  const preWitness = indexOfRequired('- name: Verify production schema before mutation');
+  const recheck = indexOfRequired('- name: Re-verify current main immediately before mutation');
+  const apply = indexOfRequired('supabase db push --linked 2>&1 | tee artifacts/supabase-db-push-apply.txt');
+  const postWitness = indexOfRequired('- name: Verify exact production schema after mutation');
+
+  assert.ok(initialAuthority < dryRun);
+  assert.ok(dryRun < preWitness);
+  assert.ok(preWitness < recheck);
+  assert.ok(recheck < apply);
+  assert.ok(apply < postWitness);
 
   const mainFetches = workflow.match(/git fetch --no-tags --depth=1 origin main/g) ?? [];
-  assert.equal(mainFetches.length, 2, 'Current-main authority must be checked before preview and again immediately before any mutation.');
+  assert.equal(mainFetches.length, 2, 'Current main must be checked before provider evaluation and again immediately before mutation.');
   assert.match(workflow, /Refusing to evaluate production migrations from a SHA that is no longer current main\./);
-  assert.match(workflow, /current_main="\$\(git rev-parse FETCH_HEAD\)"/);
-  assert.match(workflow, /test "\$TARGET_SHA" = "\$current_main"/);
-  assert.match(workflow, /Main advanced after preview; refusing production migration mutation\./);
-  assert.match(workflow, /if: \$\{\{ inputs\.mode == 'apply' \|\| inputs\.mode == 'repair' \}\}/);
+  assert.match(workflow, /Main advanced after pre-mutation proof; refusing production migration mutation\./);
 });
 
-test('repair is evidence-first, history-only, and followed by the exact production schema witness', () => {
-  const dryRun = indexOfRequired('supabase db push --linked --dry-run');
-  const before = indexOfRequired('supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-before-repair.txt');
-  const recheck = indexOfRequired('Re-verify current main immediately before mutation');
-  const repair = indexOfRequired('supabase migration repair "$REPAIR_VERSION" --status applied --linked');
-  const after = indexOfRequired('supabase migration list --linked 2>&1 | tee artifacts/supabase-migration-list-after-repair.txt');
-  const witness = indexOfRequired('node scripts/verify-supabase-production-schema.mjs');
-
-  assert.ok(dryRun < before, 'Dry-run must record the pending plan before repair evidence.');
-  assert.ok(before < recheck, 'Remote history must be captured before the final current-main authority check.');
-  assert.ok(recheck < repair, 'Current main must be re-verified immediately before history repair.');
-  assert.ok(repair < after, 'Remote history must be captured again after repair.');
-  assert.ok(after < witness, 'Exact production schema witness must execute after history repair.');
-  assert.doesNotMatch(workflow, /migration repair[\s\S]*--status reverted/);
-  assert.doesNotMatch(workflow, /--include-all/);
-  assert.doesNotMatch(workflow, /--include-seed/);
-  assert.doesNotMatch(workflow, /psql\s|execute_sql|apply_migration/);
-});
-
-test('apply still requires preview, immediate authority recheck, and exact post-apply witness', () => {
-  const dryRun = indexOfRequired('supabase db push --linked --dry-run');
-  const recheck = indexOfRequired('Re-verify current main immediately before mutation');
-  const apply = indexOfRequired('supabase db push --linked 2>&1 | tee artifacts/supabase-db-push-apply.txt');
-  const witness = indexOfRequired('node scripts/verify-supabase-production-schema.mjs');
-
-  assert.ok(dryRun < recheck, 'Dry-run must execute before the final current-main authority check.');
-  assert.ok(recheck < apply, 'Current main must be re-verified immediately before production apply.');
-  assert.ok(apply < witness, 'Exact production schema witness must execute after apply.');
+test('routine workflow cannot perform migration-history surgery through alternate commands', () => {
+  assert.doesNotMatch(workflow, /migration repair|repair_version|normalize-alias|--include-all|--include-seed|psql\s|execute_sql|apply_migration/i);
 });
 
 test('migration evidence is retained without weakening failed runs', () => {
   assert.match(workflow, /if: always\(\)/);
   assert.match(workflow, /artifacts\/supabase-db-push-dry-run\.txt/);
   assert.match(workflow, /artifacts\/supabase-db-push-apply\.txt/);
-  assert.match(workflow, /artifacts\/supabase-migration-list-before-repair\.txt/);
-  assert.match(workflow, /artifacts\/supabase-migration-repair\.txt/);
-  assert.match(workflow, /artifacts\/supabase-migration-list-after-repair\.txt/);
   assert.match(workflow, /artifacts\/supabase-production-schema\.json/);
+  assert.doesNotMatch(workflow, /supabase-migration-(?:list|normalize)/);
 });

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "structural_only",
   "projectRef": "tbsevonvegdnlyjgplmm",
-  "observedAt": "2026-07-15",
+  "observedAt": "2026-08-15",
   "inventorySource": "read_only_live_pg_catalog",
   "scope": {
     "schemas": ["public", "auth"],
@@ -183,6 +183,16 @@
       "behaviorVerified": false
     },
     {
+      "signature": "public.sync_owned_founder_profile()",
+      "searchPath": "pg_catalog, public, auth",
+      "risk": "critical",
+      "rationale": "Synchronizes founder authorization from the owned, confirmed, non-anonymous auth identity and revokes founder role when that identity boundary no longer matches.",
+      "clientExecuteRevokedLive": true,
+      "deployedLive": true,
+      "deploymentStatus": "Read-only live pg_catalog inspection on 2026-08-15 confirmed the function and both auth.users triggers are live with client EXECUTE revoked. The exact migration version 20260813222000 was not present in supabase_migrations.schema_migrations, so live catalog state is proven while migration-ledger provenance remains unresolved.",
+      "behaviorVerified": false
+    },
+    {
       "signature": "public.trigger_safety_scan()",
       "searchPath": "public",
       "risk": "critical",
@@ -195,9 +205,9 @@
       "searchPath": "pg_catalog, public",
       "risk": "critical",
       "rationale": "Fails closed on non-baseline client inserts, cross-user rewrites, onboarding stage regression, assigned-role changes, and inconsistent activation/completion metadata for public.user_onboarding_state.",
-      "clientExecuteRevokedLive": false,
-      "deployedLive": false,
-      "deploymentStatus": "Reviewed and migration-complete on main (supabase/migrations/20260718000002_harden_onboarding_state.sql), including the search_path pin and client EXECUTE revoke shown here. Read-only live pg_catalog inspection on 2026-07-21 confirmed this function does not exist yet on the tbsevonvegdnlyjgplmm project — the migration has not been deployed. clientExecuteRevokedLive is false because that field asserts a verified LIVE fact, not a repository claim; do not flip it to true until live catalog parity is re-run after deployment.",
+      "clientExecuteRevokedLive": true,
+      "deployedLive": true,
+      "deploymentStatus": "Read-only live pg_catalog inspection on 2026-08-15 confirmed the function and onboarding_state_transition_guard trigger are deployed with client EXECUTE revoked. This supersedes the older 2026-07-21 live observation that the function was not yet present.",
       "behaviorVerified": false
     },
     {
@@ -205,9 +215,9 @@
       "searchPath": "public",
       "risk": "high",
       "rationale": "Belt-and-suspenders activation: advances user_onboarding_state to activated on a user's first public.moods insert, idempotent against the existing app-side markActivated() call.",
-      "clientExecuteRevokedLive": false,
-      "deployedLive": false,
-      "deploymentStatus": "Reviewed and migration-complete on main (supabase/migrations/20260718000001_onboarding_mood_log_trigger.sql defines it; supabase/migrations/20260718000002_harden_onboarding_state.sql revokes client EXECUTE). Read-only live pg_catalog inspection on 2026-07-21 confirmed this function does not exist yet on the tbsevonvegdnlyjgplmm project — the migration has not been deployed. clientExecuteRevokedLive is false because that field asserts a verified LIVE fact, not a repository claim; do not flip it to true until live catalog parity is re-run after deployment.",
+      "clientExecuteRevokedLive": true,
+      "deployedLive": true,
+      "deploymentStatus": "Read-only live pg_catalog inspection on 2026-08-15 confirmed the function and trg_first_mood_activation trigger are deployed with client EXECUTE revoked. This supersedes the older 2026-07-21 live observation that the function was not yet present.",
       "behaviorVerified": false
     }
   ],
@@ -285,25 +295,47 @@
       "events": ["UPDATE"]
     },
     {
+      "trigger": "sync_owned_founder_profile_insert",
+      "table": "auth.users",
+      "function": "public.sync_owned_founder_profile()",
+      "timing": "AFTER",
+      "events": ["INSERT"],
+      "deployedLive": true
+    },
+    {
+      "trigger": "sync_owned_founder_profile_update",
+      "table": "auth.users",
+      "function": "public.sync_owned_founder_profile()",
+      "timing": "AFTER",
+      "events": ["UPDATE"],
+      "deployedLive": true
+    },
+    {
       "trigger": "safety_scan_circle",
       "table": "public.circle_posts",
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "catalogDrift": "historical_live_only_tc01_retired"
     },
     {
       "trigger": "safety_scan_journal",
       "table": "public.journal_entries",
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "catalogDrift": "historical_live_only_tc01_retired"
     },
     {
       "trigger": "safety_scan_posts",
       "table": "public.posts",
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "catalogDrift": "historical_live_only_tc01_retired"
     },
     {
       "trigger": "safety_scan_public_circle",
@@ -318,7 +350,7 @@
       "function": "public.enforce_onboarding_state_transition()",
       "timing": "BEFORE",
       "events": ["INSERT", "UPDATE"],
-      "deployedLive": false
+      "deployedLive": true
     },
     {
       "trigger": "trg_first_mood_activation",
@@ -326,7 +358,7 @@
       "function": "public.handle_first_mood_log()",
       "timing": "AFTER",
       "events": ["INSERT"],
-      "deployedLive": false
+      "deployedLive": true
     }
   ]
 }

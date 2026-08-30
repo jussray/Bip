@@ -32,6 +32,7 @@ interface Env extends AuthEnv, VoiceProviderEnv {
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://sekretbip.net',
   'https://www.sekretbip.net',
+  'https://app.sekretbip.net',
 ];
 
 function allowedOrigins(env: Env): string[] | null {

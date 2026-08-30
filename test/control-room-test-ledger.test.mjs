@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   aggregateTestLedger,
+  assertLedgerMergeReady,
   buildTestLedger,
   githubJson,
   isRetryableGithubResponse,
@@ -93,6 +94,64 @@ test('builds a sanitized exact-SHA repository-local ledger', () => {
   assert.equal(ledger.source.includesAllDiscoveredChecks, true);
   assert.equal(ledger.source.excludesObserverCheck, true);
   assert.equal(JSON.stringify(ledger).includes('token'), false);
+});
+
+test('fails closed when the observation window expires with a running exact-head check', () => {
+  const checks = selectLatestChecks([
+    check({name: 'Cloudflare Pages', status: 'in_progress', conclusion: null}),
+  ], SHA);
+  const ledger = buildTestLedger({
+    repository: 'jussray/Sekret-Bip',
+    sha: SHA,
+    branch: 'fix/ledger-authority',
+    runId: '31984861035',
+    checks,
+    observerState: 'window-expired',
+  });
+
+  assert.equal(ledger.aggregate.state, 'pending');
+  assert.throws(
+    () => assertLedgerMergeReady(ledger, 'artifacts/test-ledger.json'),
+    /did not reach a stable terminal state/,
+  );
+});
+
+test('fails closed when a stable terminal exact-head check failed', () => {
+  const checks = selectLatestChecks([
+    check({name: 'Repository Truth Gate', conclusion: 'failure'}),
+  ], SHA);
+  const ledger = buildTestLedger({
+    repository: 'jussray/Sekret-Bip',
+    sha: SHA,
+    branch: 'main',
+    runId: '31984861035',
+    checks,
+    observerState: 'stable',
+  });
+
+  assert.equal(ledger.aggregate.state, 'failed');
+  assert.throws(
+    () => assertLedgerMergeReady(ledger),
+    /Exact-head check failures remain/,
+  );
+});
+
+test('allows stable terminal success with intentionally skipped checks', () => {
+  const checks = selectLatestChecks([
+    check({name: 'Repository Truth Gate'}),
+    check({id: 2, name: 'Supabase Preview', conclusion: 'skipped'}),
+  ], SHA);
+  const ledger = buildTestLedger({
+    repository: 'jussray/Sekret-Bip',
+    sha: SHA,
+    branch: 'main',
+    runId: '31984861035',
+    checks,
+    observerState: 'stable',
+  });
+
+  assert.equal(ledger.aggregate.state, 'warning');
+  assert.equal(assertLedgerMergeReady(ledger), ledger);
 });
 
 test('classifies only evidenced 403 rate limits as retryable', () => {
