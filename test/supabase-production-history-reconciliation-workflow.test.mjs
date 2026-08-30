@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const WORKFLOW_PATH = '.github/workflows/reconcile-supabase-production-history.yml';
+const FOUNDER_COMMAND_PATH = '.github/workflows/app-domain-founder-command.yml';
 const workflow = fs.readFileSync(WORKFLOW_PATH, 'utf8');
+const founderCommand = fs.readFileSync(FOUNDER_COMMAND_PATH, 'utf8');
 
 const liveVersions = [
   '20260723203050',
@@ -85,4 +87,24 @@ test('workflow pins repository and Supabase action identities', () => {
   assert.match(workflow, /version: 2\.113\.0/);
   assert.match(workflow, /actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
   assert.doesNotMatch(workflow, /(?:actions\/checkout|actions\/upload-artifact|supabase\/setup-cli)@v\d+/);
+});
+
+test('founder command bridge preserves app-domain command and adds one bounded Supabase history dispatcher', () => {
+  assert.match(founderCommand, /actions: write/);
+  assert.match(founderCommand, /github\.event\.issue\.number == 925/);
+  assert.match(founderCommand, /github\.event\.comment\.user\.login == 'jussray'/);
+  assert.match(founderCommand, /\/reconcile-app-domain/);
+  assert.match(founderCommand, /reconcile-cloudflare-app-domain\.yml\/dispatches/);
+  assert.match(founderCommand, /\/reconcile-supabase-history/);
+  assert.match(founderCommand, /reconcile-supabase-production-history\.yml\/dispatches/);
+  assert.match(founderCommand, /tbsevonvegdnlyjgplmm/);
+  assert.match(founderCommand, /RECONCILE FIVE MIGRATION ALIASES/);
+});
+
+test('founder command bridge carries authority but no Supabase credentials or migration execution primitives', () => {
+  assert.doesNotMatch(founderCommand, /SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD/);
+  assert.doesNotMatch(founderCommand, /supabase migration repair|supabase db push|supabase migration up|execute_sql|apply_migration/i);
+  for (const version of pendingSecurityVersions) {
+    assert.doesNotMatch(founderCommand, new RegExp(version));
+  }
 });
