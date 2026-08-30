@@ -19,6 +19,13 @@ const expectedPairs = [
   ['20260826065736', '20260824223800'],
 ];
 
+const expectedPendingMigrations = [
+  '20260827060000_harden_consent_permanent_account_boundary.sql',
+  '20260827061000_harden_economy_task_rpcs_permanent_accounts.sql',
+  '20260827062000_harden_legacy_circle_permanent_account_boundaries.sql',
+  '20260827063000_reconcile_reward_approval_live_and_replay.sql',
+];
+
 test('reconciliation plan is pinned to the canonical production project and exactly five pairs', () => {
   const evidence = validateReconciliationPlan();
 
@@ -77,12 +84,17 @@ test('the plan is evidence-only and carries zero mutation authority', () => {
   assert.doesNotMatch(script, /update\s+supabase_migrations/i);
 });
 
-test('three already-merged security migrations remain explicit pending-production gates', () => {
-  assert.deepEqual(PENDING_SECURITY_MIGRATIONS, [
-    '20260827060000_harden_consent_permanent_account_boundary.sql',
-    '20260827061000_harden_economy_task_rpcs_permanent_accounts.sql',
-    '20260827062000_harden_legacy_circle_permanent_account_boundaries.sql',
-  ]);
+test('all post-cutoff repo migrations remain explicit pending-production gates', () => {
+  assert.deepEqual(PENDING_SECURITY_MIGRATIONS, expectedPendingMigrations);
+
+  const postCutoffMigrations = fs.readdirSync('supabase/migrations')
+    .flatMap((filename) => {
+      const match = /^(\d{14})_.+\.sql$/.exec(filename);
+      return match && match[1] >= '20260827060000' ? [filename] : [];
+    })
+    .sort();
+
+  assert.deepEqual(postCutoffMigrations, PENDING_SECURITY_MIGRATIONS);
 
   for (const filename of PENDING_SECURITY_MIGRATIONS) {
     assert.equal(fs.existsSync(`supabase/migrations/${filename}`), true);

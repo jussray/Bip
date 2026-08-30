@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const VERSION = /^\d{14}$/;
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MIGRATIONS_ROOT = path.join(ROOT, 'supabase', 'migrations');
+const PENDING_PRODUCTION_CUTOFF = '20260827060000';
 
 export const PRODUCTION_PROJECT_REF = 'tbsevonvegdnlyjgplmm';
 
@@ -50,10 +51,20 @@ export const PENDING_SECURITY_MIGRATIONS = Object.freeze([
   '20260827060000_harden_consent_permanent_account_boundary.sql',
   '20260827061000_harden_economy_task_rpcs_permanent_accounts.sql',
   '20260827062000_harden_legacy_circle_permanent_account_boundaries.sql',
+  '20260827063000_reconcile_reward_approval_live_and_replay.sql',
 ]);
 
 function canonicalFilename(pair) {
   return `${pair.canonicalVersion}_${pair.canonicalName}.sql`;
+}
+
+function repositoryMigrationsAtOrAfterPendingCutoff() {
+  return fs.readdirSync(MIGRATIONS_ROOT)
+    .flatMap((filename) => {
+      const match = /^(\d{14})_.+\.sql$/.exec(filename);
+      return match && match[1] >= PENDING_PRODUCTION_CUTOFF ? [filename] : [];
+    })
+    .sort();
 }
 
 export function validateReconciliationPlan(plan = PRODUCTION_HISTORY_RECONCILIATION_PLAN) {
@@ -106,12 +117,18 @@ export function validateReconciliationPlan(plan = PRODUCTION_HISTORY_RECONCILIAT
     }
   }
 
+  const observedPending = repositoryMigrationsAtOrAfterPendingCutoff();
+  if (JSON.stringify(observedPending) !== JSON.stringify(PENDING_SECURITY_MIGRATIONS)) {
+    throw new Error('Pending production migration classification is incomplete or stale.');
+  }
+
   return {
     schemaVersion: 1,
     projectRef: PRODUCTION_PROJECT_REF,
     pairCount: plan.length,
     pairs: plan.map((pair) => ({ ...pair, canonicalFilename: canonicalFilename(pair) })),
     pendingSecurityMigrations: [...PENDING_SECURITY_MIGRATIONS],
+    pendingProductionCutoff: PENDING_PRODUCTION_CUTOFF,
     mutatesProduction: false,
     historyMutationAuthorized: false,
     securityApplyAuthorized: false,
