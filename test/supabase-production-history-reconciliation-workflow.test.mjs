@@ -49,8 +49,8 @@ test('workflow repairs exactly the five approved alias pairs and no arbitrary in
   for (const version of [...liveVersions, ...canonicalVersions]) {
     assert.match(workflow, new RegExp(version));
   }
-  assert.match(workflow, /supabase migration repair[\s\S]*--status applied --linked/);
-  assert.match(workflow, /supabase migration repair[\s\S]*--status reverted --linked/);
+  assert.match(workflow, /supabase migration repair[\s\S]*--status applied --db-url/);
+  assert.match(workflow, /supabase migration repair[\s\S]*--status reverted --db-url/);
 });
 
 test('canonical markers are inserted before historical aliases are retired', () => {
@@ -63,7 +63,10 @@ test('canonical markers are inserted before historical aliases are retired', () 
 });
 
 test('history reconciliation cannot apply migration SQL or pending security migrations', () => {
-  assert.doesNotMatch(workflow, /supabase db push --linked(?:\s|$)(?!--dry-run)/);
+  const dbPushLines = workflow.split('\n').filter((line) => line.includes('supabase db push'));
+  assert.equal(dbPushLines.length, 1);
+  assert.match(dbPushLines[0], /--db-url .*--dry-run/);
+  assert.doesNotMatch(workflow, /supabase link/);
   assert.doesNotMatch(workflow, /supabase migration up/);
   assert.doesNotMatch(workflow, /apply_migration|psql\s|execute_sql/i);
   for (const version of pendingSecurityVersions) {
@@ -79,6 +82,14 @@ test('workflow preserves before, midpoint, after, and dry-run evidence', () => {
   assert.match(workflow, /supabase-migration-list-after-reconciliation\.txt/);
   assert.match(workflow, /supabase-db-push-after-history-reconciliation\.txt/);
   assert.match(workflow, /if: always\(\)/);
+});
+
+test('workflow uses the IPv4 session-pooler path and no stale Supabase management token', () => {
+  assert.match(workflow, /aws-0-us-east-1\.pooler\.supabase\.com/);
+  assert.match(workflow, /postgres\.\$\{SUPABASE_PROJECT_REF\}/);
+  assert.match(workflow, /supabase migration list --db-url/);
+  assert.match(workflow, /supabase db push --db-url/);
+  assert.doesNotMatch(workflow, /SUPABASE_ACCESS_TOKEN/);
 });
 
 test('workflow pins repository and Supabase action identities', () => {
