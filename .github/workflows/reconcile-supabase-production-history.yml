@@ -22,7 +22,7 @@ permissions:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SUPABASE_PROJECT_REF: tbsevonvegdnlyjgplmm
-  SUPABASE_POOLER_HOST: aws-0-us-east-1.pooler.supabase.com
+  SUPABASE_POOLER_HOST: aws-1-us-east-1.pooler.supabase.com
 
 concurrency:
   group: supabase-production-migrations
