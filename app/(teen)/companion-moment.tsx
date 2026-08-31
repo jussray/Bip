@@ -43,11 +43,15 @@ export default function CompanionMomentScreen() {
       return;
     }
 
-    setSelectedSekret(selected.destination.companion === 'sy' ? 'rylane' : 'night');
+    // companion-chat still accepts the persisted PersonalityId vocabulary.
+    // Adapt canonical `sy` to legacy route key `rylane` here; the chat engine
+    // then normalizes rylane -> sy before any companion/safety request.
+    const routeCompanion = selected.destination.companion === 'sy' ? 'rylane' : selected.destination.companion;
+    setSelectedSekret(routeCompanion);
     router.push({
       pathname: TEEN_ROUTES.companionChat,
       params: {
-        companion: selected.destination.companion,
+        companion: routeCompanion,
         surface: selected.destination.surface,
       },
     } as never);
