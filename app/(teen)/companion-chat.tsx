@@ -119,14 +119,15 @@ export default function CompanionChatScreen() {
   const companionKey = params.companion ?? 'raylene';
   const surface = (params.surface ?? 'journal') as CompanionSurface;
 
-  // Resolve profile — fall back to 'raylene' for legacy keys
+  // Keep legacy route/storage keys for compatibility, but never use them as the
+  // user-facing identity. Canonical companion metadata owns visible name/copy.
   const profileKey = companionKey in SEKRET_PROFILES ? companionKey : 'soft';
-  const profile    = SEKRET_PROFILES[profileKey];
   const charKey: Character = normalizeCharacterKey(profileKey);
   const companionId = toCompanionId(profileKey);
+  const profile = COMPANION_PROFILES[companionId];
 
-  // Accent colour from COMPANION_PROFILES so ChatBubble can tint correctly.
-  const accentColor = COMPANION_PROFILES[companionId]?.accentColor ?? '#a78bfa';
+  // Accent colour from the same canonical profile registry.
+  const accentColor = profile?.accentColor ?? '#a78bfa';
 
   // Room background, time-of-day aware
   const roomPhase = useMemo(() => getRoomPhase(), []);
