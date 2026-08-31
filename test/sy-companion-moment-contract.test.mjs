@@ -21,7 +21,9 @@ test('Sy moment screen delegates into canonical app surfaces', () => {
   assert.match(routes, /companionMoment:\s*'\/\(teen\)\/companion-moment'/);
   assert.match(screen, /pathname: TEEN_ROUTES\.companionChat/);
   assert.match(screen, /router\.push\(TEEN_ROUTES\.pages as never\)/);
-  assert.match(screen, /setSelectedSekret\(selected\.destination\.companion === 'sy' \? 'rylane' : 'night'\)/);
+  assert.match(screen, /const routeCompanion = selected\.destination\.companion === 'sy' \? 'rylane' : selected\.destination\.companion/);
+  assert.match(screen, /setSelectedSekret\(routeCompanion\)/);
+  assert.match(screen, /companion: routeCompanion/);
   assert.match(screen, /source=\{IMAGES\.rylaneNeutral\}/);
 });
 
