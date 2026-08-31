@@ -45,9 +45,7 @@ on:
       - '.github/workflows/founder-shield.yml'
       - '.github/workflows/product-design-playwright-proof.yml'
   push:
-    branches:
-      - main
-      - 'visual-proof/**'
+    branches: [main]
   workflow_dispatch:
 
 permissions:
