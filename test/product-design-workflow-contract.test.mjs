@@ -14,13 +14,17 @@ function sectionBetween(startMarker, endMarker) {
   return workflow.slice(start, end);
 }
 
-test('Product Design proof cannot skip a fresh main SHA because of push path filtering', () => {
+test('Product Design proof cannot skip fresh main or phase2 visual heads because of push path filtering', () => {
   const pullRequest = sectionBetween('  pull_request:', '  push:');
   const push = sectionBetween('  push:', '  workflow_dispatch:');
 
   assert.match(pullRequest, /^\s+paths:/m, 'pull requests should keep the scoped path filter');
-  assert.match(push, /branches:\s*\[main\]/, 'main push proof must target main');
-  assert.doesNotMatch(push, /^\s+paths:/m, 'main visual proof must not be path-filtered');
+  assert.match(
+    push,
+    /branches:\s*\[main, 'phase2\/\*\*'\]/,
+    'push proof must cover main and reusable phase2 visual carriers',
+  );
+  assert.doesNotMatch(push, /^\s+paths:/m, 'visual push proof must not be path-filtered');
 });
 
 test('Product Design proof remains exact-head and failure-preserving', () => {
@@ -37,8 +41,10 @@ test('Product Design proof remains exact-head and failure-preserving', () => {
     'e2e/room-canonical-display.spec.ts',
     'e2e/canonical-companion-identity.spec.ts',
     'e2e/guardrails.spec.ts',
+    'e2e/sy-companion-moment.spec.ts',
     'test/founder-visual-authority-contract.test.mjs',
     'test/pages-companion-asset-contract.test.mjs',
+    'test/sy-companion-moment-contract.test.mjs',
   ]) {
     assert.ok(workflow.includes(required), `missing Product Design workflow contract: ${required}`);
   }
