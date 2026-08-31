@@ -40,7 +40,10 @@ test('reconciliation follows the recorded canonical safety runtime contract', ()
 
   assert.match(coordinator, /\.eq\('user_id', user\.id\)/);
   assert.match(coordinator, /parent_notified_at/);
-  assert.match(edge, /\.insert\(\{[\s\S]*user_id,[\s\S]*source_table,[\s\S]*source_id:/i);
+  // Tolerates shorthand ({ user_id, ... }) or explicit ({ user_id: x, ... })
+  // property form. The contract being asserted is that the alert insert still
+  // carries these columns, in this order -- not which JS property syntax is used.
+  assert.match(edge, /\.insert\(\{[\s\S]*\buser_id\b[\s\S]*\bsource_table\b[\s\S]*\bsource_id\b/i);
   assert.match(edge, /parent_notified_at/);
 });
 

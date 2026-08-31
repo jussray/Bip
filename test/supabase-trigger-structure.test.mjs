@@ -403,8 +403,13 @@ test('baseline separates repository truth, live catalog observation, and behavio
   assert.equal(baseline.verification.externalEffectsSafelyStubbed, false);
   assert.equal(baseline.functions.length, 14);
   assert.equal(repositoryFunctions.size, 13);
+  // 18 attachments were observed live on 2026-08-15. Three safety_scan attachments
+  // on private/mixed-visibility sources were retired by TC-01
+  // (20260822060000_tc01_private_safety_boundary) and carry repositoryExpected:
+  // false, so 14 remain expected in repository wiring. The observation record
+  // itself is intentionally preserved at 18.
   assert.equal(baseline.attachments.length, 18);
-  assert.equal(repositoryAttachments.size, 17);
+  assert.equal(repositoryAttachments.size, 14);
 });
 
 test('live-only legacy points trigger drift is explicit and remains unresolved', () => {

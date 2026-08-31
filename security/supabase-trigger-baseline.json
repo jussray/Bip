@@ -315,21 +315,30 @@
       "table": "public.circle_posts",
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "retiredBy": "20260822060000_tc01_private_safety_boundary",
+      "retirementNote": "TC-01 removed automatic safety-scan ingress from private/mixed-visibility child-authored sources. Retained as part of the 2026-08-15 observation record; confirmed absent from the live pg_catalog after TC-01."
     },
     {
       "trigger": "safety_scan_journal",
       "table": "public.journal_entries",
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "retiredBy": "20260822060000_tc01_private_safety_boundary",
+      "retirementNote": "TC-01 removed automatic safety-scan ingress from private/mixed-visibility child-authored sources. Retained as part of the 2026-08-15 observation record; confirmed absent from the live pg_catalog after TC-01."
     },
     {
       "trigger": "safety_scan_posts",
       "table": "public.posts",
       "function": "public.trigger_safety_scan()",
       "timing": "AFTER",
-      "events": ["INSERT"]
+      "events": ["INSERT"],
+      "repositoryExpected": false,
+      "retiredBy": "20260822060000_tc01_private_safety_boundary",
+      "retirementNote": "TC-01 removed automatic safety-scan ingress from private/mixed-visibility child-authored sources. Retained as part of the 2026-08-15 observation record; confirmed absent from the live pg_catalog after TC-01."
     },
     {
       "trigger": "safety_scan_public_circle",
