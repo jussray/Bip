@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import test from 'node:test';
+import {normalizeCloudflareTokenTransport} from '../scripts/run-with-normalized-cloudflare-token.mjs';
 
 const workflow = readFileSync('.github/workflows/cloudflare-workers-build-trigger.yml', 'utf8');
 
@@ -40,4 +41,23 @@ test('Workers Builds trigger workflow is exact-head, credential-minimal, and act
   );
   assert.ok(!/uses:\s+actions\/(?:checkout|setup-node|upload-artifact)@v\d+/u.test(workflow), 'Workers trigger actions must be SHA-pinned');
   assert.ok(!workflow.includes('persist-credentials: true'), 'Workers trigger checkout credentials must not persist');
+});
+
+test('Cloudflare token transport canonicalizes common secret wrappers and fails closed on other non-ASCII data', () => {
+  for (const [input, expected, changed] of [
+    ['abc123', 'abc123', false],
+    [' Bearer abc123 ', 'abc123', true],
+    ['CLOUDFLARE_API_TOKEN=abc123', 'abc123', true],
+    ['"abc123"', 'abc123', true],
+    ["CLOUDFLARE_API_TOKEN='Bearer\u00a0abc\u200b123'", 'abc123', true],
+  ]) {
+    const result = normalizeCloudflareTokenTransport(input);
+    assert.equal(result.token, expected, input);
+    assert.equal(result.changed, changed, input);
+    assert.equal(result.nonAsciiRemaining, false, input);
+  }
+
+  const invalid = normalizeCloudflareTokenTransport('abc💥');
+  assert.equal(invalid.token, 'abc💥');
+  assert.equal(invalid.nonAsciiRemaining, true);
 });

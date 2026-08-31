@@ -8,18 +8,18 @@ export function normalizeCloudflareTokenTransport(value) {
   const raw = String(value ?? '');
   if (!raw) return { token: '', changed: false, nonAsciiRemaining: false };
 
-  const trimmed = raw.trim();
-  if (/^Bearer\s+/i.test(trimmed) || /^[A-Z_][A-Z0-9_]*\s*=/.test(trimmed) || /^["']|["']$/.test(trimmed)) {
-    return {
-      token: trimmed,
-      changed: trimmed !== raw,
-      nonAsciiRemaining: /[^\x21-\x7e]/.test(trimmed),
-    };
-  }
+  let token = raw.trim().normalize('NFKC');
+  let previous;
+  do {
+    previous = token;
+    token = token.trim();
+    token = token.replace(/^[A-Z_][A-Z0-9_]*[\p{White_Space}\p{Cf}]*=[\p{White_Space}\p{Cf}]*/u, '');
+    const quoted = token.match(/^(["'])([\s\S]*)\1$/u);
+    if (quoted) token = quoted[2].trim();
+    token = token.replace(/^Bearer[\p{White_Space}\p{Cf}]+/iu, '');
+  } while (token !== previous);
 
-  const token = trimmed
-    .normalize('NFKC')
-    .replace(/[\p{White_Space}\p{Cf}]+/gu, '');
+  token = token.replace(/[\p{White_Space}\p{Cf}]+/gu, '');
   return {
     token,
     changed: token !== raw,
