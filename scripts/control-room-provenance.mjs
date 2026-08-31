@@ -153,6 +153,10 @@ export function verifyClaimBinding(claim, evidence) {
 
 export function supersedeClaim({priorClaim, oldEvidence, newEvidence, strategyMutation}) {
   verifyClaimBinding(priorClaim, oldEvidence);
+  if (priorClaim.state !== 'verified_current') {
+    throw new ProvenanceError('prior_claim_not_current', priorClaim.state);
+  }
+
   const oldObservedAt = new Date(oldEvidence.observedAt).getTime();
   const newObservedAt = new Date(newEvidence.observedAt).getTime();
   if (newObservedAt <= oldObservedAt) {
