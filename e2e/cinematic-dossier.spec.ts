@@ -21,6 +21,35 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(Math.max(metrics.html, metrics.body)).toBeLessThanOrEqual(metrics.viewport + 1);
 }
 
+async function expectDossierImagesDecoded(page: Page) {
+  const images = page.locator('img');
+  await expect.poll(async () => images.count()).toBeGreaterThanOrEqual(15);
+
+  await expect
+    .poll(async () =>
+      images.evaluateAll(nodes =>
+        nodes.map(node => ({
+          src: node.currentSrc || node.src,
+          complete: node.complete,
+          width: node.naturalWidth,
+          height: node.naturalHeight,
+        })),
+      ),
+    )
+    .toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ complete: true }),
+      ]),
+    );
+
+  const unloaded = await images.evaluateAll(nodes =>
+    nodes
+      .filter(node => !node.complete || node.naturalWidth <= 0 || node.naturalHeight <= 0)
+      .map(node => ({ src: node.currentSrc || node.src, complete: node.complete })),
+  );
+  expect(unloaded, `Unloaded dossier images: ${JSON.stringify(unloaded)}`).toEqual([]);
+}
+
 for (const viewport of VIEWPORTS) {
   test(`cinematic evidence dossier renders on ${viewport.name}`, async ({ page }, testInfo) => {
     const consoleErrors: string[] = [];
@@ -46,6 +75,7 @@ for (const viewport of VIEWPORTS) {
     await expect(page.getByText('CURRENT STATE', { exact: true })).toBeVisible();
     await expect(page.getByText('PROOF', { exact: true })).toBeVisible();
     await expect(page.getByText('NEXT GATE', { exact: true })).toBeVisible();
+    await expectDossierImagesDecoded(page);
     await expectNoHorizontalOverflow(page);
 
     await fs.mkdir(ARTIFACT_DIR, { recursive: true });
