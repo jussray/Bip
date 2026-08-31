@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
@@ -12,7 +12,7 @@ const ARTIFACT_DIR = path.resolve(
   'cinematic-dossier',
 );
 
-async function expectNoHorizontalOverflow(page: Parameters<typeof test>[0] extends never ? never : any) {
+async function expectNoHorizontalOverflow(page: Page) {
   const metrics = await page.evaluate(() => ({
     viewport: window.innerWidth,
     html: document.documentElement.scrollWidth,
