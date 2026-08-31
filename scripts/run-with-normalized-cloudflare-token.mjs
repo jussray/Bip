@@ -6,17 +6,25 @@ const DEFAULT_ENV_NAME = 'CLOUDFLARE_API_TOKEN';
 
 export function normalizeCloudflareTokenTransport(value) {
   const raw = String(value ?? '');
-  if (!raw) return { token: '', changed: false };
+  if (!raw) return { token: '', changed: false, nonAsciiRemaining: false };
 
   const trimmed = raw.trim();
-  if (/^Bearer\s+/i.test(trimmed) || /^[A-Z_][A-Z0-9_]*\s*=/.test(trimmed) || /^['"]|['"]$/.test(trimmed)) {
-    return { token: trimmed, changed: trimmed !== raw };
+  if (/^Bearer\s+/i.test(trimmed) || /^[A-Z_][A-Z0-9_]*\s*=/.test(trimmed) || /^["']|["']$/.test(trimmed)) {
+    return {
+      token: trimmed,
+      changed: trimmed !== raw,
+      nonAsciiRemaining: /[^\x21-\x7e]/.test(trimmed),
+    };
   }
 
   const token = trimmed
-    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
-    .replace(/[\t\n\r ]+/g, '');
-  return { token, changed: token !== raw };
+    .normalize('NFKC')
+    .replace(/[\p{White_Space}\p{Cf}]+/gu, '');
+  return {
+    token,
+    changed: token !== raw,
+    nonAsciiRemaining: /[^\x21-\x7e]/.test(token),
+  };
 }
 
 export function runWithNormalizedCloudflareToken({
@@ -28,8 +36,8 @@ export function runWithNormalizedCloudflareToken({
   if (!target) throw new Error('NORMALIZED_CLOUDFLARE_TOKEN_TARGET_REQUIRED');
 
   const source = String(env[DEFAULT_ENV_NAME] ?? '');
-  const { token, changed } = normalizeCloudflareTokenTransport(source);
-  console.error(`CLOUDFLARE_TOKEN_TRANSPORT_READY source=${DEFAULT_ENV_NAME} configured=${Boolean(source)} normalized=${changed}`);
+  const { token, changed, nonAsciiRemaining } = normalizeCloudflareTokenTransport(source);
+  console.error(`CLOUDFLARE_TOKEN_TRANSPORT_READY source=${DEFAULT_ENV_NAME} configured=${Boolean(source)} normalized=${changed} ascii=${!nonAsciiRemaining}`);
   const result = spawn(process.execPath, [target, ...targetArgs], {
     cwd: process.cwd(),
     env: { ...env, [DEFAULT_ENV_NAME]: token },
