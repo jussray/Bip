@@ -6,6 +6,7 @@ const moments = readFileSync(new URL('../src/features/sekret/companionMoments.ts
 const screen = readFileSync(new URL('../app/(teen)/companion-moment.tsx', import.meta.url), 'utf8');
 const routes = readFileSync(new URL('../src/teen/routes.ts', import.meta.url), 'utf8');
 const entry = readFileSync(new URL('../app/(teen)/sekret.tsx', import.meta.url), 'utf8');
+const chat = readFileSync(new URL('../app/(teen)/companion-chat.tsx', import.meta.url), 'utf8');
 
 test('Sy moment contract exposes the five approved intents', () => {
   for (const id of ['sort', 'write', 'company', 'good', 'night']) {
@@ -34,10 +35,19 @@ test('Sy picker entry is bounded to Sy and preserves other companion behavior', 
   assert.match(entry, /pathname: TEEN_ROUTES\.pages/);
 });
 
-test('moment choices expose native selection semantics and no legacy Sy display name', () => {
+test('moment choices expose checked native radio semantics and no legacy Sy display name', () => {
   assert.match(screen, /accessibilityRole="radiogroup"/);
   assert.match(screen, /accessibilityRole="radio"/);
-  assert.match(screen, /accessibilityState=\{\{ selected: isSelected \}\}/);
+  assert.match(screen, /accessibilityState=\{\{ checked: isSelected \}\}/);
+  assert.match(screen, /aria-checked=\{isSelected\}/);
   assert.match(screen, /testID="sy-moment-action"/);
   assert.doesNotMatch(screen, />Rylane</);
+});
+
+test('companion chat keeps compatibility keys private and renders canonical companion metadata', () => {
+  assert.match(chat, /const profileKey = companionKey in SEKRET_PROFILES \? companionKey : 'soft'/);
+  assert.match(chat, /const companionId = toCompanionId\(profileKey\)/);
+  assert.match(chat, /const profile = COMPANION_PROFILES\[companionId\]/);
+  assert.match(chat, /buildHistoryKey\(profileKey, surface\)/);
+  assert.doesNotMatch(chat, /const profile\s*=\s*SEKRET_PROFILES\[profileKey\]/);
 });
