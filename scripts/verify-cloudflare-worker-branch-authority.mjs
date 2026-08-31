@@ -126,28 +126,65 @@ async function verifyTokenCandidate(rawValue, source) {
     return { ok: false, code: inspected.code, message: `${source} failed Workers Builds token preflight.`, shape: inspected.shape };
   }
 
-  let response;
-  try {
-    response = await fetch(`${API}/user/tokens/verify`, {
-      headers: { Authorization: `Bearer ${inspected.token}`, 'Content-Type': 'application/json' },
-    });
-  } catch {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'provider-request-failed', failureCode: 'token-verify-request-failed' });
-    return { ok: false, code: 'token-verify-request-failed', message: `${source} token verification failed before provider response.`, shape: inspected.shape };
+  const verificationPaths = [
+    { scope: 'user', path: '/user/tokens/verify' },
+    { scope: 'account', path: `/accounts/${accountId}/tokens/verify` },
+  ];
+  let lastFailure = null;
+
+  for (const verification of verificationPaths) {
+    let response;
+    try {
+      response = await fetch(`${API}${verification.path}`, {
+        headers: { Authorization: `Bearer ${inspected.token}`, 'Content-Type': 'application/json' },
+      });
+    } catch {
+      lastFailure = {
+        code: 'token-verify-request-failed',
+        message: `${source} ${verification.scope} token verification failed before provider response.`,
+        providerStatus: null,
+      };
+      continue;
+    }
+
+    const payload = await response.json().catch(() => null);
+    if (response.ok && payload?.success !== false && payload?.result?.status === 'active') {
+      receipt.credential.attempts.push({
+        source,
+        shape: inspected.shape,
+        result: 'accepted',
+        verificationScope: verification.scope,
+      });
+      return { ok: true, source, shape: inspected.shape, token: inspected.token };
+    }
+
+    lastFailure = payload?.result?.status && payload.result.status !== 'active'
+      ? {
+          code: 'provider-token-inactive',
+          message: `${source} is not active.`,
+          providerStatus: response.status,
+        }
+      : {
+          code: 'token-verify-http-failure',
+          message: `${source} token verification failed with provider status ${response.status}.`,
+          providerStatus: response.status,
+        };
   }
 
-  const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.success === false) {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'provider-http-failure', failureCode: 'token-verify-http-failure', providerStatus: response.status });
-    return { ok: false, code: 'token-verify-http-failure', message: `${source} token verification failed with provider status ${response.status}.`, shape: inspected.shape, providerStatus: response.status };
-  }
-  if (payload?.result?.status !== 'active') {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'inactive', failureCode: 'provider-token-inactive' });
-    return { ok: false, code: 'provider-token-inactive', message: `${source} is not active.`, shape: inspected.shape };
-  }
-
-  receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'accepted' });
-  return { ok: true, source, shape: inspected.shape, token: inspected.token };
+  receipt.credential.attempts.push({
+    source,
+    shape: inspected.shape,
+    result: lastFailure?.code === 'provider-token-inactive' ? 'inactive' : 'provider-http-failure',
+    failureCode: lastFailure?.code || 'token-selection-failed',
+    providerStatus: lastFailure?.providerStatus ?? null,
+  });
+  return {
+    ok: false,
+    code: lastFailure?.code || 'token-selection-failed',
+    message: lastFailure?.message || `${source} token verification failed.`,
+    shape: inspected.shape,
+    providerStatus: lastFailure?.providerStatus ?? null,
+  };
 }
 
 async function selectCredential() {
