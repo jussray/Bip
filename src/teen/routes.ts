@@ -21,6 +21,7 @@ export const TEEN_ROUTES = {
   // Canonical companion chat screen. Always pass { companion: PersonalityId } param.
   // The old /(teen)/chat hub and /(teen)/chat/[personalityId] are retired.
   companionChat:   '/(teen)/companion-chat',
+  companionMoment: '/(teen)/companion-moment',
   userRoom:        '/(teen)/user-room',
   bippin2:         '/(teen)/bippin2',
   growth:          '/(teen)/growth',
