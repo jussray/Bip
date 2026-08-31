@@ -147,7 +147,8 @@ export default function CompanionMomentScreen() {
                   key={moment.id}
                   testID={`sy-moment-choice-${moment.id}`}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: isSelected }}
+                  accessibilityState={{ checked: isSelected }}
+                  aria-checked={isSelected}
                   accessibilityLabel={moment.label}
                   onPress={() => setSelectedId(moment.id)}
                   style={({ pressed }) => [
