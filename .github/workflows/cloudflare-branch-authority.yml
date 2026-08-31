@@ -54,7 +54,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          node scripts/verify-cloudflare-worker-branch-authority.mjs
+          node scripts/run-with-normalized-cloudflare-token.mjs scripts/verify-cloudflare-worker-branch-authority.mjs
 
       - name: Read and verify Pages branch authority with available read-only credential
         id: pages_audit
@@ -66,7 +66,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: sekret-bip
           CLOUDFLARE_PAGES_PRODUCTION_BRANCH: main
-        run: node scripts/verify-cloudflare-pages-branch-authority.mjs --output "$PAGES_EVIDENCE_PATH"
+        run: node scripts/run-with-normalized-cloudflare-token.mjs scripts/verify-cloudflare-pages-branch-authority.mjs --output "$PAGES_EVIDENCE_PATH"
 
       - name: Require both independent provider readbacks
         if: always()
