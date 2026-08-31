@@ -28,24 +28,24 @@ async function expectDossierImagesDecoded(page: Page) {
   await expect
     .poll(async () =>
       images.evaluateAll(nodes =>
-        nodes.map(node => ({
-          src: node.currentSrc || node.src,
-          complete: node.complete,
-          width: node.naturalWidth,
-          height: node.naturalHeight,
-        })),
+        nodes.map(node => {
+          const image = node as HTMLImageElement;
+          return {
+            src: image.currentSrc || image.src,
+            complete: image.complete,
+            width: image.naturalWidth,
+            height: image.naturalHeight,
+          };
+        }),
       ),
     )
-    .toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ complete: true }),
-      ]),
-    );
+    .toEqual(expect.arrayContaining([expect.objectContaining({ complete: true })]));
 
   const unloaded = await images.evaluateAll(nodes =>
     nodes
-      .filter(node => !node.complete || node.naturalWidth <= 0 || node.naturalHeight <= 0)
-      .map(node => ({ src: node.currentSrc || node.src, complete: node.complete })),
+      .map(node => node as HTMLImageElement)
+      .filter(image => !image.complete || image.naturalWidth <= 0 || image.naturalHeight <= 0)
+      .map(image => ({ src: image.currentSrc || image.src, complete: image.complete })),
   );
   expect(unloaded, `Unloaded dossier images: ${JSON.stringify(unloaded)}`).toEqual([]);
 }
