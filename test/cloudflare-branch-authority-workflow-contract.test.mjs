@@ -21,6 +21,7 @@ test('Cloudflare branch-authority workflow is read-only, exact-main gated, and o
   assert.match(workerVerifier, /const previousSeparateWorker = 'sekret'/);
   assert.match(workerVerifier, /const productionWorker = 'sekret-backend'/);
   assert.match(workerVerifier, /workers-builds-account-token-unsupported/);
+  assert.match(workerVerifier, /probe: 'workers-scripts'/);
   assert.match(workerVerifier, /separateBuildConnectionMainOnly/);
   assert.doesNotMatch(workflow, /method:\s*['\"]?(?:PUT|PATCH|DELETE)/i);
 });
@@ -76,7 +77,7 @@ test('Worker authority verifier can fall back to a user-scoped general token and
     const auth = String(options.headers?.Authorization || '').replace(/^Bearer /, '');
     assert.equal(auth, fallback);
     const text = String(url);
-    if (text.endsWith('/user/tokens/verify')) return { ok: true, status: 200, json: async () => ({ success: true, result: { status: 'active' } }) };
+    assert.equal(text.includes('/tokens/verify'), false);
     if (text.includes(`/accounts/${accountId}/workers/scripts`)) return { ok: true, status: 200, json: async () => ({ success: true, result: Object.entries(tags).map(([id, tag]) => ({ id, tag })) }) };
     if (text.endsWith(`/builds/workers/${tags.bip}/triggers`)) return { ok: true, status: 200, json: async () => ({ success: true, result: [{ trigger_uuid:'bip-trigger', branch_includes:['main'], branch_excludes:[], build_command:'', deploy_command:'npm run deploy:bip', deleted_on:null }] }) };
     if (text.endsWith('/builds/workers/bip/builds?per_page=50')) return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };

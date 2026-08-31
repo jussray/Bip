@@ -28,11 +28,11 @@ function canonicalPagesProject() {
   };
 }
 
-test('Worker authority verifier falls back from user-token verification to account-token verification', async () => {
+test('Worker authority verifier selects a syntactically valid credential by the real Workers read capability', async () => {
   const originalFetch = globalThis.fetch;
   const envKeys = ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_WORKERS_BUILDS_API_TOKEN','CLOUDFLARE_API_TOKEN','EVIDENCE_PATH','GITHUB_REF','GITHUB_SHA'];
   const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
-  const tempDir = await mkdtemp(join(tmpdir(), 'bip-account-token-verify-'));
+  const tempDir = await mkdtemp(join(tmpdir(), 'bip-workers-capability-probe-'));
   const evidencePath = join(tempDir, 'receipt.json');
   const accountId = 'account-owned-token-test';
   const token = 'legacy_account_owned_token';
@@ -53,12 +53,7 @@ test('Worker authority verifier falls back from user-token verification to accou
     const auth = String(options.headers?.Authorization || '').replace(/^Bearer /, '');
     assert.equal(auth, token);
     const text = String(url);
-    if (text.endsWith('/user/tokens/verify')) {
-      return { ok: false, status: 400, json: async () => ({ success: false, errors: [{ code: 1000 }] }) };
-    }
-    if (text.endsWith(`/accounts/${accountId}/tokens/verify`)) {
-      return { ok: true, status: 200, json: async () => ({ success: true, result: { status: 'active' } }) };
-    }
+    assert.equal(text.includes('/tokens/verify'), false);
     if (text.includes(`/accounts/${accountId}/workers/scripts`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: Object.entries(tags).map(([id, tag]) => ({ id, tag })) }) };
     }
@@ -82,7 +77,7 @@ test('Worker authority verifier falls back from user-token verification to accou
 
   let thrown;
   try {
-    await import(`${workerVerifierUrl.href}?account-token-test=${Date.now()}`);
+    await import(`${workerVerifierUrl.href}?workers-capability-test=${Date.now()}`);
   } catch (error) {
     thrown = error;
   } finally {
@@ -95,7 +90,8 @@ test('Worker authority verifier falls back from user-token verification to accou
     const receipt = JSON.parse(await readFile(evidencePath, 'utf8'));
     assert.equal(receipt.status, 'verified');
     assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN');
-    assert.equal(receipt.credential.attempts[0]?.verificationScope, 'account');
+    assert.equal(receipt.credential.attempts[0]?.probe, 'workers-scripts');
+    assert.equal(receipt.credential.attempts[0]?.result, 'accepted');
     assert.equal(receipt.workersAuthorityVerified, true);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
