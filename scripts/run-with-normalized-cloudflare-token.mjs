@@ -14,8 +14,12 @@ export function normalizeCloudflareTokenTransport(value) {
     previous = token;
     token = token.trim();
     token = token.replace(/^[A-Z_][A-Z0-9_]*[\p{White_Space}\p{Cf}]*=[\p{White_Space}\p{Cf}]*/u, '');
-    const quoted = token.match(/^(["'])([\s\S]*)\1$/u);
-    if (quoted) token = quoted[2].trim();
+    const asciiQuoted = token.match(/^(["'])([\s\S]*)\1$/u);
+    if (asciiQuoted) token = asciiQuoted[2].trim();
+    const smartDoubleQuoted = token.match(/^“([\s\S]*)”$/u);
+    if (smartDoubleQuoted) token = smartDoubleQuoted[1].trim();
+    const smartSingleQuoted = token.match(/^‘([\s\S]*)’$/u);
+    if (smartSingleQuoted) token = smartSingleQuoted[1].trim();
     token = token.replace(/^Bearer[\p{White_Space}\p{Cf}]+/iu, '');
   } while (token !== previous);
 
