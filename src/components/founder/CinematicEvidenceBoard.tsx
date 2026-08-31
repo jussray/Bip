@@ -17,6 +17,7 @@ export interface CinematicDossierIdentity {
   about: string;
   quote: string;
   image: ImageSourcePropType;
+  scene?: ImageSourcePropType;
 }
 
 export interface CinematicDossierShot {
@@ -26,6 +27,7 @@ export interface CinematicDossierShot {
   camera: string;
   atmosphere: string;
   image: ImageSourcePropType;
+  scene?: ImageSourcePropType;
 }
 
 export interface CinematicDossierModule {
@@ -58,6 +60,52 @@ function MetadataRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CharacterScene({
+  scene,
+  character,
+  characterLabel,
+  hero = false,
+  testID,
+}: {
+  scene?: ImageSourcePropType;
+  character: ImageSourcePropType;
+  characterLabel: string;
+  hero?: boolean;
+  testID?: string;
+}) {
+  if (!scene) {
+    return (
+      <Image
+        testID={testID}
+        source={character}
+        style={hero ? styles.heroFallbackImage : styles.shotFallbackImage}
+        resizeMode={hero ? 'contain' : 'cover'}
+        accessibilityLabel={characterLabel}
+      />
+    );
+  }
+
+  return (
+    <>
+      <Image
+        source={scene}
+        style={styles.scenePlate}
+        resizeMode="cover"
+        accessibilityLabel={`${characterLabel} environment`}
+      />
+      <View style={styles.sceneAtmosphere} />
+      <Image
+        testID={testID}
+        source={character}
+        style={hero ? styles.heroCharacter : styles.shotCharacter}
+        resizeMode="contain"
+        accessibilityLabel={characterLabel}
+      />
+      <View style={hero ? styles.heroVignette : styles.shotVignette} />
+    </>
+  );
+}
+
 export function CinematicEvidenceBoard({
   identity,
   shots,
@@ -77,7 +125,9 @@ export function CinematicEvidenceBoard({
     >
       <View style={styles.topBar}>
         <Text style={styles.topBarText}>CINEMATIC EVIDENCE DOSSIER</Text>
-        <Text style={[styles.topBarText, { color: accent }]}>{version} · {shots.length} SHOTS</Text>
+        <Text style={[styles.topBarText, { color: accent }]}>
+          {version} · {shots.length} SHOTS
+        </Text>
       </View>
 
       <View style={[styles.primaryGrid, !wide && styles.primaryGridStacked]}>
@@ -88,12 +138,12 @@ export function CinematicEvidenceBoard({
           <Text style={[styles.tagline, { color: accent }]}>{identity.tagline}</Text>
 
           <View style={styles.heroFrame}>
-            <Image
+            <CharacterScene
+              hero
+              scene={identity.scene}
+              character={identity.image}
               testID="cinematic-dossier-hero"
-              source={identity.image}
-              style={styles.heroImage}
-              resizeMode="contain"
-              accessibilityLabel={`${identity.name} approved companion reference`}
+              characterLabel={`${identity.name} approved companion reference`}
             />
             <View style={[styles.heroStamp, { borderColor: accent }]}>
               <Text style={[styles.heroStampText, { color: accent }]}>IDENTITY LOCK</Text>
@@ -133,16 +183,17 @@ export function CinematicEvidenceBoard({
                     <Text style={[styles.shotNumber, { color: accent }]}>{shot.id}</Text>
                     <Text style={styles.shotTitle}>{shot.title.toUpperCase()}</Text>
                   </View>
+
                   <View style={[styles.shotImageFrame, finale && wide && styles.shotImageFinale]}>
-                    <Image
-                      source={shot.image}
-                      style={styles.shotImage}
-                      resizeMode="cover"
-                      accessibilityLabel={`${shot.title} storyboard frame`}
+                    <CharacterScene
+                      scene={shot.scene}
+                      character={shot.image}
+                      testID={`cinematic-shot-character-${shot.id}`}
+                      characterLabel={`${shot.title} storyboard character`}
                     />
-                    <View style={styles.shotImageShade} />
                     <Text style={styles.shotBeat}>{shot.beat}</Text>
                   </View>
+
                   <View style={styles.shotMetadata}>
                     <MetadataRow label="CAMERA" value={shot.camera} />
                     <MetadataRow label="ATMOS" value={shot.atmosphere} />
@@ -276,7 +327,7 @@ const styles = StyleSheet.create({
   },
   heroFrame: {
     height: 360,
-    backgroundColor: '#d5c5a8',
+    backgroundColor: '#21162d',
     borderWidth: 1,
     borderColor: '#70624f',
     marginTop: 16,
@@ -284,9 +335,41 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  heroImage: {
+  scenePlate: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     width: '100%',
     height: '100%',
+  },
+  sceneAtmosphere: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(18, 9, 28, 0.14)',
+  },
+  heroCharacter: {
+    position: 'absolute',
+    left: '6%',
+    bottom: -4,
+    width: '88%',
+    height: '96%',
+  },
+  heroFallbackImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroVignette: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: 'rgba(8, 4, 13, 0.10)',
   },
   heroStamp: {
     position: 'absolute',
@@ -426,21 +509,29 @@ const styles = StyleSheet.create({
     height: 150,
     position: 'relative',
     backgroundColor: '#221c17',
+    overflow: 'hidden',
   },
   shotImageFinale: {
     height: 190,
   },
-  shotImage: {
+  shotCharacter: {
+    position: 'absolute',
+    left: '14%',
+    top: 5,
+    width: '72%',
+    height: '94%',
+  },
+  shotFallbackImage: {
     width: '100%',
     height: '100%',
   },
-  shotImageShade: {
+  shotVignette: {
     position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
     left: 0,
-    backgroundColor: 'rgba(13, 8, 20, 0.22)',
+    backgroundColor: 'rgba(13, 8, 20, 0.16)',
   },
   shotBeat: {
     position: 'absolute',
