@@ -1,11 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {createHash, randomUUID} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
+
+import {canonicalSha256} from './control-room-provenance.mjs';
 
 export const FEDERATED_PROOF_CONTRACT = 'juss-proof/v1';
 
 const FULL_SHA = /^[0-9a-f]{40}$/i;
+const RECEIPT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REPOSITORY = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 const TERMINAL_STATE = new Set(['verified', 'inferred', 'unknown', 'failed', 'blocked']);
 
@@ -65,8 +68,26 @@ function assertLedger(ledger) {
   }
 }
 
+function normalizeReceiptReferences(value, selfId) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 50) {
+    throw new Error('Control Room supersedes must be an array of at most 50 receipt IDs.');
+  }
+  const normalized = value.map((item) => {
+    const id = clean(item).toLowerCase();
+    if (!RECEIPT_ID.test(id)) {
+      throw new Error('Control Room supersedes contains an invalid receipt ID.');
+    }
+    return id;
+  });
+  if (new Set(normalized).size !== normalized.length || normalized.includes(selfId.toLowerCase())) {
+    throw new Error('Control Room supersedes must contain unique non-self receipt IDs.');
+  }
+  return normalized;
+}
+
 function ledgerSha256(ledger) {
-  return createHash('sha256').update(JSON.stringify(ledger)).digest('hex');
+  return canonicalSha256(ledger);
 }
 
 export function createJussProofFromTestLedger(ledger, options = {}) {
@@ -77,11 +98,15 @@ export function createJussProofFromTestLedger(ledger, options = {}) {
   const branch = clean(ledger.branch);
   const counts = ledger.aggregate.counts;
   const receiptId = clean(options.receiptId) || randomUUID();
+  if (!RECEIPT_ID.test(receiptId)) {
+    throw new Error('Control Room receiptId must be a UUID v4.');
+  }
   const issuedAt = canonicalTimestamp(options.issuedAt ?? ledger.generatedAt);
+  const supersedes = normalizeReceiptReferences(options.supersedes, receiptId);
 
   return {
     schema: FEDERATED_PROOF_CONTRACT,
-    receiptId,
+    receiptId: receiptId.toLowerCase(),
     project: repository,
     actor: 'sekret-bip-control-room',
     authority: {
@@ -113,7 +138,7 @@ export function createJussProofFromTestLedger(ledger, options = {}) {
     ],
     acknowledges: [],
     dependsOn: [],
-    supersedes: [],
+    supersedes,
     nextAuthority: 'runtime-provider-mcp',
     issuedAt,
   };
@@ -124,11 +149,24 @@ function writeReceipt(outputPath, receipt) {
   fs.writeFileSync(outputPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 }
 
+function previousReceiptIds(env) {
+  const previousPath = clean(env.CONTROL_ROOM_PREVIOUS_JUSS_PROOF_PATH);
+  if (!previousPath) return [];
+  const previous = JSON.parse(fs.readFileSync(previousPath, 'utf8'));
+  const receiptId = clean(previous?.receiptId).toLowerCase();
+  if (!RECEIPT_ID.test(receiptId)) {
+    throw new Error('Previous Control Room proof has an invalid receiptId.');
+  }
+  return [receiptId];
+}
+
 export function emitJussProofFromTestLedger(env = process.env) {
   const inputPath = clean(env.CONTROL_ROOM_TEST_LEDGER_PATH) || 'artifacts/control-room-test-ledger.json';
   const outputPath = clean(env.CONTROL_ROOM_JUSS_PROOF_PATH) || 'artifacts/control-room-juss-proof.json';
   const ledger = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
-  const receipt = createJussProofFromTestLedger(ledger);
+  const receipt = createJussProofFromTestLedger(ledger, {
+    supersedes: previousReceiptIds(env),
+  });
   writeReceipt(outputPath, receipt);
   console.log(JSON.stringify(receipt, null, 2));
   return receipt;
