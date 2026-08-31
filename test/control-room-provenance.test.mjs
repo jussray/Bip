@@ -20,6 +20,23 @@ import {
 const OLD_AT = '2026-08-29T23:00:00.000Z';
 const NEW_AT = '2026-08-30T09:00:00.000Z';
 
+function evidencePair() {
+  return {
+    oldEvidence: createJsonEvidenceBinding({
+      sourceId: 'linkedin-workbook-20260829',
+      sourceKind: 'sanitized_metric_snapshot',
+      observedAt: OLD_AT,
+      source: {impressions: 81, engagements: 6},
+    }),
+    newEvidence: createJsonEvidenceBinding({
+      sourceId: 'linkedin-workbook-20260830',
+      sourceKind: 'sanitized_metric_snapshot',
+      observedAt: NEW_AT,
+      source: {impressions: 165, engagements: 6},
+    }),
+  };
+}
+
 test('canonical hashing is stable across object key order', () => {
   const a = {impressions: 81, engagements: 6, nested: {b: 2, a: 1}};
   const b = {nested: {a: 1, b: 2}, engagements: 6, impressions: 81};
@@ -34,12 +51,7 @@ test('deterministic receipt IDs remain UUID-v4 compatible', () => {
 });
 
 test('claim binding fails closed when observation changes', () => {
-  const oldEvidence = createJsonEvidenceBinding({
-    sourceId: 'linkedin-workbook-20260829',
-    sourceKind: 'sanitized_metric_snapshot',
-    observedAt: OLD_AT,
-    source: {impressions: 81, engagements: 6},
-  });
+  const {oldEvidence} = evidencePair();
   const claim = bindClaim({
     claimId: 'LI-DAY-20260828-P04-aa03b1fd66d5',
     statement: 'Product Design/HCI is the winning format.',
@@ -62,18 +74,7 @@ test('claim binding fails closed when observation changes', () => {
 });
 
 test('supersession preserves old evidence and binds the new observation', () => {
-  const oldEvidence = createJsonEvidenceBinding({
-    sourceId: 'linkedin-workbook-20260829',
-    sourceKind: 'sanitized_metric_snapshot',
-    observedAt: OLD_AT,
-    source: {impressions: 81, engagements: 6},
-  });
-  const newEvidence = createJsonEvidenceBinding({
-    sourceId: 'linkedin-workbook-20260830',
-    sourceKind: 'sanitized_metric_snapshot',
-    observedAt: NEW_AT,
-    source: {impressions: 165, engagements: 6},
-  });
+  const {oldEvidence, newEvidence} = evidencePair();
   const claim = bindClaim({
     claimId: 'LI-DAY-20260828-P04-aa03b1fd66d5',
     statement: 'Product Design/HCI is the winning format.',
@@ -94,6 +95,27 @@ test('supersession preserves old evidence and binds the new observation', () => 
   assert.equal(receipt.oldEvidence.observationSha256, oldEvidence.observationSha256);
   assert.equal(receipt.newEvidence.observationSha256, newEvidence.observationSha256);
   assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/);
+});
+
+test('only a verified_current claim can be superseded', () => {
+  const {oldEvidence, newEvidence} = evidencePair();
+  const historicalClaim = bindClaim({
+    claimId: 'historical-claim',
+    statement: 'Historical claim.',
+    state: 'superseded_historical',
+    evidence: oldEvidence,
+    createdAt: '2026-08-29T23:05:00.000Z',
+  });
+
+  assert.throws(
+    () => supersedeClaim({
+      priorClaim: historicalClaim,
+      oldEvidence,
+      newEvidence,
+      strategyMutation: 'Should not be allowed.',
+    }),
+    (error) => error instanceof ProvenanceError && error.code === 'prior_claim_not_current',
+  );
 });
 
 test('file binding detects byte-level source tampering', () => {
