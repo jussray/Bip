@@ -39,7 +39,7 @@ const TEEN_SHORTCUTS = [
 ] as const;
 
 export default function TeenSekretRoute() {
-  const { selectedSekret } = useAppContext();
+  const { selectedSekret, setSelectedSekret } = useAppContext();
   const charKey = useMemo(
     () => normalizeCharacterKey(selectedSekret ?? 'raylene'),
     [selectedSekret],
@@ -69,6 +69,16 @@ export default function TeenSekretRoute() {
 
   function handleCompanionSelect(id: PersonalityId) {
     closePicker();
+
+    // Sy has an approved moment-intent entry screen before conversation.
+    // Keep the persisted compatibility key (`rylane`) at AppContext, while the
+    // moment screen hands canonical `sy` to the companion engine boundary.
+    if (id === 'rylane') {
+      setSelectedSekret('rylane');
+      router.push(TEEN_ROUTES.companionMoment as never);
+      return;
+    }
+
     router.push({
       pathname: TEEN_ROUTES.pages,
       params: { companion: id },
