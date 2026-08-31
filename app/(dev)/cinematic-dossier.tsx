@@ -22,48 +22,87 @@ const DISPLAY_NAMES: Record<DossierCompanion, string> = {
 };
 
 const HERO_IMAGES: Record<DossierCompanion, number> = {
-  night: IMAGES.nightNeutral,
-  soft: IMAGES.rayleneNeutral,
-  rylane: IMAGES.rylaneNeutral,
-  cloud: IMAGES.cloudAvatarNeutral,
+  night: IMAGES.nightFullbody,
+  soft: IMAGES.rayleneFullbody,
+  rylane: IMAGES.rylaneFullbody,
+  cloud: IMAGES.cloudAvatarFullbody,
 };
 
-const SHOT_IMAGES: Record<DossierCompanion, readonly number[]> = {
+const CHARACTER_IMAGES: Record<DossierCompanion, readonly number[]> = {
   night: [
-    IMAGES.nightNeutral,
+    IMAGES.nightFullbody,
     IMAGES.nightListening,
     IMAGES.nightThinking,
     IMAGES.nightProtective,
     IMAGES.nightRelaxed,
     IMAGES.nightSoftsmile,
-    IMAGES.nightNeutral,
+    IMAGES.nightFullbody,
   ],
   soft: [
-    IMAGES.rayleneNeutral,
+    IMAGES.rayleneFullbody,
     IMAGES.rayleneWindow,
     IMAGES.rayleneThinking,
     IMAGES.rayleneWriting,
     IMAGES.rayleneHappy,
     IMAGES.rayleneConfident,
-    IMAGES.rayleneNeutral,
+    IMAGES.rayleneFullbody,
   ],
   rylane: [
-    IMAGES.rylaneNeutral,
+    IMAGES.rylaneFullbody,
     IMAGES.rylaneWindow,
     IMAGES.rylaneThinking,
     IMAGES.rylaneWriting,
     IMAGES.rylaneHappy,
     IMAGES.rylaneFullbody,
-    IMAGES.rylaneNeutral,
+    IMAGES.rylaneFullbody,
   ],
   cloud: [
-    IMAGES.cloudAvatarNeutral,
+    IMAGES.cloudAvatarFullbody,
     IMAGES.cloudAvatarThinking,
     IMAGES.cloudHeadphones,
     IMAGES.cloudAvatarWriting,
     IMAGES.cloudAvatarHappy,
     IMAGES.cloudAvatarWindow,
-    IMAGES.cloudAvatarNeutral,
+    IMAGES.cloudAvatarFullbody,
+  ],
+};
+
+const SCENE_IMAGES: Record<DossierCompanion, readonly number[]> = {
+  night: [
+    IMAGES.bgNightRoomDay,
+    IMAGES.bgNightRoomMidday,
+    IMAGES.bgNightRoomAfternoon,
+    IMAGES.bgNightRoomEvening,
+    IMAGES.bgNightRoomNight,
+    IMAGES.bgNightRoomDeepNight,
+    IMAGES.bgNightRoomRain,
+  ],
+  soft: [
+    IMAGES.bgRayleneRoomDay,
+    IMAGES.bgRayleneRoomMidday,
+    IMAGES.bgRayleneRoomAfternoon,
+    IMAGES.bgRayleneRoomEvening,
+    IMAGES.bgRayleneRoomNight,
+    IMAGES.bgRayleneRoomDeepNight,
+    IMAGES.bgRayleneRoomRain,
+  ],
+  rylane: [
+    IMAGES.bgRylaneRoomDay,
+    IMAGES.bgRylaneRoomMidday,
+    IMAGES.bgRylaneRoomAfternoon,
+    IMAGES.bgRylaneRoomEvening,
+    IMAGES.bgRylaneRoomNight,
+    IMAGES.bgRylaneRoomDeepNight,
+    IMAGES.bgRylaneRoomRain,
+  ],
+  cloud: [
+    IMAGES.bgCloudRoomDay,
+    IMAGES.bgCloudRoomMidday,
+    IMAGES.bgCloudRoomAfternoon,
+    IMAGES.bgCloudRoomEvening,
+    IMAGES.bgCloudRoomNight,
+    IMAGES.bgCloudRoomDeepNight,
+    IMAGES.bgCloudRoomRain,
   ],
 };
 
@@ -132,7 +171,8 @@ export default function CinematicDossierPreviewRoute() {
 
   const board = useMemo(() => {
     const profile = SEKRET_PROFILES[selected];
-    const images = SHOT_IMAGES[selected];
+    const characters = CHARACTER_IMAGES[selected];
+    const scenes = SCENE_IMAGES[selected];
     const displayName = DISPLAY_NAMES[selected];
 
     return {
@@ -145,10 +185,12 @@ export default function CinematicDossierPreviewRoute() {
         about: `${displayName} is shown here as a companion system, not just a portrait: identity, behavior, tools, environment, and the evidence gate all live on one board.`,
         quote: profile.greeting,
         image: HERO_IMAGES[selected],
+        scene: scenes[3],
       },
       shots: SHOT_BLUEPRINT.map((shot, index) => ({
         ...shot,
-        image: images[index] ?? HERO_IMAGES[selected],
+        image: characters[index] ?? HERO_IMAGES[selected],
+        scene: scenes[index] ?? scenes[3],
       })),
       modules: [
         {
@@ -159,18 +201,30 @@ export default function CinematicDossierPreviewRoute() {
         {
           title: 'Emotional fingerprint',
           note: profile.vibe,
-          items: [profile.title, 'Low-pressure presence', 'Choice-first interaction', 'Readable emotion', 'Safe return'],
+          items: [
+            profile.title,
+            'Low-pressure presence',
+            'Choice-first interaction',
+            'Readable emotion',
+            'Safe return',
+          ],
         },
         {
           title: 'Room & conditions',
           note: 'The environment carries part of the emotional storytelling.',
-          items: ['Room', 'Day / evening / night', 'Mood atmosphere', 'Discoverable hotspots', 'Return memory'],
+          items: [
+            'Room canon',
+            'Day / evening / night',
+            'Mood atmosphere',
+            'Discoverable hotspots',
+            'Return memory',
+          ],
         },
       ],
       truth: {
         state: 'FOUNDER PREVIEW · VISUAL GRAMMAR ONLY · NOT A PRODUCTION CLAIM',
-        proof: 'REPOSITORY COMPANION ASSETS + LIVE PROFILE COPY + RESPONSIVE CODE',
-        nextGate: 'PLAYWRIGHT DESKTOP + MOBILE → THEN REUSE THE PRIMITIVE',
+        proof: 'REPOSITORY CHARACTER CUTOUTS + ROOM SCENE PLATES + LIVE PROFILE COPY',
+        nextGate: 'PLAYWRIGHT DESKTOP + MOBILE → PIXEL REVIEW → THEN REUSE THE PRIMITIVE',
       },
     };
   }, [selected]);
@@ -180,7 +234,9 @@ export default function CinematicDossierPreviewRoute() {
       <View style={styles.locked} testID="cinematic-dossier-locked">
         <Text style={styles.lockedIcon}>🔒</Text>
         <Text style={styles.lockedTitle}>Cinematic dossier preview is development-only.</Text>
-        <Text style={styles.lockedBody}>Production does not expose this founder visual-system surface.</Text>
+        <Text style={styles.lockedBody}>
+          Production does not expose this founder visual-system surface.
+        </Text>
       </View>
     );
   }
@@ -205,7 +261,7 @@ export default function CinematicDossierPreviewRoute() {
         <Text style={styles.kicker}>FOUNDER VISUAL SYSTEM</Text>
         <Text style={styles.title}>Character bible + storyboard + evidence.</Text>
         <Text style={styles.subtitle}>
-          A reusable dossier grammar built from the reference structure, not its characters or compositions. Identity anchors the left rail, behavior moves through seven cinematic beats, and the bottom edge stays bound to tools, traits, environment, state, proof, and next gate.
+          A reusable dossier grammar built from Se’kret Bip’s own companion and room canon. Character cutouts perform inside scene plates, seven beats carry the journey, and the bottom edge stays bound to tools, traits, environment, state, proof, and next gate.
         </Text>
 
         <View style={styles.selectorBlock}>
@@ -223,7 +279,10 @@ export default function CinematicDossierPreviewRoute() {
                   onPress={() => setSelected(companion)}
                   style={[
                     styles.selectorButton,
-                    active && { borderColor: ACCENTS[companion], backgroundColor: '#ffffff18' },
+                    active && {
+                      borderColor: ACCENTS[companion],
+                      backgroundColor: '#ffffff18',
+                    },
                   ]}
                 >
                   <Text style={[styles.selectorText, active && { color: ACCENTS[companion] }]}>
