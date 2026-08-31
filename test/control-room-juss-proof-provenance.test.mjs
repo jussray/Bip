@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
-import {createJussProofFromTestLedger} from '../scripts/control-room-juss-proof.mjs';
+import {
+  createJussProofFromTestLedger,
+  emitJussProofFromTestLedger,
+} from '../scripts/control-room-juss-proof.mjs';
 
 const SHA = '579342699fc7fb394cf9684643756cdc8c9342a8';
 const CURRENT_ID = '123e4567-e89b-42d3-a456-426614174000';
@@ -71,4 +77,32 @@ test('juss-proof rejects malformed or self-referential supersession IDs', () => 
     }),
     /unique non-self receipt IDs/,
   );
+});
+
+test('environment-driven supersession rejects a receipt from another project', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-juss-proof-'));
+  const ledgerPath = path.join(root, 'ledger.json');
+  const previousPath = path.join(root, 'previous.json');
+  const outputPath = path.join(root, 'output.json');
+
+  fs.writeFileSync(ledgerPath, `${JSON.stringify(baseLedger())}\n`, 'utf8');
+  fs.writeFileSync(previousPath, `${JSON.stringify({
+    schema: 'juss-proof/v1',
+    receiptId: PREVIOUS_ID,
+    project: 'jussray/another-project',
+    exactTarget: {
+      repository: 'jussray/another-project',
+      sha: SHA,
+    },
+  })}\n`, 'utf8');
+
+  assert.throws(
+    () => emitJussProofFromTestLedger({
+      CONTROL_ROOM_TEST_LEDGER_PATH: ledgerPath,
+      CONTROL_ROOM_PREVIOUS_JUSS_PROOF_PATH: previousPath,
+      CONTROL_ROOM_JUSS_PROOF_PATH: outputPath,
+    }),
+    /different project/,
+  );
+  assert.equal(fs.existsSync(outputPath), false);
 });
