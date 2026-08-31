@@ -149,14 +149,26 @@ function writeReceipt(outputPath, receipt) {
   fs.writeFileSync(outputPath, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 }
 
-function previousReceiptIds(env) {
+function previousReceiptIds(env, ledger) {
   const previousPath = clean(env.CONTROL_ROOM_PREVIOUS_JUSS_PROOF_PATH);
   if (!previousPath) return [];
+
   const previous = JSON.parse(fs.readFileSync(previousPath, 'utf8'));
   const receiptId = clean(previous?.receiptId).toLowerCase();
   if (!RECEIPT_ID.test(receiptId)) {
     throw new Error('Previous Control Room proof has an invalid receiptId.');
   }
+  if (previous?.schema !== FEDERATED_PROOF_CONTRACT) {
+    throw new Error('Previous Control Room proof uses an unsupported schema.');
+  }
+
+  const currentProject = clean(ledger.repository);
+  const previousProject = clean(previous?.project);
+  const previousRepository = clean(previous?.exactTarget?.repository);
+  if (previousProject !== currentProject || previousRepository !== currentProject) {
+    throw new Error('Previous Control Room proof belongs to a different project.');
+  }
+
   return [receiptId];
 }
 
@@ -165,7 +177,7 @@ export function emitJussProofFromTestLedger(env = process.env) {
   const outputPath = clean(env.CONTROL_ROOM_JUSS_PROOF_PATH) || 'artifacts/control-room-juss-proof.json';
   const ledger = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
   const receipt = createJussProofFromTestLedger(ledger, {
-    supersedes: previousReceiptIds(env),
+    supersedes: previousReceiptIds(env, ledger),
   });
   writeReceipt(outputPath, receipt);
   console.log(JSON.stringify(receipt, null, 2));
