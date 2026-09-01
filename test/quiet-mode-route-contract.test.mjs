@@ -20,6 +20,7 @@ const quiet = runtimeModule.exports;
 const {
   QUIET_PRIMARY_DESTINATIONS,
   isQuietRouteAllowed,
+  resolveDailyQuietMode,
   resolveQuietMode,
 } = quiet;
 
@@ -39,7 +40,35 @@ test('quiet state activates only inside an explicit valid window', () => {
   assert.equal(resolveQuietMode(window, Date.parse(window.reopensAt)).status, 'open');
 });
 
-test('missing, disabled, or malformed scheduling fails open', () => {
+test('recurring Sleep Guard schedule resolves a cross-midnight reopen', () => {
+  const schedule = { start: '22:00', end: '07:00' };
+
+  for (const hour of [23, 1, 6]) {
+    const state = resolveDailyQuietMode(schedule, new Date(2026, 8, 1, hour, 15, 0, 0));
+    assert.equal(state.status, 'quiet', `expected quiet at ${hour}:15`);
+    assert.ok(state.reopensAt);
+    const reopen = new Date(state.reopensAt);
+    assert.equal(reopen.getHours(), 7);
+    assert.equal(reopen.getMinutes(), 0);
+  }
+
+  assert.equal(resolveDailyQuietMode(schedule, new Date(2026, 8, 1, 8, 0, 0, 0)).status, 'open');
+});
+
+test('same-day daily schedules and malformed schedules fail safely', () => {
+  assert.equal(
+    resolveDailyQuietMode({ start: '01:00', end: '06:00' }, new Date(2026, 8, 1, 3, 0, 0, 0)).status,
+    'quiet',
+  );
+  assert.equal(
+    resolveDailyQuietMode({ start: '01:00', end: '06:00' }, new Date(2026, 8, 1, 8, 0, 0, 0)).status,
+    'open',
+  );
+  assert.equal(resolveDailyQuietMode({ start: 'bad', end: '07:00' }, new Date()).reason, 'invalid_window');
+  assert.equal(resolveDailyQuietMode({ start: '22:00', end: '22:00' }, new Date()).reason, 'invalid_window');
+});
+
+test('missing, disabled, or malformed concrete scheduling fails open', () => {
   assert.equal(resolveQuietMode(null, Date.now()).reason, 'disabled');
   assert.equal(resolveQuietMode({ enabled: false, startsAt: '', reopensAt: '' }, Date.now()).status, 'open');
   assert.deepEqual(
@@ -56,7 +85,8 @@ test('quiet primary destinations are Pages, Bridge, and Night', () => {
   });
 });
 
-test('Pages subtree and Bridge are allowed in quiet mode', () => {
+test('quiet shell, Pages subtree and Bridge are allowed in quiet mode', () => {
+  assert.equal(isQuietRouteAllowed({ pathname: '/quiet' }), true);
   for (const pathname of ['/(teen)/pages', '/pages', '/pages/new', '/(teen)/pages/history']) {
     assert.equal(isQuietRouteAllowed({ pathname }), true, pathname);
   }
@@ -78,7 +108,7 @@ test('companion chat is allowed only for Night', () => {
 });
 
 test('engagement surfaces remain closed during quiet mode', () => {
-  for (const pathname of ['/room', '/circle', '/discover', '/voicebip', '/crew', '/points', '/growth']) {
+  for (const pathname of ['/room', '/circle', '/discover', '/voicebip', '/crew', '/points', '/growth', '/comfort', '/calm']) {
     assert.equal(isQuietRouteAllowed({ pathname }), false, pathname);
   }
 });
