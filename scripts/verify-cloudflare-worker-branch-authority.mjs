@@ -18,7 +18,7 @@ const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated
 const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
 
 const receipt = {
-  schemaVersion: 8,
+  schemaVersion: 9,
   generatedAt: new Date().toISOString(),
   trustedGitRef: process.env.GITHUB_REF || null,
   trustedGitSha: process.env.GITHUB_SHA || null,
@@ -126,12 +126,70 @@ function inspectToken(rawValue, source) {
   };
 }
 
+async function verifyApiToken(inspected) {
+  let response;
+  try {
+    response = await fetch(`${API}/user/tokens/verify`, {
+      headers: { Authorization: `Bearer ${inspected.token}`, 'Content-Type': 'application/json' },
+    });
+  } catch {
+    receipt.credential.attempts.push({
+      source: inspected.source,
+      shape: inspected.shape,
+      probe: 'token-verify',
+      result: 'request-failed',
+      failureCode: 'provider-request-failed',
+    });
+    return {
+      ok: false,
+      code: 'token-verify-request-failed',
+      message: `${inspected.source} could not be verified before provider response.`,
+      shape: inspected.shape,
+      providerStatus: null,
+      providerCode: null,
+      tokenStatus: null,
+    };
+  }
+
+  const payload = await response.json().catch(() => null);
+  const providerCode = firstProviderErrorCode(payload);
+  const tokenStatus = clean(payload?.result?.status).toLowerCase() || null;
+  const verified = response.ok && payload?.success !== false && tokenStatus === 'active';
+
+  receipt.credential.attempts.push({
+    source: inspected.source,
+    shape: inspected.shape,
+    probe: 'token-verify',
+    result: verified ? 'accepted' : 'rejected',
+    providerStatus: response.status,
+    providerCode,
+    tokenStatus,
+  });
+
+  if (!verified) {
+    return {
+      ok: false,
+      code: 'token-not-active-or-invalid',
+      message: `${inspected.source} is not an active Cloudflare API token; verify status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}.`,
+      shape: inspected.shape,
+      providerStatus: response.status,
+      providerCode,
+      tokenStatus,
+    };
+  }
+
+  return { ok: true };
+}
+
 async function probeWorkersRead(rawValue, source) {
   const inspected = inspectToken(rawValue, source);
   if (!inspected.ok) {
     receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'rejected-preflight', failureCode: inspected.code });
     return { ok: false, code: inspected.code, message: `${source} failed Workers Builds token preflight.`, shape: inspected.shape };
   }
+
+  const tokenVerification = await verifyApiToken(inspected);
+  if (!tokenVerification.ok) return tokenVerification;
 
   const providerPath = `/accounts/${accountId}/workers/scripts`;
   let response;
@@ -151,10 +209,11 @@ async function probeWorkersRead(rawValue, source) {
     return {
       ok: false,
       code: 'provider-http-failure',
-      message: `${source} cannot read the Workers scripts collection; provider status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}.`,
+      message: `${source} is active but cannot read the Workers scripts collection; provider status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}.`,
       shape: inspected.shape,
       providerStatus: response.status,
       providerCode,
+      tokenStatus: 'active',
     };
   }
 
@@ -199,6 +258,7 @@ async function selectCredential() {
     tokenShape: lastFailure?.shape || null,
     providerStatus: lastFailure?.providerStatus ?? null,
     providerCode: lastFailure?.providerCode ?? null,
+    tokenStatus: lastFailure?.tokenStatus ?? null,
   });
 }
 
