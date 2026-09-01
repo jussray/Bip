@@ -97,6 +97,12 @@ function publicProviderPath(providerPath) {
   return accountId ? raw.split(accountId).join(':account') : raw;
 }
 
+function firstProviderErrorCode(payload) {
+  const raw = payload?.errors?.[0]?.code;
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function fail(code, message, details = {}) {
   receipt.status = 'blocked';
   receipt.failure = { code, message, ...details };
@@ -135,22 +141,24 @@ async function probeWorkersRead(rawValue, source) {
     });
   } catch {
     receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'request-failed', failureCode: 'provider-request-failed' });
-    return { ok: false, code: 'provider-request-failed', message: `${source} failed the Workers scripts capability probe before provider response.`, shape: inspected.shape, providerStatus: null };
+    return { ok: false, code: 'provider-request-failed', message: `${source} failed the Workers scripts capability probe before provider response.`, shape: inspected.shape, providerStatus: null, providerCode: null };
   }
 
   const payload = await response.json().catch(() => null);
+  const providerCode = firstProviderErrorCode(payload);
   if (!response.ok || payload?.success === false || !Array.isArray(payload?.result)) {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'provider-http-failure', failureCode: 'provider-http-failure', providerStatus: response.status });
+    receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'provider-http-failure', failureCode: 'provider-http-failure', providerStatus: response.status, providerCode });
     return {
       ok: false,
       code: 'provider-http-failure',
-      message: `${source} cannot read the Workers scripts collection; provider status ${response.status}.`,
+      message: `${source} cannot read the Workers scripts collection; provider status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}.`,
       shape: inspected.shape,
       providerStatus: response.status,
+      providerCode,
     };
   }
 
-  receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'accepted', providerStatus: response.status });
+  receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'accepted', providerStatus: response.status, providerCode: null });
   return { ok: true, source, shape: inspected.shape, token: inspected.token, scripts: payload.result };
 }
 
@@ -190,6 +198,7 @@ async function selectCredential() {
     credentialSource: candidates.at(-1)?.source || null,
     tokenShape: lastFailure?.shape || null,
     providerStatus: lastFailure?.providerStatus ?? null,
+    providerCode: lastFailure?.providerCode ?? null,
   });
 }
 
@@ -205,10 +214,12 @@ async function get(providerPath) {
   }
 
   const payload = await response.json().catch(() => null);
+  const providerCode = firstProviderErrorCode(payload);
   if (!response.ok || payload?.success === false) {
-    fail('provider-http-failure', `GET ${retainedProviderPath} failed with provider status ${response.status}`, {
+    fail('provider-http-failure', `GET ${retainedProviderPath} failed with provider status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}`, {
       providerPath: retainedProviderPath,
       providerStatus: response.status,
+      providerCode,
     });
   }
   return payload?.result;
