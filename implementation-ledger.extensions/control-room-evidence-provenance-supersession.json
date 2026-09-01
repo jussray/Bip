@@ -4,11 +4,11 @@
   "status": "integrated",
   "ownerIssue": "https://github.com/jussray/Sekret-Bip/issues/1037",
   "acceptanceCriteria": [
-    "Equivalent JSON evidence produces one canonical SHA-256 digest regardless of object key order.",
-    "A claim is bound to source ID, source SHA-256, and observation SHA-256 before it can be superseded.",
-    "Mutated source bytes or observation content fail closed instead of silently reusing the old claim.",
+    "Equivalent JSON evidence produces one canonical SHA-256 digest regardless of object key order, including safe preservation of own __proto__ keys.",
+    "A claim is bound to source ID, source SHA-256, observation SHA-256, and a recomputable claim SHA-256 before it can be superseded.",
+    "Mutated source bytes, observation content, or claim content fail closed instead of silently reusing the old claim.",
     "Only a verified_current claim can transition to superseded_historical.",
-    "Sanitized juss-proof/v1 receipts can supersede prior receipts only when the prior receipt belongs to the same Se’kret Bip project.",
+    "Sanitized juss-proof/v1 receipts can supersede a prior receipt only when schema, project, repository verification authority, exact-head operation, and chronology are compatible.",
     "The implementation never reads or exports teen, parent, journal, voice, Circle, private-message, credential, or raw-log content."
   ],
   "contractPaths": [
@@ -33,8 +33,8 @@
   },
   "verification": {
     "state": "not-run",
-    "evidence": "https://github.com/jussray/Sekret-Bip/pull/1036",
-    "note": "Integrated on a review branch. Exact-head CI and merge-to-main evidence are required before raising verification state."
+    "evidence": "https://github.com/jussray/Sekret-Bip/pull/1038",
+    "note": "Integrated on the repository-compliant review branch. Exact-head CI and merge-to-main evidence are required before raising verification state."
   },
   "privacyBoundary": {
     "privateUserContentAllowed": false,
