@@ -8,8 +8,8 @@
 // and end with a char-aware sticky note.
 //
 // Voice:
-//   • Rylane (blue): "respect, look at the reps fr · lock in continues"
-//   • Raylene (pink/purple): "we see you 💜 · look how far you've come"
+//   • Sy (blue): "respect, look at the reps fr · lock in continues"
+//   • Suhana (pink/purple): "we see you 💜 · look how far you've come"
 //
 // Same polish patterns as the rest of the app: time-of-day backdrop, mood
 // glow, gradient hero overlay, stagger entrance, breath-loop on the streak

@@ -8,8 +8,8 @@
 // comfort tool. No fire emoji. No "don't break it" pressure.
 //
 // Voice:
-//   • Rylane: "respect, you kept showing up · the streak is the work"
-//   • Raylene: "look at you, soft and consistent 💜 · cozy on cozy"
+//   • Sy: "respect, you kept showing up · the streak is the work"
+//   • Suhana: "look at you, soft and consistent 💜 · cozy on cozy"
 //
 // Pulls from comfortSessions[] — every time trackActivity() fires we log a
 // session. We compute current streak, longest streak, by-type tallies, and
