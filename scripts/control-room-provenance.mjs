@@ -31,10 +31,15 @@ function normalizeCanonical(value, path = '$') {
     if (prototype !== Object.prototype && prototype !== null) {
       throw new ProvenanceError('unsupported_object_type', path);
     }
-    const normalized = {};
+    const normalized = Object.create(null);
     for (const key of Object.keys(value).sort()) {
       if (value[key] === undefined) throw new ProvenanceError('undefined_value', `${path}.${key}`);
-      normalized[key] = normalizeCanonical(value[key], `${path}.${key}`);
+      Object.defineProperty(normalized, key, {
+        value: normalizeCanonical(value[key], `${path}.${key}`),
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      });
     }
     return normalized;
   }
@@ -120,6 +125,18 @@ export function verifyFileBinding(evidence, filePath) {
   return true;
 }
 
+function claimPayload(claim) {
+  return {
+    claimId: claim.claimId,
+    statement: claim.statement,
+    state: claim.state,
+    basedOnSourceId: claim.basedOnSourceId,
+    basedOnSourceSha256: claim.basedOnSourceSha256,
+    basedOnObservationSha256: claim.basedOnObservationSha256,
+    createdAt: claim.createdAt,
+  };
+}
+
 export function bindClaim({claimId, statement, state, evidence, createdAt}) {
   const normalizedClaimId = typeof claimId === 'string' ? claimId.trim() : '';
   const normalizedStatement = typeof statement === 'string' ? statement.trim() : '';
@@ -140,7 +157,16 @@ export function bindClaim({claimId, statement, state, evidence, createdAt}) {
   return Object.freeze({...claim, claimSha256: canonicalSha256(claim)});
 }
 
+export function verifyClaimDigest(claim) {
+  const expected = canonicalSha256(claimPayload(claim));
+  if (claim.claimSha256 !== expected) {
+    throw new ProvenanceError('claim_digest_mismatch', `expected ${expected}, got ${claim.claimSha256 ?? '<missing>'}`);
+  }
+  return true;
+}
+
 export function verifyClaimBinding(claim, evidence) {
+  verifyClaimDigest(claim);
   const mismatches = [];
   if (claim.basedOnSourceId !== evidence.sourceId) mismatches.push('source_id');
   if (claim.basedOnSourceSha256 !== evidence.sourceSha256) mismatches.push('source_sha256');
