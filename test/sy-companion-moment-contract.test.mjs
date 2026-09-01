@@ -27,11 +27,10 @@ test('Sy moment screen delegates into canonical app surfaces', () => {
   assert.match(screen, /companion: routeCompanion/);
 });
 
-test('Sy moment screen uses the canonical teen companion registry for artwork', () => {
-  assert.match(screen, /import \{ getTeenCompanionAsset \} from '@\/utils\/companions'/);
-  assert.match(screen, /getTeenCompanionAsset\('rylane', 'neutral'\)/);
-  assert.match(screen, /\?\? IMAGES\.rylaneFullbody/);
+test('Sy moment screen uses the existing full-body Sy asset for the hero composition', () => {
+  assert.match(screen, /const SY_MOMENT_ART = IMAGES\.rylaneFullbody/);
   assert.match(screen, /source=\{SY_MOMENT_ART\}/);
+  assert.doesNotMatch(screen, /getTeenCompanionAsset\('rylane', 'neutral'\)/);
   assert.doesNotMatch(screen, /source=\{IMAGES\.rylaneNeutral\}/);
 });
 
