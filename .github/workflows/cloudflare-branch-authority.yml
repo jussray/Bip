@@ -44,29 +44,29 @@ jobs:
         with:
           node-version: 24
 
+      # CLOUDFLARE_API_TOKEN is intentionally excluded from both dedicated
+      # authority lanes. A missing or under-scoped dedicated token must fail
+      # explicitly instead of falling through to a broader general credential.
       - name: Read current three-Worker topology and verify Worker build authority
         id: workers_audit
         continue-on-error: true
         shell: bash
         env:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set -euo pipefail
-          node scripts/run-with-normalized-cloudflare-token.mjs scripts/verify-cloudflare-worker-branch-authority.mjs
+          node scripts/verify-cloudflare-worker-branch-authority.mjs
 
-      - name: Read and verify Pages branch authority with available read-only credential
+      - name: Read and verify Pages branch authority with dedicated read-only credential
         id: pages_audit
         continue-on-error: true
         env:
           CLOUDFLARE_PAGES_READ_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_READ_API_TOKEN }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ${{ secrets.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: sekret-bip
           CLOUDFLARE_PAGES_PRODUCTION_BRANCH: main
-        run: node scripts/run-with-normalized-cloudflare-token.mjs scripts/verify-cloudflare-pages-branch-authority.mjs --output "$PAGES_EVIDENCE_PATH"
+        run: node scripts/verify-cloudflare-pages-branch-authority.mjs --output "$PAGES_EVIDENCE_PATH"
 
       - name: Require both independent provider readbacks
         if: always()
