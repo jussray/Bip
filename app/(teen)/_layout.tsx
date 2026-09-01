@@ -6,7 +6,7 @@ import { SideSafeBackButton } from '@/components/SideSafeBackButton';
 import { SafetyExperienceSheet } from '../../components/safety/SafetyExperienceSheet';
 import { useAppContext } from '@/context/AppContext';
 import { useSafetyCheck } from '@/hooks/useSafetyCheck';
-import { useSleepGuard } from '@/hooks/useSleepGuard';
+import { useSleepGuard } from '../../hooks/useSleepGuard';
 import { isQuietRouteAllowed } from '@/features/quiet/quietMode';
 import { toCompanionId } from '@/features/sekret/companionEngine';
 import { hydrateAccountProfile } from '@/features/identity/accountProfile';

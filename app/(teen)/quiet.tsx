@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSleepGuard } from '@/hooks/useSleepGuard';
+import { useSleepGuard } from '../../hooks/useSleepGuard';
 import { createReopenReminder } from '@/features/reminders/privateReopenRemindersRepository';
 
 function reopenLabel(value: string | null): string {
