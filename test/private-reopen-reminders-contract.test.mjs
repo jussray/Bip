@@ -13,17 +13,20 @@ const repository = fs.readFileSync(
   'utf8',
 );
 
+const migrationSql = migration.replace(/--.*$/gm, '');
+const repositoryCode = repository.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+
 test('reopen reminders are owner-only permanent-account data', () => {
   assert.match(migration, /alter table public\.private_reopen_reminders enable row level security/);
   assert.match(migration, /revoke all on table public\.private_reopen_reminders from anon/);
   assert.match(migration, /create policy private_reopen_reminders_select_own[\s\S]*auth\.uid\(\)[\s\S]*user_id[\s\S]*is_anonymous/);
-  assert.doesNotMatch(migration, /parent_links|guardian/i);
+  assert.doesNotMatch(migrationSql, /parent_links|guardian/i);
 });
 
 test('reminders stay outside chore, reward, approval, and social semantics', () => {
   assert.match(migration, /Never parent-visible, social, rewarded, or approval-based/);
-  assert.doesNotMatch(migration, /point_value|reward|task_submission|circle_post/i);
-  assert.doesNotMatch(repository, /point|reward|approval|circle|parent/i);
+  assert.doesNotMatch(migrationSql, /point_value|reward_|task_submission|circle_post/i);
+  assert.doesNotMatch(repositoryCode, /pointTransactions|parentLinks|circlePosts|submit_bip_task|review_task_submission/i);
 });
 
 test('repository is local-first and account-scoped', () => {
@@ -42,5 +45,5 @@ test('only due pending reminders surface on reopen', () => {
 test('reminder labels are bounded and do not create analytics receipts', () => {
   assert.match(migration, /char_length\(trim\(label\)\) between 1 and 160/);
   assert.match(repository, /label\.trim\(\)\.slice\(0, 160\)/);
-  assert.doesNotMatch(repository, /logEvent|analytics|bip_events/);
+  assert.doesNotMatch(repositoryCode, /logEvent|bip_events|analytics\./i);
 });

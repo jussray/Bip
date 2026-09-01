@@ -49,24 +49,25 @@ function cacheKey(owner: string): string {
 }
 
 async function cacheOwner(): Promise<string> {
-  try {
-    return (await permanentAccount())?.userId ?? 'local-device';
-  } catch {
-    return 'local-device';
-  }
+  const account = await permanentAccount().catch(() => null);
+  return account?.userId ?? 'local-device';
 }
 
-async function readLocal(owner: string): Promise<ReopenReminder[]> {
+function parseLocalCache(raw: string): ReopenReminder[] | null {
   try {
-    const raw = await AsyncStorage.getItem(cacheKey(owner));
-    if (!raw) return [];
     const parsed = JSON.parse(raw) as ReopenReminder[];
     return Array.isArray(parsed)
       ? parsed.filter(item => typeof item?.label === 'string' && typeof item?.clientKey === 'string').slice(0, 50)
       : [];
   } catch {
-    return [];
+    return null;
   }
+}
+
+async function readLocal(owner: string): Promise<ReopenReminder[]> {
+  const raw = await AsyncStorage.getItem(cacheKey(owner)).catch(() => null);
+  if (!raw) return [];
+  return parseLocalCache(raw) ?? [];
 }
 
 async function writeLocal(owner: string, items: ReopenReminder[]): Promise<void> {
