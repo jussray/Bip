@@ -18,6 +18,26 @@ test('teen layout centrally enforces Quiet Bip and hides engagement navigation',
   assert.match(layout, /Tabs\.Screen name="quiet" options=\{\{ href: null \}\}/);
 });
 
+test('Quiet surfaces import Sleep Guard from a path that actually resolves', () => {
+  // Regression guard: both files shipped importing '@/hooks/useSleepGuard',
+  // but the '@/' alias maps to src/ and the hook lives in root hooks/, so
+  // main type-checked red. Assert the specifier resolves to a real file.
+  for (const [name, source] of [['app/(teen)/_layout.tsx', layout], ['app/(teen)/quiet.tsx', quietScreen]]) {
+    const match = /import \{[^}]*useSleepGuard[^}]*\} from '([^']+)'/.exec(source);
+    assert.ok(match, `${name} must import useSleepGuard`);
+
+    const specifier = match[1];
+    const resolved = specifier.startsWith('.')
+      ? path.resolve(path.dirname(path.join(root, name)), specifier)
+      : path.join(root, specifier.replace(/^@\//, 'src/'));
+
+    assert.ok(
+      fs.existsSync(`${resolved}.ts`) || fs.existsSync(`${resolved}.tsx`),
+      `${name} imports useSleepGuard from '${specifier}', which does not resolve to a file`,
+    );
+  }
+});
+
 test('Sleep Guard remains schedule authority and re-evaluates without remount', () => {
   assert.match(hook, /const SLEEP_KEY = 'sleepWindow'/);
   assert.match(hook, /resolveDailyQuietMode/);
