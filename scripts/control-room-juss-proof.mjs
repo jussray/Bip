@@ -11,6 +11,7 @@ const FULL_SHA = /^[0-9a-f]{40}$/i;
 const RECEIPT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const REPOSITORY = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 const TERMINAL_STATE = new Set(['verified', 'inferred', 'unknown', 'failed', 'blocked']);
+const PROOF_OPERATION = 'exact_head_test_ledger';
 
 function clean(value) {
   return typeof value === 'string' ? value.trim() : '';
@@ -120,7 +121,7 @@ export function createJussProofFromTestLedger(ledger, options = {}) {
       ...(branch ? {branch} : {}),
       sha: commitSha,
     },
-    operation: 'exact_head_test_ledger',
+    operation: PROOF_OPERATION,
     state,
     evidence: [
       {
@@ -167,6 +168,25 @@ function previousReceiptIds(env, ledger) {
   const previousRepository = clean(previous?.exactTarget?.repository);
   if (previousProject !== currentProject || previousRepository !== currentProject) {
     throw new Error('Previous Control Room proof belongs to a different project.');
+  }
+
+  const authority = previous?.authority;
+  if (
+    authority?.provider !== 'github'
+    || authority?.scope !== 'repository'
+    || clean(authority?.target) !== currentProject
+    || authority?.mode !== 'verify'
+  ) {
+    throw new Error('Previous Control Room proof has an incompatible authority.');
+  }
+  if (previous?.operation !== PROOF_OPERATION) {
+    throw new Error('Previous Control Room proof has an incompatible operation.');
+  }
+
+  const previousIssuedAt = canonicalTimestamp(previous?.issuedAt);
+  const currentIssuedAt = canonicalTimestamp(ledger.generatedAt);
+  if (new Date(previousIssuedAt).getTime() >= new Date(currentIssuedAt).getTime()) {
+    throw new Error('Previous Control Room proof must be older than the current ledger observation.');
   }
 
   return [receiptId];
