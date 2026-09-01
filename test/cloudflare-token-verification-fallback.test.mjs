@@ -53,20 +53,27 @@ test('Worker authority verifier selects a syntactically valid credential by the 
     const auth = String(options.headers?.Authorization || '').replace(/^Bearer /, '');
     assert.equal(auth, token);
     const text = String(url);
-    assert.equal(text.includes('/tokens/verify'), false);
+    // The verifier preflights every candidate token against /user/tokens/verify
+    // before it trusts a provider-capability probe with it (9f9481ab). A
+    // syntactically valid token must still pass that preflight to be selected.
+    if (text.endsWith('/user/tokens/verify')) {
+      return { ok: true, status: 200, json: async () => ({ success: true, result: { status: 'active' } }) };
+    }
     if (text.includes(`/accounts/${accountId}/workers/scripts`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: Object.entries(tags).map(([id, tag]) => ({ id, tag })) }) };
     }
     if (text.endsWith(`/builds/workers/${tags.bip}/triggers`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [{ trigger_uuid:'bip-trigger', branch_includes:['main'], branch_excludes:[], build_command:'', deploy_command:'npm run deploy:bip', deleted_on:null }] }) };
     }
-    if (text.endsWith('/builds/workers/bip/builds?per_page=50')) {
+    // Builds are queried by the trigger tag, not the worker name -- Cloudflare's
+    // API takes the tag returned from the scripts listing here, not 'bip'.
+    if (text.endsWith(`/builds/workers/${tags.bip}/builds?per_page=50`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
     }
     if (text.endsWith(`/builds/workers/${tags['sekret-backend']}/triggers`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [{ trigger_uuid:'prod-trigger', branch_includes:['main'], branch_excludes:[], build_command:'', deploy_command:'npm run deploy:api:production', deleted_on:null }] }) };
     }
-    if (text.endsWith('/builds/workers/sekret-backend/builds?per_page=50')) {
+    if (text.endsWith(`/builds/workers/${tags['sekret-backend']}/builds?per_page=50`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
     }
     if (text.endsWith(`/builds/workers/${tags['sekret-backend-alpha']}/triggers`)) {
@@ -93,8 +100,12 @@ test('Worker authority verifier selects a syntactically valid credential by the 
     const receipt = JSON.parse(await readFile(evidencePath, 'utf8'));
     assert.equal(receipt.status, 'verified');
     assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN');
-    assert.equal(receipt.credential.attempts[0]?.probe, 'workers-scripts');
+    // Attempt order: the token-verify-user preflight runs before the
+    // workers-scripts capability probe that actually selects the credential.
+    assert.equal(receipt.credential.attempts[0]?.probe, 'token-verify-user');
     assert.equal(receipt.credential.attempts[0]?.result, 'accepted');
+    assert.equal(receipt.credential.attempts[1]?.probe, 'workers-scripts');
+    assert.equal(receipt.credential.attempts[1]?.result, 'accepted');
     assert.equal(receipt.workersAuthorityVerified, true);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
