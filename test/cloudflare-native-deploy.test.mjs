@@ -133,9 +133,26 @@ test('classifies every exact-release blocker without weakening the gate', () => 
     classify([{...workerSuccess, status: 'in_progress', conclusion: null}]),
     'worker-pending',
   );
+  // A failed provider check-run with a runtime that is verifiably serving the
+  // exact release SHA is a Workers Builds reporting conflict, not a failed
+  // deploy. It gets its own state so it can never read as a plain 'ready'.
+  const conflict = classify([{...workerSuccess, conclusion: 'failure'}]);
+  assert.equal(conflict, 'ready-with-provider-check-conflict');
+  assert.notEqual(conflict, 'ready');
+
+  // The relaxation is bounded by the runtime check. With the same failed
+  // check and a runtime that is NOT serving this SHA, the gate still blocks.
   assert.equal(
-    classify([{...workerSuccess, conclusion: 'failure'}]),
-    'worker-failed',
+    classify(
+      [{...workerSuccess, conclusion: 'failure'}],
+      {commitSha: expectedSha},
+      {ok: true, releaseSha: '1111111111111111111111111111111111111111'},
+    ),
+    'worker-failed-awaiting-runtime',
+  );
+  assert.equal(
+    classify([{...workerSuccess, conclusion: 'failure'}], {commitSha: expectedSha}, {ok: false}),
+    'worker-health-unhealthy',
   );
   assert.equal(classify([workerSuccess], null), 'pages-marker-missing');
   assert.equal(

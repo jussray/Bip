@@ -72,7 +72,13 @@ test('route visibility opens in development while screen safety boundaries remai
   const teenLayout = read('app/(teen)/_layout.tsx');
   const parentLayout = read('app/(parent)/_layout.tsx');
 
-  assert.match(teenLayout, /if \(founderPreview\) return <TeenTabs/);
+  // Founder Preview opens route visibility, but Quiet Bip stays a product
+  // boundary inside it -- preview must still gate on Sleep Guard before it
+  // renders the tabs.
+  assert.match(
+    teenLayout,
+    /if \(founderPreview\) \{[\s\S]*?sleepActive && !quietRouteAllowed[\s\S]*?return <TeenTabs/,
+  );
   assert.match(teenLayout, /SafetyExperienceSheet/);
   assert.match(teenLayout, /useSafetyCheck/);
   assert.match(parentLayout, /if \(founderPreview\) return <ParentTabs/);

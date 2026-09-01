@@ -82,7 +82,10 @@ test('Worker authority verifier selects a syntactically valid credential by the 
     thrown = error;
   } finally {
     globalThis.fetch = originalFetch;
-    for (const key of envKeys) originalEnv[key] === undefined ? delete process.env[key] : process.env[key] = originalEnv[key];
+    for (const key of envKeys) {
+      if (originalEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = originalEnv[key];
+    }
   }
 
   try {

@@ -11,19 +11,28 @@ test('production Auth email provider stays manual, exact-head, and main-only for
   assert.match(workflow, /apply:/);
   assert.match(workflow, /default:\s*false/);
   assert.match(workflow, /test \"\$GITHUB_REF_NAME\" = main/);
-  assert.match(workflow, /ref:\s*\$\{\{ inputs\.target_sha \}\}/);
-  assert.match(workflow, /EXPECTED_HEAD_SHA:\s*\$\{\{ inputs\.target_sha \}\}/);
+
+  // Checkout and head verification must both consume the *normalized* SHA the
+  // validation step emitted, never the raw dispatch input -- the raw input can
+  // carry surrounding whitespace or a pasted "target_sha: <sha>" prefix.
+  assert.match(workflow, /ref:\s*\$\{\{ steps\.target\.outputs\.target_sha \}\}/);
+  assert.match(workflow, /EXPECTED_HEAD_SHA:\s*\$\{\{ steps\.target\.outputs\.target_sha \}\}/);
+  assert.doesNotMatch(
+    workflow,
+    /(?:ref|EXPECTED_HEAD_SHA):\s*\$\{\{ inputs\.target_sha \}\}/,
+    'the unvalidated dispatch input must not reach checkout or head verification',
+  );
 });
 
 test('dispatch contract rejects malformed or stale production target SHAs before checkout', () => {
-  assert.match(workflow, /Validate dispatch contract/);
+  assert.match(workflow, /Normalize and validate dispatch contract/);
   assert.match(workflow, /\^\[0-9a-fA-F\]\{40\}\$/);
   assert.match(workflow, /Pass apply as its own boolean input/);
   assert.match(workflow, /repos\/\$\{GITHUB_REPOSITORY\}\/commits\/main/);
   assert.match(workflow, /Production apply requires current main HEAD/);
-  assert.match(workflow, /if \[ \"\$TARGET_SHA\" != \"\$current_main\" \]; then/);
+  assert.match(workflow, /if \[ \"\$target_sha\" != \"\$current_main\" \]; then/);
 
-  const validation = workflow.indexOf('- name: Validate dispatch contract');
+  const validation = workflow.indexOf('- name: Normalize and validate dispatch contract');
   const checkout = workflow.indexOf('- name: Check out exact target');
   assert.notEqual(validation, -1);
   assert.notEqual(checkout, -1);
