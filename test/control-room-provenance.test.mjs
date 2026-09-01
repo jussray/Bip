@@ -14,6 +14,7 @@ import {
   sha256File,
   supersedeClaim,
   verifyClaimBinding,
+  verifyClaimDigest,
   verifyFileBinding,
 } from '../scripts/control-room-provenance.mjs';
 
@@ -41,6 +42,11 @@ test('canonical hashing is stable across object key order', () => {
   const a = {impressions: 81, engagements: 6, nested: {b: 2, a: 1}};
   const b = {nested: {a: 1, b: 2}, engagements: 6, impressions: 81};
   assert.equal(canonicalSha256(a), canonicalSha256(b));
+});
+
+test('canonical hashing preserves JSON __proto__ as evidence data', () => {
+  const withProtoKey = JSON.parse('{"__proto__":{"tampered":true}}');
+  assert.notEqual(canonicalSha256(withProtoKey), canonicalSha256({}));
 });
 
 test('deterministic receipt IDs remain UUID-v4 compatible', () => {
@@ -73,6 +79,23 @@ test('claim binding fails closed when observation changes', () => {
   );
 });
 
+test('claim digest fails closed when deserialized claim fields are mutated', () => {
+  const {oldEvidence} = evidencePair();
+  const claim = bindClaim({
+    claimId: 'LI-DAY-20260828-P04-aa03b1fd66d5',
+    statement: 'Product Design/HCI is the winning format.',
+    state: 'verified_current',
+    evidence: oldEvidence,
+    createdAt: '2026-08-29T23:05:00.000Z',
+  });
+  const mutatedClaim = {...claim, statement: 'Mutated after signing.'};
+
+  assert.throws(
+    () => verifyClaimDigest(mutatedClaim),
+    (error) => error instanceof ProvenanceError && error.code === 'claim_digest_mismatch',
+  );
+});
+
 test('supersession preserves old evidence and binds the new observation', () => {
   const {oldEvidence, newEvidence} = evidencePair();
   const claim = bindClaim({
@@ -95,6 +118,28 @@ test('supersession preserves old evidence and binds the new observation', () => 
   assert.equal(receipt.oldEvidence.observationSha256, oldEvidence.observationSha256);
   assert.equal(receipt.newEvidence.observationSha256, newEvidence.observationSha256);
   assert.match(receipt.receiptSha256, /^[0-9a-f]{64}$/);
+});
+
+test('supersession rejects a prior claim whose digest no longer matches its content', () => {
+  const {oldEvidence, newEvidence} = evidencePair();
+  const claim = bindClaim({
+    claimId: 'LI-DAY-20260828-P04-aa03b1fd66d5',
+    statement: 'Product Design/HCI is the winning format.',
+    state: 'verified_current',
+    evidence: oldEvidence,
+    createdAt: '2026-08-29T23:05:00.000Z',
+  });
+  const mutatedClaim = {...claim, claimId: 'mutated-claim'};
+
+  assert.throws(
+    () => supersedeClaim({
+      priorClaim: mutatedClaim,
+      oldEvidence,
+      newEvidence,
+      strategyMutation: 'Should fail before superseding.',
+    }),
+    (error) => error instanceof ProvenanceError && error.code === 'claim_digest_mismatch',
+  );
 });
 
 test('only a verified_current claim can be superseded', () => {
