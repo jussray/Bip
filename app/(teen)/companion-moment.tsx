@@ -19,7 +19,6 @@ import {
   type CompanionMomentId,
 } from '@/features/sekret/companionMoments';
 import { TEEN_ROUTES } from '@/teen/routes';
-import { getTeenCompanionAsset } from '@/utils/companions';
 
 const SCENE_TINTS = {
   quiet: '#8b5cf6',
@@ -28,7 +27,9 @@ const SCENE_TINTS = {
   night: '#7c3aed',
 } as const;
 
-const SY_MOMENT_ART = getTeenCompanionAsset('rylane', 'neutral') ?? IMAGES.rylaneFullbody;
+// This is a full-body hero scene, so use the existing full-body Sy asset.
+// Portrait/neutral registry art remains appropriate for compact thumbnails.
+const SY_MOMENT_ART = IMAGES.rylaneFullbody;
 
 export default function CompanionMomentScreen() {
   const router = useRouter();
