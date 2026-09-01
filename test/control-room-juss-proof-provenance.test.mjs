@@ -13,6 +13,7 @@ const SHA = '579342699fc7fb394cf9684643756cdc8c9342a8';
 const CURRENT_ID = '123e4567-e89b-42d3-a456-426614174000';
 const PREVIOUS_ID = '223e4567-e89b-42d3-a456-426614174000';
 const ISSUED_AT = '2026-08-24T15:30:00.000Z';
+const PREVIOUS_AT = '2026-08-24T15:00:00.000Z';
 
 function baseLedger() {
   return {
@@ -29,6 +30,43 @@ function baseLedger() {
     },
     checks: [],
   };
+}
+
+function compatiblePrevious(overrides = {}) {
+  return {
+    schema: 'juss-proof/v1',
+    receiptId: PREVIOUS_ID,
+    project: 'jussray/Sekret-Bip',
+    actor: 'sekret-bip-control-room',
+    authority: {
+      provider: 'github',
+      scope: 'repository',
+      target: 'jussray/Sekret-Bip',
+      mode: 'verify',
+    },
+    exactTarget: {
+      repository: 'jussray/Sekret-Bip',
+      sha: SHA,
+    },
+    operation: 'exact_head_test_ledger',
+    state: 'verified',
+    evidence: [],
+    acknowledges: [],
+    dependsOn: [],
+    supersedes: [],
+    issuedAt: PREVIOUS_AT,
+    ...overrides,
+  };
+}
+
+function withTempProofFiles(previous) {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-juss-proof-'));
+  const ledgerPath = path.join(root, 'ledger.json');
+  const previousPath = path.join(root, 'previous.json');
+  const outputPath = path.join(root, 'output.json');
+  fs.writeFileSync(ledgerPath, `${JSON.stringify(baseLedger())}\n`, 'utf8');
+  fs.writeFileSync(previousPath, `${JSON.stringify(previous)}\n`, 'utf8');
+  return {ledgerPath, previousPath, outputPath};
 }
 
 test('juss-proof evidence digest is canonical across object key order', () => {
@@ -79,22 +117,25 @@ test('juss-proof rejects malformed or self-referential supersession IDs', () => 
   );
 });
 
-test('environment-driven supersession rejects a receipt from another project', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sekret-juss-proof-'));
-  const ledgerPath = path.join(root, 'ledger.json');
-  const previousPath = path.join(root, 'previous.json');
-  const outputPath = path.join(root, 'output.json');
+test('environment-driven supersession accepts an older compatible receipt', () => {
+  const {ledgerPath, previousPath, outputPath} = withTempProofFiles(compatiblePrevious());
+  const receipt = emitJussProofFromTestLedger({
+    CONTROL_ROOM_TEST_LEDGER_PATH: ledgerPath,
+    CONTROL_ROOM_PREVIOUS_JUSS_PROOF_PATH: previousPath,
+    CONTROL_ROOM_JUSS_PROOF_PATH: outputPath,
+  });
+  assert.deepEqual(receipt.supersedes, [PREVIOUS_ID]);
+  assert.equal(fs.existsSync(outputPath), true);
+});
 
-  fs.writeFileSync(ledgerPath, `${JSON.stringify(baseLedger())}\n`, 'utf8');
-  fs.writeFileSync(previousPath, `${JSON.stringify({
-    schema: 'juss-proof/v1',
-    receiptId: PREVIOUS_ID,
+test('environment-driven supersession rejects a receipt from another project', () => {
+  const {ledgerPath, previousPath, outputPath} = withTempProofFiles(compatiblePrevious({
     project: 'jussray/another-project',
     exactTarget: {
       repository: 'jussray/another-project',
       sha: SHA,
     },
-  })}\n`, 'utf8');
+  }));
 
   assert.throws(
     () => emitJussProofFromTestLedger({
@@ -105,4 +146,37 @@ test('environment-driven supersession rejects a receipt from another project', (
     /different project/,
   );
   assert.equal(fs.existsSync(outputPath), false);
+});
+
+test('environment-driven supersession rejects incompatible authority and operation', () => {
+  for (const previous of [
+    compatiblePrevious({authority: {provider: 'github', scope: 'deployment', target: 'jussray/Sekret-Bip', mode: 'verify'}}),
+    compatiblePrevious({operation: 'deployment_observation'}),
+  ]) {
+    const {ledgerPath, previousPath, outputPath} = withTempProofFiles(previous);
+    assert.throws(
+      () => emitJussProofFromTestLedger({
+        CONTROL_ROOM_TEST_LEDGER_PATH: ledgerPath,
+        CONTROL_ROOM_PREVIOUS_JUSS_PROOF_PATH: previousPath,
+        CONTROL_ROOM_JUSS_PROOF_PATH: outputPath,
+      }),
+      /incompatible/,
+    );
+    assert.equal(fs.existsSync(outputPath), false);
+  }
+});
+
+test('environment-driven supersession rejects a newer or same-time prior receipt', () => {
+  for (const issuedAt of [ISSUED_AT, '2026-08-24T16:00:00.000Z']) {
+    const {ledgerPath, previousPath, outputPath} = withTempProofFiles(compatiblePrevious({issuedAt}));
+    assert.throws(
+      () => emitJussProofFromTestLedger({
+        CONTROL_ROOM_TEST_LEDGER_PATH: ledgerPath,
+        CONTROL_ROOM_PREVIOUS_JUSS_PROOF_PATH: previousPath,
+        CONTROL_ROOM_JUSS_PROOF_PATH: outputPath,
+      }),
+      /must be older/,
+    );
+    assert.equal(fs.existsSync(outputPath), false);
+  }
 });
