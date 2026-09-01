@@ -871,7 +871,7 @@ function PagesWorkspace({
 
                   <Text style={styles.privacyLine}>
                     {side === 'teen'
-                      ? 'Only you can see these pages. Nothing goes to Parent Pages unless you deliberately choose to share elsewhere.'
+                      ? 'These pages sync to your account, and only your login opens them. Nothing reaches Parent Pages unless you send a share yourself, and you can revoke a share after you send it.'
                       : 'For your reflection only. Teen Pages are separate and never shown here.'}
                   </Text>
 

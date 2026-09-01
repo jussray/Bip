@@ -353,7 +353,7 @@ export function PeriodCalendarScreen({
 
           <View style={[styles.card, { backgroundColor: 'rgba(30,18,55,0.7)', borderColor: glow + '66' }]}>
             <Text style={styles.privacyNote}>
-              tap any day to mark it 🩸 · your data stays on this device. nothing leaves. 🔒
+              tap any day to mark it 🩸 · synced to your account so it follows you between devices. only your login opens it — never your parent's. 🔒
             </Text>
           </View>
 
