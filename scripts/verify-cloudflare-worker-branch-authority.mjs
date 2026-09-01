@@ -127,7 +127,7 @@ async function probeWorkersRead(rawValue, source) {
     return { ok: false, code: inspected.code, message: `${source} failed Workers Builds token preflight.`, shape: inspected.shape };
   }
 
-  const providerPath = `/accounts/${accountId}/workers/scripts?per_page=100`;
+  const providerPath = `/accounts/${accountId}/workers/scripts`;
   let response;
   try {
     response = await fetch(`${API}${providerPath}`, {
