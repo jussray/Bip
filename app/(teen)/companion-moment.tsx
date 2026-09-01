@@ -19,6 +19,7 @@ import {
   type CompanionMomentId,
 } from '@/features/sekret/companionMoments';
 import { TEEN_ROUTES } from '@/teen/routes';
+import { getTeenCompanionAsset } from '@/utils/companions';
 
 const SCENE_TINTS = {
   quiet: '#8b5cf6',
@@ -26,6 +27,8 @@ const SCENE_TINTS = {
   warm: '#f0c96a',
   night: '#7c3aed',
 } as const;
+
+const SY_MOMENT_ART = getTeenCompanionAsset('rylane', 'neutral') ?? IMAGES.rylaneFullbody;
 
 export default function CompanionMomentScreen() {
   const router = useRouter();
@@ -115,7 +118,7 @@ export default function CompanionMomentScreen() {
             ) : null}
 
             <Image
-              source={IMAGES.rylaneNeutral}
+              source={SY_MOMENT_ART}
               resizeMode="contain"
               accessibilityLabel="Sy, the quiet and loyal Se'kret Bip companion"
               style={[
