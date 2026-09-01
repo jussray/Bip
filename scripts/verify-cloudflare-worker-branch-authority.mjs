@@ -5,8 +5,8 @@ const API = 'https://api.cloudflare.com/client/v4';
 const clean = (value) => String(value ?? '').trim();
 const accountId = clean(process.env.CLOUDFLARE_ACCOUNT_ID);
 const dedicatedTokenRaw = String(process.env.CLOUDFLARE_WORKERS_BUILDS_API_TOKEN ?? '');
-const fallbackTokenRaw = String(process.env.CLOUDFLARE_API_TOKEN ?? '');
 let token = '';
+let prefetchedScripts = null;
 const evidencePath = clean(process.env.EVIDENCE_PATH) || 'artifacts/cloudflare-worker-branch-authority.json';
 const separateWorker = 'bip';
 const previousSeparateWorker = 'sekret';
@@ -17,7 +17,7 @@ const terminal = new Set(['success', 'fail', 'skipped', 'cancelled', 'terminated
 const active = (rows) => (Array.isArray(rows) ? rows : []).filter((row) => !row?.deleted_on);
 
 const receipt = {
-  schemaVersion: 8,
+  schemaVersion: 11,
   generatedAt: new Date().toISOString(),
   trustedGitRef: process.env.GITHUB_REF || null,
   trustedGitSha: process.env.GITHUB_SHA || null,
@@ -26,13 +26,9 @@ const receipt = {
   status: 'started',
   failure: null,
   credential: {
-    configuredSources: [
-      dedicatedTokenRaw ? 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' : null,
-      fallbackTokenRaw ? 'CLOUDFLARE_API_TOKEN' : null,
-    ].filter(Boolean),
+    configuredSources: [dedicatedTokenRaw ? 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' : null].filter(Boolean),
     selectedSource: null,
     selectedShape: null,
-    fallbackUsed: false,
     attempts: [],
   },
   providerTopology: {
@@ -96,6 +92,12 @@ function publicProviderPath(providerPath) {
   return accountId ? raw.split(accountId).join(':account') : raw;
 }
 
+function firstProviderErrorCode(payload) {
+  const raw = payload?.errors?.[0]?.code;
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
 function fail(code, message, details = {}) {
   receipt.status = 'blocked';
   receipt.failure = { code, message, ...details };
@@ -111,6 +113,7 @@ function inspectToken(rawValue, source) {
   if (/^["']|["']$/.test(rawValue)) return { ok: false, source, shape: 'invalid', code: 'token-quoted-secret' };
   if (/^[A-Z_][A-Z0-9_]*=/.test(rawValue)) return { ok: false, source, shape: 'invalid', code: 'token-variable-assignment-stored' };
   if (rawValue.startsWith('cfat_')) return { ok: false, source, shape: 'account-scoped', code: 'workers-builds-account-token-unsupported' };
+
   return {
     ok: true,
     source,
@@ -119,73 +122,126 @@ function inspectToken(rawValue, source) {
   };
 }
 
-async function verifyTokenCandidate(rawValue, source) {
-  const inspected = inspectToken(rawValue, source);
-  if (!inspected.ok) {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'rejected-preflight', failureCode: inspected.code });
-    return { ok: false, code: inspected.code, message: `${source} failed Workers Builds token preflight.`, shape: inspected.shape };
-  }
-
+async function verifyApiToken(inspected) {
   let response;
   try {
     response = await fetch(`${API}/user/tokens/verify`, {
       headers: { Authorization: `Bearer ${inspected.token}`, 'Content-Type': 'application/json' },
     });
   } catch {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'provider-request-failed', failureCode: 'token-verify-request-failed' });
-    return { ok: false, code: 'token-verify-request-failed', message: `${source} token verification failed before provider response.`, shape: inspected.shape };
+    receipt.credential.attempts.push({
+      source: inspected.source,
+      shape: inspected.shape,
+      probe: 'token-verify-user',
+      result: 'request-failed',
+      failureCode: 'provider-request-failed',
+    });
+    return {
+      ok: false,
+      code: 'token-verify-request-failed',
+      message: `${inspected.source} could not be verified before provider response.`,
+      shape: inspected.shape,
+      providerStatus: null,
+      providerCode: null,
+      tokenStatus: null,
+    };
   }
 
   const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.success === false) {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'provider-http-failure', failureCode: 'token-verify-http-failure', providerStatus: response.status });
-    return { ok: false, code: 'token-verify-http-failure', message: `${source} token verification failed with provider status ${response.status}.`, shape: inspected.shape, providerStatus: response.status };
-  }
-  if (payload?.result?.status !== 'active') {
-    receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'inactive', failureCode: 'provider-token-inactive' });
-    return { ok: false, code: 'provider-token-inactive', message: `${source} is not active.`, shape: inspected.shape };
+  const providerCode = firstProviderErrorCode(payload);
+  const tokenStatus = clean(payload?.result?.status).toLowerCase() || null;
+  const verified = response.ok && payload?.success !== false && tokenStatus === 'active';
+
+  receipt.credential.attempts.push({
+    source: inspected.source,
+    shape: inspected.shape,
+    probe: 'token-verify-user',
+    result: verified ? 'accepted' : 'rejected',
+    providerStatus: response.status,
+    providerCode,
+    tokenStatus,
+  });
+
+  if (!verified) {
+    return {
+      ok: false,
+      code: 'token-not-active-or-invalid',
+      message: `${inspected.source} is not an active Cloudflare user API token; verify status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}.`,
+      shape: inspected.shape,
+      providerStatus: response.status,
+      providerCode,
+      tokenStatus,
+    };
   }
 
-  receipt.credential.attempts.push({ source, shape: inspected.shape, result: 'accepted' });
-  return { ok: true, source, shape: inspected.shape, token: inspected.token };
+  return { ok: true };
+}
+
+async function probeWorkersRead(rawValue, source) {
+  const inspected = inspectToken(rawValue, source);
+  if (!inspected.ok) {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'rejected-preflight', failureCode: inspected.code });
+    return { ok: false, code: inspected.code, message: `${source} failed Workers Builds token preflight.`, shape: inspected.shape };
+  }
+
+  const tokenVerification = await verifyApiToken(inspected);
+  if (!tokenVerification.ok) return tokenVerification;
+
+  const providerPath = `/accounts/${accountId}/workers/scripts`;
+  let response;
+  try {
+    response = await fetch(`${API}${providerPath}`, {
+      headers: { Authorization: `Bearer ${inspected.token}`, 'Content-Type': 'application/json' },
+    });
+  } catch {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'request-failed', failureCode: 'provider-request-failed' });
+    return { ok: false, code: 'provider-request-failed', message: `${source} failed the Workers scripts capability probe before provider response.`, shape: inspected.shape, providerStatus: null, providerCode: null };
+  }
+
+  const payload = await response.json().catch(() => null);
+  const providerCode = firstProviderErrorCode(payload);
+  if (!response.ok || payload?.success === false || !Array.isArray(payload?.result)) {
+    receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'provider-http-failure', failureCode: 'provider-http-failure', providerStatus: response.status, providerCode });
+    return {
+      ok: false,
+      code: 'provider-http-failure',
+      message: `${source} is active but cannot read the Workers scripts collection; provider status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}.`,
+      shape: inspected.shape,
+      providerStatus: response.status,
+      providerCode,
+      tokenStatus: 'active',
+    };
+  }
+
+  receipt.credential.attempts.push({ source, shape: inspected.shape, probe: 'workers-scripts', result: 'accepted', providerStatus: response.status, providerCode: null });
+  return { ok: true, source, shape: inspected.shape, token: inspected.token, scripts: payload.result };
 }
 
 async function selectCredential() {
-  const candidates = [
-    { raw: dedicatedTokenRaw, source: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN' },
-    { raw: fallbackTokenRaw, source: 'CLOUDFLARE_API_TOKEN' },
-  ].filter((candidate) => candidate.raw);
-
-  if (candidates.length === 0) {
-    fail('configuration-missing', 'At least one Cloudflare Workers Builds-capable API token is required.', {
-      fields: ['CLOUDFLARE_WORKERS_BUILDS_API_TOKEN', 'CLOUDFLARE_API_TOKEN'],
+  if (!dedicatedTokenRaw) {
+    fail('configuration-missing', 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN is required.', {
+      field: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
     });
   }
 
-  let lastFailure = null;
-  for (let index = 0; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    const result = await verifyTokenCandidate(candidate.raw, candidate.source);
-    if (result.ok) {
-      token = result.token;
-      receipt.credential.selectedSource = result.source;
-      receipt.credential.selectedShape = result.shape;
-      receipt.credential.fallbackUsed = index > 0;
-      receipt.failure = null;
-      receipt.status = 'started';
-      writeReceipt();
-      return;
-    }
-    lastFailure = result;
-    if (index === 0 && candidates.length > 1) receipt.credential.fallbackUsed = true;
-    writeReceipt();
+  const result = await probeWorkersRead(dedicatedTokenRaw, 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN');
+  if (!result.ok) {
+    fail(result.code || 'token-selection-failed', result.message || 'The dedicated Workers Builds API token cannot read the Workers scripts collection.', {
+      credentialSource: 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN',
+      tokenShape: result.shape || null,
+      providerStatus: result.providerStatus ?? null,
+      providerCode: result.providerCode ?? null,
+      tokenStatus: result.tokenStatus ?? null,
+    });
   }
 
-  fail(lastFailure?.code || 'token-selection-failed', lastFailure?.message || 'No configured token could satisfy Workers Builds verification.', {
-    credentialSource: candidates.at(-1)?.source || null,
-    tokenShape: lastFailure?.shape || null,
-    providerStatus: lastFailure?.providerStatus ?? null,
-  });
+  token = result.token;
+  prefetchedScripts = result.scripts;
+  receipt.credential.selectedSource = result.source;
+  receipt.credential.selectedShape = result.shape;
+  receipt.failure = null;
+  receipt.status = 'started';
+  writeReceipt();
 }
 
 async function get(providerPath) {
@@ -200,10 +256,12 @@ async function get(providerPath) {
   }
 
   const payload = await response.json().catch(() => null);
+  const providerCode = firstProviderErrorCode(payload);
   if (!response.ok || payload?.success === false) {
-    fail('provider-http-failure', `GET ${retainedProviderPath} failed with provider status ${response.status}`, {
+    fail('provider-http-failure', `GET ${retainedProviderPath} failed with provider status ${response.status}${providerCode === null ? '' : ` code ${providerCode}`}`, {
       providerPath: retainedProviderPath,
       providerStatus: response.status,
+      providerCode,
     });
   }
   return payload?.result;
@@ -213,7 +271,7 @@ writeReceipt();
 if (!accountId) fail('configuration-missing', 'CLOUDFLARE_ACCOUNT_ID is required.', { field: 'CLOUDFLARE_ACCOUNT_ID' });
 await selectCredential();
 
-const scripts = await get(`/accounts/${accountId}/workers/scripts?per_page=100`);
+const scripts = prefetchedScripts;
 const findWorker = (name) => (Array.isArray(scripts) ? scripts : []).filter((row) => clean(row?.id) === name);
 const separateMatches = findWorker(separateWorker);
 const productionMatches = findWorker(productionWorker);
@@ -234,7 +292,7 @@ receipt.alphaWorker.scriptTag = alphaTag;
 writeReceipt();
 
 const separateTriggerRows = await get(`/accounts/${accountId}/builds/workers/${separateTag}/triggers`);
-const separateBuildRows = await get(`/accounts/${accountId}/builds/workers/${separateWorker}/builds?per_page=50`);
+const separateBuildRows = await get(`/accounts/${accountId}/builds/workers/${separateTag}/builds?per_page=50`);
 const separateActiveTriggers = active(separateTriggerRows);
 const separateTrigger = separateActiveTriggers.length === 1 ? separateActiveTriggers[0] : null;
 const separateIncludes = Array.isArray(separateTrigger?.branch_includes) ? separateTrigger.branch_includes.map(clean) : [];
@@ -251,7 +309,7 @@ const separateBuildConnectionMainOnly = separateActiveTriggers.length === 1 && J
 const separateVerifiedSafeBuildAuthority = (separateBuildConnectionDisabled || separateBuildConnectionMainOnly) && separateActiveNonMainBuilds.length === 0;
 
 const triggerRows = await get(`/accounts/${accountId}/builds/workers/${productionTag}/triggers`);
-const buildRows = await get(`/accounts/${accountId}/builds/workers/${productionWorker}/builds?per_page=50`);
+const buildRows = await get(`/accounts/${accountId}/builds/workers/${productionTag}/builds?per_page=50`);
 const activeTriggers = active(triggerRows);
 const productionTrigger = activeTriggers.length === 1 ? activeTriggers[0] : null;
 const includes = Array.isArray(productionTrigger?.branch_includes) ? productionTrigger.branch_includes.map(clean) : [];

@@ -40,14 +40,16 @@ test('founder repair mutates only canonical sekret-backend branch authority', ()
   assert.equal(targets.separateWorkerAuthorities.bip.mutationPolicy, 'preserve-until-exact-provider-binding-proven');
 });
 
-test('Pages authority stays dedicated-read-only while Worker audit may use the general token as fallback', () => {
+test('Pages audit remains read-only while trying only explicitly configured Cloudflare read credentials by capability', () => {
   assert.match(auditWorkflow, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
   assert.match(auditWorkflow, /CLOUDFLARE_API_TOKEN/);
   assert.match(auditWorkflow, /CLOUDFLARE_PAGES_READ_API_TOKEN/);
   assert.match(auditWorkflow, /verify-cloudflare-worker-branch-authority\.mjs/);
   assert.match(auditWorkflow, /verify-cloudflare-pages-branch-authority\.mjs/);
   assert.match(pagesVerifier, /CLOUDFLARE_PAGES_READ_API_TOKEN/);
-  assert.doesNotMatch(pagesVerifier, /CLOUDFLARE_API_TOKEN/);
+  assert.match(pagesVerifier, /CLOUDFLARE_API_TOKEN/);
+  assert.match(pagesVerifier, /CLOUDFLARE_WORKERS_BUILDS_API_TOKEN/);
+  assert.match(pagesVerifier, /projectPath/);
   assert.match(pagesVerifier, /mutationPerformed: false/);
 });
 
@@ -64,11 +66,12 @@ test('read-only audit observes bip separately while keeping backend branch repai
   assert.match(workerVerifier, /mutationPerformed: false/);
 });
 
-test('Workers Builds token preflight rejects account-scoped tokens without retaining token values', () => {
+test('Workers credential shape checks stay fail-closed before the capability probe', () => {
   assert.match(workerVerifier, /startsWith\('cfat_'\)/);
   assert.match(workerVerifier, /workers-builds-account-token-unsupported/);
   assert.match(workerVerifier, /startsWith\('cfut_'\)/);
   assert.match(workerVerifier, /token-leading-or-trailing-whitespace/);
   assert.match(workerVerifier, /token-bearer-prefix-stored/);
   assert.match(workerVerifier, /token-quoted-secret/);
+  assert.match(workerVerifier, /probeWorkersRead/);
 });

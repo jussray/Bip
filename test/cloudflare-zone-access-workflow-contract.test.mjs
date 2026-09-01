@@ -17,7 +17,7 @@ test('public front-door audit is exact-head, independently retained, read-only, 
     'actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02',
     'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093',
     'CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}',
-    'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}',
+    'CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_APP_BINDING_READ_API_TOKEN }}',
     'scripts/audit-cloudflare-app-binding-authority.mjs',
     'test/cloudflare-app-binding-authority-audit.test.mjs',
     'CLOUDFLARE_APP_BINDING_EVIDENCE_PATH: artifacts/cloudflare-app-binding-authority.json',
@@ -46,10 +46,11 @@ test('public front-door audit is exact-head, independently retained, read-only, 
   assert.ok(pushBlock.includes('branches: [main]'), 'provider authority must reacquire on main pushes');
   assert.ok(!pushBlock.includes('paths:'), 'every main movement must reacquire provider authority, even when unrelated files changed');
 
-  const dedicatedTokenIndex = workflow.indexOf('CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}');
-  const generalTokenIndex = workflow.indexOf('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
-  assert.ok(dedicatedTokenIndex >= 0 && generalTokenIndex >= 0, 'Access audit must receive dedicated and general token candidates');
-  assert.ok(dedicatedTokenIndex < generalTokenIndex, 'dedicated Access token must remain the preferred Access candidate before the general fallback');
+  const accessTokenIndex = workflow.indexOf('CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}');
+  const bindingTokenIndex = workflow.indexOf('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_APP_BINDING_READ_API_TOKEN }}');
+  assert.ok(accessTokenIndex >= 0 && bindingTokenIndex >= 0, 'Access and binding audits must each receive their dedicated credential');
+  assert.ok(accessTokenIndex < bindingTokenIndex, 'Access and binding credentials must remain independently scoped to their audit steps');
+  assert.ok(!workflow.includes('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}'), 'public front-door audit must never receive the repository-wide Cloudflare token');
 
   const mainGateIndex = workflow.indexOf('- name: Require exact current main before Cloudflare secret use');
   const accessProviderIndex = workflow.indexOf('- name: Audit zone-scoped Access applications and policies');
@@ -77,15 +78,16 @@ test('public front-door audit is exact-head, independently retained, read-only, 
   assert.ok(bindingStep.includes('always()'), 'binding read must survive an earlier independent Access audit failure');
   assert.ok(bindingStep.includes("steps.current_main_gate.outcome == 'success'"), 'binding read must remain blocked unless exact-current-main gate succeeded');
   assert.ok(bindingStep.includes('continue-on-error: true'), 'binding failure must still allow receipt retention and artifact upload');
-  assert.ok(bindingStep.includes('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}'), 'binding read must use only the general Cloudflare token');
+  assert.ok(bindingStep.includes('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_APP_BINDING_READ_API_TOKEN }}'), 'binding read must use only the dedicated binding-read secret');
   assert.ok(!bindingStep.includes('CLOUDFLARE_ACCESS_API_TOKEN'), 'binding read must not receive the Access token');
+  assert.ok(!bindingStep.includes('secrets.CLOUDFLARE_API_TOKEN'), 'binding read must not receive the repository-wide Cloudflare token');
 
   assert.ok(publisherJob.includes('permissions:\n      contents: read\n      actions: read\n      issues: write'), 'ledger publisher must carry only GitHub evidence-publication permissions');
   assert.ok(publisherJob.includes("github.event_name != 'pull_request'"), 'ledger publisher must never run on pull_request');
   assert.ok(publisherJob.includes('needs.audit.outputs.evidence_artifact_id'), 'ledger publisher must consume only the immutable artifact from the audit job');
   assert.ok(publisherJob.includes('cloudflare-app-binding-authority.json'), 'ledger publisher must read the binding receipt rather than infer provider state');
   assert.ok(publisherJob.includes("method = existing ? 'PATCH' : 'POST'"), 'ledger publication must update the exact-main marker instead of blindly duplicating it');
-  assert.ok(!publisherJob.includes('CLOUDFLARE_API_TOKEN'), 'ledger publisher must never receive the general Cloudflare token');
+  assert.ok(!publisherJob.includes('CLOUDFLARE_API_TOKEN'), 'ledger publisher must never receive a Cloudflare API token');
   assert.ok(!publisherJob.includes('CLOUDFLARE_ACCESS_API_TOKEN'), 'ledger publisher must never receive the Access token');
   assert.ok(!publisherJob.includes('CLOUDFLARE_WORKERS_BUILDS_API_TOKEN'), 'ledger publisher must never receive the Workers Builds token');
 
