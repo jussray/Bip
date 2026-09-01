@@ -89,6 +89,39 @@ test('no runtime surface renders the pre-cutover companion display names', () =>
   );
 });
 
+test('no runtime surface renders a lowercase legacy name inside prose', () => {
+  // The uppercase scan above misses the app's lowercase copy voice
+  // ("— raylene", "raylene is here"). Internal ids are always bare tokens, so
+  // a legacy name inside a string literal that also contains a space is copy,
+  // not an id.
+  const PROSE_LITERAL = /(['"`])((?:[^'"`\\\n]|\\.)*\s(?:[^'"`\\\n]|\\.)*)\1/g;
+  const offenders = [];
+
+  for (const file of RUNTIME_DIRS.flatMap(sourceFiles)) {
+    const lines = fs.readFileSync(path.join(root, file), 'utf8').split('\n');
+
+    lines.forEach((line, index) => {
+      if (/^\s*(?:\/\/|\*|\/\*)/.test(line)) return;
+
+      for (const [, , literal] of line.matchAll(PROSE_LITERAL)) {
+        // `raylene-neutral.png` is an asset path, not a name being shown.
+        if (!/\b(?:raylene|rylane)\b(?!-)/i.test(literal)) continue;
+        // The Worker's 400 body enumerates accepted characterId values, which
+        // are ids by definition and must keep matching what the API takes.
+        if (literal.includes('characterId must be')) continue;
+
+        offenders.push(`${file}:${index + 1}: ${line.trim()}`);
+      }
+    });
+  }
+
+  assert.deepEqual(
+    offenders,
+    [],
+    `Copy must use the canonical names (suhana / sy):\n${offenders.join('\n')}`,
+  );
+});
+
 test('legacy and pre-id aliases still resolve to the canonical companions', () => {
   const source = fs.readFileSync(
     path.join(root, 'src/features/identity/legacyCompanionIdMigration.ts'),

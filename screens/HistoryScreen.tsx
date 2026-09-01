@@ -226,7 +226,7 @@ export function HistoryScreen({
             ]}
           >
             <Text style={[styles.pillText, { color: softAccent }]}>
-              {isRylane ? '\u{1F9CD} rylane is here' : '☁\uFE0F raylene is here'}
+              {isRylane ? '\u{1F9CD} sy is here' : '☁\uFE0F suhana is here'}
             </Text>
           </Animated.View>
 
@@ -323,7 +323,7 @@ export function HistoryScreen({
         <Animated.View style={[styles.sticky, enter(noteAnim)]}>
           <Text style={styles.stickyText}>{stickyAffirmation}</Text>
           <Text style={styles.stickySig}>
-            {isRylane ? '— rylane' : '— raylene'}
+            {isRylane ? '— sy' : '— suhana'}
           </Text>
         </Animated.View>
 

@@ -347,7 +347,7 @@ export function PeriodCalendarScreen({
         <Animated.View style={cardStyle(card4)}>
           <View style={styles.stickyNote}>
             <Text style={styles.stickyText}>
-              "your body isn't a problem to solve. it's yours. you know it best." — raylene
+              "your body isn't a problem to solve. it's yours. you know it best." — suhana
             </Text>
           </View>
 
