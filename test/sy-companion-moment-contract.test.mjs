@@ -25,7 +25,14 @@ test('Sy moment screen delegates into canonical app surfaces', () => {
   assert.match(screen, /const routeCompanion = selected\.destination\.companion === 'sy' \? 'rylane' : selected\.destination\.companion/);
   assert.match(screen, /setSelectedSekret\(routeCompanion\)/);
   assert.match(screen, /companion: routeCompanion/);
-  assert.match(screen, /source=\{IMAGES\.rylaneNeutral\}/);
+});
+
+test('Sy moment screen uses the canonical teen companion registry for artwork', () => {
+  assert.match(screen, /import \{ getTeenCompanionAsset \} from '@\/utils\/companions'/);
+  assert.match(screen, /getTeenCompanionAsset\('rylane', 'neutral'\)/);
+  assert.match(screen, /\?\? IMAGES\.rylaneFullbody/);
+  assert.match(screen, /source=\{SY_MOMENT_ART\}/);
+  assert.doesNotMatch(screen, /source=\{IMAGES\.rylaneNeutral\}/);
 });
 
 test('Sy picker entry is bounded to Sy and preserves other companion behavior', () => {
