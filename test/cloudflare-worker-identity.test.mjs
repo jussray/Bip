@@ -28,12 +28,14 @@ const RELEASE_MARKER_URL = 'https://app.sekretbip.net/.well-known/sekret-release
 // Worker instead of the canonical one.
 const ALPHA_ROUTED_PROFILES = new Set(['preview', 'parent-preview']);
 
-test('Wrangler targets the canonical Worker and retains version metadata as provenance', () => {
+test('Wrangler targets the canonical Worker and leaves production routing provider-managed', () => {
   assert.match(wrangler, new RegExp(`^name = "${WORKER_NAME}"$`, 'm'));
+  assert.match(wrangler, /^workers_dev = false$/m);
+  assert.doesNotMatch(wrangler, /^\s*route\s*=/m);
+  assert.doesNotMatch(wrangler, /^\s*routes\s*=/m);
+  assert.doesNotMatch(wrangler, /^\[\[routes\]\]$/m);
   assert.match(wrangler, /^\[version_metadata\]$/m);
   assert.match(wrangler, /^binding = "CF_VERSION_METADATA"$/m);
-  assert.match(wrangler, /^pattern = "api\.sekretbip\.net"$/m);
-  assert.match(wrangler, /^custom_domain = true$/m);
   assert.match(wrangler, /^\[build\]$/m);
   assert.match(wrangler, /^command = "node scripts\/write-worker-release-identity\.mjs"$/m);
 });
