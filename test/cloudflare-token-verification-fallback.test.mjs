@@ -62,13 +62,13 @@ test('Worker authority verifier selects an active credential by token verificati
     if (text.endsWith(`/builds/workers/${tags.bip}/triggers`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [{ trigger_uuid:'bip-trigger', branch_includes:['main'], branch_excludes:[], build_command:'', deploy_command:'npm run deploy:bip', deleted_on:null }] }) };
     }
-    if (text.endsWith('/builds/workers/bip/builds?per_page=50')) {
+    if (text.endsWith(`/builds/workers/${tags.bip}/builds?per_page=50`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
     }
     if (text.endsWith(`/builds/workers/${tags['sekret-backend']}/triggers`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [{ trigger_uuid:'prod-trigger', branch_includes:['main'], branch_excludes:[], build_command:'', deploy_command:'npm run deploy:api:production', deleted_on:null }] }) };
     }
-    if (text.endsWith('/builds/workers/sekret-backend/builds?per_page=50')) {
+    if (text.endsWith(`/builds/workers/${tags['sekret-backend']}/builds?per_page=50`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: [] }) };
     }
     if (text.endsWith(`/builds/workers/${tags['sekret-backend-alpha']}/triggers`)) {
