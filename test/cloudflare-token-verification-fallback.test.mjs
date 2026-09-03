@@ -92,8 +92,13 @@ test('Worker authority verifier selects an active credential by token verificati
     const receipt = JSON.parse(await readFile(evidencePath, 'utf8'));
     assert.equal(receipt.status, 'verified');
     assert.equal(receipt.credential.selectedSource, 'CLOUDFLARE_WORKERS_BUILDS_API_TOKEN');
-    assert.equal(receipt.credential.attempts[0]?.probe, 'workers-scripts');
-    assert.equal(receipt.credential.attempts[0]?.result, 'accepted');
+    assert.deepEqual(
+      receipt.credential.attempts.map(({ probe, result }) => ({ probe, result })),
+      [
+        { probe: 'token-verify-user', result: 'active' },
+        { probe: 'workers-scripts', result: 'accepted' },
+      ],
+    );
     assert.equal(receipt.workersAuthorityVerified, true);
   } finally {
     await rm(tempDir, { recursive: true, force: true });
