@@ -95,7 +95,7 @@ test('Worker authority verifier selects an active credential by token verificati
     assert.deepEqual(
       receipt.credential.attempts.map(({ probe, result }) => ({ probe, result })),
       [
-        { probe: 'token-verify-user', result: 'active' },
+        { probe: 'token-verify-user', result: 'accepted' },
         { probe: 'workers-scripts', result: 'accepted' },
       ],
     );
