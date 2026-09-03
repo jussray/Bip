@@ -28,7 +28,7 @@ function canonicalPagesProject() {
   };
 }
 
-test('Worker authority verifier selects a syntactically valid credential by the real Workers read capability', async () => {
+test('Worker authority verifier selects an active credential by token verification and the real Workers read capability', async () => {
   const originalFetch = globalThis.fetch;
   const envKeys = ['CLOUDFLARE_ACCOUNT_ID','CLOUDFLARE_WORKERS_BUILDS_API_TOKEN','CLOUDFLARE_API_TOKEN','EVIDENCE_PATH','GITHUB_REF','GITHUB_SHA'];
   const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
@@ -53,7 +53,9 @@ test('Worker authority verifier selects a syntactically valid credential by the 
     const auth = String(options.headers?.Authorization || '').replace(/^Bearer /, '');
     assert.equal(auth, token);
     const text = String(url);
-    assert.equal(text.includes('/tokens/verify'), false);
+    if (text.includes('/user/tokens/verify')) {
+      return { ok: true, status: 200, json: async () => ({ success: true, result: { status: 'active' } }) };
+    }
     if (text.includes(`/accounts/${accountId}/workers/scripts`)) {
       return { ok: true, status: 200, json: async () => ({ success: true, result: Object.entries(tags).map(([id, tag]) => ({ id, tag })) }) };
     }
