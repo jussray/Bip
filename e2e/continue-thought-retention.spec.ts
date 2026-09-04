@@ -5,7 +5,7 @@ const PRIVATE_TEXT = 'I want to remember this exact thought without showing it i
 const CONTINUATION_KEY = 'sekretbip_saved_continuation_v1';
 
 async function seedTeenEntry(page: Page) {
-  await page.addInitScript(({ entryId, privateText }) => {
+  await page.addInitScript(({ entryId, privateText, continuationKey }) => {
     window.localStorage.setItem('userSide', 'teen');
     window.localStorage.setItem('selectedSekret', 'raylene');
     window.localStorage.setItem('entries', JSON.stringify([
@@ -22,8 +22,12 @@ async function seedTeenEntry(page: Page) {
         locked: true,
       },
     ]));
-    window.localStorage.removeItem(CONTINUATION_KEY);
-  }, { entryId: ENTRY_ID, privateText: PRIVATE_TEXT });
+    window.localStorage.removeItem(continuationKey);
+  }, {
+    entryId: ENTRY_ID,
+    privateText: PRIVATE_TEXT,
+    continuationKey: CONTINUATION_KEY,
+  });
 }
 
 test('Continue the Thought saves metadata only, resumes the exact Page, and consumes the bookmark', async ({ page }, testInfo: TestInfo) => {
