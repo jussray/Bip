@@ -120,6 +120,46 @@
       "maxMatches": 1,
       "expiresAt": "2026-10-01T00:00:00Z",
       "rationale": "The assertion verifies fixed production endpoint literals in workflow/config source and is not a runtime URL trust decision."
+    },
+    {
+      "id": "pages-domain-array-membership",
+      "language": "javascript-typescript",
+      "ruleId": "js/incomplete-url-substring-sanitization",
+      "path": "scripts/verify-cloudflare-pages-branch-authority.mjs",
+      "messageIncludes": "can be anywhere in the URL",
+      "maxMatches": 1,
+      "expiresAt": "2026-10-01T00:00:00Z",
+      "rationale": "The reported includes call is Array.prototype.includes over Cloudflare's domains array, so it requires exact element equality with app.sekretbip.net. It is not substring matching on a URL string and therefore cannot accept an attacker-controlled hostname prefix or suffix."
+    },
+    {
+      "id": "pages-domain-array-membership-test",
+      "language": "javascript-typescript",
+      "ruleId": "js/incomplete-url-substring-sanitization",
+      "path": "test/cloudflare-pages-branch-authority.test.mjs",
+      "messageIncludes": "can be anywhere in the URL",
+      "maxMatches": 1,
+      "expiresAt": "2026-10-01T00:00:00Z",
+      "rationale": "This is an exact Array.prototype.includes assertion over normalized provider-domain fixtures in a unit test. It neither parses nor authorizes runtime URLs."
+    },
+    {
+      "id": "public-front-door-static-url-assertions",
+      "language": "javascript-typescript",
+      "ruleId": "js/regex/missing-regexp-anchor",
+      "path": "test/cloudflare-production-browser-contract.test.mjs",
+      "messageIncludes": "may match anywhere",
+      "maxMatches": 4,
+      "expiresAt": "2026-10-01T00:00:00Z",
+      "rationale": "These four regular expressions inspect repository-owned Playwright source text to ensure the public front-door and production smoke specs mention expected production URL/domain literals. They are test source assertions, not runtime URL validation or hostname allowlisting."
+    },
+    {
+      "id": "post-989-public-apex-source-assertions",
+      "language": "javascript-typescript",
+      "ruleId": "js/regex/missing-regexp-anchor",
+      "path": "test/post-989-access-fail-closed.test.mjs",
+      "messageIncludes": "may match anywhere",
+      "maxMatches": 2,
+      "expiresAt": "2026-10-01T00:00:00Z",
+      "rationale": "These two expressions inspect repository-owned Playwright source text to verify the public apex URL and hostname assertions survived the Access fail-closed repair. They do not validate or authorize an untrusted runtime URL."
     }
   ]
 }

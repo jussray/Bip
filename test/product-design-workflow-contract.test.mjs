@@ -35,6 +35,8 @@ test('Product Design proof remains exact-head and failure-preserving', () => {
     'if-no-files-found: error',
     'retention-days: 30',
     'e2e/room-canonical-display.spec.ts',
+    'e2e/canonical-companion-identity.spec.ts',
+    'e2e/guardrails.spec.ts',
     'test/founder-visual-authority-contract.test.mjs',
     'test/pages-companion-asset-contract.test.mjs',
   ]) {

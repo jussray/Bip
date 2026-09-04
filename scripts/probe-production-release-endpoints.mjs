@@ -22,6 +22,17 @@ function isCloudflareAccessUrl(rawUrl) {
   }
 }
 
+function hasCloudflareAccessHtmlMarker(rawBody) {
+  if (typeof rawBody !== 'string' || !rawBody) return false;
+  const normalized = rawBody.toLowerCase();
+  if (!normalized.includes('cloudflare access')) return false;
+  return (
+    normalized.includes('<title>sign in') ||
+    normalized.includes('/cdn-cgi/access/') ||
+    normalized.includes('that account does not have access')
+  );
+}
+
 export function sanitizeObservedUrl(rawUrl) {
   const value = safeString(rawUrl);
   if (!value) return null;
@@ -42,6 +53,7 @@ export function classifyEndpointProbe(evidence) {
   if (evidence?.redirected && isCloudflareAccessUrl(evidence?.finalUrl)) {
     return 'cloudflare-access-intercepted';
   }
+  if (evidence?.accessBlockPage === true) return 'cloudflare-access-intercepted';
   if (evidence?.jsonState === 'fetch-error') return 'fetch-error';
   if (evidence?.ok !== true) return 'http-error';
   if (evidence?.jsonState !== 'ok') return 'invalid-json';
@@ -66,13 +78,25 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch, accessAuth} 
     const contentType = safeString(response.headers.get('content-type'));
     let json = null;
     let jsonState = response.ok ? 'invalid' : 'skipped-non-ok';
+    let accessBlockPage = false;
 
     if (response.ok) {
-      try {
-        json = await response.json();
-        jsonState = 'ok';
-      } catch {
-        jsonState = 'invalid';
+      if (contentType?.toLowerCase().startsWith('text/html') && typeof response.clone === 'function') {
+        try {
+          const responseBody = await response.clone().text();
+          accessBlockPage = hasCloudflareAccessHtmlMarker(responseBody);
+        } catch {
+          accessBlockPage = false;
+        }
+      }
+
+      if (!accessBlockPage) {
+        try {
+          json = await response.json();
+          jsonState = 'ok';
+        } catch {
+          jsonState = 'invalid';
+        }
       }
     }
 
@@ -83,6 +107,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch, accessAuth} 
       ok: response.ok,
       redirected: response.redirected,
       jsonState,
+      accessBlockPage,
     };
     const evidence = {
       requestedUrl: rawUrl,
@@ -92,7 +117,7 @@ export async function probeJsonEndpoint(rawUrl, {fetchImpl = fetch, accessAuth} 
       redirected: response.redirected,
       contentType,
       jsonState,
-      accessBlockPage: false,
+      accessBlockPage,
       accessServiceAuthConfigured: resolvedAccessAuth.configured,
       commitSha: safeString(json?.commitSha),
       releaseSha: safeString(json?.releaseSha),

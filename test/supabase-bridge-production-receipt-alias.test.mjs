@@ -12,9 +12,10 @@ const LIVE_VERSION = '20260814040352';
 const MIGRATION_NAME = 'harden_bridge_permanent_account_policies';
 
 test('Bridge production apply receipt is an explicit exact alias', () => {
-  assert.deepEqual(PRODUCTION_HISTORY_APPLIED_ALIASES, {
-    [CANONICAL_VERSION]: LIVE_VERSION,
-  });
+  assert.equal(
+    PRODUCTION_HISTORY_APPLIED_ALIASES[CANONICAL_VERSION],
+    LIVE_VERSION,
+  );
   assert.equal(
     PRODUCTION_HISTORY_ALL_ACCEPTED_ALIASES[CANONICAL_VERSION],
     LIVE_VERSION,

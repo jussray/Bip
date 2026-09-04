@@ -1,17 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 import { resolvePlaywrightExecutablePath } from './scripts/playwright-executable.mjs';
-import { resolveCloudflareAccessServiceAuth } from './scripts/cloudflare-access-service-auth.mjs';
 
-// Se'kret Bip — read-only and intercepted transport checks against the live
-// deployed application frontend. Local harness, seeded-session, founder, and
-// fixture-only specs must never be promoted into production launch evidence.
+// Se'kret Bip — anonymous, read-only browser verification against the live
+// customer-facing application frontend. This suite intentionally sends no
+// Cloudflare Access service-token headers: launch proof must match the path a
+// normal parent, teen, or anonymous visitor can actually use.
 const BASE_URL = process.env.PRODUCTION_BASE_URL || 'https://app.sekretbip.net';
 const executablePath = resolvePlaywrightExecutablePath();
-const accessAuth = resolveCloudflareAccessServiceAuth();
 
 export default defineConfig({
   testDir: './e2e',
   testMatch: [
+    'production-public-front-door.spec.ts',
     'production-smoke.spec.ts',
     'production-audience-journeys.spec.ts',
     'production-auth-reachability.spec.ts',
@@ -27,10 +27,7 @@ export default defineConfig({
     : 'html',
   use: {
     baseURL: BASE_URL,
-    ...(accessAuth.configured ? { extraHTTPHeaders: accessAuth.headers } : {}),
-    // Access service-token headers are credentials. Disable traces while they are
-    // present so request headers cannot be retained in trace artifacts.
-    trace: accessAuth.configured ? 'off' : 'on-first-retry',
+    trace: 'on-first-retry',
   },
   projects: [
     {

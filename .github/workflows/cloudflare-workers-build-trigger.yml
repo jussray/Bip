@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'wrangler.toml'
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
+      - 'scripts/run-with-normalized-cloudflare-token.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
       - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
@@ -15,7 +17,9 @@ on:
   push:
     branches: [main]
     paths:
+      - 'wrangler.toml'
       - 'scripts/reconcile-cloudflare-workers-build-trigger.mjs'
+      - 'scripts/run-with-normalized-cloudflare-token.mjs'
       - 'test/cloudflare-workers-build-trigger-control-plane.test.mjs'
       - 'test/cloudflare-workers-build-trigger-approval.test.mjs'
       - 'test/cloudflare-workers-token-fallback.test.mjs'
@@ -182,15 +186,14 @@ jobs:
           TOKEN_VALUE: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TOKEN_SOURCE: general-cloudflare-token
         run: |
-          node - <<'NODE'
+          node --input-type=module - <<'NODE'
+          import { normalizeCloudflareTokenTransport } from './scripts/run-with-normalized-cloudflare-token.mjs';
           const source = process.env.TOKEN_SOURCE || 'unknown';
-          const token = process.env.TOKEN_VALUE || '';
+          const raw = process.env.TOKEN_VALUE || '';
+          const { token, changed } = normalizeCloudflareTokenTransport(raw);
           if (!token) throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=not-configured`);
-          if (token !== token.trim()) {
-            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=leading-or-trailing-whitespace`);
-          }
           if (/[^\x21-\x7e]/.test(token) || /\s/.test(token)) {
-            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=non-ascii-or-whitespace`);
+            throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=non-ascii-or-whitespace-after-normalization`);
           }
           if (/^Bearer\s+/i.test(token)) {
             throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=bearer-prefix-stored-in-secret`);
@@ -205,7 +208,7 @@ jobs:
             throw new Error(`TOKEN_PREFLIGHT_FAILED source=${source} reason=account-scoped-token-not-supported-by-workers-builds-api`);
           }
           const shape = token.startsWith('cfut_') ? 'user-prefixed' : 'legacy-opaque';
-          console.log(`TOKEN_PREFLIGHT source=${source} shape=${shape} result=accepted`);
+          console.log(`TOKEN_PREFLIGHT source=${source} shape=${shape} normalized=${changed} result=accepted`);
           NODE
 
       - name: Read trigger with general Cloudflare token fallback
@@ -216,7 +219,7 @@ jobs:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ''
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger-general.json
-        run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs
+        run: node scripts/run-with-normalized-cloudflare-token.mjs scripts/reconcile-cloudflare-workers-build-trigger.mjs
 
       - name: Select non-destructive trigger receipt
         id: select_readback
@@ -332,7 +335,7 @@ jobs:
           CLOUDFLARE_WORKERS_BUILDS_API_TOKEN: ''
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_BUILD_EVIDENCE_PATH: artifacts/cloudflare-workers-build-trigger.json
-        run: node scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
+        run: node scripts/run-with-normalized-cloudflare-token.mjs scripts/reconcile-cloudflare-workers-build-trigger.mjs --apply
 
       - name: Upload trigger evidence
         if: always()

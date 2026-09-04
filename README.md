@@ -53,12 +53,26 @@ Prioritize interactive product states, companions embedded into real flows, resp
 - **Routes:** auth, onboarding, Teen, Parent, and founder/internal groups
 - **Local state:** React state, context, hooks, and AsyncStorage
 - **Cloud data:** Supabase Auth, Postgres, RLS, Storage, Edge Functions, ordered migrations
-- **API:** canonical Cloudflare Worker `sekret-backend`
+- **Public API front door:** `https://api.sekretbip.net`, currently pinned by repository configuration to Cloudflare Worker `sekret-backend`
+- **Companion runtime lineage:** Cloudflare Worker `sekret`; founder-confirmed active and historically the deployment identity for the Se’kret companion API. Exact live routes/custom domains remain Cloudflare provider-readback truth.
 - **Web:** canonical Cloudflare Pages project `sekret-bip`
 - **Production proof:** exact release identity + Worker health + Supabase runtime + production Playwright + any required account/device witnesses
 - **Schema source:** `supabase/migrations/`
 
-Legacy compatibility files and historical provider identities are not a second production authority.
+### Worker purpose boundary
+
+The checked-in production client is intentionally single-homed to `api.sekretbip.net`; product code must not choose between multiple public Worker URLs.
+
+The preferred purpose split is:
+
+- `sekret` owns the companion execution plane: `/api/sekret/reply`, `/api/sekret/voice`, `/api/sekret/transcribe`, companion style/safety enforcement, AI/voice provider capability, and companion-scoped telemetry;
+- `sekret-backend` owns the public API/front-door and privileged platform plane: authentication/rate-limit ingress, Bridge summary/data operations, server-side Supabase service-role work, inbound email, and other non-companion backend business logic;
+- when provider readback and code migration are approved, `sekret-backend` should delegate companion requests to `sekret` through a Cloudflare Service Binding rather than exposing a second client-facing URL;
+- `SUPABASE_SERVICE_ROLE_KEY` must not be duplicated into the companion Worker merely for telemetry. Privileged persistence should cross a narrow internal boundary or remain backend-owned.
+
+This is a **purpose/target contract**, not a claim that the service binding or route cutover is already deployed. Current provider binding remains Level 0 Cloudflare truth and must be proven before mutation.
+
+Legacy compatibility files and historical provider identities are not a second production authority. `sekret` is not classified as legacy while its active provider role remains founder-confirmed and provider-protected.
 
 ## Product areas
 
@@ -117,6 +131,8 @@ A Playwright file committed to the repository is not proof that it executed agai
 - `docs/TRUTH_AUTHORITY.md` — claim freshness, expiry, and supersession
 - `docs/CURRENT_STATUS.md` — how to resolve current status without copying volatile state into docs
 - `docs/DOCUMENTATION_MAP.md` — documentation authority and archive rules
+- `docs/CLOUDFLARE_OWNERSHIP.md` — Worker identity, provider authority, and purpose boundary
+- `docs/CLOUDFLARE_WORKER_CONSOLIDATION.md` — preservation, migration, and rollback sequence
 - `docs/LAUNCH_ROADMAP.md` — durable launch phases and exit evidence
 - `DEPLOYMENT.md` — deployment and exact-production verification contract
 - `implementation-ledger.json` and validated extensions — machine-checked feature state

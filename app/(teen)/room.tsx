@@ -9,9 +9,9 @@ import { useEffect } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { UserRoomScreen } from '@screens/UserRoomScreen';
+import { VisualCanonAtmosphere } from '../../components/rooms/VisualCanonAtmosphere';
 import { BipReturnOverlay } from '../../components/retention/BipReturnOverlay';
 import { DailyIntentionsCard } from '../../components/intentions/DailyIntentionsCard';
-import { LivingSanctuaryLayer } from '../../components/rooms/LivingSanctuaryLayer';
 import { useAppContext } from '@/context/AppContext';
 import { THEME_PACKS } from '@/constants/theme';
 import { TEEN_ROUTES } from '@/teen/routes';
@@ -69,7 +69,7 @@ export default function TeenRoomRoute() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: '#09031c' }}>
       <UserRoomScreen
         mood={mood}
         selectedSekret={selectedSekret}
@@ -81,7 +81,7 @@ export default function TeenRoomRoute() {
         sekretMode={selectedSekret}
         updateRoomMemory={updateRoomMemory}
       />
-      <LivingSanctuaryLayer companionKey={companionKey} />
+      <VisualCanonAtmosphere />
       <DailyIntentionsCard
         mood={mood}
         companionKey={companionKey}

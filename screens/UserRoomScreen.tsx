@@ -104,6 +104,7 @@ type Hotspot = {
 };
 
 type AvatarMap = Partial<Record<Pose, ImageSourcePropType>>;
+type CompanionPlacement = { bottom: DimensionValue; left: DimensionValue; w: number; h: number };
 
 // ─── Asset maps ───────────────────────────────────────────────────────────────
 
@@ -136,13 +137,26 @@ const CHARACTER_OVERLAYS: Record<Character, string> = {
 };
 
 // ─── Companion placement ──────────────────────────────────────────────────────
-// Positions chosen so the companion sits naturally in each room's left/open area
+// Visual presence and the tap target intentionally have separate geometry.
+// This lets the companion lead the composition without stealing Room hotspots.
 
-const COMPANION_POSITIONS: Record<Character, { bottom: DimensionValue; left: DimensionValue; w: number; h: number }> = {
-  raylene: { bottom: '21%', left: '2%',  w: width * 0.54, h: height * 0.46 },
-  rylane:  { bottom: '21%', left: '0%',  w: width * 0.50, h: height * 0.44 },
-  cloud:   { bottom: '30%', left: '28%', w: width * 0.44, h: height * 0.34 },
-  night:   { bottom: '21%', left: '2%',  w: width * 0.52, h: height * 0.45 },
+const HUMAN_VISUAL_W = Math.min(width * 0.78, 420);
+const HUMAN_VISUAL_H = Math.min(height * 0.62, 560);
+const HUMAN_HIT_W    = Math.min(Math.max(width * 0.32, 124), 168);
+const HUMAN_HIT_H    = Math.min(Math.max(height * 0.24, 190), 240);
+
+const COMPANION_VISUAL_POSITIONS: Record<Character, CompanionPlacement> = {
+  raylene: { bottom: '9%',  left: '-7%', w: HUMAN_VISUAL_W, h: HUMAN_VISUAL_H },
+  rylane:  { bottom: '9%',  left: '20%', w: HUMAN_VISUAL_W, h: HUMAN_VISUAL_H },
+  cloud:   { bottom: '24%', left: '16%', w: Math.min(width * 0.62, 280), h: Math.min(height * 0.38, 320) },
+  night:   { bottom: '9%',  left: '-5%', w: HUMAN_VISUAL_W, h: HUMAN_VISUAL_H },
+};
+
+const COMPANION_HIT_TARGETS: Record<Character, CompanionPlacement> = {
+  raylene: { bottom: '22%', left: '4%',  w: HUMAN_HIT_W, h: HUMAN_HIT_H },
+  rylane:  { bottom: '22%', left: '34%', w: HUMAN_HIT_W, h: HUMAN_HIT_H },
+  cloud:   { bottom: '31%', left: '31%', w: Math.min(Math.max(width * 0.28, 108), 148), h: Math.min(Math.max(height * 0.18, 150), 190) },
+  night:   { bottom: '22%', left: '5%',  w: HUMAN_HIT_W, h: HUMAN_HIT_H },
 };
 
 // ─── Hotspot maps ─────────────────────────────────────────────────────────────
@@ -729,12 +743,15 @@ export function UserRoomScreen({
   const vibePack = THEME_PACKS[vibe] ?? THEME_PACKS.raylene;
 
   // ─── Companion ─────────────────────────────────────────────────────────
-  const cId   = userRoom.companionId;
-  const pose  = useMemo(() => getPose(mood, timeOfDay, cId), [mood, timeOfDay, cId]);
-  const cPos  = COMPANION_POSITIONS[cId];
-  const cSrc  = safe(AVATARS[cId]?.[pose], FALLBACK_AVATAR[cId]);
-  const hotspots = useMemo(() => ROOM_HOTSPOTS[userRoom.baseRoomId], [userRoom.baseRoomId]);
-  const roomLabel = userRoom.roomName || ROOM_META[userRoom.baseRoomId].name;
+  const cId         = userRoom.companionId;
+  const pose        = useMemo(() => getPose(mood, timeOfDay, cId), [mood, timeOfDay, cId]);
+  const cRuntime    = getCompanionRuntime(cId);
+  const cPoseSrc    = safe(AVATARS[cId]?.[pose], FALLBACK_AVATAR[cId]);
+  const cSrc        = safe(AVATARS[cId]?.fullbody, cRuntime.source ?? cPoseSrc);
+  const cVisualPos  = COMPANION_VISUAL_POSITIONS[cId];
+  const cHitPos     = COMPANION_HIT_TARGETS[cId];
+  const hotspots    = useMemo(() => ROOM_HOTSPOTS[userRoom.baseRoomId], [userRoom.baseRoomId]);
+  const roomLabel   = userRoom.roomName || ROOM_META[userRoom.baseRoomId].name;
 
   // ─── Animations ────────────────────────────────────────────────────────
   const fadeAnim       = useRef(new Animated.Value(0)).current;
@@ -925,15 +942,17 @@ export function UserRoomScreen({
         );
       })}
 
-      {/* ── LAYER 5: Companion — always visible, tappable ─────────────── */}
+      {/* ── LAYER 5: One companion visual + bounded transparent tap target ── */}
       <Animated.View
+        pointerEvents="none"
+        testID="room-companion-visual"
         style={[
           s.companionWrap,
           {
-            bottom: cPos.bottom,
-            left:   cPos.left,
-            width:  cPos.w,
-            height: cPos.h,
+            bottom: cVisualPos.bottom,
+            left:   cVisualPos.left,
+            width:  cVisualPos.w,
+            height: cVisualPos.h,
             opacity: companionAnim,
             transform: [
               { translateY: companionAnim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
@@ -942,30 +961,39 @@ export function UserRoomScreen({
           },
         ]}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={handleCompanionTap}
-          activeOpacity={0.88}
-          accessibilityRole="button"
-          accessibilityLabel={`${getCompanionRuntime(cId).label} is here. Tap to talk.`}
-        >
-          <Image
-            source={cSrc}
-            style={s.companionImage}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-            accessible={false}
-          />
-          {/* Ambient breath glow to signal tappability */}
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              s.companionGlow,
-              { opacity: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.18] }), backgroundColor: userRoom.glowColor },
-            ]}
-          />
-        </TouchableOpacity>
+        <Image
+          source={cSrc}
+          style={s.companionImage}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          accessible={false}
+        />
       </Animated.View>
+
+      <TouchableOpacity
+        testID="room-companion-hit-target"
+        style={[
+          s.companionHitTarget,
+          {
+            bottom: cHitPos.bottom,
+            left:   cHitPos.left,
+            width:  cHitPos.w,
+            height: cHitPos.h,
+          },
+        ]}
+        onPress={handleCompanionTap}
+        activeOpacity={0.88}
+        accessibilityRole="button"
+        accessibilityLabel={`${cRuntime.label} is here. Tap to talk.`}
+      >
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            s.companionGlow,
+            { opacity: breathAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.12] }), backgroundColor: userRoom.glowColor },
+          ]}
+        />
+      </TouchableOpacity>
 
       {/* Cloud mascot shortcut when companion is not Cloud */}
       {cId !== 'cloud' && (
@@ -1051,9 +1079,10 @@ const s = StyleSheet.create({
 
   companionWrap:     { position: 'absolute', zIndex: 10 },
   companionImage:    { width: '100%', height: '100%' },
+  companionHitTarget:{ position: 'absolute', zIndex: 11, borderRadius: 999 },
   companionGlow:     {
     position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0,
-    borderRadius: 120,
+    borderRadius: 999,
     backgroundColor: '#c084fc',
   },
 

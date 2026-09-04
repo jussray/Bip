@@ -29,7 +29,7 @@ test('production release proof targets the application frontend and preserves ba
   assert.match(productionConfig, /https:\/\/app\.sekretbip\.net/);
 });
 
-test('production release transport evidence is retained without response bodies', () => {
+test('production release transport evidence may inspect Access HTML but never retains response bodies', async () => {
   assert.match(workflow, /node scripts\/probe-production-release-endpoints\.mjs/);
   assert.match(workflow, /artifacts\/production-release-endpoint-probe\.json/);
   assert.match(releaseProbe, /status: response\.status/);
@@ -39,8 +39,28 @@ test('production release transport evidence is retained without response bodies'
   assert.match(releaseProbe, /jsonState/);
   assert.match(releaseProbe, /releaseSha/);
   assert.match(releaseProbe, /CLOUDFLARE_ACCESS_INTERCEPTED/);
-  assert.doesNotMatch(releaseProbe, /responseBody|bodyText|response\.text\(/);
+  assert.doesNotMatch(releaseProbe, /bodyText/);
   assert.doesNotMatch(releaseProbe, /set-cookie|authorization/i);
+
+  const privateHtml = '<html><head><title>Sign in · Cloudflare Access</title></head><body>PRIVATE_SENTINEL /cdn-cgi/access/login</body></html>';
+  const evidence = await probeJsonEndpoint('https://app.sekretbip.net/.well-known/sekret-release.json', {
+    fetchImpl: async () => ({
+      ok: true,
+      status: 200,
+      url: 'https://app.sekretbip.net/.well-known/sekret-release.json',
+      redirected: false,
+      headers: {get: () => 'text/html; charset=UTF-8'},
+      clone: () => ({text: async () => privateHtml}),
+      json: async () => {
+        throw new SyntaxError('not json');
+      },
+    }),
+  });
+
+  assert.equal(evidence.classification, 'cloudflare-access-intercepted');
+  assert.equal('responseBody' in evidence, false);
+  assert.equal('bodyText' in evidence, false);
+  assert.doesNotMatch(JSON.stringify(evidence), /PRIVATE_SENTINEL|<html>|cdn-cgi\/access\/login/);
 });
 
 test('release transport probe classifies non-OK responses without reading their bodies', async () => {
@@ -161,7 +181,11 @@ test('production Playwright verifies both public variants and their Enter paths'
   assert.match(productionSmoke, /YOUR PEOPLE\. YOUR PEACE\./);
   assert.match(productionSmoke, /YOUR FAMILY\. YOUR SPACE\./);
   assert.match(productionSmoke, /How old are you\?/);
-  assert.match(productionSmoke, /enter your parent space/);
+  assert.match(productionSmoke, /parent-welcome/);
+  assert.match(productionSmoke, /Create my Parent account/);
+  assert.match(productionSmoke, /I already have an account/);
+  assert.doesNotMatch(productionSmoke, /parent-splash/);
+  assert.doesNotMatch(productionSmoke, /enter your parent space/);
   assert.match(productionSmoke, /web-welcome-suhana/);
   assert.match(productionSmoke, /toHaveCount\(0\)/);
   assert.doesNotMatch(productionSmoke, /toHaveText\('Suhana'\)/);

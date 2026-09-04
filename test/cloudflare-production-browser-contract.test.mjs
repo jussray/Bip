@@ -6,6 +6,7 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), '
 
 const analytics = read('components/Analytics.web.tsx');
 const productionConfig = read('playwright.production.config.ts');
+const productionFrontDoor = read('e2e/production-public-front-door.spec.ts');
 const productionSmoke = read('e2e/production-smoke.spec.ts');
 const productionAuth = read('e2e/production-auth-reachability.spec.ts');
 const productionSignup = read('e2e/production-signup-transport.spec.ts');
@@ -18,6 +19,7 @@ test('Cloudflare production does not inject the Vercel analytics runtime', () =>
 
 test('production Playwright runs only launch-safe exact-domain specs', () => {
   for (const spec of [
+    'production-public-front-door.spec.ts',
     'production-smoke.spec.ts',
     'production-auth-reachability.spec.ts',
     'production-password-recovery.spec.ts',
@@ -29,9 +31,23 @@ test('production Playwright runs only launch-safe exact-domain specs', () => {
   assert.doesNotMatch(productionConfig, /live-onboarding-email\.spec\.ts/);
 });
 
-test('production launch proof matches the current release and front-door contract', () => {
+test('public production browser proof is anonymous and fails on Cloudflare Access navigation', () => {
+  assert.doesNotMatch(productionConfig, /resolveCloudflareAccessServiceAuth/);
+  assert.doesNotMatch(productionConfig, /extraHTTPHeaders/);
+  assert.match(productionFrontDoor, /documentNavigations/);
+  assert.match(productionFrontDoor, /cloudflareaccess\.com/);
+  assert.match(productionFrontDoor, /\/cdn-cgi\/access\//);
+  assert.match(productionFrontDoor, /web-welcome-enter/);
+  assert.match(productionFrontDoor, /https:\/\/sekretbip\.net\//);
+  assert.match(productionFrontDoor, /hostname\)\.toBe\('sekretbip\.net'\)/);
+  assert.doesNotMatch(productionFrontDoor, /app\.sekretbip\.net/);
+});
+
+test('production launch proof binds Pages and Worker to the same release', () => {
   assert.match(productionSmoke, /schemaVersion:\s*2/);
   assert.match(productionSmoke, /\.well-known\/sekret-release\.json/);
+  assert.match(productionSmoke, /https:\/\/api\.sekretbip\.net\/health/);
+  assert.match(productionSmoke, /releaseSha:\s*expectedReleaseSha/);
   assert.match(productionSmoke, /YOUR PEOPLE\. YOUR PEACE\./);
   assert.match(productionSmoke, /YOUR FAMILY\. YOUR SPACE\./);
   assert.doesNotMatch(productionSmoke, /THE SOFTER ORIGINAL/);
