@@ -7,6 +7,7 @@ on:
       - '.github/workflows/audit-cloudflare-zone-access-coverage.yml'
       - 'scripts/audit-cloudflare-zone-access-coverage.mjs'
       - 'scripts/audit-cloudflare-app-binding-authority.mjs'
+      - 'scripts/run-with-normalized-cloudflare-token.mjs'
       - 'test/cloudflare-zone-access-coverage-audit.test.mjs'
       - 'test/cloudflare-app-binding-authority-audit.test.mjs'
       - 'test/cloudflare-zone-access-workflow-contract.test.mjs'
@@ -88,26 +89,31 @@ jobs:
             exit 1
           }
 
+      # Access authority is least-privilege by construction. Do not fall back
+      # to CLOUDFLARE_API_TOKEN when the dedicated Access credential is absent
+      # or under-scoped; that failure must remain explicit and independently fixable.
       - name: Audit zone-scoped Access applications and policies
         id: access_audit
         if: github.event_name != 'pull_request'
         continue-on-error: true
         env:
           CLOUDFLARE_ACCESS_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_API_TOKEN }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
         run: node scripts/audit-cloudflare-zone-access-coverage.mjs
 
+      # Binding authority is independently scoped. The auditor keeps its internal
+      # CLOUDFLARE_API_TOKEN slot, but only the dedicated binding-read secret may fill it.
+      # Never fall back to the repository-wide CLOUDFLARE_API_TOKEN secret.
       - name: Audit public app Pages and Worker binding authority
         id: binding_audit
         if: ${{ always() && github.event_name != 'pull_request' && steps.current_main_gate.outcome == 'success' }}
         continue-on-error: true
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_APP_BINDING_READ_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        run: node scripts/audit-cloudflare-app-binding-authority.mjs
+        run: node scripts/run-with-normalized-cloudflare-token.mjs scripts/audit-cloudflare-app-binding-authority.mjs
 
       - name: Require redacted provider receipts before publication
         id: receipt_guard
@@ -183,66 +189,71 @@ jobs:
           const fs = require('node:fs');
           const path = require('node:path');
 
-          const findFile = (root, basename) => {
-            for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-              const full = path.join(root, entry.name);
-              if (entry.isDirectory()) {
-                const nested = findFile(full, basename);
-                if (nested) return nested;
-              } else if (entry.name === basename) {
-                return full;
+          (async () => {
+            const findFile = (root, basename) => {
+              for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+                const full = path.join(root, entry.name);
+                if (entry.isDirectory()) {
+                  const nested = findFile(full, basename);
+                  if (nested) return nested;
+                } else if (entry.name === basename) {
+                  return full;
+                }
               }
-            }
-            return null;
-          };
+              return null;
+            };
 
-          const receiptPath = findFile('retained-evidence', 'cloudflare-app-binding-authority.json');
-          if (!receiptPath) throw new Error('CLOUDFLARE_APP_BINDING_RECEIPT_NOT_FOUND');
-          const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
-          const exactMain = process.env.EXPECTED_HEAD_SHA;
-          const marker = `<!-- sekret-app-binding-authority:${exactMain} -->`;
-          const safeReceipt = {
-            exactMain,
-            status: receipt.status ?? null,
-            target: receipt.target ?? null,
-            providerIdentityVerified: receipt.providerIdentityVerified === true,
-            pagesDomain: receipt.pagesDomain ?? null,
-            exactWorkerDomains: Array.isArray(receipt.exactWorkerDomains) ? receipt.exactWorkerDomains : [],
-            exactWorkerRoutes: Array.isArray(receipt.exactWorkerRoutes) ? receipt.exactWorkerRoutes : [],
-            broadWorkerRoutes: Array.isArray(receipt.broadWorkerRoutes) ? receipt.broadWorkerRoutes : [],
-            runtime: receipt.runtime ?? null,
-            backend: receipt.backend ?? null,
-            failure: receipt.failure ?? null,
-            mutationPerformed: receipt.mutationPerformed === true,
-            automaticMutationAuthorized: receipt.automaticMutationAuthorized === true,
-            evidence: {
-              workflowRun: process.env.RUN_URL,
-              artifactUrl: process.env.ARTIFACT_URL || null,
-              artifactDigest: process.env.ARTIFACT_DIGEST || null,
-            },
-          };
-          const json = JSON.stringify(safeReceipt, null, 2).replace(/```/g, '`\\`\\`');
-          const body = `${marker}\n## Exact-current-main Cloudflare binding receipt\n\nThis is a sanitized read-only provider observation. It does not authorize route, domain, Access, DNS, Worker, Pages, deployment, secret, or traffic mutation.\n\n\`\`\`json\n${json}\n\`\`\`\n`;
+            const receiptPath = findFile('retained-evidence', 'cloudflare-app-binding-authority.json');
+            if (!receiptPath) throw new Error('CLOUDFLARE_APP_BINDING_RECEIPT_NOT_FOUND');
+            const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+            const exactMain = process.env.EXPECTED_HEAD_SHA;
+            const marker = `<!-- sekret-app-binding-authority:${exactMain} -->`;
+            const safeReceipt = {
+              exactMain,
+              status: receipt.status ?? null,
+              target: receipt.target ?? null,
+              providerIdentityVerified: receipt.providerIdentityVerified === true,
+              pagesDomain: receipt.pagesDomain ?? null,
+              exactWorkerDomains: Array.isArray(receipt.exactWorkerDomains) ? receipt.exactWorkerDomains : [],
+              exactWorkerRoutes: Array.isArray(receipt.exactWorkerRoutes) ? receipt.exactWorkerRoutes : [],
+              broadWorkerRoutes: Array.isArray(receipt.broadWorkerRoutes) ? receipt.broadWorkerRoutes : [],
+              runtime: receipt.runtime ?? null,
+              backend: receipt.backend ?? null,
+              failure: receipt.failure ?? null,
+              mutationPerformed: receipt.mutationPerformed === true,
+              automaticMutationAuthorized: receipt.automaticMutationAuthorized === true,
+              evidence: {
+                workflowRun: process.env.RUN_URL,
+                artifactUrl: process.env.ARTIFACT_URL || null,
+                artifactDigest: process.env.ARTIFACT_DIGEST || null,
+              },
+            };
+            const json = JSON.stringify(safeReceipt, null, 2).replace(/```/g, '`\\`\\`');
+            const body = `${marker}\n## Exact-current-main Cloudflare binding receipt\n\nThis is a sanitized read-only provider observation. It does not authorize route, domain, Access, DNS, Worker, Pages, deployment, secret, or traffic mutation.\n\n\`\`\`json\n${json}\n\`\`\`\n`;
 
-          const repo = process.env.REPOSITORY;
-          const issue = process.env.ISSUE_NUMBER;
-          const token = process.env.GH_TOKEN;
-          const headers = {
-            Accept: 'application/vnd.github+json',
-            Authorization: `Bearer ${token}`,
-            'X-GitHub-Api-Version': '2022-11-28',
-            'Content-Type': 'application/json',
-          };
+            const repo = process.env.REPOSITORY;
+            const issue = process.env.ISSUE_NUMBER;
+            const token = process.env.GH_TOKEN;
+            const headers = {
+              Accept: 'application/vnd.github+json',
+              Authorization: `Bearer ${token}`,
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+            };
 
-          const commentsResponse = await fetch(`https://api.github.com/repos/${repo}/issues/${issue}/comments?per_page=100`, { headers });
-          if (!commentsResponse.ok) throw new Error(`GITHUB_ISSUE_COMMENT_READ_FAILED:${commentsResponse.status}`);
-          const comments = await commentsResponse.json();
-          const existing = comments.find((comment) => String(comment?.body || '').includes(marker));
-          const url = existing
-            ? `https://api.github.com/repos/${repo}/issues/comments/${existing.id}`
-            : `https://api.github.com/repos/${repo}/issues/${issue}/comments`;
-          const method = existing ? 'PATCH' : 'POST';
-          const writeResponse = await fetch(url, { method, headers, body: JSON.stringify({ body }) });
-          if (!writeResponse.ok) throw new Error(`GITHUB_ISSUE_COMMENT_WRITE_FAILED:${writeResponse.status}`);
-          console.log(existing ? 'CLOUDFLARE_BINDING_RECEIPT_LEDGER_UPDATED' : 'CLOUDFLARE_BINDING_RECEIPT_LEDGER_CREATED');
+            const commentsResponse = await fetch(`https://api.github.com/repos/${repo}/issues/${issue}/comments?per_page=100`, { headers });
+            if (!commentsResponse.ok) throw new Error(`GITHUB_ISSUE_COMMENT_READ_FAILED:${commentsResponse.status}`);
+            const comments = await commentsResponse.json();
+            const existing = comments.find((comment) => String(comment?.body || '').includes(marker));
+            const url = existing
+              ? `https://api.github.com/repos/${repo}/issues/comments/${existing.id}`
+              : `https://api.github.com/repos/${repo}/issues/${issue}/comments`;
+            const method = existing ? 'PATCH' : 'POST';
+            const writeResponse = await fetch(url, { method, headers, body: JSON.stringify({ body }) });
+            if (!writeResponse.ok) throw new Error(`GITHUB_ISSUE_COMMENT_WRITE_FAILED:${writeResponse.status}`);
+            console.log(existing ? 'CLOUDFLARE_BINDING_RECEIPT_LEDGER_UPDATED' : 'CLOUDFLARE_BINDING_RECEIPT_LEDGER_CREATED');
+          })().catch((error) => {
+            console.error(error instanceof Error ? error.message : String(error));
+            process.exit(1);
+          });
           NODE

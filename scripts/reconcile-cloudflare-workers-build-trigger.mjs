@@ -106,6 +106,16 @@ async function verifyUserScopedToken(config, fetchImpl) {
   return payload.result;
 }
 
+function canFallbackFromVerifyFailure(error) {
+  return /Cloudflare GET \/user\/tokens\/verify failed:.*\bcode=6003\b/i.test(errorMessage(error));
+}
+
+async function proveWorkersBuildsReadCapability(config, fetchImpl) {
+  const worker = await discoverWorker(config, fetchImpl);
+  await listTriggers(config, worker.tag, fetchImpl);
+  return worker;
+}
+
 async function selectActiveUserScopedToken(config, fetchImpl) {
   const candidates = config.tokenCandidates?.length
     ? config.tokenCandidates
@@ -123,8 +133,18 @@ async function selectActiveUserScopedToken(config, fetchImpl) {
     try {
       await verifyUserScopedToken(candidateConfig, fetchImpl);
       return candidateConfig;
-    } catch (error) {
-      failures.push(`${candidate.source}: ${errorMessage(error)}`);
+    } catch (verifyError) {
+      if (!canFallbackFromVerifyFailure(verifyError)) {
+        failures.push(`${candidate.source}: ${errorMessage(verifyError)}`);
+        continue;
+      }
+
+      try {
+        await proveWorkersBuildsReadCapability(candidateConfig, fetchImpl);
+        return candidateConfig;
+      } catch (capabilityError) {
+        failures.push(`${candidate.source}: ${errorMessage(capabilityError)}`);
+      }
     }
   }
 
