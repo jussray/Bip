@@ -36,6 +36,7 @@ on:
       - 'test/front-door-motion-contract.test.mjs'
       - 'test/voice-presence-motion-contract.test.mjs'
       - 'test/calm-companion-motion-contract.test.mjs'
+      - 'test/continue-thought-retention.test.mjs'
       - 'test/worker-auth.test.mjs'
       - 'test/cloudflare-worker-consolidation.test.mjs'
       - 'playwright.config.ts'
@@ -88,7 +89,7 @@ jobs:
         run: npm run type-check
 
       - name: Verify Product Design contracts
-        run: node --test test/founder-visual-authority-contract.test.mjs test/product-design-workflow-contract.test.mjs test/room-intentions-hierarchy-contract.test.mjs test/pages-companion-asset-contract.test.mjs test/night-room-runtime-registry.test.mjs test/companion-runtime-contracts.test.mjs test/dual-front-door-contract.test.mjs test/front-door-motion-contract.test.mjs test/voice-presence-motion-contract.test.mjs test/calm-companion-motion-contract.test.mjs
+        run: node --test test/founder-visual-authority-contract.test.mjs test/product-design-workflow-contract.test.mjs test/room-intentions-hierarchy-contract.test.mjs test/pages-companion-asset-contract.test.mjs test/night-room-runtime-registry.test.mjs test/companion-runtime-contracts.test.mjs test/dual-front-door-contract.test.mjs test/front-door-motion-contract.test.mjs test/voice-presence-motion-contract.test.mjs test/calm-companion-motion-contract.test.mjs test/continue-thought-retention.test.mjs
 
       - run: npx playwright install --with-deps chromium
 
