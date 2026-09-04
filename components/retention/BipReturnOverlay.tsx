@@ -96,10 +96,13 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
     onNavigate(screen);
   }
 
-  function continueSaved() {
+  async function continueSaved() {
     if (!continuation) return;
+    const entryId = continuation.entryId;
+    await archiveSavedContinuation();
+    setContinuation(null);
     setOpen(false);
-    router.push(`/(teen)/pages/${continuation.entryId}` as any);
+    router.push(`/(teen)/pages/${entryId}` as any);
   }
 
   async function archiveSaved() {
@@ -146,7 +149,7 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
                 <View style={styles.continueActions}>
                   <TouchableOpacity
                     style={styles.continueButton}
-                    onPress={continueSaved}
+                    onPress={() => void continueSaved()}
                     accessibilityRole="button"
                     accessibilityLabel="Continue the saved page"
                   >
