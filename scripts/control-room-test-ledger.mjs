@@ -102,6 +102,16 @@ export function aggregateTestLedger(checks) {
   return {state, counts};
 }
 
+export function classifyObservation({checks, oldEnough, fingerprint, previousFingerprint}) {
+  const list = Array.isArray(checks) ? checks : [];
+  const repeated = Boolean(oldEnough) && fingerprint !== '' && fingerprint === previousFingerprint;
+  if (!repeated) return 'observing';
+
+  if (list.some((check) => check.state === 'failed')) return 'decisive-failure';
+  if (!list.some((check) => check.state === 'queued' || check.state === 'running')) return 'stable';
+  return 'observing';
+}
+
 export function buildTestLedger({
   repository,
   sha,
@@ -142,14 +152,14 @@ export function assertLedgerMergeReady(ledger, outputPath = 'artifacts/control-r
     throw new Error(`No exact-head checks were discovered. Evidence: ${outputPath}`);
   }
 
+  if (counts.failed > 0) {
+    throw new Error(`Exact-head check failures remain. Evidence: ${outputPath}`);
+  }
+
   if (ledger?.runner?.observerState !== 'stable') {
     throw new Error(
       `Exact-head checks did not reach a stable terminal state before the observation window expired. Evidence: ${outputPath}`,
     );
-  }
-
-  if (counts.failed > 0) {
-    throw new Error(`Exact-head check failures remain. Evidence: ${outputPath}`);
   }
 
   if (counts.queued > 0 || counts.running > 0) {
@@ -233,9 +243,6 @@ export async function githubJson(url, token, options = {}) {
       });
 
       if (response.ok) {
-        // Reading/parsing the body is part of the provider operation. A socket
-        // reset or truncated body here should receive the same bounded retry as
-        // a transport failure during fetch().
         return await response.json();
       }
 
@@ -301,10 +308,9 @@ export async function observeExactHeadChecks(env = process.env) {
   }
 
   const startedAt = Date.now();
-  let stableTerminalPolls = 0;
   let previousFingerprint = '';
   let checks = [];
-  let reachedStableTerminal = false;
+  let observerState = 'observing';
 
   while (Date.now() - startedAt < timeoutMs) {
     const runs = await fetchAllCheckRuns({repository, sha, token});
@@ -312,17 +318,11 @@ export async function observeExactHeadChecks(env = process.env) {
     writeLedger(outputPath, buildTestLedger({repository, sha, branch, runId, checks}));
 
     const fingerprint = JSON.stringify(checks.map((check) => [check.app, check.name, check.state]));
-    const terminal = !checks.some((check) => check.state === 'queued' || check.state === 'running');
     const oldEnough = Date.now() - startedAt >= minimumObservationMs;
-    stableTerminalPolls = terminal && oldEnough && fingerprint === previousFingerprint
-      ? stableTerminalPolls + 1
-      : 0;
+    observerState = classifyObservation({checks, oldEnough, fingerprint, previousFingerprint});
     previousFingerprint = fingerprint;
 
-    if (stableTerminalPolls >= 1) {
-      reachedStableTerminal = true;
-      break;
-    }
+    if (observerState !== 'observing') break;
     await sleep(pollMs);
   }
 
@@ -332,7 +332,7 @@ export async function observeExactHeadChecks(env = process.env) {
     branch,
     runId,
     checks,
-    observerState: reachedStableTerminal ? 'stable' : 'window-expired',
+    observerState: observerState === 'observing' ? 'window-expired' : observerState,
   });
   writeLedger(outputPath, ledger);
   assertLedgerMergeReady(ledger, outputPath);
