@@ -64,5 +64,6 @@ export async function archiveSavedContinuation(): Promise<void> {
     await AsyncStorage.removeItem(SAVED_CONTINUATION_STORAGE_KEY);
   } catch {
     // Bookmark cleanup is optional and must never block Room or Pages.
+    return undefined;
   }
 }
