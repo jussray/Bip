@@ -28,7 +28,8 @@ test('Pages exposes an explicit save-for-later control and Room resumes the exac
   assert.match(detail, /saveContinuation\(\{/);
   assert.match(overlay, /continue your thought/);
   assert.match(overlay, /Continue where you left off/);
-  assert.match(overlay, /\`\/\(teen\)\/pages\/\$\{continuation\.entryId\}\`/);
+  assert.match(overlay, /const entryId = continuation\.entryId/);
+  assert.match(overlay, /archiveSavedContinuation\(\)[\s\S]*router\.push\(`\/\(teen\)\/pages\/\$\{entryId\}`/);
   assert.match(overlay, /Archive saved page/);
 });
 
