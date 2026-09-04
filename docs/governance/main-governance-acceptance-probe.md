@@ -24,6 +24,10 @@ The live provider rule for this phase should therefore require:
 
 Founder approval is explicit intent. It does not waive machine/security evidence, exact-head freshness, provider/runtime proof, privacy boundaries, rollback requirements, or project-specific production gates.
 
+## PR continuity
+
+This governance phase also requires `juss/pr-continuity@v1` from `docs/PR_CONTINUITY.md`. When `main` advances, existing same-repository PR branches are rolled forward only through a conflict-free, history-preserving provider update. Any resulting head is a new proof subject. Predecessor CI, review, runtime, provider, artifact, and Playwright evidence expires and must not be inherited. Forks, conflicts, races, malformed continuity metadata, and provider uncertainty fail closed. A continuity receipt never grants merge or deploy authority.
+
 ## Future phase: independent review
 
 When a real second trusted reviewer/code owner is available, upgrade governance to:
