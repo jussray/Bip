@@ -102,8 +102,9 @@ test('workflow pins repository and Supabase action identities', () => {
 
 test('founder command bridge preserves app-domain command and adds one bounded Supabase history dispatcher', () => {
   assert.match(founderCommand, /actions: write/);
-  assert.match(founderCommand, /github\.event\.issue\.number == 925/);
-  assert.match(founderCommand, /github\.event\.comment\.user\.login == 'jussray'/);
+  assert.match(founderCommand, /ISSUE_NUMBER: \$\{\{ github\.event\.issue\.number \}\}/);
+  assert.match(founderCommand, /COMMENT_AUTHOR: \$\{\{ github\.event\.comment\.user\.login \}\}/);
+  assert.match(founderCommand, /if issue == '925' and author == 'jussray':/);
   assert.match(founderCommand, /\/reconcile-app-domain/);
   assert.match(founderCommand, /reconcile-cloudflare-app-domain\.yml\/dispatches/);
   assert.match(founderCommand, /\/reconcile-supabase-history/);
