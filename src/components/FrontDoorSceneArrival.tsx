@@ -87,20 +87,14 @@ export function FrontDoorSceneArrival({ children }: PropsWithChildren) {
     ? styles.primerReduced
     : {
         opacity: progress.interpolate({
-          inputRange: [0, 0.12, 0.72, 1],
+          inputRange: [0, 0.08, 0.72, 1],
           outputRange: [0, 1, 1, 0],
         }),
         transform: [
           {
             translateY: progress.interpolate({
               inputRange: [0, 0.18, 1],
-              outputRange: [10, 0, -6],
-            }),
-          },
-          {
-            scale: progress.interpolate({
-              inputRange: [0, 0.22, 1],
-              outputRange: [0.97, 1, 1],
+              outputRange: [8, 0, -5],
             }),
           },
         ],
@@ -110,27 +104,51 @@ export function FrontDoorSceneArrival({ children }: PropsWithChildren) {
     ? styles.primerStepReduced
     : {
         opacity: progress.interpolate({
-          inputRange: [0, 0.08, 0.28, 0.9, 1],
+          inputRange: [0, 0.06, 0.24, 0.88, 1],
           outputRange: [0, 1, 1, 1, 0],
         }),
+        transform: [
+          {
+            scale: progress.interpolate({
+              inputRange: [0, 0.12, 1],
+              outputRange: [0.9, 1, 1],
+            }),
+          },
+        ],
       };
 
   const spaceStyle = reduceMotion
     ? styles.primerStepReduced
     : {
         opacity: progress.interpolate({
-          inputRange: [0, 0.2, 0.38, 0.9, 1],
+          inputRange: [0, 0.18, 0.36, 0.88, 1],
           outputRange: [0, 0, 1, 1, 0],
         }),
+        transform: [
+          {
+            scale: progress.interpolate({
+              inputRange: [0, 0.24, 0.4, 1],
+              outputRange: [0.9, 0.9, 1, 1],
+            }),
+          },
+        ],
       };
 
   const enterStyle = reduceMotion
     ? styles.primerStepReduced
     : {
         opacity: progress.interpolate({
-          inputRange: [0, 0.36, 0.56, 0.9, 1],
+          inputRange: [0, 0.34, 0.52, 0.88, 1],
           outputRange: [0, 0, 1, 1, 0],
         }),
+        transform: [
+          {
+            scale: progress.interpolate({
+              inputRange: [0, 0.4, 0.56, 1],
+              outputRange: [0.9, 0.9, 1, 1],
+            }),
+          },
+        ],
       };
 
   return (
@@ -149,7 +167,23 @@ export function FrontDoorSceneArrival({ children }: PropsWithChildren) {
           accessibilityLabel="You. Your space. Enter."
           style={[styles.primer, primerStyle]}
         >
-          <Animated.Text style={[styles.primerStep, youStyle]}>YOU</Animated.Text>
+          <Animated.View style={[styles.primerCard, youStyle]}>
+            <Animated.Text
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={styles.primerGlyph}
+            >
+              ◉
+            </Animated.Text>
+            <Animated.Text
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={styles.primerLabel}
+            >
+              YOU
+            </Animated.Text>
+          </Animated.View>
+
           <Animated.Text
             accessible={false}
             importantForAccessibility="no-hide-descendants"
@@ -157,7 +191,24 @@ export function FrontDoorSceneArrival({ children }: PropsWithChildren) {
           >
             →
           </Animated.Text>
-          <Animated.Text style={[styles.primerStep, spaceStyle]}>YOUR SPACE</Animated.Text>
+
+          <Animated.View style={[styles.primerCard, spaceStyle]}>
+            <Animated.Text
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={styles.primerGlyph}
+            >
+              ☾
+            </Animated.Text>
+            <Animated.Text
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={styles.primerLabel}
+            >
+              YOUR SPACE
+            </Animated.Text>
+          </Animated.View>
+
           <Animated.Text
             accessible={false}
             importantForAccessibility="no-hide-descendants"
@@ -165,7 +216,23 @@ export function FrontDoorSceneArrival({ children }: PropsWithChildren) {
           >
             →
           </Animated.Text>
-          <Animated.Text style={[styles.primerStepStrong, enterStyle]}>ENTER</Animated.Text>
+
+          <Animated.View style={[styles.primerCard, styles.primerCardStrong, enterStyle]}>
+            <Animated.Text
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={styles.primerGlyphStrong}
+            >
+              ✦
+            </Animated.Text>
+            <Animated.Text
+              accessible={false}
+              importantForAccessibility="no-hide-descendants"
+              style={styles.primerLabelStrong}
+            >
+              ENTER
+            </Animated.Text>
+          </Animated.View>
         </Animated.View>
       ) : null}
 
@@ -197,38 +264,61 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 20,
     top: SPACE[3],
-    left: SPACE[3],
-    right: SPACE[3],
-    minHeight: 38,
-    paddingHorizontal: SPACE[3],
-    borderRadius: RADIUS.pill,
+    left: SPACE[4],
+    right: SPACE[4],
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACE[1.5],
+  },
+  primerReduced: {
+    opacity: 0,
+    transform: [{ translateY: 0 }],
+  },
+  primerCard: {
+    minWidth: 72,
+    minHeight: 42,
+    paddingHorizontal: SPACE[2.5],
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: color.borderStrong,
+    borderColor: color.border,
     backgroundColor: color.surfaceRaised,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACE[2],
+    gap: SPACE[1],
+  },
+  primerCardStrong: {
+    borderColor: color.borderStrong,
+    backgroundColor: color.shellRaised,
     boxShadow: FRONT_DOOR_THEME.shadow.action as never,
   },
-  primerReduced: {
-    opacity: 0,
-    transform: [{ translateY: 0 }, { scale: 1 }],
+  primerGlyph: {
+    color: color.pinkLight,
+    fontSize: TYPE.sm,
+    fontWeight: '900',
   },
-  primerStep: {
+  primerGlyphStrong: {
+    color: color.lilacLight,
+    fontSize: TYPE.sm,
+    fontWeight: '900',
+  },
+  primerLabel: {
     color: color.textMid,
     fontSize: TYPE.xs,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.55,
   },
-  primerStepStrong: {
+  primerLabelStrong: {
     color: color.textHigh,
     fontSize: TYPE.xs,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.55,
   },
   primerStepReduced: {
     opacity: 1,
+    transform: [{ scale: 1 }],
   },
   primerArrow: {
     color: color.pinkLight,
