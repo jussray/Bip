@@ -4,16 +4,22 @@ Local Figma plugin that creates the six canonical 390×844 Bip vibe frames witho
 
 ## Canonical Figma target
 
-Open this file in the Figma desktop app before running the plugin:
+Open the Se’kret Bip Figma file in the desktop app before running the plugin:
 
-`https://www.figma.com/design/ETppMmGn15qigJnHPHghTs/Se-kret-Bip?node-id=18-2&m=dev`
+`https://www.figma.com/design/ETppMmGn15qigJnHPHghTs/Se-kret-Bip?node-id=57-2&m=dev`
 
 - File key: `ETppMmGn15qigJnHPHghTs`
-- Starting node: `18:2`
+- Current entry authority frame: `57:2` — `Se’kret Bip — Generator Ready Entry Flow`
+- Teen Public Welcome: `57:4`
+- Bip Jr + Family Public Welcome: `57:44`
+- Shared Sign In: `57:84`
+- The prior `18:2` pointer is stale and must not be used as current entry authority.
 - The plugin does not use the REST API or store a personal access token.
 - It runs only inside the Figma file currently open.
 
-## What it builds
+## What the vibe builder builds
+
+The existing plugin creates its historical six-frame Vibe workspace:
 
 - Raylene's Room
 - Rylane After Dark
@@ -22,7 +28,9 @@ Open this file in the Figma desktop app before running the plugin:
 - Window Rain
 - Sunset Exhale
 
-Each frame includes:
+Those generated labels describe the legacy plugin workspace. They are not current user-facing companion naming authority. Current product identity and runtime naming remain governed by the repository canon and approved visual references.
+
+Each generated frame includes:
 
 - atmosphere placeholder and scrim;
 - nav bar;
@@ -65,5 +73,7 @@ Then rerun the plugin and validate the app implementation separately. Existing g
 ## Notes
 
 The 320px atmosphere area is a styled placeholder. Replace it with the approved room or atmosphere image after frames are generated. The overlay and UI surfaces remain token-driven.
+
+For public-entry work, use the current `57:2` entry frame and its child frames above rather than the historical Vibe workspace.
 
 Figma output is design evidence, not proof that a screen is integrated, verified, or released. Product status remains governed by `implementation-ledger.json` and repository tests.
