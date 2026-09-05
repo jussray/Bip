@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { router } from 'expo-router';
 import {
   applyBipEnergyFade,
   loadUnseenBipEnergyAdjustment,
@@ -19,6 +20,11 @@ import {
   type MeaningfulReturnSnapshot,
   type ReturnStage,
 } from '@/features/retention/meaningfulReturn';
+import {
+  archiveSavedContinuation,
+  loadSavedContinuation,
+  type SavedContinuation,
+} from '@/features/retention/savedContinuation';
 
 interface BipReturnOverlayProps {
   onNavigate: (screen: string) => void;
@@ -48,6 +54,7 @@ const NEEDS = [
 export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
   const [snapshot, setSnapshot] = useState<MeaningfulReturnSnapshot | null>(null);
   const [energyAdjustment, setEnergyAdjustment] = useState<BipEnergyAdjustment | null>(null);
+  const [continuation, setContinuation] = useState<SavedContinuation | null>(null);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -57,13 +64,15 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
       // same Room visit can show the result instead of making the teen return
       // again just to learn that Bip Energy faded.
       await applyBipEnergyFade();
-      const [nextSnapshot, nextAdjustment] = await Promise.all([
+      const [nextSnapshot, nextAdjustment, nextContinuation] = await Promise.all([
         loadMeaningfulReturnSnapshot(),
         loadUnseenBipEnergyAdjustment(),
+        loadSavedContinuation(),
       ]);
       if (!active) return;
       setSnapshot(nextSnapshot);
       setEnergyAdjustment(nextAdjustment);
+      setContinuation(nextContinuation);
       setOpen(nextSnapshot.isNew || Boolean(nextAdjustment));
     })();
     return () => { active = false; };
@@ -87,6 +96,20 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
     onNavigate(screen);
   }
 
+  async function continueSaved() {
+    if (!continuation) return;
+    const entryId = continuation.entryId;
+    await archiveSavedContinuation();
+    setContinuation(null);
+    setOpen(false);
+    router.push(`/(teen)/pages/${entryId}` as any);
+  }
+
+  async function archiveSaved() {
+    await archiveSavedContinuation();
+    setContinuation(null);
+  }
+
   return (
     <>
       <TouchableOpacity
@@ -96,9 +119,17 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
         accessibilityLabel="Open your Bip return receipt and choose what you need"
         activeOpacity={0.86}
       >
-        <Text style={styles.floatingIcon}>{energyAdjustment ? '✨' : snapshot?.latest?.icon ?? '💜'}</Text>
+        <Text style={styles.floatingIcon}>
+          {continuation ? '↩' : energyAdjustment ? '✨' : snapshot?.latest?.icon ?? '💜'}
+        </Text>
         <Text style={styles.floatingText}>
-          {energyAdjustment ? 'welcome back' : snapshot?.latest ? 'your Bip story' : 'what do you need?'}
+          {continuation
+            ? 'continue your thought'
+            : energyAdjustment
+              ? 'welcome back'
+              : snapshot?.latest
+                ? 'your Bip story'
+                : 'what do you need?'}
         </Text>
       </TouchableOpacity>
 
@@ -107,6 +138,34 @@ export function BipReturnOverlay({ onNavigate }: BipReturnOverlayProps) {
           <Pressable style={styles.sheet} onPress={event => event.stopPropagation()}>
             <View style={styles.handle} />
             <Text style={styles.kicker}>YOUR BIP STORY</Text>
+
+            {continuation ? (
+              <View style={styles.continueCard}>
+                <Text style={styles.continueKicker}>SAVED FOR LATER</Text>
+                <Text style={styles.continueTitle}>Continue where you left off.</Text>
+                <Text style={styles.continueBody}>
+                  Room remembers which page you chose, not a preview of what you wrote.
+                </Text>
+                <View style={styles.continueActions}>
+                  <TouchableOpacity
+                    style={styles.continueButton}
+                    onPress={() => void continueSaved()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Continue the saved page"
+                  >
+                    <Text style={styles.continueButtonText}>continue</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.archiveButton}
+                    onPress={() => void archiveSaved()}
+                    accessibilityRole="button"
+                    accessibilityLabel="Archive saved page"
+                  >
+                    <Text style={styles.archiveButtonText}>archive</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
 
             {energyAdjustment ? (
               <View style={styles.energyCard}>
@@ -228,6 +287,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1.8,
     marginBottom: 10,
   },
+  continueCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.42)',
+    backgroundColor: 'rgba(76,29,149,0.22)',
+    padding: 15,
+    marginBottom: 12,
+  },
+  continueKicker: { color: '#a78bfa', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
+  continueTitle: { color: '#fff', fontSize: 16, fontWeight: '900', lineHeight: 22, marginTop: 5 },
+  continueBody: { color: '#cfc6df', fontSize: 11, lineHeight: 17, marginTop: 4 },
+  continueActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  continueButton: { flex: 1, alignItems: 'center', borderRadius: 999, backgroundColor: '#7c3aed', paddingVertical: 10 },
+  continueButtonText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+  archiveButton: { alignItems: 'center', borderRadius: 999, borderWidth: 1, borderColor: 'rgba(196,181,253,0.26)', paddingHorizontal: 16, paddingVertical: 10 },
+  archiveButtonText: { color: '#b8aec8', fontSize: 11, fontWeight: '800' },
   energyCard: {
     flexDirection: 'row',
     gap: 12,
