@@ -34,6 +34,15 @@ test('Bip Jr remains a separate welcome world while preserving role compatibilit
   assert.match(index, /variant=\{publicWelcomeSide\}/);
 });
 
+test('public entry never collapses Teen and Bip Jr into one generic chooser', () => {
+  assert.match(welcome, /testID="web-welcome-audience-switch"/);
+  assert.match(welcome, /Looking for Bip Jr\. \+ Family\? →/);
+  assert.match(welcome, /Looking for Teen space\? →/);
+  assert.match(welcome, /setActiveAudience\(copy\.nextAudience\)/);
+  assert.doesNotMatch(welcome, /I.?m Teen/);
+  assert.doesNotMatch(welcome, /I.?m a Parent \/ Guardian/);
+});
+
 test('world cues deepen each welcome experience without adding role or safety claims', () => {
   assert.match(welcome, /testID="web-welcome-world-cues"/);
   assert.match(welcome, /start quiet/);
@@ -110,7 +119,8 @@ test('account-return action appears only after a clean no-session restoration re
 });
 
 test('primary entry language matches the approved front-door promise without absolute safety claims', () => {
-  assert.match(welcome, />Enter Se’kret Bip</);
+  assert.match(welcome, /Enter Se’kret Bip/);
+  assert.match(welcome, /Enter with a grown-up/);
   assert.doesNotMatch(welcome, />Night|>Suhana|>Sy/);
   assert.doesNotMatch(welcome, /safe little world|you’re safe here|enter your safe space/i);
 });
