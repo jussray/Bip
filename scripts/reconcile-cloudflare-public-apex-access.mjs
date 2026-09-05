@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -7,6 +8,8 @@ const PROVIDER_REQUEST_TIMEOUT_MS = 10_000;
 const RUNTIME_REQUEST_TIMEOUT_MS = 10_000;
 const APPLICATIONS_PAGE_SIZE = 100;
 const MAX_APPLICATION_PAGES = 100;
+const CREATE_RECOVERY_POLL_ATTEMPTS = 6;
+const CREATE_RECOVERY_POLL_DELAY_MS = 2_000;
 const PROVEN_NO_MUTATION_STATUSES = new Set([
   'blocked-duplicate-managed-apps',
   'blocked-managed-app-destination-drift',
@@ -17,6 +20,7 @@ const PROVEN_NO_MUTATION_STATUSES = new Set([
   'already-reconciled',
   'rollback-not-required',
 ]);
+const PROVEN_MUTATION_ATTRIBUTIONS = new Set(['provider-returned-id', 'correlation-readback']);
 export const DEFAULT_TARGET_HOSTNAME = 'sekretbip.net';
 export const DEFAULT_TARGET_URL = 'https://sekretbip.net/';
 export const DEFAULT_APPLICATION_NAME = 'sekretbip.net - public apex bypass';
@@ -126,6 +130,14 @@ export function isEveryoneBypassPolicy(policy) {
   );
 }
 
+function correlatedPolicyName(correlation) {
+  return `Bypass public Se’kret apex [run:${correlation}]`;
+}
+
+function isCorrelatedEveryoneBypassPolicy(policy, correlation) {
+  return clean(policy?.name) === correlatedPolicyName(correlation) && isEveryoneBypassPolicy(policy);
+}
+
 export function selectBlockingApplication(apps, blockingAud) {
   const aud = clean(blockingAud);
   if (!aud) return null;
@@ -162,7 +174,7 @@ async function listPolicies(config, appId) {
   return Array.isArray(payload?.result) ? payload.result : [];
 }
 
-async function createPublicBypassApplication(config) {
+async function createPublicBypassApplication(config, correlation) {
   const payload = await cfRequest(config, `/accounts/${config.accountId}/access/apps`, {
     method: 'POST',
     body: {
@@ -173,7 +185,7 @@ async function createPublicBypassApplication(config) {
       destinations: [{ type: 'public', uri: `${config.targetHostname}/*` }],
       policies: [
         {
-          name: 'Bypass public Se’kret apex',
+          name: correlatedPolicyName(correlation),
           decision: 'bypass',
           include: [{ everyone: {} }],
           precedence: 1,
@@ -183,6 +195,48 @@ async function createPublicBypassApplication(config) {
   });
   if (!payload?.result?.id) throw new Error('CREATED_ACCESS_APP_ID_MISSING');
   return payload.result;
+}
+
+async function findCorrelatedManagedCandidates(config, preCreateAppIds, correlation) {
+  const previousIds = new Set(Array.isArray(preCreateAppIds) ? preCreateAppIds.map(clean).filter(Boolean) : []);
+  const apps = await listApplications(config);
+  const candidates = apps.filter((app) => {
+    const appId = clean(app?.id);
+    return appId
+      && !previousIds.has(appId)
+      && clean(app?.name) === config.applicationName
+      && appHasOnlyManagedPublicDestination(app, config.targetHostname);
+  });
+  const matches = [];
+  for (const candidate of candidates) {
+    const policies = await listPolicies(config, candidate.id);
+    if (policies.some((policy) => isCorrelatedEveryoneBypassPolicy(policy, correlation))) {
+      matches.push(candidate);
+    }
+  }
+  return matches;
+}
+
+async function pollCorrelatedManagedCandidate(
+  config,
+  preCreateAppIds,
+  correlation,
+  attempts = CREATE_RECOVERY_POLL_ATTEMPTS,
+  delayMs = CREATE_RECOVERY_POLL_DELAY_MS,
+) {
+  let observedManagedCandidateCount = 0;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const matches = await findCorrelatedManagedCandidates(config, preCreateAppIds, correlation);
+    observedManagedCandidateCount = matches.length;
+    if (matches.length === 1) {
+      return { candidate: matches[0], observedManagedCandidateCount };
+    }
+    if (matches.length > 1) {
+      throw new Error('CORRELATED_MANAGED_ACCESS_APP_NOT_UNIQUE');
+    }
+    if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return { candidate: null, observedManagedCandidateCount };
 }
 
 async function deleteApplication(config, appId) {
@@ -364,45 +418,64 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
 
   if (!apply) return { status: 'planned-create-public-bypass', runtimeBefore };
 
+  const createCorrelation = randomUUID();
+  const preCreateAppIds = apps.map((app) => clean(app?.id)).filter(Boolean);
+  await writeEvidence(config, {
+    ...evidenceBase,
+    status: 'create-pending',
+    mutationState: 'pending',
+    mutationAttribution: 'correlation-pending',
+    createCorrelation,
+    preCreateAppIds,
+    runtimeBefore,
+    blockingApplication: summarizeApp(blockingApp),
+  });
+
   let createdApp = null;
+  let mutationAttribution = null;
+  let ambiguousCreateFailure = null;
   try {
-    createdApp = await createPublicBypassApplication(config);
+    createdApp = await createPublicBypassApplication(config, createCorrelation);
+    mutationAttribution = 'provider-returned-id';
   } catch (createError) {
-    let observedCandidates = null;
+    ambiguousCreateFailure = failureSummary(createError);
+    let observedManagedCandidateCount = 0;
     let recoveryFailure = null;
     try {
-      const observedApps = await listApplications(config);
-      observedCandidates = observedApps.filter((app) =>
-        clean(app?.name) === config.applicationName
-        && appHasOnlyManagedPublicDestination(app, config.targetHostname),
-      ).length;
+      const recovery = await pollCorrelatedManagedCandidate(config, preCreateAppIds, createCorrelation);
+      createdApp = recovery.candidate;
+      observedManagedCandidateCount = recovery.observedManagedCandidateCount;
+      if (createdApp) mutationAttribution = 'correlation-readback';
     } catch (error) {
       recoveryFailure = failureSummary(error);
     }
 
-    await writeEvidence(config, {
-      ...evidenceBase,
-      status: 'mutation-state-unknown',
-      mutationState: 'unknown',
-      mutationAttribution: 'unproven',
-      runtimeBefore,
-      blockingApplication: summarizeApp(blockingApp),
-      observedManagedCandidateCount: observedCandidates,
-      failure: failureSummary(createError),
-      ...(recoveryFailure ? { recoveryFailure } : {}),
-    });
-    throw createError;
+    if (!createdApp) {
+      await writeEvidence(config, {
+        ...evidenceBase,
+        status: 'mutation-state-unknown',
+        mutationState: 'unknown',
+        mutationAttribution: 'unproven',
+        createCorrelation,
+        preCreateAppIds,
+        runtimeBefore,
+        blockingApplication: summarizeApp(blockingApp),
+        observedManagedCandidateCount,
+        failure: ambiguousCreateFailure,
+        ...(recoveryFailure ? { recoveryFailure } : {}),
+      });
+      throw createError;
+    }
   }
 
-  // The provider returned an exact app identity, so record rollback authority
-  // immediately before any additional provider/runtime call can fail or the
-  // job can be cancelled. Ambiguous POST outcomes above never receive this
-  // authority and therefore can never be auto-deleted by rollback.
   await writeEvidence(config, {
     ...evidenceBase,
     status: 'created-awaiting-proof',
     mutationPerformed: true,
-    mutationAttribution: 'provider-returned-id',
+    mutationAttribution,
+    createCorrelation,
+    preCreateAppIds,
+    ...(ambiguousCreateFailure ? { ambiguousCreateFailure } : {}),
     runtimeBefore,
     blockingApplication: summarizeApp(blockingApp),
     managedApplication: summarizeApp(createdApp, { includeId: true }),
@@ -422,7 +495,10 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'reconciled',
       mutationPerformed: true,
-      mutationAttribution: 'provider-returned-id',
+      mutationAttribution,
+      createCorrelation,
+      preCreateAppIds,
+      ...(ambiguousCreateFailure ? { ambiguousCreateFailure } : {}),
       runtimeBefore,
       runtimeAfter,
       blockingApplication: summarizeApp(blockingApp),
@@ -443,7 +519,10 @@ export async function reconcilePublicApexAccess({ env = process.env, apply = fal
       ...evidenceBase,
       status: 'apply-failed',
       mutationPerformed: Boolean(createdApp?.id),
-      mutationAttribution: createdApp?.id ? 'provider-returned-id' : 'unproven',
+      mutationAttribution: createdApp?.id ? mutationAttribution : 'unproven',
+      createCorrelation,
+      preCreateAppIds,
+      ...(ambiguousCreateFailure ? { ambiguousCreateFailure } : {}),
       rollbackPerformed,
       runtimeBefore,
       blockingApplication: summarizeApp(blockingApp),
@@ -464,14 +543,36 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
   }
 
+  const createCorrelation = clean(evidence?.createCorrelation);
+  const preCreateAppIds = Array.isArray(evidence?.preCreateAppIds) ? evidence.preCreateAppIds : [];
+  const correlationRecoveryEligible = Boolean(createCorrelation)
+    && ['create-pending', 'mutation-state-unknown'].includes(evidence?.status);
+  if (correlationRecoveryEligible) {
+    const recovery = await pollCorrelatedManagedCandidate(config, preCreateAppIds, createCorrelation);
+    if (recovery.candidate) {
+      await deleteApplication(config, recovery.candidate.id);
+      await writeEvidence(config, {
+        ...evidence,
+        status: 'rolled-back-after-proof-failure',
+        mutationPerformed: true,
+        mutationState: 'known',
+        mutationAttribution: 'correlation-readback',
+        rollbackPerformed: true,
+        managedApplication: summarizeApp(recovery.candidate, { includeId: true }),
+      });
+      return { status: 'rolled-back-after-proof-failure' };
+    }
+    return { status: 'rollback-blocked-mutation-state-unproven' };
+  }
+
   const mutationStateUnproven = evidence?.status === 'mutation-state-unknown'
+    || evidence?.status === 'create-pending'
     || evidence?.mutationState === 'unknown'
+    || evidence?.mutationState === 'pending'
     || evidence?.mutationAttribution === 'unproven'
-    || (evidence?.mutationPerformed === true && evidence?.mutationAttribution !== 'provider-returned-id');
+    || evidence?.mutationAttribution === 'correlation-pending'
+    || (evidence?.mutationPerformed === true && !PROVEN_MUTATION_ATTRIBUTIONS.has(evidence?.mutationAttribution));
   if (mutationStateUnproven) {
-    // An ambiguous create may have reached Cloudflare even though this run has
-    // no safe deletion authority. Keep the receipt intact rather than turning
-    // missing attribution into a misleading "rollback not required" result.
     return { status: 'rollback-blocked-mutation-state-unproven' };
   }
 
@@ -488,7 +589,7 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     if (
       evidence?.mutationPerformed !== false
       || !PROVEN_NO_MUTATION_STATUSES.has(evidence?.status)
-      || evidence?.mutationAttribution === 'provider-returned-id'
+      || PROVEN_MUTATION_ATTRIBUTIONS.has(evidence?.mutationAttribution)
       || clean(evidence?.managedApplication?.id)
     ) {
       return { status: 'rollback-blocked-mutation-state-unproven' };
@@ -501,7 +602,9 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     return { status: 'rollback-not-required' };
   }
 
-  if (evidence?.mutationAttribution !== 'provider-returned-id') {
+  const mutationAttributionIsUnproven = evidence?.mutationAttribution !== 'provider-returned-id'
+    && evidence?.mutationAttribution !== 'correlation-readback';
+  if (mutationAttributionIsUnproven) {
     throw new Error('ROLLBACK_MUTATION_ATTRIBUTION_UNPROVEN');
   }
 
@@ -518,6 +621,11 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
   }
   const policies = await listPolicies(config, appId);
   if (!policies.some(isEveryoneBypassPolicy)) throw new Error('ROLLBACK_MANAGED_APP_POLICY_MISMATCH');
+  if (evidence?.mutationAttribution === 'correlation-readback') {
+    if (!createCorrelation || !policies.some((policy) => isCorrelatedEveryoneBypassPolicy(policy, createCorrelation))) {
+      throw new Error('ROLLBACK_MANAGED_APP_CORRELATION_MISMATCH');
+    }
+  }
 
   await deleteApplication(config, appId);
   await writeEvidence(config, {
