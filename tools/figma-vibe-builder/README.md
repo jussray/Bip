@@ -1,79 +1,76 @@
 # Bip Vibe Frame Builder
 
-Local Figma plugin that creates the six canonical 390×844 Bip vibe frames without a personal access token.
+## Current front-door authority
 
-## Canonical Figma target
+The public Se’kret Bip front door uses the current GitHub implementation as behavior authority and the approved world/character references as visual canon.
 
-Open the Se’kret Bip Figma file in the desktop app before running the plugin:
+Current Figma entry handoff:
 
-`https://www.figma.com/design/ETppMmGn15qigJnHPHghTs/Se-kret-Bip?node-id=57-2&m=dev`
+- entry: `57:2`
+- Teen: `57:4`
+- Bip Jr: `57:44`
+- shared Sign In: `57:84`
 
-- File key: `ETppMmGn15qigJnHPHghTs`
-- Current entry authority frame: `57:2` — `Se’kret Bip — Generator Ready Entry Flow`
-- Teen Public Welcome: `57:4`
-- Bip Jr + Family Public Welcome: `57:44`
-- Shared Sign In: `57:84`
-- The prior `18:2` pointer is stale and must not be used as current entry authority.
-- The plugin does not use the REST API or store a personal access token.
-- It runs only inside the Figma file currently open.
+Historical frame `18:2` is not the current entry authority.
 
-## What the vibe builder builds
+## Family-first rule
 
-The existing plugin creates its historical six-frame Vibe workspace:
+The welcome screen introduces the **world before the names**.
 
-- Raylene's Room
-- Rylane After Dark
-- Cloud Drift
-- Night Comfort
-- Window Rain
-- Sunset Exhale
+- The family artwork is the emotional center.
+- Cloud stays visually unobstructed.
+- Do not add a visible `Night · Suhana · Sy` name pill to the first screen.
+- Canonical names stay available to accessibility text and belong on later character/profile/Family/Voice surfaces.
+- Do not turn reference sticker sheets into the production UI. Extract their expression, pose, handwritten warmth, night-world motifs, and emotional readability while preserving the canonical Bip Companion Style.
 
-Those generated labels describe the legacy plugin workspace. They are not current user-facing companion naming authority. Current product identity and runtime naming remain governed by the repository canon and approved visual references.
+## Caveman visual grammar
 
-Each generated frame includes:
+The first interaction should be understandable before a visitor reads explanatory copy:
 
-- atmosphere placeholder and scrim;
-- nav bar;
-- hero card;
-- input field;
-- primary and secondary buttons;
-- privacy and verification badges;
-- journal card;
-- Circle post card;
-- parent-boundary preview.
+`◉ YOU → ☾ YOUR SPACE → ✦ ENTER`
 
-The values mirror `constants/vibeDesignTokens.ts` and `constants/vibeColors.ts` in the canonical `jussray/Sekret-Bip` repository.
+Implementation rules:
 
-## Install locally in Figma
+1. The primer is temporary, visual-first, and pointer-safe.
+2. The three beats reveal in order and disappear before normal interaction becomes the focus.
+3. The entire arrival beat stays under one second when motion is allowed.
+4. Reduced-motion visitors do not receive a forced animation.
+5. The primer may not create horizontal overflow at the 320px phone boundary.
+6. Motion teaches hierarchy. It does not decorate every object.
 
-1. Clone or download `jussray/Sekret-Bip`.
-2. Open the canonical Bip Figma file above in the Figma desktop app.
-3. Open **Plugins → Development → Import plugin from manifest…**
-4. Select `tools/figma-vibe-builder/manifest.json`.
-5. Run **Plugins → Development → Bip Vibe Frame Builder**.
+## Audience worlds
 
-The plugin creates or reuses a page called `Bip Vibe Frames`, removes only prior frames whose names begin with `Vibe —`, and rebuilds all six frames.
+Teen and Bip Jr remain separate public-entry worlds.
 
-## Security
+### Teen
 
-- No Figma personal access token is used.
-- No network requests are allowed by the manifest.
-- The plugin runs only inside the open Figma file.
-- Generated design frames do not replace runtime privacy, authorization, or rollout controls.
+- preserve the approved family composition and dark cosmic atmosphere;
+- preserve Night-left / Suhana-center / Sy-right identity internally and accessibly;
+- do not expose character-name labels on the welcome art;
+- CTA continues into the existing Teen age/onboarding authority.
 
-## Regeneration rule
+### Bip Jr + Family
 
-When vibe values change, update both:
+- preserve the family/grown-up framing;
+- keep the entry explicitly parent-controlled;
+- CTA continues into the existing family setup authority;
+- do not inherit Teen social complexity merely for visual symmetry.
 
-- `constants/vibeDesignTokens.ts`
-- `tools/figma-vibe-builder/code.js`
+## Visual style boundary
 
-Then rerun the plugin and validate the app implementation separately. Existing generated frames are replaced in place on the `Bip Vibe Frames` page.
+Bip Companion Style remains an original stylized cinematic 3D family-animation language: soft appealing shapes, expressive readable emotion, simplified believable anatomy, clean materials, gentle cinematic lighting, and emotionally safe warmth.
 
-## Notes
+The 2D pose/expression references are grammar donors, not replacement rendering authority.
 
-The 320px atmosphere area is a styled placeholder. Replace it with the approved room or atmosphere image after frames are generated. The overlay and UI surfaces remain token-driven.
+## Verification
 
-For public-entry work, use the current `57:2` entry frame and its child frames above rather than the historical Vibe workspace.
+Any front-door change must prove, on the exact candidate:
 
-Figma output is design evidence, not proof that a screen is integrated, verified, or released. Product status remains governed by `implementation-ledger.json` and repository tests.
+- Teen and Bip Jr render one world at a time;
+- the family art remains visually primary;
+- no visible character-name pill returns;
+- returning-user Sign In still routes correctly;
+- the visual primer is caught in-flight by Playwright, remains contained, then clears;
+- desktop/mobile have no horizontal overflow;
+- reduced motion stays physically still;
+- production truth is verified separately after merge/deployment.
