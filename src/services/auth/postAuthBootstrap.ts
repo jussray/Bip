@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { hydrateAccountProfile, type AccountProfile, type AccountSide } from '@/features/identity/accountProfile';
+import { getCurrentFounderProfile, isFounderProfile } from '@/services/founderAudit';
 import { getSupabase } from '@/utils/supabase';
 import { consentService } from '../../../services/consentService';
 
@@ -41,6 +42,10 @@ function routeForBootstrap(
  * signup, email confirmation, or account restoration. The caller must wait for
  * this result instead of navigating on the auth response alone.
  *
+ * Founder-authorized accounts route to the founder-only Control Room before
+ * public onboarding checks. This does not record consent or open any public
+ * teen/parent data path; the destination still enforces the founder profile.
+ *
  * Root boot may pass a profile it already hydrated from Supabase so the durable
  * profile is fetched once. Auth screens omit it and use the canonical hydrator.
  */
@@ -55,6 +60,19 @@ export async function fetchPostAuthBootstrap(
   if (error) throw error;
   const user = data.session?.user;
   if (!user || user.is_anonymous) throw new Error('A permanent signed-in account is required.');
+
+  const founderProfile = await getCurrentFounderProfile();
+  if (isFounderProfile(founderProfile)) {
+    const accountSide = await resolvePreferredSide(preferredSide);
+    await AsyncStorage.setItem(ONBOARDING_SIDE_KEY, accountSide);
+    return {
+      userId: user.id,
+      profile: prehydratedProfile ?? null,
+      accountSide,
+      requiredConsentsComplete: false,
+      nextRoute: '/(dev)/control-room',
+    };
+  }
 
   const requestedSide = await resolvePreferredSide(preferredSide);
   const profile = prehydratedProfile === undefined

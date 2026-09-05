@@ -31,9 +31,21 @@ on:
       - prototypes/teen-welcome/app.js
       - prototypes/welcome-web/app.js
       - docs/archive/code-snapshots/**
+      - scripts/write-release-metadata.mjs
+      - test/release-metadata.test.mjs
       - test/onboarding-stage-contract.test.mjs
       - test/bridge-learning-teaching-contract.test.mjs
       - test/journal-avatar-presentation.test.mjs
+      - test/account-profile-source-of-truth.test.mjs
+      - test/circle-audience-policy.test.mjs
+      - test/control-room-event-logging-contract.test.mjs
+      - test/limited-mode-flow.test.mjs
+      - test/parent-linking.test.mjs
+      - test/parent-verification-transition.test.mjs
+      - test/points-rewards-rpc-contract.test.mjs
+      - test/safety-alert-runtime-schema.test.mjs
+      - test/supabase-bridge-rls-authorization.test.mjs
+      - test/trigger-function-hardening.test.mjs
       - e2e/smoke.spec.ts
       - package.json
       - package-lock.json
@@ -119,6 +131,16 @@ jobs:
         run: |
           set -o pipefail
           npm run verify:bundle 2>&1 | tee gate-evidence/bundle.log
+          node --input-type=module -e "
+            import fs from 'node:fs';
+            const marker = JSON.parse(fs.readFileSync('dist/release.json', 'utf8'));
+            const expected = process.env.EXPECTED_HEAD_SHA.toLowerCase();
+            if (marker.commitSha !== expected) {
+              console.error('RELEASE_MARKER_HEAD_MISMATCH expected=' + expected + ' actual=' + marker.commitSha);
+              process.exit(1);
+            }
+            console.log('release_marker_head=' + marker.commitSha);
+          " 2>&1 | tee -a gate-evidence/bundle.log
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

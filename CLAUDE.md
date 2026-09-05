@@ -48,6 +48,27 @@ Room-production work is schema-neutral unless the pull request explicitly declar
 
 The existing Supabase security-advisor backlog must be treated as separate remediation work and never hidden inside Product Design completion language.
 
+## Never signal success on failure
+
+Do not show a success message or set a success flag inside a `catch` block.
+
+If an operation throws or returns a failure Result, the user-visible state must reflect failure. Success may appear only after the intended operation completed and the relevant result was verified.
+
+Truthful fallback and graceful degradation are allowed when they are represented honestly. A fallback reply must remain labeled as fallback; a failed reminder must never say it was set.
+
+Run `node scripts/audit-failure-truth.mjs --strict` when failure handling changes. Any exception must be narrow, reasoned, and registered in `config/failure-truth-allowlist.json`.
+
+## Branch hygiene
+
+Maintain one active implementation branch and one pull request per logical change.
+
+- Branch once from current `main` as `fix/*`, `chore/*`, or `feat/*`.
+- Continue review fixes, CI repairs, and main synchronization on that branch.
+- Do not create duplicate `-v2`, `-v3`, `-current-main`, `-copy`, `-backup`, or `-duplicate` branches to restart the same work.
+- Do not delete historical branches automatically or without reviewed evidence and explicit authority.
+
+Read `REPO_HEALTH_DUPLICATES.md` and run `node scripts/audit-branch-hygiene.mjs` for repository-health work.
+
 ## Non-Negotiable Boundaries
 
 - Never expose unreleased characters, lore, story arcs, proprietary world-building systems, or IP assets to public or model-visible contexts.
@@ -66,6 +87,23 @@ The existing Supabase security-advisor backlog must be treated as separate remed
 5. Implement within the confirmed repository role.
 6. Require the exact pull-request head to prove applicable unit, type, lint, browser, and retained-artifact gates.
 7. Report proven, inferred, blocked, and next owner.
+
+## Governed Gap-to-Merge Workflow
+
+When the founder invokes `/gaps`, `/blueprint`, `/rent`, `/implement`, `/review`, `/merge`, `/cont`, or equivalent stacked language, load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute its phases in order:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+This workflow is authoritative for the repair loop:
+
+- read current repository, `main`, PR, Founder Control Room, provider, database, and review evidence before judging;
+- label claims `VERIFIED`, `INFERRED`, `UNKNOWN`, or `BLOCKED`;
+- treat failed lookups as `UNKNOWN`, not absence;
+- require executed steps and logs before claiming a code regression;
+- require Playwright or device proof for changed rendered behavior;
+- keep production mutation separate unless explicitly authorized;
+- never merge merely because GitHub reports `mergeable: true`;
+- stop if the verified final head changes before merge.
 
 ## Approval Gates
 

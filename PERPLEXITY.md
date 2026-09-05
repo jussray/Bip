@@ -23,6 +23,14 @@ This file governs Perplexity AI (perplexity.ai, Perplexity MCP tools) when worki
 - Research outputs are informational only — not authorization to publish, deploy, or release IP assets.
 - GitHub MCP calls must not read or summarize unreleased IP to external services.
 
+## Governed Gap-to-Merge Workflow
+
+When the founder invokes `/gaps`, `/blueprint`, `/rent`, `/implement`, `/review`, `/merge`, `/cont`, or equivalent stacked language, load `.ai-skills/skills/gap-blueprint-implement-review.md` and execute:
+
+`GAPS → BLUEPRINT → RENT → IMPLEMENT → VERIFY → REVIEW → MERGE GATE → CONTINUE`
+
+Perplexity’s role in this loop is evidence discovery and current-source verification, not implied execution authority. Read current repository, `main`, PR, Founder Control Room, provider, database, check, log, review, and production evidence before judging. Label claims `VERIFIED`, `INFERRED`, `UNKNOWN`, or `BLOCKED`. Failed lookups remain `UNKNOWN`. Do not convert research, preview, or missing evidence into a pass, code-regression claim, production mutation, or merge authorization.
+
 ## Scope
 
 Appropriate: world-building methodology research, brand storytelling best practices, publicly available creative universe references, IP protection research. Not appropriate: exposing private IP, making production changes, or bypassing founder approval gates.

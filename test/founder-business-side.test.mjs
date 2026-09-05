@@ -37,4 +37,6 @@ test('founder dashboard reports only trustworthy operational summaries', () => {
   assert.match(businessScreen, /Open Control Room/);
   assert.match(businessScreen, /\/control-room/);
   assert.doesNotMatch(businessScreen, /\/dev\/control-room/);
+  assert.match(businessScreen, /Planned · no live tool yet/);
+  assert.doesNotMatch(businessScreen, /Foundation connected/);
 });

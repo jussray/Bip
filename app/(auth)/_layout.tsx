@@ -13,6 +13,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Redirect, Stack, useGlobalSearchParams, useSegments } from 'expo-router';
 
 import { AGE_ASSURANCE_STORAGE_KEYS } from '@/features/onboarding/ageAssurance';
@@ -25,6 +26,22 @@ const ALLOWED_TEEN_AGE_STATUSES = new Set([
   'third_party_required',
   'verified',
 ]);
+
+function SignupGateLoadingState() {
+  return (
+    <View
+      style={styles.loadingRoot}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel="Getting sign-up ready"
+      accessibilityLiveRegion="polite"
+    >
+      <ActivityIndicator size="large" color="#c4b5fd" />
+      <Text style={styles.loadingTitle}>Getting sign-up ready…</Text>
+      <Text style={styles.loadingBody}>Checking the safest next step for this account.</Text>
+    </View>
+  );
+}
 
 export default function AuthLayout() {
   const segments = useSegments();
@@ -84,7 +101,7 @@ export default function AuthLayout() {
     };
   }, [isParentSignup, isSignupRoute]);
 
-  if (signupGateState === 'checking') return null;
+  if (signupGateState === 'checking') return <SignupGateLoadingState />;
   if (signupGateState === 'needs-age') return <Redirect href="/(onboarding)/welcome" />;
   if (signupGateState === 'needs-parental-consent') return <Redirect href="/(onboarding)/parental-consent" />;
 
@@ -92,3 +109,27 @@ export default function AuthLayout() {
     <Stack screenOptions={{ headerShown: false }} />
   );
 }
+
+const styles = StyleSheet.create({
+  loadingRoot: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#090711',
+    paddingHorizontal: 28,
+  },
+  loadingTitle: {
+    marginTop: 18,
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  loadingBody: {
+    marginTop: 8,
+    color: '#b9afc5',
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+  },
+});

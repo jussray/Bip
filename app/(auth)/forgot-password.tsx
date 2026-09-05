@@ -86,6 +86,14 @@ export default function ForgotPasswordScreen() {
     ]).start();
   }
 
+  function returnToSignIn() {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.replace('/(auth)/login');
+  }
+
   async function handleResetRequest() {
     setError('');
     const validationError = validateRecoveryEmail(email);
@@ -137,7 +145,7 @@ export default function ForgotPasswordScreen() {
           </Text>
           <TouchableOpacity
             style={styles.btn}
-            onPress={() => router.replace('/(auth)/login')}
+            onPress={returnToSignIn}
             accessibilityRole="button"
             accessibilityLabel="Back to Sign In"
           >
@@ -216,7 +224,7 @@ export default function ForgotPasswordScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={returnToSignIn}
           style={styles.linkBtn}
           accessibilityRole="link"
           accessibilityLabel="Back to Sign In"

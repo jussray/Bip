@@ -4,12 +4,21 @@
  * Backward-compatible Se'kret API helpers. Network transport now flows through
  * the shared typed Worker client so every surface receives the same auth,
  * timeout, status-code, and trace behavior.
+ *
+ * Launch voice policy:
+ * - Text companion replies may use the Worker/OpenAI path.
+ * - STT and server TTS are OFF by default to keep launch cost near zero.
+ * - Companion speech uses the device/browser speech engine by default.
+ * - Paid/server audio can be explicitly re-enabled with Expo public flags.
  */
 import type {
+  CharacterAlignment,
   CompanionAvatarState,
   CompanionHistoryTurn,
   CompanionReplyRequest,
   CompanionReplySource,
+  VoiceProvider,
+  VoiceSynthesisRequest,
 } from '@/contracts/sekretApi';
 import {
   createNaturalFallbackResponse,
@@ -17,6 +26,7 @@ import {
 } from '@/features/sekret/naturalFallbacks';
 import { sekretClient, WORKER_BASE_URL } from '@/services/backend/sekretClient';
 import { logCompanionFallbackUsage } from '@/services/runtimeAudit';
+import { speakDeviceReply } from '../../utils/deviceSpeech';
 
 export type VisibleSekretCharacterId = 'suhana' | 'sy' | 'cloud' | 'night';
 export type LegacySekretCharacterId = 'raylene' | 'rylane';
@@ -25,6 +35,9 @@ export type SekretSurface = 'journal' | 'voiceBip' | 'comfort' | 'circle' | 'par
 export type SekretAvatarState = CompanionAvatarState;
 export type SekretReplySource = CompanionReplySource;
 export type SekretHistoryTurn = CompanionHistoryTurn;
+export type SekretVoiceRequest = Omit<VoiceSynthesisRequest, 'characterId'> & {
+  characterId: SekretCharacterId;
+};
 
 export interface SekretBrainResponse {
   reply: string;
@@ -42,6 +55,12 @@ export interface SekretVoiceResponse {
   audioBase64: string;
   contentType: string;
   characterId: SekretCharacterId;
+  voiceProvider?: VoiceProvider;
+  primaryVoiceProvider?: VoiceProvider;
+  model?: string;
+  voiceId?: string;
+  usedFallback: boolean;
+  timing?: CharacterAlignment;
   traceId?: string;
 }
 
@@ -52,6 +71,18 @@ const VISIBLE_NAMES: Record<SekretCharacterId, string> = {
   night: 'Night',
   sekret: "Se'kret",
 };
+
+const PAID_STT_ENABLED = process.env.EXPO_PUBLIC_VOICE_STT_ENABLED === 'true';
+const PAID_TTS_ENABLED = process.env.EXPO_PUBLIC_VOICE_TTS_ENABLED === 'true';
+
+function localVoiceAck(avatarKey?: string): string {
+  const character = normalizeSekretCharacter(avatarKey);
+  if (character === 'sy') return "Bet. You got it out. You don't gotta run it back right now.";
+  if (character === 'cloud') return 'Okay. You can let that one stay here for a minute.';
+  if (character === 'night') return 'Got it. You can leave that here for tonight.';
+  if (character === 'sekret') return 'Got it. You can leave that here for now.';
+  return 'Got you. You got it out. You can leave it right here.';
+}
 
 export function normalizeSekretCharacter(value?: string, fallback: SekretCharacterId = 'suhana'): SekretCharacterId {
   const raw = (value ?? '').trim().toLowerCase().replace(/[’']/g, '').replace(/[\s_-]+/g, '');
@@ -217,17 +248,27 @@ export async function fetchSekretBrainReply(input: {
   };
 }
 
-export async function fetchSekretVoice(input: {
-  reply: string;
-  characterId: SekretCharacterId;
-}): Promise<SekretVoiceResponse | null> {
-  if (!WORKER_BASE_URL || !input.reply.trim()) return null;
+export async function fetchSekretVoice(input: SekretVoiceRequest): Promise<SekretVoiceResponse | null> {
+  if (!input.reply.trim()) return null;
+
+  if (!PAID_TTS_ENABLED) {
+    await speakDeviceReply(input.reply, input.characterId);
+    return null;
+  }
+
+  if (!WORKER_BASE_URL) return null;
   const result = await sekretClient.synthesizeVoice(input);
   if (!result.ok || !result.data.audioBase64 || !result.data.contentType) return null;
   return {
     audioBase64: result.data.audioBase64,
     contentType: result.data.contentType,
     characterId: normalizeSekretCharacter(result.data.characterId, input.characterId),
+    voiceProvider: result.data.voiceProvider,
+    primaryVoiceProvider: result.data.primaryVoiceProvider,
+    model: result.data.model,
+    voiceId: result.data.voiceId,
+    usedFallback: result.data.usedFallback ?? result.meta.fallbackUsed,
+    timing: result.data.timing,
     traceId: result.data.traceId ?? result.meta.traceId,
   };
 }
@@ -236,6 +277,7 @@ export async function fetchSekretTranscribe(input: {
   audioBase64: string;
   contentType: string;
 }): Promise<string | null> {
+  if (!PAID_STT_ENABLED) return null;
   if (!WORKER_BASE_URL || !input.audioBase64) return null;
   const result = await sekretClient.transcribeAudio(input);
   if (!result.ok) return null;
@@ -258,6 +300,16 @@ export async function fetchSekretReply(
   history?: unknown[],
 ): Promise<string> {
   const surface: SekretSurface = context === 'voiceBip' || context === 'comfort' || context === 'circle' || context === 'parentBridge' || context === 'selfDiscovery' ? context : 'journal';
+
+  const isUntranscribedVoiceBip =
+    !PAID_STT_ENABLED &&
+    surface === 'voiceBip' &&
+    text.trim() === 'I needed to get some feelings out.';
+
+  if (isUntranscribedVoiceBip) {
+    return localVoiceAck(avatarKey);
+  }
+
   const memory = privateProfile && typeof privateProfile === 'object' ? privateProfile as Record<string, unknown> : undefined;
   const response = await fetchSekretBrainReply({
     characterId: normalizeSekretCharacter(avatarKey),

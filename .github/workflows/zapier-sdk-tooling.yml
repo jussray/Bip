@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  typecheck:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -23,8 +23,19 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install isolated tooling dependencies
-        run: npm install --prefix tools/zapier --ignore-scripts --no-audit --no-fund
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Typecheck Zapier SDK bootstrap
+      - name: Materialize verified canonical lockfile
+        run: node tools/zapier/scripts/sync-lockfile.mjs
+
+      - name: Install isolated tooling dependencies
+        run: npm ci --prefix tools/zapier --ignore-scripts --no-audit --no-fund
+
+      - name: Typecheck Zapier SDK tooling
         run: npm --prefix tools/zapier run typecheck
+
+      - name: Test founder evidence engine and XLSX parser
+        run: npm --prefix tools/zapier test

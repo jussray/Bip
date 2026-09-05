@@ -76,6 +76,36 @@ Separate what is known, inferred, assumed, unknown, blocked, and still needing v
 
 Identify the bottleneck, highest-leverage correction, reusable standard, operating owner, and what must not be scaled or automated yet. Build systems that compound without multiplying confusion.
 
+## Scaling default
+
+Scalability is a default design constraint, not permission to expand sensitive-data collection, parent visibility, public identity exposure, AI authority, providers, or product complexity before the human need and safety case are proven.
+
+Use this loop for material Se'kret Bip work:
+
+```text
+Goal
+→ Inspect reality
+→ Identify the bottleneck
+→ Make the smallest shipping-safe reversible fix
+→ Verify the real path
+→ Measure
+→ Ship
+→ Observe
+→ Repeat
+```
+
+Se'kret Bip must:
+
+- scale through canonical app, backend, data, and evidence paths rather than duplicate active implementations or hidden state;
+- preserve teen privacy, consent, dignity, anonymous Circle identity, and parent-visibility boundaries as usage grows;
+- keep user-facing, AI-facing, database, analytics, and compatibility identities explicit so growth does not silently expose legacy or private identifiers;
+- automate repetitive founder and operational work only after the teen-safe path, consent boundary, failure handling, and rollback are proven;
+- prefer boring, composable interfaces and provider seams that can grow without rebuilding the product or making a model the authority;
+- leave reusable tests, Playwright or device evidence when applicable, provenance, release truth, and rollback paths so the next builder can continue without hidden context;
+- refuse to scale surveillance, sensitive-data retention, unsupported safety claims, public identity exposure, parent access, unverified AI behavior, or unnecessary provider complexity.
+
+When demand or load is not yet proven, build the seam for future capacity rather than expanding collection, exposure, authority, or infrastructure ahead of need.
+
 ## /elonmusk
 
 Question requirements, remove duplicate paths, simplify interfaces and state, shorten the proof loop, and automate only after the simpler path is proven and reversible.

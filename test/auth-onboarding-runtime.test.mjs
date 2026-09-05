@@ -40,6 +40,13 @@ test('age and account side survive into permanent account creation', () => {
   assert.match(signup, /AsyncStorage\.setItem\(ONBOARDING_SIDE_KEY, preferredSide\)/);
 });
 
+test('login normalizes structured transport failures before rendering', () => {
+  assert.match(login, /function authErrorMessage\(error: unknown\): string/);
+  assert.match(login, /message\.includes\('failed to fetch'\)/);
+  assert.match(login, /setError\(readableAuthError\(authErr\)\)/);
+  assert.doesNotMatch(login, /setError\(authErr\.message\)/);
+});
+
 test('login and signup wait for the same post-auth fetch contract before routing', () => {
   const signInIndex = login.indexOf('signInWithPassword');
   const loginBootstrapIndex = login.indexOf('const bootstrap = await fetchPostAuthBootstrap', signInIndex);
@@ -55,6 +62,20 @@ test('login and signup wait for the same post-auth fetch contract before routing
   assert.match(bootstrap, /consentService\.load/);
   assert.match(bootstrap, /requiredConsentsComplete/);
   assert.match(bootstrap, /A permanent signed-in account is required/);
+});
+
+test('authorized founder login routes before public consent and onboarding gates', () => {
+  const founderLookupIndex = bootstrap.indexOf('const founderProfile = await getCurrentFounderProfile()');
+  const founderRouteIndex = bootstrap.indexOf("nextRoute: '/(dev)/control-room'");
+  const profileHydrationIndex = bootstrap.indexOf('const profile = prehydratedProfile === undefined');
+  const consentLoadIndex = bootstrap.indexOf('await consentService.load(user.id)');
+
+  assert.match(bootstrap, /isFounderProfile\(founderProfile\)/);
+  assert.ok(founderLookupIndex >= 0);
+  assert.ok(founderRouteIndex > founderLookupIndex);
+  assert.ok(profileHydrationIndex > founderRouteIndex);
+  assert.ok(consentLoadIndex > founderRouteIndex);
+  assert.match(bootstrap, /requiredConsentsComplete: false/);
 });
 
 test('required consent is explicit, persisted, and not inferred from navigation', () => {

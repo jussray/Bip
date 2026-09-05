@@ -21,7 +21,7 @@ async function readMigrationCorpus() {
 // need special cleanup evidence.
 
 test('enforce_circle_anonymity blocks identity reveal on public/parent_community posts', async () => {
-  const source = await read('supabase/migrations/20260701020000_circle_v2_parent_community.sql');
+  const source = await read('supabase/migrations/20260701174943_circle_v2_parent_community_guardian_access.sql');
   const fn = source.match(/create or replace function public\.enforce_circle_anonymity\(\)[\s\S]*?\$\$;/)?.[0];
   assert.ok(fn, 'expected enforce_circle_anonymity() definition');
 

@@ -54,6 +54,12 @@ function triggerKey(table, trigger) {
   return `${table}::${trigger}`;
 }
 
+const tc01RetiredSafetyTriggerKeys = new Set([
+  triggerKey('public.circle_posts', 'safety_scan_circle'),
+  triggerKey('public.journal_entries', 'safety_scan_journal'),
+  triggerKey('public.posts', 'safety_scan_posts'),
+]);
+
 function stripSqlComments(source) {
   let result = '';
   let index = 0;
@@ -351,6 +357,9 @@ const repositoryFunctions = new Map(
 const repositoryAttachments = new Map(
   baseline.attachments
     .filter((item) => item.repositoryExpected !== false)
+    .filter((item) => !tc01RetiredSafetyTriggerKeys.has(
+      triggerKey(item.table.toLowerCase(), item.trigger.toLowerCase()),
+    ))
     .map((item) => [
       triggerKey(item.table.toLowerCase(), item.trigger.toLowerCase()),
       item,
@@ -401,10 +410,35 @@ test('baseline separates repository truth, live catalog observation, and behavio
   assert.equal(baseline.verification.liveCatalogObserved, true);
   assert.equal(baseline.verification.liveBehaviorVerified, false);
   assert.equal(baseline.verification.externalEffectsSafelyStubbed, false);
-  assert.equal(baseline.functions.length, 13);
-  assert.equal(repositoryFunctions.size, 12);
-  assert.equal(baseline.attachments.length, 16);
-  assert.equal(repositoryAttachments.size, 15);
+  assert.equal(baseline.functions.length, 14);
+  assert.equal(repositoryFunctions.size, 13);
+  assert.equal(baseline.attachments.length, 18);
+  assert.equal(repositoryAttachments.size, 14);
+});
+
+test('TC-01 retired private and mixed safety triggers stay historical-only', () => {
+  const historicalKeys = new Set(
+    baseline.attachments.map((item) => triggerKey(item.table.toLowerCase(), item.trigger.toLowerCase())),
+  );
+  const expectedRetired = [
+    'public.circle_posts::safety_scan_circle',
+    'public.journal_entries::safety_scan_journal',
+    'public.posts::safety_scan_posts',
+  ];
+
+  assert.deepEqual([...tc01RetiredSafetyTriggerKeys].sort(), expectedRetired);
+  for (const key of expectedRetired) {
+    assert.equal(historicalKeys.has(key), true, `${key} must remain preserved in historical live evidence`);
+    assert.equal(state.triggers.has(key), false, `${key} must stay retired from effective repository wiring`);
+  }
+
+  const currentSafetyAttachments = [...state.triggers.values()]
+    .filter((attachment) => attachment.function === 'public.trigger_safety_scan()')
+    .map((attachment) => triggerKey(attachment.table, attachment.trigger))
+    .sort();
+  assert.deepEqual(currentSafetyAttachments, [
+    'public.public_circle_posts::safety_scan_public_circle',
+  ]);
 });
 
 test('live-only legacy points trigger drift is explicit and remains unresolved', () => {
@@ -447,12 +481,6 @@ test('reviewed repository trigger functions pin search_path and revoke client EX
       normalizeSearchPath(reviewed.searchPath),
       `${signature} search_path changed without baseline review`,
     );
-    // clientExecuteRevokedLive asserts a verified LIVE catalog fact. A function
-    // that is reviewed and migration-complete but not yet deployed (deployedLive:
-    // false) must not claim that live fact — it must say so honestly instead of
-    // either lying (true) or being blocked from ever landing a reviewed baseline
-    // entry until it ships. Once deployed, re-run live catalog parity and flip
-    // deployedLive/clientExecuteRevokedLive to true together.
     if (reviewed.deployedLive === false) {
       assert.equal(
         reviewed.clientExecuteRevokedLive,
@@ -562,6 +590,23 @@ test('trigger behavior phase 1 proves apply_point_transaction, handle_bip_event_
   }
 });
 
+test('trigger behavior phase 2 proves cleanup_crew_relationship_access and record_bridge_signal_activity', () => {
+  const phase = baseline.behaviorProbePhases.find((entry) => entry.phase === 'trigger_behavior_phase2');
+  assert.ok(phase, 'trigger_behavior_phase2 evidence is missing from the baseline');
+  assert.equal(phase.transactionOutcome, 'rolled_back');
+  assert.equal(phase.syntheticRowsRetained, 0);
+  assert.equal(phase.failedChecks, 0);
+  assert.ok(phase.passedChecks > 0);
+  assert.ok(fs.existsSync(path.join(root, phase.probePath)), `${phase.probePath} must exist`);
+
+  for (const signature of phase.coveredFunctions) {
+    const reviewed = repositoryFunctions.get(signature.toLowerCase());
+    assert.ok(reviewed, `${signature} must be a reviewed baseline function`);
+    assert.equal(reviewed.behaviorVerified, true, `${signature} must be marked behaviorVerified`);
+    assert.equal(reviewed.behaviorEvidence, 'trigger_behavior_phase2');
+  }
+});
+
 test.todo(
-  'run external-effect-safe rollback-contained behavior probes for the remaining safety, auth-profile, and relationship-cleanup triggers listed in trigger_behavior_phase1.notCoveredThisPhase',
+  'run external-effect-safe rollback-contained behavior probes for the remaining safety and auth-profile triggers listed in trigger_behavior_phase2.notCoveredThisPhase',
 );

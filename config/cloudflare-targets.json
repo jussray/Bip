@@ -1,6 +1,16 @@
 {
-  "version": 1,
-  "reviewedAt": "2026-07-18",
+  "version": 4,
+  "reviewedAt": "2026-08-28",
+  "providerInventory": {
+    "workers": [
+      "bip",
+      "sekret-backend",
+      "sekret-backend-alpha"
+    ],
+    "pages": [
+      "sekret-bip"
+    ]
+  },
   "production": {
     "pages": {
       "name": "sekret-bip",
@@ -10,7 +20,7 @@
     },
     "worker": {
       "name": "sekret-backend",
-      "entrypoint": "worker/observed-index.ts",
+      "entrypoint": "worker/voice-entry.ts",
       "roles": [
         "authenticated-api",
         "sekret-reply",
@@ -20,6 +30,17 @@
         "safety-and-push",
         "inbound-email-routing"
       ]
+    }
+  },
+  "separateWorkerAuthorities": {
+    "bip": {
+      "kind": "worker",
+      "status": "founder-confirmed-renamed-from-sekret",
+      "previousName": "sekret",
+      "providerIdentityReadback": "required",
+      "routeBinding": "provider-readback-required",
+      "buildAuthority": "main-only-or-disabled",
+      "mutationPolicy": "preserve-until-exact-provider-binding-proven"
     }
   },
   "nonProduction": {
@@ -33,12 +54,8 @@
     {
       "name": "bip-mail",
       "kind": "worker",
-      "action": "retire-after-email-routing-cutover"
-    },
-    {
-      "name": "sekret",
-      "kind": "worker",
-      "action": "retire-after-route-binding-and-traffic-audit"
+      "status": "retired-provider-absent",
+      "action": "do-not-recreate"
     }
   ]
 }

@@ -6,6 +6,7 @@ import { AppProvider, useAppContext } from '@/context/AppContext';
 import { VerificationProvider, useVerificationContext } from '@/context/VerificationContext';
 import { OnboardingProvider } from '@/context/OnboardingContext';
 import { installSekretBipGuardrailRuntime } from '@/config/visionGuardrails';
+import { isFounderPreviewEnabled } from '@/constants/founderPreview';
 import { decideRouteAccess } from '@/services/routeAccess';
 import { validateEnv } from '@/utils/env';
 import { getSupabase, isSupabaseConfigured } from '@/utils/supabase';
@@ -69,6 +70,12 @@ function RouteBoundary() {
       }
       return;
     }
+
+    // Founder Preview is a development-only route-inspection mode. It may
+    // bypass onboarding/verification routing after the normal auth boundary,
+    // but it never grants a Supabase session, relationship, RLS permission,
+    // or screen-level data capability.
+    if (isFounderPreviewEnabled()) return;
 
     const effectiveUserSide = getDevSplitViewSideOverride() ?? userSide;
     if (!effectiveUserSide) return;
