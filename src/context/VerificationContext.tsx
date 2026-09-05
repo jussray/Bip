@@ -59,13 +59,13 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
   const [verificationError, setError] = useState<string | null>(null);
   const [isAuthResolved, setAuthResolved] = useState(!isSupabaseConfigured);
   const [isAuthenticated, setAuthenticated] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
+  const [authSession, setSession] = useState<Session | null>(null);
 
-  const loadVerificationForSession = useCallback(async (nextSession: Session | null) => {
-    const permanentSession = Boolean(nextSession && !nextSession.user.is_anonymous);
-    const userId = permanentSession ? nextSession?.user.id : undefined;
+  const loadVerificationForSession = useCallback(async (session: Session | null) => {
+    const permanentSession = Boolean(session && !session.user.is_anonymous);
+    const userId = permanentSession ? session?.user.id : undefined;
 
-    setSession(nextSession);
+    setSession(session);
     setAuthenticated(permanentSession);
     setAuthResolved(true);
 
@@ -169,12 +169,12 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     // realtime witness and never performs a second startup getSession().
     void refreshVerification();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, nextSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
 
-      const user = nextSession?.user;
-      const permanentSession = Boolean(nextSession && !nextSession.user.is_anonymous);
-      setSession(nextSession);
+      const user = session?.user;
+      const permanentSession = Boolean(session && !session.user.is_anonymous);
+      setSession(session);
       setAuthResolved(true);
       setAuthenticated(permanentSession);
       removeVerificationChannel();
@@ -191,7 +191,7 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
 
       setLoading(true);
       setError(null);
-      void loadVerificationForSession(nextSession)
+      void loadVerificationForSession(session)
         .catch((error) => {
           if (!active) return;
           setSession(null);
@@ -218,7 +218,7 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     verificationError,
     isAuthResolved,
     isAuthenticated,
-    session,
+    session: authSession,
     refreshVerification,
   }), [
     verificationSnapshot,
@@ -226,7 +226,7 @@ export function VerificationProvider({ children }: { children: ReactNode }) {
     verificationError,
     isAuthResolved,
     isAuthenticated,
-    session,
+    authSession,
     refreshVerification,
   ]);
 
