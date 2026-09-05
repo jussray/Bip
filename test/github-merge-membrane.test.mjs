@@ -35,7 +35,7 @@ test('glob matcher handles exact paths, stars, and recursive prefixes', () => {
   assert.equal(globMatches('docs/readme.md', 'wrangler.toml'), false);
 });
 
-test('merge membrane reads path scopes from the real workflows instead of duplicating them', () => {
+test('path parser understands the current proof workflow contracts', () => {
   const productSource = readFileSync('.github/workflows/product-design-playwright-proof.yml', 'utf8');
   const shieldSource = readFileSync('.github/workflows/founder-shield.yml', 'utf8');
   const productPaths = extractPullRequestPaths(productSource);
@@ -70,6 +70,29 @@ test('rendered and security changes require their path-sensitive proof checks', 
   assert.deepEqual(
     expectedChecksForChangedFiles(['worker/auth.ts'], patterns),
     [...ALWAYS_REQUIRED_CHECKS, 'product-design-proof', 'verify-founder-shield'],
+  );
+});
+
+test('a PR cannot weaken its own conditional proof scope to avoid that proof', () => {
+  const trustedBasePatterns = {
+    '.github/workflows/product-design-playwright-proof.yml': ['src/**'],
+    '.github/workflows/founder-shield.yml': ['worker/**'],
+  };
+
+  assert.deepEqual(
+    expectedChecksForChangedFiles(
+      ['.github/workflows/product-design-playwright-proof.yml'],
+      trustedBasePatterns,
+    ),
+    [...ALWAYS_REQUIRED_CHECKS, 'product-design-proof'],
+  );
+
+  assert.deepEqual(
+    expectedChecksForChangedFiles(
+      ['.github/workflows/founder-shield.yml'],
+      trustedBasePatterns,
+    ),
+    [...ALWAYS_REQUIRED_CHECKS, 'verify-founder-shield'],
   );
 });
 
