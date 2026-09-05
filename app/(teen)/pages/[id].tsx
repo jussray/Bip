@@ -246,6 +246,20 @@ export default function EntryDetailRoute() {
             </View>
           ) : null}
 
+          <TouchableOpacity
+            onPress={handleSaveForLater}
+            style={[s.saveLaterButton, { borderColor: `${companion.accent}35` }]}
+            accessibilityRole="button"
+            accessibilityLabel="Save this page so you can continue it later"
+          >
+            <Text style={[s.saveLaterText, { color: companion.accent }]}>
+              {savedForLater ? '✓ saved for later' : '↩ save for later'}
+            </Text>
+            <Text style={s.saveLaterSub}>
+              Room only remembers which page to reopen.
+            </Text>
+          </TouchableOpacity>
+
           {entry.sekretReply ? (
             <View style={[s.replyCard, { borderColor: `${companion.accent}25` }]}>
               <Text style={[s.replyLabel, { color: companion.accent }]}>
@@ -324,20 +338,6 @@ export default function EntryDetailRoute() {
               {entry.pinned ? '📌 Pinned — tap to unpin' : '📍 Tap to pin this entry'}
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleSaveForLater}
-            style={[s.saveLaterButton, { borderColor: `${companion.accent}35` }]}
-            accessibilityRole="button"
-            accessibilityLabel="Save this page so you can continue it later"
-          >
-            <Text style={[s.saveLaterText, { color: companion.accent }]}>
-              {savedForLater ? '✓ saved for later' : '↩ save for later'}
-            </Text>
-            <Text style={s.saveLaterSub}>
-              Room remembers this page, not a preview of what you wrote.
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
 
         <KeyboardAvoidingView
@@ -413,7 +413,17 @@ const s = StyleSheet.create({
   insightValue: { fontSize: 11, fontWeight: '900', textAlign: 'center' },
   pinHint: { alignSelf: 'center', paddingVertical: 10 },
   pinHintText: { color: '#504660', fontSize: 11 },
-  saveLaterButton: { alignItems: 'center', borderWidth: 1, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 14, paddingVertical: 12, marginBottom: 10 },
+  saveLaterButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 14,
+  },
   saveLaterText: { fontSize: 12, fontWeight: '900', letterSpacing: 0.3 },
   saveLaterSub: { color: '#6b607a', fontSize: 10, lineHeight: 15, marginTop: 4, textAlign: 'center' },
   composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 24, borderTopWidth: 1 },

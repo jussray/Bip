@@ -19,18 +19,40 @@ test('Continue the Thought stores bookmark metadata only', () => {
   );
 });
 
-test('Pages exposes an explicit save-for-later control and Room resumes the exact entry', () => {
+test('Pages keeps save-for-later beside the thought and Room resumes the exact entry', () => {
   const detail = read('app/(teen)/pages/[id].tsx');
   const overlay = read('components/retention/BipReturnOverlay.tsx');
 
   assert.match(detail, /Save this page so you can continue it later/);
-  assert.match(detail, /Room remembers this page, not a preview of what you wrote/);
+  assert.match(detail, /Room only remembers which page to reopen/);
   assert.match(detail, /saveContinuation\(\{/);
+  assert.ok(
+    detail.indexOf('Save this page so you can continue it later') < detail.indexOf('{entry.sekretReply ? ('),
+    'save-for-later should appear before companion reply and secondary reflection cards',
+  );
+  assert.match(detail, /saveLaterButton:[\s\S]*minHeight: 48/);
+
   assert.match(overlay, /continue your thought/);
   assert.match(overlay, /Continue where you left off/);
+  assert.match(overlay, /Room remembers which page to reopen\. Your words stay on that page\./);
   assert.match(overlay, /const entryId = continuation\.entryId/);
   assert.match(overlay, /archiveSavedContinuation\(\)[\s\S]*router\.push\(`\/\(teen\)\/pages\/\$\{entryId\}`/);
-  assert.match(overlay, /Archive saved page/);
+  assert.match(overlay, /Remove saved page from Room/);
+  assert.match(overlay, /remove from Room/);
+  assert.match(overlay, /floatingButton:[\s\S]*minHeight: 44/);
+  assert.match(overlay, /continueButton:[\s\S]*minHeight: 44/);
+  assert.match(overlay, /archiveButton:[\s\S]*minHeight: 44/);
+});
+
+test('teen return UX does not punish time away', () => {
+  const ledger = read('src/features/activity/ledger.ts');
+  const overlay = read('components/retention/BipReturnOverlay.tsx');
+
+  assert.doesNotMatch(ledger, /applyBipEnergyFade/);
+  assert.doesNotMatch(overlay, /applyBipEnergyFade|loadUnseenBipEnergyAdjustment|markBipEnergyAdjustmentSeen/);
+  assert.doesNotMatch(overlay, /Bip Energy faded|streak resets|days away/);
+  assert.match(ledger, /Teen return UX does not subtract points for time away/);
+  assert.match(overlay, /Your check-ins stay part of your story, even after time away/);
 });
 
 test('saved continuation is private-account data and clears on sign-out', () => {
