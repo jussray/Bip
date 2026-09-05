@@ -225,7 +225,7 @@ jobs:
 
       - name: Wait for exact frontend and backend Worker checks plus release marker
         id: cloudflare_release
-        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' && steps.supabase_schema.outcome == 'success' && steps.release_transport.outcome == 'success' }}
         timeout-minutes: 35
         env:
           GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
@@ -233,7 +233,7 @@ jobs:
 
       - name: Verify backend health
         id: backend_health
-        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.cloudflare_release.outcome == 'success' }}
         timeout-minutes: 5
         shell: bash
         run: |
@@ -252,20 +252,20 @@ jobs:
 
       - name: Verify Supabase runtime contracts
         id: supabase_health
-        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.backend_health.outcome == 'success' }}
         timeout-minutes: 5
         run: |
           curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$SUPABASE_RUNTIME_HEALTH_URL"
 
       - name: Install Chromium
         id: chromium
-        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.supabase_health.outcome == 'success' }}
         timeout-minutes: 15
         run: npx playwright install --with-deps chromium
 
       - name: Verify exact deployed frontend with Playwright
         id: production_playwright
-        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.chromium.outcome == 'success' }}
         timeout-minutes: 30
         run: npm run test:e2e:production
 

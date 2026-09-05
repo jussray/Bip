@@ -174,7 +174,8 @@ test('a run-created bypass stays rollback-capable through browser proof and reco
   );
   assert.match(workflowSource, /--rollback-created/);
   assert.match(reconcilerSource, /ROLLBACK_EVIDENCE_SCOPE_MISMATCH/);
-  assert.match(reconcilerSource, /evidence\?\.mutationPerformed !== true \|\| evidence\?\.rollbackPerformed === true/);
+  assert.match(reconcilerSource, /evidence\?\.mutationPerformed !== true/);
+  assert.match(reconcilerSource, /evidence\?\.mutationAttribution !== 'provider-returned-id'/);
   assert.match(reconcilerSource, /ROLLBACK_MANAGED_APP_DESTINATION_MISMATCH/);
   assert.match(reconcilerSource, /rolled-back-after-proof-failure/);
 });

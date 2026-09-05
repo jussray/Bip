@@ -18,16 +18,53 @@ env:
 
 jobs:
   dispatch:
-    name: Dispatch bounded app-domain ownership reconcile
-    if: >-
-      github.event.issue.number == 925 &&
-      github.event.comment.user.login == 'jussray' &&
-      startsWith(github.event.comment.body, '/reconcile-app-domain ')
+    name: Route bounded founder reconciliation command
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Parse founder command
-        id: command
+      - name: Classify founder command
+        id: route
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMAND_BODY: ${{ github.event.comment.body }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+
+          issue = os.environ.get('ISSUE_NUMBER', '')
+          author = os.environ.get('COMMENT_AUTHOR', '')
+          body = os.environ.get('COMMAND_BODY', '').strip()
+
+          command = 'none'
+          if issue == '925' and author == 'jussray':
+              if body.startswith('/reconcile-app-domain '):
+                  command = 'app-domain'
+              elif body.startswith('/reconcile-supabase-history '):
+                  command = 'supabase-history'
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'command={command}\n')
+
+          print(f'FOUNDER_COMMAND_ROUTE={command}')
+          PY
+
+      - name: Record ignored comment
+        if: ${{ steps.route.outputs.command == 'none' }}
+        shell: bash
+        run: |
+          {
+            echo '## Se’kret founder command router'
+            echo
+            echo '- Result: no recognized founder reconciliation command'
+            echo '- Mutation authority: none'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Parse app-domain founder command
+        id: app-domain-command
+        if: ${{ steps.route.outputs.command == 'app-domain' }}
         env:
           COMMAND_BODY: ${{ github.event.comment.body }}
         shell: bash
@@ -53,10 +90,11 @@ jobs:
               output.write(f'approval_reference={approval}\n')
           PY
 
-      - name: Verify requested SHA is current main
+      - name: Verify app-domain SHA is current main
+        if: ${{ steps.route.outputs.command == 'app-domain' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          EXPECTED_HEAD_SHA: ${{ steps.command.outputs.expected_head_sha }}
+          EXPECTED_HEAD_SHA: ${{ steps.app-domain-command.outputs.expected_head_sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -72,6 +110,7 @@ jobs:
           test "$CURRENT_MAIN_SHA" = "$EXPECTED_HEAD_SHA"
 
       - name: Dispatch existing bounded app-domain reconcile
+        if: ${{ steps.route.outputs.command == 'app-domain' }}
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -90,25 +129,17 @@ jobs:
           {
             echo '## Se’kret app-domain reconcile command accepted'
             echo
-            echo "- Exact approved head: \`${{ steps.command.outputs.expected_head_sha }}\`"
-            echo "- Approval reference: \`${{ steps.command.outputs.approval_reference }}\`"
+            echo "- Exact approved head: \`${{ steps.app-domain-command.outputs.expected_head_sha }}\`"
+            echo "- Approval reference: \`${{ steps.app-domain-command.outputs.approval_reference }}\`"
             echo '- Mutation authority: existing `.github/workflows/reconcile-cloudflare-app-domain.yml` only'
             echo '- Target: restore Pages ownership of `app.sekretbip.net` while preserving `api.sekretbip.net` backend identity'
             echo '- Cloudflare credentials in bridge: none'
             echo '- Supabase/database mutation in bridge: none'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  dispatch-supabase-history:
-    name: Dispatch bounded Supabase history reconciliation
-    if: >-
-      github.event.issue.number == 925 &&
-      github.event.comment.user.login == 'jussray' &&
-      startsWith(github.event.comment.body, '/reconcile-supabase-history ')
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
       - name: Parse Supabase history founder command
         id: supabase-command
+        if: ${{ steps.route.outputs.command == 'supabase-history' }}
         env:
           COMMAND_BODY: ${{ github.event.comment.body }}
         shell: bash
@@ -135,6 +166,7 @@ jobs:
           PY
 
       - name: Verify Supabase history SHA is current main
+        if: ${{ steps.route.outputs.command == 'supabase-history' }}
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_HEAD_SHA: ${{ steps.supabase-command.outputs.expected_head_sha }}
@@ -153,6 +185,7 @@ jobs:
           test "$CURRENT_MAIN_SHA" = "$EXPECTED_HEAD_SHA"
 
       - name: Dispatch exact five-alias Supabase history reconciliation
+        if: ${{ steps.route.outputs.command == 'supabase-history' }}
         env:
           GH_TOKEN: ${{ github.token }}
           EXPECTED_HEAD_SHA: ${{ steps.supabase-command.outputs.expected_head_sha }}

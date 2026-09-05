@@ -74,29 +74,43 @@ test('production verification job remains fail-closed on dependency drift but st
   );
 });
 
-test('production witnesses continue independently after one witness fails but stop when the run is cancelled', () => {
-  const witnessSteps = [
-    'Verify exact Supabase production schema contract',
-    'Record safe frontend and backend transport evidence',
-    'Wait for exact frontend and backend Worker checks plus release marker',
-    'Verify backend health',
-    'Verify Supabase runtime contracts',
-    'Install Chromium',
-    'Verify exact deployed frontend with Playwright',
-  ];
+test('production verification fails fast after a load-bearing prerequisite while preserving cheap preflight evidence', () => {
+  const schema = workflowStepBlock('Verify exact Supabase production schema contract');
+  const transport = workflowStepBlock('Record safe frontend and backend transport evidence');
+  const cloudflare = workflowStepBlock('Wait for exact frontend and backend Worker checks plus release marker');
+  const backend = workflowStepBlock('Verify backend health');
+  const supabaseHealth = workflowStepBlock('Verify Supabase runtime contracts');
+  const chromium = workflowStepBlock('Install Chromium');
+  const playwright = workflowStepBlock('Verify exact deployed frontend with Playwright');
 
-  for (const name of witnessSteps) {
-    const block = workflowStepBlock(name);
+  for (const block of [schema, transport]) {
     assert.match(
       block,
       /if: \$\{\{ !cancelled\(\) && steps\.trusted_current_main\.outcome == 'success' \}\}/u,
-      `${name} must continue after an earlier witness failure but stop on superseded-run cancellation`,
+      'cheap preflight witnesses may still collect independent evidence after current-main revalidation',
     );
-    assert.doesNotMatch(
-      block,
-      /continue-on-error:\s*true/u,
-      `${name} must remain a load-bearing failure signal`,
-    );
+  }
+
+  assert.match(
+    cloudflare,
+    /if: \$\{\{ !cancelled\(\) && steps\.trusted_current_main\.outcome == 'success' && steps\.supabase_schema\.outcome == 'success' && steps\.release_transport\.outcome == 'success' \}\}/u,
+    'the long Cloudflare convergence witness must not run after schema or transport failure',
+  );
+  assert.match(backend, /steps\.cloudflare_release\.outcome == 'success'/u);
+  assert.match(supabaseHealth, /steps\.backend_health\.outcome == 'success'/u);
+  assert.match(chromium, /steps\.supabase_health\.outcome == 'success'/u);
+  assert.match(playwright, /steps\.chromium\.outcome == 'success'/u);
+
+  for (const [name, block] of [
+    ['schema', schema],
+    ['transport', transport],
+    ['cloudflare', cloudflare],
+    ['backend', backend],
+    ['supabase runtime', supabaseHealth],
+    ['chromium', chromium],
+    ['playwright', playwright],
+  ]) {
+    assert.doesNotMatch(block, /continue-on-error:\s*true/u, `${name} must remain load-bearing`);
   }
 
   assert.match(
@@ -107,7 +121,7 @@ test('production witnesses continue independently after one witness fails but st
   assert.match(
     workflow,
     /- name: Publish blocked exact production observation\n\s+if: failure\(\)/u,
-    'a failed witness must still produce a blocked release observation',
+    'a failed prerequisite must still produce a blocked release observation',
   );
 });
 
