@@ -18,6 +18,7 @@ on:
       - 'wrangler.toml'
       - '.dev.vars.example'
       - 'scripts/verify-firewall-v10.mjs'
+      - 'scripts/reconcile-cloudflare-public-apex-access.mjs'
       - 'scripts/codeql-pr-alert-proof.mjs'
       - 'scripts/playwright-executable.mjs'
       - 'e2e/product-design-review.spec.ts'

@@ -8,6 +8,7 @@ import {
   configFromEnv,
   isCloudflareAccessUrl,
   isEveryoneBypassPolicy,
+  listApplications,
   publicDestinationTargetsHost,
   selectBlockingApplication,
 } from '../scripts/reconcile-cloudflare-public-apex-access.mjs';
@@ -62,6 +63,29 @@ test('application public destination check does not treat worker scope as apex o
     ),
     true,
   );
+});
+
+test('application inventory honors authoritative total_pages even when a page is short', async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedPages = [];
+  globalThis.fetch = async (url) => {
+    const page = Number(new URL(url).searchParams.get('page'));
+    requestedPages.push(page);
+    const result = page === 1
+      ? [{ id: 'page-1-a' }, { id: 'page-1-b' }]
+      : [{ id: 'page-2-app' }];
+    return new Response(JSON.stringify({ success: true, result, result_info: { total_pages: 2 } }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+  try {
+    const apps = await listApplications({ token: 'test-token', accountId: 'account' });
+    assert.deepEqual(requestedPages, [1, 2]);
+    assert.deepEqual(apps.map((app) => app.id), ['page-1-a', 'page-1-b', 'page-2-app']);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('managed bypass destination set is exactly apex-only', () => {
