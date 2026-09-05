@@ -33,6 +33,18 @@ test('canonical front door arrives as one scene before ambient motion continues'
   assert.match(contract, /arrivalScale: \[0\.985, 1\]/);
 });
 
+test('caveman visual teaches the front door in one animated glance', () => {
+  assert.match(arrival, /web-welcome-caveman-visual/);
+  assert.match(arrival, /You\. Your space\. Enter\./);
+  assert.match(arrival, />YOU</);
+  assert.match(arrival, />YOUR SPACE</);
+  assert.match(arrival, />ENTER</);
+  assert.match(arrival, /inputRange: \[0, 0\.08, 0\.28, 0\.9, 1\]/);
+  assert.match(arrival, /inputRange: \[0, 0\.2, 0\.38, 0\.9, 1\]/);
+  assert.match(arrival, /inputRange: \[0, 0\.36, 0\.56, 0\.9, 1\]/);
+  assert.match(arrival, /pointerEvents="none"/);
+});
+
 test('reduced motion fails safe before decorative or arrival motion starts', () => {
   assert.match(screen, /const motionEnabled = reduceMotion === false/);
   assert.match(screen, /isReduceMotionEnabled\(\)/);
@@ -41,4 +53,5 @@ test('reduced motion fails safe before decorative or arrival motion starts', () 
   assert.match(arrival, /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/);
   assert.match(arrival, /progress\.setValue\(1\)/);
   assert.match(arrival, /setArrivalState\('reduced'\)/);
+  assert.match(arrival, /styles\.primerReduced/);
 });
