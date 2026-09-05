@@ -7,6 +7,16 @@ const PROVIDER_REQUEST_TIMEOUT_MS = 10_000;
 const RUNTIME_REQUEST_TIMEOUT_MS = 10_000;
 const APPLICATIONS_PAGE_SIZE = 100;
 const MAX_APPLICATION_PAGES = 100;
+const PROVEN_NO_MUTATION_STATUSES = new Set([
+  'blocked-duplicate-managed-apps',
+  'blocked-managed-app-destination-drift',
+  'blocked-managed-app-policy-drift',
+  'blocked-existing-public-app',
+  'planned-existing-bypass',
+  'planned-create-public-bypass',
+  'already-reconciled',
+  'rollback-not-required',
+]);
 export const DEFAULT_TARGET_HOSTNAME = 'sekretbip.net';
 export const DEFAULT_TARGET_URL = 'https://sekretbip.net/';
 export const DEFAULT_APPLICATION_NAME = 'sekretbip.net - public apex bypass';
@@ -180,6 +190,7 @@ async function deleteApplication(config, appId) {
     method: 'DELETE',
   });
 }
+
 function finalOrigin(value, fallback) {
   try {
     return new URL(value || fallback).origin;
@@ -453,11 +464,39 @@ export async function rollbackRunCreatedPublicApexAccess({ env = process.env } =
     throw new Error('ROLLBACK_EVIDENCE_SCOPE_MISMATCH');
   }
 
-  if (evidence?.mutationPerformed !== true || evidence?.rollbackPerformed === true) {
+  const mutationStateUnproven = evidence?.status === 'mutation-state-unknown'
+    || evidence?.mutationState === 'unknown'
+    || evidence?.mutationAttribution === 'unproven'
+    || (evidence?.mutationPerformed === true && evidence?.mutationAttribution !== 'provider-returned-id');
+  if (mutationStateUnproven) {
+    // An ambiguous create may have reached Cloudflare even though this run has
+    // no safe deletion authority. Keep the receipt intact rather than turning
+    // missing attribution into a misleading "rollback not required" result.
+    return { status: 'rollback-blocked-mutation-state-unproven' };
+  }
+
+  if (evidence?.rollbackPerformed === true) {
     await writeEvidence(config, {
       ...evidence,
       status: 'rollback-not-required',
-      rollbackPerformed: evidence?.rollbackPerformed === true,
+      rollbackPerformed: true,
+    });
+    return { status: 'rollback-not-required' };
+  }
+
+  if (evidence?.mutationPerformed !== true) {
+    if (
+      evidence?.mutationPerformed !== false
+      || !PROVEN_NO_MUTATION_STATUSES.has(evidence?.status)
+      || evidence?.mutationAttribution === 'provider-returned-id'
+      || clean(evidence?.managedApplication?.id)
+    ) {
+      return { status: 'rollback-blocked-mutation-state-unproven' };
+    }
+    await writeEvidence(config, {
+      ...evidence,
+      status: 'rollback-not-required',
+      rollbackPerformed: false,
     });
     return { status: 'rollback-not-required' };
   }

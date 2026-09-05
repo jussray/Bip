@@ -91,10 +91,10 @@ jobs:
   verify-native-deployment:
     name: Verify exact frontend Worker, backend Worker, and release
     needs: classify-production-impact
-    if: ${{ always() && (github.event_name == 'workflow_dispatch' || needs.classify-production-impact.result != 'success' || needs.classify-production-impact.outputs.production_impact != 'false') }}
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || needs.classify-production-impact.result != 'success' || needs.classify-production-impact.outputs.production_impact != 'false') }}
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 40
+    timeout-minutes: 180
     permissions:
       contents: read
       checks: read
@@ -118,6 +118,7 @@ jobs:
     steps:
       - name: Validate trusted release target before checkout
         id: trusted_target
+        timeout-minutes: 5
         shell: bash
         env:
           TARGET_SHA: ${{ env.DEPLOYMENT_SHA }}
@@ -156,6 +157,7 @@ jobs:
 
       - name: Check out release commit under verification
         id: checkout
+        timeout-minutes: 5
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ env.DEPLOYMENT_SHA }}
@@ -163,6 +165,7 @@ jobs:
 
       - name: Record and verify exact target head
         id: exact_head
+        timeout-minutes: 2
         shell: bash
         run: |
           set -euo pipefail
@@ -172,6 +175,7 @@ jobs:
 
       - name: Set up Node
         id: setup_node
+        timeout-minutes: 5
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
@@ -179,10 +183,12 @@ jobs:
 
       - name: Install repository dependencies
         id: install
+        timeout-minutes: 10
         run: npm ci
 
       - name: Revalidate current main before Production secret use
         id: trusted_current_main
+        timeout-minutes: 5
         shell: bash
         env:
           TARGET_SHA: ${{ env.DEPLOYMENT_SHA }}
@@ -205,22 +211,30 @@ jobs:
 
       - name: Verify exact Supabase production schema contract
         id: supabase_schema
+        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
         run: node scripts/verify-supabase-production-schema.mjs
 
       - name: Record safe frontend and backend transport evidence
         id: release_transport
+        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' }}
+        timeout-minutes: 5
         run: node scripts/probe-production-release-endpoints.mjs
 
       - name: Wait for exact frontend and backend Worker checks plus release marker
         id: cloudflare_release
+        if: ${{ !cancelled() && steps.trusted_current_main.outcome == 'success' && steps.supabase_schema.outcome == 'success' && steps.release_transport.outcome == 'success' }}
+        timeout-minutes: 35
         env:
           GITHUB_SHA: ${{ env.DEPLOYMENT_SHA }}
         run: node scripts/verify-cloudflare-native-deploy.mjs
 
       - name: Verify backend health
         id: backend_health
+        if: ${{ !cancelled() && steps.cloudflare_release.outcome == 'success' }}
+        timeout-minutes: 5
         shell: bash
         run: |
           set -euo pipefail
@@ -238,20 +252,27 @@ jobs:
 
       - name: Verify Supabase runtime contracts
         id: supabase_health
+        if: ${{ !cancelled() && steps.backend_health.outcome == 'success' }}
+        timeout-minutes: 5
         run: |
           curl --fail-with-body --silent --show-error --retry 5 --retry-delay 5 --retry-all-errors "$SUPABASE_RUNTIME_HEALTH_URL"
 
       - name: Install Chromium
         id: chromium
+        if: ${{ !cancelled() && steps.supabase_health.outcome == 'success' }}
+        timeout-minutes: 15
         run: npx playwright install --with-deps chromium
 
       - name: Verify exact deployed frontend with Playwright
         id: production_playwright
+        if: ${{ !cancelled() && steps.chromium.outcome == 'success' }}
+        timeout-minutes: 30
         run: npm run test:e2e:production
 
       - name: Upload deployment evidence
         id: upload_evidence
         if: always()
+        timeout-minutes: 5
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cloudflare-native-deployment-evidence-${{ env.DEPLOYMENT_SHA }}
@@ -266,10 +287,12 @@ jobs:
 
       - name: Publish exact production release observation
         if: success()
+        timeout-minutes: 5
         run: node scripts/publish-production-release-observation.mjs
 
       - name: Publish blocked exact production observation
         if: failure()
+        timeout-minutes: 5
         env:
           RELEASE_OBSERVATION_MODE: blocked
           VERIFICATION_JOB_STATUS: failure

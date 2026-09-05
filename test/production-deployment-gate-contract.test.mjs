@@ -181,7 +181,11 @@ test('production Playwright verifies both public variants and their Enter paths'
   assert.match(productionSmoke, /YOUR PEOPLE\. YOUR PEACE\./);
   assert.match(productionSmoke, /YOUR FAMILY\. YOUR SPACE\./);
   assert.match(productionSmoke, /How old are you\?/);
-  assert.match(productionSmoke, /enter your parent space/);
+  assert.match(productionSmoke, /parent-welcome/);
+  assert.match(productionSmoke, /Create my Parent account/);
+  assert.match(productionSmoke, /I already have an account/);
+  assert.doesNotMatch(productionSmoke, /parent-splash/);
+  assert.doesNotMatch(productionSmoke, /enter your parent space/);
   assert.match(productionSmoke, /web-welcome-suhana/);
   assert.match(productionSmoke, /toHaveCount\(0\)/);
   assert.doesNotMatch(productionSmoke, /toHaveText\('Suhana'\)/);
