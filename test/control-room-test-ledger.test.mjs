@@ -4,6 +4,7 @@ import {
   aggregateTestLedger,
   assertLedgerMergeReady,
   buildTestLedger,
+  classifyObservation,
   githubJson,
   isRetryableGithubResponse,
   isRetryableGithubStatus,
@@ -78,6 +79,44 @@ test('aggregates failed, pending, warning, unknown, and passed distinctly', () =
   assert.equal(aggregateTestLedger([{state: 'failed'}, {state: 'passed'}]).state, 'failed');
 });
 
+test('observation stops on a repeated decisive failure even when another check is still running', () => {
+  const checks = [{name: 'Supabase Preview', state: 'failed'}, {name: 'Production Witness', state: 'running'}];
+  const fingerprint = JSON.stringify(checks.map((item) => ['github-actions', item.name, item.state]));
+
+  assert.equal(classifyObservation({
+    checks,
+    oldEnough: true,
+    fingerprint,
+    previousFingerprint: fingerprint,
+  }), 'decisive-failure');
+  assert.equal(classifyObservation({
+    checks,
+    oldEnough: false,
+    fingerprint,
+    previousFingerprint: fingerprint,
+  }), 'observing');
+});
+
+test('observation requires all checks terminal before declaring stable success', () => {
+  const running = [{name: 'Playwright', state: 'running'}];
+  const runningFingerprint = JSON.stringify(running.map((item) => ['github-actions', item.name, item.state]));
+  assert.equal(classifyObservation({
+    checks: running,
+    oldEnough: true,
+    fingerprint: runningFingerprint,
+    previousFingerprint: runningFingerprint,
+  }), 'observing');
+
+  const passed = [{name: 'Playwright', state: 'passed'}];
+  const passedFingerprint = JSON.stringify(passed.map((item) => ['github-actions', item.name, item.state]));
+  assert.equal(classifyObservation({
+    checks: passed,
+    oldEnough: true,
+    fingerprint: passedFingerprint,
+    previousFingerprint: passedFingerprint,
+  }), 'stable');
+});
+
 test('builds a sanitized exact-SHA repository-local ledger', () => {
   const checks = selectLatestChecks([check()], SHA);
   const ledger = buildTestLedger({
@@ -96,7 +135,7 @@ test('builds a sanitized exact-SHA repository-local ledger', () => {
   assert.equal(JSON.stringify(ledger).includes('token'), false);
 });
 
-test('fails closed when the observation window expires with a running exact-head check', () => {
+test('fails closed when the observation window expires with a running exact-head check and no decisive failure', () => {
   const checks = selectLatestChecks([
     check({name: 'Cloudflare Pages', status: 'in_progress', conclusion: null}),
   ], SHA);
@@ -113,6 +152,27 @@ test('fails closed when the observation window expires with a running exact-head
   assert.throws(
     () => assertLedgerMergeReady(ledger, 'artifacts/test-ledger.json'),
     /did not reach a stable terminal state/,
+  );
+});
+
+test('reports decisive exact-head failures before generic observation timeout state', () => {
+  const checks = selectLatestChecks([
+    check({name: 'Supabase Preview', conclusion: 'failure'}),
+    check({id: 2, name: 'Production Witness', status: 'in_progress', conclusion: null}),
+  ], SHA);
+  const ledger = buildTestLedger({
+    repository: 'jussray/Sekret-Bip',
+    sha: SHA,
+    branch: 'main',
+    runId: '31984861035',
+    checks,
+    observerState: 'decisive-failure',
+  });
+
+  assert.equal(ledger.aggregate.state, 'failed');
+  assert.throws(
+    () => assertLedgerMergeReady(ledger),
+    /Exact-head check failures remain/,
   );
 });
 

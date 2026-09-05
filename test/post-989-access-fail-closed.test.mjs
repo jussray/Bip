@@ -33,6 +33,90 @@ test('ambiguous Access create outcomes stay unknown and never acquire rollback a
   assert.match(reconciler, /ROLLBACK_MUTATION_ATTRIBUTION_UNPROVEN/);
 });
 
+test('rollback cleanup preserves every unknown mutation representation instead of claiming no rollback is required', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'sekret-access-rollback-'));
+  const evidencePath = join(directory, 'evidence.json');
+  const evidenceBase = {
+    schemaVersion: 2,
+    mutationPerformed: false,
+    rollbackPerformed: false,
+    targetHostname: 'sekretbip.net',
+    applicationName: 'sekretbip.net - public apex bypass',
+  };
+  const cases = [
+    {
+      name: 'unknown status',
+      evidence: { ...evidenceBase, status: 'mutation-state-unknown' },
+    },
+    {
+      name: 'unknown mutationState',
+      evidence: { ...evidenceBase, status: 'planned-existing-bypass', mutationState: 'unknown' },
+    },
+    {
+      name: 'unproven attribution',
+      evidence: { ...evidenceBase, status: 'planned-existing-bypass', mutationAttribution: 'unproven' },
+    },
+    {
+      name: 'claimed mutation without attribution',
+      evidence: { ...evidenceBase, status: 'created-awaiting-proof', mutationPerformed: true },
+    },
+  ];
+
+  try {
+    for (const testCase of cases) {
+      await t.test(testCase.name, async () => {
+        await writeFile(evidencePath, `${JSON.stringify(testCase.evidence)}\n`, 'utf8');
+
+        const result = await rollbackRunCreatedPublicApexAccess({
+          env: {
+            CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
+            CLOUDFLARE_ACCOUNT_ID: 'test-account',
+            BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
+          },
+        });
+        const persisted = JSON.parse(await readFile(evidencePath, 'utf8'));
+
+        assert.equal(result.status, 'rollback-blocked-mutation-state-unproven');
+        assert.deepEqual(persisted, testCase.evidence);
+        assert.notEqual(persisted.status, 'rollback-not-required');
+      });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('rollback cleanup rewrites only a proven no-mutation receipt as not required', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'sekret-access-no-rollback-'));
+  const evidencePath = join(directory, 'evidence.json');
+  const evidence = {
+    schemaVersion: 2,
+    status: 'blocked-existing-public-app',
+    mutationPerformed: false,
+    rollbackPerformed: false,
+    targetHostname: 'sekretbip.net',
+    applicationName: 'sekretbip.net - public apex bypass',
+  };
+
+  try {
+    await writeFile(evidencePath, `${JSON.stringify(evidence)}\n`, 'utf8');
+    const result = await rollbackRunCreatedPublicApexAccess({
+      env: {
+        CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
+        CLOUDFLARE_ACCOUNT_ID: 'test-account',
+        BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
+      },
+    });
+    const persisted = JSON.parse(await readFile(evidencePath, 'utf8'));
+
+    assert.equal(result.status, 'rollback-not-required');
+    assert.equal(persisted.status, 'rollback-not-required');
+    assert.equal(persisted.rollbackPerformed, false);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test('a provider-returned create identity is durably recorded before post-create proof calls', () => {
   const createIndex = reconciler.indexOf('createdApp = await createPublicBypassApplication(config)');
   const evidenceIndex = reconciler.indexOf("status: 'created-awaiting-proof'", createIndex);
@@ -70,40 +154,4 @@ test('production browser contract follows the public apex destination', () => {
     /require[^\n]*app\.sekretbip\.net|includes\([^\n]*app\.sekretbip\.net/i,
     'browser contract must not require the stale app subdomain after apex migration',
   );
-});
-
-test('rollback preserves unknown mutation evidence instead of claiming rollback-not-required', async (t) => {
-  const directory = await mkdtemp(join(tmpdir(), 'sekret-access-unknown-'));
-  t.after(async () => rm(directory, { recursive: true, force: true }));
-
-  const evidencePath = join(directory, 'cloudflare-public-apex-access.json');
-  await writeFile(
-    evidencePath,
-    `${JSON.stringify({
-      schemaVersion: 2,
-      targetHostname: 'sekretbip.net',
-      applicationName: 'sekretbip.net - public apex bypass',
-      status: 'mutation-state-unknown',
-      mutationState: 'unknown',
-      mutationAttribution: 'unproven',
-      mutationPerformed: false,
-      rollbackPerformed: false,
-    }, null, 2)}\n`,
-    'utf8',
-  );
-
-  const result = await rollbackRunCreatedPublicApexAccess({
-    env: {
-      CLOUDFLARE_ACCESS_API_TOKEN: 'test-token',
-      CLOUDFLARE_ACCOUNT_ID: 'test-account',
-      BIP_PUBLIC_ACCESS_EVIDENCE_PATH: evidencePath,
-    },
-  });
-
-  assert.equal(result.status, 'rollback-blocked-mutation-state-unknown');
-  const persisted = JSON.parse(await readFile(evidencePath, 'utf8'));
-  assert.equal(persisted.status, 'rollback-blocked-mutation-state-unknown');
-  assert.equal(persisted.mutationState, 'unknown');
-  assert.equal(persisted.mutationAttribution, 'unproven');
-  assert.equal(persisted.rollbackPerformed, false);
 });
