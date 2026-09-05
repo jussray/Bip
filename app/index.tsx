@@ -7,6 +7,7 @@ import { SplashScreen } from '@screens/SplashScreen';
 import { WebWelcomeScreen } from '@screens/WebWelcomeScreen';
 import { FrontDoorSceneArrival } from '@/components/FrontDoorSceneArrival';
 import { getDevSplitViewSideOverride } from '@/utils/devSplitViewSide';
+import { isSupabaseConfigured } from '@/utils/supabase';
 import type { AccountProfile, AccountSide } from '@/features/identity/accountProfile';
 import {
   resolveParentEntryState,
@@ -14,9 +15,7 @@ import {
 } from '@/services/parentEntryState';
 import { getCurrentFounderProfile, isFounderProfile } from '@/services/founderAudit';
 
-const isAccountServiceConfigured = Boolean(
-  process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-);
+const isAccountServiceConfigured = isSupabaseConfigured();
 
 function getBuildSide(): AccountSide | null {
   const variant = process.env.EXPO_PUBLIC_APP_VARIANT;
@@ -80,7 +79,7 @@ export default function Index() {
           }
 
           throw new Error(
-            'Account service is not configured.\n\nCheck that EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set correctly in your environment.'
+            'Account service is not configured.\n\nCheck that EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or legacy EXPO_PUBLIC_SUPABASE_ANON_KEY) are set correctly in your environment.'
           );
         }
 
