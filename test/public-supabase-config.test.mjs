@@ -104,8 +104,9 @@ test('front door shares canonical Supabase readiness for production sign-in', ()
   );
   assert.match(
     frontDoorSource,
-    /const isAccountServiceConfigured = isSupabaseConfigured\(\);/,
+    /const isAccountServiceConfigured = isSupabaseConfigured;/,
   );
+  assert.doesNotMatch(frontDoorSource, /isSupabaseConfigured\(\)/);
   assert.doesNotMatch(
     frontDoorSource,
     /EXPO_PUBLIC_SUPABASE_URL\s*&&\s*process\.env\.EXPO_PUBLIC_SUPABASE_ANON_KEY/,
