@@ -63,12 +63,14 @@ export function WebWelcomeScreen({
   const { width, height } = useWindowDimensions();
   const [aboutOpen, setAboutOpen] = useState(false);
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+  const defaultAudience = audience ?? welcomeAudienceForAccountSide(variant);
+  const [activeAudience, setActiveAudience] = useState<WelcomeAudience>(() =>
+    getPreviewAudience(defaultAudience),
+  );
   const motionEnabled = reduceMotion === false;
   const compact = width < 520;
   const shortViewport = compact && height < 700;
   const shellHeight = compact ? height : Math.min(height, 900);
-  const defaultAudience = audience ?? welcomeAudienceForAccountSide(variant);
-  const activeAudience = getPreviewAudience(defaultAudience);
   const entrySide = accountSideForWelcomeAudience(activeAudience);
   const isBipJr = activeAudience === 'bip-jr';
   const heroContract = isBipJr
@@ -174,6 +176,7 @@ export function WebWelcomeScreen({
         opacity: 0.84,
         transform: [{ scale: 1 }],
       };
+
   const heroMotionStyle = motionEnabled
     ? {
         transform: [
@@ -194,6 +197,7 @@ export function WebWelcomeScreen({
     : {
         transform: [{ translateY: 0 }, { scale: 1 }],
       };
+
   const sparkMotionStyle = motionEnabled
     ? {
         opacity: worldPulse.interpolate({
@@ -223,7 +227,9 @@ export function WebWelcomeScreen({
   const copy = isBipJr
     ? {
         eyebrow: 'YOUR FAMILY. YOUR SPACE.',
-        subtitle: 'A playful family space where everyone can stay connected and every child still has room to grow.',
+        title: 'A softer doorway for growing together.',
+        lead: 'Bip Jr. + Family',
+        subtitle: 'A calm family space for younger kids, with a grown-up beside them.',
         hero: BIP_JR_HERO,
         heroLabel: 'The Bip Jr family welcome artwork',
         cues: [
@@ -233,11 +239,17 @@ export function WebWelcomeScreen({
         ],
         cueLabel: 'Bip Jr world cues: set up together, stay connected, room to grow',
         note: 'Made for real family rhythms.',
+        enterText: 'Enter with a grown-up',
         enterLabel: 'Bip Jr family welcome — continue to family setup',
+        switchText: 'Looking for Teen space? →',
+        switchLabel: "Switch to the Se'kret Bip Teen welcome",
+        nextAudience: 'teen' as WelcomeAudience,
       }
     : {
         eyebrow: 'YOUR PEOPLE. YOUR PEACE.',
-        subtitle: 'A close-knit world where teens and parents can stay connected without losing their own space.',
+        title: 'Come on in.',
+        lead: 'You can be real here.',
+        subtitle: 'Reflect, talk, breathe, create, or just be for a minute.',
         hero: TEEN_HERO,
         heroLabel: 'Night on the left, Suhana in the center, Sy on the right, Cloud, and their parents together',
         cues: [
@@ -247,13 +259,18 @@ export function WebWelcomeScreen({
         ],
         cueLabel: "Se'kret Bip world cues: start quiet, stay close, keep your space",
         note: '☁  stay awhile. start when you’re ready.',
+        enterText: 'Enter Se’kret Bip',
         enterLabel: "Se'kret Bip teen welcome — continue to age setup",
+        switchText: 'Looking for Bip Jr. + Family? →',
+        switchLabel: 'Switch to the Bip Jr and Family welcome',
+        nextAudience: 'bip-jr' as WelcomeAudience,
       };
 
   return (
     <View style={[styles.page, { minHeight: height }]}>
       <Animated.View pointerEvents="none" style={[styles.ambientTop, ambientMotionStyle]} />
       <Animated.View pointerEvents="none" style={[styles.ambientBottom, ambientMotionStyle]} />
+
       <View
         pointerEvents="none"
         testID="web-welcome-living-world"
@@ -265,6 +282,7 @@ export function WebWelcomeScreen({
         <Animated.Text style={[styles.livingStar, sparkMotionStyle]}>✦</Animated.Text>
         <Animated.Text style={[styles.livingCloud, sparkMotionStyle]}>☁</Animated.Text>
       </View>
+
       <View
         testID="web-welcome-shell"
         accessibilityLabel={isBipJr ? 'Bip Jr welcome' : "Se'kret Bip teen welcome"}
@@ -276,33 +294,27 @@ export function WebWelcomeScreen({
           bounces={false}
         >
           <View style={styles.topBar}>
-            <Pressable
-              testID="web-welcome-about"
-              accessibilityRole="button"
-              accessibilityLabel={aboutOpen ? "Close About Se'kret Bip" : "About Se'kret Bip"}
-              accessibilityState={{ expanded: aboutOpen }}
-              onPress={() => setAboutOpen(value => !value)}
-              style={({ pressed }) => [styles.roundButton, pressed && styles.controlPressed]}
-            >
-              <Text style={styles.roundButtonText}>i</Text>
-            </Pressable>
+            <Text style={styles.wordmarkText}>SE’KRET BIP</Text>
 
-            <View style={styles.wordmark}>
-              <LinearGradient
-                colors={FRONT_DOOR_THEME.gradient.wordmark}
-                style={styles.wordmarkBadge}
+            <View style={styles.topControls}>
+              <Pressable
+                testID="web-welcome-about"
+                accessibilityRole="button"
+                accessibilityLabel={aboutOpen ? "Close About Se'kret Bip" : "About Se'kret Bip"}
+                accessibilityState={{ expanded: aboutOpen }}
+                onPress={() => setAboutOpen(value => !value)}
+                style={({ pressed }) => [styles.roundButton, pressed && styles.controlPressed]}
               >
-                <Text style={styles.wordmarkHeart}>♡</Text>
-              </LinearGradient>
-              <Text style={styles.wordmarkText}>{isBipJr ? 'BIP JR' : 'SE’KRET BIP'}</Text>
-            </View>
+                <Text style={styles.roundButtonText}>i</Text>
+              </Pressable>
 
-            <View
-              accessible={false}
-              importantForAccessibility="no-hide-descendants"
-              style={styles.decorativeSpark}
-            >
-              <Animated.Text style={[styles.decorativeSparkText, sparkMotionStyle]}>✦</Animated.Text>
+              <View
+                accessible={false}
+                importantForAccessibility="no-hide-descendants"
+                style={styles.decorativeSpark}
+              >
+                <Animated.Text style={[styles.decorativeSparkText, sparkMotionStyle]}>✦</Animated.Text>
+              </View>
             </View>
           </View>
 
@@ -322,10 +334,8 @@ export function WebWelcomeScreen({
 
           <View style={styles.copy}>
             <Text testID="web-welcome-eyebrow" style={styles.eyebrow}>{copy.eyebrow}</Text>
-            <View style={styles.titleRow}>
-              <Text style={styles.title}>Come on in.</Text>
-              <Animated.Text style={[styles.spark, sparkMotionStyle]}>✦</Animated.Text>
-            </View>
+            <Text style={styles.title}>{copy.title}</Text>
+            <Text style={styles.lead}>{copy.lead}</Text>
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
 
@@ -387,10 +397,7 @@ export function WebWelcomeScreen({
                 end={{ x: 1, y: 0.5 }}
                 style={[styles.enterButton, pressed && styles.enterPressed]}
               >
-                <Text style={styles.enterText}>Enter Se’kret Bip</Text>
-                <View style={styles.enterHeartBadge}>
-                  <Text style={styles.enterHeart}>♡</Text>
-                </View>
+                <Text style={styles.enterText}>{copy.enterText}</Text>
               </LinearGradient>
             )}
           </Pressable>
@@ -407,6 +414,16 @@ export function WebWelcomeScreen({
               <Text style={styles.signInText}>Sign in</Text>
             </Pressable>
           )}
+
+          <Pressable
+            testID="web-welcome-audience-switch"
+            accessibilityRole="button"
+            accessibilityLabel={copy.switchLabel}
+            onPress={() => setActiveAudience(copy.nextAudience)}
+            style={({ pressed }) => [styles.audienceSwitch, pressed && styles.controlPressed]}
+          >
+            <Text style={styles.audienceSwitchText}>{copy.switchText}</Text>
+          </Pressable>
         </ScrollView>
       </View>
     </View>
@@ -497,10 +514,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: SPACE[7],
+    paddingBottom: SPACE[6],
   },
   topBar: {
-    minHeight: 78,
+    minHeight: 70,
     paddingHorizontal: SPACE[5],
     paddingTop: SPACE[4],
     paddingBottom: SPACE[2],
@@ -508,60 +525,48 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  wordmarkText: {
+    color: color.textHigh,
+    fontSize: TYPE.sm,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+  },
+  topControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACE[2],
+  },
   roundButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: RADIUS.pill,
     borderWidth: 1,
-    borderColor: color.borderStrong,
+    borderColor: color.border,
     backgroundColor: color.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  roundButtonText: {
+    color: color.textMid,
+    fontSize: TYPE.sm,
+    fontWeight: TYPE.bold,
+  },
   controlPressed: {
     opacity: 0.72,
   },
-  roundButtonText: {
-    color: color.textHigh,
-    fontSize: TYPE.xl,
-    fontWeight: TYPE.bold,
-  },
   decorativeSpark: {
-    width: 44,
-    height: 44,
+    width: 28,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   decorativeSparkText: {
     color: color.pinkLight,
-    fontSize: TYPE.xl,
-  },
-  wordmark: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACE[2.5],
-  },
-  wordmarkBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  wordmarkHeart: {
-    color: color.textHigh,
     fontSize: TYPE.lg,
-    fontWeight: TYPE.bold,
-  },
-  wordmarkText: {
-    color: color.textHigh,
-    fontSize: TYPE.sm,
-    fontWeight: '900',
-    letterSpacing: 3.2,
   },
   aboutPanel: {
     marginHorizontal: SPACE[5],
-    marginBottom: SPACE[3],
+    marginBottom: SPACE[2],
     paddingHorizontal: SPACE[4],
     paddingVertical: SPACE[3],
     borderRadius: RADIUS.lg,
@@ -573,61 +578,59 @@ const styles = StyleSheet.create({
     color: color.textHigh,
     fontSize: TYPE.sm,
     fontWeight: '800',
-    textAlign: 'center',
   },
   aboutBody: {
     color: color.textMid,
     fontSize: TYPE.xs,
     lineHeight: 17,
-    textAlign: 'center',
-    marginTop: SPACE[1.5],
+    marginTop: SPACE[1],
   },
   copy: {
-    alignItems: 'center',
-    paddingHorizontal: SPACE[7],
-    paddingTop: SPACE[3],
+    alignItems: 'flex-start',
+    paddingHorizontal: SPACE[5],
+    paddingTop: SPACE[2],
   },
   eyebrow: {
     color: color.eyebrow,
     fontSize: TYPE.xs,
     fontWeight: '800',
-    letterSpacing: 3.2,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: SPACE[3],
+    letterSpacing: 1.1,
+    textTransform: 'uppercase',
   },
   title: {
     color: color.textHigh,
-    fontFamily: 'Georgia',
-    fontSize: 48,
-    lineHeight: 54,
-    letterSpacing: -2,
+    fontSize: 36,
+    lineHeight: 40,
+    fontWeight: '900',
+    letterSpacing: -1.2,
+    marginTop: SPACE[2],
+    maxWidth: 350,
   },
-  spark: {
-    color: color.pinkLight,
-    fontSize: TYPE.lg,
-    marginLeft: SPACE[2],
+  lead: {
+    color: color.lilacLight,
+    fontSize: TYPE.xl,
+    lineHeight: 28,
+    fontWeight: '800',
     marginTop: SPACE[1],
   },
   subtitle: {
     color: color.textMid,
     fontSize: TYPE.base,
-    lineHeight: 23,
-    textAlign: 'center',
+    lineHeight: 22,
     maxWidth: 350,
-    marginTop: SPACE[2.5],
+    marginTop: SPACE[2],
   },
   heroWrap: {
-    marginTop: SPACE[1],
+    marginHorizontal: SPACE[5],
+    marginTop: SPACE[4],
     overflow: 'hidden',
     justifyContent: 'flex-end',
+    borderRadius: RADIUS.xxl,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.shellRaised,
   },
   heroWrapBipJr: {
-    marginHorizontal: SPACE[5],
-    marginTop: SPACE[3.5],
-    borderRadius: RADIUS.xxl + SPACE[1.5],
     backgroundColor: color.shellRaised,
   },
   heroGlow: {
@@ -643,13 +646,14 @@ const styles = StyleSheet.create({
   hero: {
     width: '100%',
     height: '100%',
+    borderRadius: RADIUS.xxl,
   },
   heroBipJr: {
-    borderRadius: RADIUS.xxl + SPACE[1.5],
+    borderRadius: RADIUS.xxl,
   },
   worldCues: {
     marginHorizontal: SPACE[5],
-    marginBottom: SPACE[3],
+    marginBottom: SPACE[2],
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
@@ -657,7 +661,7 @@ const styles = StyleSheet.create({
     gap: SPACE[2],
   },
   worldCue: {
-    minHeight: 38,
+    minHeight: 36,
     paddingHorizontal: SPACE[3],
     borderRadius: RADIUS.pill,
     borderWidth: 1,
@@ -666,7 +670,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACE[1.5],
+    gap: SPACE[1],
   },
   worldCueSymbol: {
     color: color.pinkLight,
@@ -676,7 +680,6 @@ const styles = StyleSheet.create({
     color: color.textMid,
     fontSize: TYPE.xs,
     fontWeight: '800',
-    letterSpacing: 0.4,
   },
   handNote: {
     color: color.textMid,
@@ -687,15 +690,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACE[5],
   },
   enterButton: {
-    minHeight: 72,
-    marginHorizontal: SPACE[8],
-    borderRadius: RADIUS.xxl,
+    minHeight: 54,
+    marginHorizontal: SPACE[5],
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: color.borderStrong,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACE[4],
     boxShadow: FRONT_DOOR_THEME.shadow.action as never,
   },
   enterPressed: {
@@ -704,31 +705,21 @@ const styles = StyleSheet.create({
   },
   enterText: {
     color: color.textHigh,
-    fontSize: TYPE.xl,
-    fontWeight: '800',
-  },
-  enterHeartBadge: {
-    width: 42,
-    height: 42,
-    borderRadius: RADIUS.pill,
-    backgroundColor: color.badge,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  enterHeart: {
-    color: color.textHigh,
-    fontSize: 28,
-    lineHeight: 32,
+    fontSize: TYPE.base,
+    fontWeight: '900',
   },
   signInButton: {
     minHeight: 48,
-    marginHorizontal: SPACE[8],
-    marginTop: SPACE[2.5],
+    marginHorizontal: SPACE[5],
+    marginTop: SPACE[2],
     borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: color.border,
+    backgroundColor: color.surfaceSoft,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACE[1.5],
+    gap: SPACE[1],
   },
   signInPressed: {
     opacity: 0.7,
@@ -741,6 +732,17 @@ const styles = StyleSheet.create({
     color: color.lilacLight,
     fontSize: TYPE.sm,
     fontWeight: '900',
-    textDecorationLine: 'underline',
+  },
+  audienceSwitch: {
+    minHeight: 48,
+    marginHorizontal: SPACE[5],
+    marginTop: SPACE[2],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  audienceSwitchText: {
+    color: color.textMid,
+    fontSize: TYPE.sm,
+    fontWeight: '700',
   },
 });
