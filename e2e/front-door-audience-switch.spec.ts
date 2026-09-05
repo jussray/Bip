@@ -23,7 +23,7 @@ async function expectNoDocumentHorizontalOverflow(page: Page) {
 
 test('caveman visual teaches the doorway, stays contained, then clears for interaction', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 320, height: 568 });
   await page.goto('/?bipDevAudience=teen', { waitUntil: 'domcontentloaded' });
 
   const primer = page.getByTestId('web-welcome-caveman-visual');
@@ -36,7 +36,7 @@ test('caveman visual teaches the doorway, stays contained, then clears for inter
   const primerBox = await primer.boundingBox();
   expect(primerBox).not.toBeNull();
   expect(primerBox!.x).toBeGreaterThanOrEqual(0);
-  expect(primerBox!.x + primerBox!.width).toBeLessThanOrEqual(390);
+  expect(primerBox!.x + primerBox!.width).toBeLessThanOrEqual(320);
   await expectNoDocumentHorizontalOverflow(page);
 
   await expect(page.getByTestId('web-welcome-scene-settled')).toBeAttached({ timeout: 5_000 });
