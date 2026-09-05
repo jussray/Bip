@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -86,9 +86,9 @@ export function expectedChecksForChangedFiles(changedFiles, scopePatterns) {
 
   for (const scope of CONDITIONAL_CHECK_SCOPES) {
     const patterns = scopePatterns?.[scope.workflowPath] ?? [];
-    if (patterns.some((pattern) => files.some((file) => globMatches(file, pattern)))) {
-      expected.add(scope.checkName);
-    }
+    const scopeDefinitionChanged = files.includes(scope.workflowPath);
+    const scopedFileChanged = patterns.some((pattern) => files.some((file) => globMatches(file, pattern)));
+    if (scopeDefinitionChanged || scopedFileChanged) expected.add(scope.checkName);
   }
 
   return [...expected];
@@ -182,6 +182,11 @@ async function fetchAllPages(urlFactory, token) {
   return rows;
 }
 
+async function fetchPullRequest({ repository, prNumber, token }) {
+  const [owner, repo] = repository.split('/');
+  return githubJson(`${API_BASE}/repos/${owner}/${repo}/pulls/${encodeURIComponent(prNumber)}`, token);
+}
+
 async function fetchChangedFiles({ repository, prNumber, token }) {
   const [owner, repo] = repository.split('/');
   return fetchAllPages(
@@ -198,12 +203,30 @@ async function fetchCheckRuns({ repository, sha, token }) {
   );
 }
 
-async function loadScopePatterns(root = process.cwd()) {
+async function fetchTrustedWorkflowSource({ repository, workflowPath, baseSha, token }) {
+  const [owner, repo] = repository.split('/');
+  const encodedPath = workflowPath.split('/').map(encodeURIComponent).join('/');
+  const payload = await githubJson(
+    `${API_BASE}/repos/${owner}/${repo}/contents/${encodedPath}?ref=${encodeURIComponent(baseSha)}`,
+    token,
+  );
+  if (payload?.type !== 'file' || clean(payload?.encoding) !== 'base64' || !clean(payload?.content)) {
+    throw new Error(`Trusted workflow source is unavailable at ${workflowPath}@${baseSha}.`);
+  }
+  return Buffer.from(String(payload.content).replace(/\s+/g, ''), 'base64').toString('utf8');
+}
+
+async function loadTrustedScopePatterns({ repository, baseSha, token }) {
   const result = {};
   for (const scope of CONDITIONAL_CHECK_SCOPES) {
-    const source = await readFile(path.join(root, scope.workflowPath), 'utf8');
+    const source = await fetchTrustedWorkflowSource({
+      repository,
+      workflowPath: scope.workflowPath,
+      baseSha,
+      token,
+    });
     const paths = extractPullRequestPaths(source);
-    if (paths.length === 0) throw new Error(`No pull_request paths found in ${scope.workflowPath}.`);
+    if (paths.length === 0) throw new Error(`No trusted pull_request paths found in ${scope.workflowPath}@${baseSha}.`);
     result[scope.workflowPath] = paths;
   }
   return result;
@@ -227,8 +250,19 @@ export async function verifyGithubMergeMembrane({ env = process.env, now = () =>
     throw new Error('GITHUB_REPOSITORY, EXPECTED_HEAD_SHA/GITHUB_SHA, PR_NUMBER, and GITHUB_TOKEN are required.');
   }
 
+  const pullRequest = await fetchPullRequest({ repository, prNumber, token });
+  const observedHeadSha = normalizeSha(pullRequest?.head?.sha);
+  const baseSha = normalizeSha(pullRequest?.base?.sha);
+  const baseRef = clean(pullRequest?.base?.ref);
+  if (observedHeadSha !== expectedSha) {
+    throw new Error(`PR_HEAD_SHA_MISMATCH expected=${expectedSha} observed=${observedHeadSha || 'missing'}`);
+  }
+  if (baseRef !== 'main' || !baseSha) {
+    throw new Error(`TRUSTED_BASE_INVALID ref=${baseRef || 'missing'} sha=${baseSha || 'missing'}`);
+  }
+
   const changedFiles = await fetchChangedFiles({ repository, prNumber, token });
-  const scopePatterns = await loadScopePatterns();
+  const scopePatterns = await loadTrustedScopePatterns({ repository, baseSha, token });
   const expectedChecks = expectedChecksForChangedFiles(changedFiles, scopePatterns);
   const startedAt = Date.now();
   let evaluation = null;
@@ -238,11 +272,13 @@ export async function verifyGithubMergeMembrane({ env = process.env, now = () =>
     evaluation = evaluateExpectedChecks({ expectedChecks, checkRuns, expectedSha });
 
     const receipt = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       generatedAt: now().toISOString(),
       repository,
       pullRequest: Number(prNumber),
       exactHead: expectedSha,
+      trustedBase: baseSha,
+      scopeAuthority: 'trusted-pr-base',
       mutationPerformed: false,
       authority: 'merge-membrane-observation',
       changedFiles,
@@ -252,7 +288,7 @@ export async function verifyGithubMergeMembrane({ env = process.env, now = () =>
     await writeReceipt(outputPath, receipt);
 
     if (evaluation.ready) {
-      console.log(`GITHUB_MERGE_MEMBRANE_VERIFIED head=${expectedSha} checks=${expectedChecks.length}`);
+      console.log(`GITHUB_MERGE_MEMBRANE_VERIFIED head=${expectedSha} base=${baseSha} checks=${expectedChecks.length}`);
       return receipt;
     }
     if (evaluation.terminalFailure) {
