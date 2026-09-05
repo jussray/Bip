@@ -15,7 +15,7 @@ import {
 } from '@/services/parentEntryState';
 import { getCurrentFounderProfile, isFounderProfile } from '@/services/founderAudit';
 
-const isAccountServiceConfigured = isSupabaseConfigured();
+const isAccountServiceConfigured = isSupabaseConfigured;
 
 function getBuildSide(): AccountSide | null {
   const variant = process.env.EXPO_PUBLIC_APP_VARIANT;
