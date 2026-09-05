@@ -15,7 +15,9 @@ test('parent front door leads directly into parent onboarding', async ({ page })
   await expect(enter).toBeVisible({ timeout: 30_000 });
   await expect(enter).toHaveAccessibleName('Bip Jr family welcome — continue to family setup');
   await enter.click();
-  await expect(page.getByRole('button', { name: "Se'kret Bip — enter your parent space" })).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/\/parent-welcome(?:\?|$)/, { timeout: 15_000 });
+  await expect(page.getByRole('button', { name: /Create my Parent account/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /I already have an account/i })).toBeVisible();
 });
 
 test('rollback front door exposes bounded working actions and canonical identity', async ({ page }) => {
