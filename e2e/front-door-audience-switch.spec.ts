@@ -21,7 +21,7 @@ async function expectNoDocumentHorizontalOverflow(page: Page) {
   expect(Math.max(metrics.htmlScrollWidth, metrics.bodyScrollWidth)).toBeLessThanOrEqual(viewportWidth + 1);
 }
 
-test('caveman visual teaches the doorway, then clears for interaction', async ({ page }) => {
+test('caveman visual teaches the doorway, stays contained, then clears for interaction', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?bipDevAudience=teen', { waitUntil: 'domcontentloaded' });
@@ -32,6 +32,12 @@ test('caveman visual teaches the doorway, then clears for interaction', async ({
   await expect(primer).toContainText('YOU');
   await expect(primer).toContainText('YOUR SPACE');
   await expect(primer).toContainText('ENTER');
+
+  const primerBox = await primer.boundingBox();
+  expect(primerBox).not.toBeNull();
+  expect(primerBox!.x).toBeGreaterThanOrEqual(0);
+  expect(primerBox!.x + primerBox!.width).toBeLessThanOrEqual(390);
+  await expectNoDocumentHorizontalOverflow(page);
 
   await expect(page.getByTestId('web-welcome-scene-settled')).toBeAttached({ timeout: 5_000 });
   await expect(primer).toHaveCount(0);
