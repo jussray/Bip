@@ -69,7 +69,7 @@ test('failure wrapper persists a safe receipt and never serializes caught except
   assert.doesNotMatch(wrapper, /error\.message|String\(error\)|payload\?\.errors[^\n]*message/);
 });
 
-test('workflow uses the receipt wrapper and fails if evidence is missing', () => {
+test('workflow normalizes Cloudflare token transport before the receipt wrapper and fails if evidence is missing', () => {
   const workflow = fs.readFileSync(
     new URL('../.github/workflows/reconcile-cloudflare-app-domain.yml', import.meta.url),
     'utf8',
@@ -77,8 +77,9 @@ test('workflow uses the receipt wrapper and fails if evidence is missing', () =>
 
   assert.match(
     workflow,
-    /node scripts\/run-cloudflare-app-domain-reconcile-with-receipt\.mjs --apply/,
+    /node scripts\/run-with-normalized-cloudflare-token\.mjs\s+scripts\/run-cloudflare-app-domain-reconcile-with-receipt\.mjs\s+--apply/s,
   );
+  assert.match(workflow, /scripts\/run-with-normalized-cloudflare-token\.mjs/);
   assert.match(workflow, /cloudflare-app-domain-failure-receipt\.test\.mjs/);
   assert.match(workflow, /if-no-files-found: error/);
 });
