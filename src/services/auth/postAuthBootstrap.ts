@@ -37,6 +37,19 @@ function routeForBootstrap(
   return '/';
 }
 
+async function hydrateAccountProfileForRouting(
+  preferredSide: AccountSide,
+): Promise<AccountProfile | null> {
+  try {
+    return await hydrateAccountProfile(preferredSide);
+  } catch {
+    // Authentication already succeeded. A transient profile/schema read failure
+    // must not be presented as bad credentials or bypass consent. Returning null
+    // keeps routing fail-closed through the required onboarding path.
+    return null;
+  }
+}
+
 /**
  * Fetches the signed-in account facts that routing depends on after login,
  * signup, email confirmation, or account restoration. The caller must wait for
@@ -76,7 +89,7 @@ export async function fetchPostAuthBootstrap(
 
   const requestedSide = await resolvePreferredSide(preferredSide);
   const profile = prehydratedProfile === undefined
-    ? await hydrateAccountProfile(requestedSide)
+    ? await hydrateAccountProfileForRouting(requestedSide)
     : prehydratedProfile;
   const accountSide = profile?.accountSide ?? requestedSide;
 

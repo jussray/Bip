@@ -64,6 +64,19 @@ test('login and signup wait for the same post-auth fetch contract before routing
   assert.match(bootstrap, /A permanent signed-in account is required/);
 });
 
+test('profile hydration failure preserves auth and fails closed through onboarding', () => {
+  assert.match(bootstrap, /async function hydrateAccountProfileForRouting/);
+  assert.match(
+    bootstrap,
+    /try \{\s*return await hydrateAccountProfile\(preferredSide\);\s*\} catch \{[\s\S]*return null;\s*\}/,
+  );
+  assert.match(
+    bootstrap,
+    /prehydratedProfile === undefined\s*\? await hydrateAccountProfileForRouting\(requestedSide\)/,
+  );
+  assert.match(bootstrap, /if \(!requiredConsentsComplete\) return `\/\(onboarding\)\/consent\?side=\$\{side\}`;/);
+});
+
 test('authorized founder login routes before public consent and onboarding gates', () => {
   const founderLookupIndex = bootstrap.indexOf('const founderProfile = await getCurrentFounderProfile()');
   const founderRouteIndex = bootstrap.indexOf("nextRoute: '/(dev)/control-room'");
