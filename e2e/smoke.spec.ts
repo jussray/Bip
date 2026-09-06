@@ -29,8 +29,10 @@ test('rollback front door exposes bounded working actions and canonical identity
   await expect(page.getByText('Night', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Suhana', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Sy', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('web-welcome-about')).toBeVisible();
+  await expect(page.getByTestId('web-welcome-enter')).toBeVisible();
   await expect(page.getByTestId('web-welcome-sign-in')).toBeVisible();
-  await expect(page.getByRole('button')).toHaveCount(3);
+  await expect(page.getByTestId('web-welcome-audience-switch')).toBeVisible();
   await page.screenshot({ path: 'test-results/front-door-desktop.png', fullPage: true });
 });
 
