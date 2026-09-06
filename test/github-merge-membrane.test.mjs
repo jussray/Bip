@@ -127,3 +127,28 @@ test('stale-head success cannot satisfy current-head authority', () => {
   assert.equal(verdict.ready, false);
   assert.deepEqual(verdict.missing, expectedChecks);
 });
+
+test('PR continuity evaluates the live head with trusted base code', () => {
+  const source = readFileSync('.github/workflows/pr-continuity.yml', 'utf8');
+  const exactHeadJob = source.slice(
+    source.indexOf('  exact-head-audit:'),
+    source.indexOf('  metadata-receipt:'),
+  );
+
+  assert.match(exactHeadJob, /Check out trusted PR base evaluator/);
+  assert.match(
+    exactHeadJob,
+    /ref: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/,
+  );
+  assert.doesNotMatch(
+    exactHeadJob,
+    /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  );
+  assert.match(
+    exactHeadJob,
+    /EXPECTED_HEAD_SHA: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
+  );
+  assert.match(exactHeadJob, /TRUSTED_BASE_SHA: \$\{\{ github\.event\.pull_request\.base\.sha \}\}/);
+  assert.match(exactHeadJob, /test "\$actual" = "\$TRUSTED_BASE_SHA"/);
+  assert.match(exactHeadJob, /run: node scripts\/pr-continuity\.mjs audit/);
+});
