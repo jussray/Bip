@@ -53,6 +53,12 @@ test('workflow repairs exactly the five approved alias pairs and no arbitrary in
   assert.match(workflow, /supabase migration repair[\s\S]*--status reverted --db-url/);
 });
 
+test('history-only reconciliation requires completed security work without a stale pending-count assumption', () => {
+  assert.match(workflow, /PENDING_SECURITY_MIGRATIONS\.length !== 0/);
+  assert.match(workflow, /requires zero pending production security migrations/);
+  assert.doesNotMatch(workflow, /PENDING_SECURITY_MIGRATIONS\.length !== 3/);
+});
+
 test('canonical markers are inserted before historical aliases are retired', () => {
   const applyCanonical = workflow.indexOf('- name: Mark canonical versions applied');
   const retireAliases = workflow.indexOf('- name: Retire historical live aliases');

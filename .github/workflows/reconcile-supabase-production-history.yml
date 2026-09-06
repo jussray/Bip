@@ -97,7 +97,9 @@ jobs:
           ];
           const actual = PRODUCTION_HISTORY_RECONCILIATION_PLAN.map(({ liveVersion, canonicalVersion }) => [liveVersion, canonicalVersion]);
           if (JSON.stringify(actual) !== JSON.stringify(expected)) throw new Error('Exact five-pair reconciliation plan changed.');
-          if (PENDING_SECURITY_MIGRATIONS.length !== 3) throw new Error('Pending security migration boundary changed.');
+          if (PENDING_SECURITY_MIGRATIONS.length !== 0) {
+            throw new Error('History reconciliation requires zero pending production security migrations; completed security applies must be receipt-bound before history-only repair.');
+          }
           NODE
 
       - name: Set up Supabase CLI
