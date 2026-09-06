@@ -14,11 +14,44 @@ const productionConfig = readFileSync('playwright.production.config.ts', 'utf8')
 const productionSmoke = readFileSync('e2e/production-smoke.spec.ts', 'utf8');
 const releaseProbe = readFileSync('scripts/probe-production-release-endpoints.mjs', 'utf8');
 
+function workflowStep(name) {
+  const marker = `      - name: ${name}\n`;
+  const start = workflow.indexOf(marker);
+  assert.notEqual(start, -1, `missing production verification step: ${name}`);
+  const next = workflow.indexOf('\n      - name:', start + marker.length);
+  return workflow.slice(start, next === -1 ? workflow.length : next);
+}
+
 test('production verification runs after relevant main pushes', () => {
   assert.match(workflow, /push:\s*\n\s*branches: \[main\]/);
   assert.match(workflow, /EXPECTED_RELEASE_SHA: \$\{\{ inputs\.target_sha \|\| github\.sha \}\}/);
   assert.match(workflow, /verify-cloudflare-native-deploy\.mjs/);
   assert.match(workflow, /test:e2e:production/);
+});
+
+test('Attack 2000 keeps independent production evidence planes observable after exact-current-main trust', () => {
+  const schema = workflowStep('Verify exact Supabase production schema contract');
+  const transport = workflowStep('Record safe frontend and backend transport evidence');
+  const cloudflareRelease = workflowStep('Wait for exact frontend and backend Worker checks plus release marker');
+  const backend = workflowStep('Verify backend health');
+  const supabaseRuntime = workflowStep('Verify Supabase runtime contracts');
+  const chromium = workflowStep('Install Chromium');
+  const playwright = workflowStep('Verify exact deployed frontend with Playwright');
+
+  for (const step of [schema, transport, backend, supabaseRuntime, chromium]) {
+    assert.match(step, /steps\.trusted_current_main\.outcome == 'success'/);
+  }
+
+  assert.match(cloudflareRelease, /steps\.trusted_current_main\.outcome == 'success'/);
+  assert.match(cloudflareRelease, /steps\.release_transport\.outcome == 'success'/);
+  assert.doesNotMatch(cloudflareRelease, /steps\.supabase_schema\.outcome/);
+
+  assert.doesNotMatch(backend, /steps\.cloudflare_release\.outcome/);
+  assert.doesNotMatch(supabaseRuntime, /steps\.backend_health\.outcome/);
+  assert.doesNotMatch(chromium, /steps\.supabase_health\.outcome/);
+
+  assert.match(playwright, /steps\.chromium\.outcome == 'success'/);
+  assert.doesNotMatch(playwright, /steps\.supabase_schema\.outcome|steps\.cloudflare_release\.outcome|steps\.backend_health\.outcome|steps\.supabase_health\.outcome/);
 });
 
 test('production release proof targets the application frontend and preserves backend authority', () => {
