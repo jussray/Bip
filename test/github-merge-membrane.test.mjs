@@ -12,6 +12,7 @@ import {
 
 const SHA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
 const mergeMembraneSource = readFileSync('scripts/verify-github-merge-membrane.mjs', 'utf8');
+const releaseGateSource = readFileSync('.agents/skills/bip-release-gate/SKILL.md', 'utf8');
 
 function run(name, conclusion = 'success', app = 'github-actions', overrides = {}) {
   return {
@@ -116,6 +117,71 @@ test('exact-head trusted GitHub Actions checks must all exist and pass', () => {
   const failedVerdict = evaluateExpectedChecks({ expectedChecks, checkRuns: failed, expectedSha: SHA });
   assert.equal(failedVerdict.terminalFailure, true);
   assert.deepEqual(failedVerdict.failed, ['repository-truth']);
+});
+
+test('Attack 2000 cannot promote missing, pending, failed, stale, or spoofed proof', () => {
+  const expectedChecks = [...ALWAYS_REQUIRED_CHECKS, 'product-design-proof'];
+  const good = expectedChecks.map((name) => run(name));
+
+  const missing = evaluateExpectedChecks({
+    expectedChecks,
+    checkRuns: good.filter((item) => item.name !== 'deploy'),
+    expectedSha: SHA,
+  });
+  assert.equal(missing.ready, false);
+  assert.equal(missing.terminalFailure, false);
+  assert.deepEqual(missing.missing, ['deploy']);
+
+  const pending = evaluateExpectedChecks({
+    expectedChecks,
+    checkRuns: good.map((item) => item.name === 'deploy'
+      ? run('deploy', null, 'github-actions', { status: 'in_progress', conclusion: null })
+      : item),
+    expectedSha: SHA,
+  });
+  assert.equal(pending.ready, false);
+  assert.deepEqual(pending.pending, ['deploy']);
+
+  const failed = evaluateExpectedChecks({
+    expectedChecks,
+    checkRuns: good.map((item) => item.name === 'deploy' ? run('deploy', 'failure') : item),
+    expectedSha: SHA,
+  });
+  assert.equal(failed.ready, false);
+  assert.equal(failed.terminalFailure, true);
+  assert.deepEqual(failed.failed, ['deploy']);
+
+  const stale = evaluateExpectedChecks({
+    expectedChecks,
+    checkRuns: good.map((item) => ({ ...item, head_sha: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' })),
+    expectedSha: SHA,
+  });
+  assert.equal(stale.ready, false);
+  assert.deepEqual(stale.missing, expectedChecks);
+
+  const spoofed = evaluateExpectedChecks({
+    expectedChecks,
+    checkRuns: good
+      .filter((item) => item.name !== 'product-design-proof')
+      .concat(run('product-design-proof', 'success', 'cloudflare-workers-and-pages')),
+    expectedSha: SHA,
+  });
+  assert.equal(spoofed.ready, false);
+  assert.deepEqual(spoofed.missing, ['product-design-proof']);
+});
+
+test('Attack 2000 release contract is falsification-first and non-authorizing', () => {
+  assert.match(releaseGateSource, /Attack 2000 is mandatory for merge, beta, controlled production mutation, and public-release decisions/);
+  assert.match(releaseGateSource, /not a literal claim that 2,000 tests executed/);
+  for (const field of ['CLAIM', 'SUBJECT', 'AUTHORITY', 'EVIDENCE', 'FALSIFIER', 'RESULT', 'ROLLBACK']) {
+    assert.match(releaseGateSource, new RegExp(`\\*\\*${field}\\*\\*`));
+  }
+  assert.match(releaseGateSource, /user-visible Playwright that did not actually execute when applicable/);
+  assert.match(releaseGateSource, /Supabase migration-history, schema, RLS, or runtime contradiction/);
+  assert.match(releaseGateSource, /Cloudflare Pages\/Worker\/provider readback contradiction/);
+  assert.match(releaseGateSource, /Attack 2000 may only preserve or reduce confidence/);
+  assert.match(releaseGateSource, /never manufactures merge, deploy, publication, spending, deletion, auth, or provider authority/);
+  assert.match(releaseGateSource, /failed verification can be a successful Attack 2000 outcome/);
 });
 
 test('newer queued exact-head rerun supersedes older success by creation order', () => {
