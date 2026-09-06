@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { START_MARKER, END_MARKER, SCHEMA, isCurrentCompareStatus, classifyCompareStatus, assertExpectedHead, replaceManagedBlock, continuityBlock, collectRolloverOrder, sameRepositoryPull } from '../scripts/pr-continuity.mjs';
+import { START_MARKER, END_MARKER, SCHEMA, isCurrentCompareStatus, classifyCompareStatus, assertExpectedHead, continuityBaseObservation, replaceManagedBlock, continuityBlock, collectRolloverOrder, sameRepositoryPull } from '../scripts/pr-continuity.mjs';
 const repo='jussray/example';const baseRepo={full_name:repo};function pr(number,baseRef,headRef,state='open',headRepo=baseRepo){return{number,state,base:{ref:baseRef,repo:baseRepo},head:{ref:headRef,repo:headRepo}};}
 test('AT01 identical base/head is current ancestry',()=>assert.equal(isCurrentCompareStatus('identical'),true));
 test('AT02 ahead head is current ancestry',()=>assert.equal(isCurrentCompareStatus('ahead'),true));
@@ -22,4 +22,7 @@ test('AT17 receipt explicitly denies deploy authority',()=>assert.match(continui
 test('AT18 stacked dependency graph rolls parent before child',()=>assert.deepEqual(collectRolloverOrder([pr(10,'main','parent'),pr(11,'parent','child')]),[10,11]));
 test('AT19 unrelated stack is excluded',()=>assert.deepEqual(collectRolloverOrder([pr(10,'other','child')]),[]));
 test('AT20 cyclic malformed stack terminates once per pull',()=>assert.deepEqual(collectRolloverOrder([pr(1,'main','a'),pr(2,'a','main')]),[1,2]));
+test('AT21 stale recorded base cannot substitute for current branch head',()=>{const old='a'.repeat(40),live='b'.repeat(40);const observation=continuityBaseObservation(old,live,live);assert.equal(observation.liveBaseSha,live);assert.equal(observation.recordedBaseSha,old);assert.equal(observation.recordedBaseIsCurrent,false);});
+test('AT22 base movement during continuity observation fails closed',()=>assert.throws(()=>continuityBaseObservation('a'.repeat(40),'b'.repeat(40),'c'.repeat(40)),/BASE_MOVED_DURING_CONTINUITY_OBSERVATION/));
+test('AT23 missing live base observation fails closed',()=>assert.throws(()=>continuityBaseObservation('a'.repeat(40),'',''),/LIVE_BASE_SHA_REQUIRED/));
 test('schema remains stable',()=>assert.equal(SCHEMA,'juss/pr-continuity@v1'));
