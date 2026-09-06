@@ -48,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Verify deployment and merge-authority contracts
-        run: node --test test/production-authority-workflow-contracts.test.mjs test/github-merge-membrane.test.mjs test/cloudflare-pages-build-environment.test.mjs test/cloudflare-worker-identity.test.mjs
+        run: node --test test/production-authority-workflow-contracts.test.mjs test/github-merge-membrane.test.mjs test/pr-continuity.attack20.test.mjs test/cloudflare-pages-build-environment.test.mjs test/cloudflare-worker-identity.test.mjs
 
       - name: Prove exact-head Worker deployability without mutation
         run: npx wrangler deploy --dry-run --config wrangler.toml
