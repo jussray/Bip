@@ -3,7 +3,6 @@ import { pathToFileURL } from 'node:url';
 
 import { main as reconcileMain } from './reconcile-cloudflare-app-domain.mjs';
 
-const API_BASE = 'https://api.cloudflare.com/client/v4';
 const EVIDENCE_PATH = 'artifacts/cloudflare-app-domain-routing-evidence.json';
 const PROTECTED_WORKERS = ['sekret-backend', 'sekret-backend-alpha'];
 
@@ -34,9 +33,6 @@ export function classifyObservedRequest(input, init = {}) {
     if (path.includes('/pages/projects/') && path.endsWith('/domains')) {
       return { provider: 'cloudflare', operation: 'pages-domains-read', method };
     }
-    if (path.endsWith('/workers/scripts')) {
-      return { provider: 'cloudflare', operation: 'worker-scripts-read', method };
-    }
     if (path.endsWith('/workers/domains')) {
       return { provider: 'cloudflare', operation: 'worker-domains-read', method };
     }
@@ -62,60 +58,10 @@ export function classifyObservedRequest(input, init = {}) {
   return { provider: 'external', operation: 'external-request', method };
 }
 
-export function twoWorkerTopologyMatches(workerIds = []) {
-  const observed = new Set(
-    (Array.isArray(workerIds) ? workerIds : [])
-      .map((value) => String(value ?? '').trim())
-      .filter(Boolean),
-  );
-  return PROTECTED_WORKERS.every((worker) => observed.has(worker));
-}
-
-export function appDomainApplyBlockReason(argv = [], topologyVerified = false) {
-  if (!argv.includes('--apply')) return null;
-  return topologyVerified ? null : 'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED';
-}
-
 function numericProviderCodes(payload) {
   return (payload?.errors || [])
     .map((item) => item?.code)
     .filter((code) => Number.isInteger(code));
-}
-
-async function verifyTwoWorkerTopology(env = process.env) {
-  const token = String(env.CLOUDFLARE_API_TOKEN || '').trim();
-  const accountId = String(env.CLOUDFLARE_ACCOUNT_ID || '').trim();
-  if (!token || !accountId) {
-    throw new Error('TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_CONFIGURATION_MISSING');
-  }
-
-  const response = await fetch(
-    `${API_BASE}/accounts/${encodeURIComponent(accountId)}/workers/scripts?per_page=100`,
-    {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    },
-  );
-  const payload = await response.json().catch(() => null);
-  if (!response.ok || payload?.success === false) {
-    throw new Error('TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_FAILED');
-  }
-
-  const workerIds = (Array.isArray(payload?.result) ? payload.result : [])
-    .map((worker) => String(worker?.id || '').trim())
-    .filter(Boolean);
-  if (!twoWorkerTopologyMatches(workerIds)) {
-    throw new Error('TWO_WORKER_TOPOLOGY_MISMATCH');
-  }
-
-  console.log('TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_VERIFIED');
-  return {
-    verified: true,
-    protectedWorkers: [...PROTECTED_WORKERS],
-  };
 }
 
 async function readExistingEvidence() {
@@ -144,7 +90,7 @@ async function writeFailureReceipt(existing, observation, env = process.env) {
     pagesProject: env.BIP_APP_PAGES_PROJECT || 'sekret-bip',
     backendWorker: env.BIP_APP_BACKEND_WORKER || 'sekret-backend',
     protectedWorkers: PROTECTED_WORKERS,
-    topologyAuthority: 'provider-readback-required',
+    topologyAuthority: 'exact-host-binding-provider-readback-required',
     actions: [],
   };
 
@@ -168,7 +114,7 @@ async function writeFailureReceipt(existing, observation, env = process.env) {
   console.log(`FAILURE_EVIDENCE_WRITTEN path=${EVIDENCE_PATH} phase=${phase}`);
 }
 
-async function persistVerifiedTopology(topology) {
+async function persistBindingGuardMetadata() {
   const existing = await readExistingEvidence();
   if (!existing) return;
   await writeFile(
@@ -176,8 +122,8 @@ async function persistVerifiedTopology(topology) {
     `${JSON.stringify(
       {
         ...existing,
-        protectedWorkers: topology.protectedWorkers,
-        topologyAuthority: 'provider-readback-verified',
+        protectedWorkers: PROTECTED_WORKERS,
+        topologyAuthority: 'exact-host-binding-provider-readback-verified',
       },
       null,
       2,
@@ -219,15 +165,13 @@ export async function run(argv = process.argv.slice(2), env = process.env) {
   };
 
   try {
-    let topology = null;
-    if (argv.includes('--apply')) {
-      topology = await verifyTwoWorkerTopology(env);
-      const blockedReason = appDomainApplyBlockReason(argv, topology?.verified === true);
-      if (blockedReason) throw new Error(blockedReason);
-    }
-
+    // The reconciler itself performs the narrow provider proof required before
+    // mutation: Pages must already own the exact hostname, Worker domains and
+    // routes are read live, foreign exact bindings fail closed, and every broad
+    // route fails closed regardless of owner. No global Worker inventory is
+    // required, so the alpha Worker remains outside mutation authority.
     const result = await reconcileMain(argv, env);
-    if (topology) await persistVerifiedTopology(topology);
+    if (argv.includes('--apply')) await persistBindingGuardMetadata();
     return result;
   } catch (error) {
     const existing = await readExistingEvidence();
