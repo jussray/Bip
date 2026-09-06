@@ -3,8 +3,9 @@ import { pathToFileURL } from 'node:url';
 
 import { main as reconcileMain } from './reconcile-cloudflare-app-domain.mjs';
 
+const API_BASE = 'https://api.cloudflare.com/client/v4';
 const EVIDENCE_PATH = 'artifacts/cloudflare-app-domain-routing-evidence.json';
-const PROTECTED_WORKERS = ['sekret', 'sekret-backend'];
+const PROTECTED_WORKERS = ['sekret-backend', 'sekret-backend-alpha'];
 
 function inputUrl(input) {
   if (typeof input === 'string') return input;
@@ -33,6 +34,9 @@ export function classifyObservedRequest(input, init = {}) {
     if (path.includes('/pages/projects/') && path.endsWith('/domains')) {
       return { provider: 'cloudflare', operation: 'pages-domains-read', method };
     }
+    if (path.endsWith('/workers/scripts')) {
+      return { provider: 'cloudflare', operation: 'worker-scripts-read', method };
+    }
     if (path.endsWith('/workers/domains')) {
       return { provider: 'cloudflare', operation: 'worker-domains-read', method };
     }
@@ -58,14 +62,60 @@ export function classifyObservedRequest(input, init = {}) {
   return { provider: 'external', operation: 'external-request', method };
 }
 
-export function appDomainApplyBlockReason(argv = []) {
-  return argv.includes('--apply') ? 'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED' : null;
+export function twoWorkerTopologyMatches(workerIds = []) {
+  const observed = new Set(
+    (Array.isArray(workerIds) ? workerIds : [])
+      .map((value) => String(value ?? '').trim())
+      .filter(Boolean),
+  );
+  return PROTECTED_WORKERS.every((worker) => observed.has(worker));
+}
+
+export function appDomainApplyBlockReason(argv = [], topologyVerified = false) {
+  if (!argv.includes('--apply')) return null;
+  return topologyVerified ? null : 'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED';
 }
 
 function numericProviderCodes(payload) {
   return (payload?.errors || [])
     .map((item) => item?.code)
     .filter((code) => Number.isInteger(code));
+}
+
+async function verifyTwoWorkerTopology(env = process.env) {
+  const token = String(env.CLOUDFLARE_API_TOKEN || '').trim();
+  const accountId = String(env.CLOUDFLARE_ACCOUNT_ID || '').trim();
+  if (!token || !accountId) {
+    throw new Error('TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_CONFIGURATION_MISSING');
+  }
+
+  const response = await fetch(
+    `${API_BASE}/accounts/${encodeURIComponent(accountId)}/workers/scripts?per_page=100`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    },
+  );
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || payload?.success === false) {
+    throw new Error('TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_FAILED');
+  }
+
+  const workerIds = (Array.isArray(payload?.result) ? payload.result : [])
+    .map((worker) => String(worker?.id || '').trim())
+    .filter(Boolean);
+  if (!twoWorkerTopologyMatches(workerIds)) {
+    throw new Error('TWO_WORKER_TOPOLOGY_MISMATCH');
+  }
+
+  console.log('TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_VERIFIED');
+  return {
+    verified: true,
+    protectedWorkers: [...PROTECTED_WORKERS],
+  };
 }
 
 async function readExistingEvidence() {
@@ -118,23 +168,25 @@ async function writeFailureReceipt(existing, observation, env = process.env) {
   console.log(`FAILURE_EVIDENCE_WRITTEN path=${EVIDENCE_PATH} phase=${phase}`);
 }
 
-export async function run(argv = process.argv.slice(2), env = process.env) {
-  const blockedReason = appDomainApplyBlockReason(argv);
-  if (blockedReason) {
-    await writeFailureReceipt(
-      null,
+async function persistVerifiedTopology(topology) {
+  const existing = await readExistingEvidence();
+  if (!existing) return;
+  await writeFile(
+    EVIDENCE_PATH,
+    `${JSON.stringify(
       {
-        provider: 'control-plane',
-        operation: 'two-worker-topology-guard',
-        method: null,
-        status: null,
-        providerCodes: [],
+        ...existing,
+        protectedWorkers: topology.protectedWorkers,
+        topologyAuthority: 'provider-readback-verified',
       },
-      env,
-    );
-    throw new Error(blockedReason);
-  }
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+}
 
+export async function run(argv = process.argv.slice(2), env = process.env) {
   const originalFetch = globalThis.fetch;
   let observation = {
     provider: 'none',
@@ -167,7 +219,16 @@ export async function run(argv = process.argv.slice(2), env = process.env) {
   };
 
   try {
-    return await reconcileMain(argv, env);
+    let topology = null;
+    if (argv.includes('--apply')) {
+      topology = await verifyTwoWorkerTopology(env);
+      const blockedReason = appDomainApplyBlockReason(argv, topology?.verified === true);
+      if (blockedReason) throw new Error(blockedReason);
+    }
+
+    const result = await reconcileMain(argv, env);
+    if (topology) await persistVerifiedTopology(topology);
+    return result;
   } catch (error) {
     const existing = await readExistingEvidence();
     try {
