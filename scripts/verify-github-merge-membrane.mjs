@@ -95,7 +95,7 @@ export function expectedChecksForChangedFiles(changedFiles, scopePatterns) {
 }
 
 function timestamp(run) {
-  const value = Date.parse(run?.completed_at ?? run?.started_at ?? run?.created_at ?? '');
+  const value = Date.parse(run?.created_at ?? run?.started_at ?? run?.completed_at ?? '');
   return Number.isFinite(value) ? value : 0;
 }
 
