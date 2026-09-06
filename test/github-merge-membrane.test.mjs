@@ -11,6 +11,7 @@ import {
 } from '../scripts/verify-github-merge-membrane.mjs';
 
 const SHA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+const mergeMembraneSource = readFileSync('scripts/verify-github-merge-membrane.mjs', 'utf8');
 
 function run(name, conclusion = 'success', app = 'github-actions', overrides = {}) {
   return {
@@ -126,6 +127,16 @@ test('stale-head success cannot satisfy current-head authority', () => {
   const verdict = evaluateExpectedChecks({ expectedChecks, checkRuns: stale, expectedSha: SHA });
   assert.equal(verdict.ready, false);
   assert.deepEqual(verdict.missing, expectedChecks);
+});
+
+test('merge-membrane receipt persists only trusted or bounded proof data', () => {
+  assert.match(mergeMembraneSource, /const trustedBaseSha = normalizeSha\(env\.TRUSTED_BASE_SHA\)/);
+  assert.match(mergeMembraneSource, /observedBaseSha !== trustedBaseSha/);
+  assert.match(mergeMembraneSource, /trustedBase: trustedBaseSha/);
+  assert.match(mergeMembraneSource, /const outputPath = DEFAULT_OUTPUT/);
+  assert.match(mergeMembraneSource, /MERGE_MEMBRANE_EVIDENCE_PATH must be/);
+  assert.doesNotMatch(mergeMembraneSource, /\n\s+changedFiles,\n\s+expectedChecks,/);
+  assert.match(mergeMembraneSource, /schemaVersion: 3/);
 });
 
 test('PR continuity evaluates the live head with trusted base code', () => {
