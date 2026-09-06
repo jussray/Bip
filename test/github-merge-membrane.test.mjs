@@ -118,6 +118,36 @@ test('exact-head trusted GitHub Actions checks must all exist and pass', () => {
   assert.deepEqual(failedVerdict.failed, ['repository-truth']);
 });
 
+test('newer queued exact-head rerun supersedes older success and remains pending', () => {
+  const expectedChecks = ['deploy'];
+  const olderSuccess = run('deploy', 'success', 'github-actions', {
+    id: 100,
+    created_at: '2026-09-05T08:00:00Z',
+    started_at: '2026-09-05T08:00:05Z',
+    completed_at: '2026-09-05T08:01:00Z',
+  });
+  const newerQueued = run('deploy', null, 'github-actions', {
+    id: 101,
+    status: 'queued',
+    conclusion: null,
+    created_at: '2026-09-05T08:02:00Z',
+    started_at: null,
+    completed_at: null,
+  });
+
+  const verdict = evaluateExpectedChecks({
+    expectedChecks,
+    checkRuns: [olderSuccess, newerQueued],
+    expectedSha: SHA,
+  });
+
+  assert.equal(verdict.ready, false);
+  assert.equal(verdict.terminalFailure, false);
+  assert.deepEqual(verdict.pending, ['deploy']);
+  assert.deepEqual(verdict.failed, []);
+  assert.equal(verdict.observed[0].id, '101');
+});
+
 test('stale-head success cannot satisfy current-head authority', () => {
   const expectedChecks = [...ALWAYS_REQUIRED_CHECKS];
   const stale = expectedChecks.map((name) => run(name, 'success', 'github-actions', {
