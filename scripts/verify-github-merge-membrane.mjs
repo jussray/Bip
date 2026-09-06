@@ -240,29 +240,37 @@ async function writeReceipt(outputPath, receipt) {
 export async function verifyGithubMergeMembrane({ env = process.env, now = () => new Date() } = {}) {
   const repository = clean(env.GITHUB_REPOSITORY);
   const expectedSha = normalizeSha(env.EXPECTED_HEAD_SHA || env.GITHUB_SHA);
+  const trustedBaseSha = normalizeSha(env.TRUSTED_BASE_SHA);
   const prNumber = clean(env.PR_NUMBER || env.GITHUB_PR_NUMBER);
   const token = clean(env.GITHUB_TOKEN);
-  const outputPath = clean(env.MERGE_MEMBRANE_EVIDENCE_PATH) || DEFAULT_OUTPUT;
+  const requestedOutputPath = clean(env.MERGE_MEMBRANE_EVIDENCE_PATH);
+  const outputPath = DEFAULT_OUTPUT;
   const timeoutMs = Number(env.MERGE_MEMBRANE_TIMEOUT_MS || DEFAULT_TIMEOUT_MS);
   const pollMs = Number(env.MERGE_MEMBRANE_POLL_MS || DEFAULT_POLL_MS);
 
-  if (!repository || !expectedSha || !prNumber || !token) {
-    throw new Error('GITHUB_REPOSITORY, EXPECTED_HEAD_SHA/GITHUB_SHA, PR_NUMBER, and GITHUB_TOKEN are required.');
+  if (!repository || !expectedSha || !trustedBaseSha || !prNumber || !token) {
+    throw new Error('GITHUB_REPOSITORY, EXPECTED_HEAD_SHA/GITHUB_SHA, TRUSTED_BASE_SHA, PR_NUMBER, and GITHUB_TOKEN are required.');
+  }
+  if (requestedOutputPath && requestedOutputPath !== DEFAULT_OUTPUT) {
+    throw new Error(`MERGE_MEMBRANE_EVIDENCE_PATH must be ${DEFAULT_OUTPUT}.`);
   }
 
   const pullRequest = await fetchPullRequest({ repository, prNumber, token });
   const observedHeadSha = normalizeSha(pullRequest?.head?.sha);
-  const baseSha = normalizeSha(pullRequest?.base?.sha);
+  const observedBaseSha = normalizeSha(pullRequest?.base?.sha);
   const baseRef = clean(pullRequest?.base?.ref);
   if (observedHeadSha !== expectedSha) {
     throw new Error(`PR_HEAD_SHA_MISMATCH expected=${expectedSha} observed=${observedHeadSha || 'missing'}`);
   }
-  if (baseRef !== 'main' || !baseSha) {
-    throw new Error(`TRUSTED_BASE_INVALID ref=${baseRef || 'missing'} sha=${baseSha || 'missing'}`);
+  if (baseRef !== 'main' || !observedBaseSha) {
+    throw new Error(`TRUSTED_BASE_INVALID ref=${baseRef || 'missing'} sha=${observedBaseSha || 'missing'}`);
+  }
+  if (observedBaseSha !== trustedBaseSha) {
+    throw new Error(`TRUSTED_BASE_SHA_MISMATCH expected=${trustedBaseSha} observed=${observedBaseSha}`);
   }
 
   const changedFiles = await fetchChangedFiles({ repository, prNumber, token });
-  const scopePatterns = await loadTrustedScopePatterns({ repository, baseSha, token });
+  const scopePatterns = await loadTrustedScopePatterns({ repository, baseSha: trustedBaseSha, token });
   const expectedChecks = expectedChecksForChangedFiles(changedFiles, scopePatterns);
   const startedAt = Date.now();
   let evaluation = null;
@@ -272,23 +280,22 @@ export async function verifyGithubMergeMembrane({ env = process.env, now = () =>
     evaluation = evaluateExpectedChecks({ expectedChecks, checkRuns, expectedSha });
 
     const receipt = {
-      schemaVersion: 2,
+      schemaVersion: 3,
       generatedAt: now().toISOString(),
       repository,
       pullRequest: Number(prNumber),
       exactHead: expectedSha,
-      trustedBase: baseSha,
+      trustedBase: trustedBaseSha,
       scopeAuthority: 'trusted-pr-base',
       mutationPerformed: false,
       authority: 'merge-membrane-observation',
-      changedFiles,
       expectedChecks,
       ...evaluation,
     };
     await writeReceipt(outputPath, receipt);
 
     if (evaluation.ready) {
-      console.log(`GITHUB_MERGE_MEMBRANE_VERIFIED head=${expectedSha} base=${baseSha} checks=${expectedChecks.length}`);
+      console.log(`GITHUB_MERGE_MEMBRANE_VERIFIED head=${expectedSha} base=${trustedBaseSha} checks=${expectedChecks.length}`);
       return receipt;
     }
     if (evaluation.terminalFailure) {
