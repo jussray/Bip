@@ -5,6 +5,7 @@ import test from 'node:test';
 import {
   appDomainApplyBlockReason,
   classifyObservedRequest,
+  twoWorkerTopologyMatches,
 } from '../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs';
 
 test('sanitized request classification identifies Cloudflare preflight operations without URLs or secrets', () => {
@@ -13,6 +14,12 @@ test('sanitized request classification identifies Cloudflare preflight operation
       'https://api.cloudflare.com/client/v4/accounts/account-1/pages/projects/sekret-bip/domains',
     ),
     { provider: 'cloudflare', operation: 'pages-domains-read', method: 'GET' },
+  );
+  assert.deepEqual(
+    classifyObservedRequest(
+      'https://api.cloudflare.com/client/v4/accounts/account-1/workers/scripts?per_page=100',
+    ),
+    { provider: 'cloudflare', operation: 'worker-scripts-read', method: 'GET' },
   );
   assert.deepEqual(
     classifyObservedRequest(
@@ -36,12 +43,16 @@ test('sanitized request classification identifies Cloudflare preflight operation
   );
 });
 
-test('stale one-worker apply path is blocked until provider readback pins the two-worker topology', () => {
+test('apply remains blocked until live provider readback verifies both protected Workers', () => {
+  assert.equal(twoWorkerTopologyMatches(['sekret-backend', 'sekret-backend-alpha']), true);
+  assert.equal(twoWorkerTopologyMatches(['sekret-backend']), false);
+  assert.equal(twoWorkerTopologyMatches(['sekret', 'sekret-backend']), false);
   assert.equal(appDomainApplyBlockReason([]), null);
   assert.equal(
     appDomainApplyBlockReason(['--apply']),
     'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED',
   );
+  assert.equal(appDomainApplyBlockReason(['--apply'], true), null);
 });
 
 test('failure wrapper persists a safe receipt and never serializes caught exception text', () => {
@@ -54,8 +65,11 @@ test('failure wrapper persists a safe receipt and never serializes caught except
   assert.match(wrapper, /mutationState/);
   assert.match(wrapper, /providerCodes/);
   assert.match(wrapper, /FAILURE_EVIDENCE_WRITTEN/);
-  assert.match(wrapper, /two-worker-topology-guard/);
+  assert.match(wrapper, /TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_VERIFIED/);
+  assert.match(wrapper, /provider-readback-verified/);
   assert.match(wrapper, /protectedWorkers: PROTECTED_WORKERS/);
+  assert.match(wrapper, /sekret-backend-alpha/);
+  assert.doesNotMatch(wrapper, /const PROTECTED_WORKERS = \['sekret', 'sekret-backend'\]/);
   assert.doesNotMatch(wrapper, /error\.message|String\(error\)|payload\?\.errors[^\n]*message/);
 });
 
