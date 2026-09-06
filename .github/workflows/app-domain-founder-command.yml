@@ -190,7 +190,7 @@ jobs:
           echo "Current main:         $CURRENT_MAIN_SHA"
           test "$CURRENT_MAIN_SHA" = "$EXPECTED_HEAD_SHA"
 
-      - name: Dispatch exact five-alias Supabase history reconciliation
+      - name: Dispatch exact six-receipt Supabase history reconciliation
         if: ${{ steps.route.outputs.command == 'supabase-history' }}
         env:
           GH_TOKEN: ${{ github.token }}
@@ -205,7 +205,7 @@ jobs:
               inputs: {
                 target_sha: $sha,
                 confirm_project: "tbsevonvegdnlyjgplmm",
-                reconciliation_confirmation: "RECONCILE FIVE MIGRATION ALIASES"
+                reconciliation_confirmation: "RECONCILE SIX SECURITY RECEIPT ALIASES"
               }
             }')"
 
@@ -224,8 +224,8 @@ jobs:
             echo "- Approval reference: \`${{ steps.supabase-command.outputs.approval_reference }}\`"
             echo '- Mutation authority: existing `.github/workflows/reconcile-supabase-production-history.yml` only'
             echo '- Target project: `tbsevonvegdnlyjgplmm`'
-            echo '- Scope: exactly five evidence-backed migration aliases'
-            echo '- Completed production security applies remain receipt-bound; no security migration apply is authorized here'
+            echo '- Scope: exactly six receipt-backed migration aliases'
+            echo '- Completed production security applies remain receipt-bound; no security migration SQL apply is authorized here'
             echo '- Supabase credentials in bridge: none'
           } >> "$GITHUB_STEP_SUMMARY"
 
