@@ -41,6 +41,7 @@ test('history reconciliation is manual, exact-current-main, and production-gated
   assert.match(workflow, /git fetch --no-tags --depth=1 origin main/);
   assert.match(workflow, /Refusing production history reconciliation from a SHA that is no longer current main\./);
   assert.match(workflow, /Main advanced after pre-mutation proof; refusing production history reconciliation\./);
+  assert.match(workflow, /Main advanced before final production history proof; refusing stale success evidence\./);
 });
 
 test('workflow repairs exactly the five approved alias pairs and no arbitrary input version', () => {
@@ -51,6 +52,23 @@ test('workflow repairs exactly the five approved alias pairs and no arbitrary in
   }
   assert.match(workflow, /supabase migration repair[\s\S]*--status applied --db-url/);
   assert.match(workflow, /supabase migration repair[\s\S]*--status reverted --db-url/);
+});
+
+test('history-only reconciliation requires completed security work without a stale pending-count assumption', () => {
+  assert.match(workflow, /PENDING_SECURITY_MIGRATIONS\.length !== 0/);
+  assert.match(workflow, /requires zero pending production security migrations/);
+  assert.doesNotMatch(workflow, /PENDING_SECURITY_MIGRATIONS\.length !== 3/);
+});
+
+test('history reconciliation is idempotent for the exact clean post-state and fails closed on mixed history', () => {
+  assert.match(workflow, /id: history_state/);
+  assert.match(workflow, /mode = 'needs-reconciliation'/);
+  assert.match(workflow, /mode = 'already-reconciled'/);
+  assert.match(workflow, /Production migration history is mixed or ambiguous; refusing mutation/);
+  assert.match(workflow, /if: steps\.history_state\.outputs\.mode == 'needs-reconciliation'/);
+  assert.match(workflow, /if: steps\.history_state\.outputs\.mode == 'already-reconciled'/);
+  assert.match(workflow, /supabase-history-precondition-state\.json/);
+  assert.match(workflow, /verifiedExactFivePairShape/);
 });
 
 test('canonical markers are inserted before historical aliases are retired', () => {
@@ -74,7 +92,8 @@ test('history reconciliation cannot apply migration SQL or pending security migr
   }
 });
 
-test('workflow preserves before, midpoint, after, and dry-run evidence', () => {
+test('workflow preserves precondition, before, midpoint, after, and dry-run evidence', () => {
+  assert.match(workflow, /supabase-history-precondition-state\.json/);
   assert.match(workflow, /supabase-migration-list-before-reconciliation\.txt/);
   assert.match(workflow, /supabase-history-canonical-applied\.txt/);
   assert.match(workflow, /supabase-migration-list-mid-reconciliation\.txt/);
@@ -100,7 +119,7 @@ test('workflow pins repository and Supabase action identities', () => {
   assert.doesNotMatch(workflow, /(?:actions\/checkout|actions\/upload-artifact|supabase\/setup-cli)@v\d+/);
 });
 
-test('founder command bridge preserves app-domain command and adds one bounded Supabase history dispatcher', () => {
+test('founder command bridge keeps reconciliation and production verification bounded to existing workflows', () => {
   assert.match(founderCommand, /actions: write/);
   assert.match(founderCommand, /ISSUE_NUMBER: \$\{\{ github\.event\.issue\.number \}\}/);
   assert.match(founderCommand, /COMMENT_AUTHOR: \$\{\{ github\.event\.comment\.user\.login \}\}/);
@@ -109,13 +128,15 @@ test('founder command bridge preserves app-domain command and adds one bounded S
   assert.match(founderCommand, /reconcile-cloudflare-app-domain\.yml\/dispatches/);
   assert.match(founderCommand, /\/reconcile-supabase-history/);
   assert.match(founderCommand, /reconcile-supabase-production-history\.yml\/dispatches/);
+  assert.match(founderCommand, /\/verify-production/);
+  assert.match(founderCommand, /deploy-cloudflare\.yml\/dispatches/);
   assert.match(founderCommand, /tbsevonvegdnlyjgplmm/);
   assert.match(founderCommand, /RECONCILE FIVE MIGRATION ALIASES/);
 });
 
-test('founder command bridge carries authority but no Supabase credentials or migration execution primitives', () => {
-  assert.doesNotMatch(founderCommand, /SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD/);
-  assert.doesNotMatch(founderCommand, /supabase migration repair|supabase db push|supabase migration up|execute_sql|apply_migration/i);
+test('founder command bridge carries authority but no provider credentials or execution primitives', () => {
+  assert.doesNotMatch(founderCommand, /SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD|CLOUDFLARE_API_TOKEN/);
+  assert.doesNotMatch(founderCommand, /supabase migration repair|supabase db push|supabase migration up|execute_sql|apply_migration|wrangler deploy/i);
   for (const version of pendingSecurityVersions) {
     assert.doesNotMatch(founderCommand, new RegExp(version));
   }
