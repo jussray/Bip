@@ -1,6 +1,19 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 test('AI search discovery page is crawlable, extractable, and privacy-bounded', async ({ page, request }, testInfo) => {
+  const redirects = readFileSync('public/_redirects', 'utf8')
+    .trim()
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  expect(redirects.slice(0, 3)).toEqual([
+    '/what-is-sekret-bip /what-is-sekret-bip/ 301',
+    '/what-is-sekret-bip/index.html /what-is-sekret-bip/ 301',
+    '/what-is-sekret-bip/ /what-is-sekret-bip/index.html 200',
+  ]);
+  expect(redirects.at(-1)).toBe('/* /index.html 200');
+
   const robotsResponse = await request.get('/robots.txt');
   expect(robotsResponse.ok()).toBe(true);
   const robots = await robotsResponse.text();
@@ -13,7 +26,7 @@ test('AI search discovery page is crawlable, extractable, and privacy-bounded', 
   const sitemap = await sitemapResponse.text();
   expect(sitemap).toContain('<loc>https://sekretbip.net/what-is-sekret-bip/</loc>');
 
-  await page.goto('/what-is-sekret-bip/index.html', { waitUntil: 'domcontentloaded' });
+  await page.goto('/what-is-sekret-bip/', { waitUntil: 'domcontentloaded' });
 
   await expect(page).toHaveTitle("What is Se'kret Bip? | Private, age-aware family communication");
   await expect(page.getByRole('heading', { level: 1, name: "What is Se'kret Bip?" })).toBeVisible();
@@ -25,6 +38,7 @@ test('AI search discovery page is crawlable, extractable, and privacy-bounded', 
     'href',
     'https://sekretbip.net/what-is-sekret-bip/',
   );
+  await expect(page.locator('a.home')).toHaveAttribute('href', 'https://sekretbip.net/');
   await expect(page.locator('meta[name="description"]')).toHaveAttribute(
     'content',
     /private, age-aware digital space/i,
