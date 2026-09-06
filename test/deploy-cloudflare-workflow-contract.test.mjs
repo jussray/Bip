@@ -74,41 +74,53 @@ test('production verification job remains fail-closed on dependency drift but st
   );
 });
 
-test('production verification fails fast after a load-bearing prerequisite while preserving cheap preflight evidence', () => {
+test('production verification preserves independent evidence after current-main trust while keeping release identity load-bearing', () => {
   const schema = workflowStepBlock('Verify exact Supabase production schema contract');
   const transport = workflowStepBlock('Record safe frontend and backend transport evidence');
-  const cloudflare = workflowStepBlock('Wait for exact frontend and backend Worker checks plus release marker');
   const backend = workflowStepBlock('Verify backend health');
   const supabaseHealth = workflowStepBlock('Verify Supabase runtime contracts');
   const chromium = workflowStepBlock('Install Chromium');
-  const playwright = workflowStepBlock('Verify exact deployed frontend with Playwright');
+  const browserObservation = workflowStepBlock('Observe public production browser journeys independently');
+  const cloudflare = workflowStepBlock('Wait for exact frontend and backend Worker checks plus release marker');
+  const releaseIdentity = workflowStepBlock('Verify exact deployed release identity with Playwright');
 
-  for (const block of [schema, transport]) {
+  for (const block of [schema, transport, backend, supabaseHealth, chromium]) {
     assert.match(
       block,
       /if: \$\{\{ !cancelled\(\) && steps\.trusted_current_main\.outcome == 'success' \}\}/u,
-      'cheap preflight witnesses may still collect independent evidence after current-main revalidation',
+      'independent proof planes must continue observing after exact-current-main trust is established',
     );
   }
 
   assert.match(
-    cloudflare,
-    /if: \$\{\{ !cancelled\(\) && steps\.trusted_current_main\.outcome == 'success' && steps\.supabase_schema\.outcome == 'success' && steps\.release_transport\.outcome == 'success' \}\}/u,
-    'the long Cloudflare convergence witness must not run after schema or transport failure',
+    browserObservation,
+    /if: \$\{\{ !cancelled\(\) && steps\.chromium\.outcome == 'success' \}\}/u,
+    'public browser observation must remain independent of Cloudflare release convergence',
   );
-  assert.match(backend, /steps\.cloudflare_release\.outcome == 'success'/u);
-  assert.match(supabaseHealth, /steps\.backend_health\.outcome == 'success'/u);
-  assert.match(chromium, /steps\.supabase_health\.outcome == 'success'/u);
-  assert.match(playwright, /steps\.chromium\.outcome == 'success'/u);
+  assert.doesNotMatch(browserObservation, /steps\.cloudflare_release\.outcome/u);
+
+  assert.match(
+    cloudflare,
+    /if: \$\{\{ !cancelled\(\) && steps\.trusted_current_main\.outcome == 'success' && steps\.release_transport\.outcome == 'success' \}\}/u,
+    'Cloudflare convergence requires trusted current main and safe release transport without suppressing sibling proof planes',
+  );
+  assert.doesNotMatch(cloudflare, /steps\.supabase_schema\.outcome|steps\.backend_health\.outcome|steps\.supabase_health\.outcome/u);
+
+  assert.match(
+    releaseIdentity,
+    /if: \$\{\{ !cancelled\(\) && steps\.chromium\.outcome == 'success' && steps\.cloudflare_release\.outcome == 'success' \}\}/u,
+    'exact release identity Playwright remains load-bearing on both browser availability and Cloudflare release convergence',
+  );
 
   for (const [name, block] of [
     ['schema', schema],
     ['transport', transport],
-    ['cloudflare', cloudflare],
     ['backend', backend],
     ['supabase runtime', supabaseHealth],
     ['chromium', chromium],
-    ['playwright', playwright],
+    ['browser observation', browserObservation],
+    ['cloudflare', cloudflare],
+    ['release identity', releaseIdentity],
   ]) {
     assert.doesNotMatch(block, /continue-on-error:\s*true/u, `${name} must remain load-bearing`);
   }
@@ -121,7 +133,7 @@ test('production verification fails fast after a load-bearing prerequisite while
   assert.match(
     workflow,
     /- name: Publish blocked exact production observation\n\s+if: failure\(\)/u,
-    'a failed prerequisite must still produce a blocked release observation',
+    'a failed proof plane must still produce a blocked release observation',
   );
 });
 
@@ -142,11 +154,12 @@ test('all production steps are bounded with reserved time for evidence publicati
     ['Revalidate current main before Production secret use', 5],
     ['Verify exact Supabase production schema contract', 5],
     ['Record safe frontend and backend transport evidence', 5],
-    ['Wait for exact frontend and backend Worker checks plus release marker', 35],
     ['Verify backend health', 5],
     ['Verify Supabase runtime contracts', 5],
     ['Install Chromium', 15],
-    ['Verify exact deployed frontend with Playwright', 30],
+    ['Observe public production browser journeys independently', 30],
+    ['Wait for exact frontend and backend Worker checks plus release marker', 35],
+    ['Verify exact deployed release identity with Playwright', 10],
     ['Upload deployment evidence', 5],
     ['Publish exact production release observation', 5],
     ['Publish blocked exact production observation', 5],
