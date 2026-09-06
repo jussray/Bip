@@ -2,24 +2,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import {
-  appDomainApplyBlockReason,
-  classifyObservedRequest,
-  twoWorkerTopologyMatches,
-} from '../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs';
+import { classifyObservedRequest } from '../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs';
 
-test('sanitized request classification identifies Cloudflare preflight operations without URLs or secrets', () => {
+test('sanitized request classification identifies only the provider operations needed by exact-host reconciliation', () => {
   assert.deepEqual(
     classifyObservedRequest(
       'https://api.cloudflare.com/client/v4/accounts/account-1/pages/projects/sekret-bip/domains',
     ),
     { provider: 'cloudflare', operation: 'pages-domains-read', method: 'GET' },
-  );
-  assert.deepEqual(
-    classifyObservedRequest(
-      'https://api.cloudflare.com/client/v4/accounts/account-1/workers/scripts?per_page=100',
-    ),
-    { provider: 'cloudflare', operation: 'worker-scripts-read', method: 'GET' },
   );
   assert.deepEqual(
     classifyObservedRequest(
@@ -43,16 +33,25 @@ test('sanitized request classification identifies Cloudflare preflight operation
   );
 });
 
-test('apply remains blocked until live provider readback verifies both protected Workers', () => {
-  assert.equal(twoWorkerTopologyMatches(['sekret-backend', 'sekret-backend-alpha']), true);
-  assert.equal(twoWorkerTopologyMatches(['sekret-backend']), false);
-  assert.equal(twoWorkerTopologyMatches(['sekret', 'sekret-backend']), false);
-  assert.equal(appDomainApplyBlockReason([]), null);
-  assert.equal(
-    appDomainApplyBlockReason(['--apply']),
-    'TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_REQUIRED',
+test('wrapper delegates authority to the reconciler exact-host binding proof and never requests global Worker inventory', () => {
+  const wrapper = fs.readFileSync(
+    new URL('../scripts/run-cloudflare-app-domain-reconcile-with-receipt.mjs', import.meta.url),
+    'utf8',
   );
-  assert.equal(appDomainApplyBlockReason(['--apply'], true), null);
+  const reconciler = fs.readFileSync(
+    new URL('../scripts/reconcile-cloudflare-app-domain.mjs', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(wrapper, /\/workers\/scripts/);
+  assert.doesNotMatch(wrapper, /TWO_WORKER_TOPOLOGY_PROVIDER_READBACK/);
+  assert.match(wrapper, /exact-host-binding-provider-readback-verified/);
+  assert.match(wrapper, /sekret-backend-alpha/);
+
+  assert.match(reconciler, /FOREIGN_APP_DOMAIN_BINDING/);
+  assert.match(reconciler, /BROAD_WORKER_ROUTE_REQUIRES_MANUAL_REVIEW/);
+  assert.match(reconciler, /target domain must already be active on canonical Pages project/);
+  assert.match(reconciler, /exact-host Worker domain\/route only/);
 });
 
 test('failure wrapper persists a safe receipt and never serializes caught exception text', () => {
@@ -65,11 +64,8 @@ test('failure wrapper persists a safe receipt and never serializes caught except
   assert.match(wrapper, /mutationState/);
   assert.match(wrapper, /providerCodes/);
   assert.match(wrapper, /FAILURE_EVIDENCE_WRITTEN/);
-  assert.match(wrapper, /TWO_WORKER_TOPOLOGY_PROVIDER_READBACK_VERIFIED/);
-  assert.match(wrapper, /provider-readback-verified/);
+  assert.match(wrapper, /exact-host-binding-provider-readback-required/);
   assert.match(wrapper, /protectedWorkers: PROTECTED_WORKERS/);
-  assert.match(wrapper, /sekret-backend-alpha/);
-  assert.doesNotMatch(wrapper, /const PROTECTED_WORKERS = \['sekret', 'sekret-backend'\]/);
   assert.doesNotMatch(wrapper, /error\.message|String\(error\)|payload\?\.errors[^\n]*message/);
 });
 
