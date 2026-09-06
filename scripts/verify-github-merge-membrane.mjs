@@ -95,7 +95,12 @@ export function expectedChecksForChangedFiles(changedFiles, scopePatterns) {
 }
 
 function timestamp(run) {
-  const value = Date.parse(run?.completed_at ?? run?.started_at ?? '');
+  const value = Date.parse(run?.completed_at ?? run?.started_at ?? run?.created_at ?? '');
+  return Number.isFinite(value) ? value : 0;
+}
+
+function sequence(run) {
+  const value = Number(run?.id);
   return Number.isFinite(value) ? value : 0;
 }
 
@@ -110,7 +115,15 @@ export function selectLatestExactHeadChecks(checkRuns, expectedSha) {
     if (!name || !app) continue;
     const key = `${app}\u0000${name}`;
     const current = selected.get(key);
-    if (!current || timestamp(run) >= timestamp(current)) selected.set(key, run);
+    const runTimestamp = timestamp(run);
+    const currentTimestamp = timestamp(current);
+    if (
+      !current
+      || runTimestamp > currentTimestamp
+      || (runTimestamp === currentTimestamp && sequence(run) > sequence(current))
+    ) {
+      selected.set(key, run);
+    }
   }
 
   return [...selected.values()];
