@@ -118,13 +118,13 @@ test('exact-head trusted GitHub Actions checks must all exist and pass', () => {
   assert.deepEqual(failedVerdict.failed, ['repository-truth']);
 });
 
-test('newer queued exact-head rerun supersedes older success and remains pending', () => {
+test('newer queued exact-head rerun supersedes older success by creation order', () => {
   const expectedChecks = ['deploy'];
   const olderSuccess = run('deploy', 'success', 'github-actions', {
     id: 100,
     created_at: '2026-09-05T08:00:00Z',
     started_at: '2026-09-05T08:00:05Z',
-    completed_at: '2026-09-05T08:01:00Z',
+    completed_at: '2026-09-05T08:03:00Z',
   });
   const newerQueued = run('deploy', null, 'github-actions', {
     id: 101,
