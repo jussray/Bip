@@ -7,7 +7,7 @@ const FOUNDER_COMMAND_PATH = '.github/workflows/app-domain-founder-command.yml';
 const workflow = fs.readFileSync(WORKFLOW_PATH, 'utf8');
 const founderCommand = fs.readFileSync(FOUNDER_COMMAND_PATH, 'utf8');
 
-const liveVersions = [
+const baselineLiveVersions = [
   '20260723203050',
   '20260723203116',
   '20260820214601',
@@ -15,7 +15,7 @@ const liveVersions = [
   '20260826065736',
 ];
 
-const canonicalVersions = [
+const baselineCanonicalVersions = [
   '20260718035000',
   '20260718035500',
   '20260820211200',
@@ -23,10 +23,22 @@ const canonicalVersions = [
   '20260824223800',
 ];
 
-const pendingSecurityVersions = [
+const securityLiveVersions = [
+  '20260905233953',
+  '20260905234133',
+  '20260905234009',
+  '20260905234019',
+  '20260905234039',
+  '20260905234048',
+];
+
+const securityCanonicalVersions = [
+  '20260826012500',
   '20260827060000',
   '20260827061000',
   '20260827062000',
+  '20260827063000',
+  '20260831233000',
 ];
 
 test('history reconciliation is manual, exact-current-main, and production-gated', () => {
@@ -35,7 +47,7 @@ test('history reconciliation is manual, exact-current-main, and production-gated
   assert.doesNotMatch(workflow, /\n  pull_request:/);
   assert.match(workflow, /target_sha:/);
   assert.match(workflow, /confirm_project:/);
-  assert.match(workflow, /RECONCILE FIVE MIGRATION ALIASES/);
+  assert.match(workflow, /RECONCILE SIX SECURITY RECEIPT ALIASES/);
   assert.match(workflow, /environment: production/);
   assert.match(workflow, /group: supabase-production-migrations/);
   assert.match(workflow, /git fetch --no-tags --depth=1 origin main/);
@@ -44,52 +56,55 @@ test('history reconciliation is manual, exact-current-main, and production-gated
   assert.match(workflow, /Main advanced before final production history proof; refusing stale success evidence\./);
 });
 
-test('workflow repairs exactly the five approved alias pairs and no arbitrary input version', () => {
+test('workflow requires the reconciled five-pair baseline and repairs exactly six receipted aliases', () => {
   assert.doesNotMatch(workflow, /repair_version:/);
   assert.doesNotMatch(workflow, /canonical_version:/);
-  for (const version of [...liveVersions, ...canonicalVersions]) {
+  for (const version of [
+    ...baselineLiveVersions,
+    ...baselineCanonicalVersions,
+    ...securityLiveVersions,
+    ...securityCanonicalVersions,
+  ]) {
     assert.match(workflow, new RegExp(version));
   }
+  assert.match(workflow, /Previously reconciled five-pair production baseline is not clean; refusing six-receipt mutation/);
   assert.match(workflow, /supabase migration repair[\s\S]*--status applied --db-url/);
   assert.match(workflow, /supabase migration repair[\s\S]*--status reverted --db-url/);
 });
 
-test('history-only reconciliation requires completed security work without a stale pending-count assumption', () => {
+test('history-only reconciliation requires completed security work', () => {
   assert.match(workflow, /PENDING_SECURITY_MIGRATIONS\.length !== 0/);
   assert.match(workflow, /requires zero pending production security migrations/);
-  assert.doesNotMatch(workflow, /PENDING_SECURITY_MIGRATIONS\.length !== 3/);
 });
 
-test('history reconciliation is idempotent for the exact clean post-state and fails closed on mixed history', () => {
+test('security receipt reconciliation is idempotent and fails closed on mixed history', () => {
   assert.match(workflow, /id: history_state/);
   assert.match(workflow, /mode = 'needs-reconciliation'/);
   assert.match(workflow, /mode = 'already-reconciled'/);
-  assert.match(workflow, /Production migration history is mixed or ambiguous; refusing mutation/);
+  assert.match(workflow, /Production security receipt history is mixed or ambiguous; refusing mutation/);
   assert.match(workflow, /if: steps\.history_state\.outputs\.mode == 'needs-reconciliation'/);
   assert.match(workflow, /if: steps\.history_state\.outputs\.mode == 'already-reconciled'/);
   assert.match(workflow, /supabase-history-precondition-state\.json/);
-  assert.match(workflow, /verifiedExactFivePairShape/);
+  assert.match(workflow, /verifiedReconciledFivePairBaseline/);
+  assert.match(workflow, /verifiedExactSixSecurityReceiptShape/);
 });
 
-test('canonical markers are inserted before historical aliases are retired', () => {
-  const applyCanonical = workflow.indexOf('- name: Mark canonical versions applied');
-  const retireAliases = workflow.indexOf('- name: Retire historical live aliases');
+test('canonical markers are inserted before receipted aliases are retired', () => {
+  const applyCanonical = workflow.indexOf('- name: Mark canonical security receipt versions applied');
+  const retireAliases = workflow.indexOf('- name: Retire receipted live aliases');
   const postVerify = workflow.indexOf('- name: Verify exact post-reconciliation migration history');
   assert.ok(applyCanonical >= 0);
   assert.ok(retireAliases > applyCanonical);
   assert.ok(postVerify > retireAliases);
 });
 
-test('history reconciliation cannot apply migration SQL or pending security migrations', () => {
+test('history reconciliation cannot apply migration SQL', () => {
   const dbPushLines = workflow.split('\n').filter((line) => line.includes('supabase db push'));
   assert.equal(dbPushLines.length, 1);
   assert.match(dbPushLines[0], /--db-url .*--dry-run/);
   assert.doesNotMatch(workflow, /supabase link/);
   assert.doesNotMatch(workflow, /supabase migration up/);
   assert.doesNotMatch(workflow, /apply_migration|psql\s|execute_sql/i);
-  for (const version of pendingSecurityVersions) {
-    assert.doesNotMatch(workflow, new RegExp(version));
-  }
 });
 
 test('workflow preserves precondition, before, midpoint, after, and dry-run evidence', () => {
@@ -131,13 +146,11 @@ test('founder command bridge keeps reconciliation and production verification bo
   assert.match(founderCommand, /\/verify-production/);
   assert.match(founderCommand, /deploy-cloudflare\.yml\/dispatches/);
   assert.match(founderCommand, /tbsevonvegdnlyjgplmm/);
-  assert.match(founderCommand, /RECONCILE FIVE MIGRATION ALIASES/);
+  assert.match(founderCommand, /RECONCILE SIX SECURITY RECEIPT ALIASES/);
+  assert.match(founderCommand, /exactly six receipt-backed migration aliases/);
 });
 
 test('founder command bridge carries authority but no provider credentials or execution primitives', () => {
   assert.doesNotMatch(founderCommand, /SUPABASE_ACCESS_TOKEN|SUPABASE_DB_PASSWORD|CLOUDFLARE_API_TOKEN/);
   assert.doesNotMatch(founderCommand, /supabase migration repair|supabase db push|supabase migration up|execute_sql|apply_migration|wrangler deploy/i);
-  for (const version of pendingSecurityVersions) {
-    assert.doesNotMatch(founderCommand, new RegExp(version));
-  }
 });
